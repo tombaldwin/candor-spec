@@ -21,6 +21,12 @@ effect. Tag the boundary call, not the whole crate/package:
 - DB clients → the query-*execution* verb, not query construction;
 - raw sockets → the I/O types, not the address/data types alongside them.
 
+The same *verb* can sit on different sides of that boundary in different libraries, so calibrate
+per-library, not per-verb: in `sqlx`, bare `query()` only **builds** (the effect is `.fetch_*`/
+`.execute()`), but in `tokio-postgres`/`postgres`/`rusqlite` `query()`/`batch_execute()`/`prepare()`
+**are** the round-trip. A rule tuned to exclude sqlx's builder silently hid 16 of pgman's 20 DB call
+sites until an A/B on the real app exposed it (§5). Give each library its own verb set.
+
 Over-reporting erodes trust as much as under-reporting hides danger. Both are dishonesty about what
 the code does. Add a precision test — a positive *and* a negative case — for each rule.
 
@@ -44,8 +50,11 @@ a config mechanism so projects add their own rules without forking.
 ## 5. Let reality correct you
 
 Synthetic tests miss real patterns. Run the classifier on real codebases *early*. Every gap the Rust
-impl's classifier had — a missing HTTP client, an over-broad clock rule, error-formatting false
-positives — was found by running on real code, not by reading it. A green build proves nothing.
+impl's classifier had — a missing HTTP client (reqwest), an over-broad clock rule, error-formatting
+false positives, a tokio-postgres DB gap hiding 16 of 20 call sites — was found by running on real
+code, not by reading it. A green build proves nothing. The strongest version of this is an **A/B**:
+have one agent answer a question from the candor report and another from source alone, then diff —
+that's exactly how the pgman DB gap surfaced.
 
 ## 6. Provide the trust signal
 
