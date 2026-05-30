@@ -45,7 +45,11 @@ Each entry:
   "declared":     [],                    // effects the signature declares it may perform (§5)
   "undeclared":   [],                    // inferred − declared (violations); empty in audit
   "overdeclared": [],                    // declared − inferred (unused declarations)
-  "unresolved":   true                   // true if `inferred` may be incomplete (contains Unknown)
+  "unresolved":   true,                  // true if `inferred` may be incomplete (contains Unknown)
+  "hash":         "<stable cross-crate id>" // OPTIONAL: a stable identity (e.g. DefPathHash) so a
+                                         // dependent crate's analysis can inherit this fn's effects
+                                         // across the crate boundary. Per-crate analyzers SHOULD
+                                         // emit it; consumers may ignore it.
 }
 ```
 
