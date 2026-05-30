@@ -57,8 +57,15 @@ Each entry:
 }
 ```
 
-`inferred` MUST be transitive: if A calls B and B performs `Net`, A's `inferred` includes `Net`.
-`direct` is the non-transitive subset. Effect-free items MAY be omitted from the report.
+`inferred` MUST be transitive: if A calls B and B performs `Net`, A's `inferred` includes `Net` —
+**including when B lives in another crate of the same project**. `direct` is the non-transitive
+subset. Effect-free items MAY be omitted from the report.
+
+`hash` is optional *only* for single-crate analysis. As soon as A and B are in different crates,
+`hash` is the join key a dependent uses to inherit B's effects, so a multi-crate implementation MUST
+emit it to satisfy the transitivity rule above — otherwise every cross-crate call is silently dropped
+and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
+`hash`; a producer of multi-crate reports may not omit it.
 
 ## 3. Modes
 
