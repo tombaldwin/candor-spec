@@ -22,6 +22,9 @@ ports across languages; each implementation's *engine* is bespoke to its toolcha
 
 - **[SPEC.md](SPEC.md)** — the contract: effect vocabulary, JSON report schema, the `AS-EFF-00x`
   codes, the modes, and the trust contract. What it means to "be a candor implementation."
+- **[SEMANTICS.md](SEMANTICS.md)** — the formal analysis: the effect lattice, call-site resolution
+  rules, the transitive fixpoint, cross-crate composition, the conformance predicates, and the
+  soundness/precision/termination properties (with the two honesty caveats stated explicitly).
 - **[PRINCIPLES.md](PRINCIPLES.md)** — the ideas the family is built on (honesty under uncertainty).
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the

@@ -6,6 +6,10 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 
 **Version 0.1** — tracks the Rust reference implementation, [candor](https://github.com/tombaldwin/candor).
 
+> This document fixes the **interface** an implementation must produce. For the **analysis** behind
+> it — the effect lattice, call-site resolution rules, the transitive fixpoint, cross-crate
+> composition, and the soundness/precision properties — see [SEMANTICS.md](SEMANTICS.md).
+
 ## 1. Effects
 
 An **effect** is an observable interaction with the world outside pure computation. The shared
