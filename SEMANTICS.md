@@ -57,51 +57,65 @@ function: completeness over real-world effectful APIs is a goal, not a theorem (
 
 ## 4. Call-site resolution
 
-For a call site `c ∈ body(f)`, resolution yields two things:
+For a call site `c ∈ body(f)`, resolution yields three things:
 
-- **contrib(c) ∈ 𝒫(𝔼 ∪ {Unknown})** — effects charged *directly* to `f` at this site;
+- **contrib(c) ∈ 𝒫(𝔼 ∪ {Unknown})** — effects charged to `f`'s **own body** at this site (a recognized
+  primitive, or the `Unknown` marker);
+- **inh(c) ∈ 𝒫(𝔼 ∪ {Unknown})** — effects **inherited** from a callee whose body is *not* part of `f`
+  (a cross-crate callee); transitive, but not `f`'s own — kept distinct from `contrib` because the
+  no-ambient check (§6) must see only what `f` does *itself*;
 - **edges(c) ⊆ F** — local callees whose effects propagate to `f` transitively (§5).
 
-The judgment is the **first** matching rule below (read `t` = the syntactic callee, `X` = the
-cross-crate oracle of §5b, `impls(T,m)` = the local impls of trait method `m` of trait `T`):
+The rules below are **not** a priority-ordered first-match: a single call site can fire several
+(notably, the syntactic callee is *always* retained as an edge when it is local — see the note — and
+the devirt/CHA targets are *added*). Each rule states only the outputs it contributes; unstated
+outputs are `∅`. Read `t` = the syntactic callee, `X` = the cross-crate oracle of §5b, `impls(T,m)` =
+the local impls of trait method `m` of trait `T`.
 
 ```
+(EDGE)       t resolves to a local body t′ (direct call, or the syntactic
+             callee of any local method)
+             ──────────────────────────────────         edges ⊇ { t′ }      [always, alongside below]
+
 (CLASSIFY)   t external,  κ(t) = e
-             ────────────────────────────────         contrib = {e},  edges = ∅
+             ────────────────────────────────         contrib = {e}
 
 (CROSS)      t external,  κ(t) undefined,  ĥ(t) ∈ dom(X)
-             ──────────────────────────────────────    contrib = X(ĥ(t)),  edges = ∅
+             ──────────────────────────────────────    inh = X(ĥ(t))
 
 (DEVIRT)     c is a method call on a CONCRETE receiver,
              statically resolvable to one impl t′ that is local
-             ──────────────────────────────────────    contrib = ∅,  edges = { t′ }
-
-(LOCAL)      t is a local function (direct call)
-             ──────────────────────────────────         contrib = ∅,  edges = { t }
+             ──────────────────────────────────────    edges ⊇ { t′ }
 
 (CHA)        c dispatches over a LOCAL trait T (dyn or generic),
              not devirtualizable
-             ──────────────────────────────────         contrib = ∅,  edges = impls(T, m)
+             ──────────────────────────────────         edges ⊇ impls(T, m)
 
 (EXEMPT)     c dispatches over a conventionally-pure std trait
              (Display, Debug, Error, ToString, Clone, Eq/Ord, …)
-             ──────────────────────────────────         contrib = ∅,  edges = ∅
+             ──────────────────────────────────         (suppresses UNKNOWN; no effect)
 
 (UNKNOWN)    c is a fn-pointer / closure call, OR dispatch over a
-             NON-local, non-exempt trait that cannot be resolved
-             ──────────────────────────────────         contrib = { Unknown },  edges = ∅
+             non-local trait that is neither (EXEMPT) nor resolvable
+             ──────────────────────────────────         contrib = { Unknown }
 
 (OPAQUE)     t external,  κ(t) undefined,  ĥ(t) ∉ dom(X)
-             ──────────────────────────────────         contrib = ∅,  edges = ∅
+             ──────────────────────────────────         (nothing)
 ```
 
 Notes.
-- **(DEVIRT) before (CHA).** When the receiver type is known, the call dispatches to exactly one
-  impl; using that single impl instead of *every* impl is the precision difference between (DEVIRT)
-  and (CHA). (CHA) is the sound fallback for genuinely dynamic/generic dispatch.
-- **(CHA) is an over-approximation:** it unions *all* impls' effects, some of which the call could
-  never select. This is sound (never misses) but imprecise; (DEVIRT) recovers the precision when it
-  can.
+- **The syntactic callee is always kept as an edge** (rule (EDGE)) when it resolves to a local body —
+  *in addition to* any (DEVIRT)/(CHA) targets. So for a local trait call the analysis follows both the
+  trait method (its default body, if any) and the resolved impl(s): the realized edge set is a
+  *superset* of the strictly-needed one. This is a deliberate over-approximation (it can only raise
+  `I`, never lower it) and is why the reference implementation never *under*-resolves a local call.
+- **(DEVIRT) tightens (CHA).** When the receiver type is known the call dispatches to exactly one
+  impl, so (DEVIRT) adds that single impl rather than (CHA)'s *every* impl. Both are sound; (DEVIRT) is
+  the precise one. (CHA) over-approximates by unioning impls the call could never select.
+- **(CROSS) inherits, it does not perform.** Its effects go to `inh`, never to `contrib` — a function
+  that merely *calls* a cross-crate `Net` function has not itself reached for the network, so it must
+  not trip the no-ambient check (§6, AS-EFF-004). This is the one place `contrib`/`inh` must not be
+  conflated.
 - **(EXEMPT)** prevents the trust marker from flooding: dispatch over std traits that are
   conventionally effect-free (formatting, equality, cloning) does *not* raise `Unknown`. The exempt
   set is curated tightly and excludes traits where I/O can hide (`Iterator`, `Fn*`, `Drop`,
@@ -112,7 +126,8 @@ Notes.
 
 Define, for `f ∈ F`:
 
-> **D(f)** = ⊔_{c ∈ body(f)} contrib(c)        (direct effects — performed in f's own body)
+> **D(f)** = ⊔_{c ∈ body(f)} contrib(c)        (direct — performed in f's *own* body; the report's `direct`)
+> **Inh(f)** = ⊔_{c ∈ body(f)} inh(c)          (inherited across crate boundaries — transitive, not own-body)
 > **calls(f)** = ⋃_{c ∈ body(f)} edges(c)       (local call-graph successors)
 
 ## 5. Transitive effects (the report's `inferred`)
@@ -121,20 +136,27 @@ Define, for `f ∈ F`:
 
 The **inferred** effect set `I : F → 𝒫(𝔼 ∪ {Unknown})` is the **least solution** of
 
-> **I(f) = D(f) ⊔ ⊔_{g ∈ calls(f)} I(g)**     for all f ∈ F.
+> **I(f) = D(f) ⊔ Inh(f) ⊔ ⊔_{g ∈ calls(f)} I(g)**     for all f ∈ F.
 
-The right-hand side is a monotone operator `Φ : (F → 𝓛) → (F → 𝓛)` on the finite product lattice
-`F → 𝓛`. By Knaster–Tarski its least fixpoint exists and equals `⊔_n Φⁿ(λf.∅)` (Kleene iteration),
-reached in finitely many steps (§7).
+`D(f)` is `f`'s own-body effects, `Inh(f)` the cross-crate-inherited effects (§5b), and the last term
+the effects of everything `f` calls locally. The right-hand side is a monotone operator
+`Φ : (F → 𝓛) → (F → 𝓛)` on the finite product lattice `F → 𝓛`. By Knaster–Tarski its least fixpoint
+exists and equals `⊔_n Φⁿ(λf.∅)` (Kleene iteration), reached in finitely many steps (§7).
 
-`I(f)` is what a report entry publishes as `inferred`; `D(f)` is published as `direct`. The
-`unresolved` flag of an entry is `Unknown ∈ I(f)`.
+`I(f)` is what a report entry publishes as `inferred`; **`D(f)` alone** is published as `direct` (note:
+`Inh(f)` and the transitive term are *in* `inferred` but *not* in `direct` — `direct` is own-body
+only, matching SPEC.md §2). The `unresolved` flag of an entry is `Unknown ∈ I(f)`.
 
 ### 5b. Cross-crate composition
 
 candor analyzes one crate at a time, but a program spans crates (a `bin` over its `lib`, a workspace
 member over a sibling). Effects must cross that boundary, so each analyzed crate K **emits** its
 result and a dependent reads it.
+
+This step is **active only in the report-emitting modes** (JSON / baseline): `X` is built from
+reports on disk, so in pure *audit* mode — which writes nothing — `X = ∅`, `Inh(f) = ∅`, and the
+analysis is within-crate. Cross-crate inheritance is therefore a property of a *report-producing* run,
+not of every run.
 
 Let `ĥ : F → H` assign every function a **stable cross-crate identity** `ĥ(f)` — a value identical
 whether `f` is viewed from its home crate or from a dependent (a content hash of its definition path;
@@ -149,8 +171,9 @@ analyzed, and writes its report, before its dependents), `X` is available when n
 trait-method call across the boundary, `ĥ` is taken of the **devirtualized** impl (the home crate
 keyed its report by the impl, not the trait method).
 
-This composition is itself an instance of (CROSS): the analysis is *modular* — `I_K` is computed using
-only `D` of K's own functions plus the *published* `I` of its dependencies.
+So the analysis is *modular*: `I_K` is computed from K's own functions (their `D` and local edges)
+plus, via `Inh` and rule (CROSS), the *published* `I` of K's dependencies — never by re-analyzing a
+dependency's body.
 
 ## 6. Conformance (the modes)
 
@@ -174,6 +197,12 @@ The diagnostics are exactly these predicates:
 it is AS-EFF-003's concern. AS-EFF-005 fires only for functions present in `B` (regressions in
 existing code), never for new functions.
 
+Note the asymmetry: **AS-EFF-001/003/005 read `I(f)`** (the full transitive set, including `Inh(f)`),
+but **AS-EFF-004 reads `D(f)`** (own-body only). So a function that *inherits* an ambient effect by
+calling a cross-crate `Net` function is still undeclared-flagged by AS-EFF-001 (it does transitively
+perform `Net`), yet is **not** ambient-flagged by AS-EFF-004 (it never reached for the network
+itself — its callee did). Conflating `D` and `Inh` would break exactly this distinction.
+
 ## 7. Properties
 
 **(P1) Termination.** Kleene iteration of `Φ` converges in at most `|F| · (|𝔼|+1)` round-trips: each
@@ -186,15 +215,18 @@ of iteration order. Adding a call edge or an effect can only *grow* `I` — neve
 **(P3) Conditional soundness.** Let `R(f)` be the *true* set of effects `f` can perform at runtime.
 Then
 
-> **R(f) ⊆ I(f)**     *provided* the following two assumptions hold along everything `f` transitively reaches:
+> **R(f) ⊆ I(f)**     *provided* the following assumptions hold along everything `f` transitively reaches:
 
 - every real effectful primitive is recognized — i.e. for each runtime effect there is a call whose
   callee is in `dom(κ)` (or is a recognized cross-crate function);
-- every dispatch is either resolved to its possible targets ((LOCAL)/(DEVIRT)/(CHA)) or charged
-  `Unknown` ((UNKNOWN)).
+- every dispatch is either resolved to its possible targets ((EDGE)/(DEVIRT)/(CHA)) or charged
+  `Unknown` ((UNKNOWN)) — and is **not** silenced by (EXEMPT) over a trait that secretly performs an
+  effect;
+- each cross-crate report `I_{K′}` consulted via `X` is itself sound (soundness composes bottom-up).
 
 Under those assumptions candor never *silently* omits an effect: it either reports the effect or
-reports `Unknown`. The assumptions are exactly the **two honesty caveats** of §8.
+reports `Unknown`. The first two assumptions are exactly the **two honesty caveats** C1 and C2 of §8;
+the third is their bottom-up closure across crates.
 
 **(P4) Precision is best-effort.** `I(f)` may strictly over-approximate `R(f)`: (CHA) unions impls a
 call can't select, and whole-*crate* classifier rules tag pure items in an otherwise-effectful crate.
@@ -225,11 +257,11 @@ under-report** — and make any residual blind spot *visible* (C1's coverage sig
 |---|---|
 | `F`, `body(f)`, the call sites | HIR of the crate; a `dylint` `LateLintPass` visiting every expression |
 | κ | `classify` (+ project rules via `CANDOR_CONFIG`) |
-| (CLASSIFY/CROSS/DEVIRT/LOCAL/CHA/EXEMPT/UNKNOWN/OPAQUE) | `resolve_callee`, `trait_of_assoc`, `Instance::try_resolve` (DEVIRT), `cha_targets` (CHA), `is_pure_std_trait` (EXEMPT) |
-| `D(f)`, `calls(f)` | the per-function `direct` and `calls` maps |
-| the fixpoint `I` | the worklist in `check_crate_post` |
+| (EDGE/CLASSIFY/CROSS/DEVIRT/CHA/EXEMPT/UNKNOWN/OPAQUE) | `add_edge` (the always-on EDGE), `resolve_callee`, `trait_of_assoc`, `Instance::try_resolve` (DEVIRT), `cha_targets` (CHA), `is_pure_std_trait` (EXEMPT) |
+| `D(f)` / `Inh(f)` / `calls(f)` | the per-function `direct` map / the `via_cross` map / the `calls` map (kept separate so `direct` excludes inherited effects) |
+| the fixpoint `I` | the round-robin `while changed` iteration in `check_crate_post` |
 | `ĥ` | `DefPathHash` (stable across crates); emitted as each report entry's `hash` field |
-| `X` (cross-crate oracle) | dependency crates' emitted JSON reports, loaded by hash |
+| `X` (cross-crate oracle) | dependency crates' emitted JSON reports, loaded by hash (report-emitting modes only) |
 | `declared(f)` | capability-token parameter types read from the signature (`&Fs`, cap-std handles) |
 | AS-EFF-00x | the conformance/no-ambient/baseline modes |
 
