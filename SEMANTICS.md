@@ -153,10 +153,11 @@ candor analyzes one crate at a time, but a program spans crates (a `bin` over it
 member over a sibling). Effects must cross that boundary, so each analyzed crate K **emits** its
 result and a dependent reads it.
 
-This step is **active only in the report-emitting modes** (JSON / baseline): `X` is built from
-reports on disk, so in pure *audit* mode — which writes nothing — `X = ∅`, `Inh(f) = ∅`, and the
-analysis is within-crate. Cross-crate inheritance is therefore a property of a *report-producing* run,
-not of every run.
+This step is **active only when a report prefix is configured** (the JSON or baseline modes): `X` is
+built from reports on disk — the JSON mode *writes* them, the baseline mode *reads* an existing
+snapshot — so in pure *audit* mode, which has no report prefix, `X = ∅`, `Inh(f) = ∅`, and the
+analysis is within-crate. Cross-crate inheritance is therefore a property of a *report-aware* run, not
+of every run.
 
 Let `ĥ : F → H` assign every function a **stable cross-crate identity** `ĥ(f)` — a value identical
 whether `f` is viewed from its home crate or from a dependent (a content hash of its definition path;
@@ -261,7 +262,7 @@ under-report** — and make any residual blind spot *visible* (C1's coverage sig
 | `D(f)` / `Inh(f)` / `calls(f)` | the per-function `direct` map / the `via_cross` map / the `calls` map (kept separate so `direct` excludes inherited effects) |
 | the fixpoint `I` | the round-robin `while changed` iteration in `check_crate_post` |
 | `ĥ` | `DefPathHash` (stable across crates); emitted as each report entry's `hash` field |
-| `X` (cross-crate oracle) | dependency crates' emitted JSON reports, loaded by hash (report-emitting modes only) |
+| `X` (cross-crate oracle) | dependency crates' reports, loaded by hash — only when `CANDOR_JSON` or `CANDOR_BASELINE` is set |
 | `declared(f)` | capability-token parameter types read from the signature (`&Fs`, cap-std handles) |
 | AS-EFF-00x | the conformance/no-ambient/baseline modes |
 
