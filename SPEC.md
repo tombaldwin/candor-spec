@@ -67,6 +67,40 @@ emit it to satisfy the transitivity rule above — otherwise every cross-crate c
 and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
 `hash`; a producer of multi-crate reports may not omit it.
 
+### 2.1 Provenance (engine version) — interim now, envelope in v0.2
+
+A report is only meaningful relative to the engine that produced it: a richer classifier or a new
+resolution rule changes the effect set for the *same* source, so a baseline is comparable only to its
+own producing version, and a dependent crate must not silently trust a sibling report from a different
+engine (the trust contract, §4, applied to candor's own output). An implementation therefore SHOULD
+record its **build version** (and toolchain) with each report.
+
+Two important consequences:
+
+- The version MUST reflect the engine **binary that actually ran**, not the source tree it was built
+  from — those diverge when the source is updated without a rebuild, and a source-derived version
+  would call a stale engine "current" and mask a stale baseline.
+- A consumer performing cross-crate inheritance (§2, `hash`) SHOULD compare versions and, on a
+  mismatch, treat the inherited effects as unverified (downgrade to `Unknown`) rather than trust them.
+
+**v0.1 (now):** the report stays a bare array (above); the engine emits its version out-of-band in a
+sidecar beside the report. The Rust reference impl stamps `candor_version` + `toolchain` into its
+`<prefix>.calibrated.json` sidecar and embeds the version in the dylib itself so a tool can read the
+*true* build version without running it.
+
+**v0.2 (planned):** promote the report to a self-describing **envelope**, so provenance travels with
+the data instead of a side file:
+
+```json
+{
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>" },
+  "functions": [ /* the §2 entries */ ]
+}
+```
+
+Consumers will unwrap `.functions`; a bare top-level array remains accepted as the v0.1 form during
+migration.
+
 ## 3. Modes
 
 An implementation SHOULD support:
