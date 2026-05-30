@@ -4,7 +4,9 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.1** — tracks the Rust reference implementation, [candor](https://github.com/tombaldwin/candor).
+**Version 0.2** — tracks the Rust reference implementation, [candor](https://github.com/tombaldwin/candor).
+v0.2 wraps the report in a self-describing `{ candor, functions }` envelope (§2); the v0.1 bare array
+is still accepted by conformant readers during migration.
 
 > This document fixes the **interface** an implementation must produce. For the **analysis** behind
 > it — the effect lattice, call-site resolution rules, the transitive fixpoint, cross-crate
@@ -34,9 +36,20 @@ An implementation MAY add language-specific effects, but SHOULD use these names 
 
 ## 2. The report
 
-An implementation emits a JSON array, one object per analyzed function (or other *reportable item*,
-e.g. a static initializer). Write one file per compilation unit, named so multiple units don't
-collide (the Rust impl uses `<prefix>.<crate>.<type>.json`).
+An implementation emits, per compilation unit, a self-describing **envelope** — a provenance header
+plus one entry per analyzed function (or other *reportable item*, e.g. a static initializer). Write
+one file per unit, named so multiple units don't collide (the Rust impl uses
+`<prefix>.<crate>.<type>.json`):
+
+```json
+{
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>" },
+  "functions": [ /* the entries below */ ]
+}
+```
+
+The `candor` header records which engine produced the report (§2.1). A bare top-level array (no
+envelope) remains accepted as the legacy **v0.1** form — readers MUST accept both during migration.
 
 Each entry:
 
@@ -67,39 +80,26 @@ emit it to satisfy the transitivity rule above — otherwise every cross-crate c
 and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
 `hash`; a producer of multi-crate reports may not omit it.
 
-### 2.1 Provenance (engine version) — interim now, envelope in v0.2
+### 2.1 Provenance (the `candor` header)
 
 A report is only meaningful relative to the engine that produced it: a richer classifier or a new
 resolution rule changes the effect set for the *same* source, so a baseline is comparable only to its
 own producing version, and a dependent crate must not silently trust a sibling report from a different
-engine (the trust contract, §4, applied to candor's own output). An implementation therefore SHOULD
-record its **build version** (and toolchain) with each report.
+engine (the trust contract, §4, applied to candor's own output). The envelope's `candor` header
+carries this — `version` (engine build id) and `toolchain` — so the report is self-describing.
 
-Two important consequences:
+Two requirements on it:
 
-- The version MUST reflect the engine **binary that actually ran**, not the source tree it was built
+- `version` MUST reflect the engine **binary that actually ran**, not the source tree it was built
   from — those diverge when the source is updated without a rebuild, and a source-derived version
   would call a stale engine "current" and mask a stale baseline.
 - A consumer performing cross-crate inheritance (§2, `hash`) SHOULD compare versions and, on a
   mismatch, treat the inherited effects as unverified (downgrade to `Unknown`) rather than trust them.
 
-**v0.1 (now):** the report stays a bare array (above); the engine emits its version out-of-band in a
-sidecar beside the report. The Rust reference impl stamps `candor_version` + `toolchain` into its
-`<prefix>.calibrated.json` sidecar and embeds the version in the dylib itself so a tool can read the
-*true* build version without running it.
-
-**v0.2 (planned):** promote the report to a self-describing **envelope**, so provenance travels with
-the data instead of a side file:
-
-```json
-{
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>" },
-  "functions": [ /* the §2 entries */ ]
-}
-```
-
-Consumers will unwrap `.functions`; a bare top-level array remains accepted as the v0.1 form during
-migration.
+The Rust reference impl additionally embeds `version` in the dylib itself (so a tool can read the
+*true* build version without running the engine) and mirrors `version`/`toolchain` into its
+`<prefix>.calibrated.json` sidecar; for a **legacy v0.1 bare-array** report that has no header, an
+implementation MAY fall back to that sidecar for provenance.
 
 ## 3. Modes
 
