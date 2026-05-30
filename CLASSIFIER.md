@@ -19,7 +19,13 @@ effect. Tag the boundary call, not the whole crate/package:
 
 - HTTP / cloud clients → the `.send()` / `.execute()`, not the request builders;
 - DB clients → the query-*execution* verb, not query construction;
-- raw sockets → the I/O types, not the address/data types alongside them.
+- raw sockets → the I/O types, not the address/data types alongside them. But detection here
+  is **crate-keyed**: recognising `std::net`/`tokio::net` is not enough — a project on another
+  socket runtime (legacy `tokio_tcp`/`tokio_udp`, or `async-std`/`smol`/`mio`) opens sockets through
+  *different* types, and a tool that only knows the mainstream pair will confidently report 0 network
+  on it. (Found running on websocat, still on tokio 0.1: its `tokio_tcp::TcpStream::connect` was
+  classified network-free.) Cover the runtimes your corpus actually uses; treat each as its own
+  calibration with a real repro.
 
 The same *verb* can sit on different sides of that boundary in different libraries, so calibrate
 per-library, not per-verb: in `sqlx`, bare `query()` only **builds** (the effect is `.fetch_*`/
