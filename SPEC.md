@@ -63,10 +63,13 @@ Each entry:
   "undeclared":   [],                    // inferred − declared (violations); empty in audit
   "overdeclared": [],                    // declared − inferred (unused declarations)
   "unresolved":   true,                  // true if `inferred` may be incomplete (contains Unknown)
-  "hash":         "<stable cross-crate id>" // OPTIONAL: a stable identity (e.g. DefPathHash) so a
+  "hash":         "<stable cross-crate id>", // OPTIONAL: a stable identity (e.g. DefPathHash) so a
                                          // dependent crate's analysis can inherit this fn's effects
                                          // across the crate boundary. Per-crate analyzers SHOULD
                                          // emit it; consumers may ignore it.
+  "calls":        ["..."]                // OPTIONAL: effectful local functions this one calls — the
+                                         // effect-relevant call graph, so a consumer can answer
+                                         // "who calls X?" from the report without re-analysis.
 }
 ```
 
