@@ -193,6 +193,7 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-003** | `Unknown ∈ I(f)` | effect set not provably complete; cannot certify |
 | **AS-EFF-004** | `D(f) ∩ Ambient ≠ ∅` | reaches for ambient authority *directly* (vs. receiving it) |
 | **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
+| **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
 it is AS-EFF-003's concern. AS-EFF-005 fires only for functions present in `B` (regressions in

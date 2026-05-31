@@ -112,6 +112,9 @@ An implementation SHOULD support:
 - **no-ambient** — flag any *direct* use of ambient authority (an effect performed without holding a
   matching capability), pushing toward a capability-passing / capability-secure style.
 - **baseline guard** — diff against a saved report and flag functions that *gained* an effect.
+- **policy** — enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
+  "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
+  invariant an agent can't see from a local edit.
 
 ## 4. The trust contract — the core of candor
 
@@ -153,6 +156,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-003` | makes unresolved calls; effect set not provably complete — cannot be certified | conformance |
 | `AS-EFF-004` | uses ambient authority directly | no-ambient |
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
+| `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
