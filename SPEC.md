@@ -115,6 +115,10 @@ An implementation SHOULD support:
 - **policy** — enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
   "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
   invariant an agent can't see from a local edit.
+- **risk** (optional, **heuristic**) — flag an effect whose argument derives from a function parameter
+  (e.g. `fs::read(path_from_param)`) — the injection class (path traversal, command injection, SSRF).
+  Unlike the others this is *advisory and imprecise*: a syntactic, intra-procedural nudge that over- and
+  under-flags; it MUST NOT gate. An implementation MAY support it; if so it MUST document its limits.
 
 ## 4. The trust contract — the core of candor
 
@@ -157,6 +161,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-004` | uses ambient authority directly | no-ambient |
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
+| `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
