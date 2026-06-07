@@ -70,9 +70,12 @@ Each entry:
   "calls":        ["..."],               // OPTIONAL: effectful local functions this one calls — the
                                          // effect-relevant call graph, so a consumer can answer
                                          // "who calls X?" from the report without re-analysis.
-  "fs":           ["read", "write"]      // OPTIONAL: when `Fs` is present, which kinds — `read`
+  "fs":           ["read", "write"],     // OPTIONAL: when `Fs` is present, which kinds — `read`
                                          // and/or `write`. Omitted when the kind can't be
                                          // determined (see below); never a partial claim.
+  "hosts":        ["api.example.com"]    // OPTIONAL: when `Net` is present, the LITERAL endpoints
+                                         // statically visible (`host[:port]`). Omitted when the
+                                         // address is runtime-computed (see below); never complete.
 }
 ```
 
@@ -94,6 +97,17 @@ report (§2.1) that carried no `fs`, so no read/write is locally observable — 
 **omitted rather than guessed**. An empty or partial `fs` would be read as a positive claim ("reads
 but never writes"), which is the §4 trust contract's forbidden direction (under-claiming an effect).
 Omission says "`Fs`, kind undetermined"; a present `fs` is an affirmative read/write classification.
+
+`hosts` refines the `Net` effect with the endpoint(s) a call talks to, but **only the statically
+decidable subset**: a string-*literal* address or URL (`connect("rates.internal:7070")`,
+`get("https://api.example.com/v1")`) yields a host (`host[:port]`, scheme and path stripped); a
+runtime-computed address yields none. It applies only when `inferred` contains `Net`. Unlike `fs`,
+`hosts` is **never a completeness claim**: host-by-runtime-value is undecidable, so an absent or
+partial `hosts` means "these are the endpoints I could see," NOT "the function talks to no others."
+A consumer MUST treat it as informative, never as a closed allow-list — and an implementation MUST
+NOT emit a host it merely inferred (only ones it read from a literal), so a present entry is always
+sound. This keeps it within the §4 trust contract: `Net` already carries the "performs network I/O"
+claim; `hosts` only ever *narrows* it with what's provably visible.
 
 ### 2.1 Provenance (the `candor` header)
 
