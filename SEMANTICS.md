@@ -195,6 +195,7 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
 | **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
 | **AS-EFF-007** | *(heuristic, not a set predicate)* `f` has an effect *site* whose argument syntactically derives from a parameter of `f` | performs an injection-class effect on caller-derived input — advisory |
+| **AS-EFF-008** | `Net ∈ I(f)` and, for a host-allowlist rule `r` whose scope matches `f`, `hosts(f) ⊄ Allow(r)` **or** `hosts(f) = ∅` | reaches a `Net` host outside the declared allowlist, or an endpoint it cannot see (the host surface can't be certified) |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
 it is AS-EFF-003's concern. AS-EFF-005 fires only for functions present in `B` (regressions in
@@ -205,6 +206,17 @@ but **AS-EFF-004 reads `D(f)`** (own-body only). So a function that *inherits* a
 calling a cross-crate `Net` function is still undeclared-flagged by AS-EFF-001 (it does transitively
 perform `Net`), yet is **not** ambient-flagged by AS-EFF-004 (it never reached for the network
 itself — its callee did). Conflating `D` and `Inh` would break exactly this distinction.
+
+**AS-EFF-008 reads `hosts(f)`** — the *transitive* host surface (the propagated union of the literal
+`host[:port]` endpoints in `f` and its callees, across crate boundaries when a sibling report carries
+them). A host-allowlist rule `r = allow Net [in <scope>] <h₁…hₙ>` is satisfied at `f` iff `f` does no
+`Net`, or every host in `hosts(f)` is allowed (matched by hostname; ports ignored). Two failure modes:
+a *visible* violation (`hosts(f)` contains a non-allowed endpoint) and an *opaque* one (`Net ∈ I(f)`
+but `hosts(f) = ∅` — the endpoint is a runtime value, so the surface can't be certified). By design
+AS-EFF-008 certifies only the **visible** host surface: a function that reaches an allowed host while
+*also* holding `Unknown ∈ I(f)` is **not** flagged by AS-EFF-008 (that residual is AS-EFF-003/006's
+concern) — because `hosts` is informative-not-complete (SPEC, the `hosts` field), folding `Unknown` in would
+flag essentially every real `Net` function and make the allowlist useless.
 
 ## 7. Properties
 
