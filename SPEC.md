@@ -67,9 +67,12 @@ Each entry:
                                          // dependent crate's analysis can inherit this fn's effects
                                          // across the crate boundary. Per-crate analyzers SHOULD
                                          // emit it; consumers may ignore it.
-  "calls":        ["..."]                // OPTIONAL: effectful local functions this one calls — the
+  "calls":        ["..."],               // OPTIONAL: effectful local functions this one calls — the
                                          // effect-relevant call graph, so a consumer can answer
                                          // "who calls X?" from the report without re-analysis.
+  "fs":           ["read", "write"]      // OPTIONAL: when `Fs` is present, which kinds — `read`
+                                         // and/or `write`. Omitted when the kind can't be
+                                         // determined (see below); never a partial claim.
 }
 ```
 
@@ -82,6 +85,15 @@ subset. Effect-free items MAY be omitted from the report.
 emit it to satisfy the transitivity rule above — otherwise every cross-crate call is silently dropped
 and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
 `hash`; a producer of multi-crate reports may not omit it.
+
+`fs` refines the `Fs` effect into `read` / `write` kinds — the detail a consumer needs to tell a
+read-only function from one that mutates the disk. It applies only when `inferred` contains `Fs`. An
+implementation that resolves the kind SHOULD emit it; one that can't (or doesn't track it) MAY omit
+it. Crucially, when `Fs` is reached but its kind is *unknown* — e.g. inherited from a sibling/dep
+report (§2.1) that carried no `fs`, so no read/write is locally observable — the field MUST be
+**omitted rather than guessed**. An empty or partial `fs` would be read as a positive claim ("reads
+but never writes"), which is the §4 trust contract's forbidden direction (under-claiming an effect).
+Omission says "`Fs`, kind undetermined"; a present `fs` is an affirmative read/write classification.
 
 ### 2.1 Provenance (the `candor` header)
 
