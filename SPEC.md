@@ -73,9 +73,13 @@ Each entry:
   "fs":           ["read", "write"],     // OPTIONAL: when `Fs` is present, which kinds — `read`
                                          // and/or `write`. Omitted when the kind can't be
                                          // determined (see below); never a partial claim.
-  "hosts":        ["api.example.com"]    // OPTIONAL: when `Net` is present, the LITERAL endpoints
+  "hosts":        ["api.example.com"],   // OPTIONAL: when `Net` is present, the LITERAL endpoints
                                          // statically visible (`host[:port]`). Omitted when the
                                          // address is runtime-computed (see below); never complete.
+  "cmds":         ["git"],               // OPTIONAL: when `Exec` is present, the LITERAL subprocess
+                                         // commands statically visible. Same rules as `hosts`.
+  "paths":        ["/etc/app"]           // OPTIONAL: when `Fs` is present, the LITERAL filesystem
+                                         // paths statically visible. Same rules as `hosts`.
 }
 ```
 
@@ -108,6 +112,12 @@ A consumer MUST treat it as informative, never as a closed allow-list — and an
 NOT emit a host it merely inferred (only ones it read from a literal), so a present entry is always
 sound. This keeps it within the §4 trust contract: `Net` already carries the "performs network I/O"
 claim; `hosts` only ever *narrows* it with what's provably visible.
+
+`cmds` (for `Exec`) and `paths` (for `Fs`) follow the **same rules as `hosts`**: the statically-decidable
+literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal, never a runtime value),
+informative-not-complete, never emitted unless read from a literal. The three together are the literal
+surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a producer SHOULD emit them so a
+dependent crate's allowlist can see a value that lives across the crate boundary.
 
 ### 2.1 Provenance (the `candor` header)
 
@@ -191,16 +201,18 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
-| `AS-EFF-008` | (transitively) reaches a `Net` host outside a declared allowlist, or an endpoint it cannot see | policy |
+| `AS-EFF-008` | (transitively) reaches a literal (host / command / path) outside a declared allowlist, or one it cannot see | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
 
-A **host-allowlist** policy rule, `allow Net [in <scope>] <host>...`, constrains *which* endpoints a
-scope's `Net` may reach (AS-EFF-008), checked against the transitive `hosts` surface — so it catches an
-endpoint that lives in a deep or cross-crate callee. It certifies the *visible* host surface only (see
-SEMANTICS §6); pair it with a `deny Unknown <scope>` rule to also forbid unverifiable `Net` in a scope.
+A **literal-allowlist** policy rule, `allow <Effect> [in <scope>] <value>...`, constrains *which* values a
+scope's effect may reach (AS-EFF-008). Three effects carry a literal surface: `Net` hosts, `Exec`
+commands, and `Fs` paths — checked against the transitive `hosts`/`cmds`/`paths` detail, so it catches a
+value that lives in a deep or cross-crate callee, matched per-effect (host by name, command by basename,
+path by prefix). It certifies the *visible* surface only (see SEMANTICS §6); pair it with a
+`deny Unknown <scope>` rule to also forbid the unverifiable case in a scope.
 
 A **layering** policy rule, `forbid <A> -> <B>`, constrains *who* a layer may depend on: no function in
 scope `A` may transitively call into scope `B` (AS-EFF-009) — the dependency-direction boundary, checked
