@@ -4,9 +4,13 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.2** — tracks the Rust reference implementation, [candor](https://github.com/tombaldwin/candor).
-v0.2 wraps the report in a self-describing `{ candor, functions }` envelope (§2); the v0.1 bare array
-is still accepted by conformant readers during migration.
+**Version 0.3.** The **spec/contract version** — the report schema, the effect vocabulary, and the
+`AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
+*build id* and from a package's *release version* (§2.1): the published Rust crates are at `0.3.x`, the
+JVM port builds from a git hash, and both declare **spec `0.3`**. An implementation MUST emit the spec
+version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
+constant. The report is wrapped in a self-describing `{ candor, functions }` envelope (§2); the legacy
+v0.1 bare array is still accepted by conformant readers during migration. See the [changelog](#8-changelog).
 
 > This document fixes the **interface** an implementation must produce. For the **analysis** behind
 > it — the effect lattice, call-site resolution rules, the transitive fixpoint, cross-crate
@@ -43,7 +47,7 @@ one file per unit, named so multiple units don't collide (the Rust impl uses
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.3" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -127,13 +131,21 @@ own producing version, and a dependent crate must not silently trust a sibling r
 engine (the trust contract, §4, applied to candor's own output). The envelope's `candor` header
 carries this — `version` (engine build id) and `toolchain` — so the report is self-describing.
 
-Two requirements on it:
+The header has THREE fields, on two distinct axes — keep them separate:
 
-- `version` MUST reflect the engine **binary that actually ran**, not the source tree it was built
-  from — those diverge when the source is updated without a rebuild, and a source-derived version
-  would call a stale engine "current" and mask a stale baseline.
-- A consumer performing cross-crate inheritance (§2, `hash`) SHOULD compare versions and, on a
-  mismatch, treat the inherited effects as unverified (downgrade to `Unknown`) rather than trust them.
+- `version` — the engine **build identity** (a build id / git hash / release tag). It answers "which
+  binary produced this?" and MUST reflect the binary that **actually ran**, not the source tree it was
+  built from — those diverge when the source is updated without a rebuild, and a source-derived version
+  would call a stale engine "current" and mask a stale baseline. A consumer performing cross-crate
+  inheritance (§2, `hash`) SHOULD compare `version` and, on a mismatch, treat the inherited effects as
+  unverified (downgrade to `Unknown`) rather than trust them.
+- `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
+- `spec` — the **candor-spec contract version** this engine implements (`"0.3"`). This is the version
+  *this document* carries, NOT the engine's build id or the package's release version — they evolve
+  independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
+  `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
+  constant (the Rust reference: `candor_report::SPEC_VERSION`). A report without `spec` predates this
+  field and is treated as spec ≤ 0.2.
 
 The Rust reference impl additionally embeds `version` in the dylib itself (so a tool can read the
 *true* build version without running the engine) and mirrors `version`/`toolchain` into its
@@ -270,4 +282,22 @@ An implementation conforms to candor-spec if it:
 4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes;
 6. uses the §1 vocabulary and §6 codes where they apply;
-7. is honest in its own docs about what it cannot see.
+7. is honest in its own docs about what it cannot see;
+8. declares the **spec version** it implements (the envelope's `spec`, §2.1) and keeps it in step with
+   this document.
+
+## 8. Changelog
+
+The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
+field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
+declare it via the envelope's `spec`.
+
+- **0.3** — additive over 0.2 (wire-compatible; a 0.2 reader still parses a 0.3 report):
+  - `AS-EFF-006` (policy `deny`/`pure`), `AS-EFF-007` (heuristic `risk`), `AS-EFF-008` (literal allowlists
+    `allow Net`/`Exec`/`Fs`), `AS-EFF-009` (layering `forbid ->`), `AS-EFF-010` (containment ratchet);
+  - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`;
+  - the `containment` mode + §6.1 (the not-a-score architecture signal);
+  - the envelope's `spec` field itself (§2.1).
+- **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
+  `toolchain`); cross-crate inheritance by `hash`; version-aware trust.
+- **0.1** — the bare top-level array of function entries (still accepted by readers during migration).
