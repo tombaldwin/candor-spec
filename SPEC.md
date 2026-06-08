@@ -158,6 +158,9 @@ An implementation SHOULD support:
   (e.g. `fs::read(path_from_param)`) — the injection class (path traversal, command injection, SSRF).
   Unlike the others this is *advisory and imprecise*: a syntactic, intra-procedural nudge that over- and
   under-flags; it MUST NOT gate. An implementation MAY support it; if so it MUST document its limits.
+- **containment** (optional) — a diagnostic over the report: for each *boundary* effect, how concentrated
+  it is in one architectural layer (§6.1). With a baseline it becomes a *ratchet* (AS-EFF-010). It is
+  deliberately **not** a single "score" — see §6.1.
 
 ## 4. The trust contract — the core of candor
 
@@ -203,6 +206,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
 | `AS-EFF-008` | (transitively) reaches a literal (host / command / path) outside a declared allowlist, or one it cannot see | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
+| `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
@@ -219,6 +223,42 @@ scope `A` may transitively call into scope `B` (AS-EFF-009) — the dependency-d
 over the call graph (see SEMANTICS §6). Together the three policy rule kinds — `deny`/`pure` (what a
 layer does), `allow Net` (which endpoints), and `forbid ->` (who it depends on) — make `CANDOR_POLICY`
 an architecture-as-code layer.
+
+### 6.1 Containment — the architecture-quality signal (deliberately not a "score")
+
+candor defines **no single quality score**. Raw effect *counts* are domain-dependent — a database app
+performs `Db` in most functions, which is not a defect — so any rolled-up grade would be meaningless
+across domains and gameable. The domain-independent signal is **dispersion**: how well an effect that
+*should* live in a dedicated layer actually stays there. A `Db`-heavy app with all `Db` in `dao` is
+well-architected; one with `Db` in `model`, `controllers`, **and** `dao` is leaky — regardless of how
+much `Db` it does. The total is domain-dependent; the dispersion is an architecture fact.
+
+Two classes of effect:
+
+- **boundary** — `Db`, `Net`, `Exec`, `Fs`, `Ipc`. These *should* be contained in a dedicated layer;
+  their dispersion is the signal.
+- **ambient** — `Log`, `Clock`, `Rand`, `Env`. Cross-cutting by nature (logging/timestamps everywhere is
+  normal), so they are reported but **not** scored. `Unknown` is excluded entirely (it is a visibility
+  property, not an effect).
+
+A **layer** is inferred from the function name with no configuration: strip the longest module/package
+prefix shared by *every* function (the codebase root), and the next segment is the layer (`pgman::app::…`
+→ `app`; `com.example.dao.…` → `dao`; a multi-crate report → the crate). A function with no module
+beyond the root (a free function, a root-package class) buckets into `(root)` rather than becoming its
+own pseudo-layer.
+
+For each boundary effect, **containment** is the share of its *direct* occurrences that fall in its
+dominant layer (100% = fully contained). This is reported **per effect**, as a diagnostic — never summed
+into one number.
+
+**The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers*
+each boundary effect appears in. If an effect appears in a layer it was **not** in before, that is a
+containment regression — `AS-EFF-010`, and the check fails (the gate). The reverse — an effect that
+*left* a layer — SHOULD be reported as an improvement (informative, not a failure). Because this compares
+a codebase to *itself* over time, it is domain-independent and not gameable by renaming, and is the form
+suitable for CI. The unsupervised per-layer diagnostic is a heuristic that assumes layer-organized code;
+the ratchet is the robust form. An implementation that supports containment MUST treat it as a diagnostic
++ trend gate and MUST NOT present a single aggregate score.
 
 ## 7. Conformance checklist for an implementation
 
