@@ -67,6 +67,14 @@ Each entry:
   "undeclared":   [],                    // inferred − declared (violations); empty in audit
   "overdeclared": [],                    // declared − inferred (unused declarations)
   "unresolved":   true,                  // true if `inferred` may be incomplete (contains Unknown)
+  "unknownWhy":   ["dispatch:Foo.bar"],  // OPTIONAL: when this fn introduces `Unknown` DIRECTLY, why —
+                                         // `reflect:<callee>` (reflection / dynamic invoke),
+                                         // `native:<method>` (no analysable body), or
+                                         // `dispatch:<type>.<method>` (a project abstraction with no
+                                         // visible impl). Lets a consumer tell irreducible opacity
+                                         // (reflection, native) from the improvable kind (a missing
+                                         // impl — widen the analysed inputs). Omitted when this fn
+                                         // introduces no direct Unknown.
   "hash":         "<stable cross-crate id>", // OPTIONAL: a stable identity (e.g. DefPathHash) so a
                                          // dependent crate's analysis can inherit this fn's effects
                                          // across the crate boundary. Per-crate analyzers SHOULD
@@ -192,6 +200,17 @@ traits/interfaces (formatting, equality, hashing, cloning) as resolved-pure, to 
 reports with false `Unknown`s — but MUST document which, and MUST NOT extend it to anything where an
 effect could plausibly hide (iterators, callbacks, I/O traits, finalizers).
 
+A method *inherited* by a type — a trait default/provided method, or a concrete method on a base
+class the type does not override — is a **resolved** call, not an `Unknown`: it lands on that inherited
+body, whose effects MUST be attributed. Reporting it `Unknown` is unsound in the noisy direction (it
+masks the inherited body's real effects, since an unresolved dispatch also stops propagation). An
+`Unknown` from dispatch is justified only when the target is *genuinely* indeterminate — a value
+implementing a trait/interface the implementation declares but whose concrete implementor it cannot
+see (a DI-wired strategy, a `dyn`/virtual call with no visible impl). The optional `unknownWhy` field
+records this distinction per function so a consumer (and the implementer) can tell irreducible opacity
+(`reflect:`, `native:`) from the improvable kind (`dispatch:` — often resolved by widening the
+analysed inputs to include the missing implementor).
+
 ## 5. Capabilities (conformance)
 
 Conformance needs a way for a function to *declare* the effects it may perform. The canonical
@@ -295,7 +314,7 @@ declare it via the envelope's `spec`.
 - **0.3** — additive over 0.2 (wire-compatible; a 0.2 reader still parses a 0.3 report):
   - `AS-EFF-006` (policy `deny`/`pure`), `AS-EFF-007` (heuristic `risk`), `AS-EFF-008` (literal allowlists
     `allow Net`/`Exec`/`Fs`), `AS-EFF-009` (layering `forbid ->`), `AS-EFF-010` (containment ratchet);
-  - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`;
+  - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`, `unknownWhy` (the per-fn Unknown-origin tag);
   - the `containment` mode + §6.1 (the not-a-score architecture signal);
   - the envelope's `spec` field itself (§2.1).
 - **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
