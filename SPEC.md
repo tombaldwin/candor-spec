@@ -192,6 +192,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
 | `AS-EFF-008` | (transitively) reaches a `Net` host outside a declared allowlist, or an endpoint it cannot see | policy |
+| `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
@@ -200,6 +201,12 @@ A **host-allowlist** policy rule, `allow Net [in <scope>] <host>...`, constrains
 scope's `Net` may reach (AS-EFF-008), checked against the transitive `hosts` surface — so it catches an
 endpoint that lives in a deep or cross-crate callee. It certifies the *visible* host surface only (see
 SEMANTICS §6); pair it with a `deny Unknown <scope>` rule to also forbid unverifiable `Net` in a scope.
+
+A **layering** policy rule, `forbid <A> -> <B>`, constrains *who* a layer may depend on: no function in
+scope `A` may transitively call into scope `B` (AS-EFF-009) — the dependency-direction boundary, checked
+over the call graph (see SEMANTICS §6). Together the three policy rule kinds — `deny`/`pure` (what a
+layer does), `allow Net` (which endpoints), and `forbid ->` (who it depends on) — make `CANDOR_POLICY`
+an architecture-as-code layer.
 
 ## 7. Conformance checklist for an implementation
 
