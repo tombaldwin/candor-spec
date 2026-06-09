@@ -34,6 +34,12 @@ Effects: `Net`, `Fs`, `Db`, `Exec` (subprocess), `Env`, `Clock`, `Ipc`, `Log`, `
   instead of reading the whole codebase.
 - **Enforce a boundary in CI** → a policy gate (`deny`/`allow`/`forbid`) fails the build when an edit
   crosses an effect or layer line — a *deterministic* guarantee an LLM review can't give.
+- **Decide BEFORE you edit** — *"if I add a network call in X, what propagates and does it break the
+  architecture?"* → `whatif <fn> <Effect>`. It crosses the blast radius (every transitive caller gains the
+  effect) with the policy and returns the verdict — the functions that *would* violate a `deny`/`pure`
+  boundary — without writing any code. The pre-edit form of the gate: ask it instead of edit → run the
+  gate → revert. (Implementations may expose this as a query; where they don't, compute it from `callers`
+  + the policy yourself.)
 
 ## The trust rule — do not skip this
 
