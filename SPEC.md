@@ -170,6 +170,24 @@ The Rust reference impl additionally embeds `version` in the dylib itself (so a 
 `<prefix>.calibrated.json` sidecar; for a **legacy v0.1 bare-array** report that has no header, an
 implementation MAY fall back to that sidecar for provenance.
 
+### 2.2 The call-graph sidecar
+
+Alongside each report, an implementation that provides the blast-radius or structural tools (§3.1–3.2)
+emits a **call-graph sidecar** named `<prefix>.<crate>.<type>.callgraph.json` — a JSON object mapping each
+function (by the same fully-qualified name used in the report) to the functions it directly calls:
+
+```json
+{ "a::caller": ["b::callee", "b::other"], "b::callee": ["c::leaf"] }
+```
+
+Crucially, unlike the report — which omits pure functions and records only effect-relevant `calls` — the
+sidecar records EVERY project function's edges, **including pure ones**. That is what lets a consumer
+answer *"who transitively calls X?"* for a function that is currently **pure** — the blast radius an agent
+needs *before* introducing an effect. The sidecar is OPTIONAL, but an implementation that provides the
+`callers` / `whatif` / `rewire` tools (§3.1–3.2) MUST emit it: those cannot answer the pre-edit question
+from the report alone (a pure X is absent from the report). It carries no provenance of its own and is read
+together with its report.
+
 ## 3. Modes
 
 An implementation SHOULD support:
@@ -191,6 +209,44 @@ An implementation SHOULD support:
 - **containment** (optional) — a diagnostic over the report: for each *boundary* effect, how concentrated
   it is in one architectural layer (§6.1). With a baseline it becomes a *ratchet* (AS-EFF-010). It is
   deliberately **not** a single "score" — see §6.1.
+
+### 3.1 Read-only queries (SHOULD)
+
+A written report (§2) plus its call-graph sidecar (§2.2) answers structural questions WITHOUT re-analysis.
+An implementation SHOULD expose them so an agent reaches for them in one cheap call instead of grepping:
+
+- **show `<fn>`** — a function's effects (own/direct vs inherited).
+- **where `<Effect>`** — which functions perform an effect (direct sources vs transitive inheritors).
+- **callers `<fn>`** — the **blast radius**: every TRANSITIVE caller of `<fn>` (works for ANY function,
+  including a still-**pure** one) — *who is affected if you change it*.
+- **map** — a module → effects overview.
+- **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
+- **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
+  provenance (the call chain to its source), and the blast radius from entry points.
+
+These are an interface convenience, **not** part of the wire contract — a consumer that only reads the JSON
+report is fully conformant. An implementation SHOULD keep query **names and output shapes consistent across
+languages**, so an agent uses a report from any language identically; the cross-language conformance suite
+verifies this.
+
+### 3.2 Pre-edit and structural tools (SHOULD)
+
+Two tools answer what an agent asks *around* an edit — deterministically, where a model would otherwise
+guess (and, the evidence shows, under-count):
+
+- **whatif `<fn>` `<Effect>`** — the **pre-edit verdict**. Crosses the blast radius (every transitive caller
+  of `<fn>` would gain `<Effect>`) with the active policy and reports which functions would **violate** a
+  `deny`/`pure` boundary — *before* the edit, instead of edit → run the gate → revert. It is the pre-edit
+  form of **AS-EFF-006**.
+- **rewire `<baseline>`** — the **de-wiring / structural-regression** check. Diffs the current call graph
+  against a baseline and flags edges a function **dropped** (a call it made before and no longer makes). An
+  effect gate checks effect *boundaries*, not correctness, so it can be satisfied by *disconnecting*
+  functionality — a function stops calling the chain that performs a forbidden effect, the gate passes, the
+  feature breaks. That removal is invisible to the effect diff (a pure function dropping a call changes no
+  effect) but present in the call graph. rewire is the **structural dual of the baseline guard
+  (AS-EFF-005)**: 005 flags an effect *gained* versus the baseline, rewire flags a call *dropped*. It is
+  **advisory** — run it ALONGSIDE the policy gate: a green gate **plus** a clean rewire means the boundary
+  was respected *without* gutting the feature. A gate alone is necessary, never sufficient.
 
 ## 4. The trust contract — the core of candor
 
@@ -315,6 +371,15 @@ An implementation conforms to candor-spec if it:
 8. declares the **spec version** it implements (the envelope's `spec`, §2.1) and keeps it in step with
    this document.
 
+It SHOULD additionally:
+
+9. emit the **call-graph sidecar** (§2.2) — required if it answers any caller-direction query
+   (`callers`/`whatif`/`rewire`), since the report alone omits pure functions;
+10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
+    **cross-language-consistent** names and shapes, so an agent uses any implementation's output
+    identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
+    blast radius, and the `rewire` verdict.
+
 ## 8. Changelog
 
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
@@ -327,7 +392,11 @@ declare it via the envelope's `spec`.
   - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`, `unknownWhy` (the per-fn Unknown-origin tag),
     `entryPoint` (the runtime-invoked reachability-root flag);
   - the `containment` mode + §6.1 (the not-a-score architecture signal);
-  - the envelope's `spec` field itself (§2.1).
+  - the envelope's `spec` field itself (§2.1);
+  - **documentation-only, no wire change** (a 0.3 report is byte-identical): §2.2 specifies the call-graph
+    sidecar an implementation already emits; §3.1–3.2 specify the read-only queries and the
+    pre-edit/structural tools (`whatif`, `rewire`) as cross-language-consistent SHOULDs; checklist items
+    9–10 (§7) make both SHOULD-level. The report schema is unchanged, so the spec version stays **0.3**.
 - **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
   `toolchain`); cross-crate inheritance by `hash`; version-aware trust.
 - **0.1** — the bare top-level array of function entries (still accepted by readers during migration).
