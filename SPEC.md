@@ -229,6 +229,20 @@ report is fully conformant. An implementation SHOULD keep query **names and outp
 languages**, so an agent uses a report from any language identically; the cross-language conformance suite
 verifies this.
 
+When a query emits JSON, it SHOULD use these shapes (the field a consumer parses is the same in every
+language; only the function-name *value* is language-natural — `a::b` vs `a.b`):
+
+```text
+show     [ { "fn", "inferred":[…], "direct":[…], "unresolved":bool, "fs"?:[…], "hosts"?:[…] } ]
+where    { "effect", "directly":[fn…], "inherited":[fn…] }
+callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
+map      { "<module>": { "effects":[…], "functions":int } }
+```
+
+`show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved
+them (§2 omission rules apply); the four required fields are always present. `map` buckets by module —
+a function with no module beyond the root goes to `(root)` (§6.1), never its own pseudo-module.
+
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
 Two tools answer what an agent asks *around* an edit — deterministically, where a model would otherwise
@@ -247,6 +261,13 @@ guess (and, the evidence shows, under-count):
   (AS-EFF-005)**: 005 flags an effect *gained* versus the baseline, rewire flags a call *dropped*. It is
   **advisory** — run it ALONGSIDE the policy gate: a green gate **plus** a clean rewire means the boundary
   was respected *without* gutting the feature. A gate alone is necessary, never sufficient.
+
+Their JSON shapes (the verdict + blast radius the conformance suite pins across both engines):
+
+```text
+whatif   { "of":[fn…], "effect", "affected":[fn…], "violations":[ { "fn", "rule" } ], "ok":bool }
+rewire   { "dropped":[ { "caller", "no_longer_calls":[fn…] } ] }
+```
 
 ## 4. The trust contract — the core of candor
 

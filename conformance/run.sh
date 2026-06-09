@@ -163,8 +163,52 @@ if not match:
 sys.exit(0 if match else 1)
 PY
 
+# ====================================================================================================
+# PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the
+# JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
+# (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
+# query (SPEC §3.1). The core graph queries are candor's value surface; their shape must not drift.
+# ====================================================================================================
+RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
+"$QUERY" show    "$RUST_PREFIX" net_connect 1     > "$W/r_show.json"    2>/dev/null
+"$QUERY" where   "$RUST_PREFIX" Fs 1              > "$W/r_where.json"   2>/dev/null
+"$QUERY" callers "$RUST_PREFIX" transitive_leaf 1 > "$W/r_callers.json" 2>/dev/null
+"$QUERY" map     "$RUST_PREFIX" 1                 > "$W/r_map.json"     2>/dev/null
+java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
+java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
+java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
+java -jar "$JAR" map     "$W/java.json" --json                 > "$W/j_map.json"     2>/dev/null
+
+python3 - "$W" <<'PY' || rc=1
+import json, sys
+W = sys.argv[1]
+load = lambda q, e: json.load(open(f"{W}/{e}_{q}.json"))
+print("\n[5] QUERY-SHAPE differential  (show/where/callers/map JSON shape agrees across engines)")
+ok = True
+def check(name, cond, detail=""):
+    global ok
+    print(f"  {name:8s} -> {'MATCH' if cond else 'DIVERGE'}{detail}")
+    ok = ok and cond
+# show: the four required fields present in both (optional fs/hosts are engine-capability dependent)
+req = {"fn", "inferred", "direct", "unresolved"}
+rs, js = load("show", "r"), load("show", "j")
+check("show", bool(rs) and bool(js) and req <= set(rs[0]) and req <= set(js[0]))
+# where / callers: exact top-level key set in both
+for q, keys in (("where", {"effect", "directly", "inherited"}), ("callers", {"of", "direct", "transitive"})):
+    r, j = load(q, "r"), load(q, "j")
+    check(q, set(r) == keys and set(j) == keys)
+# map: every module bucket carries exactly {effects, functions}
+mk = {"effects", "functions"}
+rm, jm = load("map", "r"), load("map", "j")
+check("map", bool(rm) and bool(jm) and all(set(v) == mk for v in rm.values())
+                                    and all(set(v) == mk for v in jm.values()))
+print("  -> " + ("MATCH — the agent-facing query shapes are identical in both engines"
+                 if ok else "DIVERGE — a query's JSON shape differs between engines"))
+sys.exit(0 if ok else 1)
+PY
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire verdict + policy-DSL grammar agree across both engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + query shapes agree across both engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
