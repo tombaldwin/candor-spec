@@ -51,3 +51,8 @@ pub fn conditional(b: bool) { if b { let _ = std::process::Command::new("x"); } 
 pub fn pure_c() -> i32 { 3 }
 pub fn pure_b() -> i32 { pure_c() }
 pub fn pure_a() -> i32 { pure_b() }
+
+// --- a method call on a concrete LOCAL-type receiver propagates the method's effect ------------------
+pub struct Svc;
+impl Svc { pub fn act(&self) { let _ = std::fs::read("/tmp/x"); } }
+pub fn method_call(s: &Svc) { s.act(); }

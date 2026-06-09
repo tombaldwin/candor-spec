@@ -51,4 +51,8 @@ public class Cases {
   public static int pure_c() { return 3; }
   public static int pure_b() { return pure_c(); }
   public static int pure_a() { return pure_b(); }
+
+  // --- a method call on a concrete LOCAL-type receiver propagates the method's effect ---
+  static class Svc { void act() { try { Files.readAllBytes(Path.of("/tmp/x")); } catch (Exception e) {} } }
+  public static void method_call(Svc s) { s.act(); }
 }

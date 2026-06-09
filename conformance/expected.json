@@ -17,5 +17,6 @@
   "union_a": ["Fs", "Net"],
   "recurse": ["Env"],
   "conditional": ["Exec"],
-  "pure_a": []
+  "pure_a": [],
+  "method_call": ["Fs"]
 }
