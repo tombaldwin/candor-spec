@@ -11,7 +11,7 @@ Because the expected set *is* the spec answer, one run does double duty:
 - **conformance** — each engine vs the spec (`SPEC.md §1` vocabulary, `SEMANTICS.md` propagation), and
 - **differential** — the two independent engines vs each other (a divergence is a bug in one).
 
-The runner checks **three layers** — covering every cross-language command:
+The runner checks **four layers** — covering every cross-language command:
 
 1. **Effect sets** (`rust/` + `java/` + `expected.json`) — both engines infer the same effects for
    equivalent functions.
@@ -20,8 +20,13 @@ The runner checks **three layers** — covering every cross-language command:
    **and** the same blast radius (the affected set).
 3. **Rewire verdict** (`rewire/`) — given the *same* de-wiring (a function drops a call), both engines'
    `rewire` flags the same dropped edge.
+4. **Policy-DSL grammar** (`policydsl/`) — both engines parse the *same* `CANDOR_POLICY` battery
+   (every `deny`/`pure`/`allow`/`forbid` form plus the edge cases — `deny Unknown`, a scope after the
+   first non-effect token, an unsupported `allow` effect) into the *same* rule set. This is the
+   executable form of **SPEC §6.2**: the gate's grammar means the same thing in each language. (Both
+   engines dump their parse via a `parsepolicy <file>` command for the diff.)
 
-Layers 2–3 are what a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just
+Layers 2–4 are what a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just
 "rules exist for both languages", but a **machine-checked guarantee that the same architecture gate, the
 same blast radius, and the same de-wiring check mean the same thing in each.** That cross-language
 consistency is candor's moat — and it's a test, not a claim.

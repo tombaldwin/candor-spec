@@ -1,0 +1,17 @@
+# Battery for the cross-impl policy-grammar differential (SPEC §6.2).
+# Exercises all four rule kinds AND the edge cases the engines used to disagree on.
+deny Net Db domain
+deny Exec
+deny Unknown api
+pure parse
+deny Net foo Db
+deny notaneffect
+allow Net in billing api.stripe.com hooks.stripe.com
+allow Exec in ci git
+allow Fs in config /etc/app
+allow Net github.com
+allow Db whatever
+forbid domain -> infra
+forbid app::web -> app::db
+forbid bad
+nonsense line

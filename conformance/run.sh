@@ -130,8 +130,41 @@ print("  -> " + ("MATCH — both engines detect the same de-wiring"
 sys.exit(0 if match else 1)
 PY
 
+# ====================================================================================================
+# PART 4 — policy-DSL grammar differential: parse the SAME CANDOR_POLICY battery with both engines and
+# assert identical parsed rule sets. The executable form of SPEC §6.2 — the gate's grammar
+# (deny/pure/allow/forbid, the Unknown-deny, scope/literal matching) meaning the same thing in each.
+# A per-language ruleset has no shared grammar to diff; candor's single policy file MUST parse alike.
+# ====================================================================================================
+POL_BATTERY="$HERE/policydsl/policy.txt"
+"$QUERY" parsepolicy "$POL_BATTERY" > "$W/rust_pol.json" 2>/dev/null
+java -jar "$JAR" parsepolicy "$POL_BATTERY" > "$W/java_pol.json" 2>/dev/null
+
+python3 - "$W/rust_pol.json" "$W/java_pol.json" <<'PY' || rc=1
+import json, sys
+def norm(p):
+    d = json.load(open(p))
+    deny   = sorted((tuple(sorted(r["effects"])), r["scope"]) for r in d["deny"])
+    allow  = sorted((r["effect"], r["scope"], tuple(sorted(r["values"]))) for r in d["allow"])
+    forbid = sorted((r["from"], r["to"]) for r in d["forbid"])
+    return deny, allow, forbid
+r, j = norm(sys.argv[1]), norm(sys.argv[2])
+print("\n[4] POLICY-DSL grammar differential  (SPEC §6.2 — parse the same battery in both engines)")
+print(f"  candor(rust): {len(r[0])} deny, {len(r[1])} allow, {len(r[2])} forbid")
+print(f"  candor-java : {len(j[0])} deny, {len(j[1])} allow, {len(j[2])} forbid")
+match = r == j
+print("  -> " + ("MATCH — both engines parse the deny/pure/allow/forbid grammar identically"
+                 if match else "DIVERGE — the engines parse the policy DSL differently"))
+if not match:
+    for name, a, b in (("deny", r[0], j[0]), ("allow", r[1], j[1]), ("forbid", r[2], j[2])):
+        if a != b:
+            print(f"     {name} rust={a}")
+            print(f"     {name} java={b}")
+sys.exit(0 if match else 1)
+PY
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire verdict agree across both engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire verdict + policy-DSL grammar agree across both engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

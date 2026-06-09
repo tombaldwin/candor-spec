@@ -357,6 +357,58 @@ suitable for CI. The unsupervised per-layer diagnostic is a heuristic that assum
 the ratchet is the robust form. An implementation that supports containment MUST treat it as a diagnostic
 + trend gate and MUST NOT present a single aggregate score.
 
+### 6.2 The policy DSL (normative)
+
+The policy modes (AS-EFF-006/008/009) and the `whatif` tool (§3.2) all read one **policy file** (the Rust
+and JVM engines take its path from `CANDOR_POLICY`). For the gate to mean the same thing in every language
+the grammar must be fixed, not merely "some rules text" — so this section is **normative**: a conformant
+policy reader parses exactly this, and the cross-impl suite checks it (§7).
+
+**Lexical.** One rule per line. A `#` begins a comment to end-of-line; blank lines and comment-only lines
+are ignored. A line is split into tokens on runs of whitespace; the first token is the **rule kind**. A
+line whose kind is unrecognized, or that is malformed for its kind, is **ignored with a warning** — never
+silently treated as a stricter or looser rule (silent reinterpretation is the one thing a security gate
+must not do).
+
+**The four rule kinds:**
+
+```
+deny    <Effect>… [<scope>]          # AS-EFF-006 — what a layer may NOT do
+pure    [<scope>]                    # AS-EFF-006 — shorthand for "deny every effect"
+allow   <Effect> [in <scope>] <v>…   # AS-EFF-008 — which literals an effect may reach
+forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
+```
+
+- **`deny`** — the tokens after `deny` are read left to right: each token that names an effect (the §1
+  vocabulary, **or** the literal `Unknown`) joins the forbidden set; the **first** token that is not a
+  known effect is the **scope**, and **ends the rule** (any further tokens are ignored). A `deny` that
+  names no known effect is **dropped** (it is not a `pure` rule — that distinction is load-bearing).
+  `Unknown` is denyable precisely so `deny Unknown <scope>` forbids the *unverifiable* case (§6,
+  AS-EFF-008's companion).
+- **`pure`** — an empty forbidden set, meaning **every** effect; the optional next token is the scope.
+  `pure parse` ≡ "functions in `parse` must be effect-free."
+- **`allow`** — the effect MUST be one of the three that carry a literal surface (`Net`, `Exec`, `Fs`); an
+  `allow` for any other effect is dropped with a warning. An optional `in <scope>` follows; the remaining
+  tokens are the allowed values (≥1 required, else the rule is dropped).
+- **`forbid`** — two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
+  the arrow or either scope is dropped.
+
+**Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not
+substring**. Split both on the language's path separator (`::` in Rust, `.` on the JVM). The scope matches
+iff its segments appear as a **contiguous run** in the name where every segment **except the last** matches
+exactly and the **last** segment is a **prefix** of its name-segment. So scope `domain` matches
+`app::domain::handle`, `domain::handle`, and the function `domain_logic` (last-segment prefix), but **not**
+`subdomain` or `not_my_domain` (substring, not a segment boundary); scope `net::client` matches
+`crate::net::client_pool::get` but not `crate::network::client` (intermediate segments are exact, not
+prefixes). An **absent/empty scope means the whole compilation unit** (matches every function).
+
+**Literal matching** (`allow`) is **per effect**: a `Net` host matches by hostname with the port ignored
+(`api.stripe.com` allows `api.stripe.com:443`); an `Exec` command matches by basename
+(`git` allows `/usr/bin/git`); an `Fs` path matches by **path-boundary-respecting prefix** (an allowed
+directory covers itself and everything beneath it, but `/etc/app` does **not** cover `/etc/apppwned`, and a
+reached path that climbs out via `..` is never covered). Matching is over the **transitive**
+`hosts`/`cmds`/`paths` surface (§2), so a value buried in a deep or cross-crate callee is still checked.
+
 ## 7. Conformance checklist for an implementation
 
 An implementation conforms to candor-spec if it:
@@ -366,7 +418,8 @@ An implementation conforms to candor-spec if it:
 3. emits the §2 report schema;
 4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes;
-6. uses the §1 vocabulary and §6 codes where they apply;
+6. uses the §1 vocabulary and §6 codes where they apply, and — if it enforces any policy mode — parses
+   the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. is honest in its own docs about what it cannot see;
 8. declares the **spec version** it implements (the envelope's `spec`, §2.1) and keeps it in step with
    this document.
@@ -378,7 +431,7 @@ It SHOULD additionally:
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
-    blast radius, and the `rewire` verdict.
+    blast radius, the `rewire` verdict, and the `§6.2` policy-DSL parse.
 
 ## 8. Changelog
 
@@ -396,7 +449,10 @@ declare it via the envelope's `spec`.
   - **documentation-only, no wire change** (a 0.3 report is byte-identical): §2.2 specifies the call-graph
     sidecar an implementation already emits; §3.1–3.2 specify the read-only queries and the
     pre-edit/structural tools (`whatif`, `rewire`) as cross-language-consistent SHOULDs; checklist items
-    9–10 (§7) make both SHOULD-level. The report schema is unchanged, so the spec version stays **0.3**.
+    9–10 (§7) make both SHOULD-level; §6.2 fixes the **policy DSL** (the `deny`/`pure`/`allow`/`forbid`
+    grammar, segment-based scope matching, per-effect literal matching) as a normative grammar so the
+    gate means the same thing in every language. The report schema is unchanged, so the spec version
+    stays **0.3**.
 - **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
   `toolchain`); cross-crate inheritance by `hash`; version-aware trust.
 - **0.1** — the bare top-level array of function entries (still accepted by readers during migration).
