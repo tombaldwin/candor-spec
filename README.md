@@ -41,6 +41,14 @@ vocabulary, the report, the trust contract, the adoption ladder. That way an AI 
 a CI gate) uses a Rust report and a Java report exactly the same way. This repo is that shared
 definition; the implementations plug into it.
 
+This is the line a per-language tool (CodeQL, Semgrep, ArchUnit) can't cross. They can have *rules* for
+each language, but never a guarantee those rules *mean the same thing*. candor can — and it's not a
+claim: [`conformance/`](conformance/) is a CI-enforced differential that runs both engines on equivalent
+fixtures and fails if they disagree on either the **effect set** or the **policy verdict**. So a `deny Net
+in <layer>` boundary is enforced *identically* across a polyglot codebase, by construction. That cross-
+language consistency — not raw analysis power — is the durable position: it's what neither a smarter model,
+a single-language effect system, nor a per-language ruleset can offer.
+
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
