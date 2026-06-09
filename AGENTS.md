@@ -22,11 +22,18 @@ Effects: `Net`, `Fs`, `Db`, `Exec` (subprocess), `Env`, `Clock`, `Ipc`, `Log`, `
 
 ## How to use it
 
-- **Blast radius of editing a function** → read its `inferred`.
-- **Find functions with a given effect** → filter on `inferred`.
+- **What a function performs** → read its `inferred` (the full transitive effect set).
+- **Blast radius of editing a function** — *"who is affected if I add or change an effect in X?"* → the
+  transitive **`callers`** of X, **not** `inferred` (which is what X itself does). Use the `callers <fn>`
+  query (it reads the call-graph sidecar); it works for **any** function, including a still-**pure** one
+  you are *about* to make effectful — so it answers the question *before* the edit. Enumerating 3–5 layers
+  of transitive callers by hand is exactly what's easy to under-count; let candor list them.
+- **Find functions with a given effect** → filter on `inferred` (or query `where <Effect>`).
 - **Safe to treat as pure** (e.g. test without mocks) → `inferred == []` *and* `unresolved == false`.
 - **Scope a cross-cutting change** (e.g. "wrap every network call") → filter `inferred`/`direct`
   instead of reading the whole codebase.
+- **Enforce a boundary in CI** → a policy gate (`deny`/`allow`/`forbid`) fails the build when an edit
+  crosses an effect or layer line — a *deterministic* guarantee an LLM review can't give.
 
 ## The trust rule — do not skip this
 
