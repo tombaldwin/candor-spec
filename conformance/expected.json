@@ -9,5 +9,13 @@
   "unknown_dyn": ["Unknown"],
   "combined": ["Fs", "Net"],
   "transitive_leaf": ["Fs"],
-  "transitive_caller": ["Fs"]
+  "transitive_caller": ["Fs"],
+  "closure_effect": ["Fs"],
+  "unknown_propagates": ["Unknown"],
+  "mixed_unknown": ["Fs", "Unknown"],
+  "hop_a": ["Net"],
+  "union_a": ["Fs", "Net"],
+  "recurse": ["Env"],
+  "conditional": ["Exec"],
+  "pure_a": []
 }
