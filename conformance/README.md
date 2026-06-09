@@ -11,15 +11,20 @@ Because the expected set *is* the spec answer, one run does double duty:
 - **conformance** — each engine vs the spec (`SPEC.md §1` vocabulary, `SEMANTICS.md` propagation), and
 - **differential** — the two independent engines vs each other (a divergence is a bug in one).
 
-The runner checks **two layers**:
+The runner checks **three layers** — covering every cross-language command:
 
 1. **Effect sets** (`rust/` + `java/` + `expected.json`) — both engines infer the same effects for
    equivalent functions.
 2. **Policy verdict** (`policy/`) — given the *same* `deny`/`pure` policy text and the *same* layered
-   fixture, both engines reach the same `whatif` verdict (same violating functions, same `ok`). This is
-   the layer a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just "rules
-   exist for both languages", but a **machine-checked guarantee that the same architecture gate means the
-   same thing in each.** That cross-language consistency is candor's moat — and it's now a test, not a claim.
+   fixture, both engines reach the same `whatif` verdict: the same violating functions, the same `ok`,
+   **and** the same blast radius (the affected set).
+3. **Rewire verdict** (`rewire/`) — given the *same* de-wiring (a function drops a call), both engines'
+   `rewire` flags the same dropped edge.
+
+Layers 2–3 are what a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just
+"rules exist for both languages", but a **machine-checked guarantee that the same architecture gate, the
+same blast radius, and the same de-wiring check mean the same thing in each.** That cross-language
+consistency is candor's moat — and it's a test, not a claim.
 
 ## Run
 

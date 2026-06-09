@@ -85,18 +85,53 @@ java -jar "$JAR" whatif "$W/pjava.json" quote Net "$POL" --json > "$W/java_wi.js
 python3 - "$W/rust_wi.json" "$W/java_wi.json" <<'PY' || rc=1
 import json, sys
 r = json.load(open(sys.argv[1])); j = json.load(open(sys.argv[2]))
-def verdict(d, sep): return (bool(d["ok"]), sorted(v["fn"].split(sep)[-1] for v in d["violations"]))
+def verdict(d, sep):
+    leaf = lambda s: s.split(sep)[-1]
+    return (bool(d["ok"]),
+            sorted(leaf(v["fn"]) for v in d["violations"]),    # the gate verdict
+            sorted(leaf(f) for f in d["affected"]))            # AND the blast radius (the graph)
 rv, jv = verdict(r, "::"), verdict(j, ".")
 print(f"\n[2] POLICY-VERDICT differential  (whatif quote Net  ·  policy `deny Net api`)")
-print(f"  candor-scan: ok={rv[0]}  violations={rv[1]}")
-print(f"  candor-java: ok={jv[0]}  violations={jv[1]}")
+print(f"  candor-scan: ok={rv[0]}  violations={rv[1]}  affected={rv[2]}")
+print(f"  candor-java: ok={jv[0]}  violations={jv[1]}  affected={jv[2]}")
 match = rv == jv
-print("  -> " + ("MATCH — the gate means the same thing in both engines"
-                 if match else "DIVERGE — the engines disagree on the policy verdict"))
+print("  -> " + ("MATCH — the gate verdict AND the blast radius are identical in both engines"
+                 if match else "DIVERGE — the engines disagree on the verdict or the blast radius"))
+sys.exit(0 if match else 1)
+PY
+
+# ====================================================================================================
+# PART 3 — rewire-verdict differential: a function drops a call (de-wiring). Do both engines flag the
+# SAME dropped edge? Completes cross-impl parity for the newest commands (effects + whatif + rewire).
+# ====================================================================================================
+cp -r "$HERE/rewire" "$W/rewire"
+"$SCAN" "$W/rewire/rust/baseline" >/dev/null 2>&1 || { echo "FAIL: scan errored on rewire/rust/baseline"; exit 2; }
+"$SCAN" "$W/rewire/rust/gamed" >/dev/null 2>&1 || { echo "FAIL: scan errored on rewire/rust/gamed"; exit 2; }
+"$QUERY" rewire "$W/rewire/rust/gamed/.candor/report" "$W/rewire/rust/baseline/.candor/report" 1 > "$W/rust_rw.json" 2>/dev/null
+javac -d "$W/rwb" $(find "$W/rewire/java/baseline" -name '*.java') 2>/dev/null || { echo "FAIL: javac on rewire/java/baseline"; exit 2; }
+javac -d "$W/rwg" $(find "$W/rewire/java/gamed" -name '*.java') 2>/dev/null || { echo "FAIL: javac on rewire/java/gamed"; exit 2; }
+java -jar "$JAR" "$W/rwb" --json "$W/rwb.json" >/dev/null 2>&1
+java -jar "$JAR" "$W/rwg" --json "$W/rwg.json" >/dev/null 2>&1
+java -jar "$JAR" rewire "$W/rwg.json" "$W/rwb.json" --json > "$W/java_rw.json" 2>/dev/null
+
+python3 - "$W/rust_rw.json" "$W/java_rw.json" <<'PY' || rc=1
+import json, sys
+def dewired(p, sep):
+    d = json.load(open(p))
+    return sorted((e["caller"].split(sep)[-1], sorted(c.split(sep)[-1] for c in e["no_longer_calls"]))
+                  for e in d["dropped"])
+r, j = dewired(sys.argv[1], "::"), dewired(sys.argv[2], ".")
+print(f"\n[3] REWIRE-VERDICT differential  (a function drops a call — de-wiring detection)")
+print(f"  candor-scan: dropped={r}")
+print(f"  candor-java: dropped={j}")
+match = r == j
+print("  -> " + ("MATCH — both engines detect the same de-wiring"
+                 if match else "DIVERGE — the engines disagree on the dropped edges"))
 sys.exit(0 if match else 1)
 PY
 
 echo
-[ "$rc" -eq 0 ] && echo "conformance: OK (effect sets + policy verdict agree across both engines)" \
-                || echo "conformance: FAILED"
+[ "$rc" -eq 0 ] \
+  && echo "conformance: OK (effect sets + policy verdict + rewire verdict agree across both engines)" \
+  || echo "conformance: FAILED"
 exit "$rc"
