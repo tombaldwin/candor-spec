@@ -27,6 +27,11 @@ CANDOR_SCAN_BIN=/path/to/candor-scan CANDOR_JAVA_JAR=/path/to/candor-java-all.ja
 Exit 0 iff every case matches in **both** engines. Output is a table; a `DIVERGE` row means the engines
 disagree, a `BOTH-OFF` row means they agree with each other but not the spec.
 
+CI runs this on every change to candor-spec (`.github/workflows/conformance.yml`): it checks out both
+engine repos from their `main` branches, builds each, and runs the differential — so a classifier change
+that breaks cross-impl parity turns the spec's own CI red. After landing a classifier change in an engine,
+dispatch the workflow manually (or open a PR) to re-check.
+
 ## Adding a case
 
 1. Add a function `foo` to **both** `rust/src/lib.rs` and `java/Cases.java` with the same intended effect.
