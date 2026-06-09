@@ -67,6 +67,16 @@ Each entry:
   "undeclared":   [],                    // inferred − declared (violations); empty in audit
   "overdeclared": [],                    // declared − inferred (unused declarations)
   "unresolved":   true,                  // true if `inferred` may be incomplete (contains Unknown)
+  "entryPoint":   false,                  // OPTIONAL: true if the RUNTIME invokes this fn, not (only)
+                                         // project code — a reachability ROOT. The language/framework
+                                         // surface that has no in-project caller: `main`, test/exported
+                                         // (`#[no_mangle]`) fns; on the JVM the much larger reflective
+                                         // surface — finalize, Runnable/Callable task bodies, servlet
+                                         // and Spring lifecycle (@PostConstruct/@PreDestroy, web/queue
+                                         // handlers, JPA callbacks). Lets a consumer compute the effects
+                                         // reachable from the roots; its body's effects are NEVER
+                                         // orphaned. Population is runtime-specific — far richer on a
+                                         // reflection/framework runtime than on Rust. Default false.
   "unknownWhy":   ["dispatch:Foo.bar"],  // OPTIONAL: when this fn introduces `Unknown` DIRECTLY, why —
                                          // `reflect:<callee>` (reflection / dynamic invoke),
                                          // `native:<method>` (no analysable body), or
@@ -314,7 +324,8 @@ declare it via the envelope's `spec`.
 - **0.3** — additive over 0.2 (wire-compatible; a 0.2 reader still parses a 0.3 report):
   - `AS-EFF-006` (policy `deny`/`pure`), `AS-EFF-007` (heuristic `risk`), `AS-EFF-008` (literal allowlists
     `allow Net`/`Exec`/`Fs`), `AS-EFF-009` (layering `forbid ->`), `AS-EFF-010` (containment ratchet);
-  - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`, `unknownWhy` (the per-fn Unknown-origin tag);
+  - report fields `calls`, `fs`, `hosts`, `cmds`, `paths`, `unknownWhy` (the per-fn Unknown-origin tag),
+    `entryPoint` (the runtime-invoked reachability-root flag);
   - the `containment` mode + §6.1 (the not-a-score architecture signal);
   - the envelope's `spec` field itself (§2.1).
 - **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
