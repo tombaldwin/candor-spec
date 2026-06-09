@@ -81,3 +81,26 @@ safe for an agent to rely on.
   Likely the easiest engine to build. `async` / `await` already primes the effect mindset.
 - **Go** — `golang.org/x/tools` SSA + the `go/analysis` framework. Small, explicit stdlib (`os`,
   `net`, `database/sql`, `os/exec`, `time`, `log`); no exceptions. Interface dispatch needs RTA.
+- **TypeScript / JavaScript** — resolve with the **TypeScript compiler API** (`ts.TypeChecker`:
+  `getResolvedSignature` / `getSymbolAtLocation` / `getTypeAtLocation` give devirt-equivalent targets) or
+  the ergonomic `ts-morph` wrapper; `@typescript-eslint`'s typed AST also works. Heed §1 hard — a bare
+  `x.write()` / `db.query()` means nothing until the receiver's type resolves. The κ surface:
+  **Fs** `node:fs` + `fs/promises` (`readFile`/`writeFile`/`createReadStream`), `Bun.file`, `Deno.readFile`;
+  **Net** the global `fetch`/`undici`, `node:http(s)`, raw `node:net` sockets, `node:dgram`, `axios`/`got`/
+  `node-fetch`, `WebSocket`;
+  **Db** the *execution* verb (the I/O boundary, exactly the sqlx lesson in §2): `pg`/`mysql2` `query`,
+  `better-sqlite3` `run`/`get`/`all`, `mongodb` `find`/`insertOne`, `ioredis` — and for the ORMs
+  (Prisma/Drizzle/TypeORM/Knex) the awaited *execution*, not the chained query builders;
+  **Exec** `node:child_process` (`exec`/`execFile`/`spawn`/`fork`), `Bun.spawn`, `Deno.Command`;
+  **Env** `process.env` access + `Deno.env.get`; **Clock** `Date.now`/`new Date()`/`performance.now`/
+  `process.hrtime`; **Rand** `Math.random`, `node:crypto` (`randomBytes`/`randomUUID`), Web `crypto.getRandomValues`;
+  **Log** `console.*`, `pino`/`winston`/`debug`; **Clipboard** the browser `navigator.clipboard`.
+  Capability declarations (§5) have no native token, but a *branded type* or a dependency-injected
+  collaborator (a NestJS provider, an injected `fs`-like handle) declares the surface — no-ambient maps
+  onto "receive your I/O, don't `import` it". **Ceiling — the gradual-typing escape hatch is the defining
+  honesty pressure here:** an `any`-typed receiver, an **untyped JS dependency** (no `.d.ts`), `eval` /
+  dynamic `import()` / `require(variableName)`, and monkey-patched or computed dispatch (`obj[name]()`) are
+  all unresolvable and MUST be `Unknown`, never assumed pure (SPEC §4). This is actually a clean fit —
+  TS's `any` and an untyped import *are* the "could not resolve" case the trust contract already names.
+  Like the JVM, a Unix-domain socket is `net.connect({ path })` with the family as a runtime argument, so
+  it reads as `Net` (the same documented `Ipc`/`Net` asymmetry).
