@@ -29,6 +29,9 @@ ports across languages; each implementation's *engine* is bespoke to its toolcha
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
   precision lessons learned the hard way.
+- **[conformance/](conformance/)** — an *executable* differential: the same fixtures in Rust and Java,
+  asserting both engines infer the spec-mandated effect set (`bash conformance/run.sh`). Conformance and
+  cross-impl agreement in one run.
 
 ## Why per-language tools sharing one spec
 
