@@ -1,26 +1,29 @@
 #!/usr/bin/env bash
 # Cross-impl conformance differential. Runs BOTH candor implementations on equivalent fixtures and asserts
-# each infers the spec-expected effect set — so the two independent engines (Rust syntactic scan + JVM
-# bytecode) can't silently diverge on the shared contract. The expected sets ARE the spec answer, so this
-# is simultaneously a conformance check (each impl vs the spec) and a differential (the impls vs each other).
+# they agree — first on the EFFECT SETS they infer, then on the POLICY VERDICT they reach. The two
+# independent engines (Rust syntactic scan + JVM bytecode) sharing one spec is candor's defining moat over
+# a per-language ruleset (CodeQL/Semgrep/ArchUnit): not just "we have rules for both languages", but a
+# MACHINE-CHECKED guarantee that the same effect contract AND the same `deny`/`pure` gate mean the same
+# thing in each. A DIVERGE row is a bug in one engine.
 #
 # Usage:   bash conformance/run.sh
-# Repos are assumed siblings of candor-spec; override with CANDOR=… CANDOR_JAVA=… . Pre-built binaries can
-# be supplied via CANDOR_SCAN_BIN=… (a candor-scan executable) and CANDOR_JAVA_JAR=… (the shadow jar) to
-# skip building. Exit 0 iff every case matches in BOTH impls.
+# Repos are assumed siblings of candor-spec; override with CANDOR=… CANDOR_JAVA=… . Pre-built binaries via
+# CANDOR_SCAN_BIN=… CANDOR_QUERY_BIN=… CANDOR_JAVA_JAR=… skip the build. Exit 0 iff everything matches.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANDOR="${CANDOR:-$HERE/../../candor}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 
-# --- locate / build the two engines ------------------------------------------------------------------
+# --- locate / build the engines ----------------------------------------------------------------------
 SCAN="${CANDOR_SCAN_BIN:-}"
-if [ -z "$SCAN" ]; then
-  echo "building candor-scan…"
-  cargo build -q --manifest-path "$CANDOR/Cargo.toml" -p candor-scan 2>/dev/null \
-    || { echo "FAIL: could not build candor-scan (set CANDOR or CANDOR_SCAN_BIN)"; exit 2; }
-  SCAN="$CANDOR/target/debug/candor-scan"
+QUERY="${CANDOR_QUERY_BIN:-}"
+if [ -z "$SCAN" ] || [ -z "$QUERY" ]; then
+  echo "building candor-scan + candor-query…"
+  cargo build -q --manifest-path "$CANDOR/Cargo.toml" -p candor-scan -p candor-query 2>/dev/null \
+    || { echo "FAIL: could not build candor-scan/candor-query (set CANDOR or the *_BIN vars)"; exit 2; }
+  SCAN="${SCAN:-$CANDOR/target/debug/candor-scan}"
+  QUERY="${QUERY:-$CANDOR/target/debug/candor-query}"
 fi
 JAR="${CANDOR_JAVA_JAR:-}"
 if [ -z "$JAR" ]; then
@@ -29,45 +32,71 @@ if [ -z "$JAR" ]; then
     || { echo "FAIL: could not build candor-java (set CANDOR_JAVA or CANDOR_JAVA_JAR)"; exit 2; }
   JAR="$(ls "$CANDOR_JAVA"/build/libs/*-all.jar 2>/dev/null | head -1)"
 fi
-[ -x "$SCAN" ] || { echo "FAIL: no candor-scan at $SCAN"; exit 2; }
-[ -f "$JAR" ]  || { echo "FAIL: no candor-java jar at $JAR"; exit 2; }
+[ -x "$SCAN" ]  || { echo "FAIL: no candor-scan at $SCAN"; exit 2; }
+[ -x "$QUERY" ] || { echo "FAIL: no candor-query at $QUERY"; exit 2; }
+[ -f "$JAR" ]   || { echo "FAIL: no candor-java jar at $JAR"; exit 2; }
 
-# --- run both engines on their fixtures --------------------------------------------------------------
+rc=0
+
+# ====================================================================================================
+# PART 1 — effect-set differential (each engine vs the spec, and vs each other)
+# ====================================================================================================
 cp -r "$HERE/rust" "$W/rust"
 "$SCAN" "$W/rust" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the rust fixture"; exit 2; }
 RUST_REPORT="$(ls "$W"/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
-
 javac -d "$W/jout" "$HERE/java/Cases.java" 2>/dev/null || { echo "FAIL: javac on Cases.java"; exit 2; }
-"$JAR" >/dev/null 2>&1 # noop guard
 java -jar "$JAR" "$W/jout" --json "$W/java.json" >/dev/null 2>&1 \
   || { echo "FAIL: candor-java errored on the java fixture"; exit 2; }
 
-# --- compare to the expected sets (and thereby to each other) ----------------------------------------
-python3 - "$HERE/expected.json" "$RUST_REPORT" "$W/java.json" <<'PY'
+python3 - "$HERE/expected.json" "$RUST_REPORT" "$W/java.json" <<'PY' || rc=1
 import json, sys
 expected = {k: set(v) for k, v in json.load(open(sys.argv[1])).items() if not k.startswith("_")}
 def by_leaf(path, sep):
     d = json.load(open(path))
     return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
-rust = by_leaf(sys.argv[2], "::")
-java = by_leaf(sys.argv[3], ".")
-
-print(f"\n{'case':20s} {'expected':16s} {'candor-scan':16s} {'candor-java':16s} verdict")
+rust = by_leaf(sys.argv[2], "::"); java = by_leaf(sys.argv[3], ".")
+print(f"\n[1] EFFECT-SET differential")
+print(f"{'case':20s} {'expected':16s} {'candor-scan':16s} {'candor-java':16s} verdict")
 print("-" * 86)
 fails = 0
 for case, exp in expected.items():
     r, j = rust.get(case, set()), java.get(case, set())
-    if r == exp and j == exp:
-        verdict = "ok"
-    elif r != j:
-        verdict = "DIVERGE"; fails += 1
-    else:
-        verdict = "BOTH-OFF"; fails += 1
-    e = ",".join(sorted(exp)) or "(pure)"
-    rs = ",".join(sorted(r)) or "(pure)"
-    js = ",".join(sorted(j)) or "(pure)"
-    print(f"{case:20s} {e:16s} {rs:16s} {js:16s} {verdict}")
+    verdict = "ok" if (r == exp and j == exp) else ("DIVERGE" if r != j else "BOTH-OFF")
+    if verdict != "ok": fails += 1
+    f = lambda s: ",".join(sorted(s)) or "(pure)"
+    print(f"{case:20s} {f(exp):16s} {f(r):16s} {f(j):16s} {verdict}")
 print("-" * 86)
-print(f"{len(expected)} cases, {fails} mismatch(es)\n")
+print(f"{len(expected)} cases, {fails} mismatch(es)")
 sys.exit(1 if fails else 0)
 PY
+
+# ====================================================================================================
+# PART 2 — policy-verdict differential: the same `deny Net api` policy, the same `whatif`, same verdict?
+# This is the moat a per-language ruleset can't offer: the ENFORCEMENT means the same thing in each engine.
+# ====================================================================================================
+cp -r "$HERE/policy" "$W/policy"
+POL="$W/policy/policy"
+"$SCAN" "$W/policy/rust" >/dev/null 2>&1 || { echo "FAIL: scan errored on the policy/rust fixture"; exit 2; }
+"$QUERY" whatif "$W/policy/rust/.candor/report" quote Net "$POL" 1 > "$W/rust_wi.json" 2>/dev/null
+javac -d "$W/pjout" $(find "$W/policy/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on policy/java"; exit 2; }
+java -jar "$JAR" "$W/pjout" --json "$W/pjava.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on policy/java"; exit 2; }
+java -jar "$JAR" whatif "$W/pjava.json" quote Net "$POL" --json > "$W/java_wi.json" 2>/dev/null
+
+python3 - "$W/rust_wi.json" "$W/java_wi.json" <<'PY' || rc=1
+import json, sys
+r = json.load(open(sys.argv[1])); j = json.load(open(sys.argv[2]))
+def verdict(d, sep): return (bool(d["ok"]), sorted(v["fn"].split(sep)[-1] for v in d["violations"]))
+rv, jv = verdict(r, "::"), verdict(j, ".")
+print(f"\n[2] POLICY-VERDICT differential  (whatif quote Net  ·  policy `deny Net api`)")
+print(f"  candor-scan: ok={rv[0]}  violations={rv[1]}")
+print(f"  candor-java: ok={jv[0]}  violations={jv[1]}")
+match = rv == jv
+print("  -> " + ("MATCH — the gate means the same thing in both engines"
+                 if match else "DIVERGE — the engines disagree on the policy verdict"))
+sys.exit(0 if match else 1)
+PY
+
+echo
+[ "$rc" -eq 0 ] && echo "conformance: OK (effect sets + policy verdict agree across both engines)" \
+                || echo "conformance: FAILED"
+exit "$rc"

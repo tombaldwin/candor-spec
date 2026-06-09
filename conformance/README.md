@@ -11,6 +11,16 @@ Because the expected set *is* the spec answer, one run does double duty:
 - **conformance** — each engine vs the spec (`SPEC.md §1` vocabulary, `SEMANTICS.md` propagation), and
 - **differential** — the two independent engines vs each other (a divergence is a bug in one).
 
+The runner checks **two layers**:
+
+1. **Effect sets** (`rust/` + `java/` + `expected.json`) — both engines infer the same effects for
+   equivalent functions.
+2. **Policy verdict** (`policy/`) — given the *same* `deny`/`pure` policy text and the *same* layered
+   fixture, both engines reach the same `whatif` verdict (same violating functions, same `ok`). This is
+   the layer a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just "rules
+   exist for both languages", but a **machine-checked guarantee that the same architecture gate means the
+   same thing in each.** That cross-language consistency is candor's moat — and it's now a test, not a claim.
+
 ## Run
 
 ```sh

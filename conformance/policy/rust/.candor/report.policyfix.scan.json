@@ -1,0 +1,8 @@
+{
+  "candor": {
+    "version": "scan-0.3.1",
+    "toolchain": "stable",
+    "spec": "0.3"
+  },
+  "functions": []
+}

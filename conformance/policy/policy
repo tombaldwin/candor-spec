@@ -1,0 +1,2 @@
+# the public api layer must stay off the network
+deny Net api
