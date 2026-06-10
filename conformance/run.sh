@@ -11,7 +11,7 @@
 # CANDOR_SCAN_BIN=… CANDOR_QUERY_BIN=… CANDOR_JAVA_JAR=… skip the build. Exit 0 iff everything matches.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CANDOR="${CANDOR:-$HERE/../../candor}"
+CANDOR="${CANDOR:-$HERE/../../candor-rust}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 

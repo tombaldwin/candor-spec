@@ -23,7 +23,7 @@ jobs:
       - name: Checkout candor (Rust engine)
         uses: actions/checkout@v6
         with:
-          repository: tombaldwin/candor
+          repository: tombaldwin/candor-rust
           path: candor
       - name: Checkout candor-java (JVM engine)
         uses: actions/checkout@v6

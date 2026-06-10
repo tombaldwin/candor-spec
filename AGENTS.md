@@ -4,7 +4,7 @@ candor reports, for every function, which side effects it performs (transitively
 **language-agnostic** contract for *consuming* a report. To **produce** one, use the candor
 implementation for the language you're in — each has its own `AGENTS.md` with exact setup:
 
-- Rust → https://github.com/tombaldwin/candor/blob/main/AGENTS.md
+- Rust → https://github.com/tombaldwin/candor-rust/blob/main/AGENTS.md
 - JVM (Java/Kotlin/Scala/Groovy) → https://github.com/tombaldwin/candor-java/blob/main/AGENTS.md
 - other languages → see the implementation index in this repo's [README](README.md)
 

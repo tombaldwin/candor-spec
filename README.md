@@ -13,7 +13,7 @@ ports across languages; each implementation's *engine* is bespoke to its toolcha
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Rust | [candor](https://github.com/tombaldwin/candor) | dylint (HIR + CHA) | **shipped** — reference implementation |
+| Rust | [candor](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) | **shipped** — reference implementation |
 | Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **prototype** — full mode set; Spring-aware |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
