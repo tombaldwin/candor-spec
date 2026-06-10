@@ -15,3 +15,7 @@ forbid domain -> infra
 forbid app::web -> app::db
 forbid bad
 nonsense line
+deny Exec  # inline comment: must be stripped, scope stays empty (not "#")
+allow Net in stripe api.stripe.com # trailing comment must not become a host
+allow Net in
+allow Fs # comment-only after the keyword

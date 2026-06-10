@@ -180,8 +180,11 @@ implementation MAY fall back to that sidecar for provenance.
 ### 2.2 The call-graph sidecar
 
 Alongside each report, an implementation that provides the blast-radius or structural tools (§3.1–3.2)
-emits a **call-graph sidecar** named `<prefix>.<crate>.<type>.callgraph.json` — a JSON object mapping each
-function (by the same fully-qualified name used in the report) to the functions it directly calls:
+emits a **call-graph sidecar** named alongside its report so the two are paired (the Rust impl uses
+`<prefix>.<crate>.<type>.callgraph.json`; the JVM impl appends `.callgraph.json` to the report stem —
+each consumer pairs sidecar to report by its own naming, as with the §2 report file) — a JSON object
+mapping each function (by the same fully-qualified name used in the report) to the functions it directly
+calls:
 
 ```json
 { "a::caller": ["b::callee", "b::other"], "b::callee": ["c::leaf"] }

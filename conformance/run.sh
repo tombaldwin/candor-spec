@@ -204,6 +204,10 @@ java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json
 "$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
 java -jar "$JAR" show "$W/java.json" nion --json > "$W/j_ladder_nion.json" 2>/dev/null
+# segment-suffix at a NESTED-TYPE boundary: `Svc::act`/`Svc.act` must resolve to exactly the one
+# inner-type method (Rust `::Svc::act`, JVM `Cases$Svc.act` — the `$` boundary), never a substring cousin.
+"$QUERY" show "$RUST_PREFIX" Svc::act 1 > "$W/r_ladder_svc.json" 2>/dev/null
+java -jar "$JAR" show "$W/java.json" Svc.act --json > "$W/j_ladder_svc.json" 2>/dev/null
 
 python3 - "$W" <<'PY' || rc=1
 import json, sys
@@ -242,6 +246,10 @@ check("ladder:suffix", len(rs1) == 1 and len(js1) == 1
 rs2, js2 = load("ladder_nion", "r"), load("ladder_nion", "j")
 names_r = {e["fn"].split("::")[-1] for e in rs2}; names_j = {e["fn"].split(".")[-1] for e in js2}
 check("ladder:substr", names_r == {"union_a", "union_b", "union_c"} and names_j == names_r)
+# nested-type boundary (`::` on Rust, `$` on the JVM): exactly the one Svc method, no substring cousin.
+rs3, js3 = load("ladder_svc", "r"), load("ladder_svc", "j")
+check("ladder:nested", len(rs3) == 1 and len(js3) == 1
+                       and rs3[0]["fn"].split("::")[-1] == "act" and js3[0]["fn"].split(".")[-1] == "act")
 print("  -> " + ("MATCH — the agent-facing query shapes are identical in both engines"
                  if ok else "DIVERGE — a query's JSON shape differs between engines"))
 sys.exit(0 if ok else 1)
