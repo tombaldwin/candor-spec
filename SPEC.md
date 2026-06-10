@@ -38,6 +38,13 @@ vocabulary:
 An implementation MAY add language-specific effects, but SHOULD use these names where they apply.
 `Unknown` is mandatory and special.
 
+Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not**
+classified — not as `Log`, not as `Fs`. Classifying them would flood every CLI tool's report (printing
+*is* a CLI's purpose, the way `Db` is a database app's — the §6.1 argument), drowning the signal. `Log`
+is for calls into a logging/tracing *framework*, whose presence is an architectural fact. Both reference
+implementations agree on this; an implementation that does classify console output MUST use a
+language-specific effect name, not `Log`.
+
 ## 2. The report
 
 An implementation emits, per compilation unit, a self-describing **envelope** — a provenance header
