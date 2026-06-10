@@ -56,3 +56,11 @@ pub fn pure_a() -> i32 { pure_b() }
 pub struct Svc;
 impl Svc { pub fn act(&self) { let _ = std::fs::read("/tmp/x"); } }
 pub fn method_call(s: &Svc) { s.act(); }
+
+// --- scheduler attribution: an effect inside a spawned closure attributes to the SPAWNING fn ---------
+// (SEMANTICS §2 closure-attribution; the JVM twin — an anonymous Runnable handed to Thread — was a real
+// under-report in candor-java, fixed 2026-06-10. This case locks the guarantee cross-impl.)
+pub fn sched() {
+    let h = std::thread::spawn(|| { let _ = std::fs::read("/tmp/x"); });
+    let _ = h.join();
+}

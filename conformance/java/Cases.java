@@ -55,4 +55,13 @@ public class Cases {
   // --- a method call on a concrete LOCAL-type receiver propagates the method's effect ---
   static class Svc { void act() { try { Files.readAllBytes(Path.of("/tmp/x")); } catch (Exception e) {} } }
   public static void method_call(Svc s) { s.act(); }
+
+  // --- scheduler attribution: an effect inside a scheduled task attributes to the SCHEDULING method ---
+  // (the anonymous-Runnable form was a real candor-java under-report, fixed 2026-06-10)
+  public static void sched() {
+    Thread t = new Thread(new Runnable() {
+      public void run() { try { Files.readAllBytes(Path.of("/tmp/x")); } catch (Exception e) {} }
+    });
+    t.start();
+  }
 }

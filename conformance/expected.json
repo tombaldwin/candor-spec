@@ -1,22 +1,62 @@
 {
-  "_comment": "Per-case expected TRANSITIVE effect set. Each case is a function present in BOTH rust/src/lib.rs and java/Cases.java with equivalent semantics; the runner asserts candor-scan and candor-java each infer exactly this set. Scope is the std-only subset both languages can express without dependencies (see README) — Db/Rand/Log/Clipboard/Ipc need per-language deps or are structurally asymmetric and are covered by each impl's own tests.",
-  "fs_read": ["Fs"],
-  "net_connect": ["Net"],
-  "exec_spawn": ["Exec"],
-  "env_read": ["Env"],
-  "clock_now": ["Clock"],
+  "_comment": "Per-case expected TRANSITIVE effect set. Each case is a function present in BOTH rust/src/lib.rs and java/Cases.java with equivalent semantics; the runner asserts candor-scan and candor-java each infer exactly this set. Scope is the std-only subset both languages can express without dependencies (see README) \u2014 Db/Rand/Log/Clipboard/Ipc need per-language deps or are structurally asymmetric and are covered by each impl's own tests.",
+  "fs_read": [
+    "Fs"
+  ],
+  "net_connect": [
+    "Net"
+  ],
+  "exec_spawn": [
+    "Exec"
+  ],
+  "env_read": [
+    "Env"
+  ],
+  "clock_now": [
+    "Clock"
+  ],
   "pure_fn": [],
-  "unknown_dyn": ["Unknown"],
-  "combined": ["Fs", "Net"],
-  "transitive_leaf": ["Fs"],
-  "transitive_caller": ["Fs"],
-  "closure_effect": ["Fs"],
-  "unknown_propagates": ["Unknown"],
-  "mixed_unknown": ["Fs", "Unknown"],
-  "hop_a": ["Net"],
-  "union_a": ["Fs", "Net"],
-  "recurse": ["Env"],
-  "conditional": ["Exec"],
+  "unknown_dyn": [
+    "Unknown"
+  ],
+  "combined": [
+    "Fs",
+    "Net"
+  ],
+  "transitive_leaf": [
+    "Fs"
+  ],
+  "transitive_caller": [
+    "Fs"
+  ],
+  "closure_effect": [
+    "Fs"
+  ],
+  "unknown_propagates": [
+    "Unknown"
+  ],
+  "mixed_unknown": [
+    "Fs",
+    "Unknown"
+  ],
+  "hop_a": [
+    "Net"
+  ],
+  "union_a": [
+    "Fs",
+    "Net"
+  ],
+  "recurse": [
+    "Env"
+  ],
+  "conditional": [
+    "Exec"
+  ],
   "pure_a": [],
-  "method_call": ["Fs"]
+  "method_call": [
+    "Fs"
+  ],
+  "sched": [
+    "Fs"
+  ]
 }
