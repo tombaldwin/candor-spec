@@ -5,7 +5,11 @@ candor reports, for every function, which side effects it performs (transitively
 implementation for the language you're in — each has its own `AGENTS.md` with exact setup:
 
 - Rust → https://github.com/tombaldwin/candor/blob/main/AGENTS.md
+- JVM (Java/Kotlin/Scala/Groovy) → https://github.com/tombaldwin/candor-java/blob/main/AGENTS.md
 - other languages → see the implementation index in this repo's [README](README.md)
+
+To let a HUMAN adopter verify candor's value on their own codebase, each implementation ships a
+`PROVE-IT.md` — a self-experiment prompt their agent runs (SPEC §7.11).
 
 ## The report
 

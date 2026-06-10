@@ -471,7 +471,14 @@ It SHOULD additionally:
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
-    blast radius, the `rewire` verdict, and the `§6.2` policy-DSL parse.
+    blast radius, the `rewire` verdict, and the `§6.2` policy-DSL parse;
+11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
+    consumes this implementation's reports — the per-language counterpart of this repo's
+    language-agnostic AGENTS.md), and a `PROVE-IT.md` (a runnable self-experiment an adopter's own
+    agent executes on their codebase: manual blast-radius trace committed *before* the tool runs,
+    every claimed miss verified at a file:line, and the honest negative outcome reported — value
+    demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/honesty
+    documentation is already a MUST (items 6–7).
 
 ## 8. Changelog
 
