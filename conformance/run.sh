@@ -70,6 +70,26 @@ print(f"{len(expected)} cases, {fails} mismatch(es)")
 sys.exit(1 if fails else 0)
 PY
 
+# Callgraph COMPLETENESS (SPEC §2.2): every analyzed function — including an uncalled pure LEAF like
+# `pure_fn` — must be a key in the sidecar (empty list when it has no project callees). Omitting leaves
+# made them invisible to whatif/callers and conflated "no callers" with "no such function".
+RUST_CG="${RUST_REPORT%.json}.callgraph.json"
+JAVA_CG="${W}/java.callgraph.json"
+python3 - "$HERE/expected.json" "$RUST_CG" "$JAVA_CG" <<'PY' || rc=1
+import json, sys
+cases = {k for k in json.load(open(sys.argv[1])) if not k.startswith("_")}
+def keys_by_leaf(p, sep):
+    return {k.split(sep)[-1] for k in json.load(open(p))}
+r, j = keys_by_leaf(sys.argv[2], "::"), keys_by_leaf(sys.argv[3], ".")
+miss_r, miss_j = sorted(cases - r), sorted(cases - j)
+print(f"\n[1b] CALLGRAPH completeness (SPEC §2.2 — every fn a key, incl. uncalled pure leaves)")
+print(f"  candor-scan: {'all ' + str(len(cases)) + ' cases present' if not miss_r else 'MISSING ' + str(miss_r)}")
+print(f"  candor-java: {'all ' + str(len(cases)) + ' cases present' if not miss_j else 'MISSING ' + str(miss_j)}")
+ok = not miss_r and not miss_j
+print("  -> " + ("MATCH — both sidecars are complete" if ok else "INCOMPLETE"))
+sys.exit(0 if ok else 1)
+PY
+
 # ====================================================================================================
 # PART 2 — policy-verdict differential: the same `deny Net api` policy, the same `whatif`, same verdict?
 # This is the moat a per-language ruleset can't offer: the ENFORCEMENT means the same thing in each engine.
