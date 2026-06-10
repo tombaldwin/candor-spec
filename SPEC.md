@@ -234,7 +234,11 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
 These are an interface convenience, **not** part of the wire contract — a consumer that only reads the JSON
 report is fully conformant. An implementation SHOULD keep query **names and output shapes consistent across
 languages**, so an agent uses a report from any language identically; the cross-language conformance suite
-verifies this.
+verifies this. **Name-query matching SHOULD follow the same ladder in every language**: exact match, else
+segment-suffix (the query sits after a path-separator boundary — `Pricing::quote` or bare `quote` matches
+`pricing::Pricing::quote`, never `quote_bulk`), else substring — resolved at the best tier any candidate
+reaches. Substring-widening a precise query silently inflates a blast radius (a measured red-team caught
+`whatif` seeding from a name-cousin), so the more precise tier always wins.
 
 When a query emits JSON, it SHOULD use these shapes (the field a consumer parses is the same in every
 language; only the function-name *value* is language-natural — `a::b` vs `a.b`):

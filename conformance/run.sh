@@ -200,6 +200,10 @@ java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.jso
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
 java -jar "$JAR" map     "$W/java.json" --json                 > "$W/j_map.json"     2>/dev/null
 java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json"    2>/dev/null
+"$QUERY" show "$RUST_PREFIX" act 1  > "$W/r_ladder_act.json"  2>/dev/null
+"$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
+java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
+java -jar "$JAR" show "$W/java.json" nion --json > "$W/j_ladder_nion.json" 2>/dev/null
 
 python3 - "$W" <<'PY' || rc=1
 import json, sys
@@ -230,6 +234,14 @@ check("map", bool(rm) and bool(jm) and all(set(v) == mk for v in rm.values())
 rd, jd = load("diff", "r"), load("diff", "j")
 check("diff", isinstance(rd, dict) and isinstance(jd, dict)
               and rd.get("changes") == [] and jd.get("changes") == [])
+# match LADDER (SPEC §3.1): a segment-suffix query resolves to exactly the suffix match in both
+# engines (`act` -> only Svc.act), while a substring-only query still browses (`nion` -> union_a/b/c).
+rs1, js1 = load("ladder_act", "r"), load("ladder_act", "j")
+check("ladder:suffix", len(rs1) == 1 and len(js1) == 1
+                       and rs1[0]["fn"].split("::")[-1] == "act" and js1[0]["fn"].split(".")[-1] == "act")
+rs2, js2 = load("ladder_nion", "r"), load("ladder_nion", "j")
+names_r = {e["fn"].split("::")[-1] for e in rs2}; names_j = {e["fn"].split(".")[-1] for e in js2}
+check("ladder:substr", names_r == {"union_a", "union_b", "union_c"} and names_j == names_r)
 print("  -> " + ("MATCH — the agent-facing query shapes are identical in both engines"
                  if ok else "DIVERGE — a query's JSON shape differs between engines"))
 sys.exit(0 if ok else 1)
