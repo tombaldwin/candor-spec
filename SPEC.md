@@ -478,7 +478,13 @@ It SHOULD additionally:
     agent executes on their codebase: manual blast-radius trace committed *before* the tool runs,
     every claimed miss verified at a file:line, and the honest negative outcome reported — value
     demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/honesty
-    documentation is already a MUST (items 6–7).
+    documentation is already a MUST (items 6–7);
+12. **use candor on itself.** An implementation MUST analyze its own codebase cleanly (no crash, a
+    plausible report — self-analysis is the free real-world test), and SHOULD run a **self-gate** in
+    CI: a declared `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g.
+    both reference engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc").
+    The self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
+    is red — or absent — is asking adopters to hold a standard it does not hold itself.
 
 ## 8. Changelog
 
