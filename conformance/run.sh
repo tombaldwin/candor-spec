@@ -194,10 +194,12 @@ RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
 "$QUERY" where   "$RUST_PREFIX" Fs 1              > "$W/r_where.json"   2>/dev/null
 "$QUERY" callers "$RUST_PREFIX" transitive_leaf 1 > "$W/r_callers.json" 2>/dev/null
 "$QUERY" map     "$RUST_PREFIX" 1                 > "$W/r_map.json"     2>/dev/null
+"$QUERY" diff    "$RUST_PREFIX" "$RUST_PREFIX" 1 v v > "$W/r_diff.json" 2>/dev/null
 java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
 java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
 java -jar "$JAR" map     "$W/java.json" --json                 > "$W/j_map.json"     2>/dev/null
+java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json"    2>/dev/null
 
 python3 - "$W" <<'PY' || rc=1
 import json, sys
@@ -222,6 +224,12 @@ mk = {"effects", "functions"}
 rm, jm = load("map", "r"), load("map", "j")
 check("map", bool(rm) and bool(jm) and all(set(v) == mk for v in rm.values())
                                     and all(set(v) == mk for v in jm.values()))
+# diff: an envelope object with `changes` (a list) in both — diff-vs-self must be empty. The Java
+# engine used to emit a bare array (no envelope), so a consumer's d["changes"] worked on one engine
+# and threw on the other.
+rd, jd = load("diff", "r"), load("diff", "j")
+check("diff", isinstance(rd, dict) and isinstance(jd, dict)
+              and rd.get("changes") == [] and jd.get("changes") == [])
 print("  -> " + ("MATCH — the agent-facing query shapes are identical in both engines"
                  if ok else "DIVERGE — a query's JSON shape differs between engines"))
 sys.exit(0 if ok else 1)

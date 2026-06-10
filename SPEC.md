@@ -237,11 +237,19 @@ show     [ { "fn", "inferred":[…], "direct":[…], "unresolved":bool, "fs"?:[�
 where    { "effect", "directly":[fn…], "inherited":[fn…] }
 callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
 map      { "<module>": { "effects":[…], "functions":int } }
+diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":[…], "lost":[…],
+           "status": "changed"|"new"|"removed" } ], …optional provenance fields }
 ```
 
 `show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved
 them (§2 omission rules apply); the four required fields are always present. `map` buckets by module —
-a function with no module beyond the root goes to `(root)` (§6.1), never its own pseudo-module.
+a function with no module beyond the root goes to `(root)` (§6.1), never its own pseudo-module. In
+`diff`, a gained effect is `introduced` if it is in the function's own `direct` set, else `inherited`
+from a callee (the source vs the blast radius); the envelope MAY carry additional provenance fields
+(e.g. baseline/engine versions), which a consumer must tolerate. A `diff` whose current or baseline
+input names **no report** MUST fail loudly rather than read as an empty report — a typo'd current path
+would otherwise show zero gains (silently passing a gained-effect gate), and a typo'd baseline would
+show every effect as newly gained.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
