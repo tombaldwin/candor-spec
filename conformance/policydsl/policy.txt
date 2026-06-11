@@ -10,11 +10,13 @@ allow Net in billing api.stripe.com hooks.stripe.com
 allow Exec in ci git
 allow Fs in config /etc/app
 allow Net github.com
-allow Db whatever
+allow Clock whatever                  # no literal surface for Clock — dropped (the battery's negative case)
 allow Db in billing ledger.* customers
 forbid domain -> infra
 forbid app::web -> app::db
 forbid bad
+forbid glued->arrow                   # the arrow must be its own token — dropped
+forbid web -> db trailing-tokens-ignored   # tokens past <B> are ignored, rule kept
 nonsense line
 deny Exec  # inline comment: must be stripped, scope stays empty (not "#")
 allow Net in stripe api.stripe.com # trailing comment must not become a host

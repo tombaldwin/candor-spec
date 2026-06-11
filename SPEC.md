@@ -147,11 +147,31 @@ claim; `hosts` only ever *narrows* it with what's provably visible.
 
 `cmds` (for `Exec`), `paths` (for `Fs`) and `tables` (for `Db`) follow the **same rules as `hosts`**:
 the statically-decidable literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal —
-or, for `tables`, the table-position identifiers of a SQL string *literal*: `FROM`/`JOIN`/`INTO`
-anywhere, statement-leading `UPDATE`/`TRUNCATE`, and `TABLE`, never a dynamically-built query),
-informative-not-complete, never emitted unless read from a literal. The extraction must be
-conservative in the fabrication direction: a string that does not open with a SQL statement keyword
-yields nothing, and a mid-statement `UPDATE` (a `FOR UPDATE` locking clause) introduces no table.
+or, for `tables`, the table-position identifiers of a SQL string *literal*, never a dynamically-built
+query), informative-not-complete, never emitted unless read from a literal. A producer MAY also feed
+`tables` from a *declarative* mapping the source makes statically visible — a JPA `@Table(name=…)` /
+TypeORM `@Entity('…')` entity reached through a typed repository — the same decidability bar, read
+from an annotation literal instead of a SQL one.
+
+Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
+extraction is pinned token-for-token; the cross-impl vector battery
+(`conformance/tables/vectors.json`) is its executable form:
+
+1. Lowercase the literal; replace `(` `)` `,` `;` with spaces; split on any whitespace run.
+2. If the first token is not a statement keyword — `select insert update delete create drop alter
+   truncate merge replace with` — the string is not SQL: extract **nothing** (conservative in the
+   fabrication direction).
+3. A token introduces a table position if it is `from`, `join`, `into` or `table` anywhere, or
+   `update`/`truncate` as the statement's FIRST token only (a mid-statement `UPDATE` is a
+   `FOR UPDATE` locking clause and introduces no table).
+4. After the introducer, skip the noise words `only` `if` `not` `exists` `table`.
+5. Trim surrounding quote characters (`"`, backtick, `'`) from the candidate. Reject it unless it
+   begins with `[a-z_]` and consists only of letters, digits, `_`, `.`, `$` and quote characters;
+   reject grammar words in identifier position (`select set where values on using group order by
+   limit returning as inner outer left right cross lateral natural union all distinct case when null
+   default skip nowait of from join into update delete insert`). Remove any interior quote
+   characters and emit in first-occurrence order, deduplicated.
+
 The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a
 producer SHOULD emit them so a dependent crate's allowlist can see a value that lives across the
 crate boundary.
@@ -352,7 +372,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
-| `AS-EFF-008` | (transitively) reaches a literal (host / command / path) outside a declared allowlist, or one it cannot see | policy |
+| `AS-EFF-008` | (transitively) reaches a literal (host / command / path / table) outside a declared allowlist, or one it cannot see | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 | `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
 
@@ -458,8 +478,13 @@ prefixes). An **absent/empty scope means the whole compilation unit** (matches e
 (`api.stripe.com` allows `api.stripe.com:443`); an `Exec` command matches by basename
 (`git` allows `/usr/bin/git`); an `Fs` path matches by **path-boundary-respecting prefix** (an allowed
 directory covers itself and everything beneath it, but `/etc/app` does **not** cover `/etc/apppwned`, and a
-reached path that climbs out via `..` is never covered). Matching is over the **transitive**
-`hosts`/`cmds`/`paths` surface (§2), so a value buried in a deep or cross-crate callee is still checked.
+reached path that climbs out via `..` is never covered); a `Db` table matches by **case-insensitive exact
+qualified name**, with `schema.*` covering every table in that schema (boundary-respecting: `ledger.*`
+does not cover `ledgerx.entries`) and a bare allowed name never silently widening to a qualified one
+(`entries` does not cover `ledger.entries`). Matching is over the **transitive**
+`hosts`/`cmds`/`paths`/`tables` surface (§2), so a value buried in a deep or cross-crate callee is still
+checked. Each matching `allow` rule is checked **independently** (the SEMANTICS predicate quantifies per
+rule): two rules that each cover half of a function's reached literals do not pass by union.
 
 ## 7. Conformance checklist for an implementation
 
@@ -483,7 +508,8 @@ It SHOULD additionally:
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
-    blast radius, the `rewire` verdict, and the `§6.2` policy-DSL parse;
+    blast radius, the `rewire` verdict, the `§6.2` policy-DSL parse, and the read-only queries' JSON
+    shapes + name-match ladder;
 11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
     consumes this implementation's reports — the per-language counterpart of this repo's
     language-agnostic AGENTS.md), and a `PROVE-IT.md` (a runnable self-experiment an adopter's own
@@ -514,11 +540,18 @@ It SHOULD additionally:
       found in the wild. Treat the form list as open, and add a form with every soundness fix.
     - A **precision twin** is recommended: a pure bystander unit that must stay OUT of the report,
       so the harness also catches an engine that goes sound by flooding.
-    - Run it in CI.
-    All four implementations ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
-    candor-agents `fuzz.py` — the last proving the harness ports beyond programming languages).
-    Engines that deliberately do NOT claim §4 (a documented syntactic floor like `candor-scan`)
-    are exempt from the harness but MUST document the weaker promise (item 7).
+    - The harness SHOULD run in CI alongside the engine's tests — an unrun harness proves nothing.
+    All three reference engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`),
+    and the design ports beyond programming languages (the candor-agents exploration runs the same
+    harness shape over agent-fleet effect graphs). Like every SHOULD in this list, the harness is a
+    claim an engine either ships or doesn't make — an engine without one has an *untested* §4, and
+    its docs must not suggest otherwise. The harness applies per **engine**, not per repo, and only
+    to engines that claim §4 at all: a deliberately syntactic floor (the Rust repo's stable
+    `candor-scan` backend) documents that it under-reports *silently* — it does not claim item 4 (or
+    item 1's type-informed resolution), so there is no §4 claim for a harness to test; its
+    obligations are item 7's honesty and the cross-impl conformance fixtures it does answer. In the
+    Rust repo the harness accordingly drives the nightly lint (the engine that claims §4), not
+    `candor-scan`.
 
 ## 8. Changelog
 
@@ -526,6 +559,17 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.3 (amended 2026-06-11)** — additive within 0.3, wire-compatible both ways (a pre-amendment 0.3
+  reader parses a post-amendment report — `tables` is one more OPTIONAL literal-surface field on the
+  exact pattern of `hosts`/`cmds`/`paths` — and the §6.2 grammar accepts every pre-amendment policy
+  unchanged), so the spec string stays **0.3**:
+  - the `tables` field (§2): the `Db` literal surface — SQL table-position identifiers (extraction
+    pinned token-for-token in §2, executable in `conformance/tables/vectors.json`) plus
+    declaratively-routed ORM tables;
+  - `allow Db [in <scope>] <table>…` joins §6.2 (AS-EFF-008's fourth surface; case-insensitive exact
+    match, `schema.*` covering);
+  - §7 item 13: the adversarial soundness harness requirement (documentation of the practice every
+    engine already ships — teeth verified per mechanism, the form list open, a precision twin).
 - **0.3** — additive over 0.2 (wire-compatible; a 0.2 reader still parses a 0.3 report):
   - `AS-EFF-006` (policy `deny`/`pure`), `AS-EFF-007` (heuristic `risk`), `AS-EFF-008` (literal allowlists
     `allow Net`/`Exec`/`Fs`), `AS-EFF-009` (layering `forbid ->`), `AS-EFF-010` (containment ratchet);

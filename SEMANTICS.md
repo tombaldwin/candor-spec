@@ -195,7 +195,7 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
 | **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
 | **AS-EFF-007** | *(heuristic, not a set predicate)* `f` has an effect *site* whose argument syntactically derives from a parameter of `f` | performs an injection-class effect on caller-derived input — advisory |
-| **AS-EFF-008** | `e ∈ I(f)` for the rule's effect `e ∈ {Net, Exec, Fs}` and, for an allowlist rule `r` whose scope matches `f`, `lits_e(f) ⊄ Allow(r)` **or** `lits_e(f) = ∅` | reaches a literal (host / command / path) outside the declared allowlist, or one it cannot see (the literal surface can't be certified) |
+| **AS-EFF-008** | `e ∈ I(f)` for the rule's effect `e ∈ {Net, Exec, Fs, Db}` and, for an allowlist rule `r` whose scope matches `f`, `lits_e(f) ⊄ Allow(r)` **or** `lits_e(f) = ∅` | reaches a literal (host / command / path / table) outside the declared allowlist, or one it cannot see (the literal surface can't be certified) |
 | **AS-EFF-009** | for a layering rule `r = forbid A → B`, `scope_A(f)` and `f` transitively calls some `g` with `scope_B(g)` | a function in layer `A` depends on layer `B`, violating a declared dependency direction |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
@@ -208,19 +208,24 @@ calling a cross-crate `Net` function is still undeclared-flagged by AS-EFF-001 (
 perform `Net`), yet is **not** ambient-flagged by AS-EFF-004 (it never reached for the network
 itself — its callee did). Conflating `D` and `Inh` would break exactly this distinction.
 
-**AS-EFF-008 reads a *literal surface* `lits_e(f)`**, not the effect lattice. Three effects carry one:
-`Net` hosts (`host[:port]`), `Exec` commands (the program name), and `Fs` paths. Each is the *transitive*
+**AS-EFF-008 reads a *literal surface* `lits_e(f)`**, not the effect lattice. Four effects carry one:
+`Net` hosts (`host[:port]`), `Exec` commands (the program name), `Fs` paths, and `Db` tables (the
+table-position identifiers of SQL string literals, plus declaratively-routed tables an ORM mapping
+makes visible). Each is the *transitive*
 propagated union of the literals statically visible in `f` and its callees, across crate boundaries when
 a sibling report carries them. An allowlist rule `r = allow e [in <scope>] <v₁…vₙ>` is satisfied at `f`
 iff `f` does no `e`, or every literal in `lits_e(f)` is allowed under an **effect-specific** match: hosts
 by hostname (ports ignored), commands by basename (`/usr/bin/git` ≡ `git`), paths by prefix (an allowed
-directory covers everything beneath it). Two failure modes: a *visible* violation (`lits_e(f)` contains a
+directory covers everything beneath it), tables by case-insensitive **exact qualified name** with one
+wildcard form — `schema.*` covers every table in that schema (boundary-respecting: `ledger.*` does not
+cover `ledgerx.entries`), and a bare allowed name never silently widens to cover a qualified one
+(`entries` does not cover `ledger.entries`). Two failure modes: a *visible* violation (`lits_e(f)` contains a
 non-allowed value) and an *opaque* one (`e ∈ I(f)` but `lits_e(f) = ∅` — the value is computed at runtime,
 so the surface can't be certified). By design AS-EFF-008 certifies only the **visible** surface: a
 function that reaches an allowed value while *also* holding `Unknown ∈ I(f)` is **not** flagged (that
 residual is AS-EFF-003/006's concern) — because the literal detail is informative-not-complete (SPEC, the
-`hosts`/`cmds`/`paths` fields), folding `Unknown` in would flag essentially every real effectful function
-and make the allowlist useless.
+`hosts`/`cmds`/`paths`/`tables` fields), folding `Unknown` in would flag essentially every real effectful
+function and make the allowlist useless.
 
 **AS-EFF-009 reads the call graph, not the effect lattice.** A layering rule `forbid A → B` is the
 *dependency-direction* boundary (who a layer may depend on), complementing the effect rules (what a

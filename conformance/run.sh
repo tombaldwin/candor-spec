@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Cross-impl conformance differential. Runs BOTH candor implementations on equivalent fixtures and asserts
-# they agree — first on the EFFECT SETS they infer, then on the POLICY VERDICT they reach. The two
-# independent engines (Rust syntactic scan + JVM bytecode) sharing one spec is candor's defining moat over
+# Cross-impl conformance differential. Runs the candor implementations (Rust + JVM, and the TS engine
+# when present) on equivalent fixtures and asserts they agree — first on the EFFECT SETS they infer,
+# then on the POLICY VERDICT they reach. Independent engines (Rust syntactic scan + JVM bytecode +
+# TS AST) sharing one spec is candor's defining moat over
 # a per-language ruleset (CodeQL/Semgrep/ArchUnit): not just "we have rules for both languages", but a
 # MACHINE-CHECKED guarantee that the same effect contract AND the same `deny`/`pure` gate mean the same
 # thing in each. A DIVERGE row is a bug in one engine.
@@ -38,12 +39,16 @@ fi
 
 # The optional THIRD engine (candor-ts). When present, it joins the grammar (4), query-shape (5) and
 # effect-set (6) differentials; when absent those parts run two-way / Part 6 skips loudly.
+# TS_PRESENT (the checkout exists) is deliberately distinct from TS_OK (the scan produced a report):
+# a present-but-broken engine must FAIL the suite, never read as "not present — SKIPPED".
 TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
+TS_PRESENT=""
 TS_OK=""
 if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
-  ( cd "$TS_DIR" && [ -d node_modules ] || npm install --no-fund --no-audit >/dev/null 2>&1 )
+  TS_PRESENT=1
+  ( cd "$TS_DIR" && { [ -d node_modules ] || npm install --no-fund --no-audit >/dev/null 2>&1; } )
   ( cd "$TS_DIR" && node scan.mjs Cases.ts "$W/ts" 2>/dev/null )
-  [ -f "$W/ts.json" ] && TS_OK=1
+  [ -s "$W/ts.json" ] && TS_OK=1
 fi
 
 rc=0
@@ -167,10 +172,13 @@ PY
 # A per-language ruleset has no shared grammar to diff; candor's single policy file MUST parse alike.
 # ====================================================================================================
 POL_BATTERY="$HERE/policydsl/policy.txt"
-"$QUERY" parsepolicy "$POL_BATTERY" > "$W/rust_pol.json" 2>/dev/null
-java -jar "$JAR" parsepolicy "$POL_BATTERY" > "$W/java_pol.json" 2>/dev/null
-if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
-  node "$TS_DIR/query.mjs" parsepolicy "$POL_BATTERY" > "$W/ts_pol.json" 2>/dev/null
+"$QUERY" parsepolicy "$POL_BATTERY" > "$W/rust_pol.json" 2>/dev/null \
+  || { echo "FAIL: candor-query parsepolicy errored on the battery"; exit 2; }
+java -jar "$JAR" parsepolicy "$POL_BATTERY" > "$W/java_pol.json" 2>/dev/null \
+  || { echo "FAIL: candor-java parsepolicy errored on the battery"; exit 2; }
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/query.mjs" ]; then
+  node "$TS_DIR/query.mjs" parsepolicy "$POL_BATTERY" > "$W/ts_pol.json" 2>/dev/null \
+    || { echo "FAIL: candor-ts parsepolicy errored on the battery"; exit 2; }
 fi
 
 python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" <<'PY' || rc=1
@@ -194,11 +202,73 @@ print("  -> " + (f"MATCH — {n} engines parse the deny/pure/allow/forbid gramma
                  if match else "DIVERGE — the engines parse the policy DSL differently"))
 if not match:
     for name, idx in (("deny", 0), ("allow", 1), ("forbid", 2)):
-        sets = {"rust": r[idx], "java": j[idx]} | ({"ts": t[idx]} if t is not None else {})
+        sets = {"rust": r[idx], "java": j[idx]}
+        if t is not None: sets["ts"] = t[idx]
         if len({repr(v) for v in sets.values()}) > 1:
             for eng, v in sets.items():
                 print(f"     {name} {eng}={v}")
 sys.exit(0 if match else 1)
+PY
+
+# ====================================================================================================
+# PART 4b — tables-extraction differential: SPEC §2 pins the SQL `tables` extraction token-for-token;
+# tables/vectors.json is its executable form. Each vector is embedded as a string literal in a
+# per-language Db-effect fixture and the three reports' `tables` fields must match the expectation —
+# two engines extracting different tables from the same SQL would split the AS-EFF-008 verdict.
+# (The TS fixture ships a stub `pg` package so the import resolves hermetically — no npm install.)
+# ====================================================================================================
+TABVEC="$HERE/tables/vectors.json"
+python3 - "$TABVEC" "$W" <<'PY'
+import json, os, sys
+V = json.load(open(sys.argv[1]))["vectors"]
+W = sys.argv[2]
+lit = json.dumps  # a JSON string literal is a valid Java/Rust/TS double-quoted literal for this charset
+os.makedirs(f"{W}/tab/rust/src", exist_ok=True)
+open(f"{W}/tab/rust/Cargo.toml", "w").write('[package]\nname = "tabvec"\nversion = "0.0.0"\nedition = "2021"\n')
+open(f"{W}/tab/rust/src/lib.rs", "w").write("".join(
+    f'pub fn {v["name"]}() {{ let _ = rusqlite::Connection::execute({lit(v["sql"])}); }}\n' for v in V))
+os.makedirs(f"{W}/tab/java/q", exist_ok=True)
+open(f"{W}/tab/java/q/V.java", "w").write("package q;\npublic class V {\n" + "".join(
+    f'    static void {v["name"]}(java.sql.Connection c) throws Exception {{ c.prepareStatement({lit(v["sql"])}).executeQuery(); }}\n'
+    for v in V) + "}\n")
+os.makedirs(f"{W}/tab/ts/node_modules/pg", exist_ok=True)
+open(f"{W}/tab/ts/node_modules/pg/package.json", "w").write('{"name":"pg","version":"0.0.0","main":"index.js","types":"index.d.ts"}\n')
+open(f"{W}/tab/ts/node_modules/pg/index.d.ts", "w").write("export declare class Pool { query(sql: string): Promise<any>; }\n")
+open(f"{W}/tab/ts/node_modules/pg/index.js", "w").write("module.exports = { Pool: class Pool { query() {} } };\n")
+open(f"{W}/tab/ts/cases.ts", "w").write('import { Pool } from "pg";\nconst pool = new Pool();\n' + "".join(
+    f'export function {v["name"]}() {{ return pool.query({lit(v["sql"])}); }}\n' for v in V))
+PY
+"$SCAN" "$W/tab/rust" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the tables-vector fixture"; exit 2; }
+TAB_RUST="$(ls "$W"/tab/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+javac -d "$W/tab/jout" "$W/tab/java/q/V.java" 2>/dev/null || { echo "FAIL: javac on the tables-vector fixture"; exit 2; }
+java -jar "$JAR" "$W/tab/jout" --json "$W/tab/java.json" >/dev/null 2>&1 \
+  || { echo "FAIL: candor-java errored on the tables-vector fixture"; exit 2; }
+if [ -n "$TS_PRESENT" ]; then
+  node "$TS_DIR/scan.mjs" "$W/tab/ts/cases.ts" "$W/tab/ts_out" >/dev/null 2>&1
+  [ -s "$W/tab/ts_out.json" ] || { echo "FAIL: candor-ts errored on the tables-vector fixture"; exit 2; }
+fi
+python3 - "$TABVEC" "$TAB_RUST" "$W/tab/java.json" "$W/tab/ts_out.json" <<'PY' || rc=1
+import json, os, sys
+V = json.load(open(sys.argv[1]))["vectors"]
+def by_leaf(path, sep):
+    d = json.load(open(path))
+    return {e["fn"].split(sep)[-1]: sorted(e.get("tables", [])) for e in d["functions"]}
+rust, java = by_leaf(sys.argv[2], "::"), by_leaf(sys.argv[3], ".")
+ts = by_leaf(sys.argv[4], ".") if os.path.exists(sys.argv[4]) else None
+print("\n[4b] TABLES-EXTRACTION differential  (SPEC §2 — the same SQL must yield the same `tables` in every engine)")
+fails = 0
+for v in V:
+    exp = sorted(v["tables"])
+    got = {"rust": rust.get(v["name"], []), "java": java.get(v["name"], [])}
+    if ts is not None: got["ts"] = ts.get(v["name"], [])
+    bad = {k: g for k, g in got.items() if g != exp}
+    if bad:
+        fails += 1
+        print(f"  DIVERGE {v['name']}: expected {exp}, " + ", ".join(f"{k}={g}" for k, g in bad.items()))
+n = "two engines" if ts is None else "all three engines"
+print(f"  -> " + (f"MATCH — {len(V)} vectors, {n} extract identical tables" if not fails
+                  else f"{fails} vector(s) diverge"))
+sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
@@ -237,6 +307,15 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ show    "$W/ts" Svc.act 1         > "$W/t_ladder_svc.json"  2>/dev/null
   TSQ diff    "$W/ts" "$W/ts" 1         > "$W/t_diff.json"       2>/dev/null
 fi
+
+# A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
+# JSONDecodeError — name the engine and query instead, before the python ever runs.
+P5_FILES="r_show r_where r_callers r_map r_diff r_ladder_act r_ladder_nion r_ladder_svc \
+          j_show j_where j_callers j_map j_diff j_ladder_act j_ladder_nion j_ladder_svc"
+[ -n "$TS_OK" ] && P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_ladder_act t_ladder_nion t_ladder_svc"
+for f in $P5_FILES; do
+  [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
+done
 
 python3 - "$W" <<'PY' || rc=1
 import json, os, sys
@@ -305,8 +384,8 @@ PY
 # Optional: skips (loudly) when the engine or node isn't available, so the suite never blocks on it.
 # Locally, a sibling ../candor-ts checkout is used; in CI the workflow checks it out.
 # ====================================================================================================
-if [ -n "$TS_OK" ]; then
-  if [ -f "$W/ts.json" ]; then
+if [ -n "$TS_PRESENT" ]; then
+  if [ -n "$TS_OK" ]; then
     python3 - "$HERE/expected.json" "$W/ts.json" <<'PY' || rc=1
 import json, sys
 expected = {k: set(v) for k, v in json.load(open(sys.argv[1])).items() if not k.startswith("_")}
@@ -322,7 +401,7 @@ for c, exp in expected.items():
 sys.exit(1 if fails else 0)
 PY
   else
-    echo; echo "[6] THIRD ENGINE (candor-ts): scan produced no report — FAIL"; rc=1
+    echo; echo "[6] THIRD ENGINE (candor-ts): PRESENT at $TS_DIR but its scan produced no report — FAIL"; rc=1
   fi
 else
   echo; echo "[6] THIRD ENGINE (candor-ts): not present (set CANDOR_TS or clone ../candor-ts) — SKIPPED"
@@ -330,6 +409,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + query shapes agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + query shapes agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

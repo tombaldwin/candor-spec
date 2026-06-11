@@ -1,9 +1,10 @@
 name: conformance
 
-# Cross-impl differential: builds BOTH engines from their main branches and asserts they infer the
-# spec-mandated effect set on the shared fixtures (conformance/run.sh). A DIVERGE row = a bug in one
-# engine; a BOTH-OFF row = both disagree with the spec. Runs on every change to candor-spec, and can be
-# dispatched manually after a classifier change lands in either engine.
+# Cross-impl differential: builds all THREE engines (Rust, JVM, TS) from their main branches and
+# asserts they infer the spec-mandated effect set on the shared fixtures (conformance/run.sh).
+# A DIVERGE row = a bug in one engine; a BOTH-OFF row = the engines agree but disagree with the spec.
+# Runs on every change to candor-spec, and can be dispatched manually after a classifier change lands
+# in any engine.
 on:
   push:
     branches: [main]
@@ -34,8 +35,13 @@ jobs:
       # candor-scan is the STABLE backend — no nightly needed (run.sh builds it with `-p candor-scan`,
       # which never touches the rustc_private lint crate).
       - uses: dtolnay/rust-toolchain@stable
-      - name: Clone candor-ts (third engine)
-        run: git clone --depth 1 https://github.com/tombaldwin/candor-ts candor-ts || echo "candor-ts unavailable — Part 6 will skip"
+      # Fatal like the other two checkouts — a missing third engine must fail the run, not silently
+      # demote the suite to a two-way differential (Parts 4/5 degrade and Part 6 skips).
+      - name: Checkout candor-ts (TS engine)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-ts
+          path: candor-ts
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4

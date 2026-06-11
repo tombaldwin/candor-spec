@@ -34,10 +34,14 @@ Effects: `Net`, `Fs`, `Db`, `Exec` (subprocess), `Env`, `Clock`, `Ipc`, `Log`, `
   of transitive callers by hand is exactly what's easy to under-count; let candor list them.
 - **Find functions with a given effect** → filter on `inferred` (or query `where <Effect>`).
 - **Safe to treat as pure** (e.g. test without mocks) → the function appears in the **call-graph
-  sidecar** (every function does, SPEC §2.2) but is **absent from the report** — reports list only
-  effectful or unresolved functions, so a pure function has no report entry to inspect. (An entry
-  with `inferred == []` and `unresolved == false` would mean the same, but engines normally elide
-  it.) A function in *neither* file was never seen — conclude nothing about it.
+  sidecar** (every *analyzed* function does, SPEC §2.2) but is **absent from the report** — reports
+  list only effectful or unresolved functions, so a pure function has no report entry to inspect.
+  (An entry with `inferred == []` and `unresolved == false` would mean the same, but engines normally
+  elide it.) Two preconditions before trusting this: the sidecar is **OPTIONAL** (SPEC §2.2) — with
+  no sidecar present, absence-from-the-report alone distinguishes nothing and certifies nothing — and
+  the producer must claim the §4 trust contract (a documented syntactic *floor* engine misses calls
+  silently, so its absences are not purity evidence; check the producing engine's own docs). A
+  function in *neither* file was never seen — conclude nothing about it.
 - **Scope a cross-cutting change** (e.g. "wrap every network call") → filter `inferred`/`direct`
   instead of reading the whole codebase.
 - **Enforce a boundary in CI** → a policy gate (`deny`/`allow`/`forbid`) fails the build when an edit
