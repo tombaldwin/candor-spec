@@ -1,5 +1,7 @@
 # candor
 
+<p align="center"><img src="https://raw.githubusercontent.com/tombaldwin/candor/main/assets/beaky.svg" alt="Beaky, the candor canary" width="180"></p>
+
 **Make what code *does* legible — to humans, and especially to AI agents.** candor is a family of
 per-language tools that report, for every function, which side effects it performs — network,
 filesystem, database, subprocess, env, clock, IPC, logging, randomness, clipboard — *transitively*,
