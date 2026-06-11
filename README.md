@@ -9,6 +9,9 @@ This repo is the **language-agnostic specification**: the shared effect vocabula
 diagnostic codes, modes, and agent contract that every implementation conforms to. The *design*
 ports across languages; each implementation's *engine* is bespoke to its toolchain.
 
+**Site:** [candor.poly.io](https://candor.poly.io) — the measured case in five minutes: the
+exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
+
 ## Implementations
 
 | Language | Repo | Engine | Status |
