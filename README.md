@@ -18,8 +18,9 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Rust | [candor](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) | **shipped** — reference implementation |
-| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **prototype** — full mode set; Spring-aware |
+| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped** — reference implementation (`cargo install candor-scan`) |
+| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **alpha (v0.3.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **proof slice** — derived from this spec's text alone; 20/20 on the shared oracle, live in the conformance CI |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
@@ -34,9 +35,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
   precision lessons learned the hard way.
-- **[conformance/](conformance/)** — an *executable* differential: the same fixtures in Rust and Java,
-  asserting both engines infer the spec-mandated effect set (`bash conformance/run.sh`). Conformance and
-  cross-impl agreement in one run.
+- **[conformance/](conformance/)** — an *executable* differential: the same fixtures across the
+  engines (Rust + JVM, plus candor-ts as the from-spec-alone third engine), asserting they all infer
+  the spec-mandated effect set, agree on the policy verdict, the query shapes, and the §6.2 grammar
+  (`bash conformance/run.sh`). Conformance and cross-impl agreement in one run.
 
 ## Why per-language tools sharing one spec
 
