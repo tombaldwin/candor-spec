@@ -107,8 +107,11 @@ Each entry:
                                          // address is runtime-computed (see below); never complete.
   "cmds":         ["git"],               // OPTIONAL: when `Exec` is present, the LITERAL subprocess
                                          // commands statically visible. Same rules as `hosts`.
-  "paths":        ["/etc/app"]           // OPTIONAL: when `Fs` is present, the LITERAL filesystem
+  "paths":        ["/etc/app"],          // OPTIONAL: when `Fs` is present, the LITERAL filesystem
                                          // paths statically visible. Same rules as `hosts`.
+  "tables":       ["ledger.entries"]     // OPTIONAL: when `Db` is present, the LITERAL database
+                                         // tables statically visible (table-position identifiers
+                                         // in a SQL string literal). Same rules as `hosts`.
 }
 ```
 
@@ -142,11 +145,16 @@ NOT emit a host it merely inferred (only ones it read from a literal), so a pres
 sound. This keeps it within the §4 trust contract: `Net` already carries the "performs network I/O"
 claim; `hosts` only ever *narrows* it with what's provably visible.
 
-`cmds` (for `Exec`) and `paths` (for `Fs`) follow the **same rules as `hosts`**: the statically-decidable
-literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal, never a runtime value),
-informative-not-complete, never emitted unless read from a literal. The three together are the literal
-surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a producer SHOULD emit them so a
-dependent crate's allowlist can see a value that lives across the crate boundary.
+`cmds` (for `Exec`), `paths` (for `Fs`) and `tables` (for `Db`) follow the **same rules as `hosts`**:
+the statically-decidable literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal —
+or, for `tables`, the table-position identifiers of a SQL string *literal*: `FROM`/`JOIN`/`INTO`
+anywhere, statement-leading `UPDATE`/`TRUNCATE`, and `TABLE`, never a dynamically-built query),
+informative-not-complete, never emitted unless read from a literal. The extraction must be
+conservative in the fabrication direction: a string that does not open with a SQL statement keyword
+yields nothing, and a mid-statement `UPDATE` (a `FOR UPDATE` locking clause) introduces no table.
+The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a
+producer SHOULD emit them so a dependent crate's allowlist can see a value that lives across the
+crate boundary.
 
 ### 2.1 Provenance (the `candor` header)
 
@@ -352,10 +360,11 @@ The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitim
 whole capability bundle.
 
 A **literal-allowlist** policy rule, `allow <Effect> [in <scope>] <value>...`, constrains *which* values a
-scope's effect may reach (AS-EFF-008). Three effects carry a literal surface: `Net` hosts, `Exec`
-commands, and `Fs` paths — checked against the transitive `hosts`/`cmds`/`paths` detail, so it catches a
-value that lives in a deep or cross-crate callee, matched per-effect (host by name, command by basename,
-path by prefix). It certifies the *visible* surface only (see SEMANTICS §6); pair it with a
+scope's effect may reach (AS-EFF-008). Four effects carry a literal surface: `Net` hosts, `Exec`
+commands, `Fs` paths, and `Db` tables — checked against the transitive `hosts`/`cmds`/`paths`/`tables`
+detail, so it catches a value that lives in a deep or cross-crate callee, matched per-effect (host by
+name, command by basename, path by prefix, table by case-insensitive qualified name with `schema.*`
+covering a schema — an allowed unqualified name does NOT cover a qualified one). It certifies the *visible* surface only (see SEMANTICS §6); pair it with a
 `deny Unknown <scope>` rule to also forbid the unverifiable case in a scope.
 
 A **layering** policy rule, `forbid <A> -> <B>`, constrains *who* a layer may depend on: no function in
@@ -430,9 +439,9 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
   AS-EFF-008's companion).
 - **`pure`** — an empty forbidden set, meaning **every** effect; the optional next token is the scope.
   `pure parse` ≡ "functions in `parse` must be effect-free."
-- **`allow`** — the effect MUST be one of the three that carry a literal surface (`Net`, `Exec`, `Fs`); an
-  `allow` for any other effect is dropped with a warning. An optional `in <scope>` follows; the remaining
-  tokens are the allowed values (≥1 required, else the rule is dropped).
+- **`allow`** — the effect MUST be one of the four that carry a literal surface (`Net`, `Exec`, `Fs`,
+  `Db`); an `allow` for any other effect is dropped with a warning. An optional `in <scope>` follows; the
+  remaining tokens are the allowed values (≥1 required, else the rule is dropped).
 - **`forbid`** — two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
 

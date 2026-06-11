@@ -11,6 +11,7 @@ allow Exec in ci git
 allow Fs in config /etc/app
 allow Net github.com
 allow Db whatever
+allow Db in billing ledger.* customers
 forbid domain -> infra
 forbid app::web -> app::db
 forbid bad
