@@ -125,6 +125,28 @@ emit it to satisfy the transitivity rule above — otherwise every cross-crate c
 and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
 `hash`; a producer of multi-crate reports may not omit it.
 
+**Report chaining** (the `CANDOR_DEPS` convention, implemented by all three reference engines): a
+scan accepts *sibling reports* — previously-produced reports for the scanned code's dependencies —
+and an unresolved/unclassified call into a package one of them covers inherits that function's
+recorded transitive effects AND its literal surfaces (`hosts`/`cmds`/`paths`/`tables`). Three rules
+make the chain trustworthy:
+
+1. **Joins never guess.** The `hash` key must identify the target the way the *consumer's* view of
+   the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference —
+   per-language, but derivable from both sides). An ambiguous key (two dep functions sharing it) is
+   dropped, not picked from — the same under-report-don't-fabricate rule as call resolution.
+2. **Stale reports are not trusted** (§2.1): a sibling report produced by a different engine
+   version contributes `Unknown` for its matched functions, never its recorded effects.
+3. **A chained package is COVERED, not blind — including its silence.** Reports omit pure
+   functions, so a call that joins *no* entry in a loaded sibling report is that report's honest
+   purity claim (modulo the producer's own §4 standing). A coverage disclosure (item 14, §7) must
+   therefore treat every package a loaded report covers as accounted for, even with zero joins —
+   an all-pure dependency's *empty* report is a claim, not a blind spot.
+
+Chaining is what shrinks the curated classifier's job to the **builtin/FFI frontier**: a
+dependency's effects derive from *its own* calls into the platform, so one dep scan replaces a
+hand-curated classifier entry, transitively.
+
 `fs` refines the `Fs` effect into `read` / `write` kinds — the detail a consumer needs to tell a
 read-only function from one that mutates the disk. It applies only when `inferred` contains `Fs`. An
 implementation that resolves the kind SHOULD emit it; one that can't (or doesn't track it) MAY omit
@@ -332,6 +354,18 @@ actually determine that.** A call it cannot resolve to a concrete target — dyn
 unknown type, a function value / callback, reflection — MUST contribute `Unknown` to that function's
 effect set and set `unresolved: true`. It must not be silently assumed pure.
 
+**Dispatch over a local abstraction — the bounded-CHA discipline** (all three reference engines): a
+call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
+TS interface, a JVM interface/supertype) SHOULD resolve to the **visible local implementors'**
+methods when the dispatch is *narrow* — at most **12** implementors, the shared bound, so the
+verdicts agree across engines — and MUST otherwise read `Unknown`: a local abstraction with no
+visible implementor, too many, or an ambiguous name is honest indeterminacy, never silent purity.
+Resolving to local implementors is an over-approximation in the CHA sense (any of them *could* be
+the target) and an under-approximation across the open world (a downstream implementor is
+invisible) — both are the accepted trade everywhere else in this contract. Dispatch through an
+EXTERNAL abstraction an engine does not model (a stdlib iterator protocol, a serialization trait)
+MAY remain unflagged, but then MUST be documented as a named miss (item 7, §7).
+
 For a consumer, this means:
 
 - `inferred` is **authoritative** for what the implementation resolved.
@@ -514,8 +548,8 @@ It SHOULD additionally:
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
-    blast radius, the `rewire` verdict, the `§6.2` policy-DSL parse, and the read-only queries' JSON
-    shapes + name-match ladder;
+    blast radius, the `rewire` verdict, the `§6.2` policy-DSL parse, the §2 tables extraction, the
+    item-14 κ-ledger disclosure, and the read-only queries' JSON shapes + name-match ladder;
 11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
     consumes this implementation's reports — the per-language counterpart of this repo's
     language-agnostic AGENTS.md), and a `PROVE-IT.md` (a runnable self-experiment an adopter's own
@@ -558,6 +592,21 @@ It SHOULD additionally:
     obligations are item 7's honesty and the cross-impl conformance fixtures it does answer. In the
     Rust repo the harness accordingly drives the nightly lint (the engine that claims §4), not
     `candor-scan`.
+14. **disclose the curated classifier's blind spots per scan — the κ-coverage ledger.** Every
+    candor engine classifies external calls against a curated table, and an UNLISTED package
+    contributes nothing: invisible, not `Unknown` — the documented weaker edge of item 4's promise,
+    and historically its sharpest (an unlisted password-hashing library read silently pure on
+    exactly the call a security review cared about). A conforming engine SHOULD therefore emit,
+    with each scan, the external packages the scanned code **demonstrably calls** that the
+    classifier neither classifies nor has reviewed-pure, named with call counts — per-scan
+    evidence in the receipt, not a documentation footnote. Exempt from the disclosure: the
+    platform/builtin frontier (the classifier's actual job), packages the classifier covers
+    verb-precisely (zero classifications can mean the code touches only their pure surface),
+    and packages a chained sibling report covers (§2 — including an EMPTY report, whose silence
+    is a purity claim). The ledger plus chaining (§2) is the curation treadmill's exit: the
+    disclosure names what is invisible, one dependency scan closes it, and the curated table's
+    long-term obligation shrinks to the builtin/FFI frontier. The cross-impl conformance suite
+    pins the disclosure's behavior in all three engines.
 
 ## 8. Changelog
 
@@ -565,6 +614,16 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.3 (second amendment, 2026-06-11)** — additive within 0.3, no wire change (no new report
+  fields; `hash` was already §2):
+  - §2 **report chaining** made normative: the CANDOR_DEPS convention, the never-guess join rule,
+    stale-report distrust (restating §2.1), and the chained-coverage rule (an empty report is a
+    purity claim);
+  - §4 the **bounded-CHA discipline** for dispatch over local abstractions (resolve ≤12 local
+    implementors, the shared bound; otherwise honest `Unknown`; external-abstraction misses must be
+    documented);
+  - §7 item 14: the **κ-coverage ledger** (disclose unlisted-but-called packages per scan), pinned
+    by conformance Part 4c.
 - **0.3 (amended 2026-06-11)** — additive within 0.3, wire-compatible both ways (a pre-amendment 0.3
   reader parses a post-amendment report — `tables` is one more OPTIONAL literal-surface field on the
   exact pattern of `hosts`/`cmds`/`paths` — and the §6.2 grammar accepts every pre-amendment policy

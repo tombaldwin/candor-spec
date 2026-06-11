@@ -272,6 +272,75 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
+# PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted
+# external package the scanned code demonstrably calls ("κ doesn't know …"), and must NOT name the
+# platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
+# what's pinned is the disclosure behavior, not the string values.
+# ====================================================================================================
+mkdir -p "$W/led/rust/src" "$W/led/java/dep/com/mystery" "$W/led/java/src/org/app" "$W/led/ts/node_modules/mystery-pkg"
+cat > "$W/led/rust/Cargo.toml" <<'EOF'
+[package]
+name = "ledfix"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+mystery_pkg = "1.0"
+EOF
+cat > "$W/led/rust/src/lib.rs" <<'EOF'
+pub fn go() { let _ = std::fs::read("/tmp/x"); let _ = mystery_pkg::do_thing("x"); }
+EOF
+LED_RUST=$("$SCAN" "$W/led/rust" 2>&1)
+cat > "$W/led/java/dep/com/mystery/Util.java" <<'EOF'
+package com.mystery;
+public class Util { public static String go(String s) { return s; } }
+EOF
+cat > "$W/led/java/src/org/app/Main.java" <<'EOF'
+package org.app;
+public class Main {
+    public static void run() throws Exception {
+        java.nio.file.Files.readString(java.nio.file.Path.of("/tmp/x"));
+        com.mystery.Util.go("x");
+    }
+}
+EOF
+javac -d "$W/led/java/depcls" "$W/led/java/dep/com/mystery/Util.java" 2>/dev/null
+javac -cp "$W/led/java/depcls" -d "$W/led/java/app" "$W/led/java/src/org/app/Main.java" 2>/dev/null
+LED_JAVA=$(java -jar "$JAR" "$W/led/java/app" 2>&1)
+LED_TS=""
+if [ -n "$TS_PRESENT" ]; then
+  printf '{"name":"mystery-pkg","version":"0.0.0","main":"index.js","types":"index.d.ts"}\n' > "$W/led/ts/node_modules/mystery-pkg/package.json"
+  printf 'export declare function doThing(s: string): string;\n' > "$W/led/ts/node_modules/mystery-pkg/index.d.ts"
+  printf 'module.exports.doThing = (s) => s;\n' > "$W/led/ts/node_modules/mystery-pkg/index.js"
+  cat > "$W/led/ts/cases.ts" <<'EOF'
+import { doThing } from "mystery-pkg";
+import * as fsm from "node:fs";
+export function go(): string { fsm.readFileSync("/tmp/x"); return doThing("x"); }
+EOF
+  LED_TS=$(node "$TS_DIR/scan.mjs" "$W/led/ts/cases.ts" "$W/led/ledts" 2>&1)
+fi
+python3 - "$LED_RUST" "$LED_JAVA" "$LED_TS" "$TS_PRESENT" <<'PY' || rc=1
+import sys
+rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+print("\n[4c] κ-COVERAGE LEDGER differential  (SPEC §7 item 14 — unlisted-but-called packages are NAMED)")
+ok = True
+def check(name, out, pkg, frontier):
+    global ok
+    named = "κ doesn't know" in out and pkg in out
+    quiet = frontier not in out
+    print(f"  {name:12s} -> {'MATCH' if named and quiet else 'DIVERGE'}"
+          + ("" if named else f" (did not name {pkg})") + ("" if quiet else f" (named the frontier {frontier})"))
+    ok = ok and named and quiet
+check("candor-scan", rust, "mystery_pkg", "std")
+check("candor-java", java, "com.mystery", "java.nio")
+if ts_present:
+    check("candor-ts", ts, "mystery-pkg", "node:fs")
+print("  -> " + ("MATCH — every engine disclosed the blind spot and stayed quiet about the frontier"
+                 if ok else "DIVERGE — a ledger is missing or over-disclosing"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
 # PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
@@ -409,6 +478,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + query shapes agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
