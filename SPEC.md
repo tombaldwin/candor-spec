@@ -497,6 +497,28 @@ It SHOULD additionally:
     both reference engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc").
     The self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
     is red — or absent — is asking adopters to hold a standard it does not hold itself.
+13. **enforce the §4 trust contract with an adversarial soundness harness.** Item 4 states the
+    contract; this is what makes it a tested property instead of a hope. The harness GENERATES
+    programs that thread a *known* effect from a sink through the language's call forms — every form
+    that could hide an edge: direct calls and the language's lambda/closure idioms, method dispatch,
+    cross-module calls, callback values, and the language's desugars (operators, `?`, `await`,
+    destructors, iterator protocols — whatever the language has) — and asserts every reachable unit
+    is reported with the effect **or** `Unknown`. A reachable unit reported pure, or omitted, fails
+    the harness: that is the silent under-report §4 forbids. Requirements on the harness itself:
+    - **Teeth-verified:** disabling a resolution mechanism MUST make the harness fail — a harness
+      that cannot fail proves nothing. Verify teeth per *mechanism*, not per line: engines grow
+      redundant defenses (two independent paths both catching a callback call), and neutering one
+      line of a doubly-covered mechanism passes vacuously; neuter the mechanism.
+    - **Forms are the coverage unit.** The harness proves only the forms it encodes; every
+      reference engine has had a "no known unencoded form remains" claim refuted by a new form
+      found in the wild. Treat the form list as open, and add a form with every soundness fix.
+    - A **precision twin** is recommended: a pure bystander unit that must stay OUT of the report,
+      so the harness also catches an engine that goes sound by flooding.
+    - Run it in CI.
+    All four implementations ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
+    candor-agents `fuzz.py` — the last proving the harness ports beyond programming languages).
+    Engines that deliberately do NOT claim §4 (a documented syntactic floor like `candor-scan`)
+    are exempt from the harness but MUST document the weaker promise (item 7).
 
 ## 8. Changelog
 
