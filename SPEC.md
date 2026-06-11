@@ -157,7 +157,8 @@ Two engines extracting different tables from the same SQL would split the policy
 extraction is pinned token-for-token; the cross-impl vector battery
 (`conformance/tables/vectors.json`) is its executable form:
 
-1. Lowercase the literal; replace `(` `)` `,` `;` with spaces; split on any whitespace run.
+1. Lowercase the literal; replace `(` `)` `;` with spaces; surround each `,` with spaces (the comma
+   survives as its own token); split on any whitespace run.
 2. If the first token is not a statement keyword — `select insert update delete create drop alter
    truncate merge replace with` — the string is not SQL: extract **nothing** (conservative in the
    fabrication direction).
@@ -171,6 +172,11 @@ extraction is pinned token-for-token; the cross-impl vector battery
    limit returning as inner outer left right cross lateral natural union all distinct case when null
    default skip nowait of from join into update delete insert`). Remove any interior quote
    characters and emit in first-occurrence order, deduplicated.
+6. After a captured table, a **comma-adjacent** identifier continues the table list — `FROM t1, t2,
+   t3` yields all three — and anything else breaks the chain: an alias (`FROM t1 a1, t2` yields only
+   `t1` — an under-report, never a guess) or a rejected candidate. The adjacency requirement is the
+   fabrication guard: by this stage a column list rides commas too (`INSERT INTO t (a, b)` once
+   parens are spaces), and skipping an alias to chase the comma would mint tables from it.
 
 The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a
 producer SHOULD emit them so a dependent crate's allowlist can see a value that lives across the

@@ -31,7 +31,7 @@ if [ -z "$JAR" ]; then
   echo "building candor-java…"
   ( cd "$CANDOR_JAVA" && ./gradlew -q shadowJar ) 2>/dev/null \
     || { echo "FAIL: could not build candor-java (set CANDOR_JAVA or CANDOR_JAVA_JAR)"; exit 2; }
-  JAR="$(ls "$CANDOR_JAVA"/build/libs/*-all.jar 2>/dev/null | head -1)"
+  JAR="$(ls -t "$CANDOR_JAVA"/build/libs/*-all.jar 2>/dev/null | head -1)"  # -t: newest, not lexicographic — a stale 0.3.2 jar must not shadow 0.3.3
 fi
 [ -x "$SCAN" ]  || { echo "FAIL: no candor-scan at $SCAN"; exit 2; }
 [ -x "$QUERY" ] || { echo "FAIL: no candor-query at $QUERY"; exit 2; }

@@ -1,22 +1,143 @@
 {
   "_comment": "The executable form of SPEC §2's tables-extraction algorithm: SQL string literal in, expected `tables` out (sorted; the report emits first-occurrence order, the comparison here is order-insensitive). Every engine MUST extract exactly these sets — two engines extracting different tables from the same SQL would split the AS-EFF-008 policy verdict. run.sh Part 4b embeds each vector in a per-language Db-effect fixture and diffs the reports three-way. Found-in-the-wild divergences get a vector here, like the policy battery.",
   "vectors": [
-    { "name": "from_simple",      "sql": "SELECT * FROM orders",                                              "tables": ["orders"] },
-    { "name": "multiline_join",   "sql": "SELECT o.id\nFROM orders\nJOIN ledger.entries le ON le.oid = o.id", "tables": ["ledger.entries", "orders"] },
-    { "name": "insert_into",      "sql": "INSERT INTO audit_log (a, b) VALUES (1, 2)",                        "tables": ["audit_log"] },
-    { "name": "update_leading",   "sql": "UPDATE users SET name = 'x' WHERE id = 1",                          "tables": ["users"] },
-    { "name": "for_update_skip",  "sql": "SELECT id FROM orders FOR UPDATE SKIP LOCKED",                      "tables": ["orders"] },
-    { "name": "truncate_table",   "sql": "TRUNCATE TABLE staging",                                            "tables": ["staging"] },
-    { "name": "create_if_not",    "sql": "CREATE TABLE IF NOT EXISTS t1 (id INT)",                            "tables": ["t1"] },
-    { "name": "delete_only",      "sql": "DELETE FROM ONLY parent",                                           "tables": ["parent"] },
-    { "name": "update_only",      "sql": "UPDATE ONLY accounts SET x = 1",                                    "tables": ["accounts"] },
-    { "name": "not_sql",          "sql": "greetings from nowhere",                                            "tables": [] },
-    { "name": "subquery_stop",    "sql": "SELECT 1 FROM (SELECT 2) x",                                        "tables": [] },
-    { "name": "comma_list",       "sql": "SELECT a FROM t1, t2 JOIN s.t3 ON 1 = 1",                           "tables": ["s.t3", "t1"] },
-    { "name": "quoted_case",      "sql": "SELECT * FROM \"Orders\"",                                          "tables": ["orders"] },
-    { "name": "backtick_qual",    "sql": "SELECT * FROM `db`.`tbl`",                                          "tables": ["db.tbl"] },
-    { "name": "with_cte",         "sql": "WITH x AS (SELECT 1) SELECT * FROM x",                              "tables": ["x"] },
-    { "name": "insert_select",    "sql": "INSERT INTO ORDERS SELECT * FROM staging",                          "tables": ["orders", "staging"] },
-    { "name": "trailing_kw",      "sql": "select 5 from",                                                     "tables": [] }
+    {
+      "name": "from_simple",
+      "sql": "SELECT * FROM orders",
+      "tables": [
+        "orders"
+      ]
+    },
+    {
+      "name": "multiline_join",
+      "sql": "SELECT o.id\nFROM orders\nJOIN ledger.entries le ON le.oid = o.id",
+      "tables": [
+        "ledger.entries",
+        "orders"
+      ]
+    },
+    {
+      "name": "insert_into",
+      "sql": "INSERT INTO audit_log (a, b) VALUES (1, 2)",
+      "tables": [
+        "audit_log"
+      ]
+    },
+    {
+      "name": "update_leading",
+      "sql": "UPDATE users SET name = 'x' WHERE id = 1",
+      "tables": [
+        "users"
+      ]
+    },
+    {
+      "name": "for_update_skip",
+      "sql": "SELECT id FROM orders FOR UPDATE SKIP LOCKED",
+      "tables": [
+        "orders"
+      ]
+    },
+    {
+      "name": "truncate_table",
+      "sql": "TRUNCATE TABLE staging",
+      "tables": [
+        "staging"
+      ]
+    },
+    {
+      "name": "create_if_not",
+      "sql": "CREATE TABLE IF NOT EXISTS t1 (id INT)",
+      "tables": [
+        "t1"
+      ]
+    },
+    {
+      "name": "delete_only",
+      "sql": "DELETE FROM ONLY parent",
+      "tables": [
+        "parent"
+      ]
+    },
+    {
+      "name": "update_only",
+      "sql": "UPDATE ONLY accounts SET x = 1",
+      "tables": [
+        "accounts"
+      ]
+    },
+    {
+      "name": "not_sql",
+      "sql": "greetings from nowhere",
+      "tables": []
+    },
+    {
+      "name": "subquery_stop",
+      "sql": "SELECT 1 FROM (SELECT 2) x",
+      "tables": []
+    },
+    {
+      "name": "comma_list",
+      "sql": "SELECT a FROM t1, t2 JOIN s.t3 ON 1 = 1",
+      "tables": [
+        "s.t3",
+        "t1",
+        "t2"
+      ]
+    },
+    {
+      "name": "quoted_case",
+      "sql": "SELECT * FROM \"Orders\"",
+      "tables": [
+        "orders"
+      ]
+    },
+    {
+      "name": "backtick_qual",
+      "sql": "SELECT * FROM `db`.`tbl`",
+      "tables": [
+        "db.tbl"
+      ]
+    },
+    {
+      "name": "with_cte",
+      "sql": "WITH x AS (SELECT 1) SELECT * FROM x",
+      "tables": [
+        "x"
+      ]
+    },
+    {
+      "name": "insert_select",
+      "sql": "INSERT INTO ORDERS SELECT * FROM staging",
+      "tables": [
+        "orders",
+        "staging"
+      ]
+    },
+    {
+      "name": "trailing_kw",
+      "sql": "select 5 from",
+      "tables": []
+    },
+    {
+      "name": "comma_alias_break",
+      "sql": "SELECT a FROM t1 a1, t2 WHERE x = 1",
+      "tables": [
+        "t1"
+      ]
+    },
+    {
+      "name": "comma_no_fabricate",
+      "sql": "INSERT INTO t (a, b) VALUES (1, 2)",
+      "tables": [
+        "t"
+      ]
+    },
+    {
+      "name": "comma_subquery_stop",
+      "sql": "SELECT a FROM t1, (SELECT 1) q",
+      "tables": [
+        "t1"
+      ]
+    }
   ]
 }
