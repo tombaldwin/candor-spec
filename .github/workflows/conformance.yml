@@ -34,6 +34,9 @@ jobs:
       # candor-scan is the STABLE backend — no nightly needed (run.sh builds it with `-p candor-scan`,
       # which never touches the rustc_private lint crate).
       - uses: dtolnay/rust-toolchain@stable
+      - name: Clone candor-ts (third engine; optional until public)
+        run: git clone --depth 1 https://github.com/tombaldwin/candor-ts ../candor-ts || echo "candor-ts not public yet — Part 6 will skip"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:

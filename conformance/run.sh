@@ -255,6 +255,38 @@ print("  -> " + ("MATCH — the agent-facing query shapes are identical in both 
 sys.exit(0 if ok else 1)
 PY
 
+# ====================================================================================================
+# PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written
+# from the spec documents alone; here it answers the SAME Part-1 oracle as the Rust and JVM engines.
+# Optional: skips (loudly) when the engine or node isn't available, so the suite never blocks on it.
+# Locally, a sibling ../candor-ts checkout is used; in CI the workflow checks it out.
+# ====================================================================================================
+TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
+if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
+  ( cd "$TS_DIR" && [ -d node_modules ] || ( cd "$TS_DIR" && npm install --no-fund --no-audit >/dev/null 2>&1 ) )
+  ( cd "$TS_DIR" && node scan.mjs Cases.ts "$W/ts" 2>/dev/null )
+  if [ -f "$W/ts.json" ]; then
+    python3 - "$HERE/expected.json" "$W/ts.json" <<'PY' || rc=1
+import json, sys
+expected = {k: set(v) for k, v in json.load(open(sys.argv[1])).items() if not k.startswith("_")}
+d = json.load(open(sys.argv[2]))
+fns = d["functions"] if isinstance(d, dict) else d
+got = {e["fn"].split(".")[-1]: set(e.get("inferred", [])) for e in fns}
+fails = sum(1 for c, exp in expected.items() if got.get(c, set()) != exp)
+print(f"\n[6] THIRD ENGINE (candor-ts, derived from the spec alone): {len(expected)-fails}/{len(expected)} cases match")
+for c, exp in expected.items():
+    g = got.get(c, set())
+    if g != exp:
+        print(f"  DIVERGE {c}: expected {sorted(exp)} got {sorted(g)}")
+sys.exit(1 if fails else 0)
+PY
+  else
+    echo; echo "[6] THIRD ENGINE (candor-ts): scan produced no report — FAIL"; rc=1
+  fi
+else
+  echo; echo "[6] THIRD ENGINE (candor-ts): not present (set CANDOR_TS or clone ../candor-ts) — SKIPPED"
+fi
+
 echo
 [ "$rc" -eq 0 ] \
   && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + query shapes agree across both engines)" \
