@@ -36,6 +36,16 @@ fi
 [ -x "$QUERY" ] || { echo "FAIL: no candor-query at $QUERY"; exit 2; }
 [ -f "$JAR" ]   || { echo "FAIL: no candor-java jar at $JAR"; exit 2; }
 
+# The optional THIRD engine (candor-ts). When present, it joins the grammar (4), query-shape (5) and
+# effect-set (6) differentials; when absent those parts run two-way / Part 6 skips loudly.
+TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
+TS_OK=""
+if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
+  ( cd "$TS_DIR" && [ -d node_modules ] || npm install --no-fund --no-audit >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node scan.mjs Cases.ts "$W/ts" 2>/dev/null )
+  [ -f "$W/ts.json" ] && TS_OK=1
+fi
+
 rc=0
 
 # ====================================================================================================
@@ -159,9 +169,12 @@ PY
 POL_BATTERY="$HERE/policydsl/policy.txt"
 "$QUERY" parsepolicy "$POL_BATTERY" > "$W/rust_pol.json" 2>/dev/null
 java -jar "$JAR" parsepolicy "$POL_BATTERY" > "$W/java_pol.json" 2>/dev/null
+if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
+  node "$TS_DIR/query.mjs" parsepolicy "$POL_BATTERY" > "$W/ts_pol.json" 2>/dev/null
+fi
 
-python3 - "$W/rust_pol.json" "$W/java_pol.json" <<'PY' || rc=1
-import json, sys
+python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" <<'PY' || rc=1
+import json, os, sys
 def norm(p):
     d = json.load(open(p))
     deny   = sorted((tuple(sorted(r["effects"])), r["scope"]) for r in d["deny"])
@@ -169,17 +182,22 @@ def norm(p):
     forbid = sorted((r["from"], r["to"]) for r in d["forbid"])
     return deny, allow, forbid
 r, j = norm(sys.argv[1]), norm(sys.argv[2])
-print("\n[4] POLICY-DSL grammar differential  (SPEC §6.2 — parse the same battery in both engines)")
+t = norm(sys.argv[3]) if os.path.exists(sys.argv[3]) else None
+print("\n[4] POLICY-DSL grammar differential  (SPEC §6.2 — parse the same battery in every engine)")
 print(f"  candor(rust): {len(r[0])} deny, {len(r[1])} allow, {len(r[2])} forbid")
 print(f"  candor-java : {len(j[0])} deny, {len(j[1])} allow, {len(j[2])} forbid")
-match = r == j
-print("  -> " + ("MATCH — both engines parse the deny/pure/allow/forbid grammar identically"
+if t is not None:
+    print(f"  candor-ts   : {len(t[0])} deny, {len(t[1])} allow, {len(t[2])} forbid")
+match = r == j and (t is None or r == t)
+n = "two" if t is None else "all three"
+print("  -> " + (f"MATCH — {n} engines parse the deny/pure/allow/forbid grammar identically"
                  if match else "DIVERGE — the engines parse the policy DSL differently"))
 if not match:
-    for name, a, b in (("deny", r[0], j[0]), ("allow", r[1], j[1]), ("forbid", r[2], j[2])):
-        if a != b:
-            print(f"     {name} rust={a}")
-            print(f"     {name} java={b}")
+    for name, idx in (("deny", 0), ("allow", 1), ("forbid", 2)):
+        sets = {"rust": r[idx], "java": j[idx]} | ({"ts": t[idx]} if t is not None else {})
+        if len({repr(v) for v in sets.values()}) > 1:
+            for eng, v in sets.items():
+                print(f"     {name} {eng}={v}")
 sys.exit(0 if match else 1)
 PY
 
@@ -208,12 +226,24 @@ java -jar "$JAR" show "$W/java.json" nion --json > "$W/j_ladder_nion.json" 2>/de
 # inner-type method (Rust `::Svc::act`, JVM `Cases$Svc.act` — the `$` boundary), never a substring cousin.
 "$QUERY" show "$RUST_PREFIX" Svc::act 1 > "$W/r_ladder_svc.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" Svc.act --json > "$W/j_ladder_svc.json" 2>/dev/null
+if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
+  TSQ() { node "$TS_DIR/query.mjs" "$@"; }
+  TSQ show    "$W/ts" net_connect 1     > "$W/t_show.json"    2>/dev/null
+  TSQ where   "$W/ts" Fs 1              > "$W/t_where.json"   2>/dev/null
+  TSQ callers "$W/ts" transitive_leaf 1 > "$W/t_callers.json" 2>/dev/null
+  TSQ map     "$W/ts" 1                 > "$W/t_map.json"     2>/dev/null
+  TSQ show    "$W/ts" act 1             > "$W/t_ladder_act.json"  2>/dev/null
+  TSQ show    "$W/ts" nion 1            > "$W/t_ladder_nion.json" 2>/dev/null
+  TSQ show    "$W/ts" Svc.act 1         > "$W/t_ladder_svc.json"  2>/dev/null
+fi
 
 python3 - "$W" <<'PY' || rc=1
-import json, sys
+import json, os, sys
 W = sys.argv[1]
 load = lambda q, e: json.load(open(f"{W}/{e}_{q}.json"))
-print("\n[5] QUERY-SHAPE differential  (show/where/callers/map JSON shape agrees across engines)")
+ts = os.path.exists(f"{W}/t_show.json")
+print("\n[5] QUERY-SHAPE differential  (show/where/callers/map JSON shape agrees across engines"
+      + (", incl. candor-ts" if ts else "") + ")")
 ok = True
 def check(name, cond, detail=""):
     global ok
@@ -222,16 +252,21 @@ def check(name, cond, detail=""):
 # show: the four required fields present in both (optional fs/hosts are engine-capability dependent)
 req = {"fn", "inferred", "direct", "unresolved"}
 rs, js = load("show", "r"), load("show", "j")
-check("show", bool(rs) and bool(js) and req <= set(rs[0]) and req <= set(js[0]))
-# where / callers: exact top-level key set in both
+tshow = load("show", "t") if ts else None
+check("show", bool(rs) and bool(js) and req <= set(rs[0]) and req <= set(js[0])
+              and (not ts or (bool(tshow) and req <= set(tshow[0]))))
+# where / callers: exact top-level key set in every engine
 for q, keys in (("where", {"effect", "directly", "inherited"}), ("callers", {"of", "direct", "transitive"})):
     r, j = load(q, "r"), load(q, "j")
-    check(q, set(r) == keys and set(j) == keys)
+    tq = load(q, "t") if ts else None
+    check(q, set(r) == keys and set(j) == keys and (not ts or set(tq) == keys))
 # map: every module bucket carries exactly {effects, functions}
 mk = {"effects", "functions"}
 rm, jm = load("map", "r"), load("map", "j")
+tm = load("map", "t") if ts else None
 check("map", bool(rm) and bool(jm) and all(set(v) == mk for v in rm.values())
-                                    and all(set(v) == mk for v in jm.values()))
+                                    and all(set(v) == mk for v in jm.values())
+                                    and (not ts or (bool(tm) and all(set(v) == mk for v in tm.values()))))
 # diff: an envelope object with `changes` (a list) in both — diff-vs-self must be empty. The Java
 # engine used to emit a bare array (no envelope), so a consumer's d["changes"] worked on one engine
 # and threw on the other.
@@ -241,15 +276,21 @@ check("diff", isinstance(rd, dict) and isinstance(jd, dict)
 # match LADDER (SPEC §3.1): a segment-suffix query resolves to exactly the suffix match in both
 # engines (`act` -> only Svc.act), while a substring-only query still browses (`nion` -> union_a/b/c).
 rs1, js1 = load("ladder_act", "r"), load("ladder_act", "j")
+ts1 = load("ladder_act", "t") if ts else None
 check("ladder:suffix", len(rs1) == 1 and len(js1) == 1
-                       and rs1[0]["fn"].split("::")[-1] == "act" and js1[0]["fn"].split(".")[-1] == "act")
+                       and rs1[0]["fn"].split("::")[-1] == "act" and js1[0]["fn"].split(".")[-1] == "act"
+                       and (not ts or (len(ts1) == 1 and ts1[0]["fn"].split(".")[-1] == "act")))
 rs2, js2 = load("ladder_nion", "r"), load("ladder_nion", "j")
 names_r = {e["fn"].split("::")[-1] for e in rs2}; names_j = {e["fn"].split(".")[-1] for e in js2}
-check("ladder:substr", names_r == {"union_a", "union_b", "union_c"} and names_j == names_r)
-# nested-type boundary (`::` on Rust, `$` on the JVM): exactly the one Svc method, no substring cousin.
+names_t = {e["fn"].split(".")[-1] for e in load("ladder_nion", "t")} if ts else names_r
+check("ladder:substr", names_r == {"union_a", "union_b", "union_c"} and names_j == names_r
+                       and names_t == names_r)
+# nested-type boundary (`::` on Rust, `$` on the JVM, `.` in TS): exactly the one Svc method.
 rs3, js3 = load("ladder_svc", "r"), load("ladder_svc", "j")
+ts3 = load("ladder_svc", "t") if ts else None
 check("ladder:nested", len(rs3) == 1 and len(js3) == 1
-                       and rs3[0]["fn"].split("::")[-1] == "act" and js3[0]["fn"].split(".")[-1] == "act")
+                       and rs3[0]["fn"].split("::")[-1] == "act" and js3[0]["fn"].split(".")[-1] == "act"
+                       and (not ts or (len(ts3) == 1 and ts3[0]["fn"].split(".")[-1] == "act")))
 print("  -> " + ("MATCH — the agent-facing query shapes are identical in both engines"
                  if ok else "DIVERGE — a query's JSON shape differs between engines"))
 sys.exit(0 if ok else 1)
@@ -261,10 +302,7 @@ PY
 # Optional: skips (loudly) when the engine or node isn't available, so the suite never blocks on it.
 # Locally, a sibling ../candor-ts checkout is used; in CI the workflow checks it out.
 # ====================================================================================================
-TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
-if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
-  ( cd "$TS_DIR" && [ -d node_modules ] || ( cd "$TS_DIR" && npm install --no-fund --no-audit >/dev/null 2>&1 ) )
-  ( cd "$TS_DIR" && node scan.mjs Cases.ts "$W/ts" 2>/dev/null )
+if [ -n "$TS_OK" ]; then
   if [ -f "$W/ts.json" ]; then
     python3 - "$HERE/expected.json" "$W/ts.json" <<'PY' || rc=1
 import json, sys
@@ -289,6 +327,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + query shapes agree across both engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + query shapes agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
