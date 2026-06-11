@@ -235,6 +235,7 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ show    "$W/ts" act 1             > "$W/t_ladder_act.json"  2>/dev/null
   TSQ show    "$W/ts" nion 1            > "$W/t_ladder_nion.json" 2>/dev/null
   TSQ show    "$W/ts" Svc.act 1         > "$W/t_ladder_svc.json"  2>/dev/null
+  TSQ diff    "$W/ts" "$W/ts" 1         > "$W/t_diff.json"       2>/dev/null
 fi
 
 python3 - "$W" <<'PY' || rc=1
@@ -271,8 +272,10 @@ check("map", bool(rm) and bool(jm) and all(set(v) == mk for v in rm.values())
 # engine used to emit a bare array (no envelope), so a consumer's d["changes"] worked on one engine
 # and threw on the other.
 rd, jd = load("diff", "r"), load("diff", "j")
+td = load("diff", "t") if ts else None
 check("diff", isinstance(rd, dict) and isinstance(jd, dict)
-              and rd.get("changes") == [] and jd.get("changes") == [])
+              and rd.get("changes") == [] and jd.get("changes") == []
+              and (not ts or (isinstance(td, dict) and td.get("changes") == [])))
 # match LADDER (SPEC §3.1): a segment-suffix query resolves to exactly the suffix match in both
 # engines (`act` -> only Svc.act), while a substring-only query still browses (`nion` -> union_a/b/c).
 rs1, js1 = load("ladder_act", "r"), load("ladder_act", "j")
