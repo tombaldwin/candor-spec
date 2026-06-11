@@ -20,7 +20,7 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 |---|---|---|---|
 | Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped** — reference implementation (`cargo install candor-scan`) |
 | Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **alpha (v0.3.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
-| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **proof slice** — derived from this spec's text alone; 20/20 on the shared oracle, live in the conformance CI |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **young engine (0.1.x)** — project scanning, gate, queries; grown from the from-spec-alone proof slice; third engine in the conformance CI |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
