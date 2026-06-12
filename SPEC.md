@@ -65,6 +65,26 @@ one file per unit, named so multiple units don't collide (the Rust impl uses
 The `candor` header records which engine produced the report (§2.1). A bare top-level array (no
 envelope) remains accepted as the legacy **v0.1** form — readers MUST accept both during migration.
 
+**One report covers ONE package** (crate / npm package / JVM module / SwiftPM package / fleet). An
+engine MUST NOT fold several packages' functions into one `functions` array: function names are
+only unique *within* a package (every binary crate has a `main`), and a consumer keys the report's
+`calls` edges and the sidecar by name — merged packages collide those names and cross-wire the
+inferred sets. (Found live: a repo-root scan that folded 194 fixture packages into one report
+produced one `main` entry with 194 functions' unioned effects.) A multi-package project emits a
+**report set**: one report per package under a shared `--out` prefix. A consumer SHOULD treat all
+reports under one prefix as a single analysis world — and MUST join *across* reports by `hash`,
+never by bare `fn` (names may legitimately repeat across packages).
+
+The envelope SHOULD also name the package the report covers — `"package": "<name>"` (or
+`"packages": ["<name>", …]` where one compilation unit genuinely spans several, the JVM shape) —
+so a consumer (and the §2 chaining coverage rule) can tell what an **empty** report covers without
+parsing entry hashes. When the field is absent, coverage is derivable from the entries' `hash`
+prefixes (`pkg#…`) — which an all-pure empty report does not have; emit the field.
+
+**Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
+recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
+the fields this document defines are the interchange contract, not a closed schema.
+
 Each entry:
 
 ```json
@@ -298,6 +318,10 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
 - **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
 - **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points.
+- **parsepolicy `<file>`** — the engine's canonical parse of a §6.2 policy file, as JSON. Not a user
+  workflow: it makes the grammar *diffable* — the cross-impl conformance suite feeds every engine
+  the same policy text and asserts the parses agree, which is what keeps one policy file meaning
+  the same gate in every language. An implementation that enforces any policy mode SHOULD expose it.
 
 These are an interface convenience, **not** part of the wire contract — a consumer that only reads the JSON
 report is fully conformant. An implementation SHOULD keep query **names and output shapes consistent across
@@ -491,6 +515,14 @@ line whose kind is unrecognized, or that is malformed for its kind, is **ignored
 silently treated as a stricter or looser rule (silent reinterpretation is the one thing a security gate
 must not do).
 
+**An unreadable policy FILE is a failure, not an absent gate.** The malformed-line rule above is for
+content; the file is different: when a policy is *configured* (a `--policy` flag, the `CANDOR_POLICY`
+env) and cannot be read, the run MUST fail loudly with a non-zero exit (the reference CLIs use a
+distinct `2`, vs `1` for a policy violation; an engine embedded in a compiler fails the build,
+whose wrapper reports its own code) — it MUST NOT proceed gateless. A typo'd policy path
+that runs green is a gate that silently passes everything, the exact failure a gate exists to
+prevent. (Found live in a reference engine: loud on stderr, but exit 0 — a CI gate that never bit.)
+
 **The four rule kinds:**
 
 ```
@@ -573,12 +605,14 @@ It SHOULD additionally (items 9–13):
     version-trust rule applied to documentation. The embedded copy MUST equal the repo's
     `AGENTS.md` (a drift gate in the engine's test suite), and the doc SHOULD tell agents to
     prefer `--agents` over any other copy, re-reading it when the engine version changes;
-12. **use candor on itself.** An implementation MUST analyze its own codebase cleanly (no crash, a
-    plausible report — self-analysis is the free real-world test), and SHOULD run a **self-gate** in
-    CI: a declared `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g.
-    both reference engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc").
-    The self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
-    is red — or absent — is asking adopters to hold a standard it does not hold itself.
+12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report —
+    self-analysis is the free real-world test), and run a **self-gate** in CI: a declared
+    `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g. the reference
+    engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc"). The
+    self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
+    is red — or absent — is asking adopters to hold a standard it does not hold itself. (This item
+    previously said "MUST analyze" inside this SHOULD list — a wording contradiction; the SHOULD
+    umbrella governs.)
 13. **enforce the §4 trust contract with an adversarial soundness harness.** Item 4 states the
     contract; this is what makes it a tested property instead of a hope. The harness GENERATES
     programs that thread a *known* effect from a sink through the language's call forms — every form
@@ -635,6 +669,23 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
+  required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
+  string stays **0.4** (the 0.3-amendment precedent):
+  - §2 **one report covers one package** + the **report set** (one report per package under a
+    shared prefix; consumers join across reports by `hash`, never bare `fn`). Motivated by a live
+    find: a repo-root scan folding 194 fixture packages into one report cross-wired the call graph;
+  - §2 the **`package` / `packages` envelope field** (SHOULD): name what the report covers, so an
+    all-pure EMPTY report's coverage is readable without entry hashes;
+  - §2 **forward compatibility**: consumers MUST tolerate unrecognized fields;
+  - §6.2 a configured-but-**unreadable policy file MUST fail the run loudly** (distinct exit; never
+    proceed gateless). Found live: a reference engine was loud on stderr but exited 0;
+  - §3.1 **parsepolicy** documented (the conformance suite's grammar witness; SHOULD for enforcers);
+  - §7 item 11 **the self-describing engine**: embed `AGENTS.md` in the installed artifact and
+    print it under `--agents` with a version header (SHOULD); the embedded copy MUST equal the
+    repo doc (a drift-gate test). Conformance Part 7 checks every present engine;
+  - §7 item 12 wording: the stray "MUST analyze" inside the SHOULD list now reads under the SHOULD
+    umbrella, as intended.
 - **0.4 (2026-06-12)** — **wire-compatible, conformance-breaking**: no report-schema change (a 0.3
   reader parses a 0.4 report byte-for-byte; only the envelope's `spec` string moves), but four
   obligations are upgraded SHOULD → MUST, so an implementation that conformed to 0.3 may not

@@ -543,6 +543,31 @@ else
   echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED"
 fi
 
+# --- Part 8: an unreadable policy FILE fails the run (SPEC §6.2 MUST) --------------------------------
+# A configured-but-unreadable policy must exit 2 (distinct from 1 = violation), never run gateless:
+# a typo'd path that runs green is a gate that silently passes everything. (Found live: one engine
+# was loud on stderr but exited 0.)
+echo
+echo "[8] UNREADABLE POLICY FAILS THE RUN (SPEC §6.2):"
+NOPOL="$W/no-such-dir/no-such.policy"
+check_polfail() { # $1 label, $2… command (run from cwd)
+  local label="$1"; shift
+  "$@" >/dev/null 2>&1
+  local got=$?
+  if [ "$got" -eq 2 ]; then
+    echo "  $label -> exit 2"
+  else
+    echo "  $label FAILED: exit $got (want 2 — gateless green is the §6.2 forbidden state)"; rc=1
+  fi
+}
+mkdir -p "$W/polfail/src"
+printf '[package]\nname="p"\n' > "$W/polfail/Cargo.toml"
+printf 'pub fn f(){ let _ = std::fs::read("/x"); }\n' > "$W/polfail/src/lib.rs"
+check_polfail "rust:scan " "$SCAN" "$W/polfail" --policy "$NOPOL" --out "$W/polfail/r"
+check_polfail "java      " env CANDOR_POLICY="$NOPOL" java -jar "$JAR" "$W/jout"
+[ -n "$TS_PRESENT" ] && check_polfail "ts        " node "$TS_DIR/scan.mjs" "$TS_DIR/Cases.ts" --policy "$NOPOL" --out "$W/polfail/ts"
+[ -n "$SW_BIN" ] && [ -x "$SW_BIN" ] && check_polfail "swift     " "$SW_BIN" "$SW_DIR/conformance/Cases.swift" --policy "$NOPOL" --out "$W/polfail/sw"
+
 # --- Part 7: the self-describing engine (SPEC §7.11) -------------------------------------------------
 # Every engine present prints its embedded agent contract under --agents: a version header comment
 # followed by the AGENTS.md. The flag must exit 0 and the output must carry both.
