@@ -4,7 +4,12 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.4.** The **spec/contract version** — the report schema, the effect vocabulary, and the
+**Version 0.4** (amended — tag `v0.4.1`). A **0.5 draft is in development in this document**: the
+parts marked ⟨0.5⟩ (the *unit* generalization and the `unitKind` field, §2) are not yet released —
+engines continue to declare `0.4` until 0.5 tags, and may emit `unitKind` early (it is an
+extension field a 0.4 consumer tolerates, §2 forward compatibility).
+
+The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
 *build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.4.x`
 implements spec `0.4` (patch versions float per-impl), and all declare **spec `0.4`** in the
@@ -51,8 +56,15 @@ language-specific effect name, not `Log`.
 ## 2. The report
 
 An implementation emits, per compilation unit, a self-describing **envelope** — a provenance header
-plus one entry per analyzed function (or other *reportable item*, e.g. a static initializer). Write
-one file per unit, named so multiple units don't collide (the Rust impl uses
+plus one entry per analyzed **unit**. ⟨0.5⟩ A *unit* is the smallest body the engine attributes
+effects to. For a code engine that is a function or method — and throughout this document
+"function" means "unit" — but the family's units are wider than functions, and each kind earned
+its place by hiding effects when it was NOT a unit: a computed **accessor** body (a Swift getter
+performing I/O read silently pure until accessors became units), a static/class **initializer**
+(`<clinit>` runs at class load, no call site in sight), a CJS **export** surface (a dist bundle's
+module boundary), and an agent-fleet's **agents**, **session** root and **hooks** (commands a
+harness runs automatically). The entry's name field stays `fn` for wire compatibility. Write
+one file per package, named so multiple reports don't collide (the Rust impl uses
 `<prefix>.<crate>.<type>.json`):
 
 ```json
@@ -115,6 +127,19 @@ Each entry:
                                          // (reflection, native) from the improvable kind (a missing
                                          // impl — widen the analysed inputs). Omitted when this fn
                                          // introduces no direct Unknown.
+  "unitKind":     "accessor",            // OPTIONAL ⟨0.5⟩: what KIND of unit this entry is, when it
+                                         // is not an ordinary function/method. Absent = "function".
+                                         // Recommended values: "initializer" (static/class init —
+                                         // a JVM <clinit>, a lazy/static initializer), "accessor"
+                                         // (computed property get/set/observer bodies), "export"
+                                         // (a module-boundary export surface, the CJS shape),
+                                         // "agent" / "session" / "hooks" (an agent-fleet report).
+                                         // INFORMATIVE, never semantic: effects, edges and joins
+                                         // mean exactly the same for every kind — the field lets a
+                                         // consumer render/filter sensibly when reports from
+                                         // different domains share one prefix (a fleet `session`
+                                         // beside a crate's `main`). An unknown value is tolerated
+                                         // (§2 forward compatibility), never an error.
   "hash":         "<stable cross-crate id>", // a stable identity (e.g. DefPathHash, pkg#LocalName) so
                                          // a dependent's analysis can inherit this fn's effects
                                          // across the package boundary. Producers MUST emit it
@@ -668,6 +693,14 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — the **units**
+  generalization: a report entry describes a *unit* (the smallest body effects are attributed to),
+  of which a function is the common case; the new OPTIONAL `unitKind` field (§2) names the
+  non-function kinds (initializer / accessor / export / agent / session / hooks — an open set,
+  informative only). A new optional field is the changelog's own definition of a minor bump, hence
+  0.5 rather than a 0.4 amendment. Wire-compatible: absent = "function", and a 0.4 consumer
+  tolerates the field under §2 forward compatibility — engines may emit it before 0.5 tags.
 
 - **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
   required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
