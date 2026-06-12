@@ -6,8 +6,9 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 
 **Version 0.4.** The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
-*build id* and from a package's *release version* (§2.1): the published Rust crates carry their own
-`0.x.y` releases, the JVM port builds from a git hash, and all declare **spec `0.4`**. 0.4 is
+*build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.4.x`
+implements spec `0.4` (patch versions float per-impl), and all declare **spec `0.4`** in the
+envelope. 0.4 is
 wire-compatible with 0.3 (no schema change); what it changes is CONFORMANCE — four obligations
 moved from SHOULD to MUST (see the [changelog](#8-changelog)). An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
