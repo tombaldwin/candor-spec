@@ -29,6 +29,12 @@ A JSON array, one object per function:
 
 Effects: `Net`, `Fs`, `Db`, `Exec` (subprocess), `Env`, `Clock`, `Ipc`, `Log`, `Rand`, `Clipboard`.
 
+An entry may carry **`unitKind`** (0.5 draft): the entry describes a *unit*, of which a function is
+the common case — `initializer` (a static/class init that runs with no call site), `accessor` (a
+computed property body), `export` (a CJS module surface), `agent`/`session`/`hooks` (an agent-fleet
+report). Absent = ordinary function. It is informative only — effects, edges and joins read the
+same for every kind; tolerate values you don't recognize.
+
 ## How to use it
 
 - **What a function performs** → read its `inferred` (the full transitive effect set).
