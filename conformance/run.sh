@@ -614,6 +614,12 @@ mkdir -p "$W/polfail/src"
 printf '[package]\nname="p"\n' > "$W/polfail/Cargo.toml"
 printf 'pub fn f(){ let _ = std::fs::read("/x"); }\n' > "$W/polfail/src/lib.rs"
 check_polfail "rust:scan " "$SCAN" "$W/polfail" --policy "$NOPOL" --out "$W/polfail/r"
+# Unknown FLAGS fail the same way (exit 2) — silently ignoring a typo'd flag, or reading it as a
+# path, drops gates and confuses agents following a newer doc against an older binary.
+check_polfail "rust:scan  (unknown flag)" "$SCAN" --frobnicate
+check_polfail "java       (unknown flag)" java -jar "$JAR" --frobnicate
+[ -n "$TS_PRESENT" ] && check_polfail "ts         (unknown flag)" node "$TS_DIR/scan.mjs" --frobnicate
+[ -n "$SW_BIN" ] && [ -x "$SW_BIN" ] && check_polfail "swift      (unknown flag)" "$SW_BIN" --frobnicate
 check_polfail "java      " env CANDOR_POLICY="$NOPOL" java -jar "$JAR" "$W/jout"
 [ -n "$TS_PRESENT" ] && check_polfail "ts        " node "$TS_DIR/scan.mjs" "$TS_DIR/Cases.ts" --policy "$NOPOL" --out "$W/polfail/ts"
 [ -n "$SW_BIN" ] && [ -x "$SW_BIN" ] && check_polfail "swift     " "$SW_BIN" "$SW_DIR/conformance/Cases.swift" --policy "$NOPOL" --out "$W/polfail/sw"
