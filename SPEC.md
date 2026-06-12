@@ -135,8 +135,9 @@ make the chain trustworthy:
    the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference —
    per-language, but derivable from both sides). An ambiguous key (two dep functions sharing it) is
    dropped, not picked from — the same under-report-don't-fabricate rule as call resolution.
-2. **Stale reports are not trusted** (§2.1): a sibling report produced by a different engine
-   version contributes `Unknown` for its matched functions, never its recorded effects.
+2. **Stale reports are not trusted** — §2.1's version-trust rule applies at the join, and a
+   report whose producing version is MISSING is as unverifiable as a mismatched one: downgrade to
+   `Unknown`. (§2.1 is the single normative statement; this rule only locates where it bites.)
 3. **A chained package is COVERED, not blind — including its silence.** Reports omit pure
    functions, so a call that joins *no* entry in a loaded sibling report is that report's honest
    purity claim (modulo the producer's own §4 standing). A coverage disclosure (item 14, §7) must
@@ -599,7 +600,9 @@ It SHOULD additionally:
     exactly the call a security review cared about). A conforming engine SHOULD therefore emit,
     with each scan, the external packages the scanned code **demonstrably calls** that the
     classifier neither classifies nor has reviewed-pure, named with call counts — per-scan
-    evidence in the receipt, not a documentation footnote. Exempt from the disclosure: the
+    evidence in the receipt, not a documentation footnote. The disclosure line begins with the
+    canonical marker **`κ doesn't know`** so consumers (and the conformance suite, which asserts
+    it) can find it without per-engine wording knowledge. Exempt from the disclosure: the
     platform/builtin frontier (the classifier's actual job), packages the classifier covers
     verb-precisely (zero classifications can mean the code touches only their pure surface),
     and packages a chained sibling report covers (§2 — including an EMPTY report, whose silence

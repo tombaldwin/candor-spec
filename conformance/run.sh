@@ -222,7 +222,7 @@ python3 - "$TABVEC" "$W" <<'PY'
 import json, os, sys
 V = json.load(open(sys.argv[1]))["vectors"]
 W = sys.argv[2]
-lit = json.dumps  # a JSON string literal is a valid Java/Rust/TS double-quoted literal for this charset
+lit = lambda x: json.dumps(x, ensure_ascii=False)  # raw UTF-8: \uXXXX escapes are valid Java/TS but NOT Rust (\u{…}); a JSON string literal is otherwise valid in all three
 os.makedirs(f"{W}/tab/rust/src", exist_ok=True)
 open(f"{W}/tab/rust/Cargo.toml", "w").write('[package]\nname = "tabvec"\nversion = "0.0.0"\nedition = "2021"\n')
 open(f"{W}/tab/rust/src/lib.rs", "w").write("".join(
@@ -381,7 +381,9 @@ fi
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
 P5_FILES="r_show r_where r_callers r_map r_diff r_ladder_act r_ladder_nion r_ladder_svc \
           j_show j_where j_callers j_map j_diff j_ladder_act j_ladder_nion j_ladder_svc"
-[ -n "$TS_OK" ] && P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_ladder_act t_ladder_nion t_ladder_svc"
+if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then  # same gate that CREATES them — a scanner-only checkout must degrade two-way, not hard-fail
+  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_ladder_act t_ladder_nion t_ladder_svc"
+fi
 for f in $P5_FILES; do
   [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
 done
