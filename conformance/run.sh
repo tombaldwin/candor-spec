@@ -51,6 +51,24 @@ if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
   [ -s "$W/ts.json" ] && TS_OK=1
 fi
 
+# The optional FOURTH engine (candor-swift). Joins the tables (4b), ledger (4c) and effect-set (6c)
+# differentials. SW_PRESENT vs SW_OK: present-but-broken must FAIL, never read as skipped (the
+# TS_PRESENT lesson). CI note: ubuntu runners have no swift toolchain, so CI runs three-way and the
+# fourth engine is a loud local/macOS differential until the workflow gains a swift setup step.
+SW_DIR="${CANDOR_SWIFT:-$HERE/../../candor-swift}"
+SW_PRESENT=""
+SW_OK=""
+SW_BIN=""
+if command -v swift >/dev/null 2>&1 && [ -f "$SW_DIR/Package.swift" ]; then
+  SW_PRESENT=1
+  ( cd "$SW_DIR" && swift build >/dev/null 2>&1 )
+  SW_BIN="$SW_DIR/.build/debug/candor-swift"
+  if [ -x "$SW_BIN" ]; then
+    "$SW_BIN" "$SW_DIR/conformance/Cases.swift" --out "$W/sw" >/dev/null 2>&1
+  fi
+  [ -s "$W/sw.json" ] && SW_OK=1
+fi
+
 rc=0
 
 # ====================================================================================================
@@ -237,6 +255,9 @@ open(f"{W}/tab/ts/node_modules/pg/index.d.ts", "w").write("export declare class 
 open(f"{W}/tab/ts/node_modules/pg/index.js", "w").write("module.exports = { Pool: class Pool { query() {} } };\n")
 open(f"{W}/tab/ts/cases.ts", "w").write('import { Pool } from "pg";\nconst pool = new Pool();\n' + "".join(
     f'export function {v["name"]}() {{ return pool.query({lit(v["sql"])}); }}\n' for v in V))
+os.makedirs(f"{W}/tab/swift", exist_ok=True)
+open(f"{W}/tab/swift/cases.swift", "w").write("import Foundation\nimport SQLite3\n\n" + "".join(
+    f'func {v["name"]}() {{ _ = sqlite3_exec(nil, {lit(v["sql"])}, nil, nil, nil) }}\n' for v in V))
 PY
 "$SCAN" "$W/tab/rust" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the tables-vector fixture"; exit 2; }
 TAB_RUST="$(ls "$W"/tab/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
@@ -247,7 +268,11 @@ if [ -n "$TS_PRESENT" ]; then
   node "$TS_DIR/scan.mjs" "$W/tab/ts/cases.ts" "$W/tab/ts_out" >/dev/null 2>&1
   [ -s "$W/tab/ts_out.json" ] || { echo "FAIL: candor-ts errored on the tables-vector fixture"; exit 2; }
 fi
-python3 - "$TABVEC" "$TAB_RUST" "$W/tab/java.json" "$W/tab/ts_out.json" <<'PY' || rc=1
+if [ -n "$SW_PRESENT" ]; then
+  "$SW_BIN" "$W/tab/swift/cases.swift" --out "$W/tab/sw_out" >/dev/null 2>&1
+  [ -s "$W/tab/sw_out.json" ] || { echo "FAIL: candor-swift errored on the tables-vector fixture"; exit 2; }
+fi
+python3 - "$TABVEC" "$TAB_RUST" "$W/tab/java.json" "$W/tab/ts_out.json" "$W/tab/sw_out.json" <<'PY' || rc=1
 import json, os, sys
 V = json.load(open(sys.argv[1]))["vectors"]
 def by_leaf(path, sep):
@@ -255,18 +280,20 @@ def by_leaf(path, sep):
     return {e["fn"].split(sep)[-1]: sorted(e.get("tables", [])) for e in d["functions"]}
 rust, java = by_leaf(sys.argv[2], "::"), by_leaf(sys.argv[3], ".")
 ts = by_leaf(sys.argv[4], ".") if os.path.exists(sys.argv[4]) else None
+sw = by_leaf(sys.argv[5], ".") if len(sys.argv) > 5 and os.path.exists(sys.argv[5]) else None
 print("\n[4b] TABLES-EXTRACTION differential  (SPEC §2 — the same SQL must yield the same `tables` in every engine)")
 fails = 0
 for v in V:
     exp = sorted(v["tables"])
     got = {"rust": rust.get(v["name"], []), "java": java.get(v["name"], [])}
     if ts is not None: got["ts"] = ts.get(v["name"], [])
+    if sw is not None: got["swift"] = sw.get(v["name"], [])
     bad = {k: g for k, g in got.items() if g != exp}
     if bad:
         fails += 1
         print(f"  DIVERGE {v['name']}: expected {exp}, " + ", ".join(f"{k}={g}" for k, g in bad.items()))
-n = "two engines" if ts is None else "all three engines"
-print(f"  -> " + (f"MATCH — {len(V)} vectors, {n} extract identical tables" if not fails
+engines = 2 + (ts is not None) + (sw is not None)
+print(f"  -> " + (f"MATCH — {len(V)} vectors, all {engines} engines extract identical tables" if not fails
                   else f"{fails} vector(s) diverge"))
 sys.exit(1 if fails else 0)
 PY
@@ -307,6 +334,12 @@ EOF
 javac -d "$W/led/java/depcls" "$W/led/java/dep/com/mystery/Util.java" 2>/dev/null
 javac -cp "$W/led/java/depcls" -d "$W/led/java/app" "$W/led/java/src/org/app/Main.java" 2>/dev/null
 LED_JAVA=$(java -jar "$JAR" "$W/led/java/app" 2>&1)
+LED_SW=""
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/led/swift"
+  printf 'import Foundation\nimport MysteryKit\n\nfunc go() { _ = FileManager.default.contents(atPath: "/tmp/x") }\n' > "$W/led/swift/m.swift"
+  LED_SW=$("$SW_BIN" "$W/led/swift" --out "$W/led/swr" 2>&1)
+fi
 LED_TS=""
 if [ -n "$TS_PRESENT" ]; then
   printf '{"name":"mystery-pkg","version":"0.0.0","main":"index.js","types":"index.d.ts"}\n' > "$W/led/ts/node_modules/mystery-pkg/package.json"
@@ -319,9 +352,10 @@ export function go(): string { fsm.readFileSync("/tmp/x"); return doThing("x"); 
 EOF
   LED_TS=$(node "$TS_DIR/scan.mjs" "$W/led/ts/cases.ts" "$W/led/ledts" 2>&1)
 fi
-python3 - "$LED_RUST" "$LED_JAVA" "$LED_TS" "$TS_PRESENT" <<'PY' || rc=1
+python3 - "$LED_RUST" "$LED_JAVA" "$LED_TS" "$TS_PRESENT" "$LED_SW" "$SW_PRESENT" <<'PY' || rc=1
 import sys
 rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sw, sw_present = (sys.argv[5], sys.argv[6]) if len(sys.argv) > 6 else ("", "")
 print("\n[4c] κ-COVERAGE LEDGER differential  (SPEC §7 item 14 — unlisted-but-called packages are NAMED)")
 ok = True
 def check(name, out, pkg, frontier):
@@ -335,6 +369,8 @@ check("candor-scan", rust, "mystery_pkg", "std")
 check("candor-java", java, "com.mystery", "java.nio")
 if ts_present:
     check("candor-ts", ts, "mystery-pkg", "node:fs")
+if sw_present:
+    check("candor-swift", sw, "MysteryKit", "Foundation")
 print("  -> " + ("MATCH — every engine disclosed the blind spot and stayed quiet about the frontier"
                  if ok else "DIVERGE — a ledger is missing or over-disclosing"))
 sys.exit(0 if ok else 1)
@@ -476,6 +512,32 @@ PY
   fi
 else
   echo; echo "[6] THIRD ENGINE (candor-ts): not present (set CANDOR_TS or clone ../candor-ts) — SKIPPED"
+fi
+
+# ====================================================================================================
+# PART 6c — the FOURTH engine (candor-swift): the derivability proof, run live (same Part-1 oracle).
+# ====================================================================================================
+if [ -n "$SW_PRESENT" ]; then
+  if [ -n "$SW_OK" ]; then
+    python3 - "$HERE/expected.json" "$W/sw.json" <<'PY' || rc=1
+import json, sys
+expected = {k: set(v) for k, v in json.load(open(sys.argv[1])).items() if not k.startswith("_")}
+d = json.load(open(sys.argv[2]))
+fns = d["functions"] if isinstance(d, dict) else d
+got = {e["fn"].split(".")[-1]: set(e.get("inferred", [])) for e in fns}
+fails = sum(1 for c, exp in expected.items() if got.get(c, set()) != exp)
+print(f"\n[6c] FOURTH ENGINE (candor-swift, derived from the spec alone): {len(expected)-fails}/{len(expected)} cases match")
+for c, exp in expected.items():
+    g = got.get(c, set())
+    if g != exp:
+        print(f"  DIVERGE {c}: expected {sorted(exp)} got {sorted(g)}")
+sys.exit(1 if fails else 0)
+PY
+  else
+    echo; echo "[6c] FOURTH ENGINE (candor-swift): PRESENT at $SW_DIR but its scan produced no report — FAIL"; rc=1
+  fi
+else
+  echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED"
 fi
 
 echo
