@@ -565,7 +565,14 @@ It SHOULD additionally (items 9–13):
     agent executes on their codebase: manual blast-radius trace committed *before* the tool runs,
     every claimed miss verified at a file:line, and the honest negative outcome reported — value
     demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/honesty
-    documentation is already a MUST (items 6–7);
+    documentation is already a MUST (items 6–7). The engine SHOULD additionally be
+    **self-describing**: its installed artifact embeds the `AGENTS.md` and prints it under an
+    `--agents` flag, prefixed by a header naming the installed engine version — so the contract an
+    agent reads always matches the binary it runs. A vendored or remotely fetched copy can describe
+    a *different* version (or be tampered with in transit); the embedded copy is the §2.1
+    version-trust rule applied to documentation. The embedded copy MUST equal the repo's
+    `AGENTS.md` (a drift gate in the engine's test suite), and the doc SHOULD tell agents to
+    prefer `--agents` over any other copy, re-reading it when the engine version changes;
 12. **use candor on itself.** An implementation MUST analyze its own codebase cleanly (no crash, a
     plausible report — self-analysis is the free real-world test), and SHOULD run a **self-gate** in
     CI: a declared `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g.

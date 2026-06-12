@@ -543,8 +543,29 @@ else
   echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED"
 fi
 
+# --- Part 7: the self-describing engine (SPEC §7.11) -------------------------------------------------
+# Every engine present prints its embedded agent contract under --agents: a version header comment
+# followed by the AGENTS.md. The flag must exit 0 and the output must carry both.
+echo
+echo "[7] SELF-DESCRIBING ENGINES (--agents, SPEC §7.11):"
+check_agents() { # $1 label, $2… command
+  local label="$1"; shift
+  local out
+  if out="$("$@" 2>/dev/null)" && printf '%s' "$out" | head -1 | grep -q '^<!-- candor' \
+     && printf '%s' "$out" | grep -q 'AI coding agent'; then
+    echo "  $label --agents -> version header + contract"
+  else
+    echo "  $label --agents FAILED (missing header or contract)"; rc=1
+  fi
+}
+check_agents "rust:scan " "$SCAN" --agents
+check_agents "rust:query" "$QUERY" --agents
+check_agents "java      " java -jar "$JAR" --agents
+[ -n "$TS_PRESENT" ] && check_agents "ts        " node "$TS_DIR/scan.mjs" --agents
+[ -n "$SW_BIN" ] && [ -x "$SW_BIN" ] && check_agents "swift     " "$SW_BIN" --agents
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

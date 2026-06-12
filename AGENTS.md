@@ -8,6 +8,11 @@ implementation for the language you're in — each has its own `AGENTS.md` with 
 - JVM (Java/Kotlin/Scala/Groovy) → https://github.com/tombaldwin/candor-java/blob/main/AGENTS.md
 - other languages → see the implementation index in this repo's [README](README.md)
 
+**Prefer the installed copy over these links**: every engine prints its own `AGENTS.md` under
+`--agents` (e.g. `candor-scan --agents`, `npx -y candor-ts --agents`), version-matched to the
+binary you are actually running (SPEC §7.11). A repo link can describe a newer or older candor
+than the one installed. If the engine version changes mid-project, re-read `--agents`.
+
 To let a HUMAN adopter verify candor's value on their own codebase, each implementation ships a
 `PROVE-IT.md` — a self-experiment prompt their agent runs (SPEC §7.11).
 
