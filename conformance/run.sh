@@ -66,7 +66,8 @@ if command -v swift >/dev/null 2>&1 && [ -f "$SW_DIR/Package.swift" ]; then
   if [ -x "$SW_BIN" ]; then
     "$SW_BIN" "$SW_DIR/conformance/Cases.swift" --out "$W/sw" >/dev/null 2>&1
   fi
-  [ -s "$W/sw.json" ] && SW_OK=1
+  SW_REPORT=$(ls "$W"/sw.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+  [ -n "$SW_REPORT" ] && [ -s "$SW_REPORT" ] && SW_OK=1
 fi
 
 rc=0
@@ -268,11 +269,13 @@ if [ -n "$TS_PRESENT" ]; then
   node "$TS_DIR/scan.mjs" "$W/tab/ts/cases.ts" "$W/tab/ts_out" >/dev/null 2>&1
   [ -s "$W/tab/ts_out.json" ] || { echo "FAIL: candor-ts errored on the tables-vector fixture"; exit 2; }
 fi
+SW_TAB=""
 if [ -n "$SW_PRESENT" ]; then
   "$SW_BIN" "$W/tab/swift/cases.swift" --out "$W/tab/sw_out" >/dev/null 2>&1
-  [ -s "$W/tab/sw_out.json" ] || { echo "FAIL: candor-swift errored on the tables-vector fixture"; exit 2; }
+  SW_TAB=$(ls "$W"/tab/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+  [ -n "$SW_TAB" ] && [ -s "$SW_TAB" ] || { echo "FAIL: candor-swift errored on the tables-vector fixture"; exit 2; }
 fi
-python3 - "$TABVEC" "$TAB_RUST" "$W/tab/java.json" "$W/tab/ts_out.json" "$W/tab/sw_out.json" <<'PY' || rc=1
+python3 - "$TABVEC" "$TAB_RUST" "$W/tab/java.json" "$W/tab/ts_out.json" "${SW_TAB:-/nonexistent}" <<'PY' || rc=1
 import json, os, sys
 V = json.load(open(sys.argv[1]))["vectors"]
 def by_leaf(path, sep):
@@ -519,7 +522,7 @@ fi
 # ====================================================================================================
 if [ -n "$SW_PRESENT" ]; then
   if [ -n "$SW_OK" ]; then
-    python3 - "$HERE/expected.json" "$W/sw.json" <<'PY' || rc=1
+    python3 - "$HERE/expected.json" "$SW_REPORT" <<'PY' || rc=1
 import json, sys
 expected = {k: set(v) for k, v in json.load(open(sys.argv[1])).items() if not k.startswith("_")}
 d = json.load(open(sys.argv[2]))
