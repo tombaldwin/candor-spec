@@ -4,10 +4,12 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.3.** The **spec/contract version** — the report schema, the effect vocabulary, and the
+**Version 0.4.** The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
-*build id* and from a package's *release version* (§2.1): the published Rust crates are at `0.3.x`, the
-JVM port builds from a git hash, and both declare **spec `0.3`**. An implementation MUST emit the spec
+*build id* and from a package's *release version* (§2.1): the published Rust crates carry their own
+`0.x.y` releases, the JVM port builds from a git hash, and all declare **spec `0.4`**. 0.4 is
+wire-compatible with 0.3 (no schema change); what it changes is CONFORMANCE — four obligations
+moved from SHOULD to MUST (see the [changelog](#8-changelog)). An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
 constant. The report is wrapped in a self-describing `{ candor, functions }` envelope (§2); the legacy
 v0.1 bare array is still accepted by conformant readers during migration. See the [changelog](#8-changelog).
@@ -54,7 +56,7 @@ one file per unit, named so multiple units don't collide (the Rust impl uses
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.3" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.4" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -92,10 +94,11 @@ Each entry:
                                          // (reflection, native) from the improvable kind (a missing
                                          // impl — widen the analysed inputs). Omitted when this fn
                                          // introduces no direct Unknown.
-  "hash":         "<stable cross-crate id>", // OPTIONAL: a stable identity (e.g. DefPathHash) so a
-                                         // dependent crate's analysis can inherit this fn's effects
-                                         // across the crate boundary. Per-crate analyzers SHOULD
-                                         // emit it; consumers may ignore it.
+  "hash":         "<stable cross-crate id>", // a stable identity (e.g. DefPathHash, pkg#LocalName) so
+                                         // a dependent's analysis can inherit this fn's effects
+                                         // across the package boundary. Producers MUST emit it
+                                         // (0.4 — a hashless report is silently unchainable);
+                                         // consumers may ignore it.
   "calls":        ["..."],               // OPTIONAL: effectful local functions this one calls — the
                                          // effect-relevant call graph, so a consumer can answer
                                          // "who calls X?" from the report without re-analysis.
@@ -119,11 +122,12 @@ Each entry:
 **including when B lives in another crate of the same project**. `direct` is the non-transitive
 subset. Effect-free items MAY be omitted from the report.
 
-`hash` is optional *only* for single-crate analysis. As soon as A and B are in different crates,
-`hash` is the join key a dependent uses to inherit B's effects, so a multi-crate implementation MUST
-emit it to satisfy the transitivity rule above — otherwise every cross-crate call is silently dropped
-and the boundary function *under*-reports (the dangerous direction). A consumer may still ignore
-`hash`; a producer of multi-crate reports may not omit it.
+`hash` is the join key a dependent uses to inherit a function's effects across a package boundary —
+both within a multi-crate project (the transitivity rule above) and when a report is CHAINED as a
+dependency's (below). A producer MUST emit it (0.4; previously SHOULD for single-crate reports):
+any report can become a chained sibling, and a hashless one is silently unchainable — every
+cross-boundary call drops and the consumer *under*-reports, the dangerous direction. A consumer may
+still ignore `hash`.
 
 **Report chaining** (the `CANDOR_DEPS` convention, implemented by all three reference engines): a
 scan accepts *sibling reports* — previously-produced reports for the scanned code's dependencies —
@@ -203,7 +207,9 @@ extraction is pinned token-for-token; the cross-impl vector battery
 
 The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a
 producer SHOULD emit them so a dependent crate's allowlist can see a value that lives across the
-crate boundary.
+crate boundary — and an implementation that ENFORCES `allow <Effect>` rules MUST emit that effect's
+surface (0.4): an allow gate over an unemitted surface fails every rule as uncertifiable (lits = ∅),
+which is worse than no gate at all.
 
 ### 2.1 Provenance (the `candor` header)
 
@@ -219,10 +225,11 @@ The header has THREE fields, on two distinct axes — keep them separate:
   binary produced this?" and MUST reflect the binary that **actually ran**, not the source tree it was
   built from — those diverge when the source is updated without a rebuild, and a source-derived version
   would call a stale engine "current" and mask a stale baseline. A consumer performing cross-crate
-  inheritance (§2, `hash`) SHOULD compare `version` and, on a mismatch, treat the inherited effects as
+  inheritance (§2, `hash`) MUST compare `version` (0.4; a MISSING version is as unverifiable as a
+  mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec` — the **candor-spec contract version** this engine implements (`"0.3"`). This is the version
+- `spec` — the **candor-spec contract version** this engine implements (`"0.4"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version — they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -542,7 +549,7 @@ An implementation conforms to candor-spec if it:
 8. declares the **spec version** it implements (the envelope's `spec`, §2.1) and keeps it in step with
    this document.
 
-It SHOULD additionally:
+It SHOULD additionally (items 9–13):
 
 9. emit the **call-graph sidecar** (§2.2) — required if it answers any caller-direction query
    (`callers`/`whatif`/`rewire`), since the report alone omits pure functions;
@@ -593,11 +600,14 @@ It SHOULD additionally:
     obligations are item 7's honesty and the cross-impl conformance fixtures it does answer. In the
     Rust repo the harness accordingly drives the nightly lint (the engine that claims §4), not
     `candor-scan`.
+And, as of spec 0.4, it MUST also (the number is kept from its SHOULD-era introduction — references
+to "item 14" stay valid):
+
 14. **disclose the curated classifier's blind spots per scan — the κ-coverage ledger.** Every
     candor engine classifies external calls against a curated table, and an UNLISTED package
     contributes nothing: invisible, not `Unknown` — the documented weaker edge of item 4's promise,
     and historically its sharpest (an unlisted password-hashing library read silently pure on
-    exactly the call a security review cared about). A conforming engine SHOULD therefore emit,
+    exactly the call a security review cared about). A conforming engine MUST therefore emit,
     with each scan, the external packages the scanned code **demonstrably calls** that the
     classifier neither classifies nor has reviewed-pure, named with call counts — per-scan
     evidence in the receipt, not a documentation footnote. The disclosure line begins with the
@@ -617,6 +627,21 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.4 (2026-06-12)** — **wire-compatible, conformance-breaking**: no report-schema change (a 0.3
+  reader parses a 0.4 report byte-for-byte; only the envelope's `spec` string moves), but four
+  obligations are upgraded SHOULD → MUST, so an implementation that conformed to 0.3 may not
+  conform to 0.4 until it adds them:
+  - **§2.1 version-trust at the chain join** is MUST (and a MISSING producer version is as
+    unverifiable as a mismatched one — downgrade to `Unknown`). The trust contract (§4) extended
+    across report boundaries; the engines had measurably drifted under SHOULD.
+  - **§7 item 14, the κ-coverage ledger,** is MUST (conformance Part 4c already enforced it): the
+    per-scan disclosure is the executable form of item 7's honesty obligation.
+  - **`hash` emission** is MUST for every producer (any report can become a chained sibling; a
+    hashless report is silently unchainable — the under-report direction).
+  - **Literal surfaces** are MUST for an implementation that enforces `allow` rules (an allow gate
+    over an unemitted surface fails every rule as uncertifiable — worse than no gate).
+  The §7.13 soundness harness deliberately REMAINS a SHOULD: §4 is already a MUST, and the harness
+  is its evidence — required of the reference engines by their own CI, recommended for all.
 - **0.3 (second amendment, 2026-06-11)** — additive within 0.3, no wire change (no new report
   fields; `hash` was already §2):
   - §2 **report chaining** made normative: the CANDOR_DEPS convention, the never-guess join rule,
