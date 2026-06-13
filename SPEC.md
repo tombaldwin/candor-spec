@@ -487,6 +487,32 @@ Java/C#. An implementation maps capability types → declared effects.
 This is deliberately aligned with capability-secure and dependency-injection styles — the goal is
 that a function's *signature* tells you its effect surface.
 
+### 5.1 The effect manifest — declared effects for an opaque dependency ⟨0.5⟩
+
+A cap type lets a *function* declare its effects. The same trust tier extends to a whole **opaque
+dependency** — a package whose source the engine does not analyse, an MCP server, a tool behind the
+`Exec` boundary — via an **effect manifest**: a `candorEffects` declaration (an array of effect
+names from §1) the dependency publishes, naming the surface it may perform. An engine MAY read it
+and classify the dependency's calls accordingly, killing the `Unknown` it would otherwise carry.
+The trust is **declared-not-verified**: the report is only as honest as the declaration, exactly
+like a cap type (and unlike the engine's own analysis, which is checked). An effect name outside §1
+MUST void the declaration loudly (a typo must not silently *narrow* a surface), and a declaration
+that under-claims is caught the moment the source *is* analysed — the κ ledger (§7) names every
+dependency still opaque, so a missing manifest is visible, never silent. This is one mechanism with
+several existing shapes: a project-side declaration on an MCP server entry, a user-supplied
+crate→effect rule, a chained sibling report. The spec names the convention so it is portable across
+them; where to put the field (a package manifest, a registry's metadata) is the ecosystem's to
+settle, and adoption is the path to shrinking `Unknown` across a whole dependency graph rather than
+one curated table at a time.
+
+The manifest pays off twice. First, **precision**: a declared dependency stops flooding consumers
+with `Unknown`. Second — and higher-signal — **supply-chain review**: an effect surface is a
+versioned fact, so a `diff`/`gains` (§3.1, §6 `AS-EFF-005`) between two *releases* of a dependency
+surfaces a **gained capability** — "this update gained `Net`/`Exec`". A dependency that quietly
+grows a network or subprocess reach between a patch release is exactly the supply-chain event nothing
+else flags cheaply; candor flags it as a deterministic effect-set delta, declaration or analysis
+alike. An engine SHOULD make the package-level gained set machine-readable so a gate can alarm on it.
+
 ## 6. Diagnostics (`AS-EFF-00x`)
 
 Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the project's origin):
