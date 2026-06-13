@@ -391,11 +391,13 @@ RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
 "$QUERY" callers "$RUST_PREFIX" transitive_leaf 1 > "$W/r_callers.json" 2>/dev/null
 "$QUERY" map     "$RUST_PREFIX" 1                 > "$W/r_map.json"     2>/dev/null
 "$QUERY" diff    "$RUST_PREFIX" "$RUST_PREFIX" 1 v v > "$W/r_diff.json" 2>/dev/null
+"$QUERY" impact  "$RUST_PREFIX" transitive_leaf --json > "$W/r_impact.json" 2>/dev/null
 java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
 java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
 java -jar "$JAR" map     "$W/java.json" --json                 > "$W/j_map.json"     2>/dev/null
 java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json"    2>/dev/null
+java -jar "$JAR" impact  "$W/java.json" transitive_leaf --json > "$W/j_impact.json"  2>/dev/null
 "$QUERY" show "$RUST_PREFIX" act 1  > "$W/r_ladder_act.json"  2>/dev/null
 "$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
@@ -414,14 +416,15 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ show    "$W/ts" nion 1            > "$W/t_ladder_nion.json" 2>/dev/null
   TSQ show    "$W/ts" Svc.act 1         > "$W/t_ladder_svc.json"  2>/dev/null
   TSQ diff    "$W/ts" "$W/ts" 1         > "$W/t_diff.json"       2>/dev/null
+  TSQ impact  "$W/ts" transitive_leaf 1 > "$W/t_impact.json"     2>/dev/null
 fi
 
 # A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
-P5_FILES="r_show r_where r_callers r_map r_diff r_ladder_act r_ladder_nion r_ladder_svc \
-          j_show j_where j_callers j_map j_diff j_ladder_act j_ladder_nion j_ladder_svc"
+P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_ladder_act r_ladder_nion r_ladder_svc \
+          j_show j_where j_callers j_map j_diff j_impact j_ladder_act j_ladder_nion j_ladder_svc"
 if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then  # same gate that CREATES them — a scanner-only checkout must degrade two-way, not hard-fail
-  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_ladder_act t_ladder_nion t_ladder_svc"
+  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_ladder_act t_ladder_nion t_ladder_svc"
 fi
 for f in $P5_FILES; do
   [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
@@ -465,6 +468,19 @@ td = load("diff", "t") if ts else None
 check("diff", isinstance(rd, dict) and isinstance(jd, dict)
               and rd.get("changes") == [] and jd.get("changes") == []
               and (not ts or (isinstance(td, dict) and td.get("changes") == [])))
+# impact (SPEC §3.1): the blast-radius LIST, not just a count — {fn, affectedCount, affected,
+# entryPoints}. affectedCount must equal len(affected), and the affected SET (by leaf-name, since the
+# fn VALUES are language-natural) must agree across engines. This pins the enrichment that lets an
+# agent read the blast radius instead of re-deriving it.
+ik = {"fn", "affectedCount", "affected", "entryPoints"}
+ri, ji = load("impact", "r"), load("impact", "j")
+ti = load("impact", "t") if ts else None
+leaf = lambda n: n.split("::")[-1].split(".")[-1]
+aff = lambda d: {leaf(n) for n in d["affected"]}
+check("impact", ik <= set(ri) and ik <= set(ji)
+                and ri["affectedCount"] == len(ri["affected"]) and ji["affectedCount"] == len(ji["affected"])
+                and aff(ri) == aff(ji) and aff(ri) == {"transitive_caller"}
+                and (not ts or (ik <= set(ti) and ti["affectedCount"] == len(ti["affected"]) and aff(ti) == aff(ri))))
 # match LADDER (SPEC §3.1): a segment-suffix query resolves to exactly the suffix match in both
 # engines (`act` -> only Svc.act), while a substring-only query still browses (`nion` -> union_a/b/c).
 rs1, js1 = load("ladder_act", "r"), load("ladder_act", "j")

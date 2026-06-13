@@ -369,6 +369,9 @@ callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
 map      { "<module>": { "effects":[…], "functions":int } }
 diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":[…], "lost":[…],
            "status": "changed"|"new"|"removed" } ], …optional provenance fields }
+reachable { "entryPoints":int, "effects": { "<Effect>": { "count":int, "via":[fn…] } } }
+path      { "effect", "fn", "path":[ { "fn", "loc", "source":bool } ] }
+impact    { "fn", "affectedCount":int, "affected":[fn…], "entryPoints":[ { "fn", "inferred":[…] } ] }
 ```
 
 `show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved
@@ -380,6 +383,15 @@ from a callee (the source vs the blast radius); the envelope MAY carry additiona
 input names **no report** MUST fail loudly rather than read as an empty report — a typo'd current path
 would otherwise show zero gains (silently passing a gained-effect gate), and a typo'd baseline would
 show every effect as newly gained.
+
+`impact` is the backward dual of `reachable`: `affected` is the blast radius itself — every effectful
+unit that transitively calls the target (the same names `affectedCount` counts, sorted) — and
+`entryPoints` are the runtime roots downstream, each with its effect set so a consumer sees *what*
+surfaces, not just that something does. Emitting only the count forces an agent to re-derive the list
+it just computed, so the list is required. `path` is the forward dual: a shortest call chain from `fn`
+to the nearest unit performing `effect` **directly** (`source: true`), each step carrying its `loc`;
+an empty `path` is the honest "no local source on a path" answer (the source is cross-boundary,
+framework-synthesised, or `Unknown`), never an error.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
