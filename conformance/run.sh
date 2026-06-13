@@ -393,6 +393,7 @@ RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
 "$QUERY" diff    "$RUST_PREFIX" "$RUST_PREFIX" 1 v v > "$W/r_diff.json" 2>/dev/null
 "$QUERY" impact  "$RUST_PREFIX" transitive_leaf --json > "$W/r_impact.json" 2>/dev/null
 "$QUERY" gains   "$RUST_PREFIX" "$RUST_PREFIX" --json   > "$W/r_gains.json" 2>/dev/null
+"$QUERY" path    "$RUST_PREFIX" transitive_caller Fs --json > "$W/r_path.json" 2>/dev/null
 java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
 java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
@@ -400,6 +401,7 @@ java -jar "$JAR" map     "$W/java.json" --json                 > "$W/j_map.json"
 java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json"    2>/dev/null
 java -jar "$JAR" impact  "$W/java.json" transitive_leaf --json > "$W/j_impact.json"  2>/dev/null
 java -jar "$JAR" gains   "$W/java.json" "$W/java.json" --json   > "$W/j_gains.json"   2>/dev/null
+java -jar "$JAR" path    "$W/java.json" transitive_caller Fs --json > "$W/j_path.json" 2>/dev/null
 "$QUERY" show "$RUST_PREFIX" act 1  > "$W/r_ladder_act.json"  2>/dev/null
 "$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
@@ -420,14 +422,15 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ diff    "$W/ts" "$W/ts" 1         > "$W/t_diff.json"       2>/dev/null
   TSQ impact  "$W/ts" transitive_leaf 1 > "$W/t_impact.json"     2>/dev/null
   TSQ gains   "$W/ts" "$W/ts"            > "$W/t_gains.json"      2>/dev/null
+  TSQ path    "$W/ts" transitive_caller Fs > "$W/t_path.json"     2>/dev/null
 fi
 
 # A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
-P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_ladder_act r_ladder_nion r_ladder_svc \
-          j_show j_where j_callers j_map j_diff j_impact j_gains j_ladder_act j_ladder_nion j_ladder_svc"
+P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_ladder_act r_ladder_nion r_ladder_svc \
+          j_show j_where j_callers j_map j_diff j_impact j_gains j_path j_ladder_act j_ladder_nion j_ladder_svc"
 if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then  # same gate that CREATES them — a scanner-only checkout must degrade two-way, not hard-fail
-  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_ladder_act t_ladder_nion t_ladder_svc"
+  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_path t_ladder_act t_ladder_nion t_ladder_svc"
 fi
 for f in $P5_FILES; do
   [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
@@ -492,6 +495,18 @@ rg, jg = load("gains", "r"), load("gains", "j")
 tg = load("gains", "t") if ts else None
 check("gains", gk <= set(rg) and gk <= set(jg) and rg["gained"] == [] and jg["gained"] == []
                and (not ts or (gk <= set(tg) and tg["gained"] == [])))
+# path (SPEC §3.1): the provenance chain {effect, fn, path:[{fn,loc,source}]} from fn to the nearest
+# unit performing the effect DIRECTLY (source:true). The leaf-name chain + the source must agree across
+# engines — this pins the freshly-written candor-ts BFS against candor-query's, which nothing else did.
+pk = {"effect", "fn", "path"}
+rp, jp = load("path", "r"), load("path", "j")
+tp = load("path", "t") if ts else None
+chain = lambda d: [s["fn"].split("::")[-1].split(".")[-1] for s in d["path"]]
+srcs = lambda d: [s["fn"].split("::")[-1].split(".")[-1] for s in d["path"] if s.get("source")]
+check("path", pk <= set(rp) and pk <= set(jp)
+              and chain(rp) == ["transitive_caller", "transitive_leaf"] and chain(jp) == chain(rp)
+              and srcs(rp) == ["transitive_leaf"] and srcs(jp) == ["transitive_leaf"]
+              and (not ts or (pk <= set(tp) and chain(tp) == chain(rp) and srcs(tp) == ["transitive_leaf"])))
 # match LADDER (SPEC §3.1): a segment-suffix query resolves to exactly the suffix match in both
 # engines (`act` -> only Svc.act), while a substring-only query still browses (`nion` -> union_a/b/c).
 rs1, js1 = load("ladder_act", "r"), load("ladder_act", "j")
