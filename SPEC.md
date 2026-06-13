@@ -548,6 +548,13 @@ whose wrapper reports its own code) — it MUST NOT proceed gateless. A typo'd p
 that runs green is a gate that silently passes everything, the exact failure a gate exists to
 prevent. (Found live in a reference engine: loud on stderr, but exit 0 — a CI gate that never bit.)
 
+**An unrecognized command-line FLAG is the same failure class.** A CLI MUST reject an unknown
+leading-dash argument with a non-zero exit (the reference engines use `2`), never silently ignore
+it nor read it as a positional path. The same gateless-green hazard applies: a typo'd `--policy`/
+`--poilcy` that is silently dropped runs the scan with no gate; an agent following a newer doc
+against an older binary that swallows the unknown flag gets a misleading scan instead of an
+"upgrade me" signal. The cross-impl suite probes this (an unknown flag → exit 2) across the engines.
+
 **The four rule kinds:**
 
 ```

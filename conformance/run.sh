@@ -543,11 +543,14 @@ else
   echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED"
 fi
 
-# --- Part 9: unitKind (SPEC §2, 0.5 draft) -----------------------------------------------------------
-# Engines that have non-function units name them; ordinary functions OMIT the field (absent =
-# "function"). Per-language kinds, so this is per-engine assertion, not a differential.
+# --- Part 9: unitKind (SPEC §2, 0.5 DRAFT) -----------------------------------------------------------
+# Engines that have non-function units name them; ordinary functions OMIT the field. unitKind is a
+# 0.5 DRAFT field (engines MAY emit it early, §2 forward-compat), so this part is ADVISORY — a miss
+# WARNS but does not fail the suite, and won't retroactively fail released 0.4 engines if the draft
+# renames a value before 0.5 tags. (Each branch traps its own errors so a broken scan prints a
+# labelled WARN, never an unattributed Python traceback.)
 echo
-echo "[9] unitKind (0.5 draft — non-function units named, plain fns omit the field):"
+echo "[9] unitKind (0.5 DRAFT — ADVISORY: non-function units named, plain fns omit the field):"
 mkdir -p "$W/uk/java"
 cat > "$W/uk/java/Uk.java" <<'J'
 import java.nio.file.*;
@@ -558,38 +561,47 @@ public class Uk {
 J
 javac -d "$W/uk/jcls" "$W/uk/java/Uk.java" 2>/dev/null
 java -jar "$JAR" "$W/uk/jcls" --json "$W/uk/java.json" >/dev/null 2>&1
-python3 - "$W/uk/java.json" <<'PY' || rc=1
+python3 - "$W/uk/java.json" <<'PY' || true
 import json, sys
-by = {e["fn"]: e for e in json.load(open(sys.argv[1]))["functions"]}
-clinit = next((e for f, e in by.items() if f.endswith(".<clinit>")), None)
-ok = clinit and clinit.get("unitKind") == "initializer" and "unitKind" not in by.get("Uk.plain", {})
-print("  java       <clinit> -> initializer; plain fn omits" if ok else "  java       FAILED")
-sys.exit(0 if ok else 1)
+try:
+    by = {e["fn"]: e for e in json.load(open(sys.argv[1]))["functions"]}
+    clinit = next((e for f, e in by.items() if f.endswith(".<clinit>")), None)
+    ok = clinit and clinit.get("unitKind") == "initializer" and "unitKind" not in by.get("Uk.plain", {})
+    print("  java       <clinit> -> initializer; plain fn omits" if ok else "  java       WARN (unitKind absent — draft)")
+except Exception as e:
+    print(f"  java       WARN ({e})")
 PY
 if [ -n "$TS_PRESENT" ]; then
   mkdir -p "$W/uk/ts"
   printf '{"name":"ukpkg"}' > "$W/uk/ts/package.json"
   printf 'const fs = require("node:fs");\nmodule.exports = function () { return fs.readFileSync("/k"); };\n' > "$W/uk/ts/sign.js"
   ( cd "$TS_DIR" && node scan.mjs "$W/uk/ts" --allow-js --out "$W/uk/tsr" >/dev/null 2>&1 )
-  python3 - "$W/uk/tsr.json" <<'PY' || rc=1
+  python3 - "$W/uk/tsr.json" <<'PY' || true
 import json, sys
-fns = json.load(open(sys.argv[1]))["functions"]
-ok = any(e.get("unitKind") == "export" for e in fns)
-print("  ts         CJS export unit -> export" if ok else "  ts         FAILED")
-sys.exit(0 if ok else 1)
+try:
+    fns = json.load(open(sys.argv[1]))["functions"]
+    ok = any(e.get("unitKind") == "export" for e in fns)
+    print("  ts         CJS export unit -> export" if ok else "  ts         WARN (unitKind absent — draft)")
+except Exception as e:
+    print(f"  ts         WARN ({e})")
 PY
 fi
 if [ -n "$SW_BIN" ] && [ -x "$SW_BIN" ]; then
   mkdir -p "$W/uk/sw"
   printf 'import Foundation\nstruct C { var v: Int { _ = FileManager.default.contents(atPath: "/x"); return 1 } }\nfunc plainSw() { _ = FileManager.default.contents(atPath: "/y") }\n' > "$W/uk/sw/m.swift"
   "$SW_BIN" "$W/uk/sw" --out "$W/uk/swr" >/dev/null 2>&1
-  python3 - <<PY || rc=1
-import json, glob, sys
-p = [x for x in glob.glob("$W/uk/swr.*.json") if "callgraph" not in x][0]
-by = {e["fn"]: e for e in json.load(open(p))["functions"]}
-ok = by.get("C.v", {}).get("unitKind") == "accessor" and "unitKind" not in by.get("plainSw", {})
-print("  swift      accessor unit -> accessor; plain fn omits" if ok else "  swift      FAILED")
-sys.exit(0 if ok else 1)
+  python3 - <<PY || true
+import json, glob
+try:
+    ps = [x for x in glob.glob("$W/uk/swr.*.json") if "callgraph" not in x]
+    if not ps:
+        print("  swift      WARN (no report produced)")
+    else:
+        by = {e["fn"]: e for e in json.load(open(ps[0]))["functions"]}
+        ok = by.get("C.v", {}).get("unitKind") == "accessor" and "unitKind" not in by.get("plainSw", {})
+        print("  swift      accessor unit -> accessor; plain fn omits" if ok else "  swift      WARN (unitKind absent — draft)")
+except Exception as e:
+    print(f"  swift      WARN ({e})")
 PY
 fi
 
