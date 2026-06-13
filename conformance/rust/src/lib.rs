@@ -8,6 +8,9 @@ pub fn net_connect() { let _ = std::net::TcpStream::connect("example.com:80"); }
 pub fn exec_spawn() { let _ = std::process::Command::new("ls"); }
 // Exec-cliff refinement (spec §4 ⟨0.5⟩): a known literal head adds its effect; both engines must agree.
 pub fn exec_curl() { let _ = std::process::Command::new("curl"); }
+// Exec-refinement reads the HEAD (argv[0]) only: a dynamic program with a literal ARGUMENT keeps the
+// bare cliff — `arg("curl")` must NOT fabricate Net (spec §4 ⟨0.5⟩: the head is argv[0]).
+pub fn exec_dyn_head(tool: &str) { let _ = std::process::Command::new(tool).arg("curl"); }
 pub fn env_read() { let _ = std::env::var("PATH"); }
 pub fn clock_now() { let _ = std::time::SystemTime::now(); }
 pub fn pure_fn() -> i32 { 1 + 2 }
