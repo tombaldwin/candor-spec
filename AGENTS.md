@@ -39,11 +39,21 @@ same for every kind; tolerate values you don't recognize.
 
 - **What a function performs** → read its `inferred` (the full transitive effect set).
 - **Blast radius of editing a function** — *"who is affected if I add or change an effect in X?"* → the
-  transitive **`callers`** of X, **not** `inferred` (which is what X itself does). Use the `callers <fn>`
-  query (it reads the call-graph sidecar); it works for **any** function, including a still-**pure** one
-  you are *about* to make effectful — so it answers the question *before* the edit. Enumerating 3–5 layers
-  of transitive callers by hand is exactly what's easy to under-count; let candor list them.
+  transitive callers of X, **not** `inferred` (which is what X itself does). Prefer the dedicated
+  **`impact <fn>`** query: it returns the `affected` list (every effectful unit that transitively calls X)
+  and the downstream `entryPoints` (the runtime roots a change surfaces through), entry-point-scoped — the
+  cheap, deterministic answer to *"if I change this, what surfaces at runtime?"*. `callers <fn>` is the
+  lower-level form (raw transitive callers). Both work for **any** function, including a still-**pure** one
+  you are *about* to make effectful, so they answer *before* the edit. Enumerating layers of transitive
+  callers by hand is exactly what's easy to under-count; let candor list them.
 - **Find functions with a given effect** → filter on `inferred` (or query `where <Effect>`).
+- **Kill an `Unknown` from an uncurated dependency** → that dependency can declare its effect surface in
+  its package manifest — `"candorEffects": ["Net"]` (the effect manifest, §5.1) — read as
+  declared-not-verified, so its calls classify to the declared set instead of `Unknown`. A name outside
+  the §1 vocabulary voids the declaration loudly.
+- **Catch a supply-chain capability gain** → `gains <cur> <baseline>` reports the effects a surface
+  *gained* between two reports (a dependency that grew a `Net`/`Exec` reach between releases) — a
+  high-signal review trigger nothing else gives cheaply.
 - **Safe to treat as pure** (e.g. test without mocks) → the function appears in the **call-graph
   sidecar** (every *analyzed* function does, SPEC §2.2) but is **absent from the report** — reports
   list only effectful or unresolved functions, so a pure function has no report entry to inspect.
