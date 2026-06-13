@@ -6,6 +6,8 @@
 pub fn fs_read() { let _ = std::fs::read("/tmp/x"); }
 pub fn net_connect() { let _ = std::net::TcpStream::connect("example.com:80"); }
 pub fn exec_spawn() { let _ = std::process::Command::new("ls"); }
+// Exec-cliff refinement (spec §4 ⟨0.5⟩): a known literal head adds its effect; both engines must agree.
+pub fn exec_curl() { let _ = std::process::Command::new("curl"); }
 pub fn env_read() { let _ = std::env::var("PATH"); }
 pub fn clock_now() { let _ = std::time::SystemTime::now(); }
 pub fn pure_fn() -> i32 { 1 + 2 }

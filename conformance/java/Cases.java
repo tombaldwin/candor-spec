@@ -7,6 +7,8 @@ public class Cases {
   public static void fs_read() throws Exception { Files.readAllBytes(Path.of("/tmp/x")); }
   public static void net_connect() throws Exception { new java.net.Socket("example.com", 80); }
   public static void exec_spawn() throws Exception { new ProcessBuilder("ls").start(); }
+  // Exec-cliff refinement (spec §4 ⟨0.5⟩): a known literal head adds its effect; both engines must agree.
+  public static void exec_curl() throws Exception { new ProcessBuilder("curl").start(); }
   public static void env_read() { System.getenv("PATH"); }
   public static void clock_now() { long t = System.currentTimeMillis(); }
   public static int pure_fn() { return 1 + 2; }

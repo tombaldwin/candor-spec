@@ -9,6 +9,10 @@
   "exec_spawn": [
     "Exec"
   ],
+  "exec_curl": [
+    "Exec",
+    "Net"
+  ],
   "env_read": [
     "Env"
   ],
