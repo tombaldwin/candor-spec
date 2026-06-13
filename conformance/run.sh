@@ -638,17 +638,20 @@ check_polfail "java      " env CANDOR_POLICY="$NOPOL" java -jar "$JAR" "$W/jout"
 
 # --- Part 7: the self-describing engine (SPEC §7.11) -------------------------------------------------
 # Every engine present prints its embedded agent contract under --agents: a version header comment
-# followed by the AGENTS.md. The flag must exit 0 and the output must carry both.
+# followed by the AGENTS.md. The flag must exit 0, and the header must follow the CANONICAL shape
+# `<!-- candor-<engine> <version> · …` (engine and version space-separated) so tooling can parse it
+# uniformly — pinning it here is the one shared place that holds the format across the engines.
 echo
 echo "[7] SELF-DESCRIBING ENGINES (--agents, SPEC §7.11):"
 check_agents() { # $1 label, $2… command
   local label="$1"; shift
   local out
-  if out="$("$@" 2>/dev/null)" && printf '%s' "$out" | head -1 | grep -q '^<!-- candor' \
+  if out="$("$@" 2>/dev/null)" \
+     && printf '%s' "$out" | head -1 | grep -Eq '^<!-- candor-[a-z]+ [^ ]+ · ' \
      && printf '%s' "$out" | grep -q 'AI coding agent'; then
-    echo "  $label --agents -> version header + contract"
+    echo "  $label --agents -> canonical header + contract"
   else
-    echo "  $label --agents FAILED (missing header or contract)"; rc=1
+    echo "  $label --agents FAILED (header not 'candor-<engine> <version> ·', or contract missing): $(printf '%s' "$out" | head -1)"; rc=1
   fi
 }
 check_agents "rust:scan " "$SCAN" --agents
