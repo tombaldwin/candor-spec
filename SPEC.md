@@ -448,7 +448,13 @@ the head's effects to the caller — a spawned `curl` contributes `Net`, a spawn
 analyzer self-boundary), making this one case spec-supplied rather than curated. The same honesty
 posture as bounded-CHA governs: refinement only **adds** resolved effects or **bounds** the cliff's
 reach — it MUST NOT drop the `Exec` itself (a subprocess was still spawned), and MUST NOT narrow a
-**dynamically-constructed or unrecognised head to pure** (that head keeps the unrefined cliff). A
+**dynamically-constructed or unrecognised head to pure** (that head keeps the unrefined cliff). The
+**head** is the program-naming position — argv[0], the command actually executed — *not* merely any
+literal among the call's arguments: when the program itself is runtime-computed, a literal appearing
+only as a later **argument** (a flag, a path, an env value) is data, NOT the head, and MUST NOT
+refine — `spawn(tool, "curl")` with a dynamic `tool` keeps the bare cliff, because `curl` is an
+argument here, not the program. Classifying an argument as the head would **fabricate** that
+argument's effect onto a program that may never perform it — the §1 under-report rule forbids it. A
 head resolved to a known non-project tool also bounds *transitive* attribution: a caller that only
 ever spawns such tools does not thereby reach the effects of the project's own binaries — e.g. a
 step that runs candor *over* the code performs `Fs` (candor reads the source), not the analysed
@@ -781,7 +787,9 @@ declare it via the envelope's `spec`.
     statically-known sub-command head to add the head's effects and bound the capability cliff's
     transitive reach (a spawned candor engine → `Fs`/`Env`, supplied by §7 item 12). Posture-only —
     the head table is curated engine data, never normative; an unknown/dynamic head keeps the
-    cliff; `Exec` is never dropped. It only narrows an upper bound, so a 0.4 consumer is unaffected.
+    cliff; `Exec` is never dropped. The *head* is argv[0] (the program), never a trailing literal
+    **argument** of a dynamically-named program — classifying an argument would fabricate its effect.
+    It only narrows an upper bound, so a 0.4 consumer is unaffected.
   - the **effect manifest** (§5.1): an opaque dependency MAY declare its effect surface
     (`candorEffects`), read as the declared-not-verified tier (the cap-type trust extended to a whole
     package), killing its `Unknown`; a `diff`/`gains` between two releases of a declaration surfaces a
