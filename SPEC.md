@@ -5,10 +5,11 @@ side effects it performs. This document defines what every implementation must p
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
 **Version 0.4** (amended — tag `v0.4.1`). A **0.5 draft is in development in this document**: the
-parts marked ⟨0.5⟩ (the *unit* generalization and the `unitKind` field, §2; the subprocess-boundary
-refinement of `Exec`, §4) are not yet released — engines continue to declare `0.4` until 0.5 tags,
-and may adopt the ⟨0.5⟩ parts early (they are extensions a 0.4 consumer tolerates, §2 forward
-compatibility — `unitKind` is an extra field; Exec-refinement only narrows an upper bound).
+parts marked ⟨0.5⟩ — the *unit* generalization and the `unitKind` field (§2); the subprocess-boundary
+refinement of `Exec` (§4); the effect manifest for an opaque dependency (§5.1); the gate→guard runtime
+enforcement (§6.2) — are not yet released. Engines continue to declare `0.4` until 0.5 tags, and may
+adopt the ⟨0.5⟩ parts early (they are extensions a 0.4 consumer tolerates, §2 forward compatibility:
+new optional fields, refinements that only narrow an upper bound, and SHOULD-level conventions).
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
@@ -769,7 +770,7 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — two ⟨0.5⟩ parts:
+- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — four ⟨0.5⟩ parts:
   - the **units** generalization: a report entry describes a *unit* (the smallest body effects are
     attributed to), of which a function is the common case; the new OPTIONAL `unitKind` field (§2)
     names the non-function kinds (initializer / accessor / export / agent / command / skill / cron /
@@ -781,6 +782,15 @@ declare it via the envelope's `spec`.
     transitive reach (a spawned candor engine → `Fs`/`Env`, supplied by §7 item 12). Posture-only —
     the head table is curated engine data, never normative; an unknown/dynamic head keeps the
     cliff; `Exec` is never dropped. It only narrows an upper bound, so a 0.4 consumer is unaffected.
+  - the **effect manifest** (§5.1): an opaque dependency MAY declare its effect surface
+    (`candorEffects`), read as the declared-not-verified tier (the cap-type trust extended to a whole
+    package), killing its `Unknown`; a `diff`/`gains` between two releases of a declaration surfaces a
+    gained capability — the supply-chain alarm. Also pins the §3.1 `reachable`/`path`/`impact` query
+    shapes (with `impact`'s `affected` blast-radius list) so the agent-facing shapes agree across engines.
+  - **gate → guard** (§6.2): a `deny` rule MAY compile to a *runtime guard* enforcing the same
+    boundary (a sandbox profile for a process; the harness's `permissions.deny` for an agent fleet) —
+    the dual of analysis, which reads the same enforcement surface. SHOULD-level; honest about the
+    cliff it cannot close, and about per-target scopes a host boundary cannot express.
 
 - **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
   required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
