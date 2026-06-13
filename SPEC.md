@@ -629,6 +629,18 @@ does not cover `ledgerx.entries`) and a bare allowed name never silently widenin
 checked. Each matching `allow` rule is checked **independently** (the SEMANTICS predicate quantifies per
 rule): two rules that each cover half of a function's reached literals do not pass by union.
 
+**From gate to guard — runtime enforcement** ⟨0.5⟩. A policy is an *advisory* gate by default: the
+engine DETECTS a violation (a build fails), but nothing stops the effect at runtime. Where the analysed
+artifact runs on a host with a native capability boundary, an implementation MAY **compile a `deny
+<Effect>` rule into a runtime guard** that enforces the same boundary — a seccomp/landlock profile for a
+process, or, for an agent fleet, the harness's own `permissions.deny` over the tools that produce the
+effect. This is the dual of analysis: the analyzer READS the enforcement surface (§4 — an agent engine
+subtracts a hard-denied tool); the guard WRITES it. The guard MUST be **honest about the cliff it
+cannot close**: denying the tools that *directly* perform an effect does not bind a subprocess (`Exec`)
+that can reach it anyway, so a guard MUST disclose that residual path rather than imply total
+enforcement. Per-target scopes a host boundary cannot express (a project-wide `permissions.deny` is not
+per-agent) MUST be reported as unenforceable at that layer, not silently widened to everything.
+
 ## 7. Conformance checklist for an implementation
 
 An implementation conforms to candor-spec if it:
