@@ -5,9 +5,10 @@ side effects it performs. This document defines what every implementation must p
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
 **Version 0.4** (amended — tag `v0.4.1`). A **0.5 draft is in development in this document**: the
-parts marked ⟨0.5⟩ (the *unit* generalization and the `unitKind` field, §2) are not yet released —
-engines continue to declare `0.4` until 0.5 tags, and may emit `unitKind` early (it is an
-extension field a 0.4 consumer tolerates, §2 forward compatibility).
+parts marked ⟨0.5⟩ (the *unit* generalization and the `unitKind` field, §2; the subprocess-boundary
+refinement of `Exec`, §4) are not yet released — engines continue to declare `0.4` until 0.5 tags,
+and may adopt the ⟨0.5⟩ parts early (they are extensions a 0.4 consumer tolerates, §2 forward
+compatibility — `unitKind` is an extra field; Exec-refinement only narrows an upper bound).
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
@@ -424,6 +425,22 @@ invisible) — both are the accepted trade everywhere else in this contract. Dis
 EXTERNAL abstraction an engine does not model (a stdlib iterator protocol, a serialization trait)
 MAY remain unflagged, but then MUST be documented as a named miss (item 7, §7).
 
+**Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the
+child does is beyond the caller's static scope — the *capability cliff*, the subprocess analog of an
+unresolved dispatch. An engine MAY refine it when the sub-command's **head is a literal,
+statically-known** value (the `cmds` literal surface, §2): it MAY classify that head and attribute
+the head's effects to the caller — a spawned `curl` contributes `Net`, a spawned `psql` contributes
+`Db`, and a spawned **candor engine** contributes `Fs`/`Env`, which §7 item 12 *guarantees* (the
+analyzer self-boundary), making this one case spec-supplied rather than curated. The same honesty
+posture as bounded-CHA governs: refinement only **adds** resolved effects or **bounds** the cliff's
+reach — it MUST NOT drop the `Exec` itself (a subprocess was still spawned), and MUST NOT narrow a
+**dynamically-constructed or unrecognised head to pure** (that head keeps the unrefined cliff). A
+head resolved to a known non-project tool also bounds *transitive* attribution: a caller that only
+ever spawns such tools does not thereby reach the effects of the project's own binaries — e.g. a
+step that runs candor *over* the code performs `Fs` (candor reads the source), not the analysed
+code's `Net`/`Db`. The head table is curated engine data under §1's under-report rule, never
+normative; only this posture is.
+
 For a consumer, this means:
 
 - `inferred` is **authoritative** for what the implementation resolved.
@@ -701,13 +718,18 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — the **units**
-  generalization: a report entry describes a *unit* (the smallest body effects are attributed to),
-  of which a function is the common case; the new OPTIONAL `unitKind` field (§2) names the
-  non-function kinds (initializer / accessor / export / agent / session / hooks — an open set,
-  informative only). A new optional field is the changelog's own definition of a minor bump, hence
-  0.5 rather than a 0.4 amendment. Wire-compatible: absent = "function", and a 0.4 consumer
-  tolerates the field under §2 forward compatibility — engines may emit it before 0.5 tags.
+- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — two ⟨0.5⟩ parts:
+  - the **units** generalization: a report entry describes a *unit* (the smallest body effects are
+    attributed to), of which a function is the common case; the new OPTIONAL `unitKind` field (§2)
+    names the non-function kinds (initializer / accessor / export / agent / command / skill /
+    session / hooks — an open set, informative only). A new optional field is the changelog's own
+    definition of a minor bump, hence 0.5 rather than a 0.4 amendment. Wire-compatible: absent =
+    "function", and a 0.4 consumer tolerates the field under §2 forward compatibility.
+  - the **subprocess-boundary refinement of `Exec`** (§4): an engine MAY classify a literal,
+    statically-known sub-command head to add the head's effects and bound the capability cliff's
+    transitive reach (a spawned candor engine → `Fs`/`Env`, supplied by §7 item 12). Posture-only —
+    the head table is curated engine data, never normative; an unknown/dynamic head keeps the
+    cliff; `Exec` is never dropped. It only narrows an upper bound, so a 0.4 consumer is unaffected.
 
 - **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
   required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
