@@ -134,7 +134,8 @@ Each entry:
                                          // a JVM <clinit>, a lazy/static initializer), "accessor"
                                          // (computed property get/set/observer bodies), "export"
                                          // (a module-boundary export surface, the CJS shape),
-                                         // "agent" / "session" / "hooks" (an agent-fleet report).
+                                         // "agent"/"command"/"skill"/"cron"/"session"/"hooks"
+                                         // (an agent-fleet report).
                                          // INFORMATIVE, never semantic: effects, edges and joins
                                          // mean exactly the same for every kind — the field lets a
                                          // consumer render/filter sensibly when reports from
@@ -721,7 +722,7 @@ declare it via the envelope's `spec`.
 - **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — two ⟨0.5⟩ parts:
   - the **units** generalization: a report entry describes a *unit* (the smallest body effects are
     attributed to), of which a function is the common case; the new OPTIONAL `unitKind` field (§2)
-    names the non-function kinds (initializer / accessor / export / agent / command / skill /
+    names the non-function kinds (initializer / accessor / export / agent / command / skill / cron /
     session / hooks — an open set, informative only). A new optional field is the changelog's own
     definition of a minor bump, hence 0.5 rather than a 0.4 amendment. Wire-compatible: absent =
     "function", and a 0.4 consumer tolerates the field under §2 forward compatibility.
