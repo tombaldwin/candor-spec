@@ -702,8 +702,25 @@ check_agents "java      " java -jar "$JAR" --agents
 [ -n "$TS_PRESENT" ] && check_agents "ts        " node "$TS_DIR/scan.mjs" --agents
 [ -n "$SW_BIN" ] && [ -x "$SW_BIN" ] && check_agents "swift     " "$SW_BIN" --agents
 
+# ====================================================================================================
+# GENERATIVE differential — the fixed fixtures above are hand-written; this GENERATES an effect ×
+# indirection matrix (each effect reached through direct/local-call/typed-method/for-loop-element/field/
+# callback) in all 4 languages and asserts the engines agree on every cell. It found a real bug on its
+# first run (candor-scan silently dropped a fn-typed-param callback while the others propagated/Unknowned
+# it — fixed in candor-scan ec94e73). Reuses the binaries this run already built/resolved.
+# ====================================================================================================
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_differential.py" ]; then
+  echo
+  (
+    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+    python3 "$HERE/gen_differential.py"
+  ) || { echo "generative differential: FAILED"; rc=1; }
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
