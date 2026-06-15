@@ -349,6 +349,54 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
+# PART 4e — Net host[:port] differential (SPEC §2): every engine must include the statically-known PORT
+# in the `hosts` surface, not just the host. candor-java once dropped the literal port of a two-arg
+# Socket(host, 443) while keeping it for a URL — self-inconsistent and divergent from candor-scan/ts
+# (adversarial coverage-gap review, GAP2). Each engine scans its idiomatic host:port call; all must emit
+# `api.example.com:8080`.
+# ====================================================================================================
+mkdir -p "$W/nh/rust/src" "$W/nh/java/q"
+cat > "$W/nh/rust/Cargo.toml" <<'EOF'
+[package]
+name = "nh"
+version = "0.0.0"
+edition = "2021"
+EOF
+printf 'pub fn h() { let _ = std::net::TcpStream::connect("api.example.com:8080"); }\n' > "$W/nh/rust/src/lib.rs"
+printf 'package q;\npublic class N { static void h() throws Exception { new java.net.URL("http://api.example.com:8080/v1").openConnection(); } }\n' > "$W/nh/java/q/N.java"
+"$SCAN" "$W/nh/rust" >/dev/null 2>&1
+NH_RUST="$(ls "$W"/nh/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+javac -d "$W/nh/jout" "$W/nh/java/q/N.java" 2>/dev/null
+java -jar "$JAR" "$W/nh/jout" --json "$W/nh/java.json" >/dev/null 2>&1
+NH_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  printf 'import https from "https";\nexport function h() { return https.get("https://api.example.com:8080/v1"); }\n' > "$W/nh/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/nh/cases.ts" "$W/nh/ts_out" >/dev/null 2>&1
+  NH_TS="$W/nh/ts_out.json"
+fi
+python3 - "$NH_RUST" "$W/nh/java.json" "$NH_TS" <<'PY' || rc=1
+import json, os, sys
+def hosts_of(path, sep):
+    d = json.load(open(path))
+    for e in d["functions"]:
+        if e["fn"].split(sep)[-1] == "h":
+            return e.get("hosts", [])
+    return []
+print("\n[4e] NET HOST[:PORT] differential  (SPEC §2 — the statically-known port is part of the host surface)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+fails = 0
+for name, path, sep in engines:
+    hosts = hosts_of(path, sep)
+    if "api.example.com:8080" not in hosts:
+        fails += 1
+        print(f"  DIVERGE {name}: hosts={hosts} — must include the port (api.example.com:8080)")
+print("  -> " + ("MATCH — every engine emits the host:port surface with the literal port"
+                 if not fails else f"{fails} engine(s) drop the literal port"))
+sys.exit(1 if fails else 0)
+PY
+
+# ====================================================================================================
 # PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted
 # external package the scanned code demonstrably calls ("κ doesn't know …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
