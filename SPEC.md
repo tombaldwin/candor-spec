@@ -509,7 +509,14 @@ The trust is **declared-not-verified**: the report is only as honest as the decl
 like a cap type (and unlike the engine's own analysis, which is checked). An effect name outside §1
 MUST void the declaration loudly (a typo must not silently *narrow* a surface), and a declaration
 that under-claims is caught the moment the source *is* analysed — the κ ledger (§7) names every
-dependency still opaque, so a missing manifest is visible, never silent. This is one mechanism with
+dependency still opaque, so a missing manifest is visible, never silent. The edge cases are pinned so
+the engines can't drift on them: an **empty** array (`candorEffects: []`) is a positive "declared pure"
+— covered, NOT a blind spot (distinct from an *absent* manifest, which stays opaque, the same load-bearing
+empty-vs-absent split as `deny`-with-no-effect vs `pure`); a present-but-**non-array** value is malformed
+and MUST void loudly (the same class as an out-of-§1 name, never a silent narrowing); names are a **set**
+(deduped); `Unknown` is not a §1 effect name, so `candorEffects:["Unknown"]` voids; and a manifest MUST
+come from the **effect-owning package itself**, never a type-only stub (a `@types/<pkg>`-style sidecar a
+third party can publish must not silence the real package's surface). This is one mechanism with
 several existing shapes: a project-side declaration on an MCP server entry, a user-supplied
 crate→effect rule, a chained sibling report. The spec names the convention so it is portable across
 them; where to put the field (a package manifest, a registry's metadata) is the ecosystem's to
