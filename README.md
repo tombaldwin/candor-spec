@@ -18,9 +18,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped** — reference implementation (`cargo install candor-scan`) |
-| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **alpha (v0.3.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
-| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **young engine (0.1.x)** — project scanning, gate, queries; grown from the from-spec-alone proof slice; third engine in the conformance CI |
+| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (0.4.x)** — reference implementation (`cargo install candor-scan`) |
+| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (0.4.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (0.4.x)** — project scanning, gate, queries, MCP server; on npm (`npx -y candor-ts`) |
+| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (0.4.x)** — receiver-typed local inference; the 4th conformance engine |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
@@ -35,10 +36,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
   precision lessons learned the hard way.
-- **[conformance/](conformance/)** — an *executable* differential: the same fixtures across the
-  engines (Rust + JVM, plus candor-ts as the from-spec-alone third engine), asserting they all infer
-  the spec-mandated effect set, agree on the policy verdict, the query shapes, and the §6.2 grammar
-  (`bash conformance/run.sh`). Conformance and cross-impl agreement in one run.
+- **[conformance/](conformance/)** — an *executable* differential: the same fixtures across the four
+  engines (Rust, JVM, TypeScript, Swift), asserting they all infer the spec-mandated effect set, agree
+  on the policy verdict, the query shapes, and the §6.2 grammar (`bash conformance/run.sh`). Conformance
+  and cross-impl agreement in one run.
 
 ## Why per-language tools sharing one spec
 

@@ -22,3 +22,6 @@ deny Exec  # inline comment: must be stripped, scope stays empty (not "#")
 allow Net in stripe api.stripe.com # trailing comment must not become a host
 allow Net in
 allow Fs # comment-only after the keyword
+deny Net Db                       # NBSP is NOT a separator (ASCII-only); token unrecognized -> dropped by all engines
+deny Net Net                          # duplicate effect tokens dedup to a set (all engines)
+allow Net dup.example.com dup.example.com   # duplicate values dedup

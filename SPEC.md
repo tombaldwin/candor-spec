@@ -598,7 +598,13 @@ the grammar must be fixed, not merely "some rules text" — so this section is *
 policy reader parses exactly this, and the cross-impl suite checks it (§7).
 
 **Lexical.** One rule per line. A `#` begins a comment to end-of-line; blank lines and comment-only lines
-are ignored. A line is split into tokens on runs of whitespace; the first token is the **rule kind**. A
+are ignored. A line is split into tokens on runs of **ASCII whitespace** — space (U+0020), tab (U+0009),
+and CR/LF/VT/FF (U+000A–U+000D) — and *only* these. A non-ASCII space (NBSP U+00A0, ideographic space
+U+3000, NEL U+0085, …) is **not** a separator: it stays an ordinary character of its token, so the token
+is malformed and the rule is ignored-with-a-warning — uniformly across engines. (Pinning the separator
+class to ASCII is load-bearing: a language's "default whitespace" varies — Unicode `White_Space` vs JS
+`\s` vs ASCII — so an unpinned class let one engine split a NBSP-bearing line and another silently DROP
+the rule, a gateless-green divergence a shared gate must not have.) The first token is the **rule kind**. A
 line whose kind is unrecognized, or that is malformed for its kind, is **ignored with a warning** — never
 silently treated as a stricter or looser rule (silent reinterpretation is the one thing a security gate
 must not do).
