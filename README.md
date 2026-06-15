@@ -18,10 +18,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (0.4.x)** — reference implementation (`cargo install candor-scan`) |
-| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (0.4.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
-| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (0.4.x)** — project scanning, gate, queries, MCP server; on npm (`npx -y candor-ts`) |
-| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (0.4.x)** — receiver-typed local inference; the 4th conformance engine |
+| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (0.5.x)** — reference implementation (`cargo install candor-scan`) |
+| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (0.5.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (0.5.x)** — project scanning, gate, queries, MCP server; on npm (`npx -y candor-ts`) |
+| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (0.5.x)** — receiver-typed local inference; the 4th conformance engine |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 

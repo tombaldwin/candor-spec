@@ -4,20 +4,20 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.4** (amended — tag `v0.4.1`). A **0.5 draft is in development in this document**: the
-parts marked ⟨0.5⟩ — the *unit* generalization and the `unitKind` field (§2); the subprocess-boundary
-refinement of `Exec` (§4); the effect manifest for an opaque dependency (§5.1); the gate→guard runtime
-enforcement (§6.2) — are not yet released. Engines continue to declare `0.4` until 0.5 tags, and may
-adopt the ⟨0.5⟩ parts early (they are extensions a 0.4 consumer tolerates, §2 forward compatibility:
-new optional fields, refinements that only narrow an upper bound, and SHOULD-level conventions).
+**Version 0.5** (tag `v0.5`). The parts marked ⟨0.5⟩ — the *unit* generalization and the `unitKind`
+field (§2); the subprocess-boundary refinement of `Exec` (§4); the effect manifest for an opaque
+dependency (§5.1); the gate→guard runtime enforcement (§6.2); and the §3.1 read-only query shapes — are
+now **released**, and engines declare `0.5`. 0.5 also pins two cross-engine consistency rules a divergence
+review surfaced: the §6.2 policy lexer's token separator is **ASCII whitespace** (so a Unicode space can't
+be silently enforced by one engine and dropped by another), and `unknownWhy` gains the `callback:` origin.
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
-*build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.4.x`
-implements spec `0.4` (patch versions float per-impl), and all declare **spec `0.4`** in the
-envelope. 0.4 is
-wire-compatible with 0.3 (no schema change); what it changes is CONFORMANCE — four obligations
-moved from SHOULD to MUST (see the [changelog](#8-changelog)). An implementation MUST emit the spec
+*build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.5.x`
+implements spec `0.5` (patch versions float per-impl), and all declare **spec `0.5`** in the
+envelope. 0.5 is wire-compatible with 0.4 — the ⟨0.5⟩ changes are additive (new optional fields,
+refinements that only narrow an upper bound, SHOULD-level conventions, and a lexer clarification);
+see the [changelog](#8-changelog). An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
 constant. The report is wrapped in a self-describing `{ candor, functions }` envelope (§2); the legacy
 v0.1 bare array is still accepted by conformant readers during migration. See the [changelog](#8-changelog).
@@ -71,7 +71,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.4" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.5" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -282,7 +282,7 @@ The header has THREE fields, on two distinct axes — keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec` — the **candor-spec contract version** this engine implements (`"0.4"`). This is the version
+- `spec` — the **candor-spec contract version** this engine implements (`"0.5"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version — they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -793,7 +793,14 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.5 (in development — unreleased; engines declare 0.4 until this tags)** — four ⟨0.5⟩ parts:
+- **0.5 (released — tag `v0.5`; engines declare `0.5`)** — the ⟨0.5⟩ parts (units/`unitKind` §2, Exec
+  subprocess-boundary refinement §4, the effect manifest §5.1, gate→guard §6.2, and the §3.1 read-only
+  query shapes), plus two cross-engine consistency rules a divergence review pinned: the §6.2 policy
+  lexer splits on **ASCII whitespace only** (a Unicode space is part of its token, so a malformed rule is
+  dropped uniformly — never enforced by one engine and silently dropped by another), and `unknownWhy`
+  adds the `callback:` origin (a higher-order call's unresolved target, the improvable class with
+  `dispatch:`). All wire-compatible with 0.4 (additive fields, narrowing refinements, a lexer
+  clarification). Detail of the ⟨0.5⟩ parts:
   - the **units** generalization: a report entry describes a *unit* (the smallest body effects are
     attributed to), of which a function is the common case; the new OPTIONAL `unitKind` field (§2)
     names the non-function kinds (initializer / accessor / export / agent / command / skill / cron /
