@@ -123,12 +123,16 @@ Each entry:
                                          // reflection/framework runtime than on Rust. Default false.
   "unknownWhy":   ["dispatch:Foo.bar"],  // OPTIONAL: when this fn introduces `Unknown` DIRECTLY, why —
                                          // `reflect:<callee>` (reflection / dynamic invoke),
-                                         // `native:<method>` (no analysable body), or
+                                         // `native:<method>` (no analysable body),
                                          // `dispatch:<type>.<method>` (a project abstraction with no
-                                         // visible impl). Lets a consumer tell irreducible opacity
-                                         // (reflection, native) from the improvable kind (a missing
-                                         // impl — widen the analysed inputs). Omitted when this fn
-                                         // introduces no direct Unknown.
+                                         // visible impl), or `callback:<what>` (a call through a
+                                         // function-typed value — a closure/fn-pointer parameter or
+                                         // field whose target isn't statically known). Lets a consumer
+                                         // tell irreducible opacity (reflection, native) from the
+                                         // IMPROVABLE kind (`dispatch:`/`callback:` — a missing impl or
+                                         // an unresolved higher-order target, often resolved by widening
+                                         // the analysed inputs). Omitted when this fn introduces no
+                                         // direct Unknown.
   "unitKind":     "accessor",            // OPTIONAL ⟨0.5⟩: what KIND of unit this entry is, when it
                                          // is not an ordinary function/method. Absent = "function".
                                          // Recommended values: "initializer" (static/class init —
@@ -480,8 +484,8 @@ masks the inherited body's real effects, since an unresolved dispatch also stops
 implementing a trait/interface the implementation declares but whose concrete implementor it cannot
 see (a DI-wired strategy, a `dyn`/virtual call with no visible impl). The optional `unknownWhy` field
 records this distinction per function so a consumer (and the implementer) can tell irreducible opacity
-(`reflect:`, `native:`) from the improvable kind (`dispatch:` — often resolved by widening the
-analysed inputs to include the missing implementor).
+(`reflect:`, `native:`) from the improvable kind (`dispatch:`/`callback:` — often resolved by widening
+the analysed inputs to include the missing implementor or the higher-order call's target).
 
 ## 5. Capabilities (conformance)
 
