@@ -302,6 +302,53 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
+# PART 4d — Exec-head differential (SPEC §4 ⟨0.5⟩): a literal that appears only as a subprocess ARGUMENT
+# is DATA, not the command head. `spawn(dynamicTool, "curl")` must NOT populate `cmds` with "curl" in ANY
+# engine — else an `allow Exec curl` gate spuriously certifies a dynamic-head spawn (the verdict-flip the
+# adversarial review found in candor-java). Pins every engine: a dynamic head yields NO `cmds` literal.
+# ====================================================================================================
+mkdir -p "$W/eh/rust/src" "$W/eh/java/q"
+cat > "$W/eh/rust/Cargo.toml" <<'EOF'
+[package]
+name = "eh"
+version = "0.0.0"
+edition = "2021"
+EOF
+printf 'pub fn dyn_head(tool: &str) { let _ = std::process::Command::new(tool).arg("curl").spawn(); }\n' > "$W/eh/rust/src/lib.rs"
+printf 'package q;\npublic class E { static void dyn_head(String tool) throws Exception { new ProcessBuilder(tool, "curl").start(); } }\n' > "$W/eh/java/q/E.java"
+"$SCAN" "$W/eh/rust" >/dev/null 2>&1
+EH_RUST="$(ls "$W"/eh/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+javac -d "$W/eh/jout" "$W/eh/java/q/E.java" 2>/dev/null
+java -jar "$JAR" "$W/eh/jout" --json "$W/eh/java.json" >/dev/null 2>&1
+EH_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  printf 'import { spawn } from "child_process";\nexport function dyn_head(tool: string) { return spawn(tool, ["curl"]); }\n' > "$W/eh/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/eh/cases.ts" "$W/eh/ts_out" >/dev/null 2>&1
+  EH_TS="$W/eh/ts_out.json"
+fi
+python3 - "$EH_RUST" "$W/eh/java.json" "$EH_TS" <<'PY' || rc=1
+import json, os, sys
+def cmds_of(path, sep):
+    d = json.load(open(path))
+    for e in d["functions"]:
+        if e["fn"].split(sep)[-1] == "dyn_head":
+            return e.get("cmds", [])
+    return []
+print("\n[4d] EXEC-HEAD differential  (SPEC §4 — a dynamic head's argument literal must NOT become `cmds`)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+fails = 0
+for name, path, sep in engines:
+    cmds = cmds_of(path, sep)
+    if "curl" in cmds:   # the argument leaked into the cmds head (the verdict-flip bug)
+        fails += 1
+        print(f"  DIVERGE {name}: cmds={cmds} — a dynamic head must yield NO cmds literal")
+print("  -> " + ("MATCH — no engine extracts a cmds literal from a dynamic subprocess head"
+                 if not fails else f"{fails} engine(s) leak the argument into cmds"))
+sys.exit(1 if fails else 0)
+PY
+
+# ====================================================================================================
 # PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted
 # external package the scanned code demonstrably calls ("κ doesn't know …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
