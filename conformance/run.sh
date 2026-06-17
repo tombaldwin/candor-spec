@@ -124,6 +124,21 @@ print("  -> " + ("MATCH — both sidecars are complete" if ok else "INCOMPLETE")
 sys.exit(0 if ok else 1)
 PY
 
+# PART 1c — HONESTY invariant (SPEC §4 trust contract). candor's one dangerous lie is the silent UNDER-
+# report (pure-when-it-isn't), and its mitigation is that UNCERTAINTY PROPAGATES caller-ward: a function
+# may look certain (no Unknown / no disclosure) only if everything it transitively reaches is certain too.
+# check_honesty.py asserts that over each engine's OWN report (callgraph-driven, so pure fns are covered).
+# This is engine-vs-spec (each engine must be internally honest), NOT a differential — and it catches the
+# class where uncertainty was HAD but swallowed (it can't catch an effect the engine never registered;
+# that needs the dynamic syscall oracle). A violation fails the run.
+echo ""
+echo "[1c] HONESTY invariant (SPEC §4 — uncertainty must propagate caller-ward)"
+honesty() { local out r; out=$(python3 "$HERE/check_honesty.py" "$1" 2>&1); r=$?; printf '%s\n' "$out" | sed 's/^/  /'; return $r; }
+honesty "$RUST_REPORT" || rc=1
+honesty "$W/java.json" || rc=1
+[ -n "$TS_OK" ] && { honesty "$W/ts.json" || rc=1; }
+[ -n "$SW_OK" ] && { honesty "$SW_REPORT" || rc=1; }
+
 # ====================================================================================================
 # PART 2 — policy-verdict differential: the same `deny Net api` policy, the same `whatif`, same verdict?
 # This is the moat a per-language ruleset can't offer: the ENFORCEMENT means the same thing in each engine.
