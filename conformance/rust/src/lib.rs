@@ -13,6 +13,11 @@ pub fn exec_curl() { let _ = std::process::Command::new("curl"); }
 pub fn exec_dyn_head(tool: &str) { let _ = std::process::Command::new(tool).arg("curl"); }
 pub fn env_read() { let _ = std::env::var("PATH"); }
 pub fn clock_now() { let _ = std::time::SystemTime::now(); }
+// Rand: Rust has no std CSPRNG, so this names the `rand` crate path. candor-scan is SYNTACTIC (it
+// classifies crate paths without building — its core design), so the dep need not be present/resolved.
+pub fn rand_gen() { let _: u64 = rand::random(); }
+// Db: no std SQL — name the `rusqlite` crate path (syntactic, as above).
+pub fn db_query() { let _ = rusqlite::Connection::open("x.db"); }
 pub fn pure_fn() -> i32 { 1 + 2 }
 
 // --- the trust contract: an unanalysable call is Unknown --------------------------------------------

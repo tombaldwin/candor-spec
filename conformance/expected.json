@@ -1,5 +1,5 @@
 {
-  "_comment": "Per-case expected TRANSITIVE effect set. Each case is a function present in BOTH rust/src/lib.rs and java/Cases.java with equivalent semantics; the runner asserts candor-scan and candor-java each infer exactly this set. Scope is the std-only subset both languages can express without dependencies (see README) \u2014 Db/Rand/Log/Clipboard/Ipc need per-language deps or are structurally asymmetric and are covered by each impl's own tests.",
+  "_comment": "Per-case expected TRANSITIVE effect set. Each case is a function present in ALL FOUR engine fixtures (rust/src/lib.rs, java/Cases.java, candor-ts/Cases.ts, candor-swift/conformance/Cases.swift) with equivalent semantics; the runner asserts every engine infers exactly this set. The cross-engine differential now covers 7 effects: Fs/Net/Exec/Env/Clock (std-only in all four) plus Rand and Db. Rand/Db use each language's idiomatic API: the bytecode engine (java) needs JDK-expressible forms (SecureRandom, java.sql), while the SYNTACTIC engines (rust scan, ts AST, swift SwiftSyntax) classify crate/module paths without resolving them (rand, rusqlite, node:sqlite, SQLite3). Three effects remain per-engine (each impl's own tests), for STRUCTURAL reasons confirmed 2026-06-17: Log \u2014 candor-java models only external loggers (slf4j/log4j/logback, dep-required), NOT JDK java.util.logging, and candor-ts's winston is instance-based (didn't resolve); Clipboard \u2014 candor-ts has no node clipboard model (browser-only API); Ipc \u2014 no JDK std IPC primitive (sockets are Net). Closing Log needs candor-java JUL modeling + candor-ts winston resolution.",
   "fs_read": [
     "Fs"
   ],
@@ -21,6 +21,12 @@
   ],
   "clock_now": [
     "Clock"
+  ],
+  "rand_gen": [
+    "Rand"
+  ],
+  "db_query": [
+    "Db"
   ],
   "pure_fn": [],
   "unknown_dyn": [

@@ -14,6 +14,10 @@ public class Cases {
   public static void exec_dyn_head(String tool) throws Exception { new ProcessBuilder(tool, "curl").start(); }
   public static void env_read() { System.getenv("PATH"); }
   public static void clock_now() { long t = System.currentTimeMillis(); }
+  // Rand: JDK SecureRandom draws from the CSPRNG (no external dep — compiles under javac).
+  public static void rand_gen() throws Exception { byte[] b = new byte[16]; java.security.SecureRandom.getInstanceStrong().nextBytes(b); }
+  // Db: JDK java.sql — DriverManager.getConnection is the round-trip boundary (no dep — compiles).
+  public static void db_query() throws Exception { java.sql.DriverManager.getConnection("jdbc:sqlite:x.db"); }
   public static int pure_fn() { return 1 + 2; }
 
   // --- the trust contract: an unanalysable call is Unknown ---
