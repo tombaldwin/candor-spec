@@ -18,6 +18,7 @@ pub fn clock_now() { let _ = std::time::SystemTime::now(); }
 pub fn rand_gen() { let _: u64 = rand::random(); }
 // Db: no std SQL — name the `rusqlite` crate path (syntactic, as above).
 pub fn db_query() { let _ = rusqlite::Connection::open("x.db"); }
+pub fn log_msg() { log::info!("m"); }
 pub fn pure_fn() -> i32 { 1 + 2 }
 
 // --- the trust contract: an unanalysable call is Unknown --------------------------------------------

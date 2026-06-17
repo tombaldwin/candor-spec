@@ -18,6 +18,7 @@ public class Cases {
   public static void rand_gen() throws Exception { byte[] b = new byte[16]; java.security.SecureRandom.getInstanceStrong().nextBytes(b); }
   // Db: JDK java.sql — DriverManager.getConnection is the round-trip boundary (no dep — compiles).
   public static void db_query() throws Exception { java.sql.DriverManager.getConnection("jdbc:sqlite:x.db"); }
+  public static void log_msg() { java.util.logging.Logger.getLogger("c").info("m"); }
   public static int pure_fn() { return 1 + 2; }
 
   // --- the trust contract: an unanalysable call is Unknown ---
