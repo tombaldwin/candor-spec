@@ -431,6 +431,17 @@ actually determine that.** A call it cannot resolve to a concrete target — dyn
 unknown type, a function value / callback, reflection — MUST contribute `Unknown` to that function's
 effect set and set `unresolved: true`. It must not be silently assumed pure.
 
+**The limit, stated plainly.** Whether a function performs an effect is undecidable in general (Rice's
+theorem), so this rule is a *best-effort discipline, not a completeness guarantee*: a conforming
+implementation is one that disclosed `Unknown` everywhere it could not resolve a target — never one
+that has provably found every effect. New ways for an effect to hide behind a construct an engine does
+not yet model are found and closed over time; the residual is tracked openly (the reference engines
+maintain a soundness register and adversarial gates) rather than asserted away. So the contract a
+consumer can rely on is **disclosure** (what the engine couldn't see is marked, not silently dropped),
+not omniscience. A clean report means *the implementation found no effect and disclosed every gap it
+hit* — read it as "more thorough than review, and honest about its blind spots," not as a proof of
+purity.
+
 **Dispatch over a local abstraction — the bounded-CHA discipline** (all three reference engines): a
 call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
 TS interface, a JVM interface/supertype) SHOULD resolve to the **visible local implementors'**
@@ -823,6 +834,11 @@ declare it via the envelope's `spec`.
     boundary (a sandbox profile for a process; the harness's `permissions.deny` for an agent fleet) —
     the dual of analysis, which reads the same enforcement surface. SHOULD-level; honest about the
     cliff it cannot close, and about per-target scopes a host boundary cannot express.
+  - **§4 epistemic caveat (clarification, not a contract change)**: §4 now states explicitly that the
+    trust rule is a *best-effort discipline against an undecidable property* (Rice), not a completeness
+    guarantee — the contract a consumer relies on is **disclosure** of what couldn't be resolved, not
+    omniscience, with the residual tracked openly. No obligation on implementations changed; the `spec`
+    string stays `0.5`.
 
 - **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
   required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
