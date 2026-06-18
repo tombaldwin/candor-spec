@@ -258,15 +258,41 @@ def r_fire_forget(eff, name, sfx):
     }
 
 
+# NOTE: deferred-iterator (a custom Iterator whose next() does the sink, consumed by a for-loop) does NOT
+# fit this shared-compilation-unit matrix: the java cells would each declare a class `implements
+# java.util.Iterator`, and java's whole-program CHA over `Iterator.next()` then fans out across ALL of
+# them (and pollutes the unrelated loop_elem for-each too), unioning every effect — a sound
+# over-approximation that the matrix's all-cells-in-one-file layout amplifies. It stays a per-engine test
+# (🟡), alongside gate-masking (a POLICY-verdict seam, not an effect-set one) and FFI (expected {Unknown}).
+
+
+# ---- renderers: lazy_init -- a deferred initializer whose body does the sink, FORCED at an access site
+# (the language's idiomatic lazy: LazyLock / static-holder / memoized getter / lazy var). The forcing fn
+# must carry it. (seam class: lazy-init.)
+def r_lazy_init(eff, name, sfx):
+    L = f"L_{sfx}_li"
+    return {
+        "rust":  f'pub static {L}: std::sync::LazyLock<u8> = std::sync::LazyLock::new(|| {{ {eff["sink"]["rust"]} 0u8 }});\n'
+                 f'pub fn {name}() {{ let _ = *{L}; }}',
+        "java":  f'  static class {L} {{ static final Object V = init(); static Object init() {{ {eff["sink"]["java"]} return new Object(); }} }}\n'
+                 f'  public static void {name}() {{ Object o = {L}.V; }}',
+        "ts":    f'class {L} {{ private _v: number | undefined; get v(): number {{ if (this._v === undefined) {{ {eff["sink"]["ts"]} this._v = 1; }} return this._v; }} }}\n'
+                 f'export function {name}(l: {L}): number {{ return l.v; }}',
+        "swift": f'struct {L} {{ lazy var v: Int = {{ {eff["sink"]["swift"]}; return 1 }}() }}\n'
+                 f'func {name}(_ l: inout {L}) -> Int {{ return l.v }}',
+    }
+
+
 INDIRECTIONS = [
-    dict(id="direct",        render=r_direct,        accept=acc_exact),
-    dict(id="local_call",    render=r_local_call,    accept=acc_exact),
-    dict(id="method_recv",   render=r_method_recv,   accept=acc_exact),
-    dict(id="loop_elem",     render=r_loop_elem,     accept=acc_exact),
-    dict(id="field",         render=r_field,         accept=acc_exact),
-    dict(id="callback",      render=r_callback,      accept=acc_callback),
-    dict(id="implicit_conv", render=r_implicit_conv, accept=acc_exact),
-    dict(id="fire_forget",   render=r_fire_forget,   accept=acc_exact),
+    dict(id="direct",         render=r_direct,         accept=acc_exact),
+    dict(id="local_call",     render=r_local_call,     accept=acc_exact),
+    dict(id="method_recv",    render=r_method_recv,    accept=acc_exact),
+    dict(id="loop_elem",      render=r_loop_elem,      accept=acc_exact),
+    dict(id="field",          render=r_field,          accept=acc_exact),
+    dict(id="callback",       render=r_callback,       accept=acc_callback),
+    dict(id="implicit_conv",  render=r_implicit_conv,  accept=acc_exact),
+    dict(id="fire_forget",    render=r_fire_forget,    accept=acc_exact),
+    dict(id="lazy_init",      render=r_lazy_init,      accept=acc_exact),
 ]
 
 

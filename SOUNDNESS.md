@@ -56,8 +56,8 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 |---|---|---|---|---|---|---|
 | direct / local-call / method-recv / loop-elem / field / callback (6 basic indirections) | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
 | key-collision (same-named unit clobber → wrong attribution) | 🟡 | — | — | 🟡 | 🟡 | 🟡 |
-| lazy-init (deferred initializer forced elsewhere) | 🟡 | 🔴 | 🟡 | 🟡 | 🟢¹ | 🔴 |
-| deferred-iterator (lazy seq built≠consumed) | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
+| **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
+| deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
 | **fire-and-forget / spawned task** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
 | gate-evasion / literal-masking (policy fail-open) | 🟡 | 🟡 | 🟡 | 🟢¹ | 🟡 | 🟡² |
 | **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | ⚫ | 🟢 | 🟢 | 🟢 | — |
@@ -66,6 +66,8 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 
 ¹ "🟢" here = clean/correct *by construction* (verified) — but still needs a *cross-engine standing* cell to be
 truly green; today these are per-engine. ² agents = the declared-vs-observed drift gate (a different shape).
+³ deferred-iterator does NOT fit the shared-compilation-unit matrix (java's whole-program CHA over
+`Iterator.next()` fans out across all the cells' Iterator impls and unions every effect) — stays per-engine.
 **This scorecard is the gap:** almost everything is 🟡 — closed once, with a per-engine regression test, but NOT
 in the cross-engine standing matrix. The roadmap (§6) is mostly "turn 🟡 → 🟢".
 
@@ -139,9 +141,12 @@ catches even a *shared* blind spot), absent-fn → PURE → DROP → fails, and 
   G3 work = the SEAM axis (add renderers for lazy-init / deferred-iterator / fire-and-forget / implicit-conversion
   / gate-masking / FFI to the matrix) — the next roadmap increment. **STARTED: implicit-conversion +
   fire-and-forget are now matrix INDIRECTIONS (matrix 48→64 cells, all 4 engines agree, exact {effect}) —
-  those two seam rows are now 🟢 cross-engine-standing.** Remaining seam renderers: deferred-iterator, lazy-init
-  (idiom-divergent per language — careful work); gate-masking belongs in the POLICY-verdict differential not
-  the effect matrix; FFI's expected is {Unknown} (disclosure) and has no clean ts idiom.
+  those two seam rows are now 🟢 cross-engine-standing. THEN lazy-init too (matrix 64→72, all 4 agree) → 3 of 6
+  seam classes are now 🟢.** The other 3 don't fit the EFFECT matrix: deferred-iterator (java whole-program CHA
+  over a shared `Iterator` interface unions every cell's effect — footnote ³); gate-masking (a POLICY-verdict
+  seam — extend the policy differential instead); FFI (expected is {Unknown}/disclosure, no clean ts idiom).
+  So the matrix seam-axis is effectively COMPLETE for the classes it can hold; the residual 3 stay per-engine
+  (🟡) by their nature, documented here.
 
 **CI action item:** the spec CI should run with `CONFORMANCE_REQUIRE_ALL=1` **once it provisions all four
 toolchains** (rust+java+node+swift) — otherwise strict mode will fail on the missing ones. Until then, strict is
