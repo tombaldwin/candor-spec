@@ -114,8 +114,14 @@ honest, lower priority). Eradication = SILENT count → 0.
    last 2 effects (Env, Clock — recall corpus 14→20 cases, all honest), so with the syscall oracle (Fs/Net/
    Exec) candor's effect classification is under ground-truth/known-semantics coverage for ALL 10 EFFECTS.
    Recall is also wired into realworld-oracle.yml → BOTH ground-truth methods are now continuous standing
-   gates. NEXT: more uncalibrated recall probes (Env/Clock crates candor doesn't model); deepen each effect's
-   real-crate diversity.*
+   gates. 2026-06-18: moved the session's adversarial-sweep finds UP the evidence ladder to ground truth —
+   syscall oracle 13→**14 drivers** (added `fs_writefmt`: a custom `fmt::Write` writing a marker file via
+   `write!`; CI-verified `ran=1 effect=Fs candor=[Fs] certain` — the write-fmt class now KERNEL-gated, the
+   strongest evidence, independent of engine logic); recall 20→**23** (seam_lazy_force/seam_thread_local/
+   seam_write_fmt, all →Clock). realworld-oracle.yml run GREEN: 14 honest / 0 under-reports / 0 fabrications,
+   recall 23 honest. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
+   just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
+   diversity.*
 3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). 2026-06-18:
    R1 (the only `med`) RESOLVED — empirically already covered + now standing-gated → 6 SILENT (R2–R8), all
    low/v.low. The thread_local probe briefly added R13 (med) — now FIXED same-session (`6010832`) → back to
