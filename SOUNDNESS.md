@@ -97,9 +97,12 @@ honest, lower priority). Eradication = SILENT count → 0.
    row (6 indirections × **8** effects = 48 cross-engine-standing cells, up from 5 effects/30) is 🟢 and the gate
    is now un-foolable in strict mode (G1/G2). The 8 seam-class rows are still 🟡 (per-engine tests, not yet in
    the cross-engine matrix). Target: every closed seam → 🟢 via the matrix's SEAM axis.*
-2. **Oracle coverage** = # real crates × effects under dynamic ground truth (§3 #1). *Baseline: ~7 crates,
-   Fs/Net/Exec only. Target: ≥3 crates per syscall-distinguishable effect, run in CI; + the non-syscall recall
-   complement for the other 7 effects.*
+2. **Oracle coverage** = # real crates × effects under dynamic ground truth (§3 #1). *2026-06-18: grew 7→11
+   crates — Net ×3 (std/minreq/ureq), Exec ×3 (duct/xshell/std), Fs ×4 (fs-err/std/walkdir/tempfile) — now
+   ≥3 per syscall-distinguishable effect (Fs/Net/Exec); incl. the walkdir calibration confirmed vs the kernel
+   + tempfile as an honesty probe. Rand/Clock are syscall-distinguishable but markerless/noisy (getrandom has
+   no string arg; HashMap seeds getrandom) — covered by the non-syscall recall complement instead. NEXT:
+   wire `realworld-oracle.yml` to run on every push (today it's workflow_dispatch).*
 3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). Target: 0
    med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
