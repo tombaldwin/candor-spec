@@ -105,8 +105,12 @@ honest, lower priority). Eradication = SILENT count → 0.
    Rand/Clock are syscall-distinguishable but markerless/noisy (getrandom has no string arg; HashMap seeds
    getrandom) — covered by the non-syscall recall complement instead. **NOW CONTINUOUS: `realworld-oracle.yml`
    runs on every push to main + every PR (was workflow_dispatch) → kernel ground truth is a STANDING gate, a
-   new silent under-report on a real crate fails CI.** NEXT: more uncalibrated probes; the non-syscall recall
-   complement for the 7 non-syscall effects.*
+   new silent under-report on a real crate fails CI.** And the NON-SYSCALL RECALL complement now covers the
+   last 2 effects (Env, Clock — recall corpus 14→20 cases, all honest), so with the syscall oracle (Fs/Net/
+   Exec) candor's effect classification is under ground-truth/known-semantics coverage for ALL 10 EFFECTS.
+   Recall is also wired into realworld-oracle.yml → BOTH ground-truth methods are now continuous standing
+   gates. NEXT: more uncalibrated recall probes (Env/Clock crates candor doesn't model); deepen each effect's
+   real-crate diversity.*
 3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). Target: 0
    med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
