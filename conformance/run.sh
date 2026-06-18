@@ -833,8 +833,27 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_differential.py" ]; the
   ) || { echo "generative differential: FAILED"; rc=1; }
 fi
 
+# ====================================================================================================
+# GATE-MASKING differential — the sibling of the generative differential, on the POLICY VERDICT axis.
+# For each literal-surface effect {Net→host, Exec→cmd, Fs→path, Db→table} it renders, per language, a
+# MASKED program (a benign ALLOWED literal beside a runtime-MASKED denied literal of the same effect) and
+# a COMPLIANT one (only the benign literal), then runs each engine's `allow <Effect> <benign>` gate and
+# asserts masked→FAIL-CLOSED, compliant→PASS. A masked program any engine PASSES is the cardinal gate-
+# evasion (AS-EFF-008 opaque). Turns this session's per-engine fail-closed-on-masked fixes (scan/deep
+# Fs+Db, swift two-path/establishing, java URL-split) into a cross-engine STANDING gate. Reuses the
+# binaries this run already built/resolved.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_masking.py" ]; then
+  echo
+  (
+    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+    python3 "$HERE/gen_masking.py"
+  ) || { echo "gate-masking differential: FAILED"; rc=1; }
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

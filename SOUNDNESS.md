@@ -59,7 +59,7 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 | **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
 | deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
 | **fire-and-forget / spawned task** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
-| gate-evasion / literal-masking (policy fail-open) | 🟡 | 🟡 | 🟡 | 🟢¹ | 🟡 | 🟡² |
+| **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |
 | **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | ⚫ | 🟢 | 🟢 | 🟢 | — |
 | FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
 | macro / codegen reach | 🟡 | 🟢¹ | — | — | — | — |
@@ -157,7 +157,15 @@ catches even a *shared* blind spot), absent-fn → PURE → DROP → fails, and 
   over a shared `Iterator` interface unions every cell's effect — footnote ³); gate-masking (a POLICY-verdict
   seam — extend the policy differential instead); FFI (expected is {Unknown}/disclosure, no clean ts idiom).
   So the matrix seam-axis is effectively COMPLETE for the classes it can hold; the residual 3 stay per-engine
-  (🟡) by their nature, documented here.
+  (🟡) by their nature, documented here. THEN gate-masking too, via a SEPARATE policy-verdict differential
+  (`gen_masking.py`, also wired into run.sh): for each literal-surface effect {Net→host, Exec→cmd, Fs→path,
+  Db→table}, a MASKED denied literal beside a benign one must FAIL the `allow <Effect> <benign>` gate
+  (fail-closed) in every engine, and the compliant program must PASS — 16 (effect×engine) cells, all green.
+  Building it SURFACED a real swift gate-evasion: `shellOut(to: runtimeVar)` (ShellOut, classified Exec) was
+  missing from the Exec establishing set, so a masked command evaded `allow Exec` — FIXED (candor-swift 0.5.21,
+  `1a60bce`). So **4 of 6 seam classes are now cross-engine-standing** (implicit-conv/fire-forget/lazy-init via
+  the effect matrix; gate-masking via the policy differential); only deferred-iterator (java CHA artifact) and
+  FFI (expected {Unknown}, no clean ts idiom) remain per-engine by nature.
 
 **CI action item:** the spec CI should run with `CONFORMANCE_REQUIRE_ALL=1` **once it provisions all four
 toolchains** (rust+java+node+swift) — otherwise strict mode will fail on the missing ones. Until then, strict is
