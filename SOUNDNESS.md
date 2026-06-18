@@ -91,7 +91,7 @@ honest, lower priority). Eradication = SILENT count → 0.
 | R11 | agents | seam battery run (2026-06-18): named-delegation-narrowing was UNSOUND (narrowed on a prompt mention, not a proof) — FIXED candor-agents 0.4.13 (`755216a`): declared `Agent(x,y)` allowlist narrows soundly; bare `Agent`+mention discloses an Unknown spawn residual; bare `Agent`+no-mention is CHA. Delegation forms / MCP-Unknown / hooks+cron entry points already covered (fuzz.py + test.py). | was UNCHECKED → mostly covered | low | remaining: allowlist naming a non-existent agent (unresolvable spawn → Unknown?); deeper hook-matcher adversarial cases |
 | R12 | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocks continuous self-gating | infra | med | nightly bump / rustc_private migration (parked) |
 | ~~R13~~ | rust-deep | `thread_local!` force via `KEY.with(...)` read PURE (effect in the macro-gen init fn, orphaned behind non-local `LocalKey::with`). **FIXED 2026-06-18** (`6010832`) | ~~SILENT med~~ CLOSED | — | a method call on a `LocalKey` receiver edges the forcing fn to the local init fn(s) referenced in that thread_local item's body (intravisit FnDef-ref collector). Sound (pure init → nothing); gated by ui/thread_local_effects.rs |
-| ~~R14~~ | rust-deep **+ rust-scan** (SHARED blind spot) | `write!`/`writeln!` to a custom `fmt::Write` writer read PURE — the writer's `write_str`, driven by the default `write_fmt`, was dropped (the WRITER side of the fmt machinery, distinct from HOLE 2's arg-Display side). Found in deep, then a cross-engine SWEEP found the SAME gap silent in **candor-scan** (the user-facing floor) — the dangerous shared case. **BOTH FIXED 2026-06-18** (deep `0e4bf50` HOLE 2c; scan `dabafd0` 0.5.18 charge_format_args writer arg). | ~~SILENT~~ CLOSED | — | gated by ui/write_trait.rs (deep) + write_macro_charges_the_local_writer_side (scan). FOLLOW-UP: sweep the java/ts/swift analogs (custom writer/Appendable sink via a format helper) — class confirmed shared across both rust engines, so the others are suspect. `thread_local!` was also swept — scan already handles it (not shared). |
+| ~~R14~~ | rust-deep **+ rust-scan + swift** (SYSTEMIC shared blind spot) | the WRITER side of formatting read PURE — an effectful custom sink (`fmt::Write`/`io::Write` via `write!`; Swift `TextOutputStream` via `print(to:)`/`write(to:)`) driven by a non-local format helper was dropped (distinct from the arg-Display side, which all engines handled). Found in rust-deep, then a cross-engine SWEEP found the SAME gap silent in **candor-scan** (the user-facing floor) AND **candor-swift** — the dangerous shared case cross-engine agreement hides. **ALL FIXED 2026-06-18** (deep `0e4bf50` HOLE 2c; scan `dabafd0` 0.5.18; swift `9368311` 0.5.22 modelOutputStreamCall). | ~~SILENT~~ CLOSED (3 engines) | — | gated by ui/write_trait.rs (deep), write_macro test (scan), smoke N4b (swift). REMAINING: candor-java analog (`Formatter`/`PrintWriter`→`Appendable.append`) — bytecode CHA may already catch it, unprobed; candor-ts has no clean writer-sink idiom (likely N/A). `thread_local!` swept too — scan handles it (not shared). |
 
 ## 6. The metric (track these four; each "step forward" moves one)
 
@@ -132,10 +132,13 @@ honest, lower priority). Eradication = SILENT count → 0.
    sound, gated (R6 stale for deep, may hold for scan). The 14th (rust-deep `write!` writer side) found 1 —
    R14, `fmt::Write` writer silent-pure; FIXED (`0e4bf50`) + gated. The 15th was a CROSS-ENGINE
    sweep of R14 + thread_local against candor-scan: write-fmt was ALSO silent in scan (shared blind spot,
-   FIXED scan 0.5.18 `dabafd0`); thread_local already handled. Convergence = sustained 0 across diverse new
-   seams (NOT yet reached — 15 rounds, ~12 finds, all fixed). KEY LESSON reinforced: a find in one engine is
-   a SWEEP trigger for all — write-fmt was shared deep↔scan, the exact blind spot cross-engine agreement
-   hides. Outstanding: sweep write-fmt analog on java/ts/swift.*
+   FIXED scan 0.5.18 `dabafd0`); thread_local already handled. The 16th extended the sweep to candor-swift:
+   write-fmt's writer side was ALSO silent there (effectful `TextOutputStream` via `print(to:)`/`write(to:)`),
+   FIXED swift 0.5.22 `9368311`. Convergence = sustained 0 across diverse new seams (NOT reached — 16 rounds,
+   ~13 finds, all fixed). KEY LESSON reinforced: a find in one engine is a SWEEP trigger for ALL — write-fmt's
+   writer side was a SYSTEMIC shared blind spot (deep+scan+swift), the exact case cross-engine agreement hides.
+   Outstanding: candor-java analog (Formatter/PrintWriter→Appendable.append; bytecode CHA may catch it); ts
+   likely N/A (no writer-sink idiom).*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
