@@ -56,9 +56,9 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 |---|---|---|---|---|---|---|
 | direct / local-call / method-recv / loop-elem / field / callback (6 basic indirections) | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
 | key-collision (same-named unit clobber → wrong attribution) | 🟡 | — | — | 🟡 | 🟡 | 🟡 |
-| **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
-| deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
-| **fire-and-forget / spawned task** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
+| **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
+| deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🟢 | 🟡 | 🟡 | 🟡 | — |
+| **fire-and-forget / spawned task** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
 | **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |
 | **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
 | FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
@@ -95,8 +95,10 @@ honest, lower priority). Eradication = SILENT count → 0.
 
 1. **Cardinal-surface coverage** = % of (seam × engine) cells at 🟢 in §4. *2026-06-18: the basic-indirection
    row (6 indirections × **8** effects = 48 cross-engine-standing cells, up from 5 effects/30) is 🟢 and the gate
-   is now un-foolable in strict mode (G1/G2). The 8 seam-class rows are still 🟡 (per-engine tests, not yet in
-   the cross-engine matrix). Target: every closed seam → 🟢 via the matrix's SEAM axis.*
+   is now un-foolable in strict mode (G1/G2). Most seam-class rows are 🟡 (per-engine tests, not yet in
+   the cross-engine matrix), EXCEPT the rust-deep column, now fully 🟢 via standing per-engine fixtures in
+   candor-rust CI: implicit-conversion (ui/implicit_conversion.rs), lazy-init + fire-and-forget +
+   deferred-iterator (ui/deferred_effects.rs). Target: every closed seam → 🟢 via the matrix's SEAM axis.*
 2. **Oracle coverage** = # real crates × effects under dynamic ground truth (§3 #1). *2026-06-18: grew 7→11
    crates — Net ×3 (std/minreq/ureq), Exec ×3 (duct/xshell/std), Fs ×4 (fs-err/std/walkdir/tempfile) — now
    ≥3 per syscall-distinguishable effect (Fs/Net/Exec); incl. the walkdir calibration confirmed vs the kernel
@@ -115,8 +117,11 @@ honest, lower priority). Eradication = SILENT count → 0.
    R1 (the only `med`) RESOLVED — empirically already covered + now standing-gated → **6 SILENT (R2–R8), all
    low/v.low**. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
-   ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent.
-   Convergence = sustained 0 across diverse new seams.*
+   ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent; the 9th
+   (rust-deep fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
+   forcing site read pure (effectful `LazyLock` init charged to the static, never to the forcing fn). FIXED +
+   gated (ui/deferred_effects.rs); the other two seams were already caught. Convergence = sustained 0 across
+   diverse new seams (not yet reached — the deep engine still yields finds when probed at new seams).*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
