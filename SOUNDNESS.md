@@ -88,7 +88,7 @@ honest, lower priority). Eradication = SILENT count → 0.
 | R8 | java | container-erased sort `compareTo` reentry (element type erased in generic) | SILENT | low | needs element-type recovery |
 | R9 | java | okio buffered read/write on an ambiguous BufferedSink | DISCLOSED | n/a | by design (Buffer-vs-socket ambiguous; construction boundary modeled) |
 | R10 | ts | `@types/uuid` v8 intersection-typed `v4`; googleapis deep service verbs | DISCLOSED | n/a | honest (reads Unknown); modern uuid fixed |
-| R11 | agents | only key-collision seam-hunted; other seams unchecked | UNCHECKED | med | run the seam battery against the agents model |
+| R11 | agents | seam battery run (2026-06-18): named-delegation-narrowing was UNSOUND (narrowed on a prompt mention, not a proof) — FIXED candor-agents 0.4.13 (`755216a`): declared `Agent(x,y)` allowlist narrows soundly; bare `Agent`+mention discloses an Unknown spawn residual; bare `Agent`+no-mention is CHA. Delegation forms / MCP-Unknown / hooks+cron entry points already covered (fuzz.py + test.py). | was UNCHECKED → mostly covered | low | remaining: allowlist naming a non-existent agent (unresolvable spawn → Unknown?); deeper hook-matcher adversarial cases |
 | R12 | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocks continuous self-gating | infra | med | nightly bump / rustc_private migration (parked) |
 
 ## 6. The metric (track these four; each "step forward" moves one)
@@ -120,8 +120,11 @@ honest, lower priority). Eradication = SILENT count → 0.
    ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent; the 9th
    (rust-deep fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
    forcing site read pure (effectful `LazyLock` init charged to the static, never to the forcing fn). FIXED +
-   gated (ui/deferred_effects.rs); the other two seams were already caught. Convergence = sustained 0 across
-   diverse new seams (not yet reached — the deep engine still yields finds when probed at new seams).*
+   gated (ui/deferred_effects.rs); the other two seams were already caught. The 10th (agents seam battery,
+   candor-agents `755216a`) found 1 — named-delegation narrowing trusted a prompt mention as proof of the
+   spawn set, silently dropping unmentioned-but-spawnable agents. FIXED (allowlist→sound, bare-Agent→disclosed
+   Unknown) + gated (test.py). Convergence = sustained 0 across diverse new seams (NOT yet reached — each new
+   engine×seam probe this session still yields a find).*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
