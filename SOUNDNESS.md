@@ -91,6 +91,7 @@ honest, lower priority). Eradication = SILENT count → 0.
 | R11 | agents | seam battery run (2026-06-18): named-delegation-narrowing was UNSOUND (narrowed on a prompt mention, not a proof) — FIXED candor-agents 0.4.13 (`755216a`): declared `Agent(x,y)` allowlist narrows soundly; bare `Agent`+mention discloses an Unknown spawn residual; bare `Agent`+no-mention is CHA. Delegation forms / MCP-Unknown / hooks+cron entry points already covered (fuzz.py + test.py). | was UNCHECKED → mostly covered | low | remaining: allowlist naming a non-existent agent (unresolvable spawn → Unknown?); deeper hook-matcher adversarial cases |
 | R12 | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocks continuous self-gating | infra | med | nightly bump / rustc_private migration (parked) |
 | ~~R13~~ | rust-deep | `thread_local!` force via `KEY.with(...)` read PURE (effect in the macro-gen init fn, orphaned behind non-local `LocalKey::with`). **FIXED 2026-06-18** (`6010832`) | ~~SILENT med~~ CLOSED | — | a method call on a `LocalKey` receiver edges the forcing fn to the local init fn(s) referenced in that thread_local item's body (intravisit FnDef-ref collector). Sound (pure init → nothing); gated by ui/thread_local_effects.rs |
+| ~~R14~~ | rust-deep | `write!`/`writeln!` to a custom `fmt::Write` writer read PURE — the writer's `write_str`, driven by the default `write_fmt`, was dropped (the WRITER side of the fmt machinery, distinct from HOLE 2's arg-Display side; `io::Write` disclosed Unknown but `fmt::Write` was silent). **FIXED 2026-06-18** (`0e4bf50`) | ~~SILENT~~ CLOSED | — | HOLE 2c `fmt_write_local_edge`: resolve `w.write_fmt`'s receiver to its local `write_str`/`write` impl (via a by-trait-DefId resolver). Gated by ui/write_trait.rs |
 
 ## 6. The metric (track these four; each "step forward" moves one)
 
@@ -127,8 +128,11 @@ honest, lower priority). Eradication = SILENT count → 0.
    spawn set, silently dropping unmentioned-but-spawnable agents. FIXED (allowlist→sound, bare-Agent→disclosed
    Unknown) + gated (test.py). The 11th (rust-deep `thread_local!` probe) found 1 — R13, a `.with()`-forced
    thread_local read pure (effect orphaned in the macro-gen init fn); FIXED same-session (`6010832`) + gated.
-   Convergence = sustained 0 across diverse new seams (NOT yet reached — every new engine×seam probe this
-   session still yields a find: 11 rounds, ~10 finds, all fixed).*
+   Rounds 12–13 (rust-deep derived-Clone/Once/OnceLock-named-init, then compound-assign R6) found 0 — both
+   sound, gated (R6 stale for deep, may hold for scan). The 14th (rust-deep `write!` writer side) found 1 —
+   R14, `fmt::Write` writer silent-pure; FIXED (`0e4bf50`) + gated. Convergence = sustained 0 across diverse
+   new seams (NOT yet reached — 14 rounds, ~11 finds, all fixed; 2 consecutive 0-finds were followed by
+   another find, so rust-deep is converging but not converged).*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
