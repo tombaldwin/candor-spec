@@ -60,7 +60,7 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 | deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
 | **fire-and-forget / spawned task** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
 | **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |
-| **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | ⚫ | 🟢 | 🟢 | 🟢 | — |
+| **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
 | FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
 | macro / codegen reach | 🟡 | 🟢¹ | — | — | — | — |
 
@@ -78,7 +78,7 @@ honest, lower priority). Eradication = SILENT count → 0.
 
 | id | engine | residual | kind | severity | plan |
 |---|---|---|---|---|---|
-| R1 | rust-deep | implicit-conversion class not yet ported (scan-only fix) | SILENT | med | port the scan 0.5.16 fix to src/lib.rs |
+| ~~R1~~ | rust-deep | implicit-conversion class — **RESOLVED 2026-06-18**: empirically already covered, not a residual | ~~SILENT~~ CLOSED | — | probe `candor-rust/ui/implicit_conversion.rs` (13-warning regression fixture) confirms all 6 sub-cases (format/Display·`?`→From·`.into()`·auto-deref·operator·Drop-glue) charge the effect + 4 pure controls stay pure. The type-aware HIR walker resolves these natively (fmt via the explicit "HOLE 2"); the scan 0.5.16 fix was the *syntactic* engine's counterpart, never needed in deep. |
 | R2 | rust-scan | auto-deref *method* calls (`w.method()` via Deref::Target) | SILENT | low | needs target-type method resolution (syntactic limit) |
 | R3 | rust-scan | untyped-operand implicit-conversion (format/operator over an unresolved type) | SILENT | low | syntactic limit; honest residual (no flood vs precision tradeoff) |
 | R4 | rust-scan | bare-unit-struct iterate/drop (`for _ in Unit {}`, `let _g = Unit;`) | SILENT | v.low | rare idiom |
@@ -111,10 +111,12 @@ honest, lower priority). Eradication = SILENT count → 0.
    Recall is also wired into realworld-oracle.yml → BOTH ground-truth methods are now continuous standing
    gates. NEXT: more uncalibrated recall probes (Env/Clock crates candor doesn't model); deepen each effect's
    real-crate diversity.*
-3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). Target: 0
-   med+; lows documented-accepted.*
+3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). 2026-06-18:
+   R1 (the only `med`) RESOLVED — empirically already covered + now standing-gated → **6 SILENT (R2–R8), all
+   low/v.low**. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
-   ≥1; the 7th (coverage) found 0 silent. Convergence = sustained 0 across diverse new seams.*
+   ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent.
+   Convergence = sustained 0 across diverse new seams.*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
@@ -123,9 +125,9 @@ honest, lower priority). Eradication = SILENT count → 0.
    becomes un-shippable. *Each seam class added = a measurable step (cells turn green).*
 2. **Grow the dynamic oracle (strongest evidence):** add real crates per effect to `soundness/realworld/`,
    wire `realworld-oracle.yml` to run in CI on every push. *Each crate/effect = a step on metric #2.*
-3. **Eradicate SILENT residuals (§5):** fix R1 (deep implicit-conversion), then drive R2–R8 to zero or
-   convert to disclosed-Unknown. *Each = a step on metric #3.*
-4. **rust-deep parity + unblock its self-guard (R1, R12):** the reference engine must carry every scan fix and
+3. **Eradicate SILENT residuals (§5):** R1 done (already covered); drive the remaining R2–R8 (all low/v.low) to
+   zero or convert to disclosed-Unknown. *Each = a step on metric #3.*
+4. **rust-deep parity + unblock its self-guard (R12):** the reference engine must carry every scan fix and
    be continuously gated.
 5. **agents seam battery (R11):** run the six seam classes against the agents drift model.
 6. **Convergence log:** record each adversarial round's find-rate here; a sustained zero across *diverse* new
