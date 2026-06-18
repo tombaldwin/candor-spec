@@ -4,17 +4,18 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.5** (tag `v0.5`). The parts marked ⟨0.5⟩ — the *unit* generalization and the `unitKind`
-field (§2); the subprocess-boundary refinement of `Exec` (§4); the effect manifest for an opaque
-dependency (§5.1); the gate→guard runtime enforcement (§6.2); and the §3.1 read-only query shapes — are
-now **released**, and engines declare `0.5`. 0.5 also pins two cross-engine consistency rules a divergence
-review surfaced: the §6.2 policy lexer's token separator is **ASCII whitespace** (so a Unicode space can't
-be silently enforced by one engine and dropped by another), and `unknownWhy` gains the `callback:` origin.
+**Version 0.6** (tag `v0.6`). The parts marked ⟨0.6⟩ — the §3.1 `blindspots` read-only query (the Unknown
+SOURCES, ranked by blast radius) and the §4 tightening of `unknownWhy` to **required on a direct Unknown
+source** — are **released**, and engines declare `0.6`. All four engines implement it and a conformance
+differential pins the shape. (The ⟨0.5⟩ parts — the *unit* generalization and `unitKind` (§2); the
+subprocess-boundary refinement of `Exec` (§4); the effect manifest (§5.1); gate→guard (§6.2); the §3.1
+query shapes; the ASCII-whitespace policy-lexer rule; the `callback:` `unknownWhy` origin — remain in 0.6,
+wire-compatible.)
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
 *build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.5.x`
-implements spec `0.5` (patch versions float per-impl), and all declare **spec `0.5`** in the
+implements spec `0.6` (patch versions float per-impl), and all declare **spec `0.6`** in the
 envelope. 0.5 is wire-compatible with 0.4 — the ⟨0.5⟩ changes are additive (new optional fields,
 refinements that only narrow an upper bound, SHOULD-level conventions, and a lexer clarification);
 see the [changelog](#8-changelog). An implementation MUST emit the spec
@@ -823,16 +824,17 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.6 (IN PROGRESS — defined here; the reference engine candor-java lands it first, then engines declare `0.6`)** —
-  additive, wire-compatible with 0.5:
+- **0.6 (released — tag `v0.6`; engines declare `0.6`)** —
+  additive, wire-compatible with 0.5; all four engines implement it and a conformance differential pins it:
   - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
     ranked by how many functions transitively inherit `Unknown` through each: the actionable inverse of a
     widely-propagated `Unknown`. A new query shape = a minor bump (this changelog's own rule).
   - §4 **`unknownWhy` is now REQUIRED on a direct `Unknown` source** (still absent on purely-inherited
     `Unknown`), so `blindspots` separates the few root causes from the smear identically across engines. A
     presence tightening on an existing field; a 0.5 consumer that ignores `unknownWhy` is unaffected.
-  - Until the reference engine ships it the header stays **0.5**; this entry documents the contract being
-    built so the implementation and the spec move together (the same discipline the ⟨0.5⟩ parts followed).
+  - Rolled out across all four engines (candor-java reference first, then candor-query/rust, candor-ts,
+    and candor-swift reports queried via candor-query), with a conformance differential pinning the shape —
+    then the header + engine declarations moved to `0.6` together (the same discipline the ⟨0.5⟩ parts followed).
 - **0.5 (released — tag `v0.5`; engines declare `0.5`)** — the ⟨0.5⟩ parts (units/`unitKind` §2, Exec
   subprocess-boundary refinement §4, the effect manifest §5.1, gate→guard §6.2, and the §3.1 read-only
   query shapes), plus two cross-engine consistency rules a divergence review pinned: the §6.2 policy
