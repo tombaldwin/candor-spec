@@ -100,9 +100,13 @@ honest, lower priority). Eradication = SILENT count → 0.
 2. **Oracle coverage** = # real crates × effects under dynamic ground truth (§3 #1). *2026-06-18: grew 7→11
    crates — Net ×3 (std/minreq/ureq), Exec ×3 (duct/xshell/std), Fs ×4 (fs-err/std/walkdir/tempfile) — now
    ≥3 per syscall-distinguishable effect (Fs/Net/Exec); incl. the walkdir calibration confirmed vs the kernel
-   + tempfile as an honesty probe. Rand/Clock are syscall-distinguishable but markerless/noisy (getrandom has
-   no string arg; HashMap seeds getrandom) — covered by the non-syscall recall complement instead. NEXT:
-   wire `realworld-oracle.yml` to run on every push (today it's workflow_dispatch).*
+   + tempfile as an honesty probe. + 13 crates with an UNCALIBRATED honesty probe per
+   effect (minreq/subprocess/fs_extra — a crate candor doesn't model, exercised for real; the strongest test).
+   Rand/Clock are syscall-distinguishable but markerless/noisy (getrandom has no string arg; HashMap seeds
+   getrandom) — covered by the non-syscall recall complement instead. **NOW CONTINUOUS: `realworld-oracle.yml`
+   runs on every push to main + every PR (was workflow_dispatch) → kernel ground truth is a STANDING gate, a
+   new silent under-report on a real crate fails CI.** NEXT: more uncalibrated probes; the non-syscall recall
+   complement for the 7 non-syscall effects.*
 3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). Target: 0
    med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
