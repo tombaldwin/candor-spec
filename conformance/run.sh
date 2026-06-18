@@ -504,6 +504,7 @@ RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
 "$QUERY" impact  "$RUST_PREFIX" transitive_leaf --json > "$W/r_impact.json" 2>/dev/null
 "$QUERY" gains   "$RUST_PREFIX" "$RUST_PREFIX" --json   > "$W/r_gains.json" 2>/dev/null
 "$QUERY" path    "$RUST_PREFIX" transitive_caller Fs --json > "$W/r_path.json" 2>/dev/null
+"$QUERY" blindspots "$RUST_PREFIX" --json                   > "$W/r_blindspots.json" 2>/dev/null
 java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
 java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
@@ -512,6 +513,7 @@ java -jar "$JAR" diff    "$W/java.json" "$W/java.json" --json  > "$W/j_diff.json
 java -jar "$JAR" impact  "$W/java.json" transitive_leaf --json > "$W/j_impact.json"  2>/dev/null
 java -jar "$JAR" gains   "$W/java.json" "$W/java.json" --json   > "$W/j_gains.json"   2>/dev/null
 java -jar "$JAR" path    "$W/java.json" transitive_caller Fs --json > "$W/j_path.json" 2>/dev/null
+java -jar "$JAR" blindspots "$W/java.json" --json              > "$W/j_blindspots.json" 2>/dev/null
 "$QUERY" show "$RUST_PREFIX" act 1  > "$W/r_ladder_act.json"  2>/dev/null
 "$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
@@ -533,14 +535,15 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ impact  "$W/ts" transitive_leaf 1 > "$W/t_impact.json"     2>/dev/null
   TSQ gains   "$W/ts" "$W/ts"            > "$W/t_gains.json"      2>/dev/null
   TSQ path    "$W/ts" transitive_caller Fs > "$W/t_path.json"     2>/dev/null
+  TSQ blindspots "$W/ts"                   > "$W/t_blindspots.json" 2>/dev/null
 fi
 
 # A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
-P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_ladder_act r_ladder_nion r_ladder_svc \
-          j_show j_where j_callers j_map j_diff j_impact j_gains j_path j_ladder_act j_ladder_nion j_ladder_svc"
+P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_blindspots r_ladder_act r_ladder_nion r_ladder_svc \
+          j_show j_where j_callers j_map j_diff j_impact j_gains j_path j_blindspots j_ladder_act j_ladder_nion j_ladder_svc"
 if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then  # same gate that CREATES them — a scanner-only checkout must degrade two-way, not hard-fail
-  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_path t_ladder_act t_ladder_nion t_ladder_svc"
+  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_path t_blindspots t_ladder_act t_ladder_nion t_ladder_svc"
 fi
 for f in $P5_FILES; do
   [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
@@ -605,6 +608,14 @@ rg, jg = load("gains", "r"), load("gains", "j")
 tg = load("gains", "t") if ts else None
 check("gains", gk <= set(rg) and gk <= set(jg) and rg["gained"] == [] and jg["gained"] == []
                and (not ts or (gk <= set(tg) and tg["gained"] == [])))
+# blindspots (SPEC §3.1 ⟨0.6⟩): the Unknown-SOURCES view {sources:[{fn,why,reaches,affected}],
+# totalUnknown}. Pins the shape across engines — each source carries its why + blast radius. Content is
+# engine-natural (and the fixture may have zero sources), so this checks structure, not counts.
+bk = {"sources", "totalUnknown"}; sk = {"fn", "why", "reaches", "affected"}
+rb, jb = load("blindspots", "r"), load("blindspots", "j")
+tb = load("blindspots", "t") if ts else None
+bs_ok = lambda d: set(d) == bk and all(sk <= set(s) for s in d["sources"])
+check("blindspots", bs_ok(rb) and bs_ok(jb) and (not ts or bs_ok(tb)))
 # path (SPEC §3.1): the provenance chain {effect, fn, path:[{fn,loc,source}]} from fn to the nearest
 # unit performing the effect DIRECTLY (source:true). The leaf-name chain + the source must agree across
 # engines — this pins the freshly-written candor-ts BFS against candor-query's, which nothing else did.
