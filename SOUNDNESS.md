@@ -91,8 +91,10 @@ honest, lower priority). Eradication = SILENT count → 0.
 
 ## 6. The metric (track these four; each "step forward" moves one)
 
-1. **Cardinal-surface coverage** = % of (seam × engine) cells at 🟢 in §4. *Baseline 2026-06-18: ~6 of ~48
-   applicable cells are truly cross-engine-standing (the basic-indirection row). Target: every closed seam → 🟢.*
+1. **Cardinal-surface coverage** = % of (seam × engine) cells at 🟢 in §4. *2026-06-18: the basic-indirection
+   row (6 indirections × **8** effects = 48 cross-engine-standing cells, up from 5 effects/30) is 🟢 and the gate
+   is now un-foolable in strict mode (G1/G2). The 8 seam-class rows are still 🟡 (per-engine tests, not yet in
+   the cross-engine matrix). Target: every closed seam → 🟢 via the matrix's SEAM axis.*
 2. **Oracle coverage** = # real crates × effects under dynamic ground truth (§3 #1). *Baseline: ~7 crates,
    Fs/Net/Exec only. Target: ≥3 crates per syscall-distinguishable effect, run in CI; + the non-syscall recall
    complement for the other 7 effects.*
@@ -115,6 +117,31 @@ honest, lower priority). Eradication = SILENT count → 0.
 5. **agents seam battery (R11):** run the six seam classes against the agents drift model.
 6. **Convergence log:** record each adversarial round's find-rate here; a sustained zero across *diverse* new
    seams is the strongest convergence signal we can have.
+
+## 7b. Gate integrity — the gate itself was code-reviewed + hardened (2026-06-18)
+
+Before extending the gate we reviewed *the gate*. The core is sound: the generative matrix compares each
+engine against a **hardcoded EXPECTED effect** (vs-ground-truth, not mere inter-engine agreement — so it
+catches even a *shared* blind spot), absent-fn → PURE → DROP → fails, and the callback accepted-band tolerates
+`Unknown` but never silent-pure. Three findings, all addressed:
+
+- **G1 (fixed) — silent engine-skip → false multi-engine green.** A skipped (absent) ts/swift engine left the
+  verdict "OK" with fewer engines; a misconfigured CI could read a 2-engine pass as a 4-engine guarantee.
+  FIX: `CONFORMANCE_REQUIRE_ALL=1` strict mode — a skipped engine now FAILS (run.sh Parts 6/6c + gen_differential).
+  Verified: strict + engine absent → exit ≠ 0; strict + all present → exit 0.
+- **G2 (fixed) — `check_honesty.py` silently degraded** when the callgraph sidecar was missing (fell back to
+  inline `calls`, which misses pure-fn callers — the dangerous case). FIX: strict mode FAILS on a missing
+  callgraph. Verified.
+- **G3 (in progress) — coverage was the real limit.** The matrix is vs-ground-truth, so every (effect×seam)
+  cell it covers is strongly gated and every one it doesn't is ungated. Extended the EFFECT axis 5→8
+  (added **Rand/Db/Log**, the proven-cross-engine vocab; matrix 30→48 cells, all engines agree). **Ipc/Clipboard
+  stay out by design** (no JDK std IPC primitive; no node clipboard model — structurally per-engine). Remaining
+  G3 work = the SEAM axis (add renderers for lazy-init / deferred-iterator / fire-and-forget / implicit-conversion
+  / gate-masking / FFI to the matrix) — the next roadmap increment.
+
+**CI action item:** the spec CI should run with `CONFORMANCE_REQUIRE_ALL=1` **once it provisions all four
+toolchains** (rust+java+node+swift) — otherwise strict mode will fail on the missing ones. Until then, strict is
+opt-in (local + a future all-toolchain CI job). Do NOT flip CI to strict before the toolchains are installed.
 
 ## 8. How to read confidence today (2026-06-18)
 

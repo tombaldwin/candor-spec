@@ -665,8 +665,10 @@ PY
   else
     echo; echo "[6] THIRD ENGINE (candor-ts): PRESENT at $TS_DIR but its scan produced no report — FAIL"; rc=1
   fi
+elif [ -n "${CONFORMANCE_REQUIRE_ALL:-}" ]; then
+  echo; echo "[6] THIRD ENGINE (candor-ts): not present AND CONFORMANCE_REQUIRE_ALL is set — FAIL (strict: the gate must not silently degrade to fewer engines)"; rc=1
 else
-  echo; echo "[6] THIRD ENGINE (candor-ts): not present (set CANDOR_TS or clone ../candor-ts) — SKIPPED"
+  echo; echo "[6] THIRD ENGINE (candor-ts): not present (set CANDOR_TS or clone ../candor-ts) — SKIPPED (set CONFORMANCE_REQUIRE_ALL=1 to make this a failure in CI)"
 fi
 
 # ====================================================================================================
@@ -691,8 +693,10 @@ PY
   else
     echo; echo "[6c] FOURTH ENGINE (candor-swift): PRESENT at $SW_DIR but its scan produced no report — FAIL"; rc=1
   fi
+elif [ -n "${CONFORMANCE_REQUIRE_ALL:-}" ]; then
+  echo; echo "[6c] FOURTH ENGINE (candor-swift): not present AND CONFORMANCE_REQUIRE_ALL is set — FAIL (strict)"; rc=1
 else
-  echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED"
+  echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED (set CONFORMANCE_REQUIRE_ALL=1 to make this a failure in CI)"
 fi
 
 # --- Part 9: unitKind (SPEC §2, 0.5 DRAFT) -----------------------------------------------------------

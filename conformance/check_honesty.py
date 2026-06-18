@@ -30,6 +30,7 @@ Usage:  python3 check_honesty.py <report.json> [<report2.json> ...]
         (the sibling <report>.callgraph.json is loaded automatically.)
 """
 import json
+import os
 import sys
 
 
@@ -85,8 +86,16 @@ def main(argv):
         try:
             edges = json.load(open(callgraph_path(path)))
         except Exception:  # noqa: BLE001
-            # No callgraph: fall back to the report's inline `calls` (misses pure-fn callers — note it).
-            print(f"  (no callgraph sidecar for {path} — using inline `calls`; pure-fn callers not covered)")
+            # No callgraph sidecar. The inline-`calls` fallback MISSES pure-fn callers — exactly the
+            # dangerous case (a pure-looking fn reaching uncertainty). So this is a SILENT WEAKENING of the
+            # check. In strict mode (CONFORMANCE_REQUIRE_ALL) that's a FAILURE, not a quiet degrade.
+            if os.environ.get("CONFORMANCE_REQUIRE_ALL"):
+                print(f"FAIL (strict) {path}: no callgraph sidecar — the honesty check cannot cover pure-fn "
+                      f"callers without it (CONFORMANCE_REQUIRE_ALL set)")
+                total += 1
+                continue
+            print(f"  (no callgraph sidecar for {path} — using inline `calls`; pure-fn callers NOT covered, "
+                  f"the check is WEAKENED; set CONFORMANCE_REQUIRE_ALL=1 to make this a failure)")
             edges = {f["fn"]: (f.get("calls") or []) for f in funcs}
         viols = check(funcs, edges)
         if viols:
