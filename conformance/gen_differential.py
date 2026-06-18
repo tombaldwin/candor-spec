@@ -227,13 +227,46 @@ def r_callback(eff, name, sfx):
     }
 
 
+# ---- renderers: implicit_conv -- the sink lives in an effectful Display/toString/description, reached
+# IMPLICITLY by putting the value in a string context (format/concat/interpolation). No visible call to
+# the effectful method -- the engine must resolve the operand's type to its conversion impl. (seam class:
+# implicit-conversion, closed 2026-06-18 in all 4 engines.)
+def r_implicit_conv(eff, name, sfx):
+    W = f"W_{sfx}_ic"
+    return {
+        "rust":  f'pub struct {W};\n'
+                 f'impl std::fmt::Display for {W} {{ fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{ {eff["sink"]["rust"]} write!(f, "w") }} }}\n'
+                 f'pub fn {name}(w: &{W}) -> String {{ format!("{{}}", w) }}',
+        "java":  f'  static class {W} {{ public String toString() {{ {eff["sink"]["java"]} return "w"; }} }}\n'
+                 f'  public static String {name}({W} w) {{ return "v=" + w; }}',
+        "ts":    f'class {W} {{ toString(): string {{ {eff["sink"]["ts"]} return "w"; }} }}\n'
+                 f'export function {name}(w: {W}): string {{ return `${{w}}`; }}',
+        "swift": f'struct {W}: CustomStringConvertible {{ var description: String {{ {eff["sink"]["swift"]}; return "w" }} }}\n'
+                 f'func {name}(_ w: {W}) -> String {{ return "v=\\(w)" }}',
+    }
+
+
+# ---- renderers: fire_forget -- the sink runs in an INLINE closure handed to a spawn/schedule primitive
+# (thread/Task/setTimeout). The spawning fn should carry the effect (the closure runs as a direct
+# consequence). (seam class: fire-and-forget, closed 2026-06-18.)
+def r_fire_forget(eff, name, sfx):
+    return {
+        "rust":  f'pub fn {name}() {{ std::thread::spawn(|| {{ {eff["sink"]["rust"]} }}); }}',
+        "java":  f'  public static void {name}() {{ new Thread(() -> {{ {eff["sink"]["java"]} }}).start(); }}',
+        "ts":    f'export function {name}(): void {{ setTimeout(() => {{ {eff["sink"]["ts"]} }}, 0); }}',
+        "swift": f'func {name}() {{ Task {{ {eff["sink"]["swift"]} }} }}',
+    }
+
+
 INDIRECTIONS = [
-    dict(id="direct",      render=r_direct,      accept=acc_exact),
-    dict(id="local_call",  render=r_local_call,  accept=acc_exact),
-    dict(id="method_recv", render=r_method_recv, accept=acc_exact),
-    dict(id="loop_elem",   render=r_loop_elem,   accept=acc_exact),
-    dict(id="field",       render=r_field,       accept=acc_exact),
-    dict(id="callback",    render=r_callback,    accept=acc_callback),
+    dict(id="direct",        render=r_direct,        accept=acc_exact),
+    dict(id="local_call",    render=r_local_call,    accept=acc_exact),
+    dict(id="method_recv",   render=r_method_recv,   accept=acc_exact),
+    dict(id="loop_elem",     render=r_loop_elem,     accept=acc_exact),
+    dict(id="field",         render=r_field,         accept=acc_exact),
+    dict(id="callback",      render=r_callback,      accept=acc_callback),
+    dict(id="implicit_conv", render=r_implicit_conv, accept=acc_exact),
+    dict(id="fire_forget",   render=r_fire_forget,   accept=acc_exact),
 ]
 
 

@@ -58,9 +58,9 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 | key-collision (same-named unit clobber → wrong attribution) | 🟡 | — | — | 🟡 | 🟡 | 🟡 |
 | lazy-init (deferred initializer forced elsewhere) | 🟡 | 🔴 | 🟡 | 🟡 | 🟢¹ | 🔴 |
 | deferred-iterator (lazy seq built≠consumed) | 🟡 | 🔴 | 🟡 | 🟡 | 🟡 | — |
-| fire-and-forget / spawned task | 🟢¹ | 🔴 | 🟡 | 🟡 | 🟢¹ | 🔴 |
+| **fire-and-forget / spawned task** | 🟢 | 🔴 | 🟢 | 🟢 | 🟢 | 🔴 |
 | gate-evasion / literal-masking (policy fail-open) | 🟡 | 🟡 | 🟡 | 🟢¹ | 🟡 | 🟡² |
-| implicit-conversion (effect via `?`/format/operators/coercion) | 🟡 | ⚫ | 🟡 | 🟡 | 🟡 | — |
+| **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | ⚫ | 🟢 | 🟢 | 🟢 | — |
 | FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
 | macro / codegen reach | 🟡 | 🟢¹ | — | — | — | — |
 
@@ -137,7 +137,11 @@ catches even a *shared* blind spot), absent-fn → PURE → DROP → fails, and 
   (added **Rand/Db/Log**, the proven-cross-engine vocab; matrix 30→48 cells, all engines agree). **Ipc/Clipboard
   stay out by design** (no JDK std IPC primitive; no node clipboard model — structurally per-engine). Remaining
   G3 work = the SEAM axis (add renderers for lazy-init / deferred-iterator / fire-and-forget / implicit-conversion
-  / gate-masking / FFI to the matrix) — the next roadmap increment.
+  / gate-masking / FFI to the matrix) — the next roadmap increment. **STARTED: implicit-conversion +
+  fire-and-forget are now matrix INDIRECTIONS (matrix 48→64 cells, all 4 engines agree, exact {effect}) —
+  those two seam rows are now 🟢 cross-engine-standing.** Remaining seam renderers: deferred-iterator, lazy-init
+  (idiom-divergent per language — careful work); gate-masking belongs in the POLICY-verdict differential not
+  the effect matrix; FFI's expected is {Unknown} (disclosure) and has no clean ts idiom.
 
 **CI action item:** the spec CI should run with `CONFORMANCE_REQUIRE_ALL=1` **once it provisions all four
 toolchains** (rust+java+node+swift) — otherwise strict mode will fail on the missing ones. Until then, strict is
