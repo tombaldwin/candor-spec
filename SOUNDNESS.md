@@ -90,7 +90,7 @@ honest, lower priority). Eradication = SILENT count → 0.
 | R10 | ts | `@types/uuid` v8 intersection-typed `v4`; googleapis deep service verbs | DISCLOSED | n/a | honest (reads Unknown); modern uuid fixed |
 | R11 | agents | seam battery run (2026-06-18): named-delegation-narrowing was UNSOUND (narrowed on a prompt mention, not a proof) — FIXED candor-agents 0.4.13 (`755216a`): declared `Agent(x,y)` allowlist narrows soundly; bare `Agent`+mention discloses an Unknown spawn residual; bare `Agent`+no-mention is CHA. Delegation forms / MCP-Unknown / hooks+cron entry points already covered (fuzz.py + test.py). | was UNCHECKED → mostly covered | low | remaining: allowlist naming a non-existent agent (unresolvable spawn → Unknown?); deeper hook-matcher adversarial cases |
 | R12 | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocks continuous self-gating | infra | med | nightly bump / rustc_private migration (parked) |
-| R13 | rust-deep | `thread_local!` force via `KEY.with(...)` reads PURE — effect lives in the macro-gen `__rust_std_internal_init_fn` (orphaned: not surfaced as analyzed, reached only through non-local `LocalKey::with`). scan handles it (lazy_statics); deep doesn't. The LazyLock static-ref fix (`8bf9c6b`) does NOT cover it (effect is not in the static's own initializer). Verified repro 2026-06-18. | SILENT | med | hook `LocalKey::with*` calls → analyze + edge to the init fn referenced in the receiver thread_local item's body (substantial: item-iteration + body-walk + edge, macro/edition fragility) |
+| ~~R13~~ | rust-deep | `thread_local!` force via `KEY.with(...)` read PURE (effect in the macro-gen init fn, orphaned behind non-local `LocalKey::with`). **FIXED 2026-06-18** (`6010832`) | ~~SILENT med~~ CLOSED | — | a method call on a `LocalKey` receiver edges the forcing fn to the local init fn(s) referenced in that thread_local item's body (intravisit FnDef-ref collector). Sound (pure init → nothing); gated by ui/thread_local_effects.rs |
 
 ## 6. The metric (track these four; each "step forward" moves one)
 
@@ -116,8 +116,8 @@ honest, lower priority). Eradication = SILENT count → 0.
    real-crate diversity.*
 3. **Open SILENT residuals** (§5) = count by severity. *Baseline: 7 SILENT (R1–R8, mostly low). 2026-06-18:
    R1 (the only `med`) RESOLVED — empirically already covered + now standing-gated → 6 SILENT (R2–R8), all
-   low/v.low. Then the thread_local probe ADDED R13 (med, rust-deep) → **7 SILENT (R2–R8, R13); R13 is the
-   lone med, tracked + fix-planned**. Target: 0 med+; lows documented-accepted.*
+   low/v.low. The thread_local probe briefly added R13 (med) — now FIXED same-session (`6010832`) → back to
+   **6 SILENT (R2–R8), all low/v.low; no med+ open**. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
    ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent; the 9th
    (rust-deep fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
@@ -126,9 +126,9 @@ honest, lower priority). Eradication = SILENT count → 0.
    candor-agents `755216a`) found 1 — named-delegation narrowing trusted a prompt mention as proof of the
    spawn set, silently dropping unmentioned-but-spawnable agents. FIXED (allowlist→sound, bare-Agent→disclosed
    Unknown) + gated (test.py). The 11th (rust-deep `thread_local!` probe) found 1 — R13, a `.with()`-forced
-   thread_local reads pure (effect orphaned in the macro-gen init fn); TRACKED, fix is a substantial lift (not
-   yet done). Convergence = sustained 0 across diverse new seams (NOT yet reached — every new engine×seam probe
-   this session still yields a find: 11 rounds, ~10 finds).*
+   thread_local read pure (effect orphaned in the macro-gen init fn); FIXED same-session (`6010832`) + gated.
+   Convergence = sustained 0 across diverse new seams (NOT yet reached — every new engine×seam probe this
+   session still yields a find: 11 rounds, ~10 finds, all fixed).*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
