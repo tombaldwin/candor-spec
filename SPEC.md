@@ -121,7 +121,7 @@ Each entry:
                                          // reachable from the roots; its body's effects are NEVER
                                          // orphaned. Population is runtime-specific — far richer on a
                                          // reflection/framework runtime than on Rust. Default false.
-  "unknownWhy":   ["dispatch:Foo.bar"],  // OPTIONAL: when this fn introduces `Unknown` DIRECTLY, why —
+  "unknownWhy":   ["dispatch:Foo.bar"],  // ⟨0.6⟩ REQUIRED when this fn introduces `Unknown` DIRECTLY (a source); absent if purely inherited. Why —
                                          // `reflect:<callee>` (reflection / dynamic invoke),
                                          // `native:<method>` (no analysable body),
                                          // `dispatch:<type>.<method>` (a project abstraction with no
@@ -350,6 +350,11 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
 - **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
 - **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points.
+- **blindspots** ⟨0.6⟩ — the Unknown SOURCES: the calls the engine genuinely could not resolve (each
+  carries `unknownWhy` — reflection, an over-wide dispatch, a fn-pointer), ranked by how many functions
+  transitively inherit `Unknown` through each. The actionable inverse of a widely-propagated `Unknown`: a
+  report can read 60% `Unknown` from a dozen root causes — this names those dozen, so they can be declared
+  (§5.1), resolved, or accepted, instead of the smear reading as analysis failure.
 - **parsepolicy `<file>`** — the engine's canonical parse of a §6.2 policy file, as JSON. Not a user
   workflow: it makes the grammar *diffable* — the cross-impl conformance suite feeds every engine
   the same policy text and asserts the parses agree, which is what keeps one policy file meaning
@@ -377,6 +382,7 @@ diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":
 reachable { "entryPoints":int, "effects": { "<Effect>": { "count":int, "via":[fn…] } } }
 path      { "effect", "fn", "path":[ { "fn", "loc", "source":bool } ] }
 impact    { "fn", "affectedCount":int, "affected":[fn…], "entryPoints":[ { "fn", "inferred":[…] } ] }
+blindspots { "sources":[ { "fn", "why":[…], "reaches":int, "affected"?:[fn…] } ], "totalUnknown":int }   ⟨0.6⟩
 ```
 
 `show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved
@@ -397,6 +403,15 @@ it just computed, so the list is required. `path` is the forward dual: a shortes
 to the nearest unit performing `effect` **directly** (`source: true`), each step carrying its `loc`;
 an empty `path` is the honest "no local source on a path" answer (the source is cross-boundary,
 framework-synthesised, or `Unknown`), never an error.
+
+`blindspots` ⟨0.6⟩ is the *source* view of `Unknown`: each entry is a unit whose OWN body has an
+unresolvable call (so it carries `unknownWhy`, required on such a unit — §4), with `reaches` the size of
+its `Unknown` blast radius (the transitive callers that inherit `Unknown` through it; blast radii may
+overlap between sources) and `affected` that list (optional, like `impact`). Sorted by `reaches`
+descending — the root causes that poison the most functions first. A unit whose `Unknown` is purely
+inherited (no `unknownWhy` of its own) is NOT a source and is excluded; `totalUnknown` is the report's
+total count of units carrying `Unknown` — the surface these sources explain. The point is to turn a
+high-`Unknown` report from "the analysis failed" into a short, ranked worklist of real blind spots.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
@@ -493,10 +508,14 @@ body, whose effects MUST be attributed. Reporting it `Unknown` is unsound in the
 masks the inherited body's real effects, since an unresolved dispatch also stops propagation). An
 `Unknown` from dispatch is justified only when the target is *genuinely* indeterminate — a value
 implementing a trait/interface the implementation declares but whose concrete implementor it cannot
-see (a DI-wired strategy, a `dyn`/virtual call with no visible impl). The optional `unknownWhy` field
+see (a DI-wired strategy, a `dyn`/virtual call with no visible impl). The `unknownWhy` field
 records this distinction per function so a consumer (and the implementer) can tell irreducible opacity
 (`reflect:`, `native:`) from the improvable kind (`dispatch:`/`callback:` — often resolved by widening
-the analysed inputs to include the missing implementor or the higher-order call's target).
+the analysed inputs to include the missing implementor or the higher-order call's target). ⟨0.6⟩ It is
+**REQUIRED on a unit that introduces `Unknown` DIRECTLY** (a *source* — its own body has the
+unresolvable call), and absent on a unit whose `Unknown` is purely inherited from a callee. That source
+vs. inherited split is what makes the `blindspots` query (§3.1) name the handful of real root causes
+behind a widely-propagated `Unknown` — a 0.5 consumer that ignores the field is unaffected.
 
 ## 5. Capabilities (conformance)
 
@@ -804,6 +823,16 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.6 (IN PROGRESS — defined here; the reference engine candor-java lands it first, then engines declare `0.6`)** —
+  additive, wire-compatible with 0.5:
+  - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
+    ranked by how many functions transitively inherit `Unknown` through each: the actionable inverse of a
+    widely-propagated `Unknown`. A new query shape = a minor bump (this changelog's own rule).
+  - §4 **`unknownWhy` is now REQUIRED on a direct `Unknown` source** (still absent on purely-inherited
+    `Unknown`), so `blindspots` separates the few root causes from the smear identically across engines. A
+    presence tightening on an existing field; a 0.5 consumer that ignores `unknownWhy` is unaffected.
+  - Until the reference engine ships it the header stays **0.5**; this entry documents the contract being
+    built so the implementation and the spec move together (the same discipline the ⟨0.5⟩ parts followed).
 - **0.5 (released — tag `v0.5`; engines declare `0.5`)** — the ⟨0.5⟩ parts (units/`unitKind` §2, Exec
   subprocess-boundary refinement §4, the effect manifest §5.1, gate→guard §6.2, and the §3.1 read-only
   query shapes), plus two cross-engine consistency rules a divergence review pinned: the §6.2 policy
