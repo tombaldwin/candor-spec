@@ -557,6 +557,17 @@ kinds' details are best-effort prose. An engine emits whichever kinds its langua
 language with no virtual/interface dispatch (e.g. the Rust scanner: only `callback:`/`native:`) simply
 emits no `dispatch:`, and its frontier is correspondingly empty.
 
+⟨0.7⟩ **Domain engines.** The four kinds describe why a *code* call's body could not be resolved, and so
+bind every engine that analyses source or bytecode. A **domain engine** — one whose units are not
+functions and whose call graph is not code (e.g. the agent-fleet engine, where units are agents and edges
+are delegation) — has no virtual dispatch, reflection, or FFI in this sense; its `Unknown` sources are
+domain-specific (an uncurated MCP server, an unknown tool, ambient tool authority, an unprovable agent
+spawn). Such an engine MUST still attach an `unknownWhy` to every direct `Unknown` source — the disclosure
+requirement (§4) is universal — drawn from its own documented origin vocabulary (e.g. `mcp-uncurated:`,
+`tool-unknown:`, `ambient:`, `agent-spawn:`), and emits none of the four code kinds (so its frontier is
+likewise empty). Disclosure is required of *every* conformant engine; the code vocabulary above is
+required only of code engines.
+
 ## 5. Capabilities (conformance)
 
 Conformance needs a way for a function to *declare* the effects it may perform. The canonical
