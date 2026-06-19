@@ -4,18 +4,19 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.6** (tag `v0.6`). The parts marked ⟨0.6⟩ — the §3.1 `blindspots` read-only query (the Unknown
-SOURCES, ranked by blast radius) and the §4 tightening of `unknownWhy` to **required on a direct Unknown
-source** — are **released**, and engines declare `0.6`. All four engines implement it and a conformance
-differential pins the shape. (The ⟨0.5⟩ parts — the *unit* generalization and `unitKind` (§2); the
-subprocess-boundary refinement of `Exec` (§4); the effect manifest (§5.1); gate→guard (§6.2); the §3.1
-query shapes; the ASCII-whitespace policy-lexer rule; the `callback:` `unknownWhy` origin — remain in 0.6,
-wire-compatible.)
+**Version 0.7** (tag `v0.7`). The parts marked ⟨0.7⟩ — the **canonical `unknownWhy` vocabulary** (§4: four
+kinds reflect/native/dispatch/callback, `dispatch:` detail normative as `owner.member`); the **type-hierarchy
+sidecar** (§2.2); and the **`callers --include-unknown` dispatch-frontier** (§3.1, `possibleViaUnknownDispatch`)
+— are **released**, and engines declare `0.7`. All four engines implement them; conformance differentials
+pin both the vocabulary and the frontier output. (The ⟨0.6⟩ parts — the §3.1 `blindspots` query and the §4
+`unknownWhy`-required-on-a-direct-source tightening — remain, wire-compatible; 0.7 is additive over 0.6:
+the vocabulary canonicalises existing reason strings, the hierarchy sidecar and `possibleViaUnknownDispatch`
+are new optional artifacts/fields, and a 0.6 consumer that ignores them is unaffected.)
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
 *build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.5.x`
-implements spec `0.6` (patch versions float per-impl), and all declare **spec `0.6`** in the
+implements spec `0.7` (patch versions float per-impl), and all declare **spec `0.7`** in the
 envelope. 0.5 is wire-compatible with 0.4 — the ⟨0.5⟩ changes are additive (new optional fields,
 refinements that only narrow an upper bound, SHOULD-level conventions, and a lexer clarification);
 see the [changelog](#8-changelog). An implementation MUST emit the spec
@@ -843,13 +844,21 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.7 (proposed — DESIGN, not released; see `proposals/0.7-unknown-dispatch-frontier.md`)** —
-  additive: a compact **type-hierarchy sidecar** (`<stem>.hierarchy.json`, type → direct supertypes) and a
-  **`callers --include-unknown`** modifier that discloses the *unresolved-dispatch frontier* — functions
-  that reach the target only through a `dispatch-broad` the engine declined to resolve, surfaced as
-  `possibleViaUnknownDispatch` (a disclosed lower-bound, never asserted). Reference impl landed in
-  candor-java (`0.5.43`, hierarchy-precise); cross-engine rollout + a conformance differential are pending,
-  after which the header + engine declarations move to `0.7`. Header stays `0.6` until then.
+- **0.7 (released — tag `v0.7`; engines declare `0.7`)** —
+  additive, wire-compatible with 0.6; all four engines implement it and two conformance differentials pin
+  it (see `proposals/unknownwhy-vocabulary.md`, `proposals/0.7-unknown-dispatch-frontier.md`):
+  - §4 the **canonical `unknownWhy` vocabulary** — four kinds `reflect:`/`native:`/`dispatch:`/`callback:`,
+    superseding the ~12 divergent per-engine prefixes; `dispatch:` detail normative as `owner.member` (the
+    dividing line: `dispatch:` is an unresolved dispatch with a resolvable owner type+member; every
+    owner-less unresolved invocation is `callback:`). Conformance `[10]` pins the prefix set + dispatch shape.
+  - §2.2 a compact **type-hierarchy sidecar** (`<stem>.hierarchy.json`, type → direct supertypes/interfaces)
+    — lets a query resolve overrides without storing the candidate edges bounded-CHA drops.
+  - §3.1 the **`callers --include-unknown`** modifier — discloses the *unresolved-dispatch frontier*
+    (`possibleViaUnknownDispatch`): functions that reach the target only through an unresolved `dispatch:`,
+    resolved precisely against the hierarchy (a confirmed reacher that overrides the dispatched member). A
+    disclosed lower-bound, never asserted; the dispatch-frontier conformance differential pins cross-engine
+    agreement. A language with no class/protocol dispatch (the Rust scanner) emits no `dispatch:`, so its
+    frontier is empty by construction.
 - **0.6 (released — tag `v0.6`; engines declare `0.6`)** —
   additive, wire-compatible with 0.5; all four engines implement it and a conformance differential pins it:
   - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
