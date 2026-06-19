@@ -824,6 +824,13 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.7 (proposed — DESIGN, not released; see `proposals/0.7-unknown-dispatch-frontier.md`)** —
+  additive: a compact **type-hierarchy sidecar** (`<stem>.hierarchy.json`, type → direct supertypes) and a
+  **`callers --include-unknown`** modifier that discloses the *unresolved-dispatch frontier* — functions
+  that reach the target only through a `dispatch-broad` the engine declined to resolve, surfaced as
+  `possibleViaUnknownDispatch` (a disclosed lower-bound, never asserted). Reference impl landed in
+  candor-java (`0.5.43`, hierarchy-precise); cross-engine rollout + a conformance differential are pending,
+  after which the header + engine declarations move to `0.7`. Header stays `0.6` until then.
 - **0.6 (released — tag `v0.6`; engines declare `0.6`)** —
   additive, wire-compatible with 0.5; all four engines implement it and a conformance differential pins it:
   - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
