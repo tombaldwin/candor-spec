@@ -455,7 +455,7 @@ def scan_swift(ws):
     src = os.path.join(ws, "swift", "cases.swift")
     pfx = os.path.join(ws, "swift", "out")
     s = run([binp, src, "--out", pfx])
-    rep = [p for p in _glob(os.path.dirname(pfx), ".json") if "callgraph" not in p and os.path.basename(p).startswith("out.")]
+    rep = [p for p in _glob(os.path.dirname(pfx), ".json") if "callgraph" not in p and "hierarchy" not in p and os.path.basename(p).startswith("out.")]
     if s.returncode != 0 or not rep:
         return (True, False, None, f"candor-swift errored: {s.stderr.decode()[:300]}")
     return (True, True, leaf_set(rep[0], (".",)), None)  # swift fn names are bare or Type.method
