@@ -62,11 +62,20 @@ indeterminacy is `callback:`/`native:`), so its frontier is consistently empty.
 
 ## Rollout
 
-1. **Spec** — land the canonical table in `SPEC.md` §4 (⟨0.7⟩), superseding the loose list.
-2. **Align engines** — rename each engine's reasons per the mapping (verifying the **verify** rows first);
-   candor-java reconciles `dispatch-broad*`/`dispatch-fn` → `dispatch:`/`callback:`.
-3. **Conformance** — the vocabulary check above; EXIT 0.
-4. **Unblocks** — the 0.7 dispatch-frontier port to ts + swift on the now-canonical `dispatch:OWNER.member`.
+1. **Spec** — land the canonical table in `SPEC.md` §4 (⟨0.7⟩), superseding the loose list. **DONE.**
+2. **Align engines** — rename each engine's reasons per the mapping. **DONE** (all four):
+   - candor-java 0.5.45 — `dispatch-broad*`→`dispatch:`, `dispatch-fn:`→`callback:`.
+   - candor-ts 0.5.26 — `dispatch:` now `Owner.member`, `override:`→`dispatch:`, `call:`/`bind:`/`iterate:`/
+     untyped-receiver→`callback:`, `eval`/`defineProperty`/`accessor`→`reflect:`.
+   - candor-swift 0.5.24 — `opaque-sequence:`/`call:computed`→`callback:` (dispatch:/callback: already canonical).
+   - candor-scan 0.5.20 — `ffi:`→`native:`; no `dispatch:` (Rust has no class dispatch → frontier empty).
+3. **Conformance** — the vocabulary check above; EXIT 0. **PENDING.**
+4. **Unblocks** — the 0.7 dispatch-frontier port to ts + swift on the now-canonical `dispatch:OWNER.member`. **PENDING.**
+
+The **verify** rows resolved to: ts `accessor:`→`reflect:` (defineProperty runtime accessor),
+`override:`→`dispatch:` (class override family), `call:`/`bind:`/opaque-iteration→`callback:`; swift
+`opaque-sequence:`/`call:computed`→`callback:`; java `dispatch-fn:`→`callback:` (JDK functional-SAM on an
+unpinned receiver = a function value). Principle locked: `dispatch:` ⟺ resolvable owner type + member.
 
 This is the standalone prerequisite; the frontier proposal depends on step 2 landing the canonical
 `dispatch:OWNER.member` in candor-java (reconciling its current `dispatch-broad:`) and in ts/swift.

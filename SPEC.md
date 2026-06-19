@@ -518,6 +518,25 @@ unresolvable call), and absent on a unit whose `Unknown` is purely inherited fro
 vs. inherited split is what makes the `blindspots` query (§3.1) name the handful of real root causes
 behind a widely-propagated `Unknown` — a 0.5 consumer that ignores the field is unaffected.
 
+⟨0.7⟩ **Canonical `unknownWhy` vocabulary.** Each entry is `kind:detail`, where `kind` is exactly one of
+four, chosen to be language-neutral over *why a call's body could not be resolved*:
+
+| `kind` | meaning | `detail` |
+|---|---|---|
+| `reflect:` | invocation chosen at runtime by name/metadata — reflection, `Method.invoke`, `eval`, dynamic property install/accessor | best-effort |
+| `native:` | a boundary to code the engine cannot analyse — native methods, FFI/`extern`, intrinsics | best-effort |
+| `dispatch:` | an unresolved **virtual / interface / protocol** dispatch with a **resolvable owner type + member** — static target known, concrete body not (no impl, bounded-CHA over many impls, dynamic receiver of known type) | **`<owner-type>.<member>`** (dotted) — NORMATIVE |
+| `callback:` | an unresolved **higher-order / owner-less** invocation — a function/closure *value* (param, field, bound, computed, opaque-iterable) whose target and owner type are not both known | best-effort |
+
+The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists:
+`dispatch:` is reserved for unresolved member dispatch where the engine knows the owner type and member
+(so a consumer can resolve overrides — this is what the `callers --include-unknown` frontier keys off);
+every other unresolved invocation (an opaque function value, an untyped receiver, opaque iteration) is
+`callback:`. Only the `dispatch:` detail is conformance-compared (as `owner.member`); the other three
+kinds' details are best-effort prose. An engine emits whichever kinds its language model produces — a
+language with no virtual/interface dispatch (e.g. the Rust scanner: only `callback:`/`native:`) simply
+emits no `dispatch:`, and its frontier is correspondingly empty.
+
 ## 5. Capabilities (conformance)
 
 Conformance needs a way for a function to *declare* the effects it may perform. The canonical
