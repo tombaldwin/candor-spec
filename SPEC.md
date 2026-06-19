@@ -14,12 +14,31 @@ the vocabulary canonicalises existing reason strings, the hierarchy sidecar and 
 are new optional artifacts/fields, and a 0.6 consumer that ignores them is unaffected.)
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
-`AS-EFF` codes — that a conformant implementation declares it implements. It is distinct from an engine's
-*build id* (§2.1), and the reference implementations RELEASE in step with it: an engine at `0.5.x`
-implements spec `0.7` (patch versions float per-impl), and all declare **spec `0.7`** in the
-envelope. 0.5 is wire-compatible with 0.4 — the ⟨0.5⟩ changes are additive (new optional fields,
-refinements that only narrow an upper bound, SHOULD-level conventions, and a lexer clarification);
-see the [changelog](#8-changelog). An implementation MUST emit the spec
+`AS-EFF` codes — that a conformant implementation declares it implements (the envelope's `spec`). It is
+distinct from an engine's *build id* (a git hash, §2.1) and from its *release semver*. An engine's
+release **major.minor tracks the spec it implements** — `candor-java 0.7.x` declares spec `0.7` — with
+the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
+
+**Versioning policy.** The spec version is a *cross-engine* contract: a given version means **every
+conformant engine agrees** on it, pinned by the conformance differential. That cross-language
+consistency is the project's defining guarantee (a per-language tool cannot offer it), so the version
+line is never forked per engine:
+
+- The spec version advances **only when a change is implemented across all engines and
+  conformance-gated**, and **only additively** (new optional fields/queries/artifacts, or refinements
+  that narrow an upper bound). A breaking change is a major bump, never shipped by one engine alone.
+- The **reference engine (candor-java) leads**: a new capability is first shipped as a candor-java
+  *engine feature* at the *current* shared spec — e.g. `callers --include-unknown` existed in
+  candor-java `0.5.43` before it became spec `0.7`. An engine feature is **not** a spec change; the
+  other engines stay fully interoperable on the shared contract and need not "catch up" to something
+  not yet in the spec.
+- A capability is promoted to a spec bump (for all engines) once it has earned the cross-language cost:
+  reference impl → port to the other engines → conformance differential → stamp the version everywhere.
+- A genuinely **language-specific** capability (e.g. JVM/Spring-only semantics) stays an engine feature,
+  or at most an explicitly-optional engine-specific section — it does **not** advance the cross-engine
+  contract.
+
+See the [changelog](#8-changelog) for what each version added. An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
 constant. The report is wrapped in a self-describing `{ candor, functions }` envelope (§2); the legacy
 v0.1 bare array is still accepted by conformant readers during migration. See the [changelog](#8-changelog).
