@@ -863,8 +863,48 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_masking.py" ]; then
   ) || { echo "gate-masking differential: FAILED"; rc=1; }
 fi
 
+# PART 10 — unknownWhy VOCABULARY (SPEC §4 ⟨0.7⟩). Every `unknownWhy` entry any engine emits on the
+# shared fixtures MUST use one of the four canonical kinds (reflect/native/dispatch/callback), and every
+# `dispatch:` entry MUST carry the normative `owner.member` detail (a dot in the detail) — that uniform
+# shape is what lets the 0.7 dispatch-frontier resolve identically across engines. A non-canonical prefix
+# (the old `dispatch-broad:`/`call:`/`accessor:`/`ffi:`/… divergence) is a DIVERGE. Each engine emits only
+# the kinds its language model produces (Rust: no `dispatch:`), so per-engine kind sets may differ — only
+# the vocabulary + the dispatch shape are pinned, not which kinds appear.
+echo
+echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
+python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" <<'PY' || rc=1
+import json, os, sys
+CANON = {"reflect", "native", "dispatch", "callback"}
+labels = ["rust", "java", "ts", "swift"]
+fails = 0; seen = {}; total = 0
+for label, path in zip(labels, sys.argv[1:5]):
+    if not path or not os.path.exists(path):
+        continue
+    try:
+        d = json.load(open(path))
+    except Exception:
+        continue
+    fns = d.get("functions", []) if isinstance(d, dict) else d
+    for f in fns:
+        for w in (f.get("unknownWhy") or f.get("unknown_why") or []):
+            total += 1
+            kind = w.split(":", 1)[0]
+            seen.setdefault(label, set()).add(kind)
+            if kind not in CANON:
+                print(f"  DIVERGE [{label}] non-canonical unknownWhy kind: {w!r}  (fn {f.get('fn')})"); fails += 1
+            elif kind == "dispatch":
+                detail = w.split(":", 1)[1] if ":" in w else ""
+                if "." not in detail:
+                    print(f"  DIVERGE [{label}] dispatch: must be owner.member: {w!r}  (fn {f.get('fn')})"); fails += 1
+for label in labels:
+    if label in seen:
+        print(f"  {label}: kinds = {sorted(seen[label])}")
+print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + ("OK" if fails == 0 else f"{fails} violation(s)"))
+sys.exit(1 if fails else 0)
+PY
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
