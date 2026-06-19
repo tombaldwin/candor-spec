@@ -863,6 +863,23 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_masking.py" ]; then
   ) || { echo "gate-masking differential: FAILED"; rc=1; }
 fi
 
+# ====================================================================================================
+# DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩) — `callers --include-unknown`. One shared scenario
+# (Base.op with >fan-out impls, one reaching Sink.touch; a Dispatcher dispatching Base.op) across the
+# class/protocol engines (java, ts, swift; rust has no dispatch: → empty frontier, excluded). Asserts all
+# present engines AGREE: the dispatcher is disclosed in possibleViaUnknownDispatch via dispatch on `op`
+# (resolved against the hierarchy sidecar), with Impl7.op confirmed. Makes the frontier a verified
+# contract, not just a per-engine feature (the [10] check pins only the vocabulary + dispatch shape).
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/frontier_differential.py" ]; then
+  echo
+  (
+    export CANDOR_JAVA_JAR="$JAR" CANDOR_QUERY_BIN="$QUERY"
+    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+    python3 "$HERE/frontier_differential.py"
+  ) || { echo "dispatch-frontier differential: FAILED"; rc=1; }
+fi
+
 # PART 10 — unknownWhy VOCABULARY (SPEC §4 ⟨0.7⟩). Every `unknownWhy` entry any engine emits on the
 # shared fixtures MUST use one of the four canonical kinds (reflect/native/dispatch/callback), and every
 # `dispatch:` entry MUST carry the normative `owner.member` detail (a dot in the detail) — that uniform
@@ -905,6 +922,6 @@ PY
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
