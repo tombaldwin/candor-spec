@@ -218,3 +218,44 @@ opt-in (local + a future all-toolchain CI job). Do NOT flip CI to strict before 
 - **But:** most are 🟡, not 🟢 — closed once, not yet cross-engine-standing; the strongest evidence (oracle) is
   still narrow; and there are 7 low/med SILENT residuals. So: *high and rising, not "done."* The roadmap is how
   it keeps rising.
+
+## 8.1 Java adversarial round (2026-06-20, candor-java 0.7.8 `@d6927ff`)
+
+A fresh Java-only soundness pass, run AFTER this session's structural changes (LB-1b thread-local
+re-entrancy, `--parallel`, the GraalVM native-image + JDK-supertype index, and the `ctx()` hoists) — to
+confirm none of them opened a silent gap. Two halves, both clean:
+
+- **Synthetic adversarial sweep — no cardinal sins.** ~55 fixtures across 5 mechanism families, each an
+  effect delivered via a mechanism that might slip past bytecode/CHA/κ. Every one was correctly attributed,
+  honestly `Unknown` (with a precise `unknownWhy`), or honestly `invisible` — never silent-pure. Families +
+  hard cases that resolved correctly: (a) dynamic invocation — MethodHandle/VarHandle/Proxy/asType/bindTo →
+  honest `Unknown`; reflective-LITERAL name → `Net` (resolved); (b) modern concurrency — virtual threads,
+  `newVirtualThreadPerTaskExecutor`, `CompletableFuture.supplyAsync`, parallel streams, ForkJoinPool,
+  `StructuredTaskScope` (lambda effects attributed at the CREATION site); field-Runnable→`new Thread(r)`
+  honestly degrades to `Unknown:task-handoff`; (c) foreign/native/process — a `native`-declared callee →
+  `Unknown:native`, Panama FFM downcall → `Unknown`, all `Runtime.exec`/`ProcessBuilder`/`System.load`
+  variants → `Exec`, `FileChannel.map` → `Fs`; (d) control-flow-hidden + structural — catch-only,
+  finally-only (incl. nested in a switch), transitive `<clinit>`, enum-constant dispatch, sealed-record
+  dispatch, default-interface-method, record compact-ctor, try-with-resources implicit `close`, CHA on an
+  interface with no in-project instantiation, assert-guarded (present in bytecode); (e) newer I/O & SPI —
+  JDK11 `HttpClient` send/sendAsync → `Net`, async `FileChannel`/`SocketChannel`, `Files.lines/walk` → `Fs`,
+  `ServiceLoader` impl effect surfaced via the `calls` edge, `ScriptEngine.eval` → honest `Unknown`,
+  `DriverManager.getConnection` → `Db`, `URL.openStream` → `Net`.
+- **Real-jar dogfood — sound + honest** on three libraries never tested before: commons-net 3.11.1
+  (725 fns, Net-dominant — correct for a network lib), jedis 5.2.0 (4646 fns, Net + honest Unknown smear),
+  postgresql 42.7.4 (2188 fns, Fs/Net/Db/Env — correct for a JDBC driver). Effects land where expected;
+  every gap is DISCLOSED (`invisible` κ-floor or `Unknown`), none silent. κ-coverage leads surfaced as
+  honest `invisible` (NOT sins, the floor working): `resilience4j.*`, `commons-pool2.impl`, `org.ietf.jgss`,
+  `waffle.windows.auth`, `org.osgi.framework`, `org.xml.sax` — all optional third-party / config namespaces.
+- **`org.xml.sax` lead investigated → no missed I/O.** `DocumentBuilder`/`SAXParser`/`XMLReader.parse` and
+  `Transformer.transform` are ALREADY classified `Unknown` (Classifier.java ~68-71 — the sound disclosure of
+  an XML-parse-from-systemId, also the XXE/SSRF sink). The residual `org.xml.sax` `invisible` is only the
+  pure factory/config members (`XMLReaderFactory.createXMLReader`, `InputSource`, `setFeature`); postgresql's
+  use is in-memory/caller-visible. No κ rule added — that would be coverage-chasing pure calls against the
+  "model specific effectful members for precision, not chase coverage" principle.
+
+Net: the cardinal-sin floor held on Java across both synthetic and real-world inputs, including over all of
+this session's new code paths (byte-identity + the native-vs-jar parity gate prove those produce identical
+reports). Consistent with the "κ veins mined out" state — the standard mechanism families are covered, and
+what candor can't resolve it discloses. Evidence ladder: synthetic = controlled (known effect → checked
+report); dogfood = real-world breadth. Neither is the dynamic syscall oracle (still the strongest TODO).
