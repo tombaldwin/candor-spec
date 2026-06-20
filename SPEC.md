@@ -657,8 +657,9 @@ much `Db` it does. The total is domain-dependent; the dispersion is an architect
 
 Two classes of effect:
 
-- **boundary** — `Db`, `Net`, `Exec`, `Fs`, `Ipc`. These *should* be contained in a dedicated layer;
-  their dispersion is the signal.
+- **boundary** — `Db`, `Net`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
+  dedicated layer; their dispersion is the signal. (`Clipboard` is external-resource I/O — a boundary
+  capability — so it is contained/scored, not ambient.)
 - **ambient** — `Log`, `Clock`, `Rand`, `Env`. Cross-cutting by nature (logging/timestamps everywhere is
   normal), so they are reported but **not** scored. `Unknown` is excluded entirely (it is a visibility
   property, not an effect).

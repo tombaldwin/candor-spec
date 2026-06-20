@@ -63,8 +63,8 @@ but are under no obligation to — the spec + conformance are the contract.
   the canonical four is a tracked, deliberate (byte-changing) conformance task.
 - **AS-EFF-010 (containment regression)** is defined by the spec but not implemented by every engine
   (e.g. candor-java models codes 001–009).
-- **`Clipboard` is unclassified in the §6.1 containment partition.** §6.1 splits effects into boundary
-  (`Db,Net,Exec,Fs,Ipc`) and ambient/cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was added to the
-  vocabulary later and is in neither, so containment scoring silently ignores it. A spec decision is
-  needed (it is plausibly a boundary effect — external-resource I/O). candor-java pins the current
-  partition with a test so the gap can't change unnoticed.
+- **`Clipboard` is a §6.1 boundary effect.** §6.1 splits effects into boundary
+  (`Db,Net,Exec,Fs,Ipc,Clipboard`) and ambient/cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was
+  added to the vocabulary after the original partition and is now classified boundary (external-resource
+  I/O), so containment scores it like the others. candor-java (reference) derives its containment lists
+  from the enum partition and pins it with a test; the other engines' containment should follow.
