@@ -254,8 +254,23 @@ confirm none of them opened a silent gap. Two halves, both clean:
   use is in-memory/caller-visible. No κ rule added — that would be coverage-chasing pure calls against the
   "model specific effectful members for precision, not chase coverage" principle.
 
-Net: the cardinal-sin floor held on Java across both synthetic and real-world inputs, including over all of
-this session's new code paths (byte-identity + the native-vs-jar parity gate prove those produce identical
-reports). Consistent with the "κ veins mined out" state — the standard mechanism families are covered, and
-what candor can't resolve it discloses. Evidence ladder: synthetic = controlled (known effect → checked
-report); dogfood = real-world breadth. Neither is the dynamic syscall oracle (still the strongest TODO).
+- **Strongest tier — runtime ground truth (DONE, not a TODO).** Java already has a dynamic oracle (better
+  than the Rust strace harness: it has per-method STACK TRACES and runs on macOS, being JVM-level not an OS
+  tracer): `soundness/dynamic/` = a JFR oracle (`jfr_diff.py`, Fs/Net via `jdk.{File,Socket}{Read,Write}`
+  events) + a bytecode leaf-instrumenting agent (`agent/`, Exec/Db/Env/Clock/Rand/Log) + `corpus.sh` that
+  runs both over a corpus and fails on any runtime-observed effect candor's static report neither predicts
+  nor discloses. RAN it this round: extended the corpus with `async-netfs` (real loopback Net in a VIRTUAL
+  THREAD + real Fs in a CompletableFuture + a parallel stream) and `async-exec` (real `/bin/echo` Exec via a
+  Thread and a CompletableFuture). Result: **7 entries CLEAN, 0 NEW model gaps** — the kernel/JVM actually
+  saw the Net/Fs/Exec and candor predicted every one, so the lambda/task effect attribution the synthetic
+  sweep checked statically is now confirmed against RUNTIME ground truth. The lone gap is the documented,
+  allowlisted abstract-`java.io.Reader` boundary (a `parse(Reader)` whose concrete `FileReader` is only
+  known at the caller) — accepted, not a regression.
+
+Net: the cardinal-sin floor held on Java across synthetic, real-world, AND runtime-ground-truth inputs,
+including over all of this session's new code paths (byte-identity + the native-vs-jar parity gate prove
+those produce identical reports). Consistent with the "κ veins mined out" state — the standard mechanism
+families are covered, and what candor can't resolve it discloses. Evidence ladder, all three tiers now
+exercised: synthetic = controlled (known effect → checked report); dogfood = real-world breadth; JFR+agent
+corpus = runtime ground truth (the strongest, which catches even a shared blind spot). Remaining oracle
+growth = more corpus programs / effects, not a missing capability.
