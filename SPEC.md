@@ -79,8 +79,8 @@ language-specific effect name, not `Log`.
 ## 2. The report
 
 An implementation emits, per compilation unit, a self-describing **envelope** — a provenance header
-plus one entry per analyzed **unit**. ⟨0.5⟩ A *unit* is the smallest body the engine attributes
-effects to. For a code engine that is a function or method — and throughout this document
+plus one entry per analyzed **unit**. ⟨0.5⟩ A *unit* — named an **effector** in the domain model
+([MODEL.md](MODEL.md)) — is the smallest body the engine attributes effects to. For a code engine that is a function or method — and throughout this document
 "function" means "unit" — but the family's units are wider than functions, and each kind earned
 its place by hiding effects when it was NOT a unit: a computed **accessor** body (a Swift getter
 performing I/O read silently pure until accessors became units), a static/class **initializer**
