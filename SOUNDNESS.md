@@ -275,3 +275,29 @@ families are covered, and what candor can't resolve it discloses. Evidence ladde
 exercised: synthetic = controlled (known effect → checked report); dogfood = real-world breadth; JFR+agent
 corpus = runtime ground truth (the strongest, which catches even a shared blind spot). Remaining oracle
 growth = more corpus programs / effects, not a missing capability.
+
+## 8.2 Cross-language adversarial round (2026-06-21, candor-java)
+
+Every prior sweep used JAVA fixtures; candor analyzes BYTECODE from any JVM language, so the
+under-explored axis is whether language-specific effect-delivery (which compiles to bytecode shapes a
+Java-centric analyzer never saw in a Java fixture) slips the floor. Swept all three claimed languages —
+**no cardinal sin in any**:
+
+- **Kotlin (kotlinc 2.4.0) — precise.** The existing lane (`soundness/run_kotlin.sh`, 16 forms) passed;
+  then an ADVERSARIAL sweep of 22 more mechanisms all attributed the threaded `Net` leaf: stdlib —
+  `lazy{}`, `sequence{}` (a lazy-iterator coroutine), the scope functions (let/run/apply/also/with),
+  inline + non-inline HOFs, `object :` expressions, `companion object { init }`, custom delegated
+  properties (`by`), the `invoke` operator, extension functions, receiver-HOFs; and **coroutines**
+  (kotlinx-coroutines 1.9.0) — `runBlocking`, `launch`, `async`, `withContext(Dispatchers.IO)`, a
+  `suspend` chain `s1→s2→leaf` (each suspend fn individually got `Net`, traced THROUGH the CPS
+  state-machine bytecode), and `Flow { … }.collect`. Kotlin's hardest shapes (CPS continuations,
+  synthetic SuspendLambda classes, lazy iterators) all trace soundly.
+- **Groovy (groovyc) — honest Unknown.** Dynamic dispatch (the default) compiles every call — even
+  `new Socket(...)` — to a runtime callsite, so candor cannot statically see the type → it discloses
+  `Unknown` for `leaf`/`viaDynamic`/`viaClosure`/`viaEach`/`viaCompileStatic`. Never silent-pure: the
+  sound floor for a genuinely-dynamic language is exactly Unknown (a precision limit inherent to Groovy,
+  not a soundness gap).
+
+Verdict: candor's bytecode analysis is language-shape-robust — PRECISE where the bytecode is statically
+resolvable (Java, Kotlin incl. coroutines), HONEST `Unknown` where it's genuinely dynamic (Groovy). The
+cardinal-sin floor holds across the JVM-language surface, not just Java. Find-rate on this NEW axis = 0.
