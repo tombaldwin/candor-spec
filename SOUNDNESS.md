@@ -363,3 +363,18 @@ OK (lookalike non-framework save()/findAll() stays pure). So the inherited-into-
 for the major JVM persistence frameworks (Spring/Jakarta Data/Panache/Micronaut Data repositories +
 Hibernate/JPA + Panache/Ebean/ActiveJDBC active-record + jOOQ DAO). The general METHOD (external-stub probe of
 any base-class API) is the reusable instrument for the next framework.
+
+**κ batch 27 — the inherited-into-project vein, GENERAL fix for classify-MODELED bases (2026-06-21, candor-java
+post-0.7.9 `7421301`).** Batches 24–26 covered bases candor does NOT model at the leaf (via repoTypes/AR_DB_BASES
+registries). The complementary case: a project class subclasses a base candor DOES model at the leaf, and calls
+an inherited method — still silent-pure, because the call owner is the project subclass (no rule) and classify
+was never re-tried against the external supertype. Found via Testcontainers (`class MyContainer extends
+GenericContainer` then `c.start()` read pure though `GenericContainer.start` is modeled Exec); also hits
+non-test cases (`extends java.io.FileInputStream` → inherited `read()`). FIX (Candor.analyze, classify site):
+when classify(owner) is null AND owner is a project class with no concrete body of its own (not overridden) and
+no project super provides one, re-run classify against each EXTERNAL supertype — the exact method the JVM
+dispatches to. No new fabrication (classify already vouches for the external leaf; an override wins). Byte-identity
+HELD on pc/jsoup/gson (the broad fix fires only on the narrow subclass-a-modeled-type shape). NON-SIN finding
+recorded for completeness: declared-on-interface HTTP clients (Retrofit `@GET`, Micronaut `@Client`) read
+`Unknown` (DISCLOSED, not silent) — a precision opportunity (model → Net like Feign), NOT a cardinal sin.
+**Status: the inherited-into-project silent-pure vein CLASS is now closed** across modeled + unmodeled bases.
