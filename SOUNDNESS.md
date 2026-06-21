@@ -350,3 +350,16 @@ OK). Gated: byte-identity pc/jsoup/gson, full suite, soundness 40/0, conformance
 project type (so the call owner is a project class), it reads silent-pure, not invisible. That shape is the one
 to watch when dogfooding the next framework (active-record / base-class-mixin APIs, not just repository/builder
 APIs whose calls keep an external owner).
+
+**κ batch 26 — the inherited-into-project vein class swept (2026-06-21, candor-java post-0.7.9 `32229da`).**
+Rather than wait for the next framework, probed the persistence ecosystem for batch 25's shape directly (an
+external stub base + a project subtype + the inherited call, scan only the project). Spring Data was the
+passing CONTROL (Db); MyBatis mapper interfaces correctly disclose `Unknown` (not a vein). FOUR more confirmed
+SILENT-PURE and mined: **Micronaut Data** (repository — `isMicronautDataRepoBase` → repoTypes promotion),
+**Ebean** (`io.ebean.Model`), **ActiveJDBC** (`org.javalite.activejdbc.Model`), **jOOQ** (`org.jooq.impl.DAOImpl`)
+— the latter three via a new `AR_DB_BASES` registry (base internal name → its DB verb set) + `inheritsArDbVerb`
+(checks owner + supertypes; per-base verb gating; the no-fab override guard). Verb+hierarchy-gated, fab probe
+OK (lookalike non-framework save()/findAll() stays pure). So the inherited-into-project shape is now covered
+for the major JVM persistence frameworks (Spring/Jakarta Data/Panache/Micronaut Data repositories +
+Hibernate/JPA + Panache/Ebean/ActiveJDBC active-record + jOOQ DAO). The general METHOD (external-stub probe of
+any base-class API) is the reusable instrument for the next framework.
