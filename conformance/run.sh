@@ -925,8 +925,56 @@ print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + ("
 sys.exit(1 if fails else 0)
 PY
 
+# ====================================================================================================
+# PART 11 — CONTAINMENT differential (SPEC §6.1 boundary-effect dispersion + AS-EFF-010 ratchet). The
+# `containment` query is the architecture-drift gate's signature: which layer a boundary effect lives in,
+# how contained it is, and a ratchet that FAILS when an effect leaks into a new layer. Two engines
+# implement it INDEPENDENTLY — candor-java (file-based) and candor-query/Rust (prefix-based, also the path
+# candor-swift's analyze-only reports are queried through); candor-ts has no `containment` command. This
+# part proves they agree on BOTH the diagnostic and the ratchet verdict (the moat: the gate means the same
+# thing cross-engine). Fixture: repo=Fs(×2), svc=Net; `current` adds an Fs leak in svc, `base` does not.
+# ====================================================================================================
+cp -r "$HERE/containment" "$W/containment"
+# build + scan the Java current/base states
+javac -d "$W/cont_jcur"  $(find "$W/containment/java/current" -name '*.java') 2>/dev/null || { echo "FAIL: javac on containment/java/current"; exit 2; }
+javac -d "$W/cont_jbase" $(find "$W/containment/java/base"    -name '*.java') 2>/dev/null || { echo "FAIL: javac on containment/java/base"; exit 2; }
+java -jar "$JAR" "$W/cont_jcur"  --json "$W/cont_jcur.json"  >/dev/null 2>&1 || { echo "FAIL: candor-java errored on containment/java/current"; exit 2; }
+java -jar "$JAR" "$W/cont_jbase" --json "$W/cont_jbase.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on containment/java/base"; exit 2; }
+# scan the Rust current/base states (candor-scan analyzes source in place)
+"$SCAN" "$W/containment/rust/current" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on containment/rust/current"; exit 2; }
+"$SCAN" "$W/containment/rust/base"    >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on containment/rust/base"; exit 2; }
+# REPORT mode (the diagnostic)
+java -jar "$JAR" containment "$W/cont_jcur.json" --json > "$W/cont_jrep.json" 2>/dev/null
+"$QUERY" containment "$W/containment/rust/current/.candor/report" --json > "$W/cont_rrep.json" 2>/dev/null
+# RATCHET mode (current vs base — AS-EFF-010); capture exit codes (1 = leak)
+java -jar "$JAR" containment "$W/cont_jcur.json" "$W/cont_jbase.json" --json > "$W/cont_jrat.json" 2>/dev/null; jrat=$?
+"$QUERY" containment "$W/containment/rust/current/.candor/report" "$W/containment/rust/base/.candor/report" --json > "$W/cont_rrat.json" 2>/dev/null; rrat=$?
+python3 - "$W/cont_jrep.json" "$W/cont_rrep.json" "$W/cont_jrat.json" "$W/cont_rrat.json" "$jrat" "$rrat" <<'PY' || rc=1
+import json, sys
+jrep, rrep, jrat, rrat = (json.load(open(sys.argv[i])) for i in (1, 2, 3, 4))
+jrx, rrx = int(sys.argv[5]), int(sys.argv[6])
+def norm(rep):  # the comparable containment surface (drop java-only layerPrefix; key by effect)
+    contained = {c["effect"]: {"containmentPct": c["containmentPct"], "layers": c["layers"],
+                               "owner": c["owner"], "placement": c["placement"]} for c in rep.get("contained", [])}
+    return contained, rep.get("ambient", {})
+jc, ja = norm(jrep); rc_, ra = norm(rrep)
+report_ok = (jc == rc_ and ja == ra)
+ratchet_ok = (jrat.get("leaks") == rrat.get("leaks") and jrat.get("cleanups") == rrat.get("cleanups")
+              and jrx == rrx == 1)
+print("\n[11] CONTAINMENT differential  (SPEC §6.1 dispersion + AS-EFF-010 ratchet)")
+print(f"  report : java {jc} ambient={ja}")
+print(f"           rust {rc_} ambient={ra}")
+print(f"           -> " + ("MATCH" if report_ok else "DIVERGE — engines disagree on the containment diagnostic"))
+print(f"  ratchet: java leaks={jrat.get('leaks')} exit={jrx}   rust leaks={rrat.get('leaks')} exit={rrx}")
+print(f"           -> " + ("MATCH — both flag the same leak and fail (exit 1)" if ratchet_ok
+                           else "DIVERGE — engines disagree on the AS-EFF-010 ratchet verdict"))
+ok = report_ok and ratchet_ok
+print("  -> " + ("MATCH — containment means the same thing in both engines" if ok else "DIVERGE"))
+sys.exit(0 if ok else 1)
+PY
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

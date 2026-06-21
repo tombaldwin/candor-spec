@@ -11,7 +11,7 @@ Because the expected set *is* the spec answer, one run does double duty:
 - **conformance** — each engine vs the spec (`SPEC.md §1` vocabulary, `SEMANTICS.md` propagation), and
 - **differential** — the two independent engines vs each other (a divergence is a bug in one).
 
-The runner checks **five layers** — covering every cross-language command:
+The runner checks **six layers** — covering every cross-language command:
 
 1. **Effect sets** (`rust/` + `java/` + `expected.json`) — both engines infer the same effects for
    equivalent functions.
@@ -29,8 +29,14 @@ The runner checks **five layers** — covering every cross-language command:
    an agent parses) for the read-only graph queries. The function-name *values* are language-natural
    (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
    query (**SPEC §3.1**). The core graph queries are candor's value surface; their shape must not drift.
+6. **Containment** (`containment/`) — given the *same* layered fixture, both engines agree on the
+   `containment` diagnostic (each boundary effect's containment %, layer count, owner layer, and
+   placement) **and** on the **AS-EFF-010 ratchet** verdict: the same leak (`Fs → svc`) and the same
+   exit 1 when an effect drifts into a new layer. This is the executable form of **SPEC §6.1** — the
+   architecture-drift gate means the same thing in each language. (candor-java implements `containment`
+   file-based; candor-query/Rust prefix-based, also serving candor-swift's reports; candor-ts has none.)
 
-Layers 2–5 are what a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just
+Layers 2–6 are what a per-language ruleset (CodeQL/Semgrep/ArchUnit) structurally can't match: not just
 "rules exist for both languages", but a **machine-checked guarantee that the same architecture gate, the
 same blast radius, and the same de-wiring check mean the same thing in each.** That cross-language
 consistency is candor's moat — and it's a test, not a claim.
