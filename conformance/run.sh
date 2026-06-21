@@ -812,14 +812,19 @@ echo
 echo "[7] SELF-DESCRIBING ENGINES (--agents, SPEC §7.11):"
 check_agents() { # $1 label, $2… command
   local label="$1"; shift
-  local out
-  if out="$("$@" 2>/dev/null)" \
-     && printf '%s' "$out" | head -1 | grep -Eq '^<!-- candor-[a-z]+ [^ ]+ · ' \
-     && printf '%s' "$out" | grep -q 'AI coding agent'; then
-    echo "  $label --agents -> canonical header + contract"
-  else
-    echo "  $label --agents FAILED (header not 'candor-<engine> <version> ·', or contract missing): $(printf '%s' "$out" | head -1)"; rc=1
+  local out first
+  # NOTE: first line via pure-bash parameter expansion + grep via here-strings — NOT `printf "$out" |
+  # head -1 | grep`. Under `set -o pipefail`, head closing the pipe after line 1 gives printf a SIGPIPE
+  # (write error: Broken pipe), failing the whole pipeline even when the header matched — a timing-
+  # dependent CI flake (it spuriously failed run 27887693481, passed unchanged on the next commit).
+  if out="$("$@" 2>/dev/null)"; then
+    first="${out%%$'\n'*}"
+    if grep -Eq '^<!-- candor-[a-z]+ [^ ]+ · ' <<<"$first" && grep -q 'AI coding agent' <<<"$out"; then
+      echo "  $label --agents -> canonical header + contract"
+      return
+    fi
   fi
+  echo "  $label --agents FAILED (header not 'candor-<engine> <version> ·', or contract missing): ${out%%$'\n'*}"; rc=1
 }
 check_agents "rust:scan " "$SCAN" --agents
 check_agents "rust:query" "$QUERY" --agents
