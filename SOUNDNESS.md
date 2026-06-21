@@ -270,8 +270,11 @@ confirm none of them opened a silent gap. Two halves, both clean:
 
 Net: the cardinal-sin floor held on Java across synthetic, real-world, AND runtime-ground-truth inputs,
 including over all of this session's new code paths (byte-identity + the native-vs-jar parity gate prove
-those produce identical reports). Consistent with the "κ veins mined out" state — the standard mechanism
-families are covered, and what candor can't resolve it discloses. Evidence ladder, all three tiers now
+those produce identical reports). The standard MECHANISM families are covered (the synthetic/runtime axes
+find-rate 0), and what candor can't resolve it discloses. NB the earlier "κ veins mined out" phrasing was
+about mechanism coverage on the tested corpus — LIBRARY/framework κ-coverage is NOT exhausted: dogfooding a
+new framework still surfaces unmodeled effectful members (disclosed `invisible`, never silent), e.g. §8.3's
+Hibernate-6/Jakarta-Data vein found on a Quarkus app. Evidence ladder, all three tiers now
 exercised: synthetic = controlled (known effect → checked report); dogfood = real-world breadth; JFR+agent
 corpus = runtime ground truth (the strongest, which catches even a shared blind spot). Remaining oracle
 growth = more corpus programs / effects, not a missing capability.
@@ -301,3 +304,32 @@ Java-centric analyzer never saw in a Java fixture) slips the floor. Swept all th
 Verdict: candor's bytecode analysis is language-shape-robust — PRECISE where the bytecode is statically
 resolvable (Java, Kotlin incl. coroutines), HONEST `Unknown` where it's genuinely dynamic (Groovy). The
 cardinal-sin floor holds across the JVM-language surface, not just Java. Find-rate on this NEW axis = 0.
+
+## 8.3 Real-app dogfood → κ batch 24 (Hibernate-6 / Jakarta Data, 2026-06-21, candor-java 0.7.9 `ed231ed`)
+
+The Bet-1 case-study work ran candor on five real third-party JVM projects (two Spring apps, a Kotlin app,
+a Quarkus app, the gson library). Four resolved cleanly. The Quarkus **Hibernate ORM / Jakarta Data
+quickstart** (deliberately non-Spring) exposed a κ-COVERAGE gap — correctly DISCLOSED, not a cardinal sin:
+its `FruitResource` endpoints read `inferred=[]` + `invisible=[org.hibernate, org.hibernate.query, …]` with
+the κ receipt naming the packages + call counts. candor modeled the classic `org.hibernate.Session`/`Query`
+API and `jakarta.persistence.*`, but NOT the Hibernate-6 / Jakarta-Data generation the quickstart's
+generated repositories drive (`StatelessSession`, the split `SelectionQuery`/`MutationQuery`, the
+`jakarta.data.repository.*` pattern). So `Db` never landed — the persistence was honestly `invisible`
+(κ-floor working), but the architecture gate couldn't see it.
+
+**Mined (precise, verb-gated; terminals → Db, builders stay pure):** `StatelessSession` CRUD terminals
+(insert/update/upsert/delete +*Multiple, get/getMultiple/getIdentifier/refresh/fetch); `SelectionQuery`
+result terminals + `MutationQuery.executeUpdate`; and `isJakartaDataRepoBase` promoting project interfaces
+extending `jakarta.data.repository.*Repository` into `repoTypes` (mirrors `isSpringDataRepoBase`).
+DELIBERATELY did NOT κ-cover `org.hibernate.query.criteria`/`.specification` — those pure AST builders stay
+honestly `invisible` (the κ discipline: model the effectful member, never blanket a namespace silent-pure),
+so the post-fix Quarkus report still discloses them. Gates: byte-identity IDENTICAL on pc/jsoup/gson;
+`./gradlew test` green; `soundness/run.sh` 40/0 + all probes OK; `kappa_libs_probe` +4 Db terminal anchors
++1 builder-purity anti-fab anchor (442 leaves / 164 pure neighbours). Quarkus: `Db` lands on all five
+endpoints, 100% contained.
+
+Lesson for this tracker: the synthetic/runtime find-rate-0 measures MECHANISM soundness (does an effect
+delivered via shape X get attributed); it does NOT measure LIBRARY κ-completeness (is every effectful member
+of every framework enumerated). The latter is open-ended and best driven by dogfooding real apps — each new
+framework can surface a vein, always disclosed `invisible` first (never silent), then optionally mined for
+precision. Hibernate was the dominant-ORM instance; the same loop applies to the next unmodeled framework.
