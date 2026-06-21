@@ -961,6 +961,11 @@ jc, ja = norm(jrep); rc_, ra = norm(rrep)
 report_ok = (jc == rc_ and ja == ra)
 ratchet_ok = (jrat.get("leaks") == rrat.get("leaks") and jrat.get("cleanups") == rrat.get("cleanups")
               and jrx == rrx == 1)
+# FLOOR: not just "java == rust" — assert the engines actually produced the EXPECTED diagnostic for this
+# fixture, so a TWO-SIDED regression (both emit empty `contained` / drop the leak) can't pass green.
+EXP_FS = {"containmentPct": 66, "layers": 2, "owner": "repo", "placement": {"repo": 2, "svc": 1}}
+EXP_NET = {"containmentPct": 100, "layers": 1, "owner": "svc", "placement": {"svc": 1}}
+floor_ok = (jc.get("Fs") == EXP_FS and jc.get("Net") == EXP_NET and jrat.get("leaks") == ["Fs → svc"])
 print("\n[11] CONTAINMENT differential  (SPEC §6.1 dispersion + AS-EFF-010 ratchet)")
 print(f"  report : java {jc} ambient={ja}")
 print(f"           rust {rc_} ambient={ra}")
@@ -968,7 +973,10 @@ print(f"           -> " + ("MATCH" if report_ok else "DIVERGE — engines disagr
 print(f"  ratchet: java leaks={jrat.get('leaks')} exit={jrx}   rust leaks={rrat.get('leaks')} exit={rrx}")
 print(f"           -> " + ("MATCH — both flag the same leak and fail (exit 1)" if ratchet_ok
                            else "DIVERGE — engines disagree on the AS-EFF-010 ratchet verdict"))
-ok = report_ok and ratchet_ok
+if not floor_ok:
+    print(f"           -> FLOOR FAILED — the engines agree but did NOT produce the expected diagnostic "
+          f"(Fs={jc.get('Fs')} Net={jc.get('Net')} leaks={jrat.get('leaks')}); a two-sided regression?")
+ok = report_ok and ratchet_ok and floor_ok
 print("  -> " + ("MATCH — containment means the same thing in both engines" if ok else "DIVERGE"))
 sys.exit(0 if ok else 1)
 PY
