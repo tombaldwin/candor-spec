@@ -66,5 +66,7 @@ but are under no obligation to — the spec + conformance are the contract.
 - **`Clipboard` is a §6.1 boundary effect.** §6.1 splits effects into boundary
   (`Db,Net,Exec,Fs,Ipc,Clipboard`) and ambient/cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was
   added to the vocabulary after the original partition and is now classified boundary (external-resource
-  I/O), so containment scores it like the others. candor-java (reference) derives its containment lists
-  from the enum partition and pins it with a test; the other engines' containment should follow.
+  I/O), so containment scores it like the others. ROLLED OUT to every engine that implements containment:
+  candor-java (reference, enum-partition-derived + pinned by a test) and candor-query (Rust, 0.7.1 —
+  `CONTAINED` includes Clipboard), which is also the containment path for candor-swift (analyze-only).
+  candor-ts has no `containment` command, so it needs no change.
