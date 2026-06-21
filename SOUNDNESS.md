@@ -378,3 +378,20 @@ HELD on pc/jsoup/gson (the broad fix fires only on the narrow subclass-a-modeled
 recorded for completeness: declared-on-interface HTTP clients (Retrofit `@GET`, Micronaut `@Client`) read
 `Unknown` (DISCLOSED, not silent) — a precision opportunity (model → Net like Feign), NOT a cardinal sin.
 **Status: the inherited-into-project silent-pure vein CLASS is now closed** across modeled + unmodeled bases.
+
+**CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
+tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
+the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
+- **candor-ts** (the clearest analog — TS active-record ORMs): `class User extends BaseEntity` (TypeORM) →
+  `user.save()`/`User.find()`, and Sequelize `Model.create()` → all read **`Unknown`** (`callback:u.save` etc.),
+  DISCLOSED, never silent-pure (control `fs.readFileSync` → Fs confirms the harness). Its AST model treats an
+  unresolved method call as `callback:Unknown` — it never CHA-resolves-to-nothing-then-pure.
+- **candor-scan (Rust)**: an unresolved external/trait-default method call → **`Unknown`** (`callback:unresolved
+  call`). Same safe floor.
+- **candor-swift**: structurally N/A — Core Data / SwiftData persist via the *context* (`context.save()`), not
+  an effectful method inherited into the entity subclass.
+So candor-java was the OUTLIER: its CHA could resolve an inherited-from-unmodeled-external call to no project
+body and drop to pure, where the AST/syntactic engines disclose `Unknown`. The dangerous SHARED case does not
+exist here. (PRECISION note, not a sin: candor-ts/scan report these as `Unknown` — modeling the ORMs → Db/Net,
+the analog of the Java persistence work, would sharpen them, but they are footnote engines and it is not a
+cardinal-sin fix.)
