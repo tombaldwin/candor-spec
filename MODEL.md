@@ -35,22 +35,25 @@ representation (an enum set, a string set) and stay byte-identical.
 
 The model is expressed in each engine's natural style. None of these are shared across repos.
 
-| Concept | Rust (`candor-rust`) | Java (`candor-java`) | TypeScript / Swift |
-|---|---|---|---|
-| Effect | `EFFECTS: [&str; 11]` (const) | `enum Effect` | string constant set |
-| EffectSet | `Vec<String>` / `BTreeSet` | `final class EffectSet` (EnumSet-backed) | `Set<string>` / `[String]` |
-| Effector | `struct ReportEntry` (`candor-report`) | `record Effector` (`io.poly.candor.model`) | object literal / `[String:Any]` |
-| Provenance | `struct ReportMeta` | `record Provenance` | object literal |
-| Report | `struct Report` | `record Report` | object literal |
-| PolicyRule | `PolicyRule`/`AllowRule`/`LayerRule` (`candor-classify`) | sealed `PolicyRule.{Deny,Allow,Forbid}` | object literals |
-| (de)serialization | serde | one `ReportJson` serializer + parser | hand-built + defensive read |
+| Concept | Rust (`candor-rust`) | Java (`candor-java`) | Swift (`candor-swift`) | TypeScript (`candor-ts`) |
+|---|---|---|---|---|
+| Effect | `EFFECTS: [&str; 11]` (const) | `enum Effect` | `enum Effect` | string constant set |
+| EffectSet | `Vec<String>` / `BTreeSet` | `final class EffectSet` (EnumSet-backed) | `struct EffectSet` (`Set<Effect>`) | `Set<string>` / `[String]` |
+| Effector | `struct ReportEntry` (`candor-report`) | `record Effector` (`io.poly.candor.model`) | `struct Effector` | object literal |
+| Provenance | `struct ReportMeta` | `record Provenance` | `struct Provenance` | object literal |
+| Report | `struct Report` | `record Report` | `struct Report` | object literal |
+| PolicyRule | `PolicyRule`/`AllowRule`/`LayerRule` (`candor-classify`) | sealed `PolicyRule.{Deny,Allow,Forbid}` | `DenyRule`/`AllowRule` structs | object literals |
+| (de)serialization | serde | one `ReportJson` serializer + parser | per-type `toJSON()` | hand-built + defensive read |
 
 candor-java is the JVM **reference realization**: a public `io.poly.candor.model` package holding
 the types above, used on both the producing side (the analyzer builds `Effector`s, serialized through
 a single `ReportJson`) and the consuming side (the query tool reads reports into the same `Effector`).
-Rust's `candor-report` is the established, most-typed reference for the wire structs. TS and Swift
-assemble entries ad hoc and validate on read; they can converge on named types where it is idiomatic,
-but are under no obligation to — the spec + conformance are the contract.
+Rust's `candor-report` is the established, most-typed reference for the wire structs, and candor-swift
+now realizes the same vocabulary as native types (`Effect`/`EffectSet`/`Provenance`/`Effector`/`Report`,
+each owning its `toJSON()`). candor-ts is authored in plain JavaScript (no static types), so it assembles
+entries ad hoc and validates on read — it can converge on named types only by adopting TypeScript, and is
+under no obligation to: the spec + conformance are the contract. The point is that each engine derives the
+vocabulary **independently** — three of four now express it as named types, none sharing code.
 
 ## Notes / open items
 
