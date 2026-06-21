@@ -333,3 +333,20 @@ delivered via shape X get attributed); it does NOT measure LIBRARY κ-completene
 of every framework enumerated). The latter is open-ended and best driven by dogfooding real apps — each new
 framework can surface a vein, always disclosed `invisible` first (never silent), then optionally mined for
 precision. Hibernate was the dominant-ORM instance; the same loop applies to the next unmodeled framework.
+
+**κ batch 25 — Quarkus Panache → Db (2026-06-21, candor-java post-0.7.9 `cf359ce`). A genuine SILENT-PURE
+cardinal sin, NOT just an `invisible` gap.** Continuing the dogfood thread to Quarkus's *other* (and dominant)
+persistence — Panache active-record (`Fruit.listAll()`, `f.persist()`) + `PanacheRepository` — found it read
+SILENT-PURE (the methods were ABSENT from the report, no `invisible`, no `Unknown`), so the architecture gate
+was blind to ALL DB access in a Panache app. Why silent (vs Jakarta Data's honest `invisible`): the call-site
+owner is the PROJECT entity/repo (`Fruit.listAll()` emits owner `app/Fruit`), not an external package — so the
+κ-floor invisible disclosure (which fires on EXTERNAL owners) never triggered, and CHA found no project body →
+dropped to pure. This is the dangerous shape: an inherited-from-unmodeled-external method called via a project
+subtype receiver. MINED: repository promotion (isPanacheRepoBase → repoTypes), active-record call-site rule
+(PANACHE_ENTITY_VERBS + `extendsPanacheEntity` via transSupers, with the no-fabrication override guard), and
+PanacheQuery terminals (classify). Verb+hierarchy-gated → a lookalike non-Panache class stays pure (fab probe
+OK). Gated: byte-identity pc/jsoup/gson, full suite, soundness 40/0, conformance. LESSON: the "always disclosed
+`invisible` first" claim above has an EXCEPTION — when the unmodeled-framework method is INHERITED into a
+project type (so the call owner is a project class), it reads silent-pure, not invisible. That shape is the one
+to watch when dogfooding the next framework (active-record / base-class-mixin APIs, not just repository/builder
+APIs whose calls keep an external owner).
