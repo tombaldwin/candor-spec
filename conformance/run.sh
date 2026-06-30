@@ -214,8 +214,19 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/query.mjs" ]; then
   node "$TS_DIR/query.mjs" parsepolicy "$POL_BATTERY" > "$W/ts_pol.json" 2>/dev/null \
     || { echo "FAIL: candor-ts parsepolicy errored on the battery"; exit 2; }
 fi
+# candor-swift joins the grammar diff when it exposes `parsepolicy` (it enforces §6.2 via --policy; the
+# parsepolicy DUMP is the diffable witness). SW_POL_OK distinguishes "produced a parse" from "no such
+# subcommand yet" — a present-but-broken parse FAILS (the TS_PRESENT lesson), an absent subcommand is a
+# LOUD skip (this is the four-way coverage the live `Net`-port/`::`-scope Swift divergences slipped past;
+# the swift parsepolicy command is landing in parallel — once it ships, this becomes a hard four-way diff).
+SW_POL_OK=""
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  if "$SW_BIN" parsepolicy "$POL_BATTERY" > "$W/sw_pol.json" 2>/dev/null && python3 -c 'import json,sys; json.load(open(sys.argv[1]))["deny"]' "$W/sw_pol.json" >/dev/null 2>&1; then
+    SW_POL_OK=1
+  fi
+fi
 
-python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" <<'PY' || rc=1
+python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" "${SW_POL_OK:+$W/sw_pol.json}" <<'PY' || rc=1
 import json, os, sys
 def norm(p):
     d = json.load(open(p))
@@ -225,19 +236,26 @@ def norm(p):
     return deny, allow, forbid
 r, j = norm(sys.argv[1]), norm(sys.argv[2])
 t = norm(sys.argv[3]) if os.path.exists(sys.argv[3]) else None
+sw = norm(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4] and os.path.exists(sys.argv[4]) else None
 print("\n[4] POLICY-DSL grammar differential  (SPEC §6.2 — parse the same battery in every engine)")
 print(f"  candor(rust): {len(r[0])} deny, {len(r[1])} allow, {len(r[2])} forbid")
 print(f"  candor-java : {len(j[0])} deny, {len(j[1])} allow, {len(j[2])} forbid")
 if t is not None:
     print(f"  candor-ts   : {len(t[0])} deny, {len(t[1])} allow, {len(t[2])} forbid")
-match = r == j and (t is None or r == t)
-n = "two" if t is None else "all three"
+if sw is not None:
+    print(f"  candor-swift: {len(sw[0])} deny, {len(sw[1])} allow, {len(sw[2])} forbid")
+else:
+    print("  candor-swift: no `parsepolicy` dump (enforces §6.2 via --policy; see the [4f] verdict diff) — grammar diff SKIPPED")
+others = [x for x in (t, sw) if x is not None]
+match = all(r == o for o in others) and r == j
+n = {0: "two", 1: "three", 2: "all four"}[len(others)]
 print("  -> " + (f"MATCH — {n} engines parse the deny/pure/allow/forbid grammar identically"
                  if match else "DIVERGE — the engines parse the policy DSL differently"))
 if not match:
     for name, idx in (("deny", 0), ("allow", 1), ("forbid", 2)):
         sets = {"rust": r[idx], "java": j[idx]}
         if t is not None: sets["ts"] = t[idx]
+        if sw is not None: sets["swift"] = sw[idx]
         if len({repr(v) for v in sets.values()}) > 1:
             for eng, v in sets.items():
                 print(f"     {name} {eng}={v}")
@@ -367,8 +385,8 @@ PY
 # PART 4e — Net host[:port] differential (SPEC §2): every engine must include the statically-known PORT
 # in the `hosts` surface, not just the host. candor-java once dropped the literal port of a two-arg
 # Socket(host, 443) while keeping it for a URL — self-inconsistent and divergent from candor-scan/ts
-# (adversarial coverage-gap review, GAP2). Each engine scans its idiomatic host:port call; all must emit
-# `api.example.com:8080`.
+# (adversarial coverage-gap review, GAP2); candor-swift had its own host:port divergence on NWConnection.
+# Each engine (now incl. swift) scans its idiomatic host:port call; all must emit `api.example.com:8080`.
 # ====================================================================================================
 mkdir -p "$W/nh/rust/src" "$W/nh/java/q"
 cat > "$W/nh/rust/Cargo.toml" <<'EOF'
@@ -389,7 +407,15 @@ if [ -n "$TS_PRESENT" ]; then
   node "$TS_DIR/scan.mjs" "$W/nh/cases.ts" "$W/nh/ts_out" >/dev/null 2>&1
   NH_TS="$W/nh/ts_out.json"
 fi
-python3 - "$NH_RUST" "$W/nh/java.json" "$NH_TS" <<'PY' || rc=1
+NH_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/nh/swift"
+  printf 'import Network\nfunc h() { _ = NWConnection(host: "api.example.com", port: 8080, using: .tcp) }\n' > "$W/nh/swift/cases.swift"
+  "$SW_BIN" "$W/nh/swift/cases.swift" --out "$W/nh/sw_out" >/dev/null 2>&1
+  NH_SW=$(ls "$W"/nh/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+  [ -n "$NH_SW" ] || NH_SW="/nonexistent"
+fi
+python3 - "$NH_RUST" "$W/nh/java.json" "$NH_TS" "$NH_SW" <<'PY' || rc=1
 import json, os, sys
 def hosts_of(path, sep):
     d = json.load(open(path))
@@ -400,6 +426,7 @@ def hosts_of(path, sep):
 print("\n[4e] NET HOST[:PORT] differential  (SPEC §2 — the statically-known port is part of the host surface)")
 engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
 if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
 fails = 0
 for name, path, sep in engines:
     hosts = hosts_of(path, sep)
@@ -710,14 +737,13 @@ else
   echo; echo "[6c] FOURTH ENGINE (candor-swift): not present (set CANDOR_SWIFT or clone ../candor-swift, swift toolchain required) — SKIPPED (set CONFORMANCE_REQUIRE_ALL=1 to make this a failure in CI)"
 fi
 
-# --- Part 9: unitKind (SPEC §2, 0.5 DRAFT) -----------------------------------------------------------
-# Engines that have non-function units name them; ordinary functions OMIT the field. unitKind is a
-# 0.5 DRAFT field (engines MAY emit it early, §2 forward-compat), so this part is ADVISORY — a miss
-# WARNS but does not fail the suite, and won't retroactively fail released 0.4 engines if the draft
-# renames a value before 0.5 tags. (Each branch traps its own errors so a broken scan prints a
-# labelled WARN, never an unattributed Python traceback.)
+# --- Part 9: unitKind (SPEC §2, released since 0.5) --------------------------------------------------
+# Engines that have non-function units name them; ordinary functions OMIT the field. `unitKind` is an
+# OPTIONAL §2 field (released in 0.5; an engine MAY omit it entirely, §2 forward-compat), so this part
+# stays ADVISORY — a miss WARNS but does not fail the suite, since omission is conformant. (Each branch
+# traps its own errors so a broken scan prints a labelled WARN, never an unattributed Python traceback.)
 echo
-echo "[9] unitKind (0.5 DRAFT — ADVISORY: non-function units named, plain fns omit the field):"
+echo "[9] unitKind (OPTIONAL §2 field, released 0.5 — ADVISORY: non-function units named, plain fns omit the field):"
 mkdir -p "$W/uk/java"
 cat > "$W/uk/java/Uk.java" <<'J'
 import java.nio.file.*;
@@ -869,6 +895,23 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_masking.py" ]; then
 fi
 
 # ====================================================================================================
+# POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
+# PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
+# and asserts the verdict equals the rule's expected verdict — for a `host:port` allow (the port rule),
+# `::`-vs-`.` scope segmentation, fs path-boundary prefix, exec basename, and `schema.*` db matching. This
+# is the four-way coverage the live candor-swift Net-port / `::`-scope divergences slipped past (they were
+# rust+java+ts-only). Reuses gen_masking.py's engine harness. Reuses the binaries this run resolved.
+if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_policy_match.py" ]; then
+  echo
+  (
+    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+    python3 "$HERE/gen_policy_match.py"
+  ) || { echo "policy-matching differential: FAILED"; rc=1; }
+fi
+
+# ====================================================================================================
 # DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩) — `callers --include-unknown`. One shared scenario
 # (Base.op with >fan-out impls, one reaching Sink.touch; a Dispatcher dispatching Base.op) across the
 # class/protocol engines (java, ts, swift; rust has no dispatch: → empty frontier, excluded). Asserts all
@@ -897,8 +940,13 @@ echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC 
 python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" <<'PY' || rc=1
 import json, os, sys
 CANON = {"reflect", "native", "dispatch", "callback"}
+# Known migration kinds (SPEC §4 ⟨0.7⟩): an engine MAY still emit these while it reconciles its reasons
+# onto the canonical four (MODEL.md tracks candor-java's task-handoff/indy). They WARN — visible, not
+# silently allowed — but do NOT fail the suite, so a not-yet-reconciled engine is surfaced without being
+# falsely red. Any OTHER off-vocabulary kind is a hard DIVERGE (the old `dispatch-broad:`/`call:`/… drift).
+MIGRATION = {"task-handoff", "indy"}
 labels = ["rust", "java", "ts", "swift"]
-fails = 0; seen = {}; total = 0
+fails = 0; warns = 0; seen = {}; total = 0
 for label, path in zip(labels, sys.argv[1:5]):
     if not path or not os.path.exists(path):
         continue
@@ -912,7 +960,9 @@ for label, path in zip(labels, sys.argv[1:5]):
             total += 1
             kind = w.split(":", 1)[0]
             seen.setdefault(label, set()).add(kind)
-            if kind not in CANON:
+            if kind in MIGRATION:
+                print(f"  WARN    [{label}] migration unknownWhy kind (not yet reconciled, SPEC §4): {w!r}  (fn {f.get('fn')})"); warns += 1
+            elif kind not in CANON:
                 print(f"  DIVERGE [{label}] non-canonical unknownWhy kind: {w!r}  (fn {f.get('fn')})"); fails += 1
             elif kind == "dispatch":
                 detail = w.split(":", 1)[1] if ":" in w else ""
@@ -921,7 +971,9 @@ for label, path in zip(labels, sys.argv[1:5]):
 for label in labels:
     if label in seen:
         print(f"  {label}: kinds = {sorted(seen[label])}")
-print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + ("OK" if fails == 0 else f"{fails} violation(s)"))
+suffix = "OK" if fails == 0 else f"{fails} violation(s)"
+if warns: suffix += f", {warns} migration warning(s)"
+print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + suffix)
 sys.exit(1 if fails else 0)
 PY
 
@@ -983,6 +1035,6 @@ PY
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

@@ -25,7 +25,7 @@ gives the family a shared way to talk about the same things.
 | **Report** | The envelope: provenance + the package(s) covered + the effectors. | §2 | `{ candor, packages, functions }` |
 | **PolicyRule** | An architecture-as-code rule (sealed: `Deny` / `Allow` / `Forbid`), the parsed form of the §6.2 DSL. | §6.2 | (read from a policy file) |
 | **Diagnostic / DiagnosticCode** | A gate finding + its standardized code (`AS-EFF-001..010`). | §6 | (gate output) |
-| **Mode** | An analysis mode — audit, conformance, no-ambient, baseline, policy, taint, containment. | §3 | (selected by flag/env) |
+| **Mode** | An analysis mode — audit, conformance, no-ambient, baseline, policy, risk, containment. | §3 | (selected by flag/env) |
 
 The **load-bearing serialization invariant**: an effect set's wire form is its names sorted by spec
 name. With every effect→wire path going through that one ordering, an engine can use any internal
@@ -67,7 +67,7 @@ vocabulary **independently** — three of four now express it as named types, no
 - **AS-EFF-010 (containment regression)** is defined by the spec but not implemented by every engine
   (e.g. candor-java models codes 001–009).
 - **`Clipboard` is a §6.1 boundary effect.** §6.1 splits effects into boundary
-  (`Db,Net,Exec,Fs,Ipc,Clipboard`) and ambient/cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was
+  (`Db,Net,Exec,Fs,Ipc,Clipboard`) and cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was
   added to the vocabulary after the original partition and is now classified boundary (external-resource
   I/O), so containment scores it like the others. ROLLED OUT to every engine that implements containment:
   candor-java (reference, enum-partition-derived + pinned by a test) and candor-query (Rust, 0.7.1 —

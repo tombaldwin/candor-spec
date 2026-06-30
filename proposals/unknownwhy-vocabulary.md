@@ -1,11 +1,11 @@
 # Proposal — canonical `unknownWhy` vocabulary (candor-rust BACKLOG 1d; ⟨0.7⟩ prerequisite)
 
-**Status: design proposal (unreleased).** The `unknownWhy` reason strings (§4, the receipt for *why* a
-function carries `Unknown`) diverge across engines, so a consumer written against one breaks on another,
-and the 0.7 dispatch-frontier (`proposals/0.7-unknown-dispatch-frontier.md`) — which keys off the
-`dispatch:` reason — cannot be made a conformance-equal contract until they agree. This proposal defines
-the canonical vocabulary and the per-engine mapping. (Spec §4 currently names only
-`reflect:/native:/dispatch:/callback:` loosely; engines have grown idiosyncratic prefixes since.)
+**Status: RELEASED in 0.7** — the canonical vocabulary is now normative in SPEC §4 (four kinds
+`reflect:/native:/dispatch:/callback:`, with `dispatch:OWNER.member` the one conformance-compared detail),
+and conformance Part 10 pins it across the engines. This document is kept for its **historical rationale**:
+the inventory of what each engine emitted before harmonisation, the per-engine mapping, and the resolved
+`verify` rows. Where it describes the pre-0.7 divergence (e.g. the loose §4 list, or Java's `dispatch-broad:`),
+that is the *historical* state; the released contract is SPEC §4.
 
 ## Inventory — what each engine emits today (2026-06-19)
 
@@ -69,8 +69,9 @@ indeterminacy is `callback:`/`native:`), so its frontier is consistently empty.
      untyped-receiver→`callback:`, `eval`/`defineProperty`/`accessor`→`reflect:`.
    - candor-swift 0.5.24 — `opaque-sequence:`/`call:computed`→`callback:` (dispatch:/callback: already canonical).
    - candor-scan 0.5.20 — `ffi:`→`native:`; no `dispatch:` (Rust has no class dispatch → frontier empty).
-3. **Conformance** — the vocabulary check above; EXIT 0. **PENDING.**
-4. **Unblocks** — the 0.7 dispatch-frontier port to ts + swift on the now-canonical `dispatch:OWNER.member`. **PENDING.**
+3. **Conformance** — the vocabulary check above (shipped as conformance/run.sh PART 10); EXIT 0. **DONE.**
+4. **Unblocks** — the 0.7 dispatch-frontier port to ts + swift on the now-canonical `dispatch:OWNER.member`
+   (conformance/frontier_differential.py). **DONE.**
 
 The **verify** rows resolved to: ts `accessor:`→`reflect:` (defineProperty runtime accessor),
 `override:`→`dispatch:` (class override family), `call:`/`bind:`/opaque-iteration→`callback:`; swift

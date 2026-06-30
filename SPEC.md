@@ -92,7 +92,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.5" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.7" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -203,7 +203,7 @@ any report can become a chained sibling, and a hashless one is silently unchaina
 cross-boundary call drops and the consumer *under*-reports, the dangerous direction. A consumer may
 still ignore `hash`.
 
-**Report chaining** (the `CANDOR_DEPS` convention, implemented by all three reference engines): a
+**Report chaining** (the `CANDOR_DEPS` convention, implemented by all four reference engines): a
 scan accepts *sibling reports* — previously-produced reports for the scanned code's dependencies —
 and an unresolved/unclassified call into a package one of them covers inherits that function's
 recorded transitive effects AND its literal surfaces (`hosts`/`cmds`/`paths`/`tables`). Three rules
@@ -303,7 +303,7 @@ The header has THREE fields, on two distinct axes — keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec` — the **candor-spec contract version** this engine implements (`"0.5"`). This is the version
+- `spec` — the **candor-spec contract version** this engine implements (`"0.7"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version — they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -336,6 +336,25 @@ needs *before* introducing an effect. The sidecar is OPTIONAL, but an implementa
 from the report alone (a pure X is absent from the report). It carries no provenance of its own and is read
 together with its report.
 
+⟨0.7⟩ **The type-hierarchy sidecar.** Alongside the report, an engine whose language has class/interface/
+protocol dispatch SHOULD also emit a **type-hierarchy sidecar** — a separate `<stem>.hierarchy.json`
+(the Rust/JVM impls append `.hierarchy.json` to the report stem; candor-swift uses
+`<prefix>.<package>.Swift.hierarchy.json`) — a JSON object mapping each **project type** to its **direct
+supertypes and implemented interfaces/protocols** (project types only — `O(classes)`, not `O(edges)`):
+
+```json
+{ "app.Impl7": ["app.Base"], "app.Base": [], "app.Dispatcher": ["app.AbstractSvc", "app.Closeable"] }
+```
+
+The type name keys match the owner type in the report's `dispatch:<owner>.<member>` reasons (§4) and the
+function-name quals, so a query can resolve *"is this confirmed reacher an override of `OWNER.M`?"* — a
+method whose simple name is `M` declared on a subtype of `OWNER` per this map — **without** the engine
+storing the candidate edges bounded-CHA deliberately dropped. That precise subtype resolution is what the
+`callers --include-unknown` frontier (§3.1) keys off. The sidecar is OPTIONAL — but an engine that exposes
+`callers --include-unknown` over a dispatching language MUST emit it (the frontier degrades to an imprecise
+simple-name match without it). It carries no provenance of its own and is read with its report. A language
+with no class/protocol dispatch (the Rust scanner) has nothing to populate it and MAY omit it entirely.
+
 ## 3. Modes
 
 An implementation SHOULD support:
@@ -366,7 +385,9 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
 - **show `<fn>`** — a function's effects (own/direct vs inherited).
 - **where `<Effect>`** — which functions perform an effect (direct sources vs transitive inheritors).
 - **callers `<fn>`** — the **blast radius**: every TRANSITIVE caller of `<fn>` (works for ANY function,
-  including a still-**pure** one) — *who is affected if you change it*.
+  including a still-**pure** one) — *who is affected if you change it*. ⟨0.7⟩ With the **`--include-unknown`**
+  modifier it additionally discloses the *unresolved-dispatch frontier* (`possibleViaUnknownDispatch`, below):
+  callers that reach `<fn>` only through an unresolved `dispatch:` — a disclosed lower-bound, never asserted.
 - **map** — a module → effects overview.
 - **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
 - **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
@@ -397,6 +418,7 @@ language; only the function-name *value* is language-natural — `a::b` vs `a.b`
 show     [ { "fn", "inferred":[…], "direct":[…], "unresolved":bool, "fs"?:[…], "hosts"?:[…] } ]
 where    { "effect", "directly":[fn…], "inherited":[fn…] }
 callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
+         // ⟨0.7⟩ with --include-unknown, also: "possibleViaUnknownDispatch":[ { "fn", "viaDispatchOn" } ]
 map      { "<module>": { "effects":[…], "functions":int } }
 diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":[…], "lost":[…],
            "status": "changed"|"new"|"removed" } ], …optional provenance fields }
@@ -433,6 +455,23 @@ descending — the root causes that poison the most functions first. A unit whos
 inherited (no `unknownWhy` of its own) is NOT a source and is excluded; `totalUnknown` is the report's
 total count of units carrying `Unknown` — the surface these sources explain. The point is to turn a
 high-`Unknown` report from "the analysis failed" into a short, ranked worklist of real blind spots.
+
+`callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output — the
+*unresolved-dispatch frontier*. The plain `callers` set (`transitive`) is a **confirmed** lower bound: a
+function that reaches `<fn>` only through a call the engine charged `Unknown` with an unresolved
+`dispatch:OWNER.M` reason (a bounded-CHA fan-out, a dynamic receiver of a known type) is *correctly* absent
+from `transitive` — the engine refuses to fabricate the edge. `possibleViaUnknownDispatch` discloses exactly
+those: each entry `{ "fn", "viaDispatchOn" }` names a function `fn` that (1) carries a `dispatch:OWNER.M`
+`unknownWhy`, (2) is not already a confirmed transitive caller, and (3) for which some confirmed reacher
+(in `transitive ∪ {<fn>}`) is an **override of `OWNER.M`** — its method's simple name is `M` and its
+declaring type is a subtype of `OWNER` per the §2.2 hierarchy sidecar. `viaDispatchOn` is the dispatched
+member `OWNER.M` it travels through. The subtype check (vs a bare simple-name match) is what removes false
+positives — an unrelated same-named dispatch is not listed unless its owner actually sits above a reaching
+override. This is a **disclosed lower-bound expansion, never an assertion**: it says "this *may* reach
+`<fn>` through a dispatch I could not resolve," and reports only the frontier dispatch-source functions (the
+smaller, more informative set), not their transitive cones. An engine whose language has no class/protocol
+dispatch (the Rust scanner emits no `dispatch:`) returns `possibleViaUnknownDispatch: []` consistently — N/A
+by language model, not a gap. The cross-impl suite pins the frontier output across the dispatching engines.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
@@ -472,12 +511,12 @@ engine identically. Every implementation's scanner MUST accept:
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
+| `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
 
 The short aliases `-V` and `-h` are REQUIRED; every other flag uses its long `--name` form. An engine
-SHOULD also expose `--agents` (item 11), and MAY expose `--out <prefix>` for file output plus any
-engine-specific flags. Flag names and help wording are kept consistent across engines (the same
-`--policy`/`--json`/`--version`/`--help` mean the same thing everywhere — the CLI counterpart of the
-item-10 cross-language query consistency).
+MAY expose `--out <prefix>` for file output plus any engine-specific flags. Flag names and help wording
+are kept consistent across engines (the same `--policy`/`--json`/`--version`/`--help`/`--agents` mean the
+same thing everywhere — the CLI counterpart of the item-10 cross-language query consistency).
 
 A read-only **query** surface (§3.1) — whether shipped as a separate binary (e.g. `candor-query`) or as
 subcommands of the scanner — MUST expose the same `--version`/`-V` and `--help`/`-h` conventions, with
@@ -502,9 +541,9 @@ not omniscience. A clean report means *the implementation found no effect and di
 hit* — read it as "more thorough than review, and honest about its blind spots," not as a proof of
 purity.
 
-**Dispatch over a local abstraction — the bounded-CHA discipline** (all three reference engines): a
+**Dispatch over a local abstraction — the bounded-CHA discipline** (all four reference engines): a
 call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
-TS interface, a JVM interface/supertype) SHOULD resolve to the **visible local implementors'**
+TS interface, a JVM interface/supertype, a Swift protocol/class) SHOULD resolve to the **visible local implementors'**
 methods when the dispatch is *narrow* — at most **12** implementors, the shared bound, so the
 verdicts agree across engines — and MUST otherwise read `Unknown`: a local abstraction with no
 visible implementor, too many, or an ambiguous name is honest indeterminacy, never silent purity.
@@ -581,6 +620,22 @@ kinds' details are best-effort prose. An engine emits whichever kinds its langua
 language with no virtual/interface dispatch (e.g. the Rust scanner: only `callback:`/`native:`) simply
 emits no `dispatch:`, and its frontier is correspondingly empty.
 
+⟨0.7⟩ **What is conformance-binding, and what is per-language.** Precisely: the **`kind` SET**
+(`reflect`/`native`/`dispatch`/`callback`) is the closed vocabulary every code engine's reasons draw from,
+and the **`dispatch:` detail** (`owner.member`) is the one normative detail. Everything else is
+per-language and **OPTIONAL**: an engine emits `native:` / `reflect:` **only where its language model
+actually produces that origin** — they are not universal. By design the engines diverge here, legitimately:
+the Rust scanner emits only `callback:`/`native:` (no class dispatch); TypeScript folds a native boundary
+into `reflect:` (`eval`/`defineProperty`/dynamic accessor) and emits no bare `native:`; Swift's syntactic
+model produces neither `reflect:` nor `native:`. A consumer therefore MUST NOT assume all four kinds appear
+in every report — only that any kind it *does* see is one of the four (and that a `dispatch:` carries
+`owner.member`). Finally, an engine **MAY** emit an additional, off-vocabulary kind **during a migration**
+(candor-java has historically emitted `task-handoff:` and `indy:`; reconciling them onto the four is a
+tracked, byte-changing task — MODEL.md): such a kind round-trips and a consumer tolerates it under §2
+forward-compatibility. The conformance check pins the four canonical kinds and the `dispatch:` shape, and
+**tolerates a known migration kind as a warning rather than a hard divergence**, so a not-yet-reconciled
+engine is visible without being falsely red.
+
 ⟨0.7⟩ **Domain engines.** The four kinds describe why a *code* call's body could not be resolved, and so
 bind every engine that analyses source or bytecode. A **domain engine** — one whose units are not
 functions and whose call graph is not code (e.g. the agent-fleet engine, where units are agents and edges
@@ -649,7 +704,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
-| `AS-EFF-008` | (transitively) reaches a literal (host / command / path / table) outside a declared allowlist, or one it cannot see | policy |
+| `AS-EFF-008` | (transitively) reaches a *visible* literal (host / command / path / table) outside a declared allowlist | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 | `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
 
@@ -683,10 +738,18 @@ Two classes of effect:
 
 - **boundary** — `Db`, `Net`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
   dedicated layer; their dispersion is the signal. (`Clipboard` is external-resource I/O — a boundary
-  capability — so it is contained/scored, not ambient.)
-- **ambient** — `Log`, `Clock`, `Rand`, `Env`. Cross-cutting by nature (logging/timestamps everywhere is
+  capability — so it is contained/scored, not cross-cutting.)
+- **cross-cutting** — `Log`, `Clock`, `Rand`, `Env`. Pervasive by nature (logging/timestamps everywhere is
   normal), so they are reported but **not** scored. `Unknown` is excluded entirely (it is a visibility
   property, not an effect).
+
+> **Note — "cross-cutting" here is unrelated to the "ambient authority" partition.** This containment
+> split (`{Log,Clock,Rand,Env}` = cross-cutting vs the boundary effects) is about *where an effect should
+> be contained*, and is independent of the no-ambient check's partition, which calls **`𝔼 \ {Log}`**
+> "ambient authority" (every effect except `Log` is ambient authority a function should *receive* rather
+> than reach for directly — SEMANTICS §6, AS-EFF-004). The two sets answer different questions and
+> deliberately do not coincide; "ambient" is reserved for the capability sense, and this containment
+> bucket is named "cross-cutting" to keep them apart.
 
 A **layer** is inferred from the function name with no configuration: strip the longest module/package
 prefix shared by *every* function (the codebase root), and the next segment is the layer (`pgman::app::…`
@@ -807,8 +870,8 @@ An implementation conforms to candor-spec if it:
 4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
    command-line surface** of §3.3 — `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
-   `--version`/`-V` carrying the spec version, and `--help`/`-h` — with flag names and help wording
-   consistent across engines;
+   `--version`/`-V` carrying the spec version, `--help`/`-h`, and `--agents` (the embedded agent
+   contract, item 11) — with flag names and help wording consistent across engines;
 6. uses the §1 vocabulary and §6 codes where they apply, and — if it enforces any policy mode — parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. is honest in its own docs about what it cannot see;
@@ -830,14 +893,17 @@ It SHOULD additionally (items 9–13):
     agent executes on their codebase: manual blast-radius trace committed *before* the tool runs,
     every claimed miss verified at a file:line, and the honest negative outcome reported — value
     demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/honesty
-    documentation is already a MUST (items 6–7). The engine SHOULD additionally be
-    **self-describing**: its installed artifact embeds the `AGENTS.md` and prints it under an
-    `--agents` flag, prefixed by a header naming the installed engine version — so the contract an
-    agent reads always matches the binary it runs. A vendored or remotely fetched copy can describe
-    a *different* version (or be tampered with in transit); the embedded copy is the §2.1
-    version-trust rule applied to documentation. The embedded copy MUST equal the repo's
-    `AGENTS.md` (a drift gate in the engine's test suite), and the doc SHOULD tell agents to
-    prefer `--agents` over any other copy, re-reading it when the engine version changes;
+    documentation is already a MUST (items 6–7). The engine is additionally
+    **self-describing**: its installed artifact embeds the `AGENTS.md` and prints it under the
+    **`--agents` flag — REQUIRED in the §3.3 command-line surface** (all four engines ship it, and
+    the conformance suite Part 7 gates it pass/fail) — prefixed by a header naming the installed
+    engine version, so the contract an agent reads always matches the binary it runs. A vendored or
+    remotely fetched copy can describe a *different* version (or be tampered with in transit); the
+    embedded copy is the §2.1 version-trust rule applied to documentation. The embedded copy MUST
+    equal the repo's `AGENTS.md` (a drift gate in the engine's test suite), and the doc SHOULD tell
+    agents to prefer `--agents` over any other copy, re-reading it when the engine version changes.
+    (The *flag* and the embedded-copy equality are MUSTs; shipping the companion `PROVE-IT.md`
+    remains a SHOULD.);
 12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report —
     self-analysis is the free real-world test), and run a **self-gate** in CI: a declared
     `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g. the reference
@@ -864,7 +930,8 @@ It SHOULD additionally (items 9–13):
     - A **precision twin** is recommended: a pure bystander unit that must stay OUT of the report,
       so the harness also catches an engine that goes sound by flooding.
     - The harness SHOULD run in CI alongside the engine's tests — an unrun harness proves nothing.
-    All three reference engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`),
+    All four reference engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
+    candor-swift `fuzz.py`),
     and the design ports beyond programming languages (the candor-agents exploration runs the same
     harness shape over agent-fleet effect graphs). Like every SHOULD in this list, the harness is a
     claim an engine either ships or doesn't make — an engine without one has an *untested* §4, and
@@ -894,7 +961,7 @@ to "item 14" stay valid):
     is a purity claim). The ledger plus chaining (§2) is the curation treadmill's exit: the
     disclosure names what is invisible, one dependency scan closes it, and the curated table's
     long-term obligation shrinks to the builtin/FFI frontier. The cross-impl conformance suite
-    pins the disclosure's behavior in all three engines.
+    pins the disclosure's behavior in all four engines.
 
 ## 8. Changelog
 

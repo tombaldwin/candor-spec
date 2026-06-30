@@ -195,7 +195,7 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
 | **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
 | **AS-EFF-007** | *(heuristic, not a set predicate)* `f` has an effect *site* whose argument syntactically derives from a parameter of `f` | performs an injection-class effect on caller-derived input — advisory |
-| **AS-EFF-008** | `e ∈ I(f)` for the rule's effect `e ∈ {Net, Exec, Fs, Db}` and, for an allowlist rule `r` whose scope matches `f`, `lits_e(f) ⊄ Allow(r)` **or** `lits_e(f) = ∅` | reaches a literal (host / command / path / table) outside the declared allowlist, or one it cannot see (the literal surface can't be certified) |
+| **AS-EFF-008** | `e ∈ I(f)` for the rule's effect `e ∈ {Net, Exec, Fs, Db}` and, for an allowlist rule `r` whose scope matches `f`, `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) | reaches a literal (host / command / path / table) outside the declared allowlist. The opaque case (`e ∈ I(f)` but `lits_e(f) = ∅` — the value is computed at runtime, so the surface can't be certified) is **not** AS-EFF-008's concern: it is covered by a companion `deny Unknown <scope>` rule (§6, AS-EFF-006), so AS-EFF-008 certifies only the *visible* surface. |
 | **AS-EFF-009** | for a layering rule `r = forbid A → B`, `scope_A(f)` and `f` transitively calls some `g` with `scope_B(g)` | a function in layer `A` depends on layer `B`, violating a declared dependency direction |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
@@ -219,13 +219,17 @@ by hostname (ports ignored), commands by basename (`/usr/bin/git` ≡ `git`), pa
 directory covers everything beneath it), tables by case-insensitive **exact qualified name** with one
 wildcard form — `schema.*` covers every table in that schema (boundary-respecting: `ledger.*` does not
 cover `ledgerx.entries`), and a bare allowed name never silently widens to cover a qualified one
-(`entries` does not cover `ledger.entries`). Two failure modes: a *visible* violation (`lits_e(f)` contains a
-non-allowed value) and an *opaque* one (`e ∈ I(f)` but `lits_e(f) = ∅` — the value is computed at runtime,
-so the surface can't be certified). By design AS-EFF-008 certifies only the **visible** surface: a
-function that reaches an allowed value while *also* holding `Unknown ∈ I(f)` is **not** flagged (that
-residual is AS-EFF-003/006's concern) — because the literal detail is informative-not-complete (SPEC, the
-`hosts`/`cmds`/`paths`/`tables` fields), folding `Unknown` in would flag essentially every real effectful
-function and make the allowlist useless.
+(`entries` does not cover `ledger.entries`). AS-EFF-008 fires on **one** condition: a *visible* violation —
+`lits_e(f)` contains a non-allowed value (`lits_e(f) \ Allow(r) ≠ ∅`). By design it certifies only the
+**visible** surface, so two cases that are *not* AS-EFF-008 failures must be handled elsewhere:
+the **opaque** case (`e ∈ I(f)` but `lits_e(f) = ∅` — every value is computed at runtime, so there is no
+visible literal to certify) and the **mixed** case (a function reaches an allowed value while *also* holding
+`Unknown ∈ I(f)`). Neither trips AS-EFF-008 — the literal detail is informative-not-complete (SPEC, the
+`hosts`/`cmds`/`paths`/`tables` fields), so folding the uncertifiable residual into AS-EFF-008 would flag
+essentially every real effectful function and make the allowlist useless. The uncertifiable residual is the
+concern of AS-EFF-003 (it carries `Unknown`) and of a companion **`deny Unknown <scope>`** policy rule
+(AS-EFF-006), which is the rule that forbids the opaque case in a scope where the allowlist must be complete —
+pair an `allow e` rule with a `deny Unknown` rule when the visible surface alone is not enough.
 
 **AS-EFF-009 reads the call graph, not the effect lattice.** A layering rule `forbid A → B` is the
 *dependency-direction* boundary (who a layer may depend on), complementing the effect rules (what a
