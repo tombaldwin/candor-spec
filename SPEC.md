@@ -460,6 +460,25 @@ whatif   { "of":[fn…], "effect", "affected":[fn…], "violations":[ { "fn", "r
 rewire   { "dropped":[ { "caller", "no_longer_calls":[fn…] } ] }
 ```
 
+### 3.3 The command-line surface (REQUIRED)
+
+The mode names above are conceptual; this fixes the *invocation* so a person or an agent drives any
+engine identically. Every implementation's scanner MUST accept:
+
+| flag | meaning |
+|---|---|
+| `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
+| `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
+| `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
+| `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
+| `--help` / `-h` | print a usage summary that lists these flags. |
+
+The short aliases `-V` and `-h` are REQUIRED; every other flag uses its long `--name` form. An engine
+SHOULD also expose `--agents` (item 11), and MAY expose `--out <prefix>` for file output plus any
+engine-specific flags. Flag names and help wording are kept consistent across engines (the same
+`--policy`/`--json`/`--version`/`--help` mean the same thing everywhere — the CLI counterpart of the
+item-10 cross-language query consistency).
+
 ## 4. The trust contract — the core of candor
 
 The defining rule: **an implementation must never report a function as effect-free when it could not
@@ -781,7 +800,10 @@ An implementation conforms to candor-spec if it:
 2. computes a per-function **transitive** effect set;
 3. emits the §2 report schema;
 4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
-5. supports at least **audit**, **JSON**, and **baseline-guard** modes;
+5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
+   command-line surface** of §3.3 — `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
+   `--version`/`-V` carrying the spec version, and `--help`/`-h` — with flag names and help wording
+   consistent across engines;
 6. uses the §1 vocabulary and §6 codes where they apply, and — if it enforces any policy mode — parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. is honest in its own docs about what it cannot see;
@@ -890,6 +912,10 @@ declare it via the envelope's `spec`.
     disclosed lower-bound, never asserted; the dispatch-frontier conformance differential pins cross-engine
     agreement. A language with no class/protocol dispatch (the Rust scanner) emits no `dispatch:`, so its
     frontier is empty by construction.
+  - §3.3 the **required command-line surface** — every engine's scanner takes `--policy` (honouring
+    `CANDOR_POLICY`), `--json` to stdout, `--version`/`-V` carrying the spec version, and `--help`/`-h`,
+    with flag names + help wording kept consistent across engines. Codifies what the four engines now
+    expose; no wire change (the §2 envelope is untouched), so engines keep declaring `0.7`.
 - **0.6 (released — tag `v0.6`; engines declare `0.6`)** —
   additive, wire-compatible with 0.5; all four engines implement it and a conformance differential pins it:
   - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
