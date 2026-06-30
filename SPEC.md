@@ -479,6 +479,11 @@ engine-specific flags. Flag names and help wording are kept consistent across en
 `--policy`/`--json`/`--version`/`--help` mean the same thing everywhere — the CLI counterpart of the
 item-10 cross-language query consistency).
 
+A read-only **query** surface (§3.1) — whether shipped as a separate binary (e.g. `candor-query`) or as
+subcommands of the scanner — MUST expose the same `--version`/`-V` and `--help`/`-h` conventions, with
+its `--help` listing the available queries. The query *names and JSON shapes* are already pinned
+cross-engine by item 10; this fixes the surrounding CLI so the tool is driven identically too.
+
 ## 4. The trust contract — the core of candor
 
 The defining rule: **an implementation must never report a function as effect-free when it could not
