@@ -19,7 +19,8 @@ additive over the last, so an older-version consumer that ignores the new option
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements (the envelope's `spec`). It is
 distinct from an engine's *build id* (a git hash, §2.1) and from its *release semver*. An engine's
-release **major.minor tracks the spec it implements** — `candor-java 0.7.x` declares spec `0.7` — with
+release **major.minor tracks the spec it implements** — `candor-java 0.8.x` declares spec `0.8`, a sibling
+still on the floor declares `0.7` — with
 the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
 
 **Versioning policy.** The spec version is a *cross-engine* contract, but it is a **version ladder, not a
