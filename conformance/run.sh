@@ -1033,8 +1033,50 @@ print("  -> " + ("MATCH — containment means the same thing in both engines" if
 sys.exit(0 if ok else 1)
 PY
 
+# ====================================================================================================
+# PART 12 — GATE-VERDICT (SPEC §3.3 ⟨0.8⟩): `--gate-json` re-emits the policy verdict as machine JSON,
+# from the SAME check that sets the exit code. LADDER-AWARE (SPEC §"Versioning policy"): exercised on
+# every engine that DECLARES spec ≥ 0.8; an engine still on the 0.7 FLOOR is disclosed, not failed — it
+# joins when it implements --gate-json and reaches 0.8, at which point this becomes a full differential.
+# ====================================================================================================
+echo
+echo "[12] GATE-VERDICT (SPEC §3.3 ⟨0.8⟩ — --gate-json is faithful to the gate; ladder-aware)"
+# candor-java (spec 0.8): a STATIC deny-Fs violation on the gate/ fixture.
+javac -d "$W/gjout" $(find "$HERE/gate/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on gate/java"; exit 2; }
+java -jar "$JAR" "$W/gjout" --policy "$HERE/gate/policy" --gate-json "$W/gate_java.json" > "$W/gate_java.console" 2>&1; JGX=$?
+python3 - "$W/gate_java.json" "$W/gate_java.console" "$JGX" <<'PY' || rc=1
+import json, re, sys
+verdict = json.load(open(sys.argv[1])); console = open(sys.argv[2]).read(); exit_code = int(sys.argv[3])
+leaf = lambda s: s.split('.')[-1]
+vfns   = sorted(leaf(v["fn"]) for v in verdict["violations"] if v["rule"] != "AS-EFF-007")
+vrules = sorted(set(v["rule"] for v in verdict["violations"]))
+cfns   = sorted(leaf(m) for m in re.findall(r'\[AS-EFF-\d+\]\s+`([^`]+)`', console))   # the console AS-EFF lines
+print(f"  candor-java (spec {verdict.get('spec')}): ok={verdict['ok']} rules={vrules} violations={vfns} exit={exit_code}")
+checks = {
+  "ok:false on a failing gate":            verdict["ok"] is False,
+  "exit 1 on a violation":                 exit_code == 1,
+  "verdict <=> exit (non-empty <=> fail)": (len(vfns) > 0) == (exit_code == 1),
+  "AS-EFF-006 present":                    "AS-EFF-006" in vrules,
+  "the pure fn is absent":                 "add" not in vfns,
+  "verdict fns == console fns (no drift)": vfns == cfns and vfns == ["save"],
+}
+for k, v in checks.items(): print(f"     {'ok  ' if v else 'FAIL'} {k}")
+ok = all(checks.values())
+print("  -> " + ("MATCH — the machine verdict is faithful to the gate the engine ran" if ok
+                 else "DIVERGE — --gate-json disagrees with the gate / exit / console"))
+sys.exit(0 if ok else 1)
+PY
+# Ladder disclosure: name every engine still on the 0.7 floor (no --gate-json yet), so the skip is loud.
+floor_note() { case "$2" in 0.8*|0.9*|1.*) echo "  $1: spec $2 — on the 0.8 rung (would join the differential)";;
+                            *) echo "  $1: spec $2 — on the 0.7 FLOOR; --gate-json arrives when it reaches 0.8 (ladder)";; esac; }
+espec() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('candor',{}).get('spec','?'))" "$1" 2>/dev/null || echo '?'; }
+RREP=$(ls "$W"/policy/rust/.candor/report*.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
+[ -n "$RREP" ] && floor_note "candor-scan " "$(espec "$RREP")"
+[ -n "$TS_OK" ] && floor_note "candor-ts   " "$(espec "$W/ts.json")"
+[ -n "$SW_OK" ] && floor_note "candor-swift" "$(espec "$SW_REPORT")"
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

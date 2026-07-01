@@ -1,0 +1,2 @@
+# the app layer must not touch the filesystem
+deny Fs app
