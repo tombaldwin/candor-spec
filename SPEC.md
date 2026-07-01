@@ -4,14 +4,17 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.7** (tag `v0.7`). The parts marked ⟨0.7⟩ — the **canonical `unknownWhy` vocabulary** (§4: four
-kinds reflect/native/dispatch/callback, `dispatch:` detail normative as `owner.member`); the **type-hierarchy
-sidecar** (§2.2); and the **`callers --include-unknown` dispatch-frontier** (§3.1, `possibleViaUnknownDispatch`)
-— are **released**, and engines declare `0.7`. All four engines implement them; conformance differentials
-pin both the vocabulary and the frontier output. (The ⟨0.6⟩ parts — the §3.1 `blindspots` query and the §4
-`unknownWhy`-required-on-a-direct-source tightening — remain, wire-compatible; 0.7 is additive over 0.6:
-the vocabulary canonicalises existing reason strings, the hierarchy sidecar and `possibleViaUnknownDispatch`
-are new optional artifacts/fields, and a 0.6 consumer that ignores them is unaffected.)
+**Version 0.8** (reference-first; released floor `0.7`, tag `v0.7`). Minor versions ride a **ladder, not a
+lockstep stamp** (see *Versioning policy* below): the reference engine leads a new additive rung, the others
+raise to it in turn, and the floor rises when the last lands. The ⟨0.8⟩ part — the **structured gate verdict**
+(§3.3, `--gate-json`) — is **led by candor-java** (which declares `0.8`); the other engines implement it and
+raise to `0.8` next, at which point the floor rises. The ⟨0.7⟩ parts — the **canonical `unknownWhy` vocabulary**
+(§4: four kinds reflect/native/dispatch/callback, `dispatch:` detail normative as `owner.member`); the
+**type-hierarchy sidecar** (§2.2); and the **`callers --include-unknown` dispatch-frontier** (§3.1,
+`possibleViaUnknownDispatch`) — are the **released floor**: all four engines implement them and conformance
+differentials pin both the vocabulary and the frontier output. (The ⟨0.6⟩ parts — the §3.1 `blindspots`
+query and the §4 `unknownWhy`-required-on-a-direct-source tightening — remain, wire-compatible; each rung is
+additive over the last, so an older-version consumer that ignores the new optional fields is unaffected.)
 
 The **spec/contract version** — the report schema, the effect vocabulary, and the
 `AS-EFF` codes — that a conformant implementation declares it implements (the envelope's `spec`). It is
@@ -19,24 +22,43 @@ distinct from an engine's *build id* (a git hash, §2.1) and from its *release s
 release **major.minor tracks the spec it implements** — `candor-java 0.7.x` declares spec `0.7` — with
 the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
 
-**Versioning policy.** The spec version is a *cross-engine* contract: a given version means **every
-conformant engine agrees** on it, pinned by the conformance differential. That cross-language
-consistency is the project's defining guarantee (a per-language tool cannot offer it), so the version
-line is never forked per engine:
+**Versioning policy.** The spec version is a *cross-engine* contract, but it is a **version ladder, not a
+lockstep stamp**. Two guarantees, kept distinct:
 
-- The spec version advances **only when a change is implemented across all engines and
-  conformance-gated**, and **only additively** (new optional fields/queries/artifacts, or refinements
-  that narrow an upper bound). A breaking change is a major bump, never shipped by one engine alone.
-- The **reference engine (candor-java) leads**: a new capability is first shipped as a candor-java
-  *engine feature* at the *current* shared spec — e.g. `callers --include-unknown` existed in
-  candor-java `0.5.43` before it became spec `0.7`. An engine feature is **not** a spec change; the
-  other engines stay fully interoperable on the shared contract and need not "catch up" to something
-  not yet in the spec.
-- A capability is promoted to a spec bump (for all engines) once it has earned the cross-language cost:
-  reference impl → port to the other engines → conformance differential → stamp the version everywhere.
-- A genuinely **language-specific** capability (e.g. JVM/Spring-only semantics) stays an engine feature,
-  or at most an explicitly-optional engine-specific section — it does **not** advance the cross-engine
-  contract.
+- **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version
+  **identically**, proven by the conformance differential — that cross-language identity is the project's
+  defining guarantee (a per-language tool cannot offer it). The floor is the highest version *every* engine
+  implements.
+- **The version each engine declares is disclosed, not assumed.** An engine emits in every report the exact
+  spec version it implements (the envelope's `spec`, §2.1), which MAY be **ahead of the floor**. A consumer
+  reads that field rather than assuming uniformity — candor's own disclose-don't-paper-over discipline (§4)
+  applied to its own versioning.
+
+Because minor bumps are **additive-only**, engines at different rungs never *conflict*: a newer feature is a
+new optional query/field, so an older-version engine simply lacks it (disclosed via `spec`), never
+contradicts it. That is what makes a leading reference safe, and it splits the policy by change kind:
+
+- **Minor (additive) bump → the reference MAY lead.** A new optional field/query/artifact, or a refinement
+  that narrows an upper bound. The **reference engine (candor-java)** implements it, it is written into this
+  document, and candor-java declares the new minor **ahead of** the other engines — its release
+  `major.minor` tracks the spec it implements, so `candor-java 0.8.x` declares `spec 0.8` while a sibling
+  still at `0.7` stays fully interoperable on the `0.7` floor. The other engines raise to the new version as
+  they implement it; **the floor rises when the last one lands**, and the conformance differential pins the
+  new feature across the engines that declare it (its cross-engine agreement is proven incrementally, not
+  gated on all four at once). A capability MAY additionally incubate as an *unspecced* experimental engine
+  feature before it is written into the spec (e.g. `callers --include-unknown` ran in candor-java `0.5.43`
+  before it was specced into `0.7`).
+- **Major (breaking) bump → lockstep.** A breaking change (the envelope reshape, a removed/retyped field)
+  is a **major** bump and moves **all engines together**: a consumer of the prior line could break, so it
+  needs coordinated migration and is never shipped by one engine alone. This is where "everyone moves at
+  once" earns its cost.
+- A genuinely **language-specific** capability (e.g. JVM/Spring-only semantics) stays an engine feature, or
+  at most an explicitly-optional engine-specific section — it does **not** advance the shared ladder.
+
+So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the
+contract: `0.7` remains a complete, frozen floor every engine still meets, and `0.8` is the next rung —
+reached first by the reference, additively — so nothing a `0.7` consumer relies on changes. The envelope's
+`spec` is the honest, per-report statement of which rung produced it.
 
 See the [changelog](#8-changelog) for what each version added. An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
@@ -509,6 +531,7 @@ engine identically. Every implementation's scanner MUST accept:
 | `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
+| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Emitted whenever a policy/gate is active; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
@@ -522,6 +545,22 @@ A read-only **query** surface (§3.1) — whether shipped as a separate binary (
 subcommands of the scanner — MUST expose the same `--version`/`-V` and `--help`/`-h` conventions, with
 its `--help` listing the available queries. The query *names and JSON shapes* are already pinned
 cross-engine by item 10; this fixes the surrounding CLI so the tool is driven identically too.
+
+**The gate verdict** ⟨0.8⟩ (`--gate-json`). The shape:
+
+```text
+gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "detail"? } ] }
+```
+
+`ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear
+in `violations` but MUST NOT clear `ok`). Each entry names the `rule` (an `AS-EFF-00x` code, §6) and the
+`fn` it fired on; `detail` is an OPTIONAL human message. **Conformance pins `ok` and the `{rule, fn}` set**
+(the same policy + code yields the same verdict in every engine); `detail` is engine-natural prose (like the
+function-name *value* elsewhere, §3.1) and is NOT pinned. The verdict is a re-emission of the gate the engine
+already ran — it MUST agree with the process exit code (a non-empty gate-failing `violations` ⟺ exit 1), so a
+consumer can never see a verdict that disagrees with the gate. Source locations are not duplicated here: a
+consumer joins each `fn` to its `loc`/effects from the §2 report (this is what the PR-native SARIF reporter
+does). An engine MAY also expose the verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 ## 4. The trust contract — the core of candor
 
@@ -969,6 +1008,18 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.8 (reference-first — candor-java declares `0.8`; floor still `0.7`)** —
+  additive, wire-compatible with 0.7. The first version to ride the **ladder** (see *Versioning policy*): a
+  minor rung led by the reference engine while the other engines remain interoperable on the `0.7` floor and
+  raise to `0.8` as they implement it (the floor rises when the last does).
+  - §3.3 the **structured gate verdict** — `--gate-json <file>` emits `{ spec, ok, violations:[{rule, fn,
+    detail?}] }`, the machine analog of the `AS-EFF` console lines, from the same check that sets the exit
+    code (so a consumer can never see a verdict that disagrees with the gate). Conformance pins `ok` + the
+    `{rule, fn}` set; `detail` is engine-natural. Powers the PR-native SARIF surface
+    (`candor/integrations/github`): each `fn` joins to its `loc`/effects in the §2 report.
+  - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink). Rollout: candor-ts,
+    candor-scan, candor-swift add `--gate-json` next; a conformance differential then pins the verdict across
+    every engine that declares `0.8`.
 - **0.7 (released — tag `v0.7`; engines declare `0.7`)** —
   additive, wire-compatible with 0.6; all four engines implement it and two conformance differentials pin
   it (see `proposals/unknownwhy-vocabulary.md`, `proposals/0.7-unknown-dispatch-frontier.md`):
