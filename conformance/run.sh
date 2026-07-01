@@ -1048,10 +1048,12 @@ python3 - "$W/gate_java.json" "$W/gate_java.console" "$JGX" <<'PY' || rc=1
 import json, re, sys
 verdict = json.load(open(sys.argv[1])); console = open(sys.argv[2]).read(); exit_code = int(sys.argv[3])
 leaf = lambda s: s.split('.')[-1]
-vfns   = sorted(leaf(v["fn"]) for v in verdict["violations"] if v["rule"] != "AS-EFF-007")
+gviol  = [v for v in verdict["violations"] if v["rule"] != "AS-EFF-007"]
+vfns   = sorted(leaf(v["fn"]) for v in gviol)
 vrules = sorted(set(v["rule"] for v in verdict["violations"]))
+veff   = sorted({e for v in gviol for e in v.get("effects", [])})
 cfns   = sorted(leaf(m) for m in re.findall(r'\[AS-EFF-\d+\]\s+`([^`]+)`', console))   # the console AS-EFF lines
-print(f"  candor-java (spec {verdict.get('spec')}): ok={verdict['ok']} rules={vrules} violations={vfns} exit={exit_code}")
+print(f"  candor-java (spec {verdict.get('spec')}): ok={verdict['ok']} rules={vrules} violations={vfns} effects={veff} exit={exit_code}")
 checks = {
   "ok:false on a failing gate":            verdict["ok"] is False,
   "exit 1 on a violation":                 exit_code == 1,
@@ -1059,6 +1061,7 @@ checks = {
   "AS-EFF-006 present":                    "AS-EFF-006" in vrules,
   "the pure fn is absent":                 "add" not in vfns,
   "verdict fns == console fns (no drift)": vfns == cfns and vfns == ["save"],
+  "effects is the denied set { Fs }":      veff == ["Fs"],
 }
 for k, v in checks.items(): print(f"     {'ok  ' if v else 'FAIL'} {k}")
 ok = all(checks.values())

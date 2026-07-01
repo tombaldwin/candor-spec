@@ -550,18 +550,23 @@ cross-engine by item 10; this fixes the surrounding CLI so the tool is driven id
 **The gate verdict** ⟨0.8⟩ (`--gate-json`). The shape:
 
 ```text
-gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "detail"? } ] }
+gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "effects":[Effect…], "detail"? } ] }
 ```
 
 `ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear
-in `violations` but MUST NOT clear `ok`). Each entry names the `rule` (an `AS-EFF-00x` code, §6) and the
-`fn` it fired on; `detail` is an OPTIONAL human message. **Conformance pins `ok` and the `{rule, fn}` set**
-(the same policy + code yields the same verdict in every engine); `detail` is engine-natural prose (like the
-function-name *value* elsewhere, §3.1) and is NOT pinned. The verdict is a re-emission of the gate the engine
-already ran — it MUST agree with the process exit code (a non-empty gate-failing `violations` ⟺ exit 1), so a
-consumer can never see a verdict that disagrees with the gate. Source locations are not duplicated here: a
-consumer joins each `fn` to its `loc`/effects from the §2 report (this is what the PR-native SARIF reporter
-does). An engine MAY also expose the verdict some other idiomatic way, but `--gate-json` is the pinned form.
+in `violations` but MUST NOT clear `ok`). Each entry names the `rule` (an `AS-EFF-00x` code, §6), the `fn` it
+fired on, and `effects` — the specific effect(s) the violation concerns: the **denied set**, i.e. the
+intersection of what the entity does and what the rule forbids (so a fn that performs `{Clock, Fs}` under
+`deny Fs` reports `effects: ["Fs"]`, not its full direct set). `effects` is `[]` for a code with no single
+effect (`AS-EFF-009` layer-flow, `AS-EFF-003` unresolved). `detail` is an OPTIONAL human message.
+**Conformance pins `ok` and the `{rule, fn, effects}` set** (the same policy + code yields the same verdict
+in every engine); `detail` is engine-natural prose (like the function-name *value* elsewhere, §3.1) and is
+NOT pinned. The verdict is a re-emission of the gate the engine already ran — it MUST agree with the process
+exit code (a non-empty gate-failing `violations` ⟺ exit 1), so a consumer can never see a verdict that
+disagrees with the gate. Source locations are not duplicated: a consumer joins each `fn` to its `loc` from
+the §2 report (this is what the PR-native SARIF reporter does; `effects` gives it the precise effect to trace
+a codeFlow for — which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
+verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 ## 4. The trust contract — the core of candor
 
@@ -1016,7 +1021,7 @@ declare it via the envelope's `spec`.
   - §3.3 the **structured gate verdict** — `--gate-json <file>` emits `{ spec, ok, violations:[{rule, fn,
     detail?}] }`, the machine analog of the `AS-EFF` console lines, from the same check that sets the exit
     code (so a consumer can never see a verdict that disagrees with the gate). Conformance pins `ok` + the
-    `{rule, fn}` set; `detail` is engine-natural. Powers the PR-native SARIF surface
+    `{rule, fn, effects}` set; `detail` is engine-natural. Powers the PR-native SARIF surface
     (`candor/integrations/github`): each `fn` joins to its `loc`/effects in the §2 report.
   - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink). Rollout: candor-ts,
     candor-scan, candor-swift add `--gate-json` next; a conformance differential then pins the verdict across
