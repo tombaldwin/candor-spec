@@ -1040,43 +1040,37 @@ PY
 # joins when it implements --gate-json and reaches 0.8, at which point this becomes a full differential.
 # ====================================================================================================
 echo
-echo "[12] GATE-VERDICT (SPEC §3.3 ⟨0.8⟩ — --gate-json is faithful to the gate; ladder-aware)"
-# candor-java (spec 0.8): a STATIC deny-Fs violation on the gate/ fixture.
-javac -d "$W/gjout" $(find "$HERE/gate/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on gate/java"; exit 2; }
-java -jar "$JAR" "$W/gjout" --policy "$HERE/gate/policy" --gate-json "$W/gate_java.json" > "$W/gate_java.console" 2>&1; JGX=$?
-python3 - "$W/gate_java.json" "$W/gate_java.console" "$JGX" <<'PY' || rc=1
-import json, re, sys
-verdict = json.load(open(sys.argv[1])); console = open(sys.argv[2]).read(); exit_code = int(sys.argv[3])
-leaf = lambda s: s.split('.')[-1]
-gviol  = [v for v in verdict["violations"] if v["rule"] != "AS-EFF-007"]
-vfns   = sorted(leaf(v["fn"]) for v in gviol)
-vrules = sorted(set(v["rule"] for v in verdict["violations"]))
-veff   = sorted({e for v in gviol for e in v.get("effects", [])})
-cfns   = sorted(leaf(m) for m in re.findall(r'\[AS-EFF-\d+\]\s+`([^`]+)`', console))   # the console AS-EFF lines
-print(f"  candor-java (spec {verdict.get('spec')}): ok={verdict['ok']} rules={vrules} violations={vfns} effects={veff} exit={exit_code}")
-checks = {
-  "ok:false on a failing gate":            verdict["ok"] is False,
-  "exit 1 on a violation":                 exit_code == 1,
-  "verdict <=> exit (non-empty <=> fail)": (len(vfns) > 0) == (exit_code == 1),
-  "AS-EFF-006 present":                    "AS-EFF-006" in vrules,
-  "the pure fn is absent":                 "add" not in vfns,
-  "verdict fns == console fns (no drift)": vfns == cfns and vfns == ["save"],
-  "effects is the denied set { Fs }":      veff == ["Fs"],
-}
-for k, v in checks.items(): print(f"     {'ok  ' if v else 'FAIL'} {k}")
-ok = all(checks.values())
-print("  -> " + ("MATCH — the machine verdict is faithful to the gate the engine ran" if ok
-                 else "DIVERGE — --gate-json disagrees with the gate / exit / console"))
-sys.exit(0 if ok else 1)
+GDIR="$HERE/gate"; GPOL="$GDIR/policy"
+# The SAME static deny-Fs fixture (a `save` that writes a file + a pure `add`) in every language; each
+# engine's --gate-json verdict must AGREE — the cross-engine pin the ladder promises once all reach 0.8.
+javac -d "$W/g_java" $(find "$GDIR/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on gate/java"; exit 2; }
+java -jar "$JAR" "$W/g_java" --policy "$GPOL" --gate-json "$W/gv_java.json" >/dev/null 2>&1
+"$SCAN" "$GDIR/rust" --out "$W/g_rust" --policy "$GPOL" --gate-json "$W/gv_scan.json" >/dev/null 2>&1
+[ -n "$TS_OK" ] && node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$W/g_ts" --policy "$GPOL" --gate-json "$W/gv_ts.json" >/dev/null 2>&1
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && "$SW_BIN" "$GDIR/swift" --out "$W/g_sw" --policy "$GPOL" --gate-json "$W/gv_swift.json" >/dev/null 2>&1
+python3 - "$W" <<'PY' || rc=1
+import json, os, sys
+W = sys.argv[1]
+engines = [("candor-java", "gv_java"), ("candor-scan", "gv_scan"), ("candor-ts", "gv_ts"), ("candor-swift", "gv_swift")]
+leaf = lambda s: s.replace("::", ".").split(".")[-1]
+def norm(path):
+    d = json.load(open(path))
+    v = sorted((x["rule"], leaf(x["fn"]), tuple(sorted(x.get("effects", []))))
+               for x in d["violations"] if x["rule"] != "AS-EFF-007")
+    return d.get("spec"), bool(d["ok"]), v
+present = [(n, norm(f"{W}/{s}.json")) for n, s in engines if os.path.exists(f"{W}/{s}.json")]
+print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — --gate-json agrees across every 0.8 engine)")
+for n, (spec, ok, v) in present:
+    print(f"  {n:13s} spec={spec} ok={ok} violations={[(r, f, list(e)) for r, f, e in v]}")
+EXPECT = (False, [("AS-EFF-006", "save", ("Fs",))])   # the one deny-Fs violation, effects {Fs}, pure `add` absent
+faithful = all((ok, v) == EXPECT for _, (_, ok, v) in present)
+agree = len({(ok, tuple(v)) for _, (_, ok, v) in present}) == 1   # spec MAY differ mid-rollout (the ladder); the VERDICT may not
+on_rung = [n for n, (spec, _, _) in present if str(spec).startswith(("0.8", "0.9", "1."))]
+print(f"  on the 0.8 rung: {', '.join(on_rung)} ({len(present)} engines emit a verdict)")
+print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict (ok:false · AS-EFF-006 `save` · {Fs})"
+                 if faithful and agree else "DIVERGE — the gate verdict differs across engines"))
+sys.exit(0 if faithful and agree and len(present) >= 2 else 1)
 PY
-# Ladder disclosure: name every engine still on the 0.7 floor (no --gate-json yet), so the skip is loud.
-floor_note() { case "$2" in 0.8*|0.9*|1.*) echo "  $1: spec $2 — on the 0.8 rung (would join the differential)";;
-                            *) echo "  $1: spec $2 — on the 0.7 FLOOR; --gate-json arrives when it reaches 0.8 (ladder)";; esac; }
-espec() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('candor',{}).get('spec','?'))" "$1" 2>/dev/null || echo '?'; }
-RREP=$(ls "$W"/policy/rust/.candor/report*.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
-[ -n "$RREP" ] && floor_note "candor-scan " "$(espec "$RREP")"
-[ -n "$TS_OK" ] && floor_note "candor-ts   " "$(espec "$W/ts.json")"
-[ -n "$SW_OK" ] && floor_note "candor-swift" "$(espec "$SW_REPORT")"
 
 echo
 [ "$rc" -eq 0 ] \

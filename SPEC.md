@@ -4,11 +4,12 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.8** (reference-first; released floor `0.7`, tag `v0.7`). Minor versions ride a **ladder, not a
+**Version 0.8** (all four engines declare `0.8`; conformance-pinned). Minor versions ride a **ladder, not a
 lockstep stamp** (see *Versioning policy* below): the reference engine leads a new additive rung, the others
-raise to it in turn, and the floor rises when the last lands. The ⟨0.8⟩ part — the **structured gate verdict**
-(§3.3, `--gate-json`) — is **led by candor-java** (which declares `0.8`); the other engines implement it and
-raise to `0.8` next, at which point the floor rises. The ⟨0.7⟩ parts — the **canonical `unknownWhy` vocabulary**
+raise to it in turn, and the floor rises when the last lands — which for 0.8 it now has. The ⟨0.8⟩ part — the
+**structured gate verdict** (§3.3, `--gate-json`) — was led by candor-java and is now implemented by all four
+engines, its cross-engine agreement pinned by the conformance gate-verdict differential (the floor is 0.8).
+The ⟨0.7⟩ parts — the **canonical `unknownWhy` vocabulary**
 (§4: four kinds reflect/native/dispatch/callback, `dispatch:` detail normative as `owner.member`); the
 **type-hierarchy sidecar** (§2.2); and the **`callers --include-unknown` dispatch-frontier** (§3.1,
 `possibleViaUnknownDispatch`) — are the **released floor**: all four engines implement them and conformance
@@ -1014,10 +1015,11 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.8 (reference-first — candor-java declares `0.8`; floor still `0.7`)** —
+- **0.8 (all four engines declare `0.8`; conformance-pinned)** —
   additive, wire-compatible with 0.7. The first version to ride the **ladder** (see *Versioning policy*): a
-  minor rung led by the reference engine while the other engines remain interoperable on the `0.7` floor and
-  raise to `0.8` as they implement it (the floor rises when the last does).
+  minor rung led by the reference engine (candor-java), then implemented by candor-scan, candor-ts and
+  candor-swift in turn — the floor has now risen to `0.8`, its cross-engine agreement pinned by the
+  conformance gate-verdict differential (PART 12).
   - §3.3 the **structured gate verdict** — `--gate-json <file>` emits `{ spec, ok, violations:[{rule, fn,
     detail?}] }`, the machine analog of the `AS-EFF` console lines, from the same check that sets the exit
     code (so a consumer can never see a verdict that disagrees with the gate). Conformance pins `ok` + the

@@ -1,2 +1,2 @@
-# the app layer must not touch the filesystem
-deny Fs app
+# the gate-verdict differential: no layer may perform filesystem I/O
+deny Fs
