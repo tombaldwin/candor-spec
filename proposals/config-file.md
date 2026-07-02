@@ -1,8 +1,11 @@
 # `.candor/config` — a checked-in configuration file
 
-Status: **reference implementation in candor-java** (engine feature at the current spec — reading a config
-file changes no report schema / effect vocabulary / AS-EFF code, so it does **not** bump the spec version).
-Roll to candor-scan/ts/swift next, then document as a normative §config so every engine agrees.
+Status: **DONE — all four engines implement it; normative as SPEC.md §3.4** (an additive amendment within
+0.8 — configuration, not the wire contract, so the spec string is unchanged). Conformance PART 13 pins
+discovery, precedence and the fail-closed posture per engine (config-gate=1 / env-override=0 /
+typo-config=2). Additions beyond this proposal, made during the roll: target-anchored discovery (walk up
+from the scan target; CANDOR_CONFIG overrides), fail-closed on configured-but-unusable, bare value keys =
+enabled-with-empty, unknown keys warned (typo protection), inert-if-unimplemented known keys.
 
 ## Motivation
 
