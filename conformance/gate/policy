@@ -1,2 +1,6 @@
-# the gate-verdict differential: no layer may perform filesystem I/O
+# the gate-verdict differential — TWO rules so PART 12 pins two codes per engine:
+#   deny Fs        → AS-EFF-006 on `save` (effects {Fs})
+#   allow Fs …     → AS-EFF-008 on `save` (its path is a PARAMETER — no visible literal → uncertifiable,
+#                    fail-closed in every engine; effects {Fs})
 deny Fs
+allow Fs /var/data

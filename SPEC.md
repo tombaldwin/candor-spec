@@ -17,8 +17,9 @@ differentials pin both the vocabulary and the frontier output. (The ⟨0.6⟩ pa
 query and the §4 `unknownWhy`-required-on-a-direct-source tightening — remain, wire-compatible; each rung is
 additive over the last, so an older-version consumer that ignores the new optional fields is unaffected.)
 
-The **spec/contract version** — the report schema, the effect vocabulary, and the
-`AS-EFF` codes — that a conformant implementation declares it implements (the envelope's `spec`). It is
+The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the
+**pinned tool surfaces** (the §3.1 query shapes, the §3.3 command-line surface, the §6.2 policy grammar) —
+that a conformant implementation declares it implements (the envelope's `spec`). It is
 distinct from an engine's *build id* (a git hash, §2.1) and from its *release semver*. An engine's
 release **major.minor tracks the spec it implements** — `candor-java 0.8.x` declares spec `0.8`, a sibling
 still on the floor declares `0.7` — with
@@ -30,7 +31,10 @@ lockstep stamp**. Two guarantees, kept distinct:
 - **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version
   **identically**, proven by the conformance differential — that cross-language identity is the project's
   defining guarantee (a per-language tool cannot offer it). The floor is the highest version *every* engine
-  implements.
+  implements — where "every engine" means the **reference code engines the cross-impl conformance suite
+  pins** (currently candor-java, candor-scan, candor-ts, candor-swift). A **domain engine** (§4 — e.g. the
+  agent-fleet engine) rides the ladder on its own schedule and declares its own `spec`; it does not hold
+  the code-engine floor back, and a floor claim never speaks for it.
 - **The version each engine declares is disclosed, not assumed.** An engine emits in every report the exact
   spec version it implements (the envelope's `spec`, §2.1), which MAY be **ahead of the floor**. A consumer
   reads that field rather than assuming uniformity — candor's own disclose-don't-paper-over discipline (§4)
@@ -40,8 +44,11 @@ Because minor bumps are **additive-only**, engines at different rungs never *con
 new optional query/field, so an older-version engine simply lacks it (disclosed via `spec`), never
 contradicts it. That is what makes a leading reference safe, and it splits the policy by change kind:
 
-- **Minor (additive) bump → the reference MAY lead.** A new optional field/query/artifact, or a refinement
-  that narrows an upper bound. The **reference engine (candor-java)** implements it, it is written into this
+- **Minor (additive) bump → the reference MAY lead.** A new optional field/query/artifact, a refinement
+  that narrows an upper bound, or an **obligation tightening** (a SHOULD→MUST, a field made required on
+  producers — the 0.4/0.6 precedent): none of these can put two rungs in conflict — an engine on the older
+  rung simply doesn't yet meet the new obligation, and says so via `spec`. The **reference engine
+  (candor-java)** implements it, it is written into this
   document, and candor-java declares the new minor **ahead of** the other engines — its release
   `major.minor` tracks the spec it implements, so `candor-java 0.8.x` declares `spec 0.8` while a sibling
   still at `0.7` stays fully interoperable on the `0.7` floor. The other engines raise to the new version as
@@ -60,12 +67,14 @@ contradicts it. That is what makes a leading reference safe, and it splits the p
 So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the
 contract: `0.7` remains a complete, frozen floor every engine still meets, and `0.8` is the next rung —
 reached first by the reference, additively — so nothing a `0.7` consumer relies on changes. The envelope's
-`spec` is the honest, per-report statement of which rung produced it.
+`spec` is the honest, per-report statement of which rung produced it. The spec repo **tags `vX.Y` when the
+floor rises** to X.Y (the rung's release point); while a rung is reference-led the header names the rung
+and the released floor separately, untagged.
 
 See the [changelog](#8-changelog) for what each version added. An implementation MUST emit the spec
 version it conforms to in every report (the envelope's `spec`, §2/§2.1) and SHOULD expose it as a
 constant. The report is wrapped in a self-describing `{ candor, functions }` envelope (§2); the legacy
-v0.1 bare array is still accepted by conformant readers during migration. See the [changelog](#8-changelog).
+v0.1 bare array is still accepted by conformant readers during migration.
 
 > This document fixes the **interface** an implementation must produce. For the **analysis** behind
 > it — the effect lattice, call-site resolution rules, the transitive fixpoint, cross-crate
@@ -91,7 +100,9 @@ vocabulary:
 | `Unknown` | a call the implementation **could not resolve** — see §4 |
 
 An implementation MAY add language-specific effects, but SHOULD use these names where they apply.
-`Unknown` is mandatory and special.
+`Unknown` is mandatory and special — a **visibility marker**, not a declarable effect: where this document
+says "a §1 effect name" (the §5.1 manifest, §6.1 containment, a policy `deny` set), it means the ten
+effects above, never `Unknown` (which `deny Unknown` addresses explicitly, §6.2).
 
 Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not**
 classified — not as `Log`, not as `Fs`. Classifying them would flood every CLI tool's report (printing
@@ -116,7 +127,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.7" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.8" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -327,7 +338,7 @@ The header has THREE fields, on two distinct axes — keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec` — the **candor-spec contract version** this engine implements (`"0.7"`). This is the version
+- `spec` — the **candor-spec contract version** this engine implements (`"0.8"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version — they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -426,9 +437,10 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   the same policy text and asserts the parses agree, which is what keeps one policy file meaning
   the same gate in every language. An implementation that enforces any policy mode SHOULD expose it.
 
-These are an interface convenience, **not** part of the wire contract — a consumer that only reads the JSON
-report is fully conformant. An implementation SHOULD keep query **names and output shapes consistent across
-languages**, so an agent uses a report from any language identically; the cross-language conformance suite
+These bind **engines, not consumers** — a consumer that only reads the JSON report is fully conformant.
+For an engine that exposes them, the query names and JSON shapes ARE part of the versioned contract (a new
+query shape is a minor bump — §8's own rule; 0.6's `blindspots` moved the version). An implementation
+SHOULD keep query **names and output shapes consistent across languages**, so an agent uses a report from any language identically; the cross-language conformance suite
 verifies this. **Name-query matching SHOULD follow the same ladder in every language**: exact match, else
 segment-suffix (the query sits after a path-separator boundary — `Pricing::quote` or bare `quote` matches
 `pricing::Pricing::quote`, never `quote_bulk`), else substring — resolved at the best tier any candidate
@@ -533,7 +545,7 @@ engine identically. Every implementation's scanner MUST accept:
 | `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
-| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Emitted whenever a policy/gate is active; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
+| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given: with a gate active it re-emits that gate’s verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
@@ -555,11 +567,13 @@ gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "effect
 ```
 
 `ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear
-in `violations` but MUST NOT clear `ok`). Each entry names the `rule` (an `AS-EFF-00x` code, §6), the `fn` it
-fired on, and `effects` — the specific effect(s) the violation concerns: the **denied set**, i.e. the
-intersection of what the entity does and what the rule forbids (so a fn that performs `{Clock, Fs}` under
-`deny Fs` reports `effects: ["Fs"]`, not its full direct set). `effects` is `[]` for a code with no single
-effect (`AS-EFF-009` layer-flow, `AS-EFF-003` unresolved). `detail` is an OPTIONAL human message.
+in `violations` but MUST NOT set `ok` false). Each entry names the `rule` (an `AS-EFF-00x` code, §6), the
+`fn` it fired on, and `effects` — the specific effect set the violation concerns, **per the rule's
+semantics**: the denied intersection for `AS-EFF-006` (a fn performing `{Clock, Fs}` under `deny Fs`
+reports `["Fs"]`, never its full set); the allow rule's effect for `AS-EFF-008`; the gained set (005); the
+ambient set (004); the undeclared set (001); the unused **declared** set for 002 (capabilities held but
+never used — the one code whose `effects` are declared, not performed); the taint-reached set (007); and
+`[]` where no effect set applies (`AS-EFF-009` layer-flow, `AS-EFF-003` unresolved). `detail` is an OPTIONAL human message.
 **Conformance pins `ok` and the `{rule, fn, effects}` set** (the same policy + code yields the same verdict
 in every engine); `detail` is engine-natural prose (like the function-name *value* elsewhere, §3.1) and is
 NOT pinned. The verdict is a re-emission of the gate the engine already ran — it MUST agree with the process
@@ -908,7 +922,17 @@ per-agent) MUST be reported as unenforceable at that layer, not silently widened
 
 ## 7. Conformance checklist for an implementation
 
-An implementation conforms to candor-spec if it:
+Two **profiles** exist, and a claim of conformance names one. A **sound engine** meets every MUST below —
+this is the default meaning of "conformant". A **disclosed syntactic floor** (the Rust repo's stable
+`candor-scan` backend is the canonical example) deliberately does not claim items 1/4 — it documents that
+it can under-report *silently* (item 7's honesty obligation applied to its own design), meets the
+interchange items (2–3, 5–6, 8, 14) and answers the cross-impl conformance fixtures it can. Both declare
+the envelope `spec` of the contract whose **interchange surfaces** they implement; what differs — and MUST
+be documented, never implied away — is the §4 claim. (Item 13 states the same split for the soundness
+harness; this paragraph names it as a profile so "every conformant engine agrees" is a precise claim, not
+one that quietly includes an engine the checklist would otherwise disqualify.)
+
+A **sound engine** conforms to candor-spec if it:
 
 1. resolves call targets using type information (not purely syntactically);
 2. computes a per-function **transitive** effect set;
@@ -916,8 +940,9 @@ An implementation conforms to candor-spec if it:
 4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
    command-line surface** of §3.3 — `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
-   `--version`/`-V` carrying the spec version, `--help`/`-h`, and `--agents` (the embedded agent
-   contract, item 11) — with flag names and help wording consistent across engines;
+   `--version`/`-V` carrying the spec version, `--help`/`-h`, `--agents` (the embedded agent
+   contract, item 11), and — for an engine declaring `spec ≥ 0.8` — `--gate-json` (the structured
+   gate verdict) — with flag names and help wording consistent across engines;
 6. uses the §1 vocabulary and §6 codes where they apply, and — if it enforces any policy mode — parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. is honest in its own docs about what it cannot see;
@@ -1021,13 +1046,13 @@ declare it via the envelope's `spec`.
   candor-swift in turn — the floor has now risen to `0.8`, its cross-engine agreement pinned by the
   conformance gate-verdict differential (PART 12).
   - §3.3 the **structured gate verdict** — `--gate-json <file>` emits `{ spec, ok, violations:[{rule, fn,
-    detail?}] }`, the machine analog of the `AS-EFF` console lines, from the same check that sets the exit
+    effects, detail?}] }`, the machine analog of the `AS-EFF` console lines, from the same check that sets the exit
     code (so a consumer can never see a verdict that disagrees with the gate). Conformance pins `ok` + the
     `{rule, fn, effects}` set; `detail` is engine-natural. Powers the PR-native SARIF surface
     (`candor/integrations/github`): each `fn` joins to its `loc`/effects in the §2 report.
-  - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink). Rollout: candor-ts,
-    candor-scan, candor-swift add `--gate-json` next; a conformance differential then pins the verdict across
-    every engine that declares `0.8`.
+  - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink); then candor-scan,
+    candor-ts and candor-swift in turn. All four declare `0.8`; the conformance gate-verdict differential
+    (PART 12) pins their agreement on the shared fixtures.
 - **0.7 (released — tag `v0.7`; engines declare `0.7`)** —
   additive, wire-compatible with 0.6; all four engines implement it and two conformance differentials pin
   it (see `proposals/unknownwhy-vocabulary.md`, `proposals/0.7-unknown-dispatch-frontier.md`):

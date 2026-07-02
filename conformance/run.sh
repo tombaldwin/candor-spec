@@ -1062,12 +1062,13 @@ present = [(n, norm(f"{W}/{s}.json")) for n, s in engines if os.path.exists(f"{W
 print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — --gate-json agrees across every 0.8 engine)")
 for n, (spec, ok, v) in present:
     print(f"  {n:13s} spec={spec} ok={ok} violations={[(r, f, list(e)) for r, f, e in v]}")
-EXPECT = (False, [("AS-EFF-006", "save", ("Fs",))])   # the one deny-Fs violation, effects {Fs}, pure `add` absent
+EXPECT = (False, [("AS-EFF-006", "save", ("Fs",)),    # deny Fs — the denied intersection
+                  ("AS-EFF-008", "save", ("Fs",))])   # allow Fs, param path → uncertifiable (fail-closed); pure `add` absent
 faithful = all((ok, v) == EXPECT for _, (_, ok, v) in present)
 agree = len({(ok, tuple(v)) for _, (_, ok, v) in present}) == 1   # spec MAY differ mid-rollout (the ladder); the VERDICT may not
 on_rung = [n for n, (spec, _, _) in present if str(spec).startswith(("0.8", "0.9", "1."))]
 print(f"  on the 0.8 rung: {', '.join(on_rung)} ({len(present)} engines emit a verdict)")
-print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict (ok:false · AS-EFF-006 `save` · {Fs})"
+print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict (ok:false · 006+008 on `save` · {Fs})"
                  if faithful and agree else "DIVERGE — the gate verdict differs across engines"))
 sys.exit(0 if faithful and agree and len(present) >= 2 else 1)
 PY
