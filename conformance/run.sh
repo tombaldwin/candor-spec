@@ -1041,36 +1041,55 @@ PY
 # ====================================================================================================
 echo
 GDIR="$HERE/gate"; GPOL="$GDIR/policy"
-# The SAME static deny-Fs fixture (a `save` that writes a file + a pure `add`) in every language; each
-# engine's --gate-json verdict must AGREE — the cross-engine pin the ladder promises once all reach 0.8.
+# The SAME static two-rule fixture in every language; each engine's --gate-json verdict must AGREE, AND
+# each engine's process EXIT CODE is captured and pinned against its verdict — §3.3's central clause
+# (non-empty gate-failing violations ⟺ exit 1) was previously untested here (the runs ended in
+# >/dev/null with no $? capture). Membership is REQUIRED, not file-existence: java+scan always, ts/swift
+# whenever the engine is present-and-working (TS_OK/SW_OK) — a 0.8 engine whose --gate-json regresses to
+# writing nothing must FAIL the differential, never silently drop out of it.
 javac -d "$W/g_java" $(find "$GDIR/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on gate/java"; exit 2; }
-java -jar "$JAR" "$W/g_java" --policy "$GPOL" --gate-json "$W/gv_java.json" >/dev/null 2>&1
-"$SCAN" "$GDIR/rust" --out "$W/g_rust" --policy "$GPOL" --gate-json "$W/gv_scan.json" >/dev/null 2>&1
-[ -n "$TS_OK" ] && node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$W/g_ts" --policy "$GPOL" --gate-json "$W/gv_ts.json" >/dev/null 2>&1
-[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && "$SW_BIN" "$GDIR/swift" --out "$W/g_sw" --policy "$GPOL" --gate-json "$W/gv_swift.json" >/dev/null 2>&1
-python3 - "$W" <<'PY' || rc=1
+java -jar "$JAR" "$W/g_java" --policy "$GPOL" --gate-json "$W/gv_java.json" >/dev/null 2>&1; GX_JAVA=$?
+"$SCAN" "$GDIR/rust" --out "$W/g_rust" --policy "$GPOL" --gate-json "$W/gv_scan.json" >/dev/null 2>&1; GX_SCAN=$?
+GX_TS=-1; [ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$W/g_ts" --policy "$GPOL" --gate-json "$W/gv_ts.json" >/dev/null 2>&1; GX_TS=$?; }
+GX_SW=-1; [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { "$SW_BIN" "$GDIR/swift" --out "$W/g_sw" --policy "$GPOL" --gate-json "$W/gv_swift.json" >/dev/null 2>&1; GX_SW=$?; }
+python3 - "$W" "$GX_JAVA" "$GX_SCAN" "$GX_TS" "$GX_SW" <<'PY' || rc=1
 import json, os, sys
 W = sys.argv[1]
-engines = [("candor-java", "gv_java"), ("candor-scan", "gv_scan"), ("candor-ts", "gv_ts"), ("candor-swift", "gv_swift")]
+exits = dict(zip(["candor-java", "candor-scan", "candor-ts", "candor-swift"], map(int, sys.argv[2:6])))
+engines = [("candor-java", "gv_java", True), ("candor-scan", "gv_scan", True),
+           ("candor-ts", "gv_ts", exits["candor-ts"] >= 0), ("candor-swift", "gv_swift", exits["candor-swift"] >= 0)]
 leaf = lambda s: s.replace("::", ".").split(".")[-1]
 def norm(path):
     d = json.load(open(path))
     v = sorted((x["rule"], leaf(x["fn"]), tuple(sorted(x.get("effects", []))))
                for x in d["violations"] if x["rule"] != "AS-EFF-007")
     return d.get("spec"), bool(d["ok"]), v
-present = [(n, norm(f"{W}/{s}.json")) for n, s in engines if os.path.exists(f"{W}/{s}.json")]
-print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — --gate-json agrees across every 0.8 engine)")
-for n, (spec, ok, v) in present:
-    print(f"  {n:13s} spec={spec} ok={ok} violations={[(r, f, list(e)) for r, f, e in v]}")
+print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — verdict AND exit code agree across every 0.8 engine)")
 EXPECT = (False, [("AS-EFF-006", "save", ("Fs",)),    # deny Fs — the denied intersection
                   ("AS-EFF-008", "save", ("Fs",))])   # allow Fs, param path → uncertifiable (fail-closed); pure `add` absent
-faithful = all((ok, v) == EXPECT for _, (_, ok, v) in present)
-agree = len({(ok, tuple(v)) for _, (_, ok, v) in present}) == 1   # spec MAY differ mid-rollout (the ladder); the VERDICT may not
-on_rung = [n for n, (spec, _, _) in present if str(spec).startswith(("0.8", "0.9", "1."))]
-print(f"  on the 0.8 rung: {', '.join(on_rung)} ({len(present)} engines emit a verdict)")
-print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict (ok:false · 006+008 on `save` · {Fs})"
-                 if faithful and agree else "DIVERGE — the gate verdict differs across engines"))
-sys.exit(0 if faithful and agree and len(present) >= 2 else 1)
+fails = []
+for n, stem, required in engines:
+    if not required:
+        print(f"  {n:13s} not present on this runner — skipped (loudly)")
+        continue
+    path = f"{W}/{stem}.json"
+    if not os.path.exists(path):
+        fails.append(f"{n}: REQUIRED but wrote no verdict file")   # a regressed --gate-json must FAIL, not vanish
+        continue
+    spec, ok, v = norm(path)
+    ex = exits[n]
+    print(f"  {n:13s} spec={spec} exit={ex} ok={ok} violations={[(r, f, list(e)) for r, f, e in v]}")
+    if (ok, v) != EXPECT:
+        fails.append(f"{n}: verdict diverges from the pinned expectation")
+    if ex != 1:
+        fails.append(f"{n}: exit {ex} on a violating gate (must be 1)")
+    if ok is not (ex == 0):
+        fails.append(f"{n}: verdict ok={ok} DISAGREES with exit {ex} — the §3.3 MUST")
+for f in fails:
+    print(f"     FAIL {f}")
+print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict AND exit (ok:false · 006+008 on `save` · {Fs} · exit 1)"
+                 if not fails else "DIVERGE — see FAIL lines"))
+sys.exit(0 if not fails else 1)
 PY
 
 echo

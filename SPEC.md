@@ -67,7 +67,7 @@ contradicts it. That is what makes a leading reference safe, and it splits the p
 So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the
 contract: `0.7` remains a complete, frozen floor every engine still meets, and `0.8` is the next rung —
 reached first by the reference, additively — so nothing a `0.7` consumer relies on changes. The envelope's
-`spec` is the honest, per-report statement of which rung produced it. The spec repo **tags `vX.Y` when the
+`spec` is the exact, per-report statement of which rung produced it. The spec repo **tags `vX.Y` when the
 floor rises** to X.Y (the rung's release point); while a rung is reference-led the header names the rung
 and the released floor separately, untagged.
 
