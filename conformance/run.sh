@@ -1092,8 +1092,46 @@ print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict AND
 sys.exit(0 if not fails else 1)
 PY
 
+# ====================================================================================================
+# PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
+# in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
+# TARGET's ancestors supplies the policy → the gate fires (exit 1) with no flag and no env; (b) the
+# CANDOR_POLICY env OVERRIDES the config (a passing policy wins → exit 0); (c) a set-but-unusable
+# CANDOR_CONFIG fails closed (exit 2) — configured gate sources never vanish silently.
+# ====================================================================================================
+echo
+echo "[13] .CANDOR/CONFIG differential  (SPEC §config — discovery, precedence, fail-closed agree)"
+CFGW="$W/cfg"; mkdir -p "$CFGW"
+cp -r "$GDIR/rust" "$CFGW/rust"; cp -r "$GDIR/ts" "$CFGW/ts"; cp -r "$GDIR/swift" "$CFGW/swift"
+mkdir -p "$CFGW/java"; javac -d "$CFGW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
+printf 'deny Net\n' > "$CFGW/pass.policy"   # the fixtures do Fs only → deny Net passes
+for eng in java rust ts swift; do
+  mkdir -p "$CFGW/$eng/.candor"
+  printf 'policy %s\npolcy typo\n' "$GPOL" > "$CFGW/$eng/.candor/config"
+done
+cfg_probe() { # $1 engine label, then the scan command (target LAST for readability of callers)
+  local label=$1; shift
+  local rc_a rc_b rc_c
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "$@" >/dev/null 2>&1; rc_a=$?
+  env -u CANDOR_CONFIG CANDOR_POLICY="$CFGW/pass.policy" "$@" >/dev/null 2>&1; rc_b=$?
+  env -u CANDOR_POLICY CANDOR_CONFIG="$CFGW/no-such-config" "$@" >/dev/null 2>&1; rc_c=$?
+  echo "  $label config-gate=$rc_a env-override=$rc_b typo-config=$rc_c"
+  [ "$rc_a" = 1 ] && [ "$rc_b" = 0 ] && [ "$rc_c" = 2 ] && return 0
+  echo "     FAIL $label: expected 1/0/2"; return 1
+}
+CFG_OK=0
+cfg_probe "candor-java " java -jar "$JAR" "$CFGW/java" || CFG_OK=1
+cfg_probe "candor-scan " "$SCAN" "$CFGW/rust" --out "$CFGW/r_rep" || CFG_OK=1
+[ -n "$TS_OK" ] && { cfg_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$CFGW/ts" --out "$CFGW/t_rep" || CFG_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { cfg_probe "candor-swift" "$SW_BIN" "$CFGW/swift" --out "$CFGW/s_rep" || CFG_OK=1; }
+if [ "$CFG_OK" = 0 ]; then
+  echo "  -> MATCH — .candor/config discovery, env precedence and fail-closed agree across the engines"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + .candor/config agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

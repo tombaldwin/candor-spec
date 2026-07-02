@@ -583,6 +583,44 @@ the §2 report (this is what the PR-native SARIF reporter does; `effects` gives 
 a codeFlow for — which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
 verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
+### 3.4 The configuration file — `.candor/config` (SHOULD)
+
+A single checked-in file replaces the `CANDOR_*` environment wiring, so CI becomes "point at the repo"
+and the configuration travels with the code. One `key value…` per line; `#` begins a comment (inline
+too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary** is shared across engines:
+
+| key | env var | value |
+|---|---|---|
+| `policy` | `CANDOR_POLICY` | path to a §6.2 policy file |
+| `baseline` | `CANDOR_BASELINE` | path to a baseline report (the AS-EFF-005 ratchet) |
+| `strict` | `CANDOR_STRICT` | a scope (conformance, AS-EFF-001–003) |
+| `no-ambient` | `CANDOR_NO_AMBIENT` | a scope (AS-EFF-004) |
+| `closed-world` | `CANDOR_CLOSED_WORLD` | boolean (`true`/`1`/`yes`, or a bare key) |
+| `taint` | `CANDOR_TAINT` | boolean |
+| `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
+
+An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert** (a repo
+scanned by several engines carries one config; `strict` drives the JVM engine and is silent elsewhere).
+A key **outside** the vocabulary is **ignored with a warning** — the §6.2 malformed-line posture: a
+misspelt `policy` must never silently drop a gate. A **bare** value key (a lone `strict` line) means
+"enabled with the empty value" — exactly the set-but-empty env var (whole-unit scope for a scope key;
+a bare `policy` fails loud on the empty path), never a silent drop.
+
+**Discovery is anchored to the scan target, not the CWD**: the file is found by walking UP from the
+target (`target/classes` → the repo root's `.candor/config`), so the config that travels with the
+scanned code is the one that applies regardless of where the process was launched; a `CANDOR_CONFIG`
+environment variable overrides discovery entirely. **Precedence, highest first: a CLI flag → the
+matching `CANDOR_*` env var (the one-off override) → this file → the built-in default.**
+
+**Fail-closed:** a config that is configured but unusable never silently degrades to "no config" — a
+set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that exists but cannot be
+read, FAILS the run (exit 2, the §6.2 unreadable-policy posture; the file may carry the policy, so a
+silently-dropped config is a silently-dropped gate). Only genuine absence is an empty config.
+
+This is configuration, not the report/effect wire contract — no field an interoperating consumer reads
+changes — so it advances no version (an additive amendment within 0.8; all four engines implement it and
+the conformance config differential pins discovery, precedence and the fail-closed posture).
+
 ## 4. The trust contract — the core of candor
 
 The defining rule: **an implementation must never report a function as effect-free when it could not
@@ -1053,6 +1091,11 @@ declare it via the envelope's `spec`.
   - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink); then candor-scan,
     candor-ts and candor-swift in turn. All four declare `0.8`; the conformance gate-verdict differential
     (PART 12) pins their agreement on the shared fixtures.
+  - **(amended)** §3.4 the **`.candor/config` configuration file** — the checked-in alternative to the
+    `CANDOR_*` env wiring (shared key vocabulary; target-anchored discovery; precedence flag → env →
+    config → default; fail-closed when configured-but-unusable; unknown keys warn). Configuration, not
+    the wire contract: additive within 0.8, the spec string is unchanged (the 0.3/0.4-amendment
+    precedent); all four engines implement it, pinned by the conformance config differential (PART 13).
 - **0.7 (released — tag `v0.7`; engines declare `0.7`)** —
   additive, wire-compatible with 0.6; all four engines implement it and two conformance differentials pin
   it (see `proposals/unknownwhy-vocabulary.md`, `proposals/0.7-unknown-dispatch-frontier.md`):
