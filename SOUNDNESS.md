@@ -424,6 +424,17 @@ with disclosure noise, and coverage legitimately shrinks it. Dogfood trajectory 
 ledger 81 → 64 → 49 packages; the top head fell from 5,502 calls (struts) to 25 (jackson-databind — the
 one broadly-valuable batch-30 candidate; the rest is long tail).
 
+**κ batch 30 + 30b (2026-07-06, candor-java `cd617cb`): Jackson, and a live SILENT-NET find in the
+existing AWS coverage.** Jackson yields to ONE descriptor-driven rule (a File/Path parameter is a source or
+sink → Fs; a URL → Net — uniform across the stack; String/bytes/stream overloads pure-relative). The
+important entry is 30b: the AWS rule's `owner.endsWith("Client")` gate missed calls through the v1 service
+INTERFACES (`AmazonS3.copyObject` — a real S3 request — read silent-invisible on the dogfood app; `copy*`
+was also missing from the verb list). The request-making surface is now the Client classes + the
+Amazon*/AWS* interfaces (outside .model./Builder) + TransferManager. Unmasked Net 473 → 534 on the dogfood
+app. LESSON for the register: a curated rule's OWNER GATE is itself a soundness surface — verify coverage
+against how code actually types its variables (interfaces), not just the concrete classes. Dogfood ledger
+after batches 28–30b: 81 → 37 packages, everything remaining ≤ 20 calls (long tail).
+
 **CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
 tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
