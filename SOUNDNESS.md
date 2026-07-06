@@ -379,6 +379,36 @@ recorded for completeness: declared-on-interface HTTP clients (Retrofit `@GET`, 
 `Unknown` (DISCLOSED, not silent) — a precision opportunity (model → Net like Feign), NOT a cardinal sin.
 **Status: the inherited-into-project silent-pure vein CLASS is now closed** across modeled + unmodeled bases.
 
+**κ batch 28 — the LEGACY-ENTERPRISE frontier (2026-07-06, candor-java post-0.8.2 `aefca4f`): JCL /
+Joda-Time / commons-lang3 / hibernate.criterion / Struts 1.x.** Found by dogfooding a real 2,257-class
+Struts webapp whose κ ledger listed 81 packages — dominated by struts (5,502 calls), commons-lang3 (2,141),
+commons-logging (791), hibernate.criterion (586), joda-time (249): the pre-Spring enterprise stack, still
+everywhere, previously entirely INVISIBLE-floored. METHOD (reusable): extract the app's COMPLETE per-member
+call surface into the candidate namespaces from bytecode (`javap -c | grep 'Method org/apache/…'` →
+`sort | uniq -c`) and triage every member — 169 distinct members, of which only ~6 were effectful. Those
+six are classified verb-precisely (commons-logging emit verbs → Log — on the dogfood app this UNMASKED
+855 fns of logging, 756 → 1,611; Joda's now-family → Clock with the no-arg instant ctors
+DESCRIPTOR-gated so `new DateTime(long)` stays a pure value ctor; lang3's RandomStringUtils/RandomUtils →
+Rand and SystemProperties/SystemUtils getters → Env; Struts `TagUtils.write/print` → Net — tag output is
+the client socket, the ServletResponse stance — and `FormFile` content reads → Fs, the spooled multipart
+temp file); the verified-pure remainder floors under KAPPA_COVERED_PREFIXES. Boundary discipline:
+`org.hibernate.criterion` (pure builders) is covered because execution lives on the already-classified
+Session/Query terminals, but `org.hibernate` BROADLY stays ledgered — coverage is only granted where the
+effectful surface is modeled or the namespace's inventory is verified pure. Gates: anti-fabrication twins
+per package (KappaBatch28Test), jsoup/gson byte-IDENTICAL vs the released jar; a Spring app's report
+legitimately GAINS Log lines (spring-jcl provides org.apache.commons.logging) — unmasking, not regression.
+
+**The same dogfood also validated the full Unknown-reduction ladder on a real legacy app** (the workflow
+the `blindspots` query was built for): (1) blindspots ranked ONE dispatch — a project interface with 42
+enum implementors, past the shared CHA-12 bound — as the source of 3,551 of 3,617 Unknowns; `closed-world`
+(§3.4 config, sound for an application) resolved it → 153. (2) Batch 28 converted the invisible floor to
+real attributions (ledger 81 → 64 packages, every giant cleared). (3) Chaining a first-party library's own
+report (§2 `deps`) covered its 236 calls — and RAISED disclosed Unknown to 680, correctly: the library's
+reflective plugin registries (`Constructor.newInstance`) are irreducible, and calls that previously read
+silent-invisible now read honest-Unknown. More honesty, not less precision — the direction the trust
+contract orders these. Residual ledger heads (commons-validator 95, threeten-extra 61, jsonwebtoken 31)
+are future batch candidates.
+
 **CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
 tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
