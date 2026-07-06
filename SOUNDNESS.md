@@ -409,6 +409,21 @@ silent-invisible now read honest-Unknown. More honesty, not less precision — t
 contract orders these. Residual ledger heads (commons-validator 95, threeten-extra 61, jsonwebtoken 31)
 are future batch candidates.
 
+**κ batch 29 — the next tier, same discipline (2026-07-06, candor-java `2575683`).** The dogfood app's
+complete 68-member frontier into the residual heads, triaged member-by-member. Pure-surface coverage:
+commons-validator (predicates), commons-beanutils (property shuffling), displaytag (decorator getters),
+org.w3c.dom (a JDK namespace missing from the frontier list). Precise effectful members: threeten-extra
+now() → Clock; jjwt parse* → Clock (parsing VALIDATES exp/nbf against the system clock) + Keys generators
+→ Rand, while signing/compact stays pure CPU; JDOM2 input effectful BY SOURCE (build(File/String) → Fs,
+build(URL) → Net, caller-opened stream overloads pure-relative — the open carried the effect); Ehcache at
+its ACQUISITION points (persistence(dir) → Fs so build/init are vouched and heap-only apps never
+fabricate; clustered cluster(URI) → Net). A coverage-semantics finding worth registering: vouching
+org.w3c.dom made 438 jsoup fns DROP from its report — their only content was `invisible: [org.w3c.dom]`
+(zero effect changes, verified per-fn) — i.e. a widely-reachable uncovered namespace can inflate a report
+with disclosure noise, and coverage legitimately shrinks it. Dogfood trajectory across batches 28+29:
+ledger 81 → 64 → 49 packages; the top head fell from 5,502 calls (struts) to 25 (jackson-databind — the
+one broadly-valuable batch-30 candidate; the rest is long tail).
+
 **CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
 tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
