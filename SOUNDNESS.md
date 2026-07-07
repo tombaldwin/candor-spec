@@ -435,6 +435,24 @@ app. LESSON for the register: a curated rule's OWNER GATE is itself a soundness 
 against how code actually types its variables (interfaces), not just the concrete classes. Dogfood ledger
 after batches 28–30b: 81 → 37 packages, everything remaining ≤ 20 calls (long tail).
 
+**κ batch 31 (2026-07-07, candor-java `17eb81d`): the long-tail sweep — the dogfood app's ledger reaches
+ZERO (81 → 0 across batches 28–31).** All 37 remaining packages, 111 members triaged. Register-worthy
+findings beyond the coverage itself: (1) **the sweep audits earlier batches** — StopWatch (both
+commons-lang generations) reads the clock but went silent-pure under batch 28's lang3 coverage; a
+covered namespace must be RE-swept when new inventory arrives. (2) **A return-type fabrication class**:
+the source/sink descriptor rules (File/Path → Fs, URL → Net) first used whole-descriptor `contains`,
+which matches a File RETURN type — `FileUtils.getTempDirectory()` (pure, returns a path) would have
+fabricated Fs; an existing round-12 anti-fab pin caught it; all descriptor rules now match parameters
+only (`paramsOf`). (3) **Iteration can be a wire call**: Twilio's `ResourceSet.iterator()` lazily fetches
+further pages — Net hiding in a for-each. (4) **proceed() is reflection-shaped**: AOP Alliance's
+`MethodInvocation.proceed()` executes the intercepted target → disclosed Unknown, never silenced by
+coverage. (5) **Defer to richer existing stances**: a new Fs rule for `XMLReader.parse` was dead code
+below the pre-existing disclosed-Unknown rule (parse drives user handler callbacks + XXE-class
+resolution) — check what already classifies before adding. Also: Redisson's R* handles → Db (remote data
+structures by design), DbUnit execute → Db, hibernate's internal jdbc package covered WITH its effectful
+internals classified so the one pure member apps reach (the SQL formatter, 685 fns of invisible noise)
+floors clean.
+
 **CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
 tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
