@@ -325,7 +325,15 @@ which is worse than no gate at all.
 A report is only meaningful relative to the engine that produced it: a richer classifier or a new
 resolution rule changes the effect set for the *same* source, so a baseline is comparable only to its
 own producing version, and a dependent crate must not silently trust a sibling report from a different
-engine (the trust contract, §4, applied to candor's own output). The envelope's `candor` header
+engine (the trust contract, §4, applied to candor's own output). For a baseline **GUARD** (the
+AS-EFF-005 gate) this is load-bearing: a baseline whose producing version differs from the running
+engine — or that carries no provenance at all — is **invalid gate input**, and the guard MUST fail the
+run (the §6.2 unreadable-policy class: a distinct non-violation exit, the reference CLIs use `2`)
+**without evaluating** — never a silent skip (an unbounded fail-open window) and never a stale
+comparison (an unmasking wave with any real regression hidden inside it). Read-only comparison
+*queries* (`diff`/`gains`, §3.1) instead **disclose** the mismatch (a warning plus
+`baseline_version`/`engine_version` provenance fields in their JSON) and still answer — a comparison
+the user explicitly asked for should inform, not refuse. The envelope's `candor` header
 carries this — `version` (engine build id) and `toolchain` — so the report is self-describing.
 
 The header has THREE fields, on two distinct axes — keep them separate:
@@ -1091,6 +1099,10 @@ declare it via the envelope's `spec`.
   - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink); then candor-scan,
     candor-ts and candor-swift in turn. All four declare `0.8`; the conformance gate-verdict differential
     (PART 12) pins their agreement on the shared fixtures.
+  - **(amended)** §2.1 the **stale-baseline posture**: a baseline GUARD given a baseline from a
+    different (or absent) producing version MUST fail closed without evaluating (the unreadable-policy
+    class); comparison QUERIES disclose (warning + provenance fields) and still answer. Documentation of
+    the aligned behavior all reference engines now implement; no wire change, spec string unchanged.
   - **(amended)** §3.4 the **`.candor/config` configuration file** — the checked-in alternative to the
     `CANDOR_*` env wiring (shared key vocabulary; target-anchored discovery; precedence flag → env →
     config → default; fail-closed when configured-but-unusable; unknown keys warn). Configuration, not
