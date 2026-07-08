@@ -453,6 +453,22 @@ structures by design), DbUnit execute → Db, hibernate's internal jdbc package 
 internals classified so the one pure member apps reach (the SQL formatter, 685 fns of invisible noise)
 floors clean.
 
+**REVIEW PATCH — candor-java 0.8.4 (2026-07-08, `4bdb996`): six soundness regressions the batch 28–31
+work SHIPPED in 0.8.3, caught by a high-effort code review.** The same sweep that CLOSED veins opened new
+ones, via two failure shapes the inventory method doesn't catch alone. (1) **Broad owner/verb gates
+fabricate on same-shaped pure members** — the AWS `Amazon*`-name interface heuristic hit `AmazonS3URI` (a
+pure URI parser), "any Redisson R* → Db" hit `getCodec`/`RFuture`, `parse*`→Clock hit the no-arg
+`Jwts.parser()` factory, whole-owner StopWatch→Clock hit `create()`. LESSON: a name/prefix owner gate or a
+bare verb prefix fabricates wherever a namespace mixes request-makers with same-named value types —
+require the effectful SHAPE (a token arg, an exact verb, a started clock), not the name. (2) **A blanket
+coverage grant turns an under-vouched classifier into SILENT-PURE** — `com.amazonaws` coverage silenced
+`DynamoDBMapper.save` (unmodeled facade, owner doesn't match the *Client gate). LESSON: only ledger-cover a
+namespace whose effectful surface you MODELED, not merely inventoried on one app; an unmodeled member of a
+covered namespace floors silent (the worst class) — leave it uncovered and it discloses `invisible`. AWS
+and commons-io are now classified-but-not-covered. Every fix carries an anti-fabrication twin; jsoup/gson
+byte-identical. The byte-identity + kappa_libs gates only catch what their fixtures exercise — the review
+exercised the shapes they didn't.
+
 **CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
 tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
