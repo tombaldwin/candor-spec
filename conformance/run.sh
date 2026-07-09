@@ -1159,8 +1159,8 @@ fi
 #     downgrades to `Unknown`, never a stale Net claim (§2.1 at the join);
 # (c) EMPTY-REPORT COVERAGE — an all-pure dep's EMPTY report is a purity CLAIM: the call reads pure
 #     and the κ ledger must NOT name the covered package (§2 rule 3).
-# candor-swift emits the chainable `hash` but does not yet CONSUME sibling reports (documented in its
-# header) — it skips loudly here until consumer-side chaining lands.
+# candor-swift joined the consumers 2026-07-09 (Deps.swift: pkg#leaf/pkg#tail2 index, import-gated,
+# ambiguous-drops; stale → `dep-stale:<pkg>` Unknown) — its row is REQUIRED whenever the engine works.
 # ====================================================================================================
 echo
 echo "[14] CHAINING differential  (SPEC §2 CANDOR_DEPS — join-inherit / stale-downgrade / empty-report coverage)"
@@ -1198,8 +1198,17 @@ if [ -n "$TS_OK" ]; then
   printf 'module.exports.hit = () => {};\n' > "$CHW/ts/app/node_modules/dep-pkg/index.js"
   printf 'import { hit } from "dep-pkg";\nexport function go() { return hit(); }\n' > "$CHW/ts/app/cases.ts"
 fi
+SCH_DEP=""
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$CHW/swift/DepKit" "$CHW/swift/app"
+  printf 'import Foundation\nimport Network\n\npublic func hit() { _ = NWConnection(host: "rates.internal", port: 7070, using: .tcp) }\n' > "$CHW/swift/DepKit/dep.swift"
+  "$SW_BIN" "$CHW/swift/DepKit" --out "$CHW/sdep" >/dev/null 2>&1
+  SCH_DEP="$CHW/sdep.DepKit.Swift.json"
+  [ -s "$SCH_DEP" ] || { echo "FAIL: candor-swift errored on the chain dep"; exit 2; }
+  printf 'import DepKit\n\nfunc go() { DepKit.hit() }\n' > "$CHW/swift/app/a.swift"
+fi
 # doctor each dep report: a STALE copy (foreign producing version) and an EMPTY copy (purity claim)
-python3 - "$CHW/jdep.json" "$RCH_DEP" "${TS_OK:+$CHW/tdep.json}" <<'PY' || { echo "FAIL: could not doctor the chain dep reports"; exit 2; }
+python3 - "$CHW/jdep.json" "$RCH_DEP" "${TS_OK:+$CHW/tdep.json}" "$SCH_DEP" <<'PY' || { echo "FAIL: could not doctor the chain dep reports"; exit 2; }
 import json, sys
 for src in [a for a in sys.argv[1:] if a]:
     d = json.load(open(src))
@@ -1208,7 +1217,7 @@ for src in [a for a in sys.argv[1:] if a]:
     e = json.loads(json.dumps(d)); e["functions"] = []
     json.dump(e, open(src.replace(".json", "") + "_empty.json", "w"))
 PY
-chain_scan() { # $1 dep-report  $2 out-stem — scans each app against the given dep report
+chain_scan() { # $1 java-dep  $2 out-stem  $3 rust-dep  $4 ts-dep  $5 swift-dep
   env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$1" java -jar "$JAR" "$CHW/java/appcls" --json "$W/ch_j_$2.json" > "$W/ch_j_$2.err" 2>&1 \
     || { echo "FAIL: candor-java errored on the chained app ($2)"; exit 2; }
   rm -rf "$CHW/rust/app/.candor"
@@ -1219,15 +1228,22 @@ chain_scan() { # $1 dep-report  $2 out-stem — scans each app against the given
     env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$4" node "$TS_DIR/scan.mjs" "$CHW/ts/app/cases.ts" "$W/ch_t_$2" > "$W/ch_t_$2.err" 2>&1 \
       || { echo "FAIL: candor-ts errored on the chained app ($2)"; exit 2; }
   fi
+  if [ -n "$SCH_DEP" ]; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$5" "$SW_BIN" "$CHW/swift/app" --out "$W/ch_s_raw_$2" > "$W/ch_s_$2.err" 2>&1 \
+      || { echo "FAIL: candor-swift errored on the chained app ($2)"; exit 2; }
+    cp "$(ls "$W"/ch_s_raw_$2.*.Swift.json | grep -v callgraph | grep -v hierarchy | head -1)" "$W/ch_s_$2.json"
+  fi
 }
-JD="$CHW/jdep"; RD="${RCH_DEP%.json}"; TD="$CHW/tdep"
-chain_scan "$JD.json"        fresh "$RD.json"        "$TD.json"
-chain_scan "${JD}_stale.json" stale "${RD}_stale.json" "${TD}_stale.json"
-chain_scan "${JD}_empty.json" empty "${RD}_empty.json" "${TD}_empty.json"
-python3 - "$W" "$TS_OK" "$SW_PRESENT" <<'PY' || rc=1
+JD="$CHW/jdep"; RD="${RCH_DEP%.json}"; TD="$CHW/tdep"; SD="${SCH_DEP%.json}"
+chain_scan "$JD.json"        fresh "$RD.json"        "$TD.json"        "$SD.json"
+chain_scan "${JD}_stale.json" stale "${RD}_stale.json" "${TD}_stale.json" "${SD}_stale.json"
+chain_scan "${JD}_empty.json" empty "${RD}_empty.json" "${TD}_empty.json" "${SD}_empty.json"
+python3 - "$W" "$TS_OK" "$SCH_DEP" <<'PY' || rc=1
 import json, sys
 W, ts, sw = sys.argv[1], sys.argv[2], len(sys.argv) > 3 and sys.argv[3]
-engines = [("candor-java", "j", "com.dep"), ("candor-scan", "r", "depc")] + ([("candor-ts", "t", "dep-pkg")] if ts else [])
+engines = [("candor-java", "j", "com.dep"), ("candor-scan", "r", "depc")] \
+          + ([("candor-ts", "t", "dep-pkg")] if ts else []) \
+          + ([("candor-swift", "s", "DepKit")] if sw else [])
 ok = True
 def fns(e, stem):
     d = json.load(open(f"{W}/ch_{e}_{stem}.json"))
@@ -1249,8 +1265,6 @@ for name, e, pkg in engines:
         "" if covered else f" (empty: the κ ledger must NOT name {pkg} — a loaded report COVERS its package, §2 rule 3)"])
     print(f"  {name:12s} -> {'MATCH' if good else 'DIVERGE'}{detail}")
     ok = ok and good
-if sw:
-    print("  candor-swift -> SKIPPED loudly (emits the chainable `hash`; consumer-side CANDOR_DEPS not yet implemented)")
 print("  -> " + ("MATCH — chaining joins, distrusts stale producers, and honors empty-report coverage in every consuming engine"
                  if ok else "DIVERGE — see rows"))
 sys.exit(0 if ok else 1)
