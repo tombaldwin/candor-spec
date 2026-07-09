@@ -1,6 +1,6 @@
 # Principles
 
-candor's design — and how each implementation gets built — follow one idea:
+candor's design, and how each implementation gets built, follow one idea:
 
 > **Honesty under uncertainty.** A tool for understanding code, leaned on by people and
 > AI agents who can't double-check it, is worth only what you can trust it to be straight
@@ -12,7 +12,7 @@ we *demonstrated*, not slogans.
 
 ### 1. Honest uncertainty beats false confidence
 
-When the tool can't tell, it says so — it never guesses "fine." A call it can't resolve becomes a
+When the tool can't tell, it says so; it never guesses "fine." A call it can't resolve becomes a
 visible `Unknown` (AS-EFF-003), never a silent "pure." A baseline it can't load shouts "guard is NOT
 active" rather than passing quietly. **Silent false-negatives and silent false-greens are the worst
 failure mode there is, because they're trusted.**
@@ -49,7 +49,7 @@ independent review caught claims we'd have rationalized. candor even audits cand
 
 Precision where it counts: classify the actual effect-causing call (`.send()`, a process spawn, a
 socket), not the library around it. Over-reporting erodes trust as surely as under-reporting hides
-danger — both are dishonesty about what the code does.
+danger — both misrepresent what the code does.
 
 ### 7. Defer out loud, with reasons
 

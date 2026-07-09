@@ -135,11 +135,11 @@ language-specific effect name, not `Log`.
 
 ## 2. The report
 
-An implementation emits, per compilation unit, a self-describing **envelope** — a provenance header
-plus one entry per analyzed **unit**. ⟨0.5⟩ A *unit* — named an **effector** in the domain model
-([MODEL.md](MODEL.md)) — is the smallest body the engine attributes effects to. For a code engine that is a function or method — and throughout this document
-"function" means "unit" — but the family's units are wider than functions, and each kind earned
-its place by hiding effects when it was NOT a unit: a computed **accessor** body (a Swift getter
+An implementation emits, per compilation unit, a self-describing **envelope**: a provenance header
+plus one entry per analyzed **unit**. ⟨0.5⟩ A *unit* (named an **effector** in the domain model,
+[MODEL.md](MODEL.md)) is the smallest body the engine attributes effects to. For a code engine that is
+a function or method (and throughout this document "function" means "unit"). But the family's units are
+wider than functions, and each kind earned its place by hiding effects when it was NOT a unit: a computed **accessor** body (a Swift getter
 performing I/O read silently pure until accessors became units), a static/class **initializer**
 (`<clinit>` runs at class load, no call site in sight), a CJS **export** surface (a dist bundle's
 module boundary), and an agent-fleet's **agents**, **session** root and **hooks** (commands a
@@ -155,23 +155,23 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 ```
 
 The `candor` header records which engine produced the report (§2.1). A bare top-level array (no
-envelope) remains accepted as the legacy **v0.1** form — readers MUST accept both during migration.
+envelope) remains accepted as the legacy **v0.1** form; readers MUST accept both during migration.
 
 **One report covers ONE package** (crate / npm package / JVM module / SwiftPM package / fleet). An
 engine MUST NOT fold several packages' functions into one `functions` array: function names are
 only unique *within* a package (every binary crate has a `main`), and a consumer keys the report's
-`calls` edges and the sidecar by name — merged packages collide those names and cross-wire the
+`calls` edges and the sidecar by name, so merged packages collide those names and cross-wire the
 inferred sets. (Found live: a repo-root scan that folded 194 fixture packages into one report
 produced one `main` entry with 194 functions' unioned effects.) A multi-package project emits a
 **report set**: one report per package under a shared `--out` prefix. A consumer SHOULD treat all
-reports under one prefix as a single analysis world — and MUST join *across* reports by `hash`,
+reports under one prefix as a single analysis world, and MUST join *across* reports by `hash`,
 never by bare `fn` (names may legitimately repeat across packages).
 
-The envelope SHOULD also name the package the report covers — `"package": "<name>"` (or
-`"packages": ["<name>", …]` where one compilation unit genuinely spans several, the JVM shape) —
-so a consumer (and the §2 chaining coverage rule) can tell what an **empty** report covers without
+The envelope SHOULD also name the package the report covers, as `"package": "<name>"` (or
+`"packages": ["<name>", …]` where one compilation unit genuinely spans several, the JVM shape), so
+a consumer (and the §2 chaining coverage rule) can tell what an **empty** report covers without
 parsing entry hashes. When the field is absent, coverage is derivable from the entries' `hash`
-prefixes (`pkg#…`) — which an all-pure empty report does not have; emit the field.
+prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
@@ -269,27 +269,27 @@ recorded transitive effects AND its literal surfaces (`hosts`/`cmds`/`paths`/`ta
 make the chain trustworthy:
 
 1. **Joins never guess.** The `hash` key must identify the target the way the *consumer's* view of
-   the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference —
+   the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference:
    per-language, but derivable from both sides). An ambiguous key (two dep functions sharing it) is
    dropped, not picked from — §4's under-report-don't-fabricate rule, applied at the join.
-2. **Stale reports are not trusted** — §2.1's version-trust rule applies at the join, and a
+2. **Stale reports are not trusted**: §2.1's version-trust rule applies at the join, and a
    report whose producing version is MISSING is as unverifiable as a mismatched one: downgrade to
    `Unknown`. (§2.1 is the single normative statement; this rule only locates where it bites.)
-3. **A chained package is COVERED, not blind — including its silence.** Reports omit pure
-   functions, so a call that joins *no* entry in a loaded sibling report is that report's honest
+3. **A chained package is COVERED, not blind, including its silence.** Reports omit pure
+   functions, so a call that joins *no* entry in a loaded sibling report is that report's affirmative
    purity claim (modulo the producer's own §4 standing). A coverage disclosure (item 14, §7) must
-   therefore treat every package a loaded report covers as accounted for, even with zero joins —
+   therefore treat every package a loaded report covers as accounted for, even with zero joins:
    an all-pure dependency's *empty* report is a claim, not a blind spot.
 
 Chaining is what shrinks the curated classifier's job to the **builtin/FFI frontier**: a
 dependency's effects derive from *its own* calls into the platform, so one dep scan replaces a
 hand-curated classifier entry, transitively.
 
-`fs` refines the `Fs` effect into `read` / `write` kinds — the detail a consumer needs to tell a
+`fs` refines the `Fs` effect into `read` / `write` kinds: the detail a consumer needs to tell a
 read-only function from one that mutates the disk. It applies only when `inferred` contains `Fs`. An
 implementation that resolves the kind SHOULD emit it; one that can't (or doesn't track it) MAY omit
-it. Crucially, when `Fs` is reached but its kind is *unknown* — e.g. inherited from a sibling/dep
-report (§2.1) that carried no `fs`, so no read/write is locally observable — the field MUST be
+it. Crucially, when `Fs` is reached but its kind is *unknown* (e.g. inherited from a sibling/dep
+report, §2.1, that carried no `fs`, so no read/write is locally observable), the field MUST be
 **omitted rather than guessed**. An empty or partial `fs` would be read as a positive claim ("reads
 but never writes"), which is the §4 trust contract's forbidden direction (under-claiming an effect).
 Omission says "`Fs`, kind undetermined"; a present `fs` is an affirmative read/write classification.
@@ -300,17 +300,17 @@ decidable subset**: a string-*literal* address or URL (`connect("rates.internal:
 runtime-computed address yields none. It applies only when `inferred` contains `Net`. Unlike `fs`,
 `hosts` is **never a completeness claim**: host-by-runtime-value is undecidable, so an absent or
 partial `hosts` means "these are the endpoints I could see," NOT "the function talks to no others."
-A consumer MUST treat it as informative, never as a closed allow-list — and an implementation MUST
+A consumer MUST treat it as informative, never as a closed allow-list; and an implementation MUST
 NOT emit a host it merely inferred (only ones it read from a literal), so a present entry is always
 sound. This keeps it within the §4 trust contract: `Net` already carries the "performs network I/O"
 claim; `hosts` only ever *narrows* it with what's provably visible.
 
 `cmds` (for `Exec`), `paths` (for `Fs`) and `tables` (for `Db`) follow the **same rules as `hosts`**:
-the statically-decidable literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal —
+the statically-decidable literal subset only (a `Command::new("git")` / `fs::read("/etc/x")` literal;
 or, for `tables`, the table-position identifiers of a SQL string *literal*, never a dynamically-built
 query), informative-not-complete, never emitted unless read from a literal. A producer MAY also feed
-`tables` from a *declarative* mapping the source makes statically visible — a JPA `@Table(name=…)` /
-TypeORM `@Entity('…')` entity reached through a typed repository — the same decidability bar, read
+`tables` from a *declarative* mapping the source makes statically visible (a JPA `@Table(name=…)` /
+TypeORM `@Entity('…')` entity reached through a typed repository): the same decidability bar, read
 from an annotation literal instead of a SQL one.
 
 Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
@@ -319,8 +319,8 @@ extraction is pinned token-for-token; the cross-impl vector battery
 
 1. Lowercase the literal; replace `(` `)` `;` with spaces; surround each `,` with spaces (the comma
    survives as its own token); split on any whitespace run.
-2. If the first token is not a statement keyword — `select insert update delete create drop alter
-   truncate merge replace with` — the string is not SQL: extract **nothing** (conservative in the
+2. If the first token is not a statement keyword (`select insert update delete create drop alter
+   truncate merge replace with`), the string is not SQL: extract **nothing** (conservative in the
    fabrication direction).
 3. A token introduces a table position if it is `from`, `join`, `into` or `table` anywhere, or
    `update`/`truncate` as the statement's FIRST token only (a mid-statement `UPDATE` is a
@@ -332,15 +332,15 @@ extraction is pinned token-for-token; the cross-impl vector battery
    limit returning as inner outer left right cross lateral natural union all distinct case when null
    default skip nowait of from join into update delete insert`). Remove any interior quote
    characters and emit in first-occurrence order, deduplicated.
-6. After a captured table, a **comma-adjacent** identifier continues the table list — `FROM t1, t2,
-   t3` yields all three — and anything else breaks the chain: an alias (`FROM t1 a1, t2` yields only
-   `t1` — an under-report, never a guess) or a rejected candidate. The adjacency requirement is the
+6. After a captured table, a **comma-adjacent** identifier continues the table list (`FROM t1, t2,
+   t3` yields all three), and anything else breaks the chain: an alias (`FROM t1 a1, t2` yields only
+   `t1`, an under-report, never a guess) or a rejected candidate. The adjacency requirement is the
    fabrication guard: by this stage a column list rides commas too (`INSERT INTO t (a, b)` once
    parens are spaces), and skipping an alias to chase the comma would mint tables from it.
 
 The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a
 producer SHOULD emit them so a dependent crate's allowlist can see a value that lives across the
-crate boundary — and an implementation that ENFORCES `allow <Effect>` rules MUST emit that effect's
+crate boundary; and an implementation that ENFORCES `allow <Effect>` rules MUST emit that effect's
 surface (0.4): an allow gate over an unemitted surface fails every rule as uncertifiable (lits = ∅),
 which is worse than no gate at all.
 
@@ -351,27 +351,27 @@ resolution rule changes the effect set for the *same* source, so a baseline is c
 own producing version, and a dependent crate must not silently trust a sibling report from a different
 engine (the trust contract, §4, applied to candor's own output). For a baseline **GUARD** (the
 AS-EFF-005 gate) this is load-bearing: a baseline whose producing version differs from the running
-engine — or that carries no provenance at all — is **invalid gate input**, and the guard MUST fail the
+engine, or that carries no provenance at all, is **invalid gate input**, and the guard MUST fail the
 run (the §6.2 unreadable-policy class: a distinct non-violation exit, the code engines' CLIs use `2`)
-**without evaluating** — never a silent skip (an unbounded fail-open window) and never a stale
+**without evaluating**. Never a silent skip (an unbounded fail-open window), and never a stale
 comparison (an unmasking wave with any real regression hidden inside it). Read-only comparison
 *queries* (`diff`/`gains`, §3.1) instead **disclose** the mismatch (a warning plus
-`baseline_version`/`engine_version` provenance fields in their JSON) and still answer — a comparison
+`baseline_version`/`engine_version` provenance fields in their JSON) and still answer: a comparison
 the user explicitly asked for should inform, not refuse. The envelope's `candor` header
-carries this — `version` (engine build id) and `toolchain` — so the report is self-describing.
+carries this (`version`, the engine build id, plus `toolchain`), so the report is self-describing.
 
-The header has THREE fields, on two distinct axes — keep them separate:
+The header has THREE fields, on two distinct axes. Keep them separate:
 
-- `version` — the engine **build identity** (a build id / git hash / release tag). It answers "which
+- `version`: the engine **build identity** (a build id / git hash / release tag). It answers "which
   binary produced this?" and MUST reflect the binary that **actually ran**, not the source tree it was
-  built from — those diverge when the source is updated without a rebuild, and a source-derived version
+  built from: those diverge when the source is updated without a rebuild, and a source-derived version
   would call a stale engine "current" and mask a stale baseline. A consumer performing cross-crate
   inheritance (§2, `hash`) MUST compare `version` (0.4; a MISSING version is as unverifiable as a
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
-- `toolchain` — the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec` — the **candor-spec contract version** this engine implements (`"0.8"`). This is the version
-  *this document* carries, NOT the engine's build id or the package's release version — they evolve
+- `toolchain`: the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
+- `spec`: the **candor-spec contract version** this engine implements (`"0.8"`). This is the version
+  *this document* carries, NOT the engine's build id or the package's release version; they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
   constant (the Rust implementation: `candor_report::SPEC_VERSION`). A report without `spec` predates this
@@ -426,67 +426,67 @@ with no class/protocol dispatch (the Rust scanner) has nothing to populate it an
 
 An implementation SHOULD support:
 
-- **audit** (default) — report each function's `inferred` set; no judgement.
-- **JSON** — write the §2 report to a file for machine/agent consumption.
-- **conformance** — given functions that *declare* capabilities (§5), flag mismatches (§6). MAY be
+- **audit** (default): report each function's `inferred` set; no judgement.
+- **JSON**: write the §2 report to a file for machine/agent consumption.
+- **conformance**: given functions that *declare* capabilities (§5), flag mismatches (§6). MAY be
   scoped to a module/path prefix for incremental adoption.
-- **no-ambient** — flag any *direct* use of ambient authority (an effect performed without holding a
+- **no-ambient**: flag any *direct* use of ambient authority (an effect performed without holding a
   matching capability), pushing toward a capability-passing / capability-secure style.
-- **baseline guard** — diff against a saved report and flag functions that *gained* an effect.
-- **policy** — enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
+- **baseline guard**: diff against a saved report and flag functions that *gained* an effect.
+- **policy**: enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
   "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
   invariant an agent can't see from a local edit.
-- **risk** (optional, **heuristic**) — flag an effect whose argument derives from a function parameter
+- **risk** (optional, **heuristic**): flag an effect whose argument derives from a function parameter
   (e.g. `fs::read(path_from_param)`) — the injection class (path traversal, command injection, SSRF).
   Unlike the others this is *advisory and imprecise*: a syntactic, intra-procedural nudge that over- and
   under-flags; it MUST NOT gate. An implementation MAY support it; if so it MUST document its limits.
   (Enabled by the `taint` config key / `CANDOR_TAINT` env var, §3.4 — two names, one mode: `risk` is
   the mode, `taint` is its switch.)
-- **containment** (optional) — a diagnostic over the report: for each *boundary* effect, how concentrated
+- **containment** (optional): a diagnostic over the report — for each *boundary* effect, how concentrated
   it is in one architectural layer (§6.1). With a baseline it becomes a *ratchet* (AS-EFF-010). It is
-  deliberately **not** a single "score" — see §6.1.
+  deliberately **not** a single "score"; see §6.1.
 
 ### 3.1 Read-only queries (SHOULD)
 
 A written report (§2) plus its call-graph sidecar (§2.2) answers structural questions WITHOUT re-analysis.
 An implementation SHOULD expose them so an agent reaches for them in one cheap call instead of grepping:
 
-- **show `<fn>`** — a function's effects (own/direct vs inherited).
-- **where `<Effect>`** — which functions perform an effect (direct sources vs transitive inheritors).
-- **callers `<fn>`** — the **blast radius**: every TRANSITIVE caller of `<fn>` (works for ANY function,
+- **show `<fn>`**: a function's effects (own/direct vs inherited).
+- **where `<Effect>`**: which functions perform an effect (direct sources vs transitive inheritors).
+- **callers `<fn>`**: the **blast radius** — every TRANSITIVE caller of `<fn>` (works for ANY function,
   including a still-**pure** one) — *who is affected if you change it*. ⟨0.7⟩ With the **`--include-unknown`**
   modifier it additionally discloses the *unresolved-dispatch frontier* (`possibleViaUnknownDispatch`, below):
   callers that reach `<fn>` only through an unresolved `dispatch:` — a disclosed lower-bound, never asserted.
-- **map** — a module → effects overview.
-- **diff `<current>` `<baseline>`** — the per-function effect delta (gained / lost) between two saved
+- **map**: a module → effects overview.
+- **diff `<current>` `<baseline>`**: the per-function effect delta (gained / lost) between two saved
   reports: the current one and the baseline, in that argument order.
-- **gains `<current>` `<baseline>`** — same two inputs; the package-level **gained-capability alarm**: the effects present now but
+- **gains `<current>` `<baseline>`**: same two inputs; the package-level **gained-capability alarm** — the effects present now but
   absent from the baseline (`gained`), each with the functions introducing it (`byFunction`). The
   supply-chain view of `diff` (§5.1): a dependency release that quietly grew `Net`/`Exec` is exactly
   what this surfaces, and a stable surface raises no alarm (`gained: []`). *(Recorded ⟨0.8⟩ as a
   documentation catch-up: the engines have shipped it and the conformance suite has pinned its shape
   since the ⟨0.5⟩ query parts — the §2.1 and §5.1 references resolve here.)*
-- **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
+- **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points.
-- **blindspots** ⟨0.6⟩ — the Unknown SOURCES: the calls the engine genuinely could not resolve (each
+- **blindspots** ⟨0.6⟩: the Unknown SOURCES — the calls the engine genuinely could not resolve (each
   carries `unknownWhy` — reflection, an over-wide dispatch, a fn-pointer), ranked by how many functions
   transitively inherit `Unknown` through each. The actionable inverse of a widely-propagated `Unknown`: a
   report can read 60% `Unknown` from a dozen root causes — this names those dozen, so they can be declared
   (§5.1), resolved, or accepted, instead of the smear reading as analysis failure.
-- **parsepolicy `<file>`** — the engine's canonical parse of a §6.2 policy file, as JSON. Not a user
+- **parsepolicy `<file>`**: the engine's canonical parse of a §6.2 policy file, as JSON. Not a user
   workflow: it makes the grammar *diffable* — the cross-impl conformance suite feeds every engine
   that exposes it the same policy text and asserts the parses agree, which is what keeps one policy
   file meaning the same gate in every language. An implementation that enforces any policy mode
   SHOULD expose it (an enforcer without it is still exercised through the applied `--policy`
   verdict differentials, but its grammar is only indirectly diffed).
 
-These bind **engines, not consumers** — a consumer that only reads the JSON report is fully conformant.
+These bind **engines, not consumers**: a consumer that only reads the JSON report is fully conformant.
 For an engine that exposes them, the query names and JSON shapes ARE part of the versioned contract (a new
-query shape is a minor bump — §8's own rule; 0.6's `blindspots` moved the version). An implementation
+query shape is a minor bump, §8's own rule; 0.6's `blindspots` moved the version). An implementation
 SHOULD keep query **names and output shapes consistent across languages**, so an agent uses a report from any language identically; the cross-language conformance suite
 verifies this. **Name-query matching SHOULD follow the same ladder in every language**: exact match, else
-segment-suffix (the query sits after a path-separator boundary — `Pricing::quote` or bare `quote` matches
-`pricing::Pricing::quote`, never `quote_bulk`), else substring — resolved at the best tier any candidate
+segment-suffix (the query sits after a path-separator boundary: `Pricing::quote` or bare `quote` matches
+`pricing::Pricing::quote`, never `quote_bulk`), else substring, resolved at the best tier any candidate
 reaches. Substring-widening a precise query silently inflates a blast radius (a measured red-team caught
 `whatif` seeding from a name-cousin), so the more precise tier always wins.
 
@@ -524,7 +524,7 @@ unit that transitively calls the target (the same names `affectedCount` counts, 
 surfaces, not just that something does. Emitting only the count forces an agent to re-derive the list
 it just computed, so the list is required. `path` is the forward dual: a shortest call chain from `fn`
 to the nearest unit performing `effect` **directly** (`source: true`), each step carrying its `loc`;
-an empty `path` is the honest "no local source on a path" answer (the source is cross-boundary,
+an empty `path` is the correct "no local source on a path" answer (the source is cross-boundary,
 framework-synthesised, or `Unknown`), never an error.
 
 `blindspots` ⟨0.6⟩ is the *source* view of `Unknown`: each entry is a unit whose OWN body has an
@@ -536,40 +536,40 @@ inherited (no `unknownWhy` of its own) is NOT a source and is excluded; `totalUn
 total count of units carrying `Unknown` — the surface these sources explain. The point is to turn a
 high-`Unknown` report from "the analysis failed" into a short, ranked worklist of real blind spots.
 
-`callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output — the
+`callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the
 *unresolved-dispatch frontier*. The plain `callers` set (`transitive`) is a **confirmed** lower bound: a
 function that reaches `<fn>` only through a call the engine charged `Unknown` with an unresolved
 `dispatch:OWNER.M` reason (a bounded-CHA fan-out, a dynamic receiver of a known type) is *correctly* absent
-from `transitive` — the engine refuses to fabricate the edge. `possibleViaUnknownDispatch` discloses exactly
+from `transitive`, because the engine refuses to fabricate the edge. `possibleViaUnknownDispatch` discloses exactly
 those: each entry `{ "fn", "viaDispatchOn" }` names a function `fn` that (1) carries a `dispatch:OWNER.M`
 `unknownWhy`, (2) is not already a confirmed transitive caller, and (3) for which some confirmed reacher
-(in `transitive ∪ {<fn>}`) is an **override of `OWNER.M`** — its method's simple name is `M` and its
-declaring type is a subtype of `OWNER` per the §2.2 hierarchy sidecar. `viaDispatchOn` is the dispatched
+(in `transitive ∪ {<fn>}`) is an **override of `OWNER.M`** (its method's simple name is `M` and its
+declaring type is a subtype of `OWNER` per the §2.2 hierarchy sidecar). `viaDispatchOn` is the dispatched
 member `OWNER.M` it travels through. The subtype check (vs a bare simple-name match) is what removes false
-positives — an unrelated same-named dispatch is not listed unless its owner actually sits above a reaching
+positives: an unrelated same-named dispatch is not listed unless its owner actually sits above a reaching
 override. This is a **disclosed lower-bound expansion, never an assertion**: it says "this *may* reach
 `<fn>` through a dispatch I could not resolve," and reports only the frontier dispatch-source functions (the
 smaller, more informative set), not their transitive cones. An engine whose language has no class/protocol
-dispatch (the Rust scanner emits no `dispatch:`) returns `possibleViaUnknownDispatch: []` consistently — N/A
-by language model, not a gap. The cross-impl suite pins the frontier output across the dispatching engines.
+dispatch (the Rust scanner emits no `dispatch:`) returns `possibleViaUnknownDispatch: []` consistently (N/A
+by language model, not a gap). The cross-impl suite pins the frontier output across the dispatching engines.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
 Two tools answer what an agent asks *around* an edit — deterministically, where a model would otherwise
 guess (and, the evidence shows, under-count):
 
-- **whatif `<fn>` `<Effect>`** — the **pre-edit verdict**. Crosses the blast radius (every transitive caller
+- **whatif `<fn>` `<Effect>`**: the **pre-edit verdict**. Crosses the blast radius (every transitive caller
   of `<fn>` would gain `<Effect>`) with the active policy and reports which functions would **violate** a
-  `deny`/`pure` boundary — *before* the edit, instead of edit → run the gate → revert. It is the pre-edit
+  `deny`/`pure` boundary *before* the edit, instead of edit → run the gate → revert. It is the pre-edit
   form of **AS-EFF-006**.
-- **rewire `<baseline>`** — the **de-wiring / structural-regression** check. Diffs the current call graph
+- **rewire `<baseline>`**: the **de-wiring / structural-regression** check. Diffs the current call graph
   against a baseline and flags edges a function **dropped** (a call it made before and no longer makes). An
   effect gate checks effect *boundaries*, not correctness, so it can be satisfied by *disconnecting*
-  functionality — a function stops calling the chain that performs a forbidden effect, the gate passes, the
+  functionality: a function stops calling the chain that performs a forbidden effect, the gate passes, the
   feature breaks. That removal is invisible to the effect diff (a pure function dropping a call changes no
   effect) but present in the call graph. rewire is the **structural dual of the baseline guard
   (AS-EFF-005)**: 005 flags an effect *gained* versus the baseline, rewire flags a call *dropped*. It is
-  **advisory** — run it ALONGSIDE the policy gate: a green gate **plus** a clean rewire means the boundary
+  **advisory**; run it ALONGSIDE the policy gate: a green gate **plus** a clean rewire means the boundary
   was respected *without* gutting the feature. A gate alone is necessary, never sufficient.
 
 Their JSON shapes (the verdict + blast radius the conformance suite pins across both engines):
@@ -616,19 +616,19 @@ gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "effect
 
 `ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear
 in `violations` but MUST NOT set `ok` false). Each entry names the `rule` (an `AS-EFF-00x` code, §6), the
-`fn` it fired on, and `effects` — the specific effect set the violation concerns, **per the rule's
+`fn` it fired on, and `effects`, the specific effect set the violation concerns **per the rule's
 semantics**: the denied intersection for `AS-EFF-006` (a fn performing `{Clock, Fs}` under `deny Fs`
 reports `["Fs"]`, never its full set); the allow rule's effect for `AS-EFF-008`; the gained set (005); the
 ambient set (004); the undeclared set (001); the unused **declared** set for 002 (capabilities held but
-never used — the one code whose `effects` are declared, not performed); the taint-reached set (007); and
+never used: the one code whose `effects` are declared, not performed); the taint-reached set (007); and
 `[]` where no effect set applies (`AS-EFF-009` layer-flow, `AS-EFF-003` unresolved). `detail` is an OPTIONAL human message.
 **Conformance pins `ok` and the `{rule, fn, effects}` set** (the same policy + code yields the same verdict
 in every engine); `detail` is engine-natural prose (like the function-name *value* elsewhere, §3.1) and is
-NOT pinned. The verdict is a re-emission of the gate the engine already ran — it MUST agree with the process
+NOT pinned. The verdict is a re-emission of the gate the engine already ran, so it MUST agree with the process
 exit code (a non-empty gate-failing `violations` ⟺ exit 1), so a consumer can never see a verdict that
 disagrees with the gate. Source locations are not duplicated: a consumer joins each `fn` to its `loc` from
 the §2 report (this is what the PR-native SARIF reporter does; `effects` gives it the precise effect to trace
-a codeFlow for — which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
+a codeFlow for, which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
 verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 Two further MUSTs guard the verdict's integrity:
@@ -659,14 +659,14 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
 
 An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for
-enforcement, but SHOULD be disclosed** — one stderr line naming the keys this engine recognizes and
+enforcement, but SHOULD be disclosed**: one stderr line naming the keys this engine recognizes and
 does not implement. Inertness is by design (a repo scanned by several engines carries one config;
 `strict` drives the JVM engine and gates nothing elsewhere), but a key that names a **gate**
 (`policy`, `baseline`, `strict`, `no-ambient`, `taint`) must never read as silently active: a team
 that checks in `baseline .candor/baseline` believing the guard is on deserves the one-line correction.
-A key **outside** the vocabulary is **ignored with a warning** — the §6.2 malformed-line posture: a
-misspelt `policy` must never silently drop a gate. A **bare** value key (a lone `strict` line) means
-"enabled with the empty value" — exactly the set-but-empty env var (whole-unit scope for a scope key;
+A key **outside** the vocabulary is **ignored with a warning** (the §6.2 malformed-line posture: a
+misspelt `policy` must never silently drop a gate). A **bare** value key (a lone `strict` line) means
+"enabled with the empty value", exactly the set-but-empty env var (whole-unit scope for a scope key;
 a bare `policy` fails loud on the empty path), never a silent drop.
 
 **Discovery is anchored to the scan target, not the CWD**: the file is found by walking UP from the
@@ -675,24 +675,24 @@ scanned code is the one that applies regardless of where the process was launche
 environment variable overrides discovery entirely. **Precedence, highest first: a CLI flag → the
 matching `CANDOR_*` env var (the one-off override) → this file → the built-in default.** For the same
 reason, a **relative path value** (`policy`, `baseline`, `deps` entries) resolves against the
-**config's home directory** — the directory containing the `.candor/` directory (the repo root the
-config travels with; for an out-of-tree `CANDOR_CONFIG` override file, simply the file's own
-directory) — never the process CWD. A checked-in `policy .candor/gate.pol` in `<root>/.candor/config`
+**config's home directory**, never the process CWD: the directory containing the `.candor/` directory
+(the repo root the config travels with; for an out-of-tree `CANDOR_CONFIG` override file, simply the
+file's own directory). A checked-in `policy .candor/gate.pol` in `<root>/.candor/config`
 therefore names `<root>/.candor/gate.pol` from any launch directory. (A relative path supplied via a
-CLI flag or `CANDOR_*` env var stays CWD-relative as usual — the one-off override is launch-context
+CLI flag or `CANDOR_*` env var stays CWD-relative as usual: the one-off override is launch-context
 local; only the checked-in file's values travel with the code.)
 
-**Fail-closed:** a config that is configured but unusable never silently degrades to "no config" — a
+**Fail-closed:** a config that is configured but unusable never silently degrades to "no config". A
 set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that exists but cannot be
 read, FAILS the run (exit 2, the §6.2 unreadable-policy posture; the file may carry the policy, so a
 silently-dropped config is a silently-dropped gate). Only genuine absence is an empty config.
 
-`CANDOR_CONFIG` is **reserved** for this override path — an engine must not overload the name for any
+`CANDOR_CONFIG` is **reserved** for this override path; an engine must not overload the name for any
 other input (the Rust lint's classifier-extension rules file, which historically used it, is now
 `CANDOR_RULES`): one env var carrying two file grammars would make the fail-closed posture ambiguous.
 
-This is configuration, not the report/effect wire contract — no field an interoperating consumer reads
-changes — so it advances no version (an additive amendment within 0.8; all four engines implement it and
+This is configuration, not the report/effect wire contract (no field an interoperating consumer reads
+changes), so it advances no version (an additive amendment within 0.8; all four engines implement it and
 the conformance config differential pins discovery, precedence and the fail-closed posture).
 
 ## 4. The trust contract — the core of candor
@@ -723,34 +723,34 @@ purity.
 **Dispatch over a local abstraction — the bounded-CHA discipline** (all four code engines): a
 call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
 TS interface, a JVM interface/supertype, a Swift protocol/class) SHOULD resolve to the **visible local implementors'**
-methods when the dispatch is *narrow* — at most **12** implementors, the shared bound, so the
-verdicts agree across engines — and MUST otherwise read `Unknown`: a local abstraction with no
-visible implementor, too many, or an ambiguous name is honest indeterminacy, never silent purity.
+methods when the dispatch is *narrow* (at most **12** implementors, the shared bound, so the
+verdicts agree across engines), and MUST otherwise read `Unknown`: a local abstraction with no
+visible implementor, too many, or an ambiguous name is disclosed indeterminacy, never silent purity.
 Resolving to local implementors is an over-approximation in the CHA sense (any of them *could* be
 the target) and an under-approximation across the open world (a downstream implementor is
-invisible) — both are the accepted trade everywhere else in this contract. Dispatch through an
+invisible); both are the accepted trade everywhere else in this contract. Dispatch through an
 EXTERNAL abstraction an engine does not model (a stdlib iterator protocol, a serialization trait)
 MAY remain unflagged, but then MUST be documented as a named miss (item 7, §7).
 
 **Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the
-child does is beyond the caller's static scope — the *capability cliff*, the subprocess analog of an
-unresolved dispatch. An engine MAY refine it when the sub-command's **head is a literal,
+child does is beyond the caller's static scope (the *capability cliff*, the subprocess analog of an
+unresolved dispatch). An engine MAY refine it when the sub-command's **head is a literal,
 statically-known** value (the `cmds` literal surface, §2): it MAY classify that head and attribute
-the head's effects to the caller — a spawned `curl` contributes `Net`, a spawned `psql` contributes
+the head's effects to the caller: a spawned `curl` contributes `Net`, a spawned `psql` contributes
 `Db`, and a spawned **candor engine** contributes `Fs`/`Env`, which §7 item 12 *guarantees* (the
-analyzer self-boundary), making this one case spec-supplied rather than curated. The same honesty
+analyzer self-boundary), making this one case spec-supplied rather than curated. The same disclosure
 posture as bounded-CHA governs: refinement only **adds** resolved effects or **bounds** the cliff's
-reach — it MUST NOT drop the `Exec` itself (a subprocess was still spawned), and MUST NOT narrow a
+reach. It MUST NOT drop the `Exec` itself (a subprocess was still spawned), and MUST NOT narrow a
 **dynamically-constructed or unrecognised head to pure** (that head keeps the unrefined cliff). The
-**head** is the program-naming position — argv[0], the command actually executed — *not* merely any
+**head** is the program-naming position (argv[0], the command actually executed), *not* merely any
 literal among the call's arguments: when the program itself is runtime-computed, a literal appearing
 only as a later **argument** (a flag, a path, an env value) is data, NOT the head, and MUST NOT
-refine — `spawn(tool, "curl")` with a dynamic `tool` keeps the bare cliff, because `curl` is an
+refine: `spawn(tool, "curl")` with a dynamic `tool` keeps the bare cliff, because `curl` is an
 argument here, not the program. Classifying an argument as the head would **fabricate** that
 argument's effect onto a program that may never perform it — the under-report-don't-fabricate rule
 (above) forbids it. A
 head resolved to a known non-project tool also bounds *transitive* attribution: a caller that only
-ever spawns such tools does not thereby reach the effects of the project's own binaries — e.g. a
+ever spawns such tools does not thereby reach the effects of the project's own binaries. For example, a
 step that runs candor *over* the code performs `Fs` (candor reads the source), not the analysed
 code's `Net`/`Db`. The head table is curated engine data under the same under-report-don't-fabricate
 rule, never normative; only this posture is.
@@ -763,23 +763,23 @@ For a consumer, this means:
 
 An implementation MAY treat dispatch over a curated set of conventionally-pure standard-library
 traits/interfaces (formatting, equality, hashing, cloning) as resolved-pure, to avoid flooding
-reports with false `Unknown`s — but MUST document which, and MUST NOT extend it to anything where an
+reports with false `Unknown`s; but it MUST document which, and MUST NOT extend the set to anything where an
 effect could plausibly hide (iterators, callbacks, I/O traits, finalizers).
 
-A method *inherited* by a type — a trait default/provided method, or a concrete method on a base
-class the type does not override — is a **resolved** call, not an `Unknown`: it lands on that inherited
+A method *inherited* by a type (a trait default/provided method, or a concrete method on a base
+class the type does not override) is a **resolved** call, not an `Unknown`: it lands on that inherited
 body, whose effects MUST be attributed. Reporting it `Unknown` is unsound in the noisy direction (it
 masks the inherited body's real effects, since an unresolved dispatch also stops propagation). An
-`Unknown` from dispatch is justified only when the target is *genuinely* indeterminate — a value
+`Unknown` from dispatch is justified only when the target is *genuinely* indeterminate: a value
 implementing a trait/interface the implementation declares but whose concrete implementor it cannot
 see (a DI-wired strategy, a `dyn`/virtual call with no visible impl). The `unknownWhy` field
 records this distinction per function so a consumer (and the implementer) can tell irreducible opacity
-(`reflect:`, `native:`) from the improvable kind (`dispatch:`/`callback:` — often resolved by widening
+(`reflect:`, `native:`) from the improvable kind (`dispatch:`/`callback:`, often resolved by widening
 the analysed inputs to include the missing implementor or the higher-order call's target). ⟨0.6⟩ It is
-**REQUIRED on a unit that introduces `Unknown` DIRECTLY** (a *source* — its own body has the
+**REQUIRED on a unit that introduces `Unknown` DIRECTLY** (a *source*: its own body has the
 unresolvable call), and absent on a unit whose `Unknown` is purely inherited from a callee. That source
 vs. inherited split is what makes the `blindspots` query (§3.1) name the handful of real root causes
-behind a widely-propagated `Unknown` — a 0.5 consumer that ignores the field is unaffected.
+behind a widely-propagated `Unknown`; a 0.5 consumer that ignores the field is unaffected.
 
 ⟨0.7⟩ **Canonical `unknownWhy` vocabulary.** Each entry is `kind:detail`, where `kind` is exactly one of
 four, chosen to be language-neutral over *why a call's body could not be resolved*:
@@ -817,12 +817,12 @@ forward-compatibility. The conformance check pins the four canonical kinds and t
 engine is visible without being falsely red.
 
 ⟨0.7⟩ **Domain engines.** The four kinds describe why a *code* call's body could not be resolved, and so
-bind every engine that analyses source or bytecode. A **domain engine** — one whose units are not
+bind every engine that analyses source or bytecode. A **domain engine**, one whose units are not
 functions and whose call graph is not code (e.g. the agent-fleet engine, where units are agents and edges
-are delegation) — has no virtual dispatch, reflection, or FFI in this sense; its `Unknown` sources are
+are delegation), has no virtual dispatch, reflection, or FFI in this sense; its `Unknown` sources are
 domain-specific (an uncurated MCP server, an unknown tool, ambient tool authority, an unprovable agent
-spawn). Such an engine MUST still attach an `unknownWhy` to every direct `Unknown` source — the disclosure
-requirement (§4) is universal — drawn from its own documented origin vocabulary (e.g. `mcp-uncurated:`,
+spawn). Such an engine MUST still attach an `unknownWhy` to every direct `Unknown` source (the disclosure
+requirement of §4 is universal), drawn from its own documented origin vocabulary (e.g. `mcp-uncurated:`,
 `tool-unknown:`, `ambient:`, `agent-spawn:`), and emits none of the four code kinds (so its frontier is
 likewise empty). Disclosure is required of *every* conformant engine; the code vocabulary above is
 required only of code engines.
@@ -841,18 +841,18 @@ that a function's *signature* tells you its effect surface.
 ### 5.1 The effect manifest — declared effects for an opaque dependency ⟨0.5⟩
 
 A cap type lets a *function* declare its effects. The same trust tier extends to a whole **opaque
-dependency** — a package whose source the engine does not analyse, an MCP server, a tool behind the
-`Exec` boundary — via an **effect manifest**: a `candorEffects` declaration (an array of effect
+dependency** (a package whose source the engine does not analyse, an MCP server, a tool behind the
+`Exec` boundary) via an **effect manifest**: a `candorEffects` declaration (an array of effect
 names from §1) the dependency publishes, naming the surface it may perform. An engine MAY read it
 and classify the dependency's calls accordingly, killing the `Unknown` it would otherwise carry.
-The trust is **declared-not-verified**: the report is only as honest as the declaration, exactly
+The trust is **declared-not-verified**: the report is only as trustworthy as the declaration, exactly
 like a cap type (and unlike the engine's own analysis, which is checked). An effect name outside §1
 MUST void the declaration loudly (a typo must not silently *narrow* a surface), and a declaration
-that under-claims is caught the moment the source *is* analysed — the κ ledger (§7) names every
+that under-claims is caught the moment the source *is* analysed; the κ ledger (§7) names every
 dependency still opaque, so a missing manifest is visible, never silent. The edge cases are fixed
 normatively so the engines can't drift on them (a cross-engine manifest differential is tracked
-conformance work — these MUSTs bind regardless): an **empty** array (`candorEffects: []`) is a positive "declared pure"
-— covered, NOT a blind spot (distinct from an *absent* manifest, which stays opaque, the same load-bearing
+conformance work; these MUSTs bind regardless): an **empty** array (`candorEffects: []`) is a positive
+"declared pure", covered, NOT a blind spot (distinct from an *absent* manifest, which stays opaque, the same load-bearing
 empty-vs-absent split as `deny`-with-no-effect vs `pure`); a present-but-**non-array** value is malformed
 and MUST void loudly (the same class as an out-of-§1 name, never a silent narrowing); names are a **set**
 (deduped); `Unknown` is not a §1 effect name, so `candorEffects:["Unknown"]` voids; and a manifest MUST
@@ -865,12 +865,12 @@ settle, and adoption is the path to shrinking `Unknown` across a whole dependenc
 one curated table at a time.
 
 The manifest pays off twice. First, **precision**: a declared dependency stops flooding consumers
-with `Unknown`. Second — and higher-signal — **supply-chain review**: an effect surface is a
+with `Unknown`. Second, and higher-signal, **supply-chain review**: an effect surface is a
 versioned fact, so a `diff`/`gains` (§3.1, §6 `AS-EFF-005`) between two *releases* of a dependency
-surfaces a **gained capability** — "this update gained `Net`/`Exec`". A dependency that quietly
+surfaces a **gained capability**: "this update gained `Net`/`Exec`". A dependency that quietly
 grows a network or subprocess reach between a patch release is exactly the supply-chain event nothing
 else flags cheaply; candor flags it as a deterministic effect-set delta, declaration or analysis
-alike. An engine SHOULD make the package-level gained set machine-readable so a gate can alarm on it —
+alike. An engine SHOULD make the package-level gained set machine-readable so a gate can alarm on it;
 the **`gains`** query (§3.1) is that shape.
 
 ## 6. Diagnostics (`AS-EFF-00x`)
@@ -895,21 +895,21 @@ whole capability bundle.
 
 A **literal-allowlist** policy rule, `allow <Effect> [in <scope>] <value>...`, constrains *which* values a
 scope's effect may reach (AS-EFF-008). Four effects carry a literal surface: `Net` hosts, `Exec`
-commands, `Fs` paths, and `Db` tables — checked against the transitive `hosts`/`cmds`/`paths`/`tables`
+commands, `Fs` paths, and `Db` tables, checked against the transitive `hosts`/`cmds`/`paths`/`tables`
 detail, so it catches a value that lives in a deep or cross-crate callee, matched per-effect (host by
 name, command by basename, path by prefix, table by case-insensitive qualified name with `schema.*`
-covering a schema — an allowed unqualified name does NOT cover a qualified one). The rule is a
+covering a schema; an allowed unqualified name does NOT cover a qualified one). The rule is a
 **certification, and it fails closed** (see SEMANTICS §6): a function in scope passes only when every
-value its effect reaches is *visible and allowed*. A value the engine cannot read — computed at
-runtime, concatenated, derived from a parameter — leaves the surface **uncertifiable**, and that is an
+value its effect reaches is *visible and allowed*. A value the engine cannot read (computed at
+runtime, concatenated, derived from a parameter) leaves the surface **uncertifiable**, and that is an
 AS-EFF-008 failure too, never a pass: a denied endpoint assembled at runtime slipping through an
 allowlist that *saw nothing* is the masked-literal evasion, the cardinal gate-evasion the fail-closed
 direction exists to prevent (the conformance masking differential pins it engine-by-engine). The
-consequence to design for: `allow` is a certification tool for scopes narrow enough to certify — on
-code whose values are inherently dynamic the honest verdict is "uncertifiable", not a pass; narrow the
+consequence to design for: `allow` is a certification tool for scopes narrow enough to certify. On
+code whose values are inherently dynamic the right verdict is "uncertifiable", not a pass; narrow the
 scope or make the values literal. One residual stays outside AS-EFF-008: a fully *unresolved* call
 (`Unknown ∈ I(f)`, AS-EFF-003) could perform the effect invisibly without ever touching its literal
-surface — pair the allowlist with a `deny Unknown <scope>` rule where even that residual must be
+surface; pair the allowlist with a `deny Unknown <scope>` rule where even that residual must be
 excluded.
 
 A **layering** policy rule, `forbid <A> -> <B>`, constrains *who* a layer may depend on: no function in
@@ -924,15 +924,15 @@ candor defines **no single quality score**. Raw effect *counts* are domain-depen
 performs `Db` in most functions, which is not a defect — so any rolled-up grade would be meaningless
 across domains and gameable. The domain-independent signal is **dispersion**: how well an effect that
 *should* live in a dedicated layer actually stays there. A `Db`-heavy app with all `Db` in `dao` is
-well-architected; one with `Db` in `model`, `controllers`, **and** `dao` is leaky — regardless of how
+well-architected; one with `Db` in `model`, `controllers`, **and** `dao` is leaky, regardless of how
 much `Db` it does. The total is domain-dependent; the dispersion is an architecture fact.
 
 Two classes of effect:
 
-- **boundary** — `Db`, `Net`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
-  dedicated layer; their dispersion is the signal. (`Clipboard` is external-resource I/O — a boundary
-  capability — so it is contained/scored, not cross-cutting.)
-- **cross-cutting** — `Log`, `Clock`, `Rand`, `Env`. Pervasive by nature (logging/timestamps everywhere is
+- **boundary**: `Db`, `Net`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
+  dedicated layer; their dispersion is the signal. (`Clipboard` is external-resource I/O, a boundary
+  capability, so it is contained/scored, not cross-cutting.)
+- **cross-cutting**: `Log`, `Clock`, `Rand`, `Env`. Pervasive by nature (logging/timestamps everywhere is
   normal), so they are reported but **not** scored. `Unknown` is excluded entirely (it is a visibility
   property, not an effect).
 
@@ -940,7 +940,7 @@ Two classes of effect:
 > split (`{Log,Clock,Rand,Env}` = cross-cutting vs the boundary effects) is about *where an effect should
 > be contained*, and is independent of the no-ambient check's partition, which calls **`𝔼 \ {Log}`**
 > "ambient authority" (every effect except `Log` is ambient authority a function should *receive* rather
-> than reach for directly — SEMANTICS §6, AS-EFF-004). The two sets answer different questions and
+> than reach for directly; SEMANTICS §6, AS-EFF-004). The two sets answer different questions and
 > deliberately do not coincide; "ambient" is reserved for the capability sense, and this containment
 > bucket is named "cross-cutting" to keep them apart.
 
@@ -951,13 +951,13 @@ beyond the root (a free function, a root-package class) buckets into `(root)` ra
 own pseudo-layer.
 
 For each boundary effect, **containment** is the share of its *direct* occurrences that fall in its
-dominant layer (100% = fully contained). This is reported **per effect**, as a diagnostic — never summed
+dominant layer (100% = fully contained). This is reported **per effect**, as a diagnostic, never summed
 into one number.
 
 **The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers*
 each boundary effect appears in. If an effect appears in a layer it was **not** in before, that is a
-containment regression — `AS-EFF-010`, and the check fails (the gate). The reverse — an effect that
-*left* a layer — SHOULD be reported as an improvement (informative, not a failure). Because this compares
+containment regression (`AS-EFF-010`), and the check fails: the gate. The reverse, an effect that
+*left* a layer, SHOULD be reported as an improvement (informative, not a failure). Because this compares
 a codebase to *itself* over time, it is domain-independent and not gameable by renaming, and is the form
 suitable for CI. The unsupervised per-layer diagnostic is a heuristic that assumes layer-organized code;
 the ratchet is the robust form. An implementation that supports containment MUST treat it as a diagnostic
@@ -971,14 +971,14 @@ the grammar must be fixed, not merely "some rules text" — so this section is *
 policy reader parses exactly this, and the cross-impl suite checks it (§7).
 
 **Lexical.** One rule per line. A `#` begins a comment to end-of-line; blank lines and comment-only lines
-are ignored. A line is split into tokens on runs of **ASCII whitespace** — space (U+0020), tab (U+0009),
-and CR/LF/VT/FF (U+000A–U+000D) — and *only* these. A non-ASCII space (NBSP U+00A0, ideographic space
+are ignored. A line is split into tokens on runs of **ASCII whitespace** (space U+0020, tab U+0009,
+and CR/LF/VT/FF U+000A–U+000D) and *only* these. A non-ASCII space (NBSP U+00A0, ideographic space
 U+3000, NEL U+0085, …) is **not** a separator: it stays an ordinary character of its token, so the token
-is malformed and the rule is ignored-with-a-warning — uniformly across engines. (Pinning the separator
-class to ASCII is load-bearing: a language's "default whitespace" varies — Unicode `White_Space` vs JS
-`\s` vs ASCII — so an unpinned class let one engine split a NBSP-bearing line and another silently DROP
-the rule, a gateless-green divergence a shared gate must not have.) The first token is the **rule kind**. A
-line whose kind is unrecognized, or that is malformed for its kind, is **ignored with a warning** — never
+is malformed and the rule is ignored-with-a-warning, uniformly across engines. (Pinning the separator
+class to ASCII is load-bearing: a language's "default whitespace" varies, Unicode `White_Space` vs JS
+`\s` vs ASCII, so an unpinned class let one engine split a NBSP-bearing line and another silently DROP
+the rule — a gateless-green divergence a shared gate must not have.) The first token is the **rule kind**. A
+line whose kind is unrecognized, or that is malformed for its kind, is **ignored with a warning**, never
 silently treated as a stricter or looser rule (silent reinterpretation is the one thing a security gate
 must not do).
 
@@ -1006,18 +1006,18 @@ allow   <Effect> [in <scope>] <v>…   # AS-EFF-008 — which literals an effect
 forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
 ```
 
-- **`deny`** — the tokens after `deny` are read left to right: each token that names an effect (the §1
+- **`deny`**: the tokens after `deny` are read left to right: each token that names an effect (the §1
   vocabulary, **or** the literal `Unknown`) joins the forbidden set; the **first** token that is not a
   known effect is the **scope**, and **ends the rule** (any further tokens are ignored). A `deny` that
   names no known effect is **dropped** (it is not a `pure` rule — that distinction is load-bearing).
   `Unknown` is denyable precisely so `deny Unknown <scope>` forbids the *unverifiable* case (§6,
   AS-EFF-008's companion).
-- **`pure`** — an empty forbidden set, meaning **every** effect; the optional next token is the scope.
+- **`pure`**: an empty forbidden set, meaning **every** effect; the optional next token is the scope.
   `pure parse` ≡ "functions in `parse` must be effect-free."
-- **`allow`** — the effect MUST be one of the four that carry a literal surface (`Net`, `Exec`, `Fs`,
+- **`allow`**: the effect MUST be one of the four that carry a literal surface (`Net`, `Exec`, `Fs`,
   `Db`); an `allow` for any other effect is dropped with a warning. An optional `in <scope>` follows; the
   remaining tokens are the allowed values (≥1 required, else the rule is dropped).
-- **`forbid`** — two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
+- **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
 
 **Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not
@@ -1052,21 +1052,21 @@ artifact runs on a host with a native capability boundary, an implementation MAY
 <Effect>` rule into a runtime guard** that enforces the same boundary — a seccomp/landlock profile for a
 process, or, for an agent fleet, the harness's own `permissions.deny` over the tools that produce the
 effect. This is the dual of analysis: the analyzer READS the enforcement surface (§4 — an agent engine
-subtracts a hard-denied tool); the guard WRITES it. The guard MUST be **honest about the cliff it
+subtracts a hard-denied tool); the guard WRITES it. The guard MUST **disclose the cliff it
 cannot close**: denying the tools that *directly* perform an effect does not bind a subprocess (`Exec`)
-that can reach it anyway, so a guard MUST disclose that residual path rather than imply total
+that can reach it anyway, so a guard MUST report that residual path rather than imply total
 enforcement. Per-target scopes a host boundary cannot express (a project-wide `permissions.deny` is not
 per-agent) MUST be reported as unenforceable at that layer, not silently widened to everything.
 
 ## 7. Conformance checklist for an implementation
 
-Two **profiles** exist, and a claim of conformance names one. A **sound engine** meets every MUST below —
+Two **profiles** exist, and a claim of conformance names one. A **sound engine** meets every MUST below;
 this is the default meaning of "conformant". A **disclosed syntactic floor** (the Rust repo's stable
-`candor-scan` backend is the canonical example) deliberately does not claim items 1/4 — it documents that
-it can under-report *silently* (item 7's honesty obligation applied to its own design), meets the
+`candor-scan` backend is the canonical example) deliberately does not claim items 1/4: it documents that
+it can under-report *silently* (item 7 applied to its own design), meets the
 interchange items (2–3, 5–6, 8, 14) and answers the cross-impl conformance fixtures it can. Both declare
-the envelope `spec` of the contract whose **interchange surfaces** they implement; what differs — and MUST
-be documented, never implied away — is the §4 claim. (Item 13 states the same split for the soundness
+the envelope `spec` of the contract whose **interchange surfaces** they implement; what differs (and MUST
+be documented, never implied away) is the §4 claim. (Item 13 states the same split for the soundness
 harness; this paragraph names it as a profile so "every conformant engine agrees" is a precise claim, not
 one that quietly includes an engine the checklist would otherwise disqualify.)
 
@@ -1075,21 +1075,21 @@ A **sound engine** conforms to candor-spec if it:
 1. resolves call targets using type information (not purely syntactically);
 2. computes a per-function **transitive** effect set;
 3. emits the §2 report schema;
-4. honours the §4 trust contract — unresolved ⇒ `Unknown`, never silent-pure;
+4. honours the §4 trust contract: unresolved ⇒ `Unknown`, never silent-pure;
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
-   command-line surface** of §3.3 — `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
+   command-line surface** of §3.3: `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
    `--version`/`-V` carrying the spec version, `--help`/`-h`, `--agents` (the embedded agent
-   contract, item 11), and — for an engine declaring `spec ≥ 0.8` — `--gate-json` (the structured
-   gate verdict) — with flag names and help wording consistent across engines;
-6. uses the §1 vocabulary and §6 codes where they apply, and — if it enforces any policy mode — parses
+   contract, item 11), and, for an engine declaring `spec ≥ 0.8`, `--gate-json` (the structured
+   gate verdict), with flag names and help wording consistent across engines;
+6. uses the §1 vocabulary and §6 codes where they apply, and, if it enforces any policy mode, parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
-7. is honest in its own docs about what it cannot see;
+7. documents, plainly and in its own docs, what it cannot see;
 8. declares the **spec version** it implements (the envelope's `spec`, §2.1) and keeps it in step with
    this document.
 
 It SHOULD additionally (items 9–13):
 
-9. emit the **call-graph sidecar** (§2.2) — required if it answers any caller-direction query
+9. emit the **call-graph sidecar** (§2.2): required if it answers any caller-direction query
    (`callers`/`whatif`/`rewire`), since the report alone omits pure functions;
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
@@ -1097,15 +1097,15 @@ It SHOULD additionally (items 9–13):
     blast radius, the `rewire` verdict, the `§6.2` policy-DSL parse, the §2 tables extraction, the
     item-14 κ-ledger disclosure, and the read-only queries' JSON shapes + name-match ladder;
 11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
-    consumes this implementation's reports — the per-language counterpart of this repo's
+    consumes this implementation's reports; the per-language counterpart of this repo's
     language-agnostic AGENTS.md), and a `PROVE-IT.md` (a runnable self-experiment an adopter's own
     agent executes on their codebase: manual blast-radius trace committed *before* the tool runs,
-    every claimed miss verified at a file:line, and the honest negative outcome reported — value
-    demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/honesty
+    every claimed miss verified at a file:line, and a negative outcome reported as found, so value is
+    demonstrated on *their* code, not the implementer's fixtures). The §4 exemption/disclosure
     documentation is already a MUST (items 6–7). The engine is additionally
     **self-describing**: its installed artifact embeds the `AGENTS.md` and prints it under the
-    **`--agents` flag — REQUIRED in the §3.3 command-line surface** (all four engines ship it, and
-    the conformance suite Part 7 gates it pass/fail) — prefixed by a header naming the installed
+    **`--agents` flag, REQUIRED in the §3.3 command-line surface** (all four engines ship it, and
+    the conformance suite Part 7 gates it pass/fail), prefixed by a header naming the installed
     engine version, so the contract an agent reads always matches the binary it runs. A vendored or
     remotely fetched copy can describe a *different* version (or be tampered with in transit); the
     embedded copy is the §2.1 version-trust rule applied to documentation. The embedded copy MUST
@@ -1113,23 +1113,23 @@ It SHOULD additionally (items 9–13):
     agents to prefer `--agents` over any other copy, re-reading it when the engine version changes.
     (The *flag* and the embedded-copy equality are MUSTs; shipping the companion `PROVE-IT.md`
     remains a SHOULD.);
-12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report —
+12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report:
     self-analysis is the free real-world test), and run a **self-gate** in CI: a declared
     `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g. the code
     engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc"). The
     self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
-    is red — or absent — is asking adopters to hold a standard it does not hold itself. (This item
-    previously said "MUST analyze" inside this SHOULD list — a wording contradiction; the SHOULD
+    is red (or absent) is asking adopters to hold a standard it does not hold itself. (This item
+    previously said "MUST analyze" inside this SHOULD list, a wording contradiction; the SHOULD
     umbrella governs.)
 13. **enforce the §4 trust contract with an adversarial soundness harness.** Item 4 states the
     contract; this is what makes it a tested property instead of a hope. The harness GENERATES
-    programs that thread a *known* effect from a sink through the language's call forms — every form
+    programs that thread a *known* effect from a sink through the language's call forms, every form
     that could hide an edge: direct calls and the language's lambda/closure idioms, method dispatch,
     cross-module calls, callback values, and the language's desugars (operators, `?`, `await`,
-    destructors, iterator protocols — whatever the language has) — and asserts every reachable unit
+    destructors, iterator protocols, whatever the language has) and asserts every reachable unit
     is reported with the effect **or** `Unknown`. A reachable unit reported pure, or omitted, fails
     the harness: that is the silent under-report §4 forbids. Requirements on the harness itself:
-    - **Teeth-verified:** disabling a resolution mechanism MUST make the harness fail — a harness
+    - **Teeth-verified:** disabling a resolution mechanism MUST make the harness fail: a harness
       that cannot fail proves nothing. Verify teeth per *mechanism*, not per line: engines grow
       redundant defenses (two independent paths both catching a callback call), and neutering one
       line of a doubly-covered mechanism passes vacuously; neuter the mechanism.
@@ -1138,36 +1138,36 @@ It SHOULD additionally (items 9–13):
       found in the wild. Treat the form list as open, and add a form with every soundness fix.
     - A **precision twin** is recommended: a pure bystander unit that must stay OUT of the report,
       so the harness also catches an engine that goes sound by flooding.
-    - The harness SHOULD run in CI alongside the engine's tests — an unrun harness proves nothing.
+    - The harness SHOULD run in CI alongside the engine's tests; an unrun harness proves nothing.
     All four code engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
     candor-swift `fuzz.py`),
     and the design ports beyond programming languages (the candor-agents engine runs the same
     harness shape over agent-fleet effect graphs). Like every SHOULD in this list, the harness is a
-    claim an engine either ships or doesn't make — an engine without one has an *untested* §4, and
+    claim an engine either ships or doesn't make: an engine without one has an *untested* §4, and
     its docs must not suggest otherwise. The harness applies per **engine**, not per repo, and only
     to engines that claim §4 at all: a deliberately syntactic floor (the Rust repo's stable
-    `candor-scan` backend) documents that it under-reports *silently* — it does not claim item 4 (or
+    `candor-scan` backend) documents that it under-reports *silently*, so it does not claim item 4 (or
     item 1's type-informed resolution), so there is no §4 claim for a harness to test; its
-    obligations are item 7's honesty and the cross-impl conformance fixtures it does answer. In the
+    obligations are item 7's disclosure duty and the cross-impl conformance fixtures it does answer. In the
     Rust repo the harness accordingly drives the nightly lint (the engine that claims §4), not
     `candor-scan`.
-And, as of spec 0.4, it MUST also (the number is kept from its SHOULD-era introduction — references
+And, as of spec 0.4, it MUST also (the number is kept from its SHOULD-era introduction, so references
 to "item 14" stay valid):
 
 14. **disclose the curated classifier's blind spots per scan — the κ-coverage ledger.** Every
     candor engine classifies external calls against a curated table, and an UNLISTED package
-    contributes nothing: invisible, not `Unknown` — the documented weaker edge of item 4's promise,
+    contributes nothing: invisible, not `Unknown`. That is the documented weaker edge of item 4's promise,
     and historically its sharpest (an unlisted password-hashing library read silently pure on
     exactly the call a security review cared about). A conforming engine MUST therefore emit,
     with each scan, the external packages the scanned code **demonstrably calls** that the
-    classifier neither classifies nor has reviewed-pure, named with call counts — per-scan
+    classifier neither classifies nor has reviewed-pure, named with call counts: per-scan
     evidence in the receipt, not a documentation footnote. The disclosure line begins with the
     canonical marker **`κ doesn't know`** so consumers (and the conformance suite, which asserts
     it) can find it without per-engine wording knowledge. Exempt from the disclosure: the
     platform/builtin frontier (the classifier's actual job), packages the classifier covers
     verb-precisely (zero classifications can mean the code touches only their pure surface),
-    and packages a chained sibling report covers (§2 — including an EMPTY report, whose silence
-    is a purity claim). A domain engine (§4) satisfies this item over its own curated frontier —
+    and packages a chained sibling report covers (§2, including an EMPTY report, whose silence
+    is a purity claim). A domain engine (§4) satisfies this item over its own curated frontier:
     candor-agents' ledger names the uncurated MCP servers, unknown tools, and unlisted literal
     command heads the scan relied on (`mcp:`/`tool:`/`head:` with unit counts), plus the curated
     reviewed-pure grants the verdict rests on: the domain analog of "packages the code

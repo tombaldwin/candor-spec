@@ -1,7 +1,7 @@
 # Building a candor classifier for a new language
 
 The classifier maps a *resolved* call target to an effect (or none). It is the heart of an
-implementation — and where every hard lesson lives. These are distilled from building the family's
+implementation, and where every hard lesson lives. These are distilled from building the family's
 first implementation (Rust); they generalize.
 
 ## 1. Resolve, don't pattern-match syntax
@@ -14,13 +14,13 @@ syntactic tool cannot do this, and will be wrong in both directions.
 
 ## 2. Match the I/O boundary, not the library
 
-Builder-pattern and SDK-heavy libraries are *mostly pure construction* — only the dispatch is the
+Builder-pattern and SDK-heavy libraries are *mostly pure construction*; only the dispatch is the
 effect. Tag the boundary call, not the whole crate/package:
 
 - HTTP / cloud clients → the `.send()` / `.execute()`, not the request builders;
 - DB clients → the query-*execution* verb, not query construction;
 - raw sockets → the I/O types, not the address/data types alongside them. But detection here
-  is **crate-keyed**: recognising `std::net`/`tokio::net` is not enough — a project on another
+  is **crate-keyed**: recognising `std::net`/`tokio::net` is not enough. A project on another
   socket runtime (legacy `tokio_tcp`/`tokio_udp`, or `async-std`/`smol`/`mio`) opens sockets through
   *different* types, and a tool that only knows the mainstream pair will confidently report 0 network
   on it. (Found running on websocat, still on tokio 0.1: its `tokio_tcp::TcpStream::connect` was
@@ -33,8 +33,8 @@ per-library, not per-verb: in `sqlx`, bare `query()` only **builds** (the effect
 **are** the round-trip. A rule tuned to exclude sqlx's builder silently hid 16 of pgman's 20 DB call
 sites until an A/B on the real app exposed it (§5). Give each library its own verb set.
 
-Over-reporting erodes trust as much as under-reporting hides danger. Both are dishonesty about what
-the code does. Add a precision test — a positive *and* a negative case — for each rule.
+Over-reporting erodes trust as much as under-reporting hides danger. Both misstate what
+the code does. Add a precision test (a positive *and* a negative case) for each rule.
 
 ## 3. Make the classifier extensible
 
@@ -78,7 +78,7 @@ safe for an agent to rely on.
   `java.net` + `HttpClient`, `java.sql` execution, `ProcessBuilder` / `Runtime.exec`, `System.getenv`,
   clocks, slf4j/log4j, `Random` / `SecureRandom`. Capability declarations map naturally onto
   dependency injection; no-ambient maps onto "don't bypass DI". Ceiling: reflection / AOP / proxies
-  (Spring) defeat the call graph — be honest (`Unknown`) there. Bonus: checked exceptions are a
+  (Spring) defeat the call graph — disclose (`Unknown`) there. Bonus: checked exceptions are a
   native effect annotation you can read straight from signatures.
 - **C# / .NET** — a Roslyn analyzer (first-class semantic API, ships as NuGet, runs in IDE + build).
   Likely the easiest engine to build. `async` / `await` already primes the effect mindset.
@@ -101,7 +101,7 @@ safe for an agent to rely on.
   Capability declarations (§5) have no native token, but a *branded type* or a dependency-injected
   collaborator (a NestJS provider, an injected `fs`-like handle) declares the surface — no-ambient maps
   onto "receive your I/O, don't `import` it". **Ceiling — the gradual-typing escape hatch is the defining
-  honesty pressure here:** an `any`-typed receiver, an **untyped JS dependency** (no `.d.ts`), `eval` /
+  trust-contract pressure here:** an `any`-typed receiver, an **untyped JS dependency** (no `.d.ts`), `eval` /
   dynamic `import()` / `require(variableName)`, and monkey-patched or computed dispatch (`obj[name]()`) are
   all unresolvable and MUST be `Unknown`, never assumed pure (SPEC §4). This is actually a clean fit —
   TS's `any` and an untyped import *are* the "could not resolve" case the trust contract already names.

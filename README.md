@@ -5,13 +5,13 @@
 **Make what code *does* legible — to humans, and especially to AI agents.** candor is a family of
 per-language tools that report, for every function, which side effects it performs — network,
 filesystem, database, subprocess, env, clock, IPC, logging, randomness, clipboard — *transitively*,
-and are honest about what they can't resolve.
+and disclose what they can't resolve.
 
 This repo is the **language-agnostic specification**: the shared effect vocabulary, report schema,
 diagnostic codes, modes, and agent contract that every implementation conforms to. The *design*
 ports across languages; each implementation's *engine* is bespoke to its toolchain.
 
-**Site:** [candor.poly.io](https://candor.poly.io) — the measured case in five minutes: the
+**Site:** [candor.poly.io](https://candor.poly.io): the measured case in five minutes: the
 exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 ## Implementations
@@ -37,7 +37,7 @@ Domain engines (units are not functions; ride the version ladder on their own sc
   codes, the modes, and the trust contract. What it means to "be a candor implementation."
 - **[SEMANTICS.md](SEMANTICS.md)** — the formal analysis: the effect lattice, call-site resolution
   rules, the transitive fixpoint, cross-crate composition, the conformance predicates, and the
-  soundness/precision/termination properties (with the two honesty caveats stated explicitly).
+  soundness/precision/termination properties (with the two soundness caveats stated explicitly).
 - **[PRINCIPLES.md](PRINCIPLES.md)** — the ideas the family is built on (honesty under uncertainty).
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
@@ -64,7 +64,7 @@ fixtures and fails if they disagree on the **effect set**, the **policy verdict*
 grammar** — *on those fixtures*: the differential covers what the battery encodes (and the battery
 grows with every divergence found in the wild), not every conceivable program. So a `deny Net
 in <layer>` boundary is enforced *identically* across a polyglot codebase, by construction. That cross-
-language consistency — not raw analysis power — is the durable position: it's what neither a smarter model,
+language consistency, not raw analysis power, is the durable position: it's what neither a smarter model,
 a single-language effect system, nor a per-language ruleset can offer.
 
 ## License

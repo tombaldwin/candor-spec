@@ -3,7 +3,7 @@
 This document specifies *what candor computes* and *under what guarantees*. [SPEC.md](SPEC.md) fixes
 the **interface** (effect vocabulary, report schema, diagnostic codes, modes); this fixes the
 **analysis**: the effect lattice, how a call site resolves, the transitive fixpoint, cross-crate
-composition, the conformance predicates, and the soundness/precision claims — stated honestly,
+composition, the conformance predicates, and the soundness/precision claims — stated plainly,
 including the two places soundness is *assumed* rather than proven.
 
 The model is language-agnostic; §9 maps it onto an implementation (the Rust implementation).
@@ -16,7 +16,7 @@ Fix a finite **effect vocabulary**
 
 > 𝔼 = { Net, Fs, Db, Exec, Env, Clock, Ipc, Log, Rand, Clipboard }.
 
-Adjoin a distinguished element **Unknown ∉ 𝔼** meaning *"this effect set may be incomplete — some
+Adjoin a distinguished element **Unknown ∉ 𝔼** meaning *"this effect set may be incomplete: some
 dispatch could not be resolved."* `Unknown` is **not** an effect (you can never hold a capability for
 it); it is an honesty marker (see §7, §8).
 
@@ -36,7 +36,7 @@ functions, methods, and const/static initializers). Each `f ∈ F` has:
 - a **signature** `sig(f)` — used only by the conformance layer (§6).
 
 Functions split into **local** (defined in the crate currently being analyzed) and **external**
-(defined elsewhere — dependencies, the standard library, or *sibling crates of the same project*,
+(defined elsewhere: dependencies, the standard library, or *sibling crates of the same project*,
 §5b). Effects performed in a closure are attributed to the nearest enclosing function in `F` (closures
 are not in `F`); equivalently, a closure's call sites belong to `body(f)` of that enclosing `f`.
 
@@ -67,7 +67,7 @@ For a call site `c ∈ body(f)`, resolution yields three things:
 - **edges(c) ⊆ F** — local callees whose effects propagate to `f` transitively (§5).
 
 The rules below are **not** a priority-ordered first-match: a single call site can fire several
-(notably, the syntactic callee is *always* retained as an edge when it is local — see the note — and
+(notably, the syntactic callee is *always* retained as an edge when it is local, see the note, and
 the devirt/CHA targets are *added*). Each rule states only the outputs it contributes; unstated
 outputs are `∅`. Read `t` = the syntactic callee, `X` = the cross-crate oracle of §5b, `impls(T,m)` =
 the local impls of trait method `m` of trait `T`.
@@ -121,7 +121,7 @@ Notes.
   set is curated tightly and excludes traits where I/O can hide (`Iterator`, `Fn*`, `Drop`,
   `io::Write`). This is caveat **C2** of §8.
 - **(OPAQUE)** is the curated-classifier assumption: an external callee candor has no rule for and
-  no cross-crate report for contributes *nothing*. This is caveat **C1** of §8 — the principal
+  no cross-crate report for contributes *nothing*. This is caveat **C1** of §8, the principal
   source of unsoundness.
 
 Define, for `f ∈ F`:
@@ -235,7 +235,7 @@ detail is informative-not-complete (SPEC §2), so a gate that passed whenever it
 evadable by exactly the values an adversary computes at runtime — the masked-literal evasion, pinned
 per engine by the conformance masking differential and the gate-verdict differential's opaque fixture.
 The cost is deliberate: on a scope whose values are inherently dynamic, `allow e` reads
-all-uncertifiable — the honest verdict; the rule is a certification tool for scopes narrow enough to
+all-uncertifiable — the correct verdict; the rule is a certification tool for scopes narrow enough to
 certify. What remains outside AS-EFF-008 is the fully *unresolved* call: `Unknown ∈ I(f)` (AS-EFF-003)
 can hide an unattributed `e` that never marks `masked_e` (the engine does not know the call performs
 `e` at all) — pair the allowlist with **`deny Unknown <scope>`** (AS-EFF-006) where that residual must
@@ -274,7 +274,7 @@ Then
 - each cross-crate report `I_{K′}` consulted via `X` is itself sound (soundness composes bottom-up).
 
 Under those assumptions candor never *silently* omits an effect: it either reports the effect or
-reports `Unknown`. The first two assumptions are exactly the **two honesty caveats** C1 and C2 of §8;
+reports `Unknown`. The first two assumptions are exactly the **two soundness caveats** C1 and C2 of §8;
 the third is their bottom-up closure across crates.
 
 **(P4) Precision is best-effort.** `I(f)` may strictly over-approximate `R(f)`: (CHA) unions impls a
@@ -284,11 +284,11 @@ per-function annotation; (DEVIRT) and verb-precise κ rules tighten it.
 
 ## 8. Where soundness is *assumed*, not proven
 
-candor is honest about being conditionally sound. (P3) rests on two assumptions that are engineering
+candor is explicit about being conditionally sound. (P3) rests on two assumptions that are engineering
 commitments, not theorems:
 
 - **C1 — the classifier is curated.** κ is a hand-built allowlist. An effectful call whose callee is
-  not in `dom(κ)` and has no cross-crate report falls under **(OPAQUE)** and contributes *nothing* —
+  not in `dom(κ)` and has no cross-crate report falls under **(OPAQUE)** and contributes *nothing*:
   a **false negative** with no `Unknown` raised. Mitigations: keep κ broad (run on real code; let
   reality correct it — see CLASSIFIER.md §5), let projects extend κ, and surface the crates a build
   actually called that κ doesn't recognize (a *coverage* signal) so the gap is visible, not silent.
