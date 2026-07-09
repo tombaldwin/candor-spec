@@ -4,18 +4,24 @@ A candor *implementation* analyzes a codebase in one language and reports, per f
 side effects it performs. This document defines what every implementation must produce, so that a
 report is interchangeable across languages — for an AI agent, a human, or a CI gate.
 
-**Version 0.8** (all four engines declare `0.8`; conformance-pinned). Minor versions ride a **ladder, not a
-lockstep stamp** (see *Versioning policy* below): the reference engine leads a new additive rung, the others
-raise to it in turn, and the floor rises when the last lands — which for 0.8 it now has. The ⟨0.8⟩ part — the
-**structured gate verdict** (§3.3, `--gate-json`) — was led by candor-java and is now implemented by all four
-engines, its cross-engine agreement pinned by the conformance gate-verdict differential (the floor is 0.8).
-The ⟨0.7⟩ parts — the **canonical `unknownWhy` vocabulary**
-(§4: four kinds reflect/native/dispatch/callback, `dispatch:` detail normative as `owner.member`); the
-**type-hierarchy sidecar** (§2.2); and the **`callers --include-unknown` dispatch-frontier** (§3.1,
-`possibleViaUnknownDispatch`) — are the **released floor**: all four engines implement them and conformance
-differentials pin both the vocabulary and the frontier output. (The ⟨0.6⟩ parts — the §3.1 `blindspots`
-query and the §4 `unknownWhy`-required-on-a-direct-source tightening — remain, wire-compatible; each rung is
-additive over the last, so an older-version consumer that ignores the new optional fields is unaffected.)
+## Contents
+
+- [The family, named precisely](#the-family-named-precisely) · [Versioning policy](#versioning-policy)
+- [1. Effects](#1-effects)
+- [2. The report](#2-the-report) — [2.1 Provenance](#21-provenance-the-candor-header) · [2.2 The sidecars](#22-the-call-graph-sidecar)
+- [3. Modes](#3-modes) — [3.1 Read-only queries](#31-read-only-queries-should) · [3.2 Pre-edit and structural tools](#32-pre-edit-and-structural-tools-should) · [3.3 The command-line surface](#33-the-command-line-surface-required) · [3.4 The configuration file](#34-the-configuration-file--candorconfig-should)
+- [4. The trust contract](#4-the-trust-contract--the-core-of-candor)
+- [5. Capabilities](#5-capabilities-conformance) — [5.1 The effect manifest](#51-the-effect-manifest--declared-effects-for-an-opaque-dependency-05)
+- [6. Diagnostics](#6-diagnostics-as-eff-00x) — [6.1 Containment](#61-containment--the-architecture-quality-signal-deliberately-not-a-score) · [6.2 The policy DSL](#62-the-policy-dsl-normative)
+- [7. Conformance checklist](#7-conformance-checklist-for-an-implementation)
+- [8. Changelog](#8-changelog)
+- [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
+
+**Version 0.8** — all four code engines declare `0.8`; the floor is conformance-pinned. How versions
+move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
+below. The ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ markers through this document tag each surface with the rung that introduced
+it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last, so an
+older-version consumer that ignores the newer optional fields is unaffected.
 
 The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the
 **pinned tool surfaces** (the §3.1 query shapes, the §3.3 command-line surface, the §6.2 policy grammar) —
@@ -25,8 +31,9 @@ release **major.minor tracks the spec it implements** — `candor-java 0.8.x` de
 still on the floor declares `0.7` — with
 the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
 
-**The family, named precisely.** This document uses four terms for the implementations, and every other
-candor document follows them:
+## The family, named precisely
+
+This document uses four terms for the implementations, and every other candor document follows them:
 
 - **The reference engine** is **candor-java** — the ladder-leading engine: a new minor rung is
   implemented there first, written into this document, and declared by candor-java ahead of the rest.
@@ -38,7 +45,9 @@ candor document follows them:
 - **candor-agents** is the **domain engine** (§4): its units are agents, not functions; it rides the
   ladder on its own schedule and never holds the code-engine floor back.
 
-**Versioning policy.** The spec version is a *cross-engine* contract, but it is a **version ladder, not a
+## Versioning policy
+
+The spec version is a *cross-engine* contract, but it is a **version ladder, not a
 lockstep stamp**. Two guarantees, kept distinct:
 
 - **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version
@@ -62,9 +71,9 @@ contradicts it. That is what makes a leading reference safe, and it splits the p
   producers — the 0.4/0.6 precedent): none of these can put two rungs in conflict — an engine on the older
   rung simply doesn't yet meet the new obligation, and says so via `spec`. The **reference engine
   (candor-java)** implements it, it is written into this
-  document, and candor-java declares the new minor **ahead of** the other engines — its release
-  `major.minor` tracks the spec it implements, so `candor-java 0.8.x` declares `spec 0.8` while a sibling
-  still at `0.7` stays fully interoperable on the `0.7` floor. The other engines raise to the new version as
+  document, and candor-java declares the new minor **ahead of** the other engines (release
+  `major.minor` tracks the spec, as above), while a sibling
+  still on the floor stays fully interoperable there. The other engines raise to the new version as
   they implement it; **the floor rises when the last one lands**, and the conformance differential pins the
   new feature across the engines that declare it (its cross-engine agreement is proven incrementally, not
   gated on all four at once). A capability MAY additionally incubate as an *unspecced* experimental engine
@@ -262,7 +271,7 @@ make the chain trustworthy:
 1. **Joins never guess.** The `hash` key must identify the target the way the *consumer's* view of
    the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference —
    per-language, but derivable from both sides). An ambiguous key (two dep functions sharing it) is
-   dropped, not picked from — the same under-report-don't-fabricate rule as call resolution.
+   dropped, not picked from — §4's under-report-don't-fabricate rule, applied at the join.
 2. **Stale reports are not trusted** — §2.1's version-trust rule applies at the join, and a
    report whose producing version is MISSING is as unverifiable as a mismatched one: downgrade to
    `Unknown`. (§2.1 is the single normative statement; this rule only locates where it bites.)
@@ -692,6 +701,13 @@ actually determine that.** A call it cannot resolve to a concrete target — dyn
 unknown type, a function value / callback, reflection — MUST contribute `Unknown` to that function's
 effect set and set `unresolved: true`. It must not be silently assumed pure.
 
+Its companion — **under-report, don't fabricate** — is stated once here; every other section points at
+it. When the choice is between asserting something the engine did not read from the code (a guessed
+chain join, a minted literal, an argument classified as a subprocess head) and asserting less, it
+asserts less: a gap is *disclosed* (`Unknown`, an omitted optional field), while a fabricated positive
+is silently trusted downstream — the unrecoverable direction. §2's chain joins, literal surfaces and
+SQL `tables` extraction, and this section's Exec-head refinement are all applications of this rule.
+
 **The limit, stated plainly.** Whether a function performs an effect is undecidable in general (Rice's
 theorem), so this rule is a *best-effort discipline, not a completeness guarantee*: a conforming
 implementation is one that disclosed `Unknown` everywhere it could not resolve a target — never one
@@ -730,12 +746,13 @@ literal among the call's arguments: when the program itself is runtime-computed,
 only as a later **argument** (a flag, a path, an env value) is data, NOT the head, and MUST NOT
 refine — `spawn(tool, "curl")` with a dynamic `tool` keeps the bare cliff, because `curl` is an
 argument here, not the program. Classifying an argument as the head would **fabricate** that
-argument's effect onto a program that may never perform it — the §1 under-report rule forbids it. A
+argument's effect onto a program that may never perform it — the under-report-don't-fabricate rule
+(above) forbids it. A
 head resolved to a known non-project tool also bounds *transitive* attribution: a caller that only
 ever spawns such tools does not thereby reach the effects of the project's own binaries — e.g. a
 step that runs candor *over* the code performs `Fs` (candor reads the source), not the analysed
-code's `Net`/`Db`. The head table is curated engine data under §1's under-report rule, never
-normative; only this posture is.
+code's `Net`/`Db`. The head table is curated engine data under the same under-report-don't-fabricate
+rule, never normative; only this posture is.
 
 For a consumer, this means:
 
@@ -1338,3 +1355,43 @@ declare it via the envelope's `spec`.
 - **0.2** — the self-describing `{ candor, functions }` envelope with a provenance header (`version`,
   `toolchain`); cross-crate inheritance by `hash`; version-aware trust.
 - **0.1** — the bare top-level array of function entries (still accepted by readers during migration).
+
+## Appendix — Implementing 0.8: the checklist
+
+The ordered build for a new engine — each step is usable on its own, each is judged by a named part of
+the cross-impl conformance suite (`conformance/run.sh`), and the order matches how the existing engines
+grew. Wire the engine into the suite early (see `conformance/README.md` for the env vars and the SKIP
+discipline) so every step lands machine-checked.
+
+1. **§2 — the report envelope, `hash`, and the sidecars.** The `{ candor, functions }` envelope with a
+   full provenance header, one report per package, `hash` on every entry, the call-graph sidecar (and
+   the type-hierarchy sidecar if the language has class/protocol dispatch). Judged by **PART 1**
+   (effect sets + callgraph completeness), **PART 1c** (the §4 honesty invariant over the emitted
+   report), **PART 9** (`unitKind`), and — once chaining lands — **PART 14** (`CANDOR_DEPS`
+   join-inherit / stale-downgrade / empty-report coverage).
+2. **§4 — the trust contract and the `unknownWhy` vocabulary.** Unresolved ⇒ `Unknown`, never
+   silent-pure; the four canonical kinds with `dispatch:owner.member` normative. Judged by **PART 1c**
+   and **PART 10** (vocabulary + dispatch shape), plus the dispatch-frontier differential once §3.1's
+   `callers --include-unknown` exists.
+3. **§3.3 — the command-line surface and the gate verdict.** `--policy` (+ `CANDOR_POLICY`), `--json`
+   to stdout, `--version`/`-V` with the spec version, `--help`/`-h`, `--agents`, unknown-flag ⇒ exit 2,
+   `--gate-json`. Judged by **PART 7** (`--agents`), **PART 8** (unreadable policy / unknown flag ⇒
+   exit 2), **PART 12** (gate-verdict differential), and **PART 15** (the stale-baseline fail-closed
+   posture, once the AS-EFF-005 baseline guard exists — the reference engine implements it and the
+   family roll across ts/swift/scan is landing, after which PART 15 pins four-way).
+4. **§3.4 — the `.candor/config` file.** Target-anchored discovery, flag → env → config → default
+   precedence, fail-closed when configured-but-unusable, unknown keys warned. Judged by **PART 13**.
+5. **§6.2 — the policy grammar and scope/literal matching.** The four rule kinds parsed exactly
+   (expose `parsepolicy`), segment-based scope matching (including nested-scope boundaries), per-effect
+   literal matching, fail-closed AS-EFF-008. Judged by **PART 4** (grammar), **PARTS 4b/4d/4e**
+   (tables / Exec-head / Net host:port extraction), the four-way policy-matching and gate-masking
+   differentials, **PART 2** (the `whatif` verdict + blast radius), **PART 3** (`rewire`), and
+   **PART 16** (applied `deny Unknown`, `pure`-vs-`Unknown`, `forbid` layering).
+6. **§3.1 — the read-only queries.** `show`/`where`/`callers`/`map`/`diff`/`gains`/`reachable`/`path`/
+   `impact`/`blindspots`, the name-match ladder, `callers --include-unknown`. Judged by **PART 5**
+   (query JSON shapes), **PART 11** (containment + the AS-EFF-010 ratchet, where implemented), and the
+   dispatch-frontier differential.
+7. **§7 — the κ-coverage ledger, `--agents`, and the checklist items.** The per-scan `κ doesn't know`
+   disclosure (item 14), the embedded agent contract (item 11), the self-gate (item 12), the soundness
+   harness (item 13). Judged by **PART 4c** (the ledger differential) and **PART 7**; items 12–13 live
+   in the engine's own CI.
