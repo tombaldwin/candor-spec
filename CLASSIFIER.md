@@ -71,7 +71,10 @@ safe for an agent to rely on.
 ## Language notes (starting points)
 
 - **Java / Kotlin** — bytecode call graph via WALA or SootUp (CHA/RTA/points-to come for free); or a
-  source-level Error Prone / Checker Framework plugin. Classify `java.io` / `java.nio.file`,
+  source-level Error Prone / Checker Framework plugin. (Note: the shipped engine, candor-java, chose
+  **plain ASM plus its own bounded CHA** over these frameworks — a smaller dependency surface and full
+  control of classification; WALA/SootUp remain viable starting points for a new engine.)
+  Classify `java.io` / `java.nio.file`,
   `java.net` + `HttpClient`, `java.sql` execution, `ProcessBuilder` / `Runtime.exec`, `System.getenv`,
   clocks, slf4j/log4j, `Random` / `SecureRandom`. Capability declarations map naturally onto
   dependency injection; no-ambient maps onto "don't bypass DI". Ceiling: reflection / AOP / proxies

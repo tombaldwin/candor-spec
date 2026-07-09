@@ -27,7 +27,7 @@ dangerous than no answer.
 ### 3. Ride the world; don't reinvent it
 
 Corpus fluency beats elegant novelty — which is why candor is a *profile over an existing language*,
-not a new one (the reference impl rides Rust + dylint; the Java impl rides WALA/SootUp). Compose with
+not a new one (the Rust impl rides rustc + dylint; the Java impl rides ASM bytecode + its own CHA). Compose with
 what exists (it recognizes cap-std; it defers to whole-program tools when that's the real need). Meet
 code and teams where they are: an adoption ladder (audit → guard → no-ambient → strict) that pays off
 without a rewrite.
