@@ -575,7 +575,7 @@ engine identically. Every implementation's scanner MUST accept:
 | `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
-| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given: with a gate active it re-emits that gate’s verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
+| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given, **except on exit 2**: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
@@ -612,6 +612,17 @@ disagrees with the gate. Source locations are not duplicated: a consumer joins e
 the §2 report (this is what the PR-native SARIF reporter does; `effects` gives it the precise effect to trace
 a codeFlow for — which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
 verdict some other idiomatic way, but `--gate-json` is the pinned form.
+
+Two further MUSTs guard the verdict's integrity:
+
+- **On exit 2 (could-not-evaluate) NO verdict is written.** An unreadable policy, an invalid baseline,
+  an unknown flag — the run could not evaluate the gate, so there is no faithful verdict to emit;
+  writing `ok: true` (or `ok: false`) would fabricate one. The "written whenever the flag is given"
+  rule above carries this single exception.
+- **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A
+  per-member write lets a clean last member overwrite an earlier violator's verdict — shipped as
+  exactly that bug in candor-scan 0.8.1, where a workspace's `gate.json` said `ok: true` while the
+  process exited 1. A consumer of the file and a consumer of the exit code must never disagree.
 
 ### 3.4 The configuration file — `.candor/config` (SHOULD)
 
