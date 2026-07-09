@@ -971,7 +971,12 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
   the arrow or either scope is dropped.
 
 **Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not
-substring**. Split both on the language's path separator (`::` in Rust, `.` on the JVM). The scope matches
+substring**. Split both on the language's path separator (`::` in Rust, `.` on the JVM) — **and on the
+language's nested-scope boundaries**, the same boundaries the §3.1 query name ladder recognizes: the
+JVM's `$` nested-type separator (`q.L$app.entry` has segment `app`) and a TS namespace segment count as
+segments too, so a layer rule bites a layer whether it is a package, a module, a directory, a nested
+type or a namespace (a 2026-07-09 clarification: the engines diverged on nested scopes — a `forbid
+app -> repo` that bit a Rust module missed a JVM nested class). The scope matches
 iff its segments appear as a **contiguous run** in the name where every segment **except the last** matches
 exactly and the **last** segment is a **prefix** of its name-segment. So scope `domain` matches
 `app::domain::handle`, `domain::handle`, and the function `domain_logic` (last-segment prefix), but **not**
