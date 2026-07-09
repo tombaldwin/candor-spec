@@ -195,12 +195,16 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
 | **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
 | **AS-EFF-007** | *(heuristic, not a set predicate)* `f` has an effect *site* whose argument syntactically derives from a parameter of `f` | performs an injection-class effect on caller-derived input — advisory |
-| **AS-EFF-008** | `e ∈ I(f)` for the rule's effect `e ∈ {Net, Exec, Fs, Db}` and, for an allowlist rule `r` whose scope matches `f`, `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) | reaches a literal (host / command / path / table) outside the declared allowlist. The opaque case (`e ∈ I(f)` but `lits_e(f) = ∅` — the value is computed at runtime, so the surface can't be certified) is **not** AS-EFF-008's concern: it is covered by a companion `deny Unknown <scope>` rule (§6, AS-EFF-006), so AS-EFF-008 certifies only the *visible* surface. |
+| **AS-EFF-008** | for an allowlist rule `r` on effect `e ∈ {Net, Exec, Fs, Db}` whose scope matches `f`: `e ∈ I(f)` and the surface is not certified — `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) **or** `masked_e(f)` (the surface is incomplete: some reached value of `e` is not a visible literal — including the opaque `lits_e(f) = ∅` case) | reaches a literal (host / command / path / table) outside the declared allowlist, or a value that cannot be certified — **fail-closed** |
 | **AS-EFF-009** | for a layering rule `r = forbid A → B`, `scope_A(f)` and `f` transitively calls some `g` with `scope_B(g)` | a function in layer `A` depends on layer `B`, violating a declared dependency direction |
+| **AS-EFF-010** | for a boundary effect `e` and layer function `layer(f)` (SPEC §6.1): `∃f. e ∈ D(f) ∧ layer(f) = ℓ` where `ℓ ∉ layers_e(B)` — `e` appears in a layer it did not occupy in the baseline | a boundary effect leaked into a new layer versus the baseline — the containment ratchet (SPEC §6.1) |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
 it is AS-EFF-003's concern. AS-EFF-005 fires only for functions present in `B` (regressions in
-existing code), never for new functions.
+existing code), never for new functions. The two baseline-reading predicates (AS-EFF-005's `B(f)`,
+AS-EFF-010's `layers_e(B)`) carry §2.1's **version-trust precondition**: a baseline whose producing
+version differs from the running engine, or that carries no provenance, is invalid gate input — the
+guard fails closed *without evaluating the predicate* (SPEC §2.1).
 
 Note the asymmetry: **AS-EFF-001/003/005 read `I(f)`** (the full transitive set, including `Inh(f)`),
 but **AS-EFF-004 reads `D(f)`** (own-body only). So a function that *inherits* an ambient effect by
@@ -208,28 +212,37 @@ calling a cross-crate `Net` function is still undeclared-flagged by AS-EFF-001 (
 perform `Net`), yet is **not** ambient-flagged by AS-EFF-004 (it never reached for the network
 itself — its callee did). Conflating `D` and `Inh` would break exactly this distinction.
 
-**AS-EFF-008 reads a *literal surface* `lits_e(f)`**, not the effect lattice. Four effects carry one:
-`Net` hosts (`host[:port]`), `Exec` commands (the program name), `Fs` paths, and `Db` tables (the
-table-position identifiers of SQL string literals, plus declaratively-routed tables an ORM mapping
-makes visible). Each is the *transitive*
-propagated union of the literals statically visible in `f` and its callees, across crate boundaries when
-a sibling report carries them. An allowlist rule `r = allow e [in <scope>] <v₁…vₙ>` is satisfied at `f`
-iff `f` does no `e`, or every literal in `lits_e(f)` is allowed under an **effect-specific** match: hosts
-by hostname (ports ignored), commands by basename (`/usr/bin/git` ≡ `git`), paths by prefix (an allowed
-directory covers everything beneath it), tables by case-insensitive **exact qualified name** with one
-wildcard form — `schema.*` covers every table in that schema (boundary-respecting: `ledger.*` does not
-cover `ledgerx.entries`), and a bare allowed name never silently widens to cover a qualified one
-(`entries` does not cover `ledger.entries`). AS-EFF-008 fires on **one** condition: a *visible* violation —
-`lits_e(f)` contains a non-allowed value (`lits_e(f) \ Allow(r) ≠ ∅`). By design it certifies only the
-**visible** surface, so two cases that are *not* AS-EFF-008 failures must be handled elsewhere:
-the **opaque** case (`e ∈ I(f)` but `lits_e(f) = ∅` — every value is computed at runtime, so there is no
-visible literal to certify) and the **mixed** case (a function reaches an allowed value while *also* holding
-`Unknown ∈ I(f)`). Neither trips AS-EFF-008 — the literal detail is informative-not-complete (SPEC, the
-`hosts`/`cmds`/`paths`/`tables` fields), so folding the uncertifiable residual into AS-EFF-008 would flag
-essentially every real effectful function and make the allowlist useless. The uncertifiable residual is the
-concern of AS-EFF-003 (it carries `Unknown`) and of a companion **`deny Unknown <scope>`** policy rule
-(AS-EFF-006), which is the rule that forbids the opaque case in a scope where the allowlist must be complete —
-pair an `allow e` rule with a `deny Unknown` rule when the visible surface alone is not enough.
+**AS-EFF-008 reads a *literal surface* `lits_e(f)` plus its completeness marker**, not the effect
+lattice. Four effects carry a surface: `Net` hosts (`host[:port]`), `Exec` commands (the program name),
+`Fs` paths, and `Db` tables (the table-position identifiers of SQL string literals, plus
+declaratively-routed tables an ORM mapping makes visible). Each is the *transitive* propagated union of
+the literals statically visible in `f` and its callees, across crate boundaries when a sibling report
+carries them. Alongside the literals an engine tracks **completeness**: `masked_e(f)` holds when `f` or
+a callee performs `e` with a value *not* read from a literal (a runtime-computed host, a
+parameter-derived path, a concatenated command) — including the degenerate opaque case where
+`lits_e(f) = ∅` entirely. An allowlist rule `r = allow e [in <scope>] <v₁…vₙ>` is satisfied at `f` iff
+`f` does no `e`, or `lits_e(f) ⊆ Allow(r)` **and** `¬masked_e(f)`, under an **effect-specific** match:
+hosts by hostname (ports ignored), commands by basename (`/usr/bin/git` ≡ `git`), paths by prefix (an
+allowed directory covers everything beneath it), tables by case-insensitive **exact qualified name**
+with one wildcard form — `schema.*` covers every table in that schema (boundary-respecting: `ledger.*`
+does not cover `ledgerx.entries`), and a bare allowed name never silently widens to cover a qualified
+one (`entries` does not cover `ledger.entries`).
+
+AS-EFF-008 therefore fires in **two** modes: the *visible violation* (`lits_e(f) \ Allow(r) ≠ ∅`) and
+the *uncertifiable surface* (`masked_e(f)` — the opaque `lits = ∅` case and the mixed
+allowed-literal-plus-masked-value case alike). The second mode is **fail-closed by design**: the literal
+detail is informative-not-complete (SPEC §2), so a gate that passed whenever it *saw* nothing would be
+evadable by exactly the values an adversary computes at runtime — the masked-literal evasion, pinned
+per engine by the conformance masking differential and the gate-verdict differential's opaque fixture.
+The cost is deliberate: on a scope whose values are inherently dynamic, `allow e` reads
+all-uncertifiable — the honest verdict; the rule is a certification tool for scopes narrow enough to
+certify. What remains outside AS-EFF-008 is the fully *unresolved* call: `Unknown ∈ I(f)` (AS-EFF-003)
+can hide an unattributed `e` that never marks `masked_e` (the engine does not know the call performs
+`e` at all) — pair the allowlist with **`deny Unknown <scope>`** (AS-EFF-006) where that residual must
+also be excluded. *(History: before the 0.5.15-era gate-evasion hardening this rule certified the
+visible surface only; the fail-closed uncertifiable mode is what every engine has implemented and the
+conformance suite has pinned since — this text records the behavior that was always the machine-checked
+contract.)*
 
 **AS-EFF-009 reads the call graph, not the effect lattice.** A layering rule `forbid A → B` is the
 *dependency-direction* boundary (who a layer may depend on), complementing the effect rules (what a
@@ -292,7 +305,7 @@ under-report** — and make any residual blind spot *visible* (C1's coverage sig
 | model element | implementation |
 |---|---|
 | `F`, `body(f)`, the call sites | HIR of the crate; a `dylint` `LateLintPass` visiting every expression |
-| κ | `classify` (+ project rules via `CANDOR_CONFIG`) |
+| κ | `classify` (+ project rules via `CANDOR_RULES` — a classifier-extension file, distinct from §3.4's `CANDOR_CONFIG` config-discovery override) |
 | (EDGE/CLASSIFY/CROSS/DEVIRT/CHA/EXEMPT/UNKNOWN/OPAQUE) | `add_edge` (the always-on EDGE), `resolve_callee`, `trait_of_assoc`, `Instance::try_resolve` (DEVIRT), `cha_targets` (CHA), `is_pure_std_trait` (EXEMPT) |
 | `D(f)` / `Inh(f)` / `calls(f)` | the per-function `direct` map / the `via_cross` map / the `calls` map (kept separate so `direct` excludes inherited effects) |
 | the fixpoint `I` | the round-robin `while changed` iteration in `check_crate_post` |

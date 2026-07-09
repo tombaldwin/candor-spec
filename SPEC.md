@@ -810,7 +810,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
-| `AS-EFF-008` | (transitively) reaches a *visible* literal (host / command / path / table) outside a declared allowlist | policy |
+| `AS-EFF-008` | an allowlisted effect's literal surface (host / command / path / table) is visibly violating **or uncertifiable** — a value outside the allowlist, or a value the engine cannot see (fail-closed) | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 | `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
 
@@ -822,8 +822,19 @@ scope's effect may reach (AS-EFF-008). Four effects carry a literal surface: `Ne
 commands, `Fs` paths, and `Db` tables — checked against the transitive `hosts`/`cmds`/`paths`/`tables`
 detail, so it catches a value that lives in a deep or cross-crate callee, matched per-effect (host by
 name, command by basename, path by prefix, table by case-insensitive qualified name with `schema.*`
-covering a schema — an allowed unqualified name does NOT cover a qualified one). It certifies the *visible* surface only (see SEMANTICS §6); pair it with a
-`deny Unknown <scope>` rule to also forbid the unverifiable case in a scope.
+covering a schema — an allowed unqualified name does NOT cover a qualified one). The rule is a
+**certification, and it fails closed** (see SEMANTICS §6): a function in scope passes only when every
+value its effect reaches is *visible and allowed*. A value the engine cannot read — computed at
+runtime, concatenated, derived from a parameter — leaves the surface **uncertifiable**, and that is an
+AS-EFF-008 failure too, never a pass: a denied endpoint assembled at runtime slipping through an
+allowlist that *saw nothing* is the masked-literal evasion, the cardinal gate-evasion the fail-closed
+direction exists to prevent (the conformance masking differential pins it engine-by-engine). The
+consequence to design for: `allow` is a certification tool for scopes narrow enough to certify — on
+code whose values are inherently dynamic the honest verdict is "uncertifiable", not a pass; narrow the
+scope or make the values literal. One residual stays outside AS-EFF-008: a fully *unresolved* call
+(`Unknown ∈ I(f)`, AS-EFF-003) could perform the effect invisibly without ever touching its literal
+surface — pair the allowlist with a `deny Unknown <scope>` rule where even that residual must be
+excluded.
 
 A **layering** policy rule, `forbid <A> -> <B>`, constrains *who* a layer may depend on: no function in
 scope `A` may transitively call into scope `B` (AS-EFF-009) — the dependency-direction boundary, checked
