@@ -179,8 +179,8 @@ cp -r "$HERE/rewire" "$W/rewire"
 "$QUERY" rewire "$W/rewire/rust/gamed/.candor/report" "$W/rewire/rust/baseline/.candor/report" 1 > "$W/rust_rw.json" 2>/dev/null
 javac -d "$W/rwb" $(find "$W/rewire/java/baseline" -name '*.java') 2>/dev/null || { echo "FAIL: javac on rewire/java/baseline"; exit 2; }
 javac -d "$W/rwg" $(find "$W/rewire/java/gamed" -name '*.java') 2>/dev/null || { echo "FAIL: javac on rewire/java/gamed"; exit 2; }
-java -jar "$JAR" "$W/rwb" --json "$W/rwb.json" >/dev/null 2>&1
-java -jar "$JAR" "$W/rwg" --json "$W/rwg.json" >/dev/null 2>&1
+java -jar "$JAR" "$W/rwb" --json "$W/rwb.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on rewire/java/baseline"; exit 2; }
+java -jar "$JAR" "$W/rwg" --json "$W/rwg.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on rewire/java/gamed"; exit 2; }
 java -jar "$JAR" rewire "$W/rwg.json" "$W/rwb.json" --json > "$W/java_rw.json" 2>/dev/null
 
 python3 - "$W/rust_rw.json" "$W/java_rw.json" <<'PY' || rc=1
@@ -477,7 +477,10 @@ LED_JAVA=$(java -jar "$JAR" "$W/led/java/app" 2>&1)
 LED_SW=""
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$W/led/swift"
-  printf 'import Foundation\nimport MysteryKit\n\nfunc go() { _ = FileManager.default.contents(atPath: "/tmp/x") }\n' > "$W/led/swift/m.swift"
+  # the fixture must DEMONSTRABLY CALL into MysteryKit (item 14's wording), not merely import it —
+  # a module-qualified free-function call keeps the syntactic engine's import-based ledger valid
+  # under the spec's stronger call-based reading.
+  printf 'import Foundation\nimport MysteryKit\n\nfunc go() { _ = FileManager.default.contents(atPath: "/tmp/x"); _ = MysteryKit.frob("x") }\n' > "$W/led/swift/m.swift"
   LED_SW=$("$SW_BIN" "$W/led/swift" --out "$W/led/swr" 2>&1)
 fi
 LED_TS=""
@@ -532,6 +535,7 @@ RUST_PREFIX="$(dirname "$RUST_REPORT")/report"
 "$QUERY" gains   "$RUST_PREFIX" "$RUST_PREFIX" --json   > "$W/r_gains.json" 2>/dev/null
 "$QUERY" path    "$RUST_PREFIX" transitive_caller Fs --json > "$W/r_path.json" 2>/dev/null
 "$QUERY" blindspots "$RUST_PREFIX" --json                   > "$W/r_blindspots.json" 2>/dev/null
+"$QUERY" reachable "$RUST_PREFIX" --json                    > "$W/r_reachable.json" 2>/dev/null
 java -jar "$JAR" show    "$W/java.json" net_connect --json     > "$W/j_show.json"    2>/dev/null
 java -jar "$JAR" where   "$W/java.json" Fs --json              > "$W/j_where.json"   2>/dev/null
 java -jar "$JAR" callers "$W/java.json" transitive_leaf --json > "$W/j_callers.json" 2>/dev/null
@@ -541,6 +545,7 @@ java -jar "$JAR" impact  "$W/java.json" transitive_leaf --json > "$W/j_impact.js
 java -jar "$JAR" gains   "$W/java.json" "$W/java.json" --json   > "$W/j_gains.json"   2>/dev/null
 java -jar "$JAR" path    "$W/java.json" transitive_caller Fs --json > "$W/j_path.json" 2>/dev/null
 java -jar "$JAR" blindspots "$W/java.json" --json              > "$W/j_blindspots.json" 2>/dev/null
+java -jar "$JAR" reachable "$W/java.json" --json               > "$W/j_reachable.json" 2>/dev/null
 "$QUERY" show "$RUST_PREFIX" act 1  > "$W/r_ladder_act.json"  2>/dev/null
 "$QUERY" show "$RUST_PREFIX" nion 1 > "$W/r_ladder_nion.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" act --json  > "$W/j_ladder_act.json"  2>/dev/null
@@ -549,7 +554,13 @@ java -jar "$JAR" show "$W/java.json" nion --json > "$W/j_ladder_nion.json" 2>/de
 # inner-type method (Rust `::Svc::act`, JVM `Cases$Svc.act` — the `$` boundary), never a substring cousin.
 "$QUERY" show "$RUST_PREFIX" Svc::act 1 > "$W/r_ladder_svc.json" 2>/dev/null
 java -jar "$JAR" show "$W/java.json" Svc.act --json > "$W/j_ladder_svc.json" 2>/dev/null
-if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
+if [ -n "$TS_OK" ] && [ ! -f "$TS_DIR/query.mjs" ]; then
+  # a working scanner with a missing query surface is present-but-broken (the suite's own rule):
+  # a deleted/renamed query.mjs must FAIL the differential, never silently degrade it to two-way.
+  echo "FAIL: candor-ts scanner works but $TS_DIR/query.mjs is missing — the §3.1 query surface vanished"
+  exit 2
+fi
+if [ -n "$TS_OK" ]; then
   TSQ() { node "$TS_DIR/query.mjs" "$@"; }
   TSQ show    "$W/ts" net_connect 1     > "$W/t_show.json"    2>/dev/null
   TSQ where   "$W/ts" Fs 1              > "$W/t_where.json"   2>/dev/null
@@ -563,14 +574,15 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
   TSQ gains   "$W/ts" "$W/ts"            > "$W/t_gains.json"      2>/dev/null
   TSQ path    "$W/ts" transitive_caller Fs > "$W/t_path.json"     2>/dev/null
   TSQ blindspots "$W/ts"                   > "$W/t_blindspots.json" 2>/dev/null
+  TSQ reachable "$W/ts"                    > "$W/t_reachable.json" 2>/dev/null
 fi
 
 # A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
-P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_blindspots r_ladder_act r_ladder_nion r_ladder_svc \
-          j_show j_where j_callers j_map j_diff j_impact j_gains j_path j_blindspots j_ladder_act j_ladder_nion j_ladder_svc"
-if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then  # same gate that CREATES them — a scanner-only checkout must degrade two-way, not hard-fail
-  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_path t_blindspots t_ladder_act t_ladder_nion t_ladder_svc"
+P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_blindspots r_reachable r_ladder_act r_ladder_nion r_ladder_svc \
+          j_show j_where j_callers j_map j_diff j_impact j_gains j_path j_blindspots j_reachable j_ladder_act j_ladder_nion j_ladder_svc"
+if [ -n "$TS_OK" ]; then  # query.mjs presence is enforced above — a working scanner without it already FAILED
+  P5_FILES="$P5_FILES t_show t_where t_callers t_map t_diff t_impact t_gains t_path t_blindspots t_reachable t_ladder_act t_ladder_nion t_ladder_svc"
 fi
 for f in $P5_FILES; do
   [ -s "$W/$f.json" ] || { echo "FAIL: $f.json is empty — the ${f%%_*} engine's '${f#*_}' query errored"; exit 2; }
@@ -643,6 +655,15 @@ rb, jb = load("blindspots", "r"), load("blindspots", "j")
 tb = load("blindspots", "t") if ts else None
 bs_ok = lambda d: set(d) == bk and all(sk <= set(s) for s in d["sources"])
 check("blindspots", bs_ok(rb) and bs_ok(jb) and (not ts or bs_ok(tb)))
+# reachable (SPEC §3.1): the runtime effect surface {entryPoints:int, effects:{Effect:{count,via}}}.
+# Shape-only (entry-point detection is engine-natural on this fixture) — it was the one specced §3.1
+# query with NO conformance coverage while the unspecced gains WAS pinned; both directions now hold.
+kk = {"entryPoints", "effects"}
+rr, jr = load("reachable", "r"), load("reachable", "j")
+tr = load("reachable", "t") if ts else None
+re_ok = lambda d: kk <= set(d) and isinstance(d["entryPoints"], int) \
+                  and all({"count", "via"} <= set(v) for v in d["effects"].values())
+check("reachable", re_ok(rr) and re_ok(jr) and (not ts or re_ok(tr)))
 # path (SPEC §3.1): the provenance chain {effect, fn, path:[{fn,loc,source}]} from fn to the nearest
 # unit performing the effect DIRECTLY (source:true). The leaf-name chain + the source must agree across
 # engines — this pins the freshly-written candor-ts BFS against candor-query's, which nothing else did.
@@ -865,15 +886,15 @@ check_agents "java      " java -jar "$JAR" --agents
 # first run (candor-scan silently dropped a fn-typed-param callback while the others propagated/Unknowned
 # it — fixed in candor-scan ec94e73). Reuses the binaries this run already built/resolved.
 # ====================================================================================================
-if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_differential.py" ]; then
-  echo
-  (
-    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
-    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
-    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
-    python3 "$HERE/gen_differential.py"
-  ) || { echo "generative differential: FAILED"; rc=1; }
-fi
+# a missing/renamed gen script must FAIL, never silently delete the suite's strongest part
+[ -f "$HERE/gen_differential.py" ] || { echo "FAIL: gen_differential.py is missing"; exit 2; }
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_differential.py"
+) || { echo "generative differential: FAILED"; rc=1; }
 
 # ====================================================================================================
 # GATE-MASKING differential — the sibling of the generative differential, on the POLICY VERDICT axis.
@@ -884,15 +905,14 @@ fi
 # evasion (AS-EFF-008 opaque). Turns this session's per-engine fail-closed-on-masked fixes (scan/deep
 # Fs+Db, swift two-path/establishing, java URL-split) into a cross-engine STANDING gate. Reuses the
 # binaries this run already built/resolved.
-if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_masking.py" ]; then
-  echo
-  (
-    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
-    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
-    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
-    python3 "$HERE/gen_masking.py"
-  ) || { echo "gate-masking differential: FAILED"; rc=1; }
-fi
+[ -f "$HERE/gen_masking.py" ] || { echo "FAIL: gen_masking.py is missing"; exit 2; }
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_masking.py"
+) || { echo "gate-masking differential: FAILED"; rc=1; }
 
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
@@ -901,15 +921,14 @@ fi
 # `::`-vs-`.` scope segmentation, fs path-boundary prefix, exec basename, and `schema.*` db matching. This
 # is the four-way coverage the live candor-swift Net-port / `::`-scope divergences slipped past (they were
 # rust+java+ts-only). Reuses gen_masking.py's engine harness. Reuses the binaries this run resolved.
-if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/gen_policy_match.py" ]; then
-  echo
-  (
-    export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
-    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
-    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
-    python3 "$HERE/gen_policy_match.py"
-  ) || { echo "policy-matching differential: FAILED"; rc=1; }
-fi
+[ -f "$HERE/gen_policy_match.py" ] || { echo "FAIL: gen_policy_match.py is missing"; exit 2; }
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_policy_match.py"
+) || { echo "policy-matching differential: FAILED"; rc=1; }
 
 # ====================================================================================================
 # DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩) — `callers --include-unknown`. One shared scenario
@@ -918,15 +937,14 @@ fi
 # present engines AGREE: the dispatcher is disclosed in possibleViaUnknownDispatch via dispatch on `op`
 # (resolved against the hierarchy sidecar), with Impl7.op confirmed. Makes the frontier a verified
 # contract, not just a per-engine feature (the [10] check pins only the vocabulary + dispatch shape).
-if command -v python3 >/dev/null 2>&1 && [ -f "$HERE/frontier_differential.py" ]; then
-  echo
-  (
-    export CANDOR_JAVA_JAR="$JAR" CANDOR_QUERY_BIN="$QUERY"
-    [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
-    [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
-    python3 "$HERE/frontier_differential.py"
-  ) || { echo "dispatch-frontier differential: FAILED"; rc=1; }
-fi
+[ -f "$HERE/frontier_differential.py" ] || { echo "FAIL: frontier_differential.py is missing"; exit 2; }
+echo
+(
+  export CANDOR_JAVA_JAR="$JAR" CANDOR_QUERY_BIN="$QUERY"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/frontier_differential.py"
+) || { echo "dispatch-frontier differential: FAILED"; rc=1; }
 
 # PART 10 — unknownWhy VOCABULARY (SPEC §4 ⟨0.7⟩). Every `unknownWhy` entry any engine emits on the
 # shared fixtures MUST use one of the four canonical kinds (reflect/native/dispatch/callback), and every
@@ -1111,13 +1129,16 @@ for eng in java rust ts swift; do
 done
 cfg_probe() { # $1 engine label, then the scan command (target LAST for readability of callers)
   local label=$1; shift
-  local rc_a rc_b rc_c
-  env -u CANDOR_POLICY -u CANDOR_CONFIG "$@" >/dev/null 2>&1; rc_a=$?
+  local rc_a rc_b rc_c err_a warn=no
+  err_a=$(env -u CANDOR_POLICY -u CANDOR_CONFIG "$@" 2>&1 >/dev/null); rc_a=$?
+  # the config carries a `polcy typo` line: §3.4's unknown-key posture requires a warning NAMING the
+  # key — a misspelt gate key silently ignored is a silently-dropped gate (previously unasserted).
+  case "$err_a" in *polcy*) warn=yes;; esac
   env -u CANDOR_CONFIG CANDOR_POLICY="$CFGW/pass.policy" "$@" >/dev/null 2>&1; rc_b=$?
   env -u CANDOR_POLICY CANDOR_CONFIG="$CFGW/no-such-config" "$@" >/dev/null 2>&1; rc_c=$?
-  echo "  $label config-gate=$rc_a env-override=$rc_b typo-config=$rc_c"
-  [ "$rc_a" = 1 ] && [ "$rc_b" = 0 ] && [ "$rc_c" = 2 ] && return 0
-  echo "     FAIL $label: expected 1/0/2"; return 1
+  echo "  $label config-gate=$rc_a env-override=$rc_b typo-config=$rc_c unknown-key-warned=$warn"
+  [ "$rc_a" = 1 ] && [ "$rc_b" = 0 ] && [ "$rc_c" = 2 ] && [ "$warn" = yes ] && return 0
+  echo "     FAIL $label: expected 1/0/2 + a warning naming the unknown key 'polcy'"; return 1
 }
 CFG_OK=0
 cfg_probe "candor-java " java -jar "$JAR" "$CFGW/java" || CFG_OK=1
@@ -1130,8 +1151,191 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ====================================================================================================
+# PART 14 — CHAINING differential (SPEC §2 `CANDOR_DEPS` — 0.4 MUSTs, previously unpinned): the same
+# dep+app pair per language, scanned app-only with the dep's report chained. Three pinned behaviors:
+# (a) JOIN-INHERIT — the app fn inherits the dep fn's effects AND its literal surface (Net + host);
+# (b) STALE-DOWNGRADE — a dep report whose producing version was doctored is not trusted: the call
+#     downgrades to `Unknown`, never a stale Net claim (§2.1 at the join);
+# (c) EMPTY-REPORT COVERAGE — an all-pure dep's EMPTY report is a purity CLAIM: the call reads pure
+#     and the κ ledger must NOT name the covered package (§2 rule 3).
+# candor-swift emits the chainable `hash` but does not yet CONSUME sibling reports (documented in its
+# header) — it skips loudly here until consumer-side chaining lands.
+# ====================================================================================================
+echo
+echo "[14] CHAINING differential  (SPEC §2 CANDOR_DEPS — join-inherit / stale-downgrade / empty-report coverage)"
+CHW="$W/chain"
+mkdir -p "$CHW/java/dep/com/dep" "$CHW/java/app/org/app" "$CHW/rust/dep/src" "$CHW/rust/app/src"
+cat > "$CHW/java/dep/com/dep/D.java" <<'EOF'
+package com.dep;
+public class D {
+    public static void hit() throws Exception { new java.net.URL("http://rates.internal:7070/x").openConnection(); }
+}
+EOF
+cat > "$CHW/java/app/org/app/A.java" <<'EOF'
+package org.app;
+public class A {
+    public static void go() throws Exception { com.dep.D.hit(); }
+}
+EOF
+javac -d "$CHW/java/depcls" "$CHW/java/dep/com/dep/D.java" 2>/dev/null || { echo "FAIL: javac on chain/dep"; exit 2; }
+javac -cp "$CHW/java/depcls" -d "$CHW/java/appcls" "$CHW/java/app/org/app/A.java" 2>/dev/null || { echo "FAIL: javac on chain/app"; exit 2; }
+java -jar "$JAR" "$CHW/java/depcls" --json "$CHW/jdep.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on the chain dep"; exit 2; }
+printf '[package]\nname = "depc"\nversion = "0.0.0"\nedition = "2021"\n' > "$CHW/rust/dep/Cargo.toml"
+printf 'pub fn hit() { let _ = std::net::TcpStream::connect("rates.internal:7070"); }\n' > "$CHW/rust/dep/src/lib.rs"
+printf '[package]\nname = "appc"\nversion = "0.0.0"\nedition = "2021"\n\n[dependencies]\ndepc = "1.0"\n' > "$CHW/rust/app/Cargo.toml"
+printf 'pub fn go() { depc::hit(); }\n' > "$CHW/rust/app/src/lib.rs"
+"$SCAN" "$CHW/rust/dep" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the chain dep"; exit 2; }
+RCH_DEP="$(ls "$CHW"/rust/dep/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+if [ -n "$TS_OK" ]; then
+  mkdir -p "$CHW/ts/dep" "$CHW/ts/app/node_modules/dep-pkg"
+  printf '{"name":"dep-pkg","version":"0.0.0","main":"index.js","types":"index.d.ts"}\n' > "$CHW/ts/dep/package.json"
+  printf 'import * as https from "node:https";\nexport function hit() { return https.get("http://rates.internal:7070/x"); }\n' > "$CHW/ts/dep/index.ts"
+  node "$TS_DIR/scan.mjs" "$CHW/ts/dep" --out "$CHW/tdep" >/dev/null 2>&1
+  [ -s "$CHW/tdep.json" ] || { echo "FAIL: candor-ts errored on the chain dep"; exit 2; }
+  printf '{"name":"dep-pkg","version":"0.0.0","main":"index.js","types":"index.d.ts"}\n' > "$CHW/ts/app/node_modules/dep-pkg/package.json"
+  printf 'export declare function hit(): any;\n' > "$CHW/ts/app/node_modules/dep-pkg/index.d.ts"
+  printf 'module.exports.hit = () => {};\n' > "$CHW/ts/app/node_modules/dep-pkg/index.js"
+  printf 'import { hit } from "dep-pkg";\nexport function go() { return hit(); }\n' > "$CHW/ts/app/cases.ts"
+fi
+# doctor each dep report: a STALE copy (foreign producing version) and an EMPTY copy (purity claim)
+python3 - "$CHW/jdep.json" "$RCH_DEP" "${TS_OK:+$CHW/tdep.json}" <<'PY' || { echo "FAIL: could not doctor the chain dep reports"; exit 2; }
+import json, sys
+for src in [a for a in sys.argv[1:] if a]:
+    d = json.load(open(src))
+    s = json.loads(json.dumps(d)); s["candor"]["version"] = "candor-doctored-0.0.0"
+    json.dump(s, open(src.replace(".json", "") + "_stale.json", "w"))
+    e = json.loads(json.dumps(d)); e["functions"] = []
+    json.dump(e, open(src.replace(".json", "") + "_empty.json", "w"))
+PY
+chain_scan() { # $1 dep-report  $2 out-stem — scans each app against the given dep report
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$1" java -jar "$JAR" "$CHW/java/appcls" --json "$W/ch_j_$2.json" > "$W/ch_j_$2.err" 2>&1 \
+    || { echo "FAIL: candor-java errored on the chained app ($2)"; exit 2; }
+  rm -rf "$CHW/rust/app/.candor"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$3" "$SCAN" "$CHW/rust/app" > "$W/ch_r_$2.err" 2>&1 \
+    || { echo "FAIL: candor-scan errored on the chained app ($2)"; exit 2; }
+  cp "$(ls "$CHW"/rust/app/.candor/report.*.scan.json | grep -v callgraph | head -1)" "$W/ch_r_$2.json"
+  if [ -n "$TS_OK" ]; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_DEPS="$4" node "$TS_DIR/scan.mjs" "$CHW/ts/app/cases.ts" "$W/ch_t_$2" > "$W/ch_t_$2.err" 2>&1 \
+      || { echo "FAIL: candor-ts errored on the chained app ($2)"; exit 2; }
+  fi
+}
+JD="$CHW/jdep"; RD="${RCH_DEP%.json}"; TD="$CHW/tdep"
+chain_scan "$JD.json"        fresh "$RD.json"        "$TD.json"
+chain_scan "${JD}_stale.json" stale "${RD}_stale.json" "${TD}_stale.json"
+chain_scan "${JD}_empty.json" empty "${RD}_empty.json" "${TD}_empty.json"
+python3 - "$W" "$TS_OK" "$SW_PRESENT" <<'PY' || rc=1
+import json, sys
+W, ts, sw = sys.argv[1], sys.argv[2], len(sys.argv) > 3 and sys.argv[3]
+engines = [("candor-java", "j", "com.dep"), ("candor-scan", "r", "depc")] + ([("candor-ts", "t", "dep-pkg")] if ts else [])
+ok = True
+def fns(e, stem):
+    d = json.load(open(f"{W}/ch_{e}_{stem}.json"))
+    return {f["fn"].split(".")[-1].split("::")[-1]: f for f in d["functions"]}
+for name, e, pkg in engines:
+    fresh, stale, empty = fns(e, "fresh"), fns(e, "stale"), fns(e, "empty")
+    err_empty = open(f"{W}/ch_{e}_empty.err").read()
+    join = "go" in fresh and set(fresh["go"].get("inferred", [])) == {"Net"} \
+           and "rates.internal:7070" in fresh["go"].get("hosts", [])
+    down = "go" in stale and "Unknown" in stale["go"].get("inferred", []) \
+           and "Net" not in stale["go"].get("inferred", [])
+    pure = all("Net" not in f.get("inferred", []) and "Unknown" not in f.get("inferred", []) for f in empty.values())
+    covered = not ("κ doesn't know" in err_empty and pkg in err_empty)
+    good = join and down and pure and covered
+    detail = "".join([
+        "" if join else " (join: app fn must inherit exactly {Net} + the host literal)",
+        "" if down else " (stale: a doctored producing version must downgrade to Unknown, not keep Net)",
+        "" if pure else " (empty: an all-pure dep report is a purity claim — the call must read pure)",
+        "" if covered else f" (empty: the κ ledger must NOT name {pkg} — a loaded report COVERS its package, §2 rule 3)"])
+    print(f"  {name:12s} -> {'MATCH' if good else 'DIVERGE'}{detail}")
+    ok = ok and good
+if sw:
+    print("  candor-swift -> SKIPPED loudly (emits the chainable `hash`; consumer-side CANDOR_DEPS not yet implemented)")
+print("  -> " + ("MATCH — chaining joins, distrusts stale producers, and honors empty-report coverage in every consuming engine"
+                 if ok else "DIVERGE — see rows"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
+# PART 15 — STALE-BASELINE posture (SPEC §2.1 ⟨0.8 amendment⟩, previously unpinned): a baseline whose
+# producing version differs from the running engine is INVALID GATE INPUT. Pinned halves:
+# (a) GUARD — the AS-EFF-005 gate fails closed (exit 2) WITHOUT evaluating (no AS-EFF-005 lines), and
+#     a same-build baseline still gates clean (exit 0) — candor-java carries the in-suite guard surface
+#     (the Rust guard lives in the cargo-candor porcelain over the nightly lint; ts/swift gate via policy).
+# (b) QUERIES — `diff` DISCLOSES the mismatch (baseline_version/engine_version provenance fields, plus a
+#     stderr warning where the engine self-derives the versions) and still answers.
+# ====================================================================================================
+echo
+echo "[15] STALE-BASELINE posture  (SPEC §2.1 — guard fails closed without evaluating; queries disclose)"
+python3 - "$W/ch_j_fresh.json" "$W/sb_java_stale.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["candor"]["version"] = "candor-doctored-0.0.0"
+json.dump(d, open(sys.argv[2], "w"))
+PY
+SB_OK=0
+env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$W/sb_java_stale.json" java -jar "$JAR" "$CHW/java/appcls" > "$W/sb_guard.err" 2>&1
+SB_STALE_EXIT=$?
+env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$W/ch_j_fresh.json" java -jar "$JAR" "$CHW/java/appcls" >/dev/null 2>&1
+SB_FRESH_EXIT=$?
+# bracketed [AS-EFF-005] is a VIOLATION line (evaluation happened); the fail-closed refusal message
+# legitimately mentions the code unbracketed ("never a bogus AS-EFF-005 wave") — don't match that.
+SB_EVAL=no; grep -q "\[AS-EFF-005\]" "$W/sb_guard.err" && SB_EVAL=yes
+echo "  candor-java guard: stale-exit=$SB_STALE_EXIT evaluated=$SB_EVAL same-build-exit=$SB_FRESH_EXIT"
+if [ "$SB_STALE_EXIT" != 2 ] || [ "$SB_EVAL" != no ] || [ "$SB_FRESH_EXIT" != 0 ]; then
+  echo "     FAIL guard: expected exit 2 with NO AS-EFF-005 evaluation on stale, exit 0 on same-build"; SB_OK=1
+fi
+java -jar "$JAR" diff "$W/ch_j_fresh.json" "$W/sb_java_stale.json" --json > "$W/sb_j_diff.json" 2>"$W/sb_j_diff.err"
+mkdir -p "$W/sb_r_base"
+cp "$CHW"/rust/app/.candor/report.*.json "$W/sb_r_base/" 2>/dev/null
+python3 - "$W/sb_r_base" <<'PY'
+import glob, json, sys
+for p in glob.glob(sys.argv[1] + "/report.*.scan.json"):
+    d = json.load(open(p)); d["candor"]["version"] = "candor-doctored-0.0.0"; json.dump(d, open(p, "w"))
+PY
+"$QUERY" diff "$CHW/rust/app/.candor/report" "$W/sb_r_base/report" 1 candor-doctored-0.0.0 live > "$W/sb_r_diff.json" 2>/dev/null
+if [ -n "$TS_OK" ]; then
+  # the baseline must carry a FOREIGN producing version (ch_t_stale was scanned by the live engine,
+  # so its own header matches — doctor a copy instead, the same shape the guard half uses)
+  python3 - "$W/ch_t_fresh.json" "$W/sb_t_base.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["candor"]["version"] = "candor-doctored-0.0.0"
+json.dump(d, open(sys.argv[2], "w"))
+PY
+  node "$TS_DIR/query.mjs" diff "$W/ch_t_fresh" "$W/sb_t_base" > "$W/sb_t_diff.json" 2>"$W/sb_t_diff.err"
+fi
+python3 - "$W" "$TS_OK" <<'PY' || SB_OK=1
+import json, sys
+W, ts = sys.argv[1], sys.argv[2]
+ok = True
+def probe(name, path, errpath=None, want_warn=False):
+    global ok
+    try:
+        d = json.load(open(path))
+    except Exception:
+        print(f"  {name:12s} diff -> DIVERGE (no parseable answer — a version mismatch must disclose, not refuse)")
+        ok = False; return
+    fields = {"baseline_version", "engine_version"} <= set(d) and "changes" in d
+    warn = (not want_warn) or ("baseline" in open(errpath).read())
+    print(f"  {name:12s} diff -> {'MATCH' if fields and warn else 'DIVERGE'}"
+          + ("" if fields else " (missing baseline_version/engine_version provenance fields)")
+          + ("" if warn else " (missing the stderr mismatch warning)"))
+    ok = ok and fields and warn
+probe("candor-java", f"{W}/sb_j_diff.json", f"{W}/sb_j_diff.err", want_warn=True)
+probe("candor-query", f"{W}/sb_r_diff.json")
+if ts:
+    probe("candor-ts", f"{W}/sb_t_diff.json", f"{W}/sb_t_diff.err", want_warn=True)
+sys.exit(0 if ok else 1)
+PY
+if [ "$SB_OK" = 0 ]; then
+  echo "  -> MATCH — the guard refuses a stale baseline without evaluating; comparison queries disclose and answer"
+else
+  echo "  -> DIVERGE — see FAIL rows"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + .candor/config agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + .candor/config + chaining + stale-baseline agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
