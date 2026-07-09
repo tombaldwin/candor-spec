@@ -636,7 +636,9 @@ reason, a **relative path value** (`policy`, `baseline`, `deps` entries) resolve
 **config's home directory** — the directory containing the `.candor/` directory (the repo root the
 config travels with; for an out-of-tree `CANDOR_CONFIG` override file, simply the file's own
 directory) — never the process CWD. A checked-in `policy .candor/gate.pol` in `<root>/.candor/config`
-therefore names `<root>/.candor/gate.pol` from any launch directory.
+therefore names `<root>/.candor/gate.pol` from any launch directory. (A relative path supplied via a
+CLI flag or `CANDOR_*` env var stays CWD-relative as usual — the one-off override is launch-context
+local; only the checked-in file's values travel with the code.)
 
 **Fail-closed:** a config that is configured but unusable never silently degrades to "no config" — a
 set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that exists but cannot be
