@@ -317,3 +317,27 @@ kappa_libs). Same commit re-anchored 4 stale kappa_libs PURE anchors (Yaml.load 
 INTERPRETED) split into a first-package-segment dispatch, largest method 4266B; verified by a
 19,484,160-triple old-vs-new differential oracle (0 mismatches) + 330-jar corpus byte-identity; ~16%
 faster full-corpus scan.
+
+**The coverage wave (2026-07-10) — first-ever measurement, then closing every never-executed gate
+surface (TESTING.md's "verify before pin" discipline).** Coverage tooling had never been wired into
+any repo; measuring with child-process capture (java three-tier 67%→90% line; swift 61%→88%; ts ~95%;
+agents 90%; rust stable crates 81%) surfaced the load-bearing surfaces with ZERO execution anywhere.
+Pinning them found four real bugs, each fixed red-then-green in its pinning commit (§8):
+(1) **candor-java `checkConformance` (CANDOR_STRICT, AS-EFF-001/002/003) was broken** — it lacked
+SPEC §6's program-entry-point exemption from AS-EFF-001, firing on the composition root; the gate had
+0% coverage in every harness. Sibling sweep: rust-deep already exempts (`tcx.entry_fn`); ts/swift
+don't implement strict. (2) **candor-agents `guard` failed open on unknown flags/extra positionals**
+(emitted the settings fragment, exit 0 — now exit 2), and (3) **the positional-swallow class**:
+`observe a b` (also stats/savings) silently analyzed `b`. (4) **candor-ts watch had no graceful-quit
+path at all** (Ctrl-C = signal death) — which was also why its coverage read 0%. A fifth find needed
+a family ruling: **candor-swift captured a Net USE-verb's payload literal as a host**
+(`Channel.writeAndFlush("x")` → hosts:["x"]) — java/ts capture only at establishing forms; swift
+aligned (`b737b87`, report-affecting: payload "hosts" disappear). Everything else measured was
+correct-but-unpinned: rust's `--deps` registry mode and nested-cfg evaluator, swift actors (behave
+exactly like classes), the agents §6.2 Exec/Db matchers (full cross-engine parity verified vector-by-
+vector before pinning). Suite growth: java 302→~330 JUnit + smoke 373; rust 220+138+35; ts 434 checks
+across five suites; swift 100 XCTests + smoke 84; agents 380. Dead code deleted per §6 (java ×2,
+swift ReportModel helpers); the one agents candidate KEPT with justification (the identical arm
+exists in rust/ts on a documented embedder surface). THE DURABLE LESSON: a documented gate surface
+with zero executions is where bugs live unnoticed — four of the ten measured gaps hid one. The
+zero-coverage-gate-list invariant (TESTING.md §6) is now the standing guard.

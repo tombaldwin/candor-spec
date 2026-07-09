@@ -265,3 +265,4 @@ weekly released-artifacts leg. Strict mode is a standing CI property, no longer 
 | 0.8.4 review patch | 2026-07-08 | java `4bdb996` | **6 regressions** batches 28–31 shipped | fixed + gated |
 | κ batch — UserDefaults/Keychain/Bundle | 2026-07-09 | swift `dd134e2` | **SILENT-PURE** (covered-module) | fixed + gated |
 | Whole-project review (porcelain fail-opens et al.) | 2026-07-09 | all repos | fail-open gate surfaces, doc drift | fix wave, conformance PARTs 14–15 added |
+| Coverage wave — never-executed gate surfaces | 2026-07-10 | all engines | **4 bugs in 0-coverage surfaces** (strict-gate 001 over-fire, guard fail-open, positional swallow, watch no-quit) + swift payload-host parity | all fixed red-then-green; TESTING.md standards |
