@@ -25,14 +25,27 @@ release **major.minor tracks the spec it implements** — `candor-java 0.8.x` de
 still on the floor declares `0.7` — with
 the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
 
+**The family, named precisely.** This document uses four terms for the implementations, and every other
+candor document follows them:
+
+- **The reference engine** is **candor-java** — the ladder-leading engine: a new minor rung is
+  implemented there first, written into this document, and declared by candor-java ahead of the rest.
+- **candor-rust** is the Rust repo, which ships two backends: the deep Rust engine (the nightly dylint
+  lint, the §7 *sound engine* profile) and the stable syntactic floor, **candor-scan** (the §7
+  *disclosed syntactic floor* profile).
+- **The four code engines** are the conformance-pinned set — candor-java, candor-scan, candor-ts,
+  candor-swift — the engines whose shared floor the cross-impl conformance suite proves.
+- **candor-agents** is the **domain engine** (§4): its units are agents, not functions; it rides the
+  ladder on its own schedule and never holds the code-engine floor back.
+
 **Versioning policy.** The spec version is a *cross-engine* contract, but it is a **version ladder, not a
 lockstep stamp**. Two guarantees, kept distinct:
 
 - **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version
   **identically**, proven by the conformance differential — that cross-language identity is the project's
   defining guarantee (a per-language tool cannot offer it). The floor is the highest version *every* engine
-  implements — where "every engine" means the **reference code engines the cross-impl conformance suite
-  pins** (currently candor-java, candor-scan, candor-ts, candor-swift). A **domain engine** (§4 — e.g. the
+  implements — where "every engine" means the **four code engines the cross-impl conformance suite
+  pins** (candor-java, candor-scan, candor-ts, candor-swift). A **domain engine** (§4 — e.g. the
   agent-fleet engine) rides the ladder on its own schedule and declares its own `spec`; it does not hold
   the code-engine floor back, and a floor claim never speaks for it.
 - **The version each engine declares is disclosed, not assumed.** An engine emits in every report the exact
@@ -107,8 +120,8 @@ effects above, never `Unknown` (which `deny Unknown` addresses explicitly, §6.2
 Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not**
 classified — not as `Log`, not as `Fs`. Classifying them would flood every CLI tool's report (printing
 *is* a CLI's purpose, the way `Db` is a database app's — the §6.1 argument), drowning the signal. `Log`
-is for calls into a logging/tracing *framework*, whose presence is an architectural fact. Both reference
-implementations agree on this; an implementation that does classify console output MUST use a
+is for calls into a logging/tracing *framework*, whose presence is an architectural fact. The four code
+engines agree on this; an implementation that does classify console output MUST use a
 language-specific effect name, not `Log`.
 
 ## 2. The report
@@ -238,7 +251,7 @@ any report can become a chained sibling, and a hashless one is silently unchaina
 cross-boundary call drops and the consumer *under*-reports, the dangerous direction. A consumer may
 still ignore `hash`.
 
-**Report chaining** (the `CANDOR_DEPS` convention, consumed by all four reference engines as of
+**Report chaining** (the `CANDOR_DEPS` convention, consumed by all four code engines as of
 2026-07-09 — candor-swift joined last, with a deliberately conservative import-gated join: a file must
 import the covered module before its unresolved calls are candidates): a
 scan accepts *sibling reports* — previously-produced reports for the scanned code's dependencies —
@@ -330,7 +343,7 @@ own producing version, and a dependent crate must not silently trust a sibling r
 engine (the trust contract, §4, applied to candor's own output). For a baseline **GUARD** (the
 AS-EFF-005 gate) this is load-bearing: a baseline whose producing version differs from the running
 engine — or that carries no provenance at all — is **invalid gate input**, and the guard MUST fail the
-run (the §6.2 unreadable-policy class: a distinct non-violation exit, the reference CLIs use `2`)
+run (the §6.2 unreadable-policy class: a distinct non-violation exit, the code engines' CLIs use `2`)
 **without evaluating** — never a silent skip (an unbounded fail-open window) and never a stale
 comparison (an unmasking wave with any real regression hidden inside it). Read-only comparison
 *queries* (`diff`/`gains`, §3.1) instead **disclose** the mismatch (a warning plus
@@ -352,10 +365,10 @@ The header has THREE fields, on two distinct axes — keep them separate:
   *this document* carries, NOT the engine's build id or the package's release version — they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
-  constant (the Rust reference: `candor_report::SPEC_VERSION`). A report without `spec` predates this
+  constant (the Rust implementation: `candor_report::SPEC_VERSION`). A report without `spec` predates this
   field and is treated as spec ≤ 0.2.
 
-The Rust reference impl additionally embeds `version` in the dylib itself (so a tool can read the
+The Rust implementation additionally embeds `version` in the dylib itself (so a tool can read the
 *true* build version without running the engine) and mirrors `version`/`toolchain` into its
 `<prefix>.calibrated.json` sidecar; for a **legacy v0.1 bare-array** report that has no header, an
 implementation MAY fall back to that sidecar for provenance.
@@ -664,14 +677,14 @@ effect set and set `unresolved: true`. It must not be silently assumed pure.
 theorem), so this rule is a *best-effort discipline, not a completeness guarantee*: a conforming
 implementation is one that disclosed `Unknown` everywhere it could not resolve a target — never one
 that has provably found every effect. New ways for an effect to hide behind a construct an engine does
-not yet model are found and closed over time; the residual is tracked openly (the reference engines
+not yet model are found and closed over time; the residual is tracked openly (the code engines
 maintain a soundness register and adversarial gates) rather than asserted away. So the contract a
 consumer can rely on is **disclosure** (what the engine couldn't see is marked, not silently dropped),
 not omniscience. A clean report means *the implementation found no effect and disclosed every gap it
 hit* — read it as "more thorough than review, and honest about its blind spots," not as a proof of
 purity.
 
-**Dispatch over a local abstraction — the bounded-CHA discipline** (all four reference engines): a
+**Dispatch over a local abstraction — the bounded-CHA discipline** (all four code engines): a
 call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
 TS interface, a JVM interface/supertype, a Swift protocol/class) SHOULD resolve to the **visible local implementors'**
 methods when the dispatch is *narrow* — at most **12** implementors, the shared bound, so the
@@ -934,14 +947,14 @@ must not do).
 
 **An unreadable policy FILE is a failure, not an absent gate.** The malformed-line rule above is for
 content; the file is different: when a policy is *configured* (a `--policy` flag, the `CANDOR_POLICY`
-env) and cannot be read, the run MUST fail loudly with a non-zero exit (the reference CLIs use a
+env) and cannot be read, the run MUST fail loudly with a non-zero exit (the code engines' CLIs use a
 distinct `2`, vs `1` for a policy violation; an engine embedded in a compiler fails the build,
 whose wrapper reports its own code) — it MUST NOT proceed gateless. A typo'd policy path
 that runs green is a gate that silently passes everything, the exact failure a gate exists to
-prevent. (Found live in a reference engine: loud on stderr, but exit 0 — a CI gate that never bit.)
+prevent. (Found live in a code engine: loud on stderr, but exit 0 — a CI gate that never bit.)
 
 **An unrecognized command-line FLAG is the same failure class.** A CLI MUST reject an unknown
-leading-dash argument with a non-zero exit (the reference engines use `2`), never silently ignore
+leading-dash argument with a non-zero exit (the code engines use `2`), never silently ignore
 it nor read it as a positional path. The same gateless-green hazard applies: a typo'd `--policy`/
 `--poilcy` that is silently dropped runs the scan with no gate; an agent following a newer doc
 against an older binary that swallows the unknown flag gets a misleading scan instead of an
@@ -1065,7 +1078,7 @@ It SHOULD additionally (items 9–13):
     remains a SHOULD.);
 12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report —
     self-analysis is the free real-world test), and run a **self-gate** in CI: a declared
-    `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g. the reference
+    `CANDOR_POLICY` (§6.2) over its own code that fails the build when violated (e.g. the code
     engines are analyzers whose own boundary is "Fs/Env only — never Net/Db/Exec/Ipc"). The
     self-gate is the falsifiable form of dogfooding: an effect-gate implementation whose own gate
     is red — or absent — is asking adopters to hold a standard it does not hold itself. (This item
@@ -1084,14 +1097,14 @@ It SHOULD additionally (items 9–13):
       redundant defenses (two independent paths both catching a callback call), and neutering one
       line of a doubly-covered mechanism passes vacuously; neuter the mechanism.
     - **Forms are the coverage unit.** The harness proves only the forms it encodes; every
-      reference engine has had a "no known unencoded form remains" claim refuted by a new form
+      code engine has had a "no known unencoded form remains" claim refuted by a new form
       found in the wild. Treat the form list as open, and add a form with every soundness fix.
     - A **precision twin** is recommended: a pure bystander unit that must stay OUT of the report,
       so the harness also catches an engine that goes sound by flooding.
     - The harness SHOULD run in CI alongside the engine's tests — an unrun harness proves nothing.
-    All four reference engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
+    All four code engines ship one (Rust `soundness/`, JVM `soundness/`, candor-ts `fuzz.mjs`,
     candor-swift `fuzz.py`),
-    and the design ports beyond programming languages (the candor-agents exploration runs the same
+    and the design ports beyond programming languages (the candor-agents engine runs the same
     harness shape over agent-fleet effect graphs). Like every SHOULD in this list, the harness is a
     claim an engine either ships or doesn't make — an engine without one has an *untested* §4, and
     its docs must not suggest otherwise. The harness applies per **engine**, not per repo, and only

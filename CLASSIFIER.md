@@ -1,8 +1,8 @@
 # Building a candor classifier for a new language
 
 The classifier maps a *resolved* call target to an effect (or none). It is the heart of an
-implementation — and where every hard lesson lives. These are distilled from building the Rust
-reference implementation; they generalize.
+implementation — and where every hard lesson lives. These are distilled from building the family's
+first implementation (Rust); they generalize.
 
 ## 1. Resolve, don't pattern-match syntax
 
@@ -44,7 +44,7 @@ a config mechanism so projects add their own rules without forking.
 ## 4. Resolve dispatch where you can; be honest where you can't
 
 - Statically-resolvable calls, and (via CHA/RTA) dispatch over types you can see, → resolve precisely.
-  The reference impl uses Class Hierarchy Analysis to follow `dyn`/generic dispatch over
+  The Rust impl uses Class Hierarchy Analysis to follow `dyn`/generic dispatch over
   locally-defined traits to their impls.
 - Dispatch you cannot resolve (unknown dynamic target, reflection, a callback value) → `Unknown`,
   never silent-pure (SPEC §4).
