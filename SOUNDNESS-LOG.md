@@ -303,3 +303,17 @@ field (hyphenated names also register in Rust ident form); pinned by PART 14. Co
 in the same wave (register R21): cargo-candor `policy`'s `|| true` fail-open and `guard`'s
 absent-baseline green both now exit 2, with a `GUARD-UNAVAILABLE` engine sentinel distinguishing
 not-evaluated from violation, and the §3.3 verdict withheld when the guard could not evaluate.
+
+**candor-java mutation_probe rot (meta-soundness, found + fixed 2026-07-09, `a6c60c0`).** The
+meta-soundness harness had decayed to 3/14 PATCH-ERROR — its anchors still targeted the pre-typed
+(`return "Fs"`) pre-extraction Candor.java. Re-anchored (per-mutation target file, dual
+snapshot/restore); the `jackson_file` mutation had additionally become a redundancy NO-OP — κ batch 30's
+whole-package descriptor rule subsumes the 0.7-era `readValue` rule, each masking a mutation of the
+other — and now disables both. 14/14 caught. LESSON: a mutation suite is itself a κ surface — re-run it
+after any refactor that moves rule text; it now runs weekly in CI (`soundness-weekly.yml`, with
+kappa_libs). Same commit re-anchored 4 stale kappa_libs PURE anchors (Yaml.load ×3, URLClassLoader ctor
+— deliberately Unknown since the RCE-sink batch). Companion structural work, byte-identity-gated: the
+~27KB `classify()` method (3.4× HotSpot's DontCompileHugeMethods limit — the hottest path ran
+INTERPRETED) split into a first-package-segment dispatch, largest method 4266B; verified by a
+19,484,160-triple old-vs-new differential oracle (0 mismatches) + 330-jar corpus byte-identity; ~16%
+faster full-corpus scan.
