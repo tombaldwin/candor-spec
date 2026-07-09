@@ -431,6 +431,8 @@ An implementation SHOULD support:
   (e.g. `fs::read(path_from_param)`) — the injection class (path traversal, command injection, SSRF).
   Unlike the others this is *advisory and imprecise*: a syntactic, intra-procedural nudge that over- and
   under-flags; it MUST NOT gate. An implementation MAY support it; if so it MUST document its limits.
+  (Enabled by the `taint` config key / `CANDOR_TAINT` env var, §3.4 — two names, one mode: `risk` is
+  the mode, `taint` is its switch.)
 - **containment** (optional) — a diagnostic over the report: for each *boundary* effect, how concentrated
   it is in one architectural layer (§6.1). With a baseline it becomes a *ratchet* (AS-EFF-010). It is
   deliberately **not** a single "score" — see §6.1.
@@ -463,8 +465,10 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   (§5.1), resolved, or accepted, instead of the smear reading as analysis failure.
 - **parsepolicy `<file>`** — the engine's canonical parse of a §6.2 policy file, as JSON. Not a user
   workflow: it makes the grammar *diffable* — the cross-impl conformance suite feeds every engine
-  the same policy text and asserts the parses agree, which is what keeps one policy file meaning
-  the same gate in every language. An implementation that enforces any policy mode SHOULD expose it.
+  that exposes it the same policy text and asserts the parses agree, which is what keeps one policy
+  file meaning the same gate in every language. An implementation that enforces any policy mode
+  SHOULD expose it (an enforcer without it is still exercised through the applied `--policy`
+  verdict differentials, but its grammar is only indirectly diffed).
 
 These bind **engines, not consumers** — a consumer that only reads the JSON report is fully conformant.
 For an engine that exposes them, the query names and JSON shapes ARE part of the versioned contract (a new
@@ -576,9 +580,13 @@ engine identically. Every implementation's scanner MUST accept:
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
 | `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given, **except on exit 2**: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
-| `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. Fully offline — candor MUST NOT phone home. |
+| `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
+
+**Fully offline.** candor runs fully offline: an engine MUST NOT phone home — no telemetry, no update
+checks, no network traffic of its own, under any flag or mode. The §7 item 12 self-gate is the
+machine-checked form of this promise (the engines' own declared boundary is Fs/Env only).
 
 The short aliases `-V` and `-h` are REQUIRED; every other flag uses its long `--name` form. An engine
 MAY expose `--out <prefix>` for file output plus any engine-specific flags. Flag names and help wording
@@ -637,7 +645,7 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `strict` | `CANDOR_STRICT` | a scope (conformance, AS-EFF-001–003) |
 | `no-ambient` | `CANDOR_NO_AMBIENT` | a scope (AS-EFF-004) |
 | `closed-world` | `CANDOR_CLOSED_WORLD` | boolean (`true`/`1`/`yes`, or a bare key) |
-| `taint` | `CANDOR_TAINT` | boolean |
+| `taint` | `CANDOR_TAINT` | boolean — enables the §3 **risk** mode (AS-EFF-007; two names, one mode) |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
 
 An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for
@@ -1260,7 +1268,7 @@ declare it via the envelope's `spec`.
     omniscience, with the residual tracked openly. No obligation on implementations changed; the `spec`
     string stays `0.5`.
 
-- **0.4 (amended 2026-06-12, same day)** — additive within 0.4, wire-compatible both ways (no new
+- **0.4 (amended 2026-06-12, same day; tagged `v0.4.1`)** — additive within 0.4, wire-compatible both ways (no new
   required report field; every pre-amendment 0.4 report and policy parses unchanged), so the spec
   string stays **0.4** (the 0.3-amendment precedent):
   - §2 **one report covers one package** + the **report set** (one report per package under a
