@@ -57,11 +57,12 @@ The `[n]` labels in the runner's output, in run order:
     config-gate ⇒ 1, env-override ⇒ 0, typo'd config ⇒ 2.
 14. **Chaining** (`CANDOR_DEPS`, SPEC §2) — join-inherit across a report boundary, stale-report
     downgrade to `Unknown`, and the empty-report-is-a-purity-claim coverage rule.
-15. **Stale-baseline posture** (SPEC §2.1 ⟨0.8 amendment⟩) — a baseline from a different or absent
-    producing version makes the AS-EFF-005 **guard** fail closed without evaluating, while comparison
-    *queries* disclose and still answer. (The baseline-guard surface itself: the reference engine
-    implements it, and the family roll across ts/swift/scan is landing — this part pins four-way once
-    the last engine lands it.)
+15. **Baseline guard, four-way** (SPEC §7 item 5 + the §2.1 stale posture) — every engine's
+    AS-EFF-005 guard pinned on five cells: gain → `[AS-EFF-005]` + exit 1; clean → 0; absent file →
+    note + 0 (guard inactive); doctored producing version → exit 2 WITHOUT evaluating; a
+    configured-but-empty value → exit 2 (a declared ratchet naming no file is a broken gate, not an
+    inactive one). Comparison *queries* disclose the mismatch and still answer. (The ts/swift/scan
+    guard surfaces landed 2026-07-10; the item-5 MUST is satisfied, not narrowed.)
 16. **Applied `deny Unknown` / `pure`-vs-`Unknown` / `forbid` layering** — the remaining §6/§6.2
     verdicts agree, including nested-scope segment matching.
 
