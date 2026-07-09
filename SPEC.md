@@ -643,6 +643,10 @@ set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that 
 read, FAILS the run (exit 2, the §6.2 unreadable-policy posture; the file may carry the policy, so a
 silently-dropped config is a silently-dropped gate). Only genuine absence is an empty config.
 
+`CANDOR_CONFIG` is **reserved** for this override path — an engine must not overload the name for any
+other input (the Rust lint's classifier-extension rules file, which historically used it, is now
+`CANDOR_RULES`): one env var carrying two file grammars would make the fail-closed posture ambiguous.
+
 This is configuration, not the report/effect wire contract — no field an interoperating consumer reads
 changes — so it advances no version (an additive amendment within 0.8; all four engines implement it and
 the conformance config differential pins discovery, precedence and the fail-closed posture).

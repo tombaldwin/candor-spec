@@ -292,3 +292,14 @@ standing shadow discipline (declaredTypes / localFreeFns), pinned by twin fixtur
 (re-confirmed cross-engine): when auditing a covered module, sweep its *effectful adjacency* —
 `Data/String(contentsOf[File]:)` were checked in the same pass and found already covered (Fs /
 scheme-resolved / honest Unknown).
+
+**candor-scan κ-ledger §2 rule-3 gap (over-disclosure, fixed scan 0.8.4 `2d32086`, 2026-07-09).** Found
+by the new PART 14 chaining differential's FIRST run: the ledger exemption for chained reports was keyed
+on the report *filename shape* + per-entry hash prefixes, so an EMPTY chained report (`functions: []` —
+the §2 rule-3 purity claim) outside the `….<crate>.scan.json` naming still drew "κ doesn't know N
+dependencies". The SAFE direction (over-disclosure, not a silent-pure sin), but a conformance divergence
+vs candor-java/ts, which honor the claim. Coverage is now keyed on the envelope `package`/`packages`
+field (hyphenated names also register in Rust ident form); pinned by PART 14. Companion porcelain work
+in the same wave (register R21): cargo-candor `policy`'s `|| true` fail-open and `guard`'s
+absent-baseline green both now exit 2, with a `GUARD-UNAVAILABLE` engine sentinel distinguishing
+not-evaluated from violation, and the §3.3 verdict withheld when the guard could not evaluate.
