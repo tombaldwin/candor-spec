@@ -1349,20 +1349,21 @@ else
 fi
 
 # ====================================================================================================
-# PART 16 — applied `deny Unknown` (the AS-EFF-008/006 pairing advice made real) + applied `forbid A->B`
-# (AS-EFF-009 at LAYER granularity — packages/modules/directories, the architecture-gate use case).
-# Previously only the §6.2 GRAMMAR of these rules was differentialed (PART 4 parses them); the applied
-# verdict was pinned for deny/allow only. Per engine: an idiomatic unresolved call under `deny Unknown`
-# must FAIL (exit 1) and a pure fixture must PASS; a layer-crossing call under `forbid app -> repo` must
-# FAIL and the same code under `forbid app -> other` must PASS.
-# KNOWN PARITY EDGE (not pinned here, tracked): NESTED-scope layers diverge — a Java nested class
-# (`L$app`) / TS namespace scope does not match a policy segment in java/ts while rust modules and swift
-# enum-namespaces do; layer scoping at package/module/dir level is the shape all four agree on.
+# PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER
+# granularity, incl. NESTED scopes). Previously only the §6.2 GRAMMAR of these rules was differentialed
+# (PART 4 parses them); the applied verdict was pinned for deny/allow only. Per engine:
+#   * an idiomatic unresolved call under `deny Unknown` must FAIL (exit 1);
+#   * the SAME fixture under a bare `pure` must PASS (exit 0) — Unknown is the §4 trust marker, not an
+#     effect (three engines wrongly counted it until 2026-07-09; the deny-alignment round caught it);
+#   * a layer-crossing call under `forbid app -> repo` must FAIL and `forbid app -> other` must PASS —
+#     at package/module/dir granularity AND at the nested-scope boundary (a JVM nested class `L$app`,
+#     a TS namespace), per the §6.2 scope-segment ruling (the boundaries the §3.1 name ladder splits on).
 # ====================================================================================================
 echo
-echo "[16] APPLIED deny-Unknown + forbid-layering  (SPEC §6/§6.2 — the remaining rule kinds' verdicts agree)"
+echo "[16] APPLIED deny-Unknown / pure-vs-Unknown / forbid-layering  (SPEC §6/§6.2 — remaining verdicts agree)"
 PW="$W/p16"; mkdir -p "$PW"
 printf 'deny Unknown\n' > "$PW/unknown.policy"
+printf 'pure\n' > "$PW/pure.policy"
 printf 'forbid app -> repo\n' > "$PW/layer.policy"
 printf 'forbid app -> other\n' > "$PW/cousin.policy"
 # --- unresolved-call fixtures (each language's idiomatic Unknown: fn-value / reflection / closure) ---
@@ -1388,40 +1389,62 @@ import Foundation
 enum repo { static func load() { _ = FileManager.default.contents(atPath: "/x") } }
 enum app { static func entry() { repo.load() } }
 EOF
+# nested-scope variants (the §6.2 ruling: nested-type/namespace boundaries are scope segments) —
+# the exact shapes that diverged before the 2026-07-09 java `$`-boundary and ts namespace-naming fixes.
+mkdir -p "$PW/nj/q" "$PW/nt"
+cat > "$PW/nj/q/LN.java" <<'EOF'
+package q;
+public class LN {
+    public static class repo { static void load() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); } }
+    public static class app { static void entry() throws Exception { repo.load(); } }
+}
+EOF
+cat > "$PW/nt/ns.ts" <<'EOF'
+import * as fsm from "node:fs";
+export namespace repo { export function load(): string { return fsm.readFileSync("/x", "utf8"); } }
+export namespace app { export function entry(): string { return repo.load(); } }
+EOF
 javac -d "$PW/ujc" "$PW/uj/q/U.java" 2>/dev/null || { echo "FAIL: javac on p16 unknown fixture"; exit 2; }
 javac -d "$PW/ljc" "$PW/lj/q/repo/R.java" "$PW/lj/q/app/A.java" 2>/dev/null || { echo "FAIL: javac on p16 layer fixture"; exit 2; }
+javac -d "$PW/njc" "$PW/nj/q/LN.java" 2>/dev/null || { echo "FAIL: javac on p16 nested fixture"; exit 2; }
 P16_OK=0
 vp() { # $1 label $2 expected $3 actual
   if [ "$3" != "$2" ]; then echo "     FAIL $1: exit $3, expected $2"; P16_OK=1; fi
 }
 # candor-java
 env -u CANDOR_CONFIG java -jar "$JAR" "$PW/ujc" --policy "$PW/unknown.policy" >/dev/null 2>&1; JU=$?
+env -u CANDOR_CONFIG java -jar "$JAR" "$PW/ujc" --policy "$PW/pure.policy"    >/dev/null 2>&1; JP=$?
 env -u CANDOR_CONFIG java -jar "$JAR" "$PW/ljc" --policy "$PW/layer.policy"   >/dev/null 2>&1; JL=$?
 env -u CANDOR_CONFIG java -jar "$JAR" "$PW/ljc" --policy "$PW/cousin.policy"  >/dev/null 2>&1; JC=$?
-echo "  candor-java  deny-Unknown=$JU forbid=$JL forbid-cousin=$JC"
-vp "java deny-Unknown" 1 "$JU"; vp "java forbid" 1 "$JL"; vp "java forbid-cousin" 0 "$JC"
+env -u CANDOR_CONFIG java -jar "$JAR" "$PW/njc" --policy "$PW/layer.policy"   >/dev/null 2>&1; JN=$?
+echo "  candor-java  deny-Unknown=$JU pure=$JP forbid=$JL forbid-cousin=$JC nested-forbid=$JN"
+vp "java deny-Unknown" 1 "$JU"; vp "java pure-on-Unknown" 0 "$JP"; vp "java forbid" 1 "$JL"; vp "java forbid-cousin" 0 "$JC"; vp "java nested-forbid" 1 "$JN"
 # candor-scan
 env -u CANDOR_CONFIG "$SCAN" "$PW/ur" --policy "$PW/unknown.policy" >/dev/null 2>&1; RU=$?
+env -u CANDOR_CONFIG "$SCAN" "$PW/ur" --policy "$PW/pure.policy"    >/dev/null 2>&1; RP=$?
 env -u CANDOR_CONFIG "$SCAN" "$PW/lr" --policy "$PW/layer.policy"   >/dev/null 2>&1; RL=$?
 env -u CANDOR_CONFIG "$SCAN" "$PW/lr" --policy "$PW/cousin.policy"  >/dev/null 2>&1; RC2=$?
-echo "  candor-scan  deny-Unknown=$RU forbid=$RL forbid-cousin=$RC2"
-vp "scan deny-Unknown" 1 "$RU"; vp "scan forbid" 1 "$RL"; vp "scan forbid-cousin" 0 "$RC2"
+echo "  candor-scan  deny-Unknown=$RU pure=$RP forbid=$RL forbid-cousin=$RC2 (nested = module case)"
+vp "scan deny-Unknown" 1 "$RU"; vp "scan pure-on-Unknown" 0 "$RP"; vp "scan forbid" 1 "$RL"; vp "scan forbid-cousin" 0 "$RC2"
 if [ -n "$TS_OK" ]; then
   env -u CANDOR_CONFIG node "$TS_DIR/scan.mjs" "$PW/ut/a.ts" "$PW/ut_out" --policy "$PW/unknown.policy" >/dev/null 2>&1; TU=$?
+  env -u CANDOR_CONFIG node "$TS_DIR/scan.mjs" "$PW/ut/a.ts" "$PW/ut_out_p" --policy "$PW/pure.policy"  >/dev/null 2>&1; TP=$?
   env -u CANDOR_CONFIG node "$TS_DIR/scan.mjs" "$PW/lt" --out "$PW/lt_out" --policy "$PW/layer.policy"  >/dev/null 2>&1; TL=$?
   env -u CANDOR_CONFIG node "$TS_DIR/scan.mjs" "$PW/lt" --out "$PW/lt_out2" --policy "$PW/cousin.policy" >/dev/null 2>&1; TC=$?
-  echo "  candor-ts    deny-Unknown=$TU forbid=$TL forbid-cousin=$TC"
-  vp "ts deny-Unknown" 1 "$TU"; vp "ts forbid" 1 "$TL"; vp "ts forbid-cousin" 0 "$TC"
+  env -u CANDOR_CONFIG node "$TS_DIR/scan.mjs" "$PW/nt/ns.ts" "$PW/nt_out" --policy "$PW/layer.policy"  >/dev/null 2>&1; TN=$?
+  echo "  candor-ts    deny-Unknown=$TU pure=$TP forbid=$TL forbid-cousin=$TC nested-forbid=$TN"
+  vp "ts deny-Unknown" 1 "$TU"; vp "ts pure-on-Unknown" 0 "$TP"; vp "ts forbid" 1 "$TL"; vp "ts forbid-cousin" 0 "$TC"; vp "ts nested-forbid" 1 "$TN"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   env -u CANDOR_CONFIG "$SW_BIN" "$PW/us" --out "$PW/us_out" --policy "$PW/unknown.policy" >/dev/null 2>&1; SU=$?
+  env -u CANDOR_CONFIG "$SW_BIN" "$PW/us" --out "$PW/us_out_p" --policy "$PW/pure.policy"  >/dev/null 2>&1; SP=$?
   env -u CANDOR_CONFIG "$SW_BIN" "$PW/ls" --out "$PW/ls_out" --policy "$PW/layer.policy"   >/dev/null 2>&1; SL=$?
   env -u CANDOR_CONFIG "$SW_BIN" "$PW/ls" --out "$PW/ls_out2" --policy "$PW/cousin.policy" >/dev/null 2>&1; SC=$?
-  echo "  candor-swift deny-Unknown=$SU forbid=$SL forbid-cousin=$SC"
-  vp "swift deny-Unknown" 1 "$SU"; vp "swift forbid" 1 "$SL"; vp "swift forbid-cousin" 0 "$SC"
+  echo "  candor-swift deny-Unknown=$SU pure=$SP forbid=$SL forbid-cousin=$SC (nested = enum-namespace case)"
+  vp "swift deny-Unknown" 1 "$SU"; vp "swift pure-on-Unknown" 0 "$SP"; vp "swift forbid" 1 "$SL"; vp "swift forbid-cousin" 0 "$SC"
 fi
 if [ "$P16_OK" = 0 ]; then
-  echo "  -> MATCH — deny-Unknown bites the unresolved call and forbid bites the layer crossing, identically"
+  echo "  -> MATCH — deny-Unknown bites, pure passes the Unknown marker, and forbid bites every layer shape identically"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
