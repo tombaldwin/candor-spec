@@ -6,7 +6,7 @@ the **interface** (effect vocabulary, report schema, diagnostic codes, modes); t
 composition, the conformance predicates, and the soundness/precision claims — stated honestly,
 including the two places soundness is *assumed* rather than proven.
 
-The model is language-agnostic; §9 maps it onto an implementation (the Rust reference impl).
+The model is language-agnostic; §9 maps it onto an implementation (the Rust implementation).
 
 ---
 
@@ -108,7 +108,7 @@ Notes.
   *in addition to* any (DEVIRT)/(CHA) targets. So for a local trait call the analysis follows both the
   trait method (its default body, if any) and the resolved impl(s): the realized edge set is a
   *superset* of the strictly-needed one. This is a deliberate over-approximation (it can only raise
-  `I`, never lower it) and is why the reference implementation never *under*-resolves a local call.
+  `I`, never lower it) and is why the Rust implementation never *under*-resolves a local call.
 - **(DEVIRT) tightens (CHA).** When the receiver type is known the call dispatches to exactly one
   impl, so (DEVIRT) adds that single impl rather than (CHA)'s *every* impl. Both are sound; (DEVIRT) is
   the precise one. (CHA) over-approximates by unioning impls the call could never select.
@@ -247,7 +247,7 @@ contract.)*
 **AS-EFF-009 reads the call graph, not the effect lattice.** A layering rule `forbid A → B` is the
 *dependency-direction* boundary (who a layer may depend on), complementing the effect rules (what a
 layer may do). It holds at `f` iff no function `g` with `scope_B(g)` is reachable from `f` over the call
-graph. A reference implementation MAY restrict reachability to the **local** call graph (within-crate
+graph. An implementation MAY restrict reachability to the **local** call graph (within-crate
 layering — the common case, where layers are modules of one crate); cross-crate dependency edges are an
 OPTIONAL extension. This is the one diagnostic that does not read `I(f)`: a layer can be forbidden from
 *depending on* another even when neither performs an effect.
@@ -300,7 +300,7 @@ These are the price of running on real code without per-call proof obligations. 
 throughout is: when forced to choose, **over-report (P4) or mark `Unknown` (UNKNOWN) — never silently
 under-report** — and make any residual blind spot *visible* (C1's coverage signal) rather than silent.
 
-## 9. Realization (the Rust reference implementation)
+## 9. Realization (the Rust implementation)
 
 | model element | implementation |
 |---|---|
@@ -314,9 +314,9 @@ under-report** — and make any residual blind spot *visible* (C1's coverage sig
 | `declared(f)` | capability-token parameter types read from the signature (`&Fs`, cap-std handles) |
 | AS-EFF-00x | the conformance/no-ambient/baseline modes |
 
-A second implementation (JVM, ASM bytecode) realizes the *same* model with `declared` read from
-dependency-injection wiring rather than token parameters — confirming the semantics is language-
-agnostic and the engine is what's bespoke.
+The JVM implementation (candor-java, ASM bytecode — the family's reference engine) realizes the
+*same* model with `declared` read from dependency-injection wiring rather than token parameters —
+confirming the semantics is language-agnostic and the engine is what's bespoke.
 
 ## 10. Summary
 

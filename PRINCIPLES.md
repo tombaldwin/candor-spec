@@ -6,8 +6,8 @@ candor's design — and how each implementation gets built — follow one idea:
 > AI agents who can't double-check it, is worth only what you can trust it to be straight
 > about — especially about what it *doesn't* know.
 
-Everything below is that idea applied at a different level. Each was earned building the Rust
-reference implementation; the moment it cost something to follow is noted, so these stay principles
+Everything below is that idea applied at a different level. Each was earned building the family's
+first implementation (Rust); the moment it cost something to follow is noted, so these stay principles
 we *demonstrated*, not slogans.
 
 ### 1. Honest uncertainty beats false confidence
@@ -20,7 +20,7 @@ failure mode there is, because they're trusted.**
 ### 2. The guarantee is the product — never ship one you can't keep
 
 For a checker, an *unsound* guarantee is negative value: worse than nothing, because people rely on
-it. The reference impl refused to ship reachability/dead-code analysis because, on an incomplete call
+it. The Rust impl refused to ship reachability/dead-code analysis because, on an incomplete call
 graph, it would confidently mislabel live code as dead — and a confident wrong answer is more
 dangerous than no answer.
 

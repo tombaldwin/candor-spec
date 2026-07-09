@@ -48,7 +48,7 @@ The model is expressed in each engine's natural style. None of these are shared 
 candor-java is the JVM **reference realization**: a public `io.poly.candor.model` package holding
 the types above, used on both the producing side (the analyzer builds `Effector`s, serialized through
 a single `ReportJson`) and the consuming side (the query tool reads reports into the same `Effector`).
-Rust's `candor-report` is the established, most-typed reference for the wire structs, and candor-swift
+Rust's `candor-report` is the earliest typed realization of the wire structs, and candor-swift
 now realizes the same vocabulary as native types (`Effect`/`EffectSet`/`Provenance`/`Effector`/`Report`,
 each owning its `toJSON()`). candor-ts is authored in plain JavaScript (no static types), so it assembles
 entries ad hoc and validates on read — it can converge on named types only by adopting TypeScript, and is
