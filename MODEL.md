@@ -22,7 +22,7 @@ gives the family a shared way to talk about the same things.
 | **EffectorKind** | What kind of effector an entry is when not an ordinary function: `initializer`/`accessor`/`export`/`agent`/`command`/`skill`/`cron`/`session`/`hooks`. Absent = function. | §2 | `unitKind` |
 | **UnknownReason** | Why a body introduced `Unknown` directly — a `kind:detail` tag. Canonical kinds: `reflect`/`native`/`dispatch`/`callback`. | §4 | a `unknownWhy` string |
 | **Provenance** | Which engine produced a report and which contract it conforms to: `version` (build id), `toolchain`, `spec`. | §2.1 | the `candor` header |
-| **Report** | The envelope: provenance + the package(s) covered + the effectors. | §2 | `{ candor, packages, functions }` |
+| **Report** | The envelope: provenance + the package(s) covered + the effectors. | §2 | `{ candor, package` *or* `packages, functions }` (§2) |
 | **PolicyRule** | An architecture-as-code rule (sealed: `Deny` / `Allow` / `Forbid`), the parsed form of the §6.2 DSL. | §6.2 | (read from a policy file) |
 | **Diagnostic / DiagnosticCode** | A gate finding + its standardized code (`AS-EFF-001..010`). | §6 | (gate output) |
 | **Mode** | An analysis mode — audit, conformance, no-ambient, baseline, policy, risk, containment. | §3 | (selected by flag/env) |
@@ -64,8 +64,9 @@ vocabulary **independently** — three of four now express it as named types, no
   candor-java currently also emits `task-handoff` and `indy`. Its `UnknownReason` models all of them
   (and preserves any unrecognized prefix verbatim) so reports round-trip; reconciling those two onto
   the canonical four is a tracked, deliberate (byte-changing) conformance task.
-- **AS-EFF-010 (containment regression)** is defined by the spec but not implemented by every engine
-  (e.g. candor-java models codes 001–009).
+- **AS-EFF-010 (containment regression)** is implemented by candor-java (the `ContainmentRatchetTest`
+  exit contract) and by candor-query for the Rust/Swift paths, pinned cross-engine by conformance
+  PART 11; candor-ts exposes no containment command, so it needs no ratchet.
 - **`Clipboard` is a §6.1 boundary effect.** §6.1 splits effects into boundary
   (`Db,Net,Exec,Fs,Ipc,Clipboard`) and cross-cutting (`Log,Clock,Rand,Env`); `Clipboard` was
   added to the vocabulary after the original partition and is now classified boundary (external-resource

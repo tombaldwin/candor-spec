@@ -18,10 +18,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (0.7.x)** — reference implementation (`cargo install candor-scan`) |
-| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (0.7.x)** — full mode set; Spring-aware; Java/Kotlin/Scala/Groovy |
-| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (0.7.x)** — project scanning, gate, queries, MCP server; on npm (`npx -y candor-ts`) |
-| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (0.7.x)** — receiver-typed local inference; the 4th conformance engine |
+| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (spec 0.8)** — the **reference engine**; full mode set incl. `--gate-json`; Spring-aware; Java/Kotlin/Scala/Groovy (`jbang candor@tombaldwin/candor-java`) |
+| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (spec 0.8)** — `cargo install candor-scan` |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (spec 0.8)** — project scanning, gate, queries, MCP + LSP servers; on npm (`npx -y candor-ts`) |
+| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (spec 0.8)** — receiver-typed local inference; the 4th conformance engine |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
@@ -37,9 +37,11 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
   precision lessons learned the hard way.
 - **[conformance/](conformance/)** — an *executable* differential: the same fixtures across the four
-  engines (Rust, JVM, TypeScript, Swift), asserting they all infer the spec-mandated effect set, agree
-  on the policy verdict, the query shapes, and the §6.2 grammar (`bash conformance/run.sh`). Conformance
-  and cross-impl agreement in one run.
+  engines (JVM, Rust, TypeScript, Swift), asserting they all infer the spec-mandated effect set, agree
+  on the policy verdict, the `--gate-json` verdict + exit code (⟨0.8⟩), the `.candor/config` discovery
+  and fail-closed posture, the query shapes (incl. `blindspots`, the containment ratchet, the
+  unresolved-dispatch frontier), the κ-coverage ledger, the masked-literal fail-closed gate, and the
+  §6.2 grammar (`bash conformance/run.sh`). Conformance and cross-impl agreement in one run.
 
 ## Why per-language tools sharing one spec
 

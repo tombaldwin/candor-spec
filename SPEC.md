@@ -433,6 +433,12 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   callers that reach `<fn>` only through an unresolved `dispatch:` — a disclosed lower-bound, never asserted.
 - **map** — a module → effects overview.
 - **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
+- **gains `<baseline>`** — the package-level **gained-capability alarm**: the effects present now but
+  absent from the baseline (`gained`), each with the functions introducing it (`byFunction`). The
+  supply-chain view of `diff` (§5.1): a dependency release that quietly grew `Net`/`Exec` is exactly
+  what this surfaces, and a stable surface raises no alarm (`gained: []`). *(Recorded ⟨0.8⟩ as a
+  documentation catch-up: the engines have shipped it and the conformance suite has pinned its shape
+  since the ⟨0.5⟩ query parts — the §2.1 and §5.1 references resolve here.)*
 - **reachable / path / impact** — the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points.
 - **blindspots** ⟨0.6⟩ — the Unknown SOURCES: the calls the engine genuinely could not resolve (each
@@ -466,6 +472,7 @@ callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
 map      { "<module>": { "effects":[…], "functions":int } }
 diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":[…], "lost":[…],
            "status": "changed"|"new"|"removed" } ], …optional provenance fields }
+gains    { "gained":[Effect…], "byFunction":[ { "fn", "effect" } ], …optional provenance fields }
 reachable { "entryPoints":int, "effects": { "<Effect>": { "count":int, "via":[fn…] } } }
 path      { "effect", "fn", "path":[ { "fn", "loc", "source":bool } ] }
 impact    { "fn", "affectedCount":int, "affected":[fn…], "entryPoints":[ { "fn", "inferred":[…] } ] }
@@ -607,8 +614,12 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `taint` | `CANDOR_TAINT` | boolean |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
 
-An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert** (a repo
-scanned by several engines carries one config; `strict` drives the JVM engine and is silent elsewhere).
+An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for
+enforcement, but SHOULD be disclosed** — one stderr line naming the keys this engine recognizes and
+does not implement. Inertness is by design (a repo scanned by several engines carries one config;
+`strict` drives the JVM engine and gates nothing elsewhere), but a key that names a **gate**
+(`policy`, `baseline`, `strict`, `no-ambient`, `taint`) must never read as silently active: a team
+that checks in `baseline .candor/baseline` believing the guard is on deserves the one-line correction.
 A key **outside** the vocabulary is **ignored with a warning** — the §6.2 malformed-line posture: a
 misspelt `policy` must never silently drop a gate. A **bare** value key (a lone `strict` line) means
 "enabled with the empty value" — exactly the set-but-empty env var (whole-unit scope for a scope key;
@@ -618,7 +629,10 @@ a bare `policy` fails loud on the empty path), never a silent drop.
 target (`target/classes` → the repo root's `.candor/config`), so the config that travels with the
 scanned code is the one that applies regardless of where the process was launched; a `CANDOR_CONFIG`
 environment variable overrides discovery entirely. **Precedence, highest first: a CLI flag → the
-matching `CANDOR_*` env var (the one-off override) → this file → the built-in default.**
+matching `CANDOR_*` env var (the one-off override) → this file → the built-in default.** For the same
+reason, a **relative path value** (`policy`, `baseline`, `deps` entries) resolves against the
+**directory containing the config file**, never the process CWD — the config travels with the code,
+so its references must too: a checked-in `policy .candor/gate.pol` works from any launch directory.
 
 **Fail-closed:** a config that is configured but unusable never silently degrades to "no config" — a
 set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that exists but cannot be
@@ -775,8 +789,9 @@ The trust is **declared-not-verified**: the report is only as honest as the decl
 like a cap type (and unlike the engine's own analysis, which is checked). An effect name outside §1
 MUST void the declaration loudly (a typo must not silently *narrow* a surface), and a declaration
 that under-claims is caught the moment the source *is* analysed — the κ ledger (§7) names every
-dependency still opaque, so a missing manifest is visible, never silent. The edge cases are pinned so
-the engines can't drift on them: an **empty** array (`candorEffects: []`) is a positive "declared pure"
+dependency still opaque, so a missing manifest is visible, never silent. The edge cases are fixed
+normatively so the engines can't drift on them (a cross-engine manifest differential is tracked
+conformance work — these MUSTs bind regardless): an **empty** array (`candorEffects: []`) is a positive "declared pure"
 — covered, NOT a blind spot (distinct from an *absent* manifest, which stays opaque, the same load-bearing
 empty-vs-absent split as `deny`-with-no-effect vs `pure`); a present-but-**non-array** value is malformed
 and MUST void loudly (the same class as an out-of-§1 name, never a silent narrowing); names are a **set**
@@ -795,7 +810,8 @@ versioned fact, so a `diff`/`gains` (§3.1, §6 `AS-EFF-005`) between two *relea
 surfaces a **gained capability** — "this update gained `Net`/`Exec`". A dependency that quietly
 grows a network or subprocess reach between a patch release is exactly the supply-chain event nothing
 else flags cheaply; candor flags it as a deterministic effect-set delta, declaration or analysis
-alike. An engine SHOULD make the package-level gained set machine-readable so a gate can alarm on it.
+alike. An engine SHOULD make the package-level gained set machine-readable so a gate can alarm on it —
+the **`gains`** query (§3.1) is that shape.
 
 ## 6. Diagnostics (`AS-EFF-00x`)
 
@@ -1119,7 +1135,20 @@ declare it via the envelope's `spec`.
     config → default; fail-closed when configured-but-unusable; unknown keys warn). Configuration, not
     the wire contract: additive within 0.8, the spec string is unchanged (the 0.3/0.4-amendment
     precedent); all four engines implement it, pinned by the conformance config differential (PART 13).
-- **0.7 (released — tag `v0.7`; engines declare `0.7`)** —
+  - **(amended, 2026-07-09)** §3.4 two clarifications from the whole-family review: a **relative path
+    value resolves against the config file's directory** (never the CWD — the config travels with the
+    code), and a recognized-but-unimplemented key **SHOULD be disclosed** (one stderr line), so a
+    checked-in gate key never reads as silently active in an engine that doesn't drive that mode.
+  - **(amended, 2026-07-09)** §6 + SEMANTICS §6: the **AS-EFF-008 text reconciled to the
+    machine-checked contract** — the rule fails closed on an uncertifiable (masked/opaque) literal
+    surface, as every engine has implemented and the conformance masking + gate-verdict differentials
+    have pinned since the 0.5.15-era gate-evasion hardening; the prior prose wrongly scoped the code to
+    visible violations only. Also recorded: the `gains` query shape in §3.1 (shipped and
+    conformance-pinned since the ⟨0.5⟩ query parts; §2.1/§5.1 references now resolve), SEMANTICS'
+    AS-EFF-010 predicate row, and the §2.1 version-trust precondition on the baseline-reading
+    predicates. Documentation catch-up throughout: no wire change, no behavior change anywhere.
+- **0.7 (released — engines declare `0.7`; untagged — the tag-the-floor rule postdates this rung, so
+  its floor rise is recorded here and by the engine releases)** —
   additive, wire-compatible with 0.6; all four engines implement it and two conformance differentials pin
   it (see `proposals/unknownwhy-vocabulary.md`, `proposals/0.7-unknown-dispatch-frontier.md`):
   - §4 the **canonical `unknownWhy` vocabulary** — four kinds `reflect:`/`native:`/`dispatch:`/`callback:`,
@@ -1138,7 +1167,7 @@ declare it via the envelope's `spec`.
     `CANDOR_POLICY`), `--json` to stdout, `--version`/`-V` carrying the spec version, and `--help`/`-h`,
     with flag names + help wording kept consistent across engines. Codifies what the four engines now
     expose; no wire change (the §2 envelope is untouched), so engines keep declaring `0.7`.
-- **0.6 (released — tag `v0.6`; engines declare `0.6`)** —
+- **0.6 (released — engines declare `0.6`; untagged, as 0.7)** —
   additive, wire-compatible with 0.5; all four engines implement it and a conformance differential pins it:
   - §3.1 the **`blindspots`** read-only query — the Unknown SOURCES (the calls genuinely unresolvable),
     ranked by how many functions transitively inherit `Unknown` through each: the actionable inverse of a
