@@ -633,8 +633,10 @@ scanned code is the one that applies regardless of where the process was launche
 environment variable overrides discovery entirely. **Precedence, highest first: a CLI flag → the
 matching `CANDOR_*` env var (the one-off override) → this file → the built-in default.** For the same
 reason, a **relative path value** (`policy`, `baseline`, `deps` entries) resolves against the
-**directory containing the config file**, never the process CWD — the config travels with the code,
-so its references must too: a checked-in `policy .candor/gate.pol` works from any launch directory.
+**config's home directory** — the directory containing the `.candor/` directory (the repo root the
+config travels with; for an out-of-tree `CANDOR_CONFIG` override file, simply the file's own
+directory) — never the process CWD. A checked-in `policy .candor/gate.pol` in `<root>/.candor/config`
+therefore names `<root>/.candor/gate.pol` from any launch directory.
 
 **Fail-closed:** a config that is configured but unusable never silently degrades to "no config" — a
 set `CANDOR_CONFIG` naming a missing/unreadable path, or a discovered file that exists but cannot be
@@ -1104,7 +1106,11 @@ to "item 14" stay valid):
     platform/builtin frontier (the classifier's actual job), packages the classifier covers
     verb-precisely (zero classifications can mean the code touches only their pure surface),
     and packages a chained sibling report covers (§2 — including an EMPTY report, whose silence
-    is a purity claim). The ledger plus chaining (§2) is the curation treadmill's exit: the
+    is a purity claim). A domain engine (§4) satisfies this item over its own curated frontier —
+    candor-agents' ledger names the uncurated MCP servers, unknown tools, and unlisted literal
+    command heads the scan relied on (`mcp:`/`tool:`/`head:` with unit counts), plus the curated
+    reviewed-pure grants the verdict rests on: the domain analog of "packages the code
+    demonstrably calls". The ledger plus chaining (§2) is the curation treadmill's exit: the
     disclosure names what is invisible, one dependency scan closes it, and the curated table's
     long-term obligation shrinks to the builtin/FFI frontier. The cross-impl conformance suite
     pins the disclosure's behavior in all four engines.
@@ -1127,7 +1133,9 @@ declare it via the envelope's `spec`.
     (`candor/integrations/github`): each `fn` joins to its `loc`/effects in the §2 report.
   - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink); then candor-scan,
     candor-ts and candor-swift in turn. All four declare `0.8`; the conformance gate-verdict differential
-    (PART 12) pins their agreement on the shared fixtures.
+    (PART 12) pins their agreement on the shared fixtures. The candor-agents domain engine (§4) rides the
+    ladder behind them: its 0.8.0 adds `.candor/config`, `--gate-json` and the item-14 κ ledger, declaring
+    `0.8`.
   - **(amended)** §2.1 the **stale-baseline posture**: a baseline GUARD given a baseline from a
     different (or absent) producing version MUST fail closed without evaluating (the unreadable-policy
     class); comparison QUERIES disclose (warning + provenance fields) and still answer. Documentation of
@@ -1138,9 +1146,10 @@ declare it via the envelope's `spec`.
     the wire contract: additive within 0.8, the spec string is unchanged (the 0.3/0.4-amendment
     precedent); all four engines implement it, pinned by the conformance config differential (PART 13).
   - **(amended, 2026-07-09)** §3.4 two clarifications from the whole-family review: a **relative path
-    value resolves against the config file's directory** (never the CWD — the config travels with the
-    code), and a recognized-but-unimplemented key **SHOULD be disclosed** (one stderr line), so a
-    checked-in gate key never reads as silently active in an engine that doesn't drive that mode.
+    value resolves against the config's home directory** (the directory containing `.candor/` — never
+    the CWD; the config travels with the code), and a recognized-but-unimplemented key **SHOULD be
+    disclosed** (one stderr line), so a checked-in gate key never reads as silently active in an
+    engine that doesn't drive that mode.
   - **(amended, 2026-07-09)** §6 + SEMANTICS §6: the **AS-EFF-008 text reconciled to the
     machine-checked contract** — the rule fails closed on an uncertifiable (masked/opaque) literal
     surface, as every engine has implemented and the conformance masking + gate-verdict differentials

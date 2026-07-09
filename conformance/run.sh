@@ -807,7 +807,7 @@ if [ -n "$SW_BIN" ] && [ -x "$SW_BIN" ]; then
   python3 - <<PY || true
 import json, glob
 try:
-    ps = [x for x in glob.glob("$W/uk/swr.*.json") if "callgraph" not in x]
+    ps = [x for x in glob.glob("$W/uk/swr.*.json") if "callgraph" not in x and "hierarchy" not in x]
     if not ps:
         print("  swift      WARN (no report produced)")
     else:

@@ -1,25 +1,42 @@
 name: conformance
 
-# Cross-impl differential: builds all THREE engines (Rust, JVM, TS) from their main branches and
-# asserts they infer the spec-mandated effect set on the shared fixtures (conformance/run.sh).
+# Cross-impl differential (conformance/run.sh) in three legs:
+#
+#   1. cross-impl-differential — ubuntu, engine MAIN TIPS, three engines (Rust, JVM, TS). The fast
+#      leg on every push/PR. No swift toolchain on ubuntu runners, so swift skips loudly here.
+#   2. four-engine-differential — macos, engine MAIN TIPS, ALL FOUR engines with
+#      CONFORMANCE_REQUIRE_ALL=1: this is the leg that actually enforces the "four-engine floor"
+#      the spec claims (previously enforced only on a local mac — the review's finding), and strict
+#      mode also turns check_honesty's no-callgraph degrade into a failure.
+#   3. released-floor — weekly + dispatch, ubuntu, the RELEASED artifacts (latest candor-java
+#      GitHub-release jar + crates.io candor-scan/candor-query): proves the floor where consumers
+#      live, not just tip-vs-tip. (Released ts/swift coverage needs fixture-carrying artifacts —
+#      the npm package ships no Cases.ts and swift releases are source tags; tracked, not silent.)
+#
 # A DIVERGE row = a bug in one engine; a BOTH-OFF row = the engines agree but disagree with the spec.
-# Runs on every change to candor-spec, and can be dispatched manually after a classifier change lands
-# in any engine.
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 1'   # weekly released-floor run (Mondays 05:17 UTC)
+
+concurrency:
+  group: conformance-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   cross-impl-differential:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
         with:
           path: candor-spec
-      # The two engines are public sibling repos, checked out next to candor-spec so run.sh's default
+      # The engines are public sibling repos, checked out next to candor-spec so run.sh's default
       # sibling layout (and the explicit CANDOR/CANDOR_JAVA below) resolves them.
       - name: Checkout candor (Rust engine)
         uses: actions/checkout@v6
@@ -31,7 +48,6 @@ jobs:
         with:
           repository: tombaldwin/candor-java
           path: candor-java
-
       # candor-scan is the STABLE backend — no nightly needed (run.sh builds it with `-p candor-scan`,
       # which never touches the rustc_private lint crate).
       - uses: dtolnay/rust-toolchain@stable
@@ -70,4 +86,107 @@ jobs:
           CANDOR="$GITHUB_WORKSPACE/candor" \
           CANDOR_JAVA="$GITHUB_WORKSPACE/candor-java" \
           CANDOR_TS="$GITHUB_WORKSPACE/candor-ts" \
+            bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
+
+  # The strict four-engine leg: macos has the swift toolchain (SwiftSyntax resolves prebuilt), so
+  # this is where the spec's "all four engines, conformance-pinned" claim is actually machine-checked.
+  # CONFORMANCE_REQUIRE_ALL=1 turns every loud SKIP (an absent engine, a missing callgraph sidecar)
+  # into a FAILURE. Swift-repo CI-hang lesson applies: hard timeout, concurrency-cancel (above).
+  four-engine-differential:
+    if: github.event_name != 'schedule'
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - name: Checkout candor-spec
+        uses: actions/checkout@v6
+        with:
+          path: candor-spec
+      - name: Checkout candor (Rust engine)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-rust
+          path: candor
+      - name: Checkout candor-java (JVM engine)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-java
+          path: candor-java
+      - name: Checkout candor-ts (TS engine)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-ts
+          path: candor-ts
+      - name: Checkout candor-swift (Swift engine)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-swift
+          path: candor-swift
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            candor/target
+          key: ${{ runner.os }}-conformance-cargo-${{ hashFiles('candor/Cargo.lock') }}
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-conformance-gradle-${{ hashFiles('candor-java/**/*.gradle.kts', 'candor-java/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: Cache SwiftPM
+        uses: actions/cache@v5
+        with:
+          path: candor-swift/.build
+          key: ${{ runner.os }}-conformance-swiftpm-${{ hashFiles('candor-swift/Package.resolved') }}
+
+      - name: Four-engine conformance differential (strict)
+        run: |
+          CONFORMANCE_REQUIRE_ALL=1 \
+          CANDOR="$GITHUB_WORKSPACE/candor" \
+          CANDOR_JAVA="$GITHUB_WORKSPACE/candor-java" \
+          CANDOR_TS="$GITHUB_WORKSPACE/candor-ts" \
+          CANDOR_SWIFT="$GITHUB_WORKSPACE/candor-swift" \
+            bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
+
+  # The floor where CONSUMERS live: the latest RELEASED candor-java jar + the crates.io
+  # candor-scan/candor-query, weekly. Tip-vs-tip agreement (the jobs above) never proves the
+  # released artifacts still meet the floor — this does, for the two channels that ship
+  # runnable-without-fixtures artifacts.
+  released-floor:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout candor-spec
+        uses: actions/checkout@v6
+        with:
+          path: candor-spec
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Fetch the latest released candor-java jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo tombaldwin/candor-java --pattern '*-all.jar' --dir "$GITHUB_WORKSPACE/released"
+          ls -la "$GITHUB_WORKSPACE/released"
+      - name: Install the released candor-scan/candor-query from crates.io
+        run: cargo install candor-scan candor-query --locked
+      - name: Conformance against the released artifacts
+        run: |
+          CANDOR_JAVA_JAR="$(ls "$GITHUB_WORKSPACE"/released/*-all.jar | head -1)" \
+          CANDOR_SCAN_BIN="$HOME/.cargo/bin/candor-scan" \
+          CANDOR_QUERY_BIN="$HOME/.cargo/bin/candor-query" \
             bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
