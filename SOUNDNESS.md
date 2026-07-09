@@ -139,68 +139,62 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
    syscall oracle 13→**14 drivers** (added `fs_writefmt`: a custom `fmt::Write` writing a marker file via
    `write!`; CI-verified `ran=1 effect=Fs candor=[Fs] certain` — the write-fmt class now KERNEL-gated, the
    strongest evidence, independent of engine logic); recall 20→**23** (seam_lazy_force/seam_thread_local/
-   seam_write_fmt, all →Clock). realworld-oracle.yml run GREEN: 14 honest / 0 under-reports / 0 fabrications,
-   recall 23 honest. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
+   seam_write_fmt, all →Clock). realworld-oracle.yml run GREEN: 14 sound / 0 under-reports / 0 fabrications,
+   recall 23 sound. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
    just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
    diversity.*
 3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-09: **7 open (R2–R8), all low/v.low;
    0 med+**. Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
    register and the LOG. Target: 0 med+; lows documented-accepted.*
-4. **Find-rate** = cardinal sins found per fresh adversarial round. *2026-06-18: 6 seam-class rounds each found
-   ≥1; the 7th (coverage) and 8th (R1 deep implicit-conversion 6-sub-case probe) each found 0 silent; the 9th
-   (rust-deep fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
-   forcing site read pure (effectful `LazyLock` init charged to the static, never to the forcing fn). FIXED +
-   gated (ui/deferred_effects.rs); the other two seams were already caught. The 10th (agents seam battery,
-   candor-agents `755216a`) found 1 — named-delegation narrowing trusted a prompt mention as proof of the
-   spawn set, silently dropping unmentioned-but-spawnable agents. FIXED (allowlist→sound, bare-Agent→disclosed
-   Unknown) + gated (test.py). The 11th (rust-deep `thread_local!` probe) found 1 — R13, a `.with()`-forced
-   thread_local read pure (effect orphaned in the macro-gen init fn); FIXED same-session (`6010832`) + gated.
-   Rounds 12–13 (rust-deep derived-Clone/Once/OnceLock-named-init, then compound-assign R6) found 0 — both
-   sound, gated (R6 stale for deep, may hold for scan). The 14th (rust-deep `write!` writer side) found 1 —
-   R14, `fmt::Write` writer silent-pure; FIXED (`0e4bf50`) + gated. The 15th was a CROSS-ENGINE
-   sweep of R14 + thread_local against candor-scan: write-fmt was ALSO silent in scan (shared blind spot,
-   FIXED scan 0.5.18 `dabafd0`); thread_local already handled. The 16th extended the sweep to candor-swift:
-   write-fmt's writer side was ALSO silent there (effectful `TextOutputStream` via `print(to:)`/`write(to:)`),
-   FIXED swift 0.5.22 `9368311`. Convergence = sustained 0 across diverse new seams (NOT reached — 16 rounds,
-   ~13 finds, all fixed). KEY LESSON reinforced: a find in one engine is a SWEEP trigger for ALL — write-fmt's
-   writer side was a SYSTEMIC shared blind spot (deep+scan+swift), the exact case cross-engine agreement hides.
-   The 17th finished the sweep on
-   candor-java: the writer side is silent there too (4th engine — R16), but the precise fix needs receiver→
-   ctor-arg escape provenance (the infra exists; CHA-blanket rejected by candor-java's precision design) and
-   the idiom is rare, so it's tracked as a low SILENT residual rather than rushed. ts is N/A (no writer-sink
-   idiom). SWEEP COMPLETE: write-fmt writer side assessed across ALL engines — silent in 4 (deep/scan/swift/
-   java), FIXED in 3, java tracked (R16). R16 since FIXED (candor-java 0.5.40 `5f86d3e`, constructor-site
-   reentry) — so the write-fmt writer-side class is now closed in ALL 4 engines. Convergence: 17 rounds,
-   ~14 finds, ALL 14 fixed. Also validated on real code: PetClinic dogfood (the JVM gate works end-to-end,
-   0 Unknown, caught a real cross-layer smell) + the gson InetAddress catch.*
-   *2026-06-21 → 2026-07-09, the κ-coverage and porcelain eras (full prose per entry in SOUNDNESS-LOG.md;
-   register entries R18–R21): real-app dogfooding found the inherited-into-project silent-pure vein and
-   closed the CLASS (batches 25–27, R18); the uflexi legacy round mined batches 28–31 to a zero ledger and
-   found one live silent-Net member gap (Jackson, batch 30b); the breadth invited six shipped classifier
-   regressions (0.8.4 review patch, R19 — caught by review, now moving under scheduled CI); the same
-   covered-module shape then surfaced in swift (UserDefaults/Keychain/Bundle, R20); and the 2026-07-09
-   whole-project review opened a THIRD find category — porcelain/output-channel fail-opens (R21), plus one
-   normative contradiction (AS-EFF-008's opaque case: spec text vs the conformance-pinned fail-closed
-   behavior — the written contract had lagged the machine-checked one since the 0.5.15 hardening). All
-   fixed; chaining + stale-baseline became conformance PARTs 14–15 the same day, and PART 14's first run
-   caught candor-scan's missing empty-report ledger exemption. Convergence: STILL NOT reached — every era
-   shift re-opens the find-rate, which is the epistemic frame (§1) working as designed: the instrument's
-   job is to make each new era's finds cheap and standing-gated, not to declare victory.*
+4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): four find
+   eras so far — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
+   convergence NOT reached, and each era shift re-opens the find-rate. That is the epistemic frame (§1)
+   working as designed: the instrument's job is to make each new era's finds cheap and standing-gated, not
+   to declare victory.*
+   - *Seam-class era (2026-06-18 → 06-21, rounds 1–17): ~14 finds, all fixed + gated. Highlights: the
+     lazy-init forcing site (rust-deep `8bf9c6b`), the agents named-delegation narrowing (a prompt mention
+     is not a spawn-set proof, `755216a`), thread_local (R13), and the write-fmt writer side (R14/R16) — a
+     SYSTEMIC blind spot silent in four engines at once, the exact case cross-engine agreement hides; since
+     then a find in one engine triggers a sweep of all. Rounds 7, 8, 12 and 13 found 0. Validated on real
+     code the same era (the PetClinic end-to-end gate, the gson InetAddress catch). Full round-by-round
+     narrative: SOUNDNESS-LOG.md, the seam-class-era entry.*
+   - *κ-coverage and porcelain eras (2026-06-21 → 2026-07-09; full prose per entry in SOUNDNESS-LOG.md;
+     register entries R18–R21): real-app dogfooding found the inherited-into-project silent-pure vein and
+     closed the CLASS (batches 25–27, R18); the uflexi legacy round mined batches 28–31 to a zero ledger and
+     found one live silent-Net member gap (Jackson, batch 30b); the breadth invited six shipped classifier
+     regressions (0.8.4 review patch, R19 — caught by review, now moving under scheduled CI); the same
+     covered-module shape then surfaced in swift (UserDefaults/Keychain/Bundle, R20); and the 2026-07-09
+     whole-project review opened a THIRD find category — porcelain/output-channel fail-opens (R21), plus one
+     normative contradiction (AS-EFF-008's opaque case: spec text vs the conformance-pinned fail-closed
+     behavior — the written contract had lagged the machine-checked one since the 0.5.15 hardening). All
+     fixed; chaining + stale-baseline became conformance PARTs 14–15 the same day, and PART 14's first run
+     caught candor-scan's missing empty-report ledger exemption.*
+   - *Coverage era (2026-07-10): the first-ever coverage measurement made "documented surface with zero
+     executions" a find category of its own — four real bugs, including a broken user-facing gate
+     (candor-java's CANDOR_STRICT checkConformance had never been executed by any harness). See the LOG's
+     coverage-wave entry and §8.*
 
 ## 7. Roadmap (meaningful, measurable steps)
 
 1. **Standing gates (highest leverage):** extend `conformance/gen_differential.py` from 6 indirections to the
    full seam set (each seam × effect × engine = a CI cell). Converts the 🟡 one-shot hunts to 🟢; a regression
-   becomes un-shippable. *Each seam class added = a measurable step (cells turn green).*
+   becomes un-shippable. *DONE for the classes the matrix can hold (2026-06-18, §7b): 4 of 6 seam classes are
+   cross-engine-standing; deferred-iterator + FFI stay per-engine by nature.*
 2. **Grow the dynamic oracle (strongest evidence):** add real crates per effect to `soundness/realworld/`,
-   wire `realworld-oracle.yml` to run in CI on every push. *Each crate/effect = a step on metric #2.*
+   wire `realworld-oracle.yml` to run in CI on every push. *DONE 2026-06-18 (metric #2): 14 oracle drivers +
+   23 recall cases run on every candor-rust push. Growth (more crates/effects) remains open-ended.*
 3. **Eradicate SILENT residuals (§5):** R1 done (already covered); drive the remaining R2–R8 (all low/v.low) to
    zero or convert to disclosed-Unknown. *Each = a step on metric #3.*
-4. **rust-deep parity + unblock its self-guard (R12):** the reference engine must carry every scan fix and
-   be continuously gated.
-5. **agents seam battery (R11):** run the six seam classes against the agents drift model.
-6. **Convergence log:** record each adversarial round's find-rate here; a sustained zero across *diverse* new
-   seams is the strongest convergence signal we can have.
+4. **rust-deep parity + unblock its self-guard (R12):** the deep engine must carry every scan fix and
+   be continuously gated. *Self-guard part DONE (R12 closed 2026-07-09): the nightly pin moved past the ICE,
+   the Self-guard step + `realworld-oracle-deep.yml` run in CI on every push, and `nightly-bump.yml` automates
+   future bumps.*
+5. **agents seam battery (R11):** run the six seam classes against the agents drift model. *DONE 2026-06-18
+   (round 10, R11): one find (named-delegation narrowing), fixed + CI-gated; the §4 agents column now reflects
+   it (footnote ⁴).*
+6. **Convergence log:** record each adversarial round's find-rate in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md), one
+   entry per round (§6 metric 4 keeps the compressed view); a sustained zero across *diverse* new seams is the
+   strongest convergence signal we can have.
 
 ## 7b. Gate integrity — the gate itself was code-reviewed + hardened (2026-06-18)
 
@@ -242,10 +236,10 @@ catches even a *shared* blind spot), absent-fn → PURE → DROP → fails, and 
 `CONFORMANCE_REQUIRE_ALL=1` (all four toolchains provisioned), alongside the fast ubuntu three-way leg and a
 weekly released-artifacts leg. Strict mode is a standing CI property, no longer local-only.
 
-## 8. How to read confidence today (2026-07-09)
+## 8. How to read confidence today (2026-07-10)
 
-- **Floor is solid and continuously gated:** the honesty invariant (never silent-pure where an effect is
-  reached) is a standing conformance part over every engine's own report; the kernel syscall oracle +
+- **Floor is solid and continuously gated:** the §4 disclosure invariant (never silent-pure where an effect
+  is reached) is a standing conformance part over every engine's own report; the kernel syscall oracle +
   recall corpus run on every candor-rust push; the cross-engine matrix holds 72 vs-ground-truth cells;
   the masked-literal policy verdict, gate-verdict/exit agreement, `.candor/config`, chaining and the
   stale-baseline posture are all standing four-way differentials (conformance PARTs 12–15).
@@ -256,22 +250,30 @@ weekly released-artifacts leg. Strict mode is a standing CI property, no longer 
   regressions (the 0.8.4 review patch: six classifier regressions shipped in 0.8.3, caught by review,
   not CI). The 2026-07-09 whole-project review added a third era: the *porcelain* — fail-opens in the
   layers users invoke (cargo-candor policy/guard, gate-json write paths, deps resolution) that the
-  engine-level fail-closed doctrine never swept.
-- **So: high and rising on the analysis core; the active frontier is κ-coverage member gaps and
-  gate-surface fail-opens, both now with standing gates.** Treat any new framework's
-  inherited-into-project shape and any new output/auxiliary channel as guilty until gated.
+  engine-level fail-closed doctrine never swept. And the 2026-07-10 coverage wave added a fourth:
+  *documented surfaces with zero executions* — the first-ever coverage measurement showed several
+  documented, load-bearing gate surfaces had never been executed by any harness, and pinning them found
+  four real bugs, including a broken user-facing gate (candor-java's CANDOR_STRICT `checkConformance`).
+- **So: high and rising on the analysis core; the active frontier is κ-coverage member gaps,
+  gate-surface fail-opens, and never-executed surfaces — each now with standing gates.** Treat any new
+  framework's inherited-into-project shape, any new output/auxiliary channel, and any documented surface
+  with zero executions as guilty until gated.
 
 ### 8.1 Round & batch index (prose in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md))
 
 | entry | date | engine | class | outcome |
 |---|---|---|---|---|
-| Java adversarial round (§8.1) | 2026-06-20 | java | ~55 synthetic fixtures, 5 mechanism families | 0 silent |
-| Cross-language round (§8.2) | 2026-06-21 | java (Kotlin/Groovy) | compiler-generated dispatch | finds fixed, gated |
+| Seam-class era, rounds 1–17 (find-rate narrative) | 2026-06-18 | all engines | 6 seam classes + sweeps | ~14 finds, all fixed + gated |
+| thread_local force (R13) | 2026-06-18 | rust-deep `6010832` | **SILENT** (macro-gen init orphaned) | fixed + gated |
+| write-fmt writer side (R14 + R16) | 2026-06-18 | deep/scan/swift/java | **SILENT** shared blind spot (writer sink) | fixed in all 4 engines |
+| Java adversarial round | 2026-06-20 | java | ~55 synthetic fixtures, 5 mechanism families | 0 silent |
+| Cross-language round | 2026-06-21 | java (Kotlin/Groovy) | compiler-generated dispatch | 0 silent, find-rate 0 |
 | κ batch 24 — Hibernate-6/Jakarta Data | 2026-06-21 | java `ed231ed` | DISCLOSED invisible → modeled Db | precision |
 | κ batch 25 — Quarkus Panache | 2026-06-21 | java `cf359ce` | **SILENT-PURE sin** (inherited-into-project) | fixed + gated |
 | κ batch 26 — Micronaut/Ebean/ActiveJDBC/jOOQ | 2026-06-21 | java `32229da` | **SILENT-PURE** ×4 (same vein, probed) | fixed + gated |
 | κ batch 27 — modeled-base subclass, general | 2026-06-21 | java `7421301` | **SILENT-PURE** class closed | fixed + gated |
 | Cross-engine vein check | 2026-06-21 | scan/ts/swift | inherited-into-project | java-specific, not shared |
+| Abstract-stream entry-point params (R17) | 2026-06-21 | java | **SILENT**, narrow surface (measured near-empty) | fixed + gated |
 | κ batch 28 — legacy-enterprise tier (JCL/…) | 2026-07-06 | java `aefca4f` | DISCLOSED → modeled | precision |
 | κ batch 29 — next tier, same discipline | 2026-07-06 | java `2575683` | DISCLOSED → modeled | precision |
 | κ batch 30/30b — Jackson (+ live silent-Net find) | 2026-07-06 | java `cd617cb` | **SILENT-NET** member gap | fixed + gated |
@@ -279,4 +281,6 @@ weekly released-artifacts leg. Strict mode is a standing CI property, no longer 
 | 0.8.4 review patch | 2026-07-08 | java `4bdb996` | **6 regressions** batches 28–31 shipped | fixed + gated |
 | κ batch — UserDefaults/Keychain/Bundle | 2026-07-09 | swift `dd134e2` | **SILENT-PURE** (covered-module) | fixed + gated |
 | Whole-project review (porcelain fail-opens et al.) | 2026-07-09 | all repos | fail-open gate surfaces, doc drift | fix wave, conformance PARTs 14–15 added |
+| candor-scan κ-ledger §2 rule-3 gap | 2026-07-09 | scan `2d32086` | over-disclosure on chained empty reports | fixed, PART 14-pinned |
+| candor-java mutation_probe rot | 2026-07-09 | java `a6c60c0` | meta-soundness decay (3/14 patch-error) | re-anchored 14/14, weekly CI |
 | Coverage wave — never-executed gate surfaces | 2026-07-10 | all engines | **4 bugs in 0-coverage surfaces** (strict-gate 001 over-fire, guard fail-open, positional swallow, watch no-quit) + swift payload-host parity | all fixed red-then-green; TESTING.md standards |
