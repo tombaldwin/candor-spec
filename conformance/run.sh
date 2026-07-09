@@ -214,16 +214,15 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/query.mjs" ]; then
   node "$TS_DIR/query.mjs" parsepolicy "$POL_BATTERY" > "$W/ts_pol.json" 2>/dev/null \
     || { echo "FAIL: candor-ts parsepolicy errored on the battery"; exit 2; }
 fi
-# candor-swift joins the grammar diff when it exposes `parsepolicy` (it enforces §6.2 via --policy; the
-# parsepolicy DUMP is the diffable witness). SW_POL_OK distinguishes "produced a parse" from "no such
-# subcommand yet" — a present-but-broken parse FAILS (the TS_PRESENT lesson), an absent subcommand is a
-# LOUD skip (this is the four-way coverage the live `Net`-port/`::`-scope Swift divergences slipped past;
-# the swift parsepolicy command is landing in parallel — once it ships, this becomes a hard four-way diff).
+# candor-swift's `parsepolicy` shipped 2026-07-10 (0df872f, java-parity verified incl. the set-dedup
+# fix it forced) — the grammar diff is now a HARD four-way requirement whenever the engine works: a
+# working swift binary that cannot dump a parse is present-but-broken and FAILS, never a skip.
 SW_POL_OK=""
-if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
-  if "$SW_BIN" parsepolicy "$POL_BATTERY" > "$W/sw_pol.json" 2>/dev/null && python3 -c 'import json,sys; json.load(open(sys.argv[1]))["deny"]' "$W/sw_pol.json" >/dev/null 2>&1; then
-    SW_POL_OK=1
-  fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  "$SW_BIN" parsepolicy "$POL_BATTERY" > "$W/sw_pol.json" 2>/dev/null \
+    && python3 -c 'import json,sys; json.load(open(sys.argv[1]))["deny"]' "$W/sw_pol.json" >/dev/null 2>&1 \
+    || { echo "FAIL: candor-swift is working but parsepolicy produced no parse — the §6.2 grammar witness vanished"; exit 2; }
+  SW_POL_OK=1
 fi
 
 python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" "${SW_POL_OK:+$W/sw_pol.json}" <<'PY' || rc=1
@@ -245,7 +244,7 @@ if t is not None:
 if sw is not None:
     print(f"  candor-swift: {len(sw[0])} deny, {len(sw[1])} allow, {len(sw[2])} forbid")
 else:
-    print("  candor-swift: no `parsepolicy` dump (enforces §6.2 via --policy; see the [4f] verdict diff) — grammar diff SKIPPED")
+    print("  candor-swift: not present on this runner — grammar diff runs three-way (loudly)")
 others = [x for x in (t, sw) if x is not None]
 match = all(r == o for o in others) and r == j
 n = {0: "two", 1: "three", 2: "all four"}[len(others)]
@@ -1271,34 +1270,87 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 15 — STALE-BASELINE posture (SPEC §2.1 ⟨0.8 amendment⟩, previously unpinned): a baseline whose
-# producing version differs from the running engine is INVALID GATE INPUT. Pinned halves:
-# (a) GUARD — the AS-EFF-005 gate fails closed (exit 2) WITHOUT evaluating (no AS-EFF-005 lines), and
-#     a same-build baseline still gates clean (exit 0) — candor-java carries the in-suite guard surface
-#     (the Rust guard lives in the cargo-candor porcelain over the nightly lint; ts/swift gate via policy).
-# (b) QUERIES — `diff` DISCLOSES the mismatch (baseline_version/engine_version provenance fields, plus a
-#     stderr warning where the engine self-derives the versions) and still answers.
+# PART 15 — the AS-EFF-005 BASELINE GUARD, four-way (SPEC §7 item 5 + the §2.1 stale-baseline posture).
+# All four engines carry the scan-time guard as of 2026-07-10 (java since 0.8.x; scan/ts/swift landed
+# in the doc-review wave — the item-5 MUST is now satisfied, not narrowed). Pinned per engine:
+#   gain      — an existing fn gaining an effect vs a same-build baseline → [AS-EFF-005] + exit 1
+#   clean     — no gain vs the same baseline → exit 0
+#   absent    — a baseline path that names no file → note, guard inactive, exit 0
+#   doctored  — a foreign producing version → exit 2 WITHOUT evaluating (no [AS-EFF-005] lines)
+#   empty     — a configured-but-EMPTY value → exit 2 (a declared ratchet naming no file is a broken
+#               gate, not an inactive one — the family ruling; java/scan/ts/swift all aligned)
+# Plus (b): comparison QUERIES disclose the mismatch (provenance fields + warning) and still answer.
 # ====================================================================================================
 echo
-echo "[15] STALE-BASELINE posture  (SPEC §2.1 — guard fails closed without evaluating; queries disclose)"
+echo "[15] BASELINE GUARD four-way + stale posture  (SPEC §7 item 5, §2.1 — gain/clean/absent/doctored/empty)"
+SBW="$W/sb"; mkdir -p "$SBW/jb/q" "$SBW/ja/q" "$SBW/rb/src" "$SBW/ra/src" "$SBW/tb" "$SBW/ta" "$SBW/swb/gd" "$SBW/swa/gd"
+printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); } }\n' > "$SBW/jb/q/G.java"
+printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); new java.net.Socket("h", 80); } }\n' > "$SBW/ja/q/G.java"
+javac -d "$SBW/jbc" "$SBW/jb/q/G.java" 2>/dev/null && javac -d "$SBW/jac" "$SBW/ja/q/G.java" 2>/dev/null || { echo "FAIL: javac on the guard fixtures"; exit 2; }
+printf '[package]\nname = "gd"\nversion = "0.0.0"\nedition = "2021"\n' | tee "$SBW/rb/Cargo.toml" > "$SBW/ra/Cargo.toml"
+printf 'pub fn entry() { let _ = std::fs::read("/x"); }\n' > "$SBW/rb/src/lib.rs"
+printf 'pub fn entry() { let _ = std::fs::read("/x"); let _ = std::net::TcpStream::connect("h:80"); }\n' > "$SBW/ra/src/lib.rs"
+printf 'import * as fsm from "node:fs";\nexport function entry(): string { return fsm.readFileSync("/x", "utf8"); }\n' > "$SBW/tb/gd.ts"
+printf 'import * as fsm from "node:fs";\nimport * as netm from "node:net";\nexport function entry(): string { netm.connect(80, "h"); return fsm.readFileSync("/x", "utf8"); }\n' > "$SBW/ta/gd.ts"
+printf 'import Foundation\nfunc entry() { _ = FileManager.default.contents(atPath: "/x") }\n' > "$SBW/swb/gd/a.swift"
+printf 'import Foundation\nimport Network\nfunc entry() { _ = FileManager.default.contents(atPath: "/x"); _ = NWConnection(host: "h", port: 80, using: .tcp) }\n' > "$SBW/swa/gd/a.swift"
+# baselines from the BEFORE fixtures, generated in-run by the same binaries (same-build by construction)
+java -jar "$JAR" "$SBW/jbc" --json "$SBW/jbase.json" >/dev/null 2>&1 || { echo "FAIL: java guard-baseline scan"; exit 2; }
+"$SCAN" "$SBW/rb" >/dev/null 2>&1 || { echo "FAIL: scan guard-baseline scan"; exit 2; }
+# copy the baseline OUT of the fixture's .candor — the clean-row re-scan would rewrite it in place
+cp "$(ls "$SBW"/rb/.candor/report.*.scan.json | grep -v callgraph | head -1)" "$SBW/rbase.json"
+RBASE="$SBW/rbase.json"
+[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$SBW/tb/gd.ts" "$SBW/tbase" >/dev/null 2>&1; [ -s "$SBW/tbase.json" ] || { echo "FAIL: ts guard-baseline scan"; exit 2; }; }
+SWBASE=""
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  "$SW_BIN" "$SBW/swb/gd" --out "$SBW/sbase" >/dev/null 2>&1
+  SWBASE="$SBW/sbase.gd.Swift.json"; [ -s "$SWBASE" ] || { echo "FAIL: swift guard-baseline scan"; exit 2; }
+fi
+python3 - "$SBW/jbase.json" "$RBASE" "${TS_OK:+$SBW/tbase.json}" "$SWBASE" <<'PY' || { echo "FAIL: could not doctor the guard baselines"; exit 2; }
+import json, sys
+for src in [a for a in sys.argv[1:] if a]:
+    d = json.load(open(src))
+    d["candor"]["version"] = "candor-doctored-0.0.0"
+    json.dump(d, open(src.replace(".json", "") + "_doct.json", "w"))
+PY
+SB_OK=0
+sbrow() { # $1 label  $2 base  $3 doctored  — then '--' AFTER-cmd... '--' BEFORE-cmd...
+  local label=$1 base=$2 doct=$3; shift 3
+  local after=() before=() cur=after
+  shift  # leading --
+  while [ $# -gt 0 ]; do
+    if [ "$1" = "--" ]; then cur=before; shift; continue; fi
+    if [ "$cur" = after ]; then after+=("$1"); else before+=("$1"); fi
+    shift
+  done
+  local g c a d e out
+  out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" 2>&1); g=$?
+  local gain_seen=no; printf '%s' "$out" | grep -q "\[AS-EFF-005\]" && gain_seen=yes
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${before[@]}" >/dev/null 2>&1; c=$?
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$SBW/nope.json" "${after[@]}" >/dev/null 2>&1; a=$?
+  out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$doct" "${after[@]}" 2>&1); d=$?
+  local doct_eval=no; printf '%s' "$out" | grep -q "\[AS-EFF-005\]" && doct_eval=yes
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE= "${after[@]}" >/dev/null 2>&1; e=$?
+  echo "  $label gain=$g(seen=$gain_seen) clean=$c absent=$a doctored=$d(eval=$doct_eval) empty=$e"
+  [ "$g" = 1 ] && [ "$gain_seen" = yes ] && [ "$c" = 0 ] && [ "$a" = 0 ] \
+    && [ "$d" = 2 ] && [ "$doct_eval" = no ] && [ "$e" = 2 ] && return 0
+  echo "     FAIL $label: expected gain=1+[AS-EFF-005] clean=0 absent=0 doctored=2-no-eval empty=2"; return 1
+}
+sbrow "candor-java " "$SBW/jbase.json" "${SBW}/jbase_doct.json" \
+  -- java -jar "$JAR" "$SBW/jac" -- java -jar "$JAR" "$SBW/jbc" || SB_OK=1
+sbrow "candor-scan " "$RBASE" "${RBASE%.json}_doct.json" \
+  -- "$SCAN" "$SBW/ra" -- "$SCAN" "$SBW/rb" || SB_OK=1
+[ -n "$TS_OK" ] && { sbrow "candor-ts   " "$SBW/tbase.json" "$SBW/tbase_doct.json" \
+  -- node "$TS_DIR/scan.mjs" "$SBW/ta/gd.ts" "$SBW/t_o1" -- node "$TS_DIR/scan.mjs" "$SBW/tb/gd.ts" "$SBW/t_o2" || SB_OK=1; }
+[ -n "$SWBASE" ] && { sbrow "candor-swift" "$SWBASE" "${SWBASE%.json}_doct.json" \
+  -- "$SW_BIN" "$SBW/swa/gd" --out "$SBW/s_o1" -- "$SW_BIN" "$SBW/swb/gd" --out "$SBW/s_o2" || SB_OK=1; }
+# doctor a chain-fixture copy for the QUERY half below (diff must disclose, not refuse)
 python3 - "$W/ch_j_fresh.json" "$W/sb_java_stale.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 d["candor"]["version"] = "candor-doctored-0.0.0"
 json.dump(d, open(sys.argv[2], "w"))
 PY
-SB_OK=0
-env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$W/sb_java_stale.json" java -jar "$JAR" "$CHW/java/appcls" > "$W/sb_guard.err" 2>&1
-SB_STALE_EXIT=$?
-env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$W/ch_j_fresh.json" java -jar "$JAR" "$CHW/java/appcls" >/dev/null 2>&1
-SB_FRESH_EXIT=$?
-# bracketed [AS-EFF-005] is a VIOLATION line (evaluation happened); the fail-closed refusal message
-# legitimately mentions the code unbracketed ("never a bogus AS-EFF-005 wave") — don't match that.
-SB_EVAL=no; grep -q "\[AS-EFF-005\]" "$W/sb_guard.err" && SB_EVAL=yes
-echo "  candor-java guard: stale-exit=$SB_STALE_EXIT evaluated=$SB_EVAL same-build-exit=$SB_FRESH_EXIT"
-if [ "$SB_STALE_EXIT" != 2 ] || [ "$SB_EVAL" != no ] || [ "$SB_FRESH_EXIT" != 0 ]; then
-  echo "     FAIL guard: expected exit 2 with NO AS-EFF-005 evaluation on stale, exit 0 on same-build"; SB_OK=1
-fi
 java -jar "$JAR" diff "$W/ch_j_fresh.json" "$W/sb_java_stale.json" --json > "$W/sb_j_diff.json" 2>"$W/sb_j_diff.err"
 mkdir -p "$W/sb_r_base"
 cp "$CHW"/rust/app/.candor/report.*.json "$W/sb_r_base/" 2>/dev/null
