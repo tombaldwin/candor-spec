@@ -458,8 +458,9 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   modifier it additionally discloses the *unresolved-dispatch frontier* (`possibleViaUnknownDispatch`, below):
   callers that reach `<fn>` only through an unresolved `dispatch:` — a disclosed lower-bound, never asserted.
 - **map** — a module → effects overview.
-- **diff `<baseline>`** — the per-function effect delta (gained / lost) versus a saved report.
-- **gains `<baseline>`** — the package-level **gained-capability alarm**: the effects present now but
+- **diff `<current>` `<baseline>`** — the per-function effect delta (gained / lost) between two saved
+  reports: the current one and the baseline, in that argument order.
+- **gains `<current>` `<baseline>`** — same two inputs; the package-level **gained-capability alarm**: the effects present now but
   absent from the baseline (`gained`), each with the functions introducing it (`byFunction`). The
   supply-chain view of `diff` (§5.1): a dependency release that quietly grew `Net`/`Exec` is exactly
   what this surfaces, and a stable surface raises no alarm (`gained: []`). *(Recorded ⟨0.8⟩ as a

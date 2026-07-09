@@ -1,11 +1,83 @@
 # Soundness log — the adversarial rounds and κ batches, in full
 
 The append-only evidence scroll behind [SOUNDNESS.md](SOUNDNESS.md). The tracker keeps the
-*instrument* (scorecard, residual register, metrics, index); this file keeps the *prose* — one entry
-per adversarial round / κ batch / review patch, with the find, the why, the fix, and the gates. Newest
-entries append at the end; the index table in SOUNDNESS.md §8 is the one-line-per-entry view.
+*instrument* (scorecard, residual register, metrics, index); this file keeps the *prose* — one
+`### <date> — <slug>` entry per adversarial round / κ batch / review patch, with the find, the why,
+the fix, and the gates. Entries sit in chronological order; new ones append at the end. Entry BODIES
+are append-only history — corrections are appended, never edited in. The index table in
+SOUNDNESS.md §8.1 is the one-line-per-entry view.
 
-## 8.1 Java adversarial round (2026-06-20, candor-java 0.7.8 `@d6927ff`)
+### 2026-06-18 — the seam-class era: rounds 1–17, the find-rate narrative
+
+*(Moved here 2026-07-09 from SOUNDNESS.md §6 metric 4, which now keeps only the compressed lede.
+Covers 2026-06-18 → 06-21.)*
+
+2026-06-18: 6 seam-class rounds each found ≥1; the 7th (coverage) and 8th (R1 deep
+implicit-conversion 6-sub-case probe) each found 0 silent; the 9th (rust-deep
+fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
+forcing site read pure (effectful `LazyLock` init charged to the static, never to the forcing fn).
+FIXED + gated (ui/deferred_effects.rs); the other two seams were already caught. The 10th (agents
+seam battery, candor-agents `755216a`) found 1 — named-delegation narrowing trusted a prompt mention
+as proof of the spawn set, silently dropping unmentioned-but-spawnable agents. FIXED
+(allowlist→sound, bare-Agent→disclosed Unknown) + gated (test.py). The 11th (rust-deep
+`thread_local!` probe) found 1 — R13, a `.with()`-forced thread_local read pure (effect orphaned in
+the macro-gen init fn); FIXED same-session (`6010832`) + gated. Rounds 12–13 (rust-deep
+derived-Clone/Once/OnceLock-named-init, then compound-assign R6) found 0 — both sound, gated (R6
+stale for deep, may hold for scan). The 14th (rust-deep `write!` writer side) found 1 — R14,
+`fmt::Write` writer silent-pure; FIXED (`0e4bf50`) + gated. The 15th was a CROSS-ENGINE sweep of R14
++ thread_local against candor-scan: write-fmt was ALSO silent in scan (shared blind spot, FIXED scan
+0.5.18 `dabafd0`); thread_local already handled. The 16th extended the sweep to candor-swift:
+write-fmt's writer side was ALSO silent there (effectful `TextOutputStream` via
+`print(to:)`/`write(to:)`), FIXED swift 0.5.22 `9368311`. Convergence = sustained 0 across diverse
+new seams (NOT reached — 16 rounds, ~13 finds, all fixed). KEY LESSON reinforced: a find in one
+engine is a SWEEP trigger for ALL — write-fmt's writer side was a SYSTEMIC shared blind spot
+(deep+scan+swift), the exact case cross-engine agreement hides. The 17th finished the sweep on
+candor-java: the writer side is silent there too (4th engine — R16), but the precise fix needs
+receiver→ctor-arg escape provenance (the infra exists; CHA-blanket rejected by candor-java's
+precision design) and the idiom is rare, so it's tracked as a low SILENT residual rather than
+rushed. SWEEP COMPLETE: write-fmt writer side assessed across ALL engines — silent in 4
+(deep/scan/swift/java), FIXED in 3, java tracked (R16). R16 since FIXED (candor-java 0.5.40
+`5f86d3e`, constructor-site reentry) — so the write-fmt writer-side class is now closed in ALL 4
+engines. Convergence: 17 rounds, ~14 finds, ALL 14 fixed. Also validated on real code: PetClinic
+dogfood (the JVM gate works end-to-end, 0 Unknown, caught a real cross-layer smell) + the gson
+InetAddress catch.
+
+### 2026-06-18 — rust-deep `thread_local!` force read pure (R13)
+
+*(Register essay moved here 2026-07-09 from the SOUNDNESS.md §5 R13 cell.)*
+
+`thread_local!` force via `KEY.with(...)` read PURE — the effect lives in the macro-generated init
+fn, orphaned behind the non-local `LocalKey::with`. FIXED 2026-06-18 (`6010832`): a method call on a
+`LocalKey` receiver edges the forcing fn to the local init fn(s) referenced in that thread_local
+item's body (intravisit FnDef-ref collector). Sound (pure init → nothing); gated by
+ui/thread_local_effects.rs.
+
+### 2026-06-18 — the write-fmt writer side: a systemic shared blind spot (R14 + R16)
+
+*(Register essays moved here 2026-07-09 from the SOUNDNESS.md §5 R14/R16 cells.)*
+
+The WRITER side of formatting read PURE — an effectful custom sink (`fmt::Write`/`io::Write` via
+`write!`; Swift `TextOutputStream` via `print(to:)`/`write(to:)`) driven by a non-local format
+helper was dropped (distinct from the arg-Display side, which all engines handled). Found in
+rust-deep, then a cross-engine SWEEP found the SAME gap silent in **candor-scan** (the user-facing
+floor) AND **candor-swift** — the dangerous shared case cross-engine agreement hides. ALL FIXED
+2026-06-18 (deep `0e4bf50` HOLE 2c; scan `dabafd0` 0.5.18; swift `9368311` 0.5.22
+modelOutputStreamCall). Gated by ui/write_trait.rs (deep), the write_macro test (scan), smoke N4b
+(swift). candor-ts has no clean writer-sink idiom (N/A); `thread_local!` was swept in the same pass
+— scan handles it (not shared).
+
+The candor-java analog (R16, the 4th engine with the class): a custom effectful
+`Appendable`/`Writer` wrapped in a JDK `Formatter`/`PrintWriter` and driven by `format`/`printf`
+read PURE. FIXED 2026-06-18 (candor-java 0.5.40 `5f86d3e`) via a CONSTRUCTOR-site reentry: at
+`new Formatter(Appendable)` / `new PrintWriter(Writer|OutputStream)` / `new PrintStream(OutputStream)`,
+edge the enclosing method to the sink arg's `append`/`write` (new C_APPEND/C_WRITE contracts,
+by-name reentryEdge over the arg's declType, same machinery as compareTo). Resolve-or-skip → a std
+StringBuilder/FileOutputStream sink contributes nothing. Gated by
+ImplicitReentryTest.writerSideCustomSinkCarriesEffect; PetClinic + jsoup/gson/HikariCP dogfoods
+byte-for-byte unchanged (no fabrication). So the write-fmt writer-side class is closed in ALL 4
+engines (rust deep/scan, swift, java).
+
+### 2026-06-20 — Java adversarial round (candor-java 0.7.8 `@d6927ff`)
 
 A fresh Java-only soundness pass, run AFTER this session's structural changes (LB-1b thread-local
 re-entrancy, `--parallel`, the GraalVM native-image + JDK-supertype index, and the `ctx()` hoists) — to
@@ -58,13 +130,13 @@ including over all of this session's new code paths (byte-identity + the native-
 those produce identical reports). The standard MECHANISM families are covered (the synthetic/runtime axes
 find-rate 0), and what candor can't resolve it discloses. NB the earlier "κ veins mined out" phrasing was
 about mechanism coverage on the tested corpus — LIBRARY/framework κ-coverage is NOT exhausted: dogfooding a
-new framework still surfaces unmodeled effectful members (disclosed `invisible`, never silent), e.g. §8.3's
-Hibernate-6/Jakarta-Data vein found on a Quarkus app. Evidence ladder, all three tiers now
+new framework still surfaces unmodeled effectful members (disclosed `invisible`, never silent), e.g. the
+κ batch 24 entry's Hibernate-6/Jakarta-Data vein found on a Quarkus app. Evidence ladder, all three tiers now
 exercised: synthetic = controlled (known effect → checked report); dogfood = real-world breadth; JFR+agent
 corpus = runtime ground truth (the strongest, which catches even a shared blind spot). Remaining oracle
 growth = more corpus programs / effects, not a missing capability.
 
-## 8.2 Cross-language adversarial round (2026-06-21, candor-java)
+### 2026-06-21 — cross-language adversarial round (Kotlin / Groovy, candor-java)
 
 Every prior sweep used JAVA fixtures; candor analyzes BYTECODE from any JVM language, so the
 under-explored axis is whether language-specific effect-delivery (which compiles to bytecode shapes a
@@ -90,7 +162,7 @@ Verdict: candor's bytecode analysis is language-shape-robust — PRECISE where t
 resolvable (Java, Kotlin incl. coroutines), HONEST `Unknown` where it's genuinely dynamic (Groovy). The
 cardinal-sin floor holds across the JVM-language surface, not just Java. Find-rate on this NEW axis = 0.
 
-## 8.3 Real-app dogfood → κ batch 24 (Hibernate-6 / Jakarta Data, 2026-06-21, candor-java 0.7.9 `ed231ed`)
+### 2026-06-21 — real-app dogfood → κ batch 24: Hibernate-6 / Jakarta Data (candor-java 0.7.9 `ed231ed`)
 
 The Bet-1 case-study work ran candor on five real third-party JVM projects (two Spring apps, a Kotlin app,
 a Quarkus app, the gson library). Four resolved cleanly. The Quarkus **Hibernate ORM / Jakarta Data
@@ -119,24 +191,27 @@ of every framework enumerated). The latter is open-ended and best driven by dogf
 framework can surface a vein, always disclosed `invisible` first (never silent), then optionally mined for
 precision. Hibernate was the dominant-ORM instance; the same loop applies to the next unmodeled framework.
 
-**κ batch 25 — Quarkus Panache → Db (2026-06-21, candor-java post-0.7.9 `cf359ce`). A genuine SILENT-PURE
-cardinal sin, NOT just an `invisible` gap.** Continuing the dogfood thread to Quarkus's *other* (and dominant)
-persistence — Panache active-record (`Fruit.listAll()`, `f.persist()`) + `PanacheRepository` — found it read
-SILENT-PURE (the methods were ABSENT from the report, no `invisible`, no `Unknown`), so the architecture gate
-was blind to ALL DB access in a Panache app. Why silent (vs Jakarta Data's honest `invisible`): the call-site
-owner is the PROJECT entity/repo (`Fruit.listAll()` emits owner `app/Fruit`), not an external package — so the
-κ-floor invisible disclosure (which fires on EXTERNAL owners) never triggered, and CHA found no project body →
-dropped to pure. This is the dangerous shape: an inherited-from-unmodeled-external method called via a project
-subtype receiver. MINED: repository promotion (isPanacheRepoBase → repoTypes), active-record call-site rule
-(PANACHE_ENTITY_VERBS + `extendsPanacheEntity` via transSupers, with the no-fabrication override guard), and
-PanacheQuery terminals (classify). Verb+hierarchy-gated → a lookalike non-Panache class stays pure (fab probe
-OK). Gated: byte-identity pc/jsoup/gson, full suite, soundness 40/0, conformance. LESSON: the "always disclosed
-`invisible` first" claim above has an EXCEPTION — when the unmodeled-framework method is INHERITED into a
-project type (so the call owner is a project class), it reads silent-pure, not invisible. That shape is the one
-to watch when dogfooding the next framework (active-record / base-class-mixin APIs, not just repository/builder
-APIs whose calls keep an external owner).
+### 2026-06-21 — κ batch 25: Quarkus Panache → Db (candor-java post-0.7.9 `cf359ce`)
 
-**κ batch 26 — the inherited-into-project vein class swept (2026-06-21, candor-java post-0.7.9 `32229da`).**
+**A genuine SILENT-PURE cardinal sin, NOT just an `invisible` gap.** Continuing the dogfood thread to
+Quarkus's *other* (and dominant) persistence — Panache active-record (`Fruit.listAll()`, `f.persist()`) +
+`PanacheRepository` — found it read SILENT-PURE (the methods were ABSENT from the report, no `invisible`,
+no `Unknown`), so the architecture gate was blind to ALL DB access in a Panache app. Why silent (vs Jakarta
+Data's honest `invisible`): the call-site owner is the PROJECT entity/repo (`Fruit.listAll()` emits owner
+`app/Fruit`), not an external package — so the κ-floor invisible disclosure (which fires on EXTERNAL owners)
+never triggered, and CHA found no project body → dropped to pure. This is the dangerous shape: an
+inherited-from-unmodeled-external method called via a project subtype receiver. MINED: repository promotion
+(isPanacheRepoBase → repoTypes), active-record call-site rule (PANACHE_ENTITY_VERBS + `extendsPanacheEntity`
+via transSupers, with the no-fabrication override guard), and PanacheQuery terminals (classify).
+Verb+hierarchy-gated → a lookalike non-Panache class stays pure (fab probe OK). Gated: byte-identity
+pc/jsoup/gson, full suite, soundness 40/0, conformance. LESSON: the "always disclosed `invisible` first"
+claim above has an EXCEPTION — when the unmodeled-framework method is INHERITED into a project type (so the
+call owner is a project class), it reads silent-pure, not invisible. That shape is the one to watch when
+dogfooding the next framework (active-record / base-class-mixin APIs, not just repository/builder APIs whose
+calls keep an external owner).
+
+### 2026-06-21 — κ batch 26: the inherited-into-project vein class swept (candor-java post-0.7.9 `32229da`)
+
 Rather than wait for the next framework, probed the persistence ecosystem for batch 25's shape directly (an
 external stub base + a project subtype + the inherited call, scan only the project). Spring Data was the
 passing CONTROL (Db); MyBatis mapper interfaces correctly disclose `Unknown` (not a vein). FOUR more confirmed
@@ -149,8 +224,9 @@ for the major JVM persistence frameworks (Spring/Jakarta Data/Panache/Micronaut 
 Hibernate/JPA + Panache/Ebean/ActiveJDBC active-record + jOOQ DAO). The general METHOD (external-stub probe of
 any base-class API) is the reusable instrument for the next framework.
 
-**κ batch 27 — the inherited-into-project vein, GENERAL fix for classify-MODELED bases (2026-06-21, candor-java
-post-0.7.9 `7421301`).** Batches 24–26 covered bases candor does NOT model at the leaf (via repoTypes/AR_DB_BASES
+### 2026-06-21 — κ batch 27: general fix for classify-MODELED bases (candor-java post-0.7.9 `7421301`)
+
+Batches 24–26 covered bases candor does NOT model at the leaf (via repoTypes/AR_DB_BASES
 registries). The complementary case: a project class subclasses a base candor DOES model at the leaf, and calls
 an inherited method — still silent-pure, because the call owner is the project subclass (no rule) and classify
 was never re-tried against the external supertype. Found via Testcontainers (`class MyContainer extends
@@ -164,98 +240,12 @@ recorded for completeness: declared-on-interface HTTP clients (Retrofit `@GET`, 
 `Unknown` (DISCLOSED, not silent) — a precision opportunity (model → Net like Feign), NOT a cardinal sin.
 **Status: the inherited-into-project silent-pure vein CLASS is now closed** across modeled + unmodeled bases.
 
-**κ batch 28 — the LEGACY-ENTERPRISE frontier (2026-07-06, candor-java post-0.8.2 `aefca4f`): JCL /
-Joda-Time / commons-lang3 / hibernate.criterion / Struts 1.x.** Found by dogfooding a real 2,257-class
-Struts webapp whose κ ledger listed 81 packages — dominated by struts (5,502 calls), commons-lang3 (2,141),
-commons-logging (791), hibernate.criterion (586), joda-time (249): the pre-Spring enterprise stack, still
-everywhere, previously entirely INVISIBLE-floored. METHOD (reusable): extract the app's COMPLETE per-member
-call surface into the candidate namespaces from bytecode (`javap -c | grep 'Method org/apache/…'` →
-`sort | uniq -c`) and triage every member — 169 distinct members, of which only ~6 were effectful. Those
-six are classified verb-precisely (commons-logging emit verbs → Log — on the dogfood app this UNMASKED
-855 fns of logging, 756 → 1,611; Joda's now-family → Clock with the no-arg instant ctors
-DESCRIPTOR-gated so `new DateTime(long)` stays a pure value ctor; lang3's RandomStringUtils/RandomUtils →
-Rand and SystemProperties/SystemUtils getters → Env; Struts `TagUtils.write/print` → Net — tag output is
-the client socket, the ServletResponse stance — and `FormFile` content reads → Fs, the spooled multipart
-temp file); the verified-pure remainder floors under KAPPA_COVERED_PREFIXES. Boundary discipline:
-`org.hibernate.criterion` (pure builders) is covered because execution lives on the already-classified
-Session/Query terminals, but `org.hibernate` BROADLY stays ledgered — coverage is only granted where the
-effectful surface is modeled or the namespace's inventory is verified pure. Gates: anti-fabrication twins
-per package (KappaBatch28Test), jsoup/gson byte-IDENTICAL vs the released jar; a Spring app's report
-legitimately GAINS Log lines (spring-jcl provides org.apache.commons.logging) — unmasking, not regression.
+### 2026-06-21 — cross-engine verification: the vein was JAVA-SPECIFIC, not a shared blind spot
 
-**The same dogfood also validated the full Unknown-reduction ladder on a real legacy app** (the workflow
-the `blindspots` query was built for): (1) blindspots ranked ONE dispatch — a project interface with 42
-enum implementors, past the shared CHA-12 bound — as the source of 3,551 of 3,617 Unknowns; `closed-world`
-(§3.4 config, sound for an application) resolved it → 153. (2) Batch 28 converted the invisible floor to
-real attributions (ledger 81 → 64 packages, every giant cleared). (3) Chaining a first-party library's own
-report (§2 `deps`) covered its 236 calls — and RAISED disclosed Unknown to 680, correctly: the library's
-reflective plugin registries (`Constructor.newInstance`) are irreducible, and calls that previously read
-silent-invisible now read honest-Unknown. More honesty, not less precision — the direction the trust
-contract orders these. Residual ledger heads (commons-validator 95, threeten-extra 61, jsonwebtoken 31)
-are future batch candidates.
+*(Moved to chronological position 2026-07-09 — it had been appended after the 2026-07-08 review-patch
+entry, out of date order.)*
 
-**κ batch 29 — the next tier, same discipline (2026-07-06, candor-java `2575683`).** The dogfood app's
-complete 68-member frontier into the residual heads, triaged member-by-member. Pure-surface coverage:
-commons-validator (predicates), commons-beanutils (property shuffling), displaytag (decorator getters),
-org.w3c.dom (a JDK namespace missing from the frontier list). Precise effectful members: threeten-extra
-now() → Clock; jjwt parse* → Clock (parsing VALIDATES exp/nbf against the system clock) + Keys generators
-→ Rand, while signing/compact stays pure CPU; JDOM2 input effectful BY SOURCE (build(File/String) → Fs,
-build(URL) → Net, caller-opened stream overloads pure-relative — the open carried the effect); Ehcache at
-its ACQUISITION points (persistence(dir) → Fs so build/init are vouched and heap-only apps never
-fabricate; clustered cluster(URI) → Net). A coverage-semantics finding worth registering: vouching
-org.w3c.dom made 438 jsoup fns DROP from its report — their only content was `invisible: [org.w3c.dom]`
-(zero effect changes, verified per-fn) — i.e. a widely-reachable uncovered namespace can inflate a report
-with disclosure noise, and coverage legitimately shrinks it. Dogfood trajectory across batches 28+29:
-ledger 81 → 64 → 49 packages; the top head fell from 5,502 calls (struts) to 25 (jackson-databind — the
-one broadly-valuable batch-30 candidate; the rest is long tail).
-
-**κ batch 30 + 30b (2026-07-06, candor-java `cd617cb`): Jackson, and a live SILENT-NET find in the
-existing AWS coverage.** Jackson yields to ONE descriptor-driven rule (a File/Path parameter is a source or
-sink → Fs; a URL → Net — uniform across the stack; String/bytes/stream overloads pure-relative). The
-important entry is 30b: the AWS rule's `owner.endsWith("Client")` gate missed calls through the v1 service
-INTERFACES (`AmazonS3.copyObject` — a real S3 request — read silent-invisible on the dogfood app; `copy*`
-was also missing from the verb list). The request-making surface is now the Client classes + the
-Amazon*/AWS* interfaces (outside .model./Builder) + TransferManager. Unmasked Net 473 → 534 on the dogfood
-app. LESSON for the register: a curated rule's OWNER GATE is itself a soundness surface — verify coverage
-against how code actually types its variables (interfaces), not just the concrete classes. Dogfood ledger
-after batches 28–30b: 81 → 37 packages, everything remaining ≤ 20 calls (long tail).
-
-**κ batch 31 (2026-07-07, candor-java `17eb81d`): the long-tail sweep — the dogfood app's ledger reaches
-ZERO (81 → 0 across batches 28–31).** All 37 remaining packages, 111 members triaged. Register-worthy
-findings beyond the coverage itself: (1) **the sweep audits earlier batches** — StopWatch (both
-commons-lang generations) reads the clock but went silent-pure under batch 28's lang3 coverage; a
-covered namespace must be RE-swept when new inventory arrives. (2) **A return-type fabrication class**:
-the source/sink descriptor rules (File/Path → Fs, URL → Net) first used whole-descriptor `contains`,
-which matches a File RETURN type — `FileUtils.getTempDirectory()` (pure, returns a path) would have
-fabricated Fs; an existing round-12 anti-fab pin caught it; all descriptor rules now match parameters
-only (`paramsOf`). (3) **Iteration can be a wire call**: Twilio's `ResourceSet.iterator()` lazily fetches
-further pages — Net hiding in a for-each. (4) **proceed() is reflection-shaped**: AOP Alliance's
-`MethodInvocation.proceed()` executes the intercepted target → disclosed Unknown, never silenced by
-coverage. (5) **Defer to richer existing stances**: a new Fs rule for `XMLReader.parse` was dead code
-below the pre-existing disclosed-Unknown rule (parse drives user handler callbacks + XXE-class
-resolution) — check what already classifies before adding. Also: Redisson's R* handles → Db (remote data
-structures by design), DbUnit execute → Db, hibernate's internal jdbc package covered WITH its effectful
-internals classified so the one pure member apps reach (the SQL formatter, 685 fns of invisible noise)
-floors clean.
-
-**REVIEW PATCH — candor-java 0.8.4 (2026-07-08, `4bdb996`): six soundness regressions the batch 28–31
-work SHIPPED in 0.8.3, caught by a high-effort code review.** The same sweep that CLOSED veins opened new
-ones, via two failure shapes the inventory method doesn't catch alone. (1) **Broad owner/verb gates
-fabricate on same-shaped pure members** — the AWS `Amazon*`-name interface heuristic hit `AmazonS3URI` (a
-pure URI parser), "any Redisson R* → Db" hit `getCodec`/`RFuture`, `parse*`→Clock hit the no-arg
-`Jwts.parser()` factory, whole-owner StopWatch→Clock hit `create()`. LESSON: a name/prefix owner gate or a
-bare verb prefix fabricates wherever a namespace mixes request-makers with same-named value types —
-require the effectful SHAPE (a token arg, an exact verb, a started clock), not the name. (2) **A blanket
-coverage grant turns an under-vouched classifier into SILENT-PURE** — `com.amazonaws` coverage silenced
-`DynamoDBMapper.save` (unmodeled facade, owner doesn't match the *Client gate). LESSON: only ledger-cover a
-namespace whose effectful surface you MODELED, not merely inventoried on one app; an unmodeled member of a
-covered namespace floors silent (the worst class) — leave it uncovered and it discloses `invisible`. AWS
-and commons-io are now classified-but-not-covered. Every fix carries an anti-fabrication twin; jsoup/gson
-byte-identical. The byte-identity + kappa_libs gates only catch what their fixtures exercise — the review
-exercised the shapes they didn't.
-
-**CROSS-ENGINE verification — the vein was JAVA-SPECIFIC, NOT a shared blind spot (2026-06-21).** The
-tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
+The tracker's #1 risk is a blind spot SHARED across engines (cross-engine agreement hides it), so after closing
 the inherited-into-project vein in candor-java I probed the others for the same shape. RESULT — not shared:
 - **candor-ts** (the clearest analog — TS active-record ORMs): `class User extends BaseEntity` (TypeORM) →
   `user.save()`/`User.find()`, and Sequelize `Model.create()` → all read **`Unknown`** (`callback:u.save` etc.),
@@ -271,8 +261,147 @@ exist here. (PRECISION note, not a sin: candor-ts/scan report these as `Unknown`
 the analog of the Java persistence work, would sharpen them, but they are footnote engines and it is not a
 cardinal-sin fix.)
 
-**candor-swift κ batch — UserDefaults / Keychain / Bundle (covered-module silent-pure, 2026-07-09,
-candor-swift `dd134e2`).** The Panache shape, Swift edition: `Foundation` and `Security` sit in
+### 2026-06-21 — java abstract-stream entry-point params (R17)
+
+*(Register essay moved here 2026-07-09 from the SOUNDNESS.md §5 R17 cell.)*
+
+I/O via an ABSTRACT `java.io` stream (`Reader`/`InputStream`/`Writer`/`OutputStream`) whose concrete
+impl candor can't pin read PURE, not Unknown — e.g. an entry point
+`void onData(InputStream s){ s.readAllBytes(); }` where the framework injects `s`. FIXED 2026-06-21
+(provenance-gated, entry-point-scoped). Also the jsoup streaming-parser pattern.
+
+**Fix:** in `analyze`, when a call classifies pure AND is an I/O verb on an abstract `java.io` stream
+base (`isAbstractStreamIo`) AND the receiver is the method's OWN param by ProvValue identity
+(`isOwnParam`) AND the method is a rooted ENTRY POINT (`ctx.entryPoints`), disclose `Unknown` with
+`unknownWhy=dispatch:<owner>.<verb>`. Entry-point gating is what avoids the flood: an internal helper
+reading a PASSED stream stays pure (its in-project caller holds the concrete → effect already
+attributed at the creation site; the common case stays globally sound, e.g. the `AbstractReaderParse`
+corpus fixture's Fs at `main` and jsoup's Net/Fs at `connect`/`parse(File)` are unchanged). Gated by
+`R17AbstractStreamTest` (entry-point param read → Unknown; non-entry helper → pure, no flood; concrete
+creator → Fs unchanged). PetClinic/jsoup/gson byte-for-byte unchanged; native==jar; soundness 40 +
+kappa_libs 438 + conformance green.
+
+RESIDUAL (low, MEASURED 2026-06-21): the TRANSITIVE case — an entry point that PASSES its
+abstract-stream param to a helper which reads it — is not covered (would need interprocedural
+param-flow). A code-review worried this might be the COMMON framework shape; MEASURED across 6 real
+jars incl **spring-web** (4196 fns / 129 entry points): **0 rooted entry points take an
+abstract-`java.io`-stream param at all, and R17 fires 0 times** — so both the direct and transitive
+cases are genuinely rare. The real framework shape is `request.getInputStream().read()` (stream from a
+getter INSIDE the method), NOT an `InputStream` param — a SEPARATE getter-return-abstract-stream
+question R17 doesn't address (receiver is a call-return, not a param). PROBED 2026-06-21 → SOUND, no
+cardinal sin: (i) JDK I/O types — `Socket`/`URLConnection`/`Process`/`HttpExchange` getters classify to
+the precise effect (Net/Exec) even when the object is a PARAM (the getter itself is modelled, not just
+the creation); (ii) framework interface types — `HttpServletRequest.getInputStream`/`getReader`, Spring
+`HttpInputMessage.getBody` disclose `Unknown` via candor's GENERAL unresolved-interface dispatch (no
+in-scope impl → the getter call itself is `dispatch:<iface>.<method>` Unknown, before any read); (iii)
+in-memory concrete (`ByteArrayInputStream`) stays pure — no flood. So the getter-return shape needs no
+fix; R17's narrow surface is the only place this class isn't already covered by precise-effect or
+unresolved-dispatch disclosure. So the deeper param-taint fix is NOT warranted for this empty surface.
+(#3 reviewed too: the `dispatch:` kind is spec-CANONICAL here — SPEC.md §4 defines
+`dispatch:<type>.<method>` as "an abstraction with no visible impl", exactly R17's
+abstract-stream-with-unknown-concrete; a new kind would break the 4-kind vocabulary for a 0-occurrence
+case, so unchanged.)
+
+### 2026-07-06 — κ batch 28: the legacy-enterprise frontier (candor-java post-0.8.2 `aefca4f`)
+
+**JCL / Joda-Time / commons-lang3 / hibernate.criterion / Struts 1.x.** Found by dogfooding a real
+2,257-class Struts webapp whose κ ledger listed 81 packages — dominated by struts (5,502 calls),
+commons-lang3 (2,141), commons-logging (791), hibernate.criterion (586), joda-time (249): the pre-Spring
+enterprise stack, still everywhere, previously entirely INVISIBLE-floored. METHOD (reusable): extract the
+app's COMPLETE per-member call surface into the candidate namespaces from bytecode
+(`javap -c | grep 'Method org/apache/…'` → `sort | uniq -c`) and triage every member — 169 distinct
+members, of which only ~6 were effectful. Those six are classified verb-precisely (commons-logging emit
+verbs → Log — on the dogfood app this UNMASKED 855 fns of logging, 756 → 1,611; Joda's now-family → Clock
+with the no-arg instant ctors DESCRIPTOR-gated so `new DateTime(long)` stays a pure value ctor; lang3's
+RandomStringUtils/RandomUtils → Rand and SystemProperties/SystemUtils getters → Env; Struts
+`TagUtils.write/print` → Net — tag output is the client socket, the ServletResponse stance — and
+`FormFile` content reads → Fs, the spooled multipart temp file); the verified-pure remainder floors under
+KAPPA_COVERED_PREFIXES. Boundary discipline: `org.hibernate.criterion` (pure builders) is covered because
+execution lives on the already-classified Session/Query terminals, but `org.hibernate` BROADLY stays
+ledgered — coverage is only granted where the effectful surface is modeled or the namespace's inventory is
+verified pure. Gates: anti-fabrication twins per package (KappaBatch28Test), jsoup/gson byte-IDENTICAL vs
+the released jar; a Spring app's report legitimately GAINS Log lines (spring-jcl provides
+org.apache.commons.logging) — unmasking, not regression.
+
+**The same dogfood also validated the full Unknown-reduction ladder on a real legacy app** (the workflow
+the `blindspots` query was built for): (1) blindspots ranked ONE dispatch — a project interface with 42
+enum implementors, past the shared CHA-12 bound — as the source of 3,551 of 3,617 Unknowns; `closed-world`
+(§3.4 config, sound for an application) resolved it → 153. (2) Batch 28 converted the invisible floor to
+real attributions (ledger 81 → 64 packages, every giant cleared). (3) Chaining a first-party library's own
+report (§2 `deps`) covered its 236 calls — and RAISED disclosed Unknown to 680, correctly: the library's
+reflective plugin registries (`Constructor.newInstance`) are irreducible, and calls that previously read
+silent-invisible now read honest-Unknown. More honesty, not less precision — the direction the trust
+contract orders these. Residual ledger heads (commons-validator 95, threeten-extra 61, jsonwebtoken 31)
+are future batch candidates.
+
+### 2026-07-06 — κ batch 29: the next tier, same discipline (candor-java `2575683`)
+
+The dogfood app's complete 68-member frontier into the residual heads, triaged member-by-member.
+Pure-surface coverage: commons-validator (predicates), commons-beanutils (property shuffling), displaytag
+(decorator getters), org.w3c.dom (a JDK namespace missing from the frontier list). Precise effectful
+members: threeten-extra now() → Clock; jjwt parse* → Clock (parsing VALIDATES exp/nbf against the system
+clock) + Keys generators → Rand, while signing/compact stays pure CPU; JDOM2 input effectful BY SOURCE
+(build(File/String) → Fs, build(URL) → Net, caller-opened stream overloads pure-relative — the open
+carried the effect); Ehcache at its ACQUISITION points (persistence(dir) → Fs so build/init are vouched
+and heap-only apps never fabricate; clustered cluster(URI) → Net). A coverage-semantics finding worth
+registering: vouching org.w3c.dom made 438 jsoup fns DROP from its report — their only content was
+`invisible: [org.w3c.dom]` (zero effect changes, verified per-fn) — i.e. a widely-reachable uncovered
+namespace can inflate a report with disclosure noise, and coverage legitimately shrinks it. Dogfood
+trajectory across batches 28+29: ledger 81 → 64 → 49 packages; the top head fell from 5,502 calls (struts)
+to 25 (jackson-databind — the one broadly-valuable batch-30 candidate; the rest is long tail).
+
+### 2026-07-06 — κ batch 30 + 30b: Jackson, and a live SILENT-NET find (candor-java `cd617cb`)
+
+Jackson yields to ONE descriptor-driven rule (a File/Path parameter is a source or sink → Fs; a URL → Net
+— uniform across the stack; String/bytes/stream overloads pure-relative). The important entry is 30b: the
+AWS rule's `owner.endsWith("Client")` gate missed calls through the v1 service INTERFACES
+(`AmazonS3.copyObject` — a real S3 request — read silent-invisible on the dogfood app; `copy*` was also
+missing from the verb list). The request-making surface is now the Client classes + the Amazon*/AWS*
+interfaces (outside .model./Builder) + TransferManager. Unmasked Net 473 → 534 on the dogfood app. LESSON
+for the register: a curated rule's OWNER GATE is itself a soundness surface — verify coverage against how
+code actually types its variables (interfaces), not just the concrete classes. Dogfood ledger after
+batches 28–30b: 81 → 37 packages, everything remaining ≤ 20 calls (long tail).
+
+### 2026-07-07 — κ batch 31: the long-tail sweep, the ledger reaches zero (candor-java `17eb81d`)
+
+All 37 remaining packages, 111 members triaged — the dogfood app's ledger reaches ZERO (81 → 0 across
+batches 28–31). Register-worthy findings beyond the coverage itself: (1) **the sweep audits earlier
+batches** — StopWatch (both commons-lang generations) reads the clock but went silent-pure under batch
+28's lang3 coverage; a covered namespace must be RE-swept when new inventory arrives. (2) **A return-type
+fabrication class**: the source/sink descriptor rules (File/Path → Fs, URL → Net) first used
+whole-descriptor `contains`, which matches a File RETURN type — `FileUtils.getTempDirectory()` (pure,
+returns a path) would have fabricated Fs; an existing round-12 anti-fab pin caught it; all descriptor
+rules now match parameters only (`paramsOf`). (3) **Iteration can be a wire call**: Twilio's
+`ResourceSet.iterator()` lazily fetches further pages — Net hiding in a for-each. (4) **proceed() is
+reflection-shaped**: AOP Alliance's `MethodInvocation.proceed()` executes the intercepted target →
+disclosed Unknown, never silenced by coverage. (5) **Defer to richer existing stances**: a new Fs rule for
+`XMLReader.parse` was dead code below the pre-existing disclosed-Unknown rule (parse drives user handler
+callbacks + XXE-class resolution) — check what already classifies before adding. Also: Redisson's R*
+handles → Db (remote data structures by design), DbUnit execute → Db, hibernate's internal jdbc package
+covered WITH its effectful internals classified so the one pure member apps reach (the SQL formatter, 685
+fns of invisible noise) floors clean.
+
+### 2026-07-08 — candor-java 0.8.4 review patch: six shipped regressions (R19, `4bdb996`)
+
+**Six soundness regressions the batch 28–31 work SHIPPED in 0.8.3, caught by a high-effort code
+review.** The same sweep that CLOSED veins opened new ones, via two failure shapes the inventory method
+doesn't catch alone. (1) **Broad owner/verb gates fabricate on same-shaped pure members** — the AWS
+`Amazon*`-name interface heuristic hit `AmazonS3URI` (a pure URI parser), "any Redisson R* → Db" hit
+`getCodec`/`RFuture`, `parse*`→Clock hit the no-arg `Jwts.parser()` factory, whole-owner StopWatch→Clock
+hit `create()`. LESSON: a name/prefix owner gate or a bare verb prefix fabricates wherever a namespace
+mixes request-makers with same-named value types — require the effectful SHAPE (a token arg, an exact
+verb, a started clock), not the name. (2) **A blanket coverage grant turns an under-vouched classifier
+into SILENT-PURE** — `com.amazonaws` coverage silenced `DynamoDBMapper.save` (unmodeled facade, owner
+doesn't match the *Client gate). LESSON: only ledger-cover a namespace whose effectful surface you
+MODELED, not merely inventoried on one app; an unmodeled member of a covered namespace floors silent (the
+worst class) — leave it uncovered and it discloses `invisible`. AWS and commons-io are now
+classified-but-not-covered. Every fix carries an anti-fabrication twin; jsoup/gson byte-identical. The
+byte-identity + kappa_libs gates only catch what their fixtures exercise — the review exercised the
+shapes they didn't.
+
+### 2026-07-09 — candor-swift κ batch: UserDefaults / Keychain / Bundle (R20, `dd134e2`)
+
+**Covered-module silent-pure — the Panache shape, Swift edition:** `Foundation` and `Security` sit in
 PLATFORM_MODULES, so they get no ledger naming and no Unknown — an unmodeled effectful member there reads
 **silent-pure**, with no invisible/Unknown floor to catch it. Three surfaces were in that state:
 (a) `UserDefaults` store accessors (`set/object/string/bool/…(forKey:)`, `removeObject`, `synchronize`,
@@ -293,19 +422,35 @@ standing shadow discipline (declaredTypes / localFreeFns), pinned by twin fixtur
 `Data/String(contentsOf[File]:)` were checked in the same pass and found already covered (Fs /
 scheme-resolved / honest Unknown).
 
-**candor-scan κ-ledger §2 rule-3 gap (over-disclosure, fixed scan 0.8.4 `2d32086`, 2026-07-09).** Found
-by the new PART 14 chaining differential's FIRST run: the ledger exemption for chained reports was keyed
-on the report *filename shape* + per-entry hash prefixes, so an EMPTY chained report (`functions: []` —
-the §2 rule-3 purity claim) outside the `….<crate>.scan.json` naming still drew "κ doesn't know N
-dependencies". The SAFE direction (over-disclosure, not a silent-pure sin), but a conformance divergence
-vs candor-java/ts, which honor the claim. Coverage is now keyed on the envelope `package`/`packages`
-field (hyphenated names also register in Rust ident form); pinned by PART 14. Companion porcelain work
-in the same wave (register R21): cargo-candor `policy`'s `|| true` fail-open and `guard`'s
+### 2026-07-09 — whole-project review: the porcelain fail-open class (R21)
+
+A whole-project critical review opened a THIRD find category: gate surfaces that convert "the gate could
+not run" into green — fail-opens in the porcelain and output/auxiliary channels the engine-level
+fail-closed doctrine had never swept. Per repo: cargo-candor `policy` swallowed a build failure
+(`|| true`) and `guard` passed with no baseline ever snapshotted; candor-java exited 0 when the
+`--gate-json` target was unwritable, and a `CANDOR_DEPS` typo was silently ignored; the candor-ts MCP
+`candor_whatif` accepted a bad policy path, and a configured-but-empty policy was falsy-skipped;
+candor-agents `gate_reports` carried fail-open dead code and truncated observed paths without disclosure.
+The review also surfaced one NORMATIVE contradiction: AS-EFF-008's opaque case — the spec text had lagged
+the conformance-pinned fail-closed behavior since the 0.5.15 hardening. All fixed in a same-day wave, per
+repo; chaining and the stale-baseline posture became conformance PARTs 14–15 as standing gates, and
+PART 14's first run immediately caught candor-scan's missing empty-report ledger exemption (next entry).
+Companion cargo-candor hardening in the same wave: `policy`'s `|| true` fail-open and `guard`'s
 absent-baseline green both now exit 2, with a `GUARD-UNAVAILABLE` engine sentinel distinguishing
 not-evaluated from violation, and the §3.3 verdict withheld when the guard could not evaluate.
 
-**candor-java mutation_probe rot (meta-soundness, found + fixed 2026-07-09, `a6c60c0`).** The
-meta-soundness harness had decayed to 3/14 PATCH-ERROR — its anchors still targeted the pre-typed
+### 2026-07-09 — candor-scan κ-ledger §2 rule-3 gap (over-disclosure, scan 0.8.4 `2d32086`)
+
+Found by the new PART 14 chaining differential's FIRST run: the ledger exemption for chained reports was
+keyed on the report *filename shape* + per-entry hash prefixes, so an EMPTY chained report
+(`functions: []` — the §2 rule-3 purity claim) outside the `….<crate>.scan.json` naming still drew "κ
+doesn't know N dependencies". The SAFE direction (over-disclosure, not a silent-pure sin), but a
+conformance divergence vs candor-java/ts, which honor the claim. Coverage is now keyed on the envelope
+`package`/`packages` field (hyphenated names also register in Rust ident form); pinned by PART 14.
+
+### 2026-07-09 — candor-java mutation_probe rot (meta-soundness, `a6c60c0`)
+
+The meta-soundness harness had decayed to 3/14 PATCH-ERROR — its anchors still targeted the pre-typed
 (`return "Fs"`) pre-extraction Candor.java. Re-anchored (per-mutation target file, dual
 snapshot/restore); the `jackson_file` mutation had additionally become a redundancy NO-OP — κ batch 30's
 whole-package descriptor rule subsumes the 0.7-era `readValue` rule, each masking a mutation of the
@@ -318,11 +463,13 @@ INTERPRETED) split into a first-package-segment dispatch, largest method 4266B; 
 19,484,160-triple old-vs-new differential oracle (0 mismatches) + 330-jar corpus byte-identity; ~16%
 faster full-corpus scan.
 
-**The coverage wave (2026-07-10) — first-ever measurement, then closing every never-executed gate
-surface (TESTING.md's "verify before pin" discipline).** Coverage tooling had never been wired into
-any repo; measuring with child-process capture (java three-tier 67%→90% line; swift 61%→88%; ts ~95%;
-agents 90%; rust stable crates 81%) surfaced the load-bearing surfaces with ZERO execution anywhere.
-Pinning them found four real bugs, each fixed red-then-green in its pinning commit (§8):
+### 2026-07-10 — the coverage wave: never-executed gate surfaces
+
+**First-ever measurement, then closing every never-executed gate surface (TESTING.md's "verify before
+pin" discipline).** Coverage tooling had never been wired into any repo; measuring with child-process
+capture (java three-tier 67%→90% line; swift 61%→88%; ts ~95%; agents 90%; rust stable crates 81%)
+surfaced the load-bearing surfaces with ZERO execution anywhere. Pinning them found four real bugs, each
+fixed red-then-green in its pinning commit (§8):
 (1) **candor-java `checkConformance` (CANDOR_STRICT, AS-EFF-001/002/003) was broken** — it lacked
 SPEC §6's program-entry-point exemption from AS-EFF-001, firing on the composition root; the gate had
 0% coverage in every harness. Sibling sweep: rust-deep already exempts (`tcx.entry_fn`); ts/swift
@@ -341,3 +488,6 @@ swift ReportModel helpers); the one agents candidate KEPT with justification (th
 exists in rust/ts on a documented embedder surface). THE DURABLE LESSON: a documented gate surface
 with zero executions is where bugs live unnoticed — four of the ten measured gaps hid one. The
 zero-coverage-gate-list invariant (TESTING.md §6) is now the standing guard.
+
+*Correction (appended): agents' final coverage measure in the wave was **96.5%**, not the 90% interim
+figure recorded above.*

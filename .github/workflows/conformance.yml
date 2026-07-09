@@ -27,6 +27,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # AGENTS.md rotted once — it taught the legacy v0.1 bare-array report years into the envelope
+  # era, because nothing machine-checked it. This leg pins the doc to reality: its envelope
+  # example must parse as the SPEC §2 shape and its spec string must equal SPEC.md's floor
+  # declaration. Cheap (no engine checkouts), so it runs on every push/PR.
+  agents-doc-drift:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: AGENTS.md drift gate (spec floor + envelope shape)
+        run: python3 scripts/check_agents_drift.py
+
   cross-impl-differential:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest

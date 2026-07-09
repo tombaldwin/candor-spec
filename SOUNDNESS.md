@@ -2,9 +2,11 @@
 
 The **cardinal sin** is the **silent under-report**: candor reporting a function pure / effect-free when an
 effect is actually reachable from it, with **no disclosure** (no `Unknown`, no `invisible`/blind/`incomplete`).
-Over-reporting (a spurious effect) and *disclosed* uncertainty are safe; a silent under-report is the one
-failure that breaks trust. This document is the **living instrument** for answering: *how confident are we that
-candor never commits it, and how do we make that confidence go up over time?*
+Disclosed uncertainty is safe, and over-reporting (a fabricated effect) is the opposite failure direction — a
+precision failure, guarded by the per-engine fabrication probes, never to be confused with the cardinal sin;
+the silent under-report is the one failure that breaks trust. This document is the **living instrument** for
+answering: *how confident are we that candor never commits it, and how do we make that confidence go up over
+time?*
 
 ## 1. Epistemic frame (what "eradicate" can and can't mean)
 
@@ -16,7 +18,7 @@ spots. We therefore cannot *prove* zero cardinal sins. The achievable, trackable
 2. **Dynamic ground truth** (the syscall oracle — the only evidence that catches *shared* blindness across all
    engines) covers a **growing fraction** of real-world effect-reaching code.
 3. The **residual register** of known blind spots is **explicit and shrinking** — and every residual is either
-   SILENT (a real cardinal-sin risk, must be driven to zero) or DISCLOSED (honest imprecision, acceptable).
+   SILENT (a real cardinal-sin risk, must be driven to zero) or DISCLOSED (marked imprecision, acceptable).
 4. The **find-rate** of fresh adversarial hunts trends to **zero** across diverse new seams (convergence
    evidence — never proof).
 
@@ -36,11 +38,11 @@ A silent under-report lives at one intersection of **EFFECT × SEAM × ENGINE**:
 | # | method | catches | limits | where |
 |---|--------|---------|--------|-------|
 | 1 | **Dynamic syscall oracle** | shared blindness (the unknown-unknown) — observed-but-not-predicted is undeniable | Fs/Net/Exec only (syscall-distinguishable); exercised paths only; Linux | `candor-rust/soundness/realworld/` (`oracle.sh`, `realworld/run.sh`) |
-| 2 | **Independent-method differential** | coverage gaps (disclosed-but-unmodeled) | finds honest gaps, not silent ones, unless paired with #1 | ad-hoc (the 2026-06-18 coverage round) |
+| 2 | **Independent-method differential** | coverage gaps (disclosed-but-unmodeled) | finds disclosed gaps, not silent ones, unless paired with #1 | ad-hoc (the 2026-06-18 coverage round) |
 | 3 | **Adversarial seam probes** | a specific structural seam class | only the seams you think to probe | the per-engine regression tests + one-shot hunts |
-| 4 | **Cross-engine generative matrix** | per-engine divergence on effect×indirection | WEAK for *shared* blind spots (engines can share a gap) | `candor-spec/conformance/` (`gen_differential.py`, 30 cells) |
+| 4 | **Cross-engine generative matrix** | per-engine divergence on effect×indirection | WEAK for *shared* blind spots (engines can share a gap) | `candor-spec/conformance/` (`gen_differential.py`, 72 cells as of 2026-07-09) |
 | 5 | **Recall corpus** | recall holes (known-semantics APIs) | only listed APIs | `candor-rust/soundness/realworld/recall/` |
-| 6 | **§4 honesty-invariant checker** | swallowed uncertainty (propagation bugs) | NOT blindness (a never-registered call is invisible to it) | `candor-spec/conformance/check_honesty.py` |
+| 6 | **§4 disclosure-invariant checker** | swallowed uncertainty (propagation bugs) | NOT blindness (a never-registered call is invisible to it) | `candor-spec/conformance/check_honesty.py` |
 | 7 | **Seam fuzzer** | random structural shapes | shallow | `candor-rust/soundness/gen.py` |
 
 **Key insight:** #4 (cross-engine agreement) is the weakest for the *dangerous* case — all engines sharing a
@@ -54,11 +56,11 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 
 | seam class | rust-scan | rust-deep | java | ts | swift | agents |
 |---|---|---|---|---|---|---|
-| direct / local-call / method-recv / loop-elem / field / callback (6 basic indirections) | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
+| direct / local-call / method-recv / loop-elem / field / callback (6 basic indirections) | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢⁴ |
 | key-collision (same-named unit clobber → wrong attribution) | 🟡 | — | — | 🟡 | 🟡 | 🟡 |
-| **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
+| **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
 | deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🟢 | 🟡 | 🟡 | 🟡 | — |
-| **fire-and-forget / spawned task** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🔴 |
+| **fire-and-forget / spawned task** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢⁴ |
 | **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |
 | **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
 | FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
@@ -68,31 +70,43 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 truly green; today these are per-engine. ² agents = the declared-vs-observed drift gate (a different shape).
 ³ deferred-iterator does NOT fit the shared-compilation-unit matrix (java's whole-program CHA over
 `Iterator.next()` fans out across all the cells' Iterator impls and unions every effect) — stays per-engine.
-**This scorecard is the gap:** almost everything is 🟡 — closed once, with a per-engine regression test, but NOT
-in the cross-engine standing matrix. The roadmap (§6) is mostly "turn 🟡 → 🟢".
+⁴ agents cannot join the shared-compilation-unit matrix (its input is a fleet definition, not code); its
+analogs are CI-standing per-engine: the delegation-form chains (named / CHA / ambient + curated/uncurated
+MCP sinks) are fuzzed on every push (`fuzz.py`, incl. a precision-distractor twin) and regression-pinned
+(`test.py` — spawn residual, hooks matcher tiers, cron entry points) — an agent spawn IS the fleet's
+fire-and-forget, and the basic-indirection analog is the delegation-form set. Lazy-init has no fleet analog
+(nothing defers an initializer): N/A.
+**Where the scorecard stands (2026-07-09):** 🟢 is the plurality — the basic-indirection, lazy-init,
+fire-and-forget, gate-evasion and implicit-conversion rows are cross-engine-standing (§7b). The remaining 🟡
+rows — key-collision, deferred-iterator, FFI, macro — are per-engine by their nature (§7b: deferred-iterator
+can't share a compilation unit across engines; FFI has no clean ts idiom; key-collision and macro are
+engine-structural seams), each held by standing per-engine regression tests, plus rust-deep's gate-evasion
+cell (the policy differential gates the user-facing engines; deep's policy surface stays per-engine). The
+roadmap (§7) tracks what's left.
 
 ## 5. Residual register (known blind spots)
 
-Each is **SILENT** (true cardinal-sin risk → drive to zero) or **DISCLOSED** (engine emits Unknown/invisible →
-honest, lower priority). Eradication = SILENT count → 0.
+Each is **SILENT** (true cardinal-sin risk → drive to zero) or **DISCLOSED** (engine emits Unknown/invisible —
+lower priority). Eradication = SILENT count → 0. Closed rows keep a one-line summary here; the full prose for
+the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 
 | id | engine | residual | kind | severity | plan |
 |---|---|---|---|---|---|
 | ~~R1~~ | rust-deep | implicit-conversion class — **RESOLVED 2026-06-18**: empirically already covered, not a residual | ~~SILENT~~ CLOSED | — | probe `candor-rust/ui/implicit_conversion.rs` (13-warning regression fixture) confirms all 6 sub-cases (format/Display·`?`→From·`.into()`·auto-deref·operator·Drop-glue) charge the effect + 4 pure controls stay pure. The type-aware HIR walker resolves these natively (fmt via the explicit "HOLE 2"); the scan 0.5.16 fix was the *syntactic* engine's counterpart, never needed in deep. |
 | R2 | rust-scan | auto-deref *method* calls (`w.method()` via Deref::Target) | SILENT | low | needs target-type method resolution (syntactic limit) |
-| R3 | rust-scan | untyped-operand implicit-conversion (format/operator over an unresolved type) | SILENT | low | syntactic limit; honest residual (no flood vs precision tradeoff) |
+| R3 | rust-scan | untyped-operand implicit-conversion (format/operator over an unresolved type) | SILENT | low | syntactic limit; accepted residual (no flood vs precision tradeoff) |
 | R4 | rust-scan | bare-unit-struct iterate/drop (`for _ in Unit {}`, `let _g = Unit;`) | SILENT | v.low | rare idiom |
 | R5 | rust-scan | general unresolvable-bare-call → Unknown REJECTED (floods 80/tokio) | SILENT | low | needs provenance (extern/glob) to disclose without flooding |
-| R6 | rust-scan/deep | multi-impl ambiguity, compound-assign operators | SILENT | v.low | — |
+| R6 | rust-scan | multi-impl ambiguity, compound-assign operators | SILENT | v.low | deep was probed (round 13, 2026-06-18) — sound, gated; the residual may hold for scan only |
 | R7 | swift | untyped-operand implicit-conversion | SILENT | low | syntactic limit |
 | R8 | java | container-erased sort `compareTo` reentry (element type erased in generic) | SILENT | low | needs element-type recovery |
 | R9 | java | okio buffered read/write on an ambiguous BufferedSink | DISCLOSED | n/a | by design (Buffer-vs-socket ambiguous; construction boundary modeled) |
-| R10 | ts | `@types/uuid` v8 intersection-typed `v4`; googleapis deep service verbs | DISCLOSED | n/a | honest (reads Unknown); modern uuid fixed |
+| R10 | ts | `@types/uuid` v8 intersection-typed `v4`; googleapis deep service verbs | DISCLOSED | n/a | reads Unknown (disclosed); modern uuid fixed |
 | R11 | agents | seam battery run (2026-06-18): named-delegation-narrowing was UNSOUND (narrowed on a prompt mention, not a proof) — FIXED candor-agents 0.4.13 (`755216a`): declared `Agent(x,y)` allowlist narrows soundly; bare `Agent`+mention discloses an Unknown spawn residual; bare `Agent`+no-mention is CHA. Delegation forms / MCP-Unknown / hooks+cron entry points already covered (fuzz.py + test.py). | was UNCHECKED → mostly covered | low | remaining: allowlist naming a non-existent agent (unresolvable spawn → Unknown?); deeper hook-matcher adversarial cases |
-| R12 | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocks continuous self-gating | infra | med | nightly bump / rustc_private migration (parked) |
-| ~~R13~~ | rust-deep | `thread_local!` force via `KEY.with(...)` read PURE (effect in the macro-gen init fn, orphaned behind non-local `LocalKey::with`). **FIXED 2026-06-18** (`6010832`) | ~~SILENT med~~ CLOSED | — | a method call on a `LocalKey` receiver edges the forcing fn to the local init fn(s) referenced in that thread_local item's body (intravisit FnDef-ref collector). Sound (pure init → nothing); gated by ui/thread_local_effects.rs |
-| ~~R14~~ | rust-deep **+ rust-scan + swift** (SYSTEMIC shared blind spot) | the WRITER side of formatting read PURE — an effectful custom sink (`fmt::Write`/`io::Write` via `write!`; Swift `TextOutputStream` via `print(to:)`/`write(to:)`) driven by a non-local format helper was dropped (distinct from the arg-Display side, which all engines handled). Found in rust-deep, then a cross-engine SWEEP found the SAME gap silent in **candor-scan** (the user-facing floor) AND **candor-swift** — the dangerous shared case cross-engine agreement hides. **ALL FIXED 2026-06-18** (deep `0e4bf50` HOLE 2c; scan `dabafd0` 0.5.18; swift `9368311` 0.5.22 modelOutputStreamCall). | ~~SILENT~~ CLOSED (3 engines) | — | gated by ui/write_trait.rs (deep), write_macro test (scan), smoke N4b (swift). candor-java analog PROBED — also silent (see R16, tracked); candor-ts has no clean writer-sink idiom (N/A). `thread_local!` swept too — scan handles it (not shared). |
-| ~~R16~~ | java | writer side of formatting — a custom effectful `Appendable`/`Writer` wrapped in a JDK `Formatter`/`PrintWriter` and driven by `format`/`printf` read PURE. The 4th engine with the R14 class. **FIXED 2026-06-18** (candor-java 0.5.40 `5f86d3e`). | ~~SILENT~~ CLOSED | — | a CONSTRUCTOR-site reentry: at `new Formatter(Appendable)` / `new PrintWriter(Writer\|OutputStream)` / `new PrintStream(OutputStream)`, edge the enclosing method to the sink arg's `append`/`write` (new C_APPEND/C_WRITE contracts, by-name reentryEdge over the arg's declType, same machinery as compareTo). Resolve-or-skip → a std StringBuilder/FileOutputStream sink contributes nothing. Gated by ImplicitReentryTest.writerSideCustomSinkCarriesEffect; PetClinic + jsoup/gson/HikariCP dogfoods byte-for-byte unchanged (no fabrication). **So the write-fmt writer-side class is now closed in ALL 4 engines (rust deep/scan, swift, java).** |
+| ~~R12~~ | rust-deep | CI self-guard ICE (nightly-2026-04-16) blocked continuous self-gating. **CLOSED 2026-07-09** (verified against the repo): the pin moved to nightly-2026-06-14, ci.yml's Self-guard step runs the deep engine on every push, `ci/self-gate.sh` gates on the STABLE scanner (never nightly-blocked), `realworld-oracle-deep.yml` runs the deep engine against the kernel oracle on every push/PR, and `nightly-bump.yml` automates the weekly nightly migration. | ~~infra~~ CLOSED | — | continuous self-gating is a standing CI property |
+| ~~R13~~ | rust-deep | `thread_local!` force via `KEY.with(...)` read PURE (effect orphaned in the macro-gen init fn). **FIXED 2026-06-18** (`6010832`); gated by ui/thread_local_effects.rs. | ~~SILENT med~~ CLOSED | — | prose: SOUNDNESS-LOG.md, 2026-06-18 thread_local entry |
+| ~~R14~~ | rust-deep + rust-scan + swift (SYSTEMIC shared blind spot) | the WRITER side of formatting read PURE — an effectful custom sink driven by a non-local format helper was dropped; silent in three engines at once, the exact case cross-engine agreement hides. **ALL FIXED 2026-06-18** (deep `0e4bf50`; scan `dabafd0` 0.5.18; swift `9368311` 0.5.22); java analog = R16; ts N/A. | ~~SILENT~~ CLOSED (3 engines) | — | prose: SOUNDNESS-LOG.md, 2026-06-18 write-fmt entry |
+| ~~R16~~ | java | writer side of formatting — a custom effectful `Appendable`/`Writer` driven via a JDK `Formatter`/`PrintWriter` read PURE (the R14 class, 4th engine). **FIXED 2026-06-18** (0.5.40 `5f86d3e`, constructor-site reentry); the write-fmt writer-side class is closed in all 4 engines. | ~~SILENT~~ CLOSED | — | prose: SOUNDNESS-LOG.md, 2026-06-18 write-fmt entry |
 | ~~R17~~ | java (also the jsoup streaming-parser pattern) | I/O via an ABSTRACT `java.io` stream (`Reader`/`InputStream`/`Writer`/`OutputStream`) whose concrete impl candor can't pin read PURE, not Unknown — e.g. an entry point `void onData(InputStream s){ s.readAllBytes(); }` where the framework injects `s`. **FIXED 2026-06-21** (provenance-gated, entry-point-scoped). | ~~SILENT~~ CLOSED | — | **Fix:** in `analyze`, when a call classifies pure AND is an I/O verb on an abstract `java.io` stream base (`isAbstractStreamIo`) AND the receiver is the method's OWN param by ProvValue identity (`isOwnParam`) AND the method is a rooted ENTRY POINT (`ctx.entryPoints`), disclose `Unknown` with `unknownWhy=dispatch:<owner>.<verb>`. Entry-point gating is what avoids the flood: an internal helper reading a PASSED stream stays pure (its in-project caller holds the concrete → effect already attributed at the creation site; the common case stays globally sound, e.g. the `AbstractReaderParse` corpus fixture's Fs at `main` and jsoup's Net/Fs at `connect`/`parse(File)` are unchanged). Gated by `R17AbstractStreamTest` (entry-point param read → Unknown; non-entry helper → pure, no flood; concrete creator → Fs unchanged). PetClinic/jsoup/gson byte-for-byte unchanged; native==jar; soundness 40 + kappa_libs 438 + conformance green. RESIDUAL (low, MEASURED 2026-06-21): the TRANSITIVE case — an entry point that PASSES its abstract-stream param to a helper which reads it — is not covered (would need interprocedural param-flow). A code-review worried this might be the COMMON framework shape; MEASURED across 6 real jars incl **spring-web** (4196 fns / 129 entry points): **0 rooted entry points take an abstract-`java.io`-stream param at all, and R17 fires 0 times** — so both the direct and transitive cases are genuinely rare. The real framework shape is `request.getInputStream().read()` (stream from a getter INSIDE the method), NOT an `InputStream` param — a SEPARATE getter-return-abstract-stream question R17 doesn't address (receiver is a call-return, not a param). PROBED 2026-06-21 → SOUND, no cardinal sin: (i) JDK I/O types — `Socket`/`URLConnection`/`Process`/`HttpExchange` getters classify to the precise effect (Net/Exec) even when the object is a PARAM (the getter itself is modelled, not just the creation); (ii) framework interface types — `HttpServletRequest.getInputStream`/`getReader`, Spring `HttpInputMessage.getBody` disclose `Unknown` via candor's GENERAL unresolved-interface dispatch (no in-scope impl → the getter call itself is `dispatch:<iface>.<method>` Unknown, before any read); (iii) in-memory concrete (`ByteArrayInputStream`) stays pure — no flood. So the getter-return shape needs no fix; R17's narrow surface is the only place this class isn't already covered by precise-effect or unresolved-dispatch disclosure. So the deeper param-taint fix is NOT warranted for this empty surface. (#3 reviewed too: the `dispatch:` kind is spec-CANONICAL here — SPEC.md §4 defines `dispatch:<type>.<method>` as "an abstraction with no visible impl", exactly R17's abstract-stream-with-unknown-concrete; a new kind would break the 4-kind vocabulary for a 0-occurrence case, so unchanged.) |
 | R15 | — | *(number never assigned — retired to keep later ids stable)* | — | — | — |
 | ~~R18~~ | java | the **inherited-into-project silent-pure vein** (κ batches 25–27): a framework method inherited into a PROJECT type (Panache active-record; repo/base-class mixins — Micronaut Data, Ebean, ActiveJDBC, jOOQ; then ANY classify-modeled base) read silent-pure — the call owner is a project class, so neither the κ-floor invisible disclosure (external owners only) nor CHA (no project body) fired. **FIXED 2026-06-21** (`cf359ce`/`32229da`/`7421301`) — the vein CLASS closed for modeled + unmodeled bases; cross-engine check: java-specific, not shared. | ~~SILENT~~ CLOSED | — | full prose: SOUNDNESS-LOG.md, batches 25–27 |
