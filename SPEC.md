@@ -238,9 +238,9 @@ any report can become a chained sibling, and a hashless one is silently unchaina
 cross-boundary call drops and the consumer *under*-reports, the dangerous direction. A consumer may
 still ignore `hash`.
 
-**Report chaining** (the `CANDOR_DEPS` convention — consumed by the JVM, Rust and TypeScript
-engines; candor-swift emits the chainable `hash`, so its reports join *into* the others, but does not
-yet consume sibling reports itself): a
+**Report chaining** (the `CANDOR_DEPS` convention, consumed by all four reference engines as of
+2026-07-09 — candor-swift joined last, with a deliberately conservative import-gated join: a file must
+import the covered module before its unresolved calls are candidates): a
 scan accepts *sibling reports* — previously-produced reports for the scanned code's dependencies —
 and an unresolved/unclassified call into a package one of them covers inherits that function's
 recorded transitive effects AND its literal surfaces (`hosts`/`cmds`/`paths`/`tables`). Three rules
