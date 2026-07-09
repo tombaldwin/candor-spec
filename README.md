@@ -25,6 +25,12 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
+Domain engines (units are not functions; ride the version ladder on their own schedule — SPEC §4):
+
+| Domain | Repo | Engine | Status |
+|---|---|---|---|
+| Agent fleets | [candor-agents](https://github.com/tombaldwin/candor-agents) | declared-vs-observed effect analysis over agent fleets (units = agents/sessions/hooks) | **shipped (spec 0.8)** — v0.8.1; `pipx install git+https://github.com/tombaldwin/candor-agents` |
+
 ## Documents
 
 - **[SPEC.md](SPEC.md)** — the contract: effect vocabulary, JSON report schema, the `AS-EFF-00x`
