@@ -657,3 +657,28 @@ bounded generic with NO dispatched call stay pure (no fabrication); the inline-b
 forms are unregressed. Gate: `testGenericConstrainedDispatchWhereClauseAndTypeLevelBounds`; suite 117 green.
 Folded into candor-swift 0.8.9 (⚠). swift-specific (the generic-bound → protocol-dispatch modelling is a
 candor-swift resolution path). Open SILENT residuals stay 7 (R2–R8); R26/R27 opened + fixed same session.
+
+### 2026-07-10 — non-accessor seam sweep (autonomous): 5 seams sound, R29 fixed, R28 open
+
+Autonomous continuation past the accessor + generic veins. Probed six non-accessor seams; each with the
+target unit KNOWN to carry the effect, so a miss is a resolution/edge gap.
+
+SOUND (0-find — convergence evidence):
+- **closure capture** — an escaping closure stored (init-assigned property, later-assigned var property,
+  array element) then invoked far away: charges Fs (+ discloses Unknown where the flow is uncertain — the
+  ideal: known effect charged, residual disclosed). Never silent.
+- **async / concurrency** — `await` propagation, `Task { }`, `async let`, `Task.detached`: all Fs.
+- **opaque / existential returns** — `-> some Worker` and `-> any Worker` resolve to the concrete impl and
+  dispatch: Fs.
+- **method references** — a bound instance method (`let f = s.m; f()`) and a static ref (`T.sm`): Fs.
+
+FINDS:
+- **R29 (FIXED)** — `@resultBuilder`: a func `@SomeBuilder` runs `SomeBuilder.buildBlock(…)` etc via the
+  compiler transform (no call site), so an effectful builder read silent-pure. Fix: track `@resultBuilder`
+  types, capture a func's capitalized attributes, and edge the func to the builder's `build*` units
+  (resolveQual drops undefined ones; a pure builder contributes nothing — verified no fabrication). v.low
+  severity (effectful builders are rare), but a clean fix. Gated. Folded into 0.8.9.
+- **R28 (OPEN, SILENT low)** — conditional conformance on a stdlib type: `extension Array: Saveable where
+  Element: Saveable` reached via `xs.persist()` read pure. Compound (two gaps: the array-receiver → Array-
+  extension method edge, AND the self-element `$0` typing under the extension's `where Element: P`). Niche
+  advanced pattern; recorded with a plan rather than fixed in this pass. Open SILENT residuals 7 → 8.

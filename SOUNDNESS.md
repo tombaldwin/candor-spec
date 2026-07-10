@@ -93,6 +93,8 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 | id | engine | residual | kind | severity | plan |
 |---|---|---|---|---|---|
 | ~~R1~~ | rust-deep | implicit-conversion class — **RESOLVED 2026-06-18**: empirically already covered, not a residual | ~~SILENT~~ CLOSED | — | probe `candor-rust/ui/implicit_conversion.rs` (13-warning regression fixture) confirms all 6 sub-cases (format/Display·`?`→From·`.into()`·auto-deref·operator·Drop-glue) charge the effect + 4 pure controls stay pure. The type-aware HIR walker resolves these natively (fmt via the explicit "HOLE 2"); the scan 0.5.16 fix was the *syntactic* engine's counterpart, never needed in deep. |
+| R28 | swift | **conditional conformance on a stdlib type read silent-pure**: `extension Array: Saveable where Element: Saveable { func persist() {…} }` reached via `xs.persist()` (xs: [Item]) — two gaps: `xs.persist()` doesn't edge to `Array.persist`, and `Array.persist`'s `$0.persist()` (self-element, bound Saveable) doesn't dispatch. Compound + niche. Found 2026-07-10. | SILENT | low | resolve a method on an array-typed receiver to an extension-on-Array unit; carry the extension `where Element: P` bound to type `$0` in the self-element closure |
+| ~~R29~~ | swift | `@resultBuilder` transform read silent-pure — a func `@SomeBuilder` runs `SomeBuilder.buildBlock(…)` etc (implicit, no call site), so an effectful builder was dropped. **FIXED 2026-07-10** (0.8.9): edge the annotated func to the builder type's `build*` units; a pure builder adds nothing. | ~~SILENT v.low~~ CLOSED | — | SOUNDNESS-LOG.md, 2026-07-10 non-accessor-seam sweep |
 | R2 | rust-scan | auto-deref *method* calls (`w.method()` via Deref::Target) | SILENT | low | needs target-type method resolution (syntactic limit) |
 | R3 | rust-scan | untyped-operand implicit-conversion (format/operator over an unresolved type) | SILENT | low | syntactic limit; accepted residual (no flood vs precision tradeoff) |
 | R4 | rust-scan | bare-unit-struct iterate/drop (`for _ in Unit {}`, `let _g = Unit;`) | SILENT | v.low | rare idiom |
@@ -149,8 +151,8 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
    recall 23 sound. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
    just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
    diversity.*
-3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-10: **7 open (R2–R8), all low/
-   v.low; 0 med+** (R24/R25 opened + FIXED same day — the accessor vein drained). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
+3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-10: **8 open (R2–R8, R28), all
+   low/v.low; 0 med+** (R24–R27, R29 opened + FIXED same day; R28 conditional-conformance-on-stdlib open, niche). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
    register and the LOG. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): four find
    eras so far — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
