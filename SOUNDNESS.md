@@ -154,8 +154,12 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-10: **8 open (R2–R8, R28), all
    low/v.low; 0 med+** (R24–R27, R29 opened + FIXED same day; R28 conditional-conformance-on-stdlib open, niche). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
    register and the LOG. Target: 0 med+; lows documented-accepted.*
-4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): four find
-   eras so far — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
+4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): FIVE find
+   eras so far — the 5th is the **swift-resolution era** (2026-07-10, autonomous): the syntactic swift engine's
+   access-path/dispatch resolution had a vein of silent holes — R22–R27 + R29 (inherited accessors, setter
+   newValue, projected/keypath, generic where-clause/type-level bound, resultBuilder), all fixed + gated +
+   (0.8.7/0.8.8 shipped, 0.8.9 staged); R28 open (niche). 8 further non-accessor seams probed sound. The
+   era's find-rate is now dropping toward zero. Earlier four eras — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
    convergence NOT reached, and each era shift re-opens the find-rate. That is the epistemic frame (§1)
    working as designed: the instrument's job is to make each new era's finds cheap and standing-gated, not
    to declare victory.*

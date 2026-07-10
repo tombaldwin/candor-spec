@@ -682,3 +682,11 @@ FINDS:
   Element: Saveable` reached via `xs.persist()` read pure. Compound (two gaps: the array-receiver → Array-
   extension method edge, AND the self-element `$0` typing under the extension's `where Element: P`). Niche
   advanced pattern; recorded with a plan rather than fixed in this pass. Open SILENT residuals 7 → 8.
+
+*Continuation (appended 2026-07-10): a second non-accessor batch — `@autoclosure` (charges the arg's
+effect; a pure autoclosure call DISCLOSES Unknown, sound not silent), `indirect enum` methods, nested/local
+functions, and enum-switch per-case dispatch — all SOUND, 0-find. The find-rate has dropped: after the
+accessor + generic veins drained (R22–R27, R29), the non-accessor seams probed (closure capture, async/
+concurrency, opaque/existential, method refs, autoclosure, indirect enum, nested fn, enum switch — 8 seams)
+returned 0 cardinal sins, with only R28 (conditional conformance on a stdlib type, niche) left open. That
+is convergence for this era — not proof, but the fresh-seam find-rate trending toward zero as §1 predicts.
