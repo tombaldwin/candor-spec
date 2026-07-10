@@ -157,6 +157,12 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
      (R22, fixed 0.8.7, gated). A "covered seam, uncovered edition" find: the accessor climb existed for
      the own type and the method climb existed for inheritance, but their intersection did not. candor-ts +
      java were probed with the same shape and are sound — swift-specific, not shared. Prose: LOG.*
+   - *Error-path / cleanup-block probe (2026-07-10): 0 finds — an effect that runs ONLY in a `finally` /
+     `catch` / Swift `defer`/`guard-else` / Rust error combinator / implicit try-with-resources `close()`
+     is charged by all four engines (they walk the full statement tree; the cleanup path is an ordinary
+     call edge). Java's try-with-resources — an effect via a compiler-synthesized `close()` — is the
+     sharpest case and is sound (the close is real bytecode). Convergence evidence, not promoted to a
+     standing gate. Prose: LOG.*
    - *Seam-class era (2026-06-18 → 06-21, rounds 1–17): ~14 finds, all fixed + gated. Highlights: the
      lazy-init forcing site (rust-deep `8bf9c6b`), the agents named-delegation narrowing (a prompt mention
      is not a spawn-set proof, `755216a`), thread_local (R13), and the write-fmt writer side (R14/R16) — a
