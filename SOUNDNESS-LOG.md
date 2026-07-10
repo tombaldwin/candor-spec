@@ -716,3 +716,19 @@ checking whether ts/rust-scan share the class).
 Cross-engine picture: the swift accessor/dispatch vein is largely swift-specific; ts is clean; rust-scan
 shares only the generic-field sub-vein (now fixed) and has its own trait-default gap (R30). Open SILENT
 residuals 8 → 9.
+
+### 2026-07-11 — candor-scan trait-default-via-empty-impl (R30, fixed)
+
+Closing the R30 find from the cross-engine sweep. The trait-default caller fallback (`t.m()` on a concrete
+type with no own `m` → the inherited `Trait::m` default body) was already WRITTEN in scan.rs — but my probe
+showed `impl Logger for FileLogger {}` + `l.flush()` still read pure. Root-caused by instrumentation: the
+fallback edge FORMED (`use_named -> Logger::flush` in the callgraph, `Logger::flush` carried Fs), but the
+final report stayed pure — because `local_types` is built from fn QUALS, and a type whose ONLY impl is an
+empty (or non-overriding) trait impl has no fn unit of its own, so it was absent from `local_types`. That
+made its typed call fail the `resolvable` gate, which skipped the whole resolution block — the fallback
+never ran on the first pass (and the "still pure" I saw after a partial fix was a VERIFICATION-SCRIPT bug:
+it matched `endswith("::"+fn)` but crate-root fns have no `::` prefix — a good reminder to trust the
+callgraph edges, not a lossy matcher). Fix (2 lines): after building `type_to_traits`, insert its keys into
+`local_types` — every type with a local trait impl IS local. Verified: `use_named`/`use_s` → Fs; an OVERRIDE
+(`impl Logger for Quiet { fn flush(&self){} }`) stays pure (the override wins, the default is not also
+charged — no fabrication). Gated; 77 lib + 37 cli green. candor-scan 0.8.8. Open SILENT residuals 9 → 8.
