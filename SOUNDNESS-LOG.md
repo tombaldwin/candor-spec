@@ -526,3 +526,19 @@ inherited-accessor forms → Fs, the inherited-method control → Fs, a pure inh
 fabrication). Full suite 114 green. Shipped in candor-swift 0.8.7 (⚠ report-affecting). Find-rate: 1 this
 round — the seam-inheritance frontier re-opened the count, as §1 predicts (methods were covered; the
 accessor edition of the same climb was not).
+
+*Follow-up (appended 2026-07-10, same day): the R22 entry's cross-engine line ("candor-ts and java were
+probed … sound") was written after actually running only the candor-**ts** probe; the java claim was
+reasoned from the compilation model (Kotlin computed properties lower to `getX()` methods → the bytecode
+engine's CHA climbs). Now VERIFIED by a real run: a Kotlin `open val payload get() = File(...).readText()`
+inherited into a subclass, compiled to bytecode and scanned by candor-java 0.8.7 — `viaInherited` and the
+two-level `viaTwoLevel` both read `[Fs]`, the inherited-method control `[Fs]`, the pure control omitted.
+candor-java is sound (the getter is a real method unit `Base.getPayload`; CHA resolves the inherited call).
+Also confirmed the swift fix GENERALIZES beyond class inheritance: a protocol-extension-**default** computed
+property and a protocol-default **subscript** (both reached via a concrete conformer) now charge their
+effect — `supertypesOf` already unions protocol conformances, so the same climb covers them. KNOWN NARROW
+BOUNDARY (not chased — no concrete case): a computed property whose body lives in an UNMODELED EXTERNAL base
+class (vs a local/protocol super) is not verb-classified on the property-read path, so it would read pure
+rather than disclosed-Unknown — the method path's external-super Unknown disclosure has no property-read
+analog. Rare (subclassing an external class AND reading an effectful inherited computed property); logged
+as a boundary, no open residual assigned pending a real instance.
