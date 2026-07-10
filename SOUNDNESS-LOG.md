@@ -623,3 +623,14 @@ FIXABLE — the effect is already on the unit, only the access-site edge is miss
 edge `<Wrapper>.projectedValue`, mirroring the wrappedValue edging; R25: resolve a `\.member` keypath
 literal applied via `[keyPath:]` to the member's accessor unit). Recorded OPEN pending a fix decision (the
 accessor vein has now yielded R22 inherited / R23 setter-newValue fixed+shipped, and R24/R25 low-open).
+
+*Follow-up (appended 2026-07-10, same day): R24 + R25 FIXED (candor-swift 0.8.9), per Tom's "always fix" —
+fixable silent holes get closed, not accepted. R24: the property-read visitor now edges `m.$name` to
+`<Wrapper>.projectedValue` (mirroring the wrappedValue edging). R25: the keypath visitor's implicit-root
+branch now recognises a `[keyPath:]` SUBSCRIPT application (root = the receiver's own type), not just the
+element-iterator `map(\.p)` form. Verified: both → `[Fs]`; element-map keypath unregressed; a pure member
+via `$`/keypath stays pure; `@dynamicMemberLookup` still discloses Unknown (sound). Gated by
+`testProjectedValueAndKeyPathAccessorEffectsCharge`; suite 116 green. The swift ACCESSOR VEIN is now drained
+across five findings — own-property (earlier), R22 inherited accessors, R23 setter-newValue, R24 projected,
+R25 keypath — every access path onto a property/subscript/observer accessor unit now edges. Open SILENT
+residuals back to 7 (R2–R8, syntactic-limit lows); 0 med+.

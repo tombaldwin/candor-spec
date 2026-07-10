@@ -99,8 +99,8 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 | R5 | rust-scan | general unresolvable-bare-call → Unknown REJECTED (floods 80/tokio) | SILENT | low | needs provenance (extern/glob) to disclose without flooding |
 | R6 | rust-scan | multi-impl ambiguity, compound-assign operators | SILENT | v.low | deep was probed (round 13, 2026-06-18) — sound, gated; the residual may hold for scan only |
 | R7 | swift | untyped-operand implicit-conversion | SILENT | low | syntactic limit |
-| R24 | swift | **property-wrapper `projectedValue` via `$` access read silent-pure**: `m.$name` runs the wrapper's `projectedValue` accessor (unit exists with its effect), but the `$`-prefixed access doesn't edge to `<Wrapper>.projectedValue`. Distinct from the wrappedValue path (already handled). Fixable (effect is on the unit; only the `$`-access edge is missing) — not a fundamental limit. Found 2026-07-10 accessor-vein probe. | SILENT | low | recognise `$name` → edge to the wrapper type's `projectedValue` unit (mirror the `wrappedValue` edging) |
-| R25 | swift | **keypath read of an effectful computed property read silent-pure**: `h[keyPath: \.data]` where `data` is an effectful computed property — the keypath literal's referenced member isn't edged to `Holder.data` (unit exists with Fs). Fixable. Found 2026-07-10 accessor-vein probe. | SILENT | low | resolve a `\.member` keypath literal applied via `[keyPath:]` to the member's accessor unit |
+| ~~R24~~ | swift | property-wrapper `projectedValue` via `$` access (`m.$name`) read silent-pure — the `$`-prefixed access didn't edge to `<Wrapper>.projectedValue`. **FIXED 2026-07-10** (0.8.9): mirror the `wrappedValue` edging for `$name` (CallCollector property-read visitor); gated. | ~~SILENT low~~ CLOSED | — | SOUNDNESS-LOG.md, 2026-07-10 accessor-vein sweep |
+| ~~R25~~ | swift | keypath read of an effectful computed property (`h[keyPath: \.data]`) read silent-pure — the implicit-root keypath resolver handled only the element-iterator form (`xs.map(\.p)`), skipping the `[keyPath:]` subscript application (root = receiver's OWN type). **FIXED 2026-07-10** (0.8.9): resolve the subscript-applied keypath to the member's accessor unit; gated. | ~~SILENT low~~ CLOSED | — | SOUNDNESS-LOG.md, 2026-07-10 accessor-vein sweep |
 | R8 | java | container-erased sort `compareTo` reentry (element type erased in generic) | SILENT | low | needs element-type recovery |
 | R9 | java | okio buffered read/write on an ambiguous BufferedSink | DISCLOSED | n/a | by design (Buffer-vs-socket ambiguous; construction boundary modeled) |
 | R10 | ts | `@types/uuid` v8 intersection-typed `v4`; googleapis deep service verbs | DISCLOSED | n/a | reads Unknown (disclosed); modern uuid fixed |
@@ -147,8 +147,8 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
    recall 23 sound. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
    just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
    diversity.*
-3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-10: **9 open (R2–R8, R24–R25), all
-   low/v.low; 0 med+**. Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
+3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-10: **7 open (R2–R8), all low/
+   v.low; 0 med+** (R24/R25 opened + FIXED same day — the accessor vein drained). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
    register and the LOG. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): four find
    eras so far — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
