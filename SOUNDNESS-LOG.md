@@ -601,3 +601,25 @@ subscript get) were checked sound in all applicable engines. Gate:
 `DriverResolutionProcessTests.testSetterNewValueIsTypedSoEffectsThroughItResolve`; suite 115 green. Shipped
 in candor-swift 0.8.8 (⚠). This is the THIRD swift accessor-vein find in a row (R22 inherited accessors, R23
 setter newValue) — the accessor surface is where swift's silent-pure risk concentrated; both are now gated.
+
+### 2026-07-10 — swift accessor-vein sweep: projectedValue-$ + keypath (R24, R25 SILENT-low, OPEN)
+
+Draining the swift accessor vein after R22/R23. Four more accessor access-paths probed, each with the
+accessor unit KNOWN to carry the effect (so any miss is an access-site edging gap, not a collection gap):
+
+- **`didSet { oldValue.write(…) }`** accessed via assignment → `[Fs]` SOUND — R23's fix seeded `oldValue`
+  as well as `newValue`, so this generalised for free (confirms the fix).
+- **property-wrapper `projectedValue` via `$`** (`m.$name`, `Tracker.projectedValue` has Fs) → PURE.
+  **R24, SILENT low.** candor edges the `wrappedValue` path but not the `$`-prefixed projectedValue access.
+- **keypath read** (`h[keyPath: \.data]`, `Holder.data` computed getter has Fs) → PURE. **R25, SILENT low.**
+  The keypath literal's referenced member isn't resolved to the accessor unit.
+- **`@dynamicMemberLookup`** (`p.anything` → `subscript(dynamicMember:)`, has Fs) → `[Unknown]`. NOT silent —
+  DISCLOSED Unknown (the honest "unresolved member"), the sound over-disclosure direction. A precision gap
+  (it could resolve to the dynamicMember subscript and charge Fs precisely), not a cardinal sin.
+
+Both R24/R25 are SILENT but LOW: niche patterns (an effectful projectedValue accessed via `$`; an effectful
+computed property read via `[keyPath:]`). Unlike the accepted syntactic-limit residuals R2–R8, they are
+FIXABLE — the effect is already on the unit, only the access-site edge is missing (R24: recognise `$name` →
+edge `<Wrapper>.projectedValue`, mirroring the wrappedValue edging; R25: resolve a `\.member` keypath
+literal applied via `[keyPath:]` to the member's accessor unit). Recorded OPEN pending a fix decision (the
+accessor vein has now yielded R22 inherited / R23 setter-newValue fixed+shipped, and R24/R25 low-open).
