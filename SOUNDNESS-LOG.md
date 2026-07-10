@@ -542,3 +542,27 @@ class (vs a local/protocol super) is not verb-classified on the property-read pa
 rather than disclosed-Unknown — the method path's external-super Unknown disclosure has no property-read
 analog. Rare (subclassing an external class AND reading an effectful inherited computed property); logged
 as a boundary, no open residual assigned pending a real instance.
+
+### 2026-07-10 — error-path / cleanup-block effects (fresh seam, 0-find — convergence)
+
+A fresh seam not previously on the scorecard: an effect that runs ONLY on a NON-straight-line control path
+(a `finally`, a `catch` handler, a Swift `defer`/`guard-else`, a Rust error combinator, an implicit
+resource close). The worry: a CFG/AST walker that attributes only the happy path would drop the cleanup
+effect silent-pure. Probed with the try-body kept PURE so the effect is isolated to the error/cleanup path.
+
+RESULT — 0 finds, sound across all four code engines:
+- **swift**: `defer { write }`, `do/catch { write }`, `guard … else { write; return }` → all `[Fs]`.
+- **ts**: `try {} finally { writeFileSync }`, `try { throw } catch { writeFileSync }` → `[Fs]`.
+- **java**: `try {} finally { new FileWriter().write() }`, catch-handler write → `[Fs]`; and **try-with-
+  resources** `try (Res r = …) {}` charges `Res.close()`'s Fs on the enclosing fn (the compiler-synthesized
+  close is real bytecode the ASM walker sees) → `twr` = `[Fs]`.
+- **rust-scan**: `r.unwrap_or_else(|_| { effectful() })`, `r.map_err(|e| { effectful(); e })`,
+  `r.or_else(|_| …)` — the effect rides an error-only closure (no `finally` in Rust) → all `[Fs]`.
+
+WHY SOUND: every engine walks the full statement tree of a function body (all branches/handlers/deferred
+blocks), and a call inside any of them is an ordinary call edge — the error path is not special-cased away.
+Java's try-with-resources is the sharpest case (an effect via an IMPLICIT, compiler-generated `close()`
+call) and the bytecode engine sees it because the close IS in the emitted finally. NOT promoted to a
+standing scorecard gate (these were one-shot probes, not CI fixtures) — recorded as convergence evidence:
+error-path is checked-sound in all four, find-rate 0 this round. A future standing gate would add one
+finally/defer fixture per engine's regression suite if the seam is ever wanted at 🟢.
