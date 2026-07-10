@@ -566,3 +566,38 @@ call) and the bytecode engine sees it because the close IS in the emitted finall
 standing scorecard gate (these were one-shot probes, not CI fixtures) — recorded as convergence evidence:
 error-path is checked-sound in all four, find-rate 0 this round. A future standing gate would add one
 finally/defer fixture per engine's regression suite if the seam is ever wanted at 🟢.
+
+### 2026-07-10 — swift setter `newValue` untyped (R23, silent → CLOSED)
+
+The operator-overload probe (a symbol call site — `==`, `+`, `c[k] = v` — vs a named call). The operators
+themselves were sound: swift `==`/`+` (static-func operator units) and the subscript GETTER charge their
+effects; kotlin `operator fun plus`/`set` (bytecode methods), rust `impl Add`, and the ts property setter
+all charge. But the swift subscript SETTER `c["k"] = "v"` read PURE.
+
+THE FIND (candor-swift, SILENT, low-med): narrowed by discriminating probes — a setter body with a LITERAL
+or STATIC-call effect DID charge (`set { "x".write(toFile:) }`, `set { FileManager.default.createFile(…) }`),
+so the setter body IS collected and walked. What dropped was an effect reached THROUGH the implicit value
+param: `set { newValue.write(toFile:) }`. `newValue` (subscript AND computed-property setters, plus
+`willSet`) was never given a type, so the member call on it didn't resolve to `String.write` → silent-pure.
+The callgraph confirmed `useSet -> [Cache.subscript]` (resolution fine) but `Cache.subscript` carried no
+effect (the setter body's Fs never landed). NOTE the boundary: `newValue` as an ARG to an already-resolved
+call (`UserDefaults.standard.set(newValue,…)`, `save(newValue)`) already worked — the common effectful-setter
+patterns; the hole is the *receiver* case (`newValue.effectfulMethod()`).
+
+THE WHY: `newValue` appeared NOWHERE in the engine source — the accessor units (DeclCollector) never seeded
+the setter's implicit value param into `FnInfo.params` (the name→type map that lets CallCollector resolve a
+receiver's member calls). Regular function params get typed there (`info.params[pname] = tn`); the synthetic
+`newValue` did not.
+
+THE FIX (`DeclCollector.swift`, both the var-accessor and subscript sites): for a set/willSet body seed
+`params["newValue"] = <property/subscript element type>` (didSet → `oldValue`); honor a renamed param
+(`set(v)`). Type from the binding's `typeAnnotation` / the subscript's `returnClause`; nil (inferred type)
+→ skip. Verified: subscript-set / prop-set / named-param / willSet through newValue → `[Fs]`; a pure setter
+stays pure (no fabrication); `==` unchanged.
+
+CROSS-ENGINE: swift-specific by construction — ts/kotlin setters take EXPLICIT (typed) params and rust has
+no property-setter concept, so none has an implicit-untyped-`newValue`. The operator symbol paths (`==`/`+`/
+subscript get) were checked sound in all applicable engines. Gate:
+`DriverResolutionProcessTests.testSetterNewValueIsTypedSoEffectsThroughItResolve`; suite 115 green. Shipped
+in candor-swift 0.8.8 (⚠). This is the THIRD swift accessor-vein find in a row (R22 inherited accessors, R23
+setter newValue) — the accessor surface is where swift's silent-pure risk concentrated; both are now gated.
