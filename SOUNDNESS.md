@@ -153,8 +153,9 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
    recall 23 sound. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
    just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
    diversity.*
-3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-11: **8 open (R2–R8, R28), all
-   low/v.low; 0 med+** (R30 fixed candor-scan 0.8.8) (R24–R27, R29 opened + FIXED same day; R28 conditional-conformance-on-stdlib open, niche). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
+3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-11: **7 open (R2–R8), all
+   low/v.low; 0 med+** — and every one is a FUNDAMENTAL syntactic limit (accepted flood-vs-precision
+   tradeoffs). **Zero FIXABLE silent residuals remain**: the whole R22–R31 wave + R28 are closed+gated (R24–R27, R29 opened + FIXED same day; R28 conditional-conformance-on-stdlib open, niche). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
    register and the LOG. Target: 0 med+; lows documented-accepted.*
 4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): FIVE find
    eras so far — the 5th is the **swift-resolution era** (2026-07-10, autonomous): the syntactic swift engine's

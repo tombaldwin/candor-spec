@@ -732,3 +732,27 @@ callgraph edges, not a lossy matcher). Fix (2 lines): after building `type_to_tr
 `local_types` — every type with a local trait impl IS local. Verified: `use_named`/`use_s` → Fs; an OVERRIDE
 (`impl Logger for Quiet { fn flush(&self){} }`) stays pure (the override wins, the default is not also
 charged — no fabrication). Gated; 77 lib + 37 cli green. candor-scan 0.8.8. Open SILENT residuals 9 → 8.
+
+### 2026-07-11 — swift conditional conformance on a stdlib collection (R28, fixed) — LAST fixable residual
+
+The one fixable-silent residual left from the swift-resolution era, now closed (Tom: "no question over making
+fixes, even niche ones" — niche-ness is never a defer reason). `extension Array: Saveable where Element:
+Saveable { func persist() { forEach { $0.persist() } } }` reached via `xs.persist()` read silent-pure — TWO
+coupled gaps, isolated by sub-probes (a `directArrayPersist` with an EXPLICIT `xs.forEach` already worked, so
+the element-closure dispatch itself was fine):
+1. **the array-receiver edge**: `xs.persist()` (xs: [Item]) didn't reach `Array.persist`. rootOf(xs) returns
+   the identifier ("xs", not a type), so no branch fired. Fix: an array-receiver branch edging to the local
+   `Array.<member>` extension unit — via `propertyEdges` (a soft resolveQual edge) NOT a typed call, so a std
+   method (`xs.forEach`, no `Array.forEach` unit) drops SILENTLY (a typed call would have disclosed a spurious
+   Unknown — caught by the directArrayPersist control gaining `[Fs, Unknown]` mid-fix).
+2. **the self-element dispatch**: inside `Array.persist`, `forEach { $0.persist() }` is a BARE (implicit-self)
+   iterator, so `elementTypeOf(base)` never ran and `$0` stayed untyped. Fix: capture the extension's
+   `where Element: P` bound (`FnInfo.selfElementType`, via a `selfElementStack` parallel to `typeStack`), and
+   type a bare-iterator's `$0` as it — `$0: Saveable` then dispatches via the protocol CHA.
+Controls: a PURE conditional conformance stays pure; a std array method charges precisely (no Unknown). Full
+suite 119 green. candor-swift 0.8.10.
+
+**MILESTONE:** R28 was the LAST FIXABLE silent-under-report residual. Every fixable silent hole found this
+era (R22–R27, R29 swift; R30, R31 rust-scan; R28) is now closed + gated. The 7 remaining open SILENT
+residuals (R2–R8) are all FUNDAMENTAL syntactic limits — accepted flood-vs-precision tradeoffs, not
+resolution bugs. The fixable-silent count is ZERO.
