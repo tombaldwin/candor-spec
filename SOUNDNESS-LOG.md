@@ -491,3 +491,38 @@ zero-coverage-gate-list invariant (TESTING.md §6) is now the standing guard.
 
 *Correction (appended): agents' final coverage measure in the wave was **96.5%**, not the 90% interim
 figure recorded above.*
+
+### 2026-07-10 — swift inherited property-accessor vein (R22, silent → CLOSED)
+
+A fresh adversarial round on a seam NOT on the scorecard: **effectful property accessors accessed via a
+subclass**. candor already charges an OWN-class computed getter / `didSet`-`willSet` observer / subscript
+(the 2026-earlier "property-arrow hole, Swift edition" fix — `Base.payload` reads Fs correctly). The probe
+pushed on INHERITANCE.
+
+THE FIND (candor-swift, SILENT, medium): an effectful accessor whose body lives on a **superclass** read
+silent-pure when reached through a subclass — `viaInherited(d: Derived) { d.payload }` where `payload`'s
+getter is on `Base`; the `didSet` edition (`s.name = "y"` on a subclass, observer on `Base`); and the
+two-level case (`Leaf: Mid: Base`). All three read PURE. The controls stayed correct: an inherited METHOD
+(`d.fetch()`) WAS charged, and access via the base static type (`b.payload`) WAS charged.
+
+THE WHY: property-edge resolution (Driver, `cc.propertyEdges.compactMap { resolveQual($0) }`) matched only
+the accessed type's OWN `Type.member` accessor unit. The METHOD-call path already climbs `supertypesOf`
+(the protocol-extension-default / inherited-into-project logic) — but the property-edge path never did. So
+methods climbed, property accessors did not: the exact R18 (inherited-into-project) vein, property edition.
+
+THE FIX (`Driver.swift`): for each property edge, if the own-type key doesn't resolve, climb `supertypesOf`
+(transitive — the inverse of the transitively-expanded `subtypesOf`, so two-level resolves in one loop) and
+edge to any `<sup>.<member>` accessor unit. An override on the subclass still wins (its own unit resolves
+first via the `if let t = resolveQual(pe)` branch), so nothing is fabricated; a member no supertype defines
+edges nothing; a pure inherited property stays pure. Verified: `viaInherited`/`viaTwoLevel`/
+`viaInheritedDidSet` → Fs; the method + base-type controls unchanged; pure control omitted.
+
+CROSS-ENGINE (the §3 shared-blindness check — the dangerous case): candor-**ts** and **java** were probed
+with the same inherited-getter shape and are SOUND (both climb for property accessors). So this is
+swift-specific, NOT a shared blind spot — no family sweep needed.
+
+GATE: `DriverResolutionProcessTests.testInheritedPropertyAccessorEffectsClimbTheHierarchy` (a twin: three
+inherited-accessor forms → Fs, the inherited-method control → Fs, a pure inherited property → omitted/no
+fabrication). Full suite 114 green. Shipped in candor-swift 0.8.7 (⚠ report-affecting). Find-rate: 1 this
+round — the seam-inheritance frontier re-opened the count, as §1 predicts (methods were covered; the
+accessor edition of the same climb was not).
