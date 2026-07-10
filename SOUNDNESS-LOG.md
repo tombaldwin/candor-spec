@@ -634,3 +634,26 @@ via `$`/keypath stays pure; `@dynamicMemberLookup` still discloses Unknown (soun
 across five findings — own-property (earlier), R22 inherited accessors, R23 setter-newValue, R24 projected,
 R25 keypath — every access path onto a property/subscript/observer accessor unit now edges. Open SILENT
 residuals back to 7 (R2–R8, syntactic-limit lows); 0 med+.
+
+### 2026-07-10 — swift generic-constrained dispatch: where-clause + type-level bounds (R26, R27, fixed)
+
+After the accessor vein drained, the next non-accessor seam: an effect behind a method reached through a
+GENERIC type-parameter constraint. candor already types a value param `x: T` by its bound (`<T: P>` →
+dispatch like a `P`-typed param, via `genericBounds`), so `func persist<T: Saver>(_ x: T) { x.save() }` and
+the associated-type form `func pull<S: Source>(_ s: S) { s.fetch() }` were SOUND. Two forms were not:
+
+- **`where T: P`** (`func f<T>(_ x: T) where T: P { x.method() }`) → PURE. Only the inline `<T: P>` clause
+  fed `genericBounds`; the `where`-clause conformance requirements were never read. **R26.**
+- **type-level bound** (`struct Pipe<T: Saver> { let item: T; func run() { item.save() } }`) → PURE. A
+  discriminating probe showed a plain protocol-typed field DOES dispatch (`struct Box { let s: Saver } →
+  s.save()` = Fs) — so the only gap was that the field `item: T` wasn't resolved to its bound `Saver`. **R27.**
+
+THE FIX (`DeclCollector`): (R26) also collect conformance requirements from the function/init
+`genericWhereClause` into `genericBounds`. (R27) record TYPE-level generic bounds via a new
+`recordTypeGenerics` on struct/class/enum/actor decls (both the `<T: P>` clause and a type-level
+`where T: P`), and resolve a stored field typed as such a param to its bound — then the existing
+protocol-typed-field dispatch fires with no further change. Controls hold: an unconstrained generic and a
+bounded generic with NO dispatched call stay pure (no fabrication); the inline-bound and associated-type
+forms are unregressed. Gate: `testGenericConstrainedDispatchWhereClauseAndTypeLevelBounds`; suite 117 green.
+Folded into candor-swift 0.8.9 (⚠). swift-specific (the generic-bound → protocol-dispatch modelling is a
+candor-swift resolution path). Open SILENT residuals stay 7 (R2–R8); R26/R27 opened + fixed same session.
