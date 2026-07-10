@@ -690,3 +690,29 @@ accessor + generic veins drained (R22–R27, R29), the non-accessor seams probed
 concurrency, opaque/existential, method refs, autoclosure, indirect enum, nested fn, enum switch — 8 seams)
 returned 0 cardinal sins, with only R28 (conditional conformance on a stdlib type, niche) left open. That
 is convergence for this era — not proof, but the fresh-seam find-rate trending toward zero as §1 predicts.
+
+### 2026-07-10 — cross-engine sweep (autonomous): candor-ts sound, candor-scan R31 fixed / R30 open
+
+Pivoted the autonomous sweep to the OTHER syntactic engines (the swift finds were swift-specific — worth
+checking whether ts/rust-scan share the class).
+
+- **candor-ts**: probed the swift-analog seams — generic-constraint dispatch (`<T extends Saver>`), a
+  generic-typed class field reaching a method (the R27 analog), a setter using its param, index-signature
+  access. ALL SOUND (index access discloses Unknown). candor-ts's resolver is more complete than swift's
+  here — 0-find.
+- **candor-scan (rust)**: where-clause bound, trait-object (`&dyn`), and inline generic bound all SOUND
+  (rust-scan handles the where-clause swift needed R26 for). Two finds:
+  - **R31 (FIXED, candor-scan 0.8.7)** — a bounded-generic struct field (`Pipe<T: Saver>{item:T}` →
+    `self.item.save()`) read pure: field types were resolved with an EMPTY bounds map (`decls.rs` passed
+    `&no_generics`). Fix: `generic_bounds_of_generics(&s.generics)` (refactored to take `&syn::Generics`,
+    inline + where) seeds the field trait-leaf resolution. The swift R27 analog, different codebase. Gated;
+    77 lib + 36 cli green; no fabrication on an unconstrained field.
+  - **R30 (OPEN, SILENT low-med)** — a trait DEFAULT method reached via an empty `impl Trait for T {}`:
+    the default body IS collected (`Trait::method` unit carries the effect) but a concrete receiver with no
+    own method doesn't fall back to its traits' defaults. Common idiom; needs a type→traits index + a
+    resolver fallback (a larger change in candor-scan's core dispatch — recorded with a plan rather than
+    fixed mid-sweep in an unfamiliar-to-this-session engine without running the full corpus differential).
+
+Cross-engine picture: the swift accessor/dispatch vein is largely swift-specific; ts is clean; rust-scan
+shares only the generic-field sub-vein (now fixed) and has its own trait-default gap (R30). Open SILENT
+residuals 8 → 9.
