@@ -1261,6 +1261,44 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
+# PART 12d — GATE AUTO-DISCLOSURE differential (candor-scan 0.8.9 / java 0.8.15 / ts 0.8.17 / swift 0.8.16):
+# a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
+# automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
+# the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
+# AND prints `<fn> → add deny Unknown domain` for the unverified layer. Four-way, leaf-normalized. Guards
+# against one engine's gate going silent on the gap while another discloses it.
+# ====================================================================================================
+"$SCAN" "$W/unv/rust" --out "$W/gd_rust" --policy "$UNVPOL" > /dev/null 2> "$W/gd_rust.err"
+java -jar "$JAR" "$W/unvjout" --policy "$UNVPOL" > /dev/null 2> "$W/gd_java.err"
+GDTS=""; [ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$W/unv/ts" --out "$W/gd_ts" --policy "$UNVPOL" > /dev/null 2> "$W/gd_ts.err"; GDTS=1; }
+GDSW=""; [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { env -u CANDOR_CONFIG "$SW_BIN" "$W/unv/swift" --out "$W/gd_sw" --policy "$UNVPOL" > /dev/null 2> "$W/gd_sw.err"; GDSW=1; }
+python3 - "$W/gd_rust.err" "$W/gd_java.err" "${GDTS:+$W/gd_ts.err}" "${GDSW:+$W/gd_sw.err}" <<'PY' || rc=1
+import re, sys
+# Each engine's disclosure note carries lines of the form:  `<fn>`  → add  `<upgrade>`
+PAT = re.compile(r"`([^`]+)`\s*→\s*add\s*`([^`]+)`")
+def holes(path):
+    if not path: return None
+    txt = open(path, encoding="utf-8", errors="replace").read()
+    # leaf-normalize the fn (split on both separators); the upgrade is engine-independent
+    out = []
+    for fn, up in PAT.findall(txt):
+        leaf = fn.replace("::", ".").split(".")[-1]
+        out.append((leaf, up.strip()))
+    return sorted(out)
+argv = sys.argv[1:]
+rv, jv = holes(argv[0]), holes(argv[1])
+tv = holes(argv[2]) if len(argv) > 2 else None
+sv = holes(argv[3]) if len(argv) > 3 else None
+print("[12d] GATE AUTO-DISCLOSURE differential  (a plain `--policy` scan discloses the same holes as `unverified`)")
+for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("candor-swift", sv)]:
+    if v is not None: print(f"  {n:12s} note-holes={v}")
+found = bool(rv) and all(v == rv for v in (jv, tv, sv) if v is not None)  # a hole is disclosed and all agree
+print("  -> " + ("MATCH — every engine's gate auto-discloses the same unverified-purity hole + upgrade"
+                 if found else "DIVERGE — an engine's gate went silent on the provable-purity gap"))
+sys.exit(0 if found else 1)
+PY
+
+# ====================================================================================================
 # PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
 # TARGET's ancestors supplies the policy → the gate fires (exit 1) with no flag and no env; (b) the
