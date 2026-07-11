@@ -17,19 +17,47 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.8** — all four code engines declare `0.8`; the floor is conformance-pinned. How versions
+**Version 0.9** — all code engines declare `0.9`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ markers through this document tag each surface with the rung that introduced
+below. The ⟨0.9⟩/⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ markers through this document tag each surface with the rung that introduced
 it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last, so an
-older-version consumer that ignores the newer optional fields is unaffected.
+older-version consumer that ignores the newer optional fields is unaffected. **0.9 is a pinned-tool-surface
+rung**: it adds no report-schema or verdict change (a 0.8 report and a 0.8 gate verdict are byte-identical
+under 0.9), but promotes the remedial tool surface — `fix`/`fix-gate`, `unverified`, and the gate's
+provable-purity auto-disclosure — into the contract's pinned surfaces (§3.1/§3.3), so a 0.9-conformant engine
+MUST carry them. See the [tier note](#conformance-tiers) for why that is a contract bump and not merely a patch.
 
 The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the
 **pinned tool surfaces** (the §3.1 query shapes, the §3.3 command-line surface, the §6.2 policy grammar) —
 that a conformant implementation declares it implements (the envelope's `spec`). It is
 distinct from an engine's *build id* (a git hash, §2.1) and from its *release semver*. An engine's
-release **major.minor tracks the spec it implements** — `candor-java 0.8.x` declares spec `0.8`, a sibling
-still on the floor declares `0.7` — with
+release **major.minor tracks the spec it implements** — `candor-java 0.9.x` declares spec `0.9`, a sibling
+still on the previous floor declares `0.8` — with
 the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
+
+### Conformance tiers
+
+The contract has two tiers, and they carry different stakes — the distinction is what decides whether a
+change is a spec bump or a patch:
+
+- **Tier 1 — the interop floor.** The report envelope and schema, the effect vocabulary, the `Unknown`
+  trust marker, and the gate **verdict** (`--gate-json` `ok` + the `{rule, fn, effects}` set and the exit
+  code). An engine that diverges here produces output another engine or a consumer **cannot trust** —
+  a report that means something different, a verdict that disagrees. Cross-engine agreement on tier 1 is
+  what "the gate means the same thing in every language" rests on.
+- **Tier 2 — the pinned tool surfaces.** The §3.1 query shapes and the §3.3 command-line surface —
+  `whatif`, `fix`/`fix-gate`, `unverified`, `rewire`, `--agents`, and the advisory gate disclosures. An
+  engine missing or diverging on a tier-2 surface is **non-conformant to the rung**, but its reports and
+  verdicts are still trustworthy — a consumer just can't reach for that tool there.
+
+Both tiers are part of the `spec` a conformant engine declares, and both are conformance-pinned. The
+version rule follows from the tiers: a **tier-1 breaking** change bumps the major and moves lockstep;
+a **tier-1 additive** change (a new optional field/code) or a **tier-2 addition promoted to required**
+bumps the minor — the floor ratchets and every engine implements it. A patch changes neither tier's
+contract (a bug fix, an internal refactor, prose). **0.9 is exactly a tier-2 promotion**: the remedial
+surface (`fix`/`fix-gate`, `unverified`, the auto-disclosure) moves from shipped-but-not-required into the
+pinned §3.1/§3.3 surface, with tier 1 untouched — so a 0.8 report/verdict is byte-identical under 0.9.
+The conformance suite tags each PART with the tier it pins.
 
 ## The family, named precisely
 
@@ -149,7 +177,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.8" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.9" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -370,7 +398,7 @@ The header has THREE fields, on two distinct axes. Keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain`: the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec`: the **candor-spec contract version** this engine implements (`"0.8"`). This is the version
+- `spec`: the **candor-spec contract version** this engine implements (`"0.9"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version; they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -1079,8 +1107,11 @@ A **sound engine** conforms to candor-spec if it:
 5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
    command-line surface** of §3.3: `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
    `--version`/`-V` carrying the spec version, `--help`/`-h`, `--agents` (the embedded agent
-   contract, item 11), and, for an engine declaring `spec ≥ 0.8`, `--gate-json` (the structured
-   gate verdict), with flag names and help wording consistent across engines;
+   contract, item 11), for an engine declaring `spec ≥ 0.8`, `--gate-json` (the structured
+   gate verdict), and, for an engine declaring `spec ≥ 0.9`, the **remedial tool surface** —
+   `fix`/`fix-gate` and `unverified` (§3.1/§3.3) plus the gate's provable-purity auto-disclosure (a
+   verdict-preserving advisory note on a `--policy` scan) — with flag names and help wording consistent
+   across engines;
 6. uses the §1 vocabulary and §6 codes where they apply, and, if it enforces any policy mode, parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. documents, plainly and in its own docs, what it cannot see;
@@ -1094,8 +1125,10 @@ It SHOULD additionally (items 9–13):
 10. expose the read-only queries (§3.1) and the pre-edit/structural tools (§3.2) under
     **cross-language-consistent** names and shapes, so an agent uses any implementation's output
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
-    blast radius, the `rewire` verdict, the `§6.2` policy-DSL parse, the §2 tables extraction, the
-    item-14 κ-ledger disclosure, and the read-only queries' JSON shapes + name-match ladder;
+    blast radius, the `fix`/`fix-gate` remedy (PART 12b), the `unverified` provable-purity disclosure and
+    its gate auto-disclosure (PARTs 12c/12d), the `rewire` verdict, the `§6.2` policy-DSL parse, the §2
+    tables extraction, the item-14 κ-ledger disclosure, and the read-only queries' JSON shapes +
+    name-match ladder;
 11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
     consumes this implementation's reports; the per-language counterpart of this repo's
     language-agnostic AGENTS.md), and a `PROVE-IT.md` (a runnable self-experiment an adopter's own
@@ -1182,6 +1215,32 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.9 (all code engines declare `0.9`; conformance-pinned)** —
+  additive, wire-compatible with 0.8: a **tier-2 (pinned-tool-surface) rung** (see *[Conformance
+  tiers](#conformance-tiers)*). No report-schema, effect-vocabulary, or verdict change — a 0.8 report and a
+  0.8 `--gate-json` verdict are byte-identical under 0.9. What the rung promotes into the pinned §3.1/§3.3
+  surface is the **remedial tool loop**, the inverse of the pre-edit `whatif`:
+  - §3.1/§3.3 **`fix` / `fix-gate`** — given a boundary crossing, compute the *fix*: the direct effect
+    site, the pure span that threads the value through the forbidden layer, and the **hoist frontier** (the
+    nearest allowed-layer caller the effect can move to), plus `hoistHigher` (allowed ancestors that also
+    route it) and a `cleanHoist=false` **sandwiched** flag when a forbidden function calls back into the
+    frontier. `fix-gate` is the gate-shaped form. Reference impl: candor-query, then candor-java and
+    candor-ts (candor-swift computes the plan; its editor code-action rides the pending whatif action).
+    Conformance PART 12b pins the four-way remedy (leaf-normalized).
+  - §3.1/§3.3 **`unverified`** — the provable-purity disclosure: a `pure`/`deny E` layer PASSES a function
+    that is `Unknown`, but that pass is *unverified* (the Unknown could hide the very effect the rule
+    forbids — the classic fn/closure-injected port). `unverified` names each such hole and the
+    `deny <E> Unknown <scope>` upgrade that makes the layer provably clean. Advisory (exit 0); `--strict` →
+    exit 1 so CI can require provable purity. All four engines; conformance PART 12c.
+  - §3.3 the **gate's provable-purity auto-disclosure** — a `--policy` scan emits the `unverified` holes
+    automatically as an advisory stderr note after the verdict, so an author learns their `pure` layer
+    isn't *provably* pure without knowing the subcommand exists. **Verdict-preserving**: a note, never a
+    violation — the exit code, the gate verdict, and `--gate-json` are untouched (this is why the rung is
+    tier-2, not tier-1). All four engines share ONE hole predicate with `unverified`, so the scan-path and
+    query-path disclosures cannot drift; conformance PART 12d pins their agreement.
+  - **Conformance tiering recorded** — each conformance PART is now tagged tier-1 (interop floor) or
+    tier-2 (tool-surface parity), making the next version trigger unambiguous (see *Conformance tiers*).
+  - The candor-agents domain engine (§4) rides the rung behind the code engines, declaring `0.9`.
 - **0.8 (all four engines declare `0.8`; conformance-pinned)** —
   additive, wire-compatible with 0.7. The first version to ride the **ladder** (see *Versioning policy*): a
   minor rung led by the reference engine (candor-java), then implemented by candor-scan, candor-ts and

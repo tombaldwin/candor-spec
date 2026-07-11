@@ -7,6 +7,16 @@
 # MACHINE-CHECKED guarantee that the same effect contract AND the same `deny`/`pure` gate mean the same
 # thing in each. A DIVERGE row is a bug in one engine.
 #
+# TIER TAGS. Each PART header carries [TIER 1] or [TIER 2] (SPEC §"Conformance tiers"). TIER 1 pins the
+# INTEROP FLOOR — the report schema, effect vocabulary, the Unknown trust marker, the policy VERDICT and
+# grammar, the literal surfaces, the κ ledger, config fail-closed sourcing, chaining, and the baseline
+# guard: a divergence here yields output another engine or a consumer CANNOT TRUST. TIER 2 pins the
+# TOOL SURFACES — the read-only query shapes, `rewire`, `fix`/`fix-gate`, `unverified`, and the gate's
+# advisory disclosures: a divergence breaks a TOOL's cross-engine uniformity, but reports and verdicts stay
+# trustworthy. The version trigger follows the tiers (SPEC §Versioning): a tier-1 breaking change bumps the
+# major lockstep; a tier-1 additive change or a tier-2 addition promoted to required bumps the minor (0.9
+# was exactly a tier-2 promotion — `fix`/`unverified`/the disclosure became required, tier 1 untouched).
+#
 # Usage:   bash conformance/run.sh
 # Repos are assumed siblings of candor-spec; override with CANDOR=… CANDOR_JAVA=… . Pre-built binaries via
 # CANDOR_SCAN_BIN=… CANDOR_QUERY_BIN=… CANDOR_JAVA_JAR=… skip the build. Exit 0 iff everything matches.
@@ -73,7 +83,7 @@ fi
 rc=0
 
 # ====================================================================================================
-# PART 1 — effect-set differential (each engine vs the spec, and vs each other)
+# PART 1 — effect-set differential (each engine vs the spec, and vs each other)   [TIER 1]
 # ====================================================================================================
 cp -r "$HERE/rust" "$W/rust"
 "$SCAN" "$W/rust" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the rust fixture"; exit 2; }
@@ -124,7 +134,7 @@ print("  -> " + ("MATCH — both sidecars are complete" if ok else "INCOMPLETE")
 sys.exit(0 if ok else 1)
 PY
 
-# PART 1c — HONESTY invariant (SPEC §4 trust contract). candor's one dangerous lie is the silent UNDER-
+# PART 1c — HONESTY invariant (SPEC §4 trust contract). candor's one dangerous lie is the silent UNDER-   [TIER 1]
 # report (pure-when-it-isn't), and its mitigation is that UNCERTAINTY PROPAGATES caller-ward: a function
 # may look certain (no Unknown / no disclosure) only if everything it transitively reaches is certain too.
 # check_honesty.py asserts that over each engine's OWN report (callgraph-driven, so pure fns are covered).
@@ -140,7 +150,7 @@ honesty "$W/java.json" || rc=1
 [ -n "$SW_OK" ] && { honesty "$SW_REPORT" || rc=1; }
 
 # ====================================================================================================
-# PART 2 — policy-verdict differential: the same `deny Net api` policy, the same `whatif`, same verdict?
+# PART 2 — policy-verdict differential: the same `deny Net api` policy, the same `whatif`, same verdict?   [TIER 1]
 # This is the moat a per-language ruleset can't offer: the ENFORCEMENT means the same thing in each engine.
 # ====================================================================================================
 cp -r "$HERE/policy" "$W/policy"
@@ -170,7 +180,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 3 — rewire-verdict differential: a function drops a call (de-wiring). Do both engines flag the
+# PART 3 — rewire-verdict differential: a function drops a call (de-wiring). Do both engines flag the   [TIER 2]
 # SAME dropped edge? Completes cross-impl parity for the newest commands (effects + whatif + rewire).
 # ====================================================================================================
 cp -r "$HERE/rewire" "$W/rewire"
@@ -200,7 +210,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 4 — policy-DSL grammar differential: parse the SAME CANDOR_POLICY battery with both engines and
+# PART 4 — policy-DSL grammar differential: parse the SAME CANDOR_POLICY battery with both engines and   [TIER 1]
 # assert identical parsed rule sets. The executable form of SPEC §6.2 — the gate's grammar
 # (deny/pure/allow/forbid, the Unknown-deny, scope/literal matching) meaning the same thing in each.
 # A per-language ruleset has no shared grammar to diff; candor's single policy file MUST parse alike.
@@ -262,7 +272,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 4b — tables-extraction differential: SPEC §2 pins the SQL `tables` extraction token-for-token;
+# PART 4b — tables-extraction differential: SPEC §2 pins the SQL `tables` extraction token-for-token;   [TIER 1]
 # tables/vectors.json is its executable form. Each vector is embedded as a string literal in a
 # per-language Db-effect fixture and the three reports' `tables` fields must match the expectation —
 # two engines extracting different tables from the same SQL would split the AS-EFF-008 verdict.
@@ -334,7 +344,7 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
-# PART 4d — Exec-head differential (SPEC §4 ⟨0.5⟩): a literal that appears only as a subprocess ARGUMENT
+# PART 4d — Exec-head differential (SPEC §4 ⟨0.5⟩): a literal that appears only as a subprocess ARGUMENT   [TIER 1]
 # is DATA, not the command head. `spawn(dynamicTool, "curl")` must NOT populate `cmds` with "curl" in ANY
 # engine — else an `allow Exec curl` gate spuriously certifies a dynamic-head spawn (the verdict-flip the
 # adversarial review found in candor-java). Pins every engine: a dynamic head yields NO `cmds` literal.
@@ -381,7 +391,7 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
-# PART 4e — Net host[:port] differential (SPEC §2): every engine must include the statically-known PORT
+# PART 4e — Net host[:port] differential (SPEC §2): every engine must include the statically-known PORT   [TIER 1]
 # in the `hosts` surface, not just the host. candor-java once dropped the literal port of a two-arg
 # Socket(host, 443) while keeping it for a URL — self-inconsistent and divergent from candor-scan/ts
 # (adversarial coverage-gap review, GAP2); candor-swift had its own host:port divergence on NWConnection.
@@ -438,7 +448,7 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
-# PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted
+# PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("κ doesn't know …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
 # what's pinned is the disclosure behavior, not the string values.
@@ -519,7 +529,7 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the
+# PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the   [TIER 2]
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
 # query (SPEC §3.1). The core graph queries are candor's value surface; their shape must not drift.
@@ -699,7 +709,7 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written
+# PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written   [TIER 1]
 # from the spec documents alone; here it answers the SAME Part-1 oracle as the Rust and JVM engines.
 # Optional: skips (loudly) when the engine or node isn't available, so the suite never blocks on it.
 # Locally, a sibling ../candor-ts checkout is used; in CI the workflow checks it out.
@@ -730,7 +740,7 @@ else
 fi
 
 # ====================================================================================================
-# PART 6c — the FOURTH engine (candor-swift): the derivability proof, run live (same Part-1 oracle).
+# PART 6c — the FOURTH engine (candor-swift): the derivability proof, run live (same Part-1 oracle).   [TIER 1]
 # ====================================================================================================
 if [ -n "$SW_PRESENT" ]; then
   if [ -n "$SW_OK" ]; then
@@ -945,7 +955,7 @@ echo
   python3 "$HERE/frontier_differential.py"
 ) || { echo "dispatch-frontier differential: FAILED"; rc=1; }
 
-# PART 10 — unknownWhy VOCABULARY (SPEC §4 ⟨0.7⟩). Every `unknownWhy` entry any engine emits on the
+# PART 10 — unknownWhy VOCABULARY (SPEC §4 ⟨0.7⟩). Every `unknownWhy` entry any engine emits on the   [TIER 1]
 # shared fixtures MUST use one of the four canonical kinds (reflect/native/dispatch/callback), and every
 # `dispatch:` entry MUST carry the normative `owner.member` detail (a dot in the detail) — that uniform
 # shape is what lets the 0.7 dispatch-frontier resolve identically across engines. A non-canonical prefix
@@ -995,7 +1005,7 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
-# PART 11 — CONTAINMENT differential (SPEC §6.1 boundary-effect dispersion + AS-EFF-010 ratchet). The
+# PART 11 — CONTAINMENT differential (SPEC §6.1 boundary-effect dispersion + AS-EFF-010 ratchet). The   [TIER 1]
 # `containment` query is the architecture-drift gate's signature: which layer a boundary effect lives in,
 # how contained it is, and a ratchet that FAILS when an effect leaks into a new layer. Two engines
 # implement it INDEPENDENTLY — candor-java (file-based) and candor-query/Rust (prefix-based, also the path
@@ -1051,7 +1061,7 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 12 — GATE-VERDICT (SPEC §3.3 ⟨0.8⟩): `--gate-json` re-emits the policy verdict as machine JSON,
+# PART 12 — GATE-VERDICT (SPEC §3.3 ⟨0.8⟩): `--gate-json` re-emits the policy verdict as machine JSON,   [TIER 1]
 # from the SAME check that sets the exit code. LADDER-AWARE (SPEC §"Versioning policy"): exercised on
 # every engine that DECLARES spec ≥ 0.8; an engine still on the 0.7 FLOOR is disclosed, not failed — it
 # joins when it implements --gate-json and reaches 0.8, at which point this becomes a full differential.
@@ -1081,7 +1091,7 @@ def norm(path):
     v = sorted((x["rule"], leaf(x["fn"]), tuple(sorted(x.get("effects", []))))
                for x in d["violations"] if x["rule"] != "AS-EFF-007")
     return d.get("spec"), bool(d["ok"]), v
-print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — verdict AND exit code agree across every 0.8 engine)")
+print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — verdict AND exit code agree across every declaring engine)")
 EXPECT = (False, [("AS-EFF-006", "save", ("Fs",)),    # deny Fs — the denied intersection
                   ("AS-EFF-008", "save", ("Fs",))])   # allow Fs, param path → uncertifiable (fail-closed); pure `add` absent
 fails = []
@@ -1104,13 +1114,13 @@ for n, stem, required in engines:
         fails.append(f"{n}: verdict ok={ok} DISAGREES with exit {ex} — the §3.3 MUST")
 for f in fails:
     print(f"     FAIL {f}")
-print("  -> " + ("MATCH — every 0.8 engine emits the same faithful verdict AND exit (ok:false · 006+008 on `save` · {Fs} · exit 1)"
+print("  -> " + ("MATCH — every declaring engine emits the same faithful verdict AND exit (ok:false · 006+008 on `save` · {Fs} · exit 1)"
                  if not fails else "DIVERGE — see FAIL lines"))
 sys.exit(0 if not fails else 1)
 PY
 
 # ====================================================================================================
-# PART 12b — FIX-GATE differential (integrations/FIX-SPEC.md): the remedy for a boundary crossing means the
+# PART 12b — FIX-GATE differential (integrations/FIX-SPEC.md): the remedy for a boundary crossing means the   [TIER 2]
 # same thing in every engine. `whatif`/`--gate-json` say a boundary was crossed; `fix-gate` says WHERE the
 # effect belongs + the hoist refactor. The same orderflow (api→domain→infra, all Net, the leaf direct) under
 # `deny Net domain` MUST yield the same cut in each engine: same direct site, same pure span, same hoist
@@ -1230,7 +1240,7 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 12c — UNVERIFIED differential (integrations/FIX-SPEC.md, eval/fixloop/DISPATCH-NOTE.md): the provable-
+# PART 12c — UNVERIFIED differential (integrations/FIX-SPEC.md, eval/fixloop/DISPATCH-NOTE.md): the provable-   [TIER 2]
 # purity disclosure means the same thing in every engine. `domain::price` calls through a FUNCTION VALUE →
 # Unknown; `pure domain` PASSES it, but its purity is UNVERIFIED. Every engine's `unverified` MUST flag the
 # same function with the same `deny Unknown domain` upgrade (leaf-normalized). Four-way.
@@ -1261,7 +1271,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (candor-scan 0.8.9 / java 0.8.15 / ts 0.8.17 / swift 0.8.16):
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.9 — candor-scan/java/ts/swift 0.9.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
@@ -1299,7 +1309,7 @@ sys.exit(0 if found else 1)
 PY
 
 # ====================================================================================================
-# PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
+# PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing   [TIER 1]
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
 # TARGET's ancestors supplies the policy → the gate fires (exit 1) with no flag and no env; (b) the
 # CANDOR_POLICY env OVERRIDES the config (a passing policy wins → exit 0); (c) a set-but-unusable
@@ -1340,7 +1350,7 @@ else
 fi
 
 # ====================================================================================================
-# PART 14 — CHAINING differential (SPEC §2 `CANDOR_DEPS` — 0.4 MUSTs, previously unpinned): the same
+# PART 14 — CHAINING differential (SPEC §2 `CANDOR_DEPS` — 0.4 MUSTs, previously unpinned): the same   [TIER 1]
 # dep+app pair per language, scanned app-only with the dep's report chained. Three pinned behaviors:
 # (a) JOIN-INHERIT — the app fn inherits the dep fn's effects AND its literal surface (Net + host);
 # (b) STALE-DOWNGRADE — a dep report whose producing version was doctored is not trusted: the call
@@ -1459,7 +1469,7 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
-# PART 15 — the AS-EFF-005 BASELINE GUARD, four-way (SPEC §7 item 5 + the §2.1 stale-baseline posture).
+# PART 15 — the AS-EFF-005 BASELINE GUARD, four-way (SPEC §7 item 5 + the §2.1 stale-baseline posture).   [TIER 1]
 # All four engines carry the scan-time guard as of 2026-07-10 (java since 0.8.x; scan/ts/swift landed
 # in the doc-review wave — the item-5 MUST is now satisfied, not narrowed). Pinned per engine:
 #   gain      — an existing fn gaining an effect vs a same-build baseline → [AS-EFF-005] + exit 1
@@ -1590,7 +1600,7 @@ else
 fi
 
 # ====================================================================================================
-# PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER
+# PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER   [TIER 1]
 # granularity, incl. NESTED scopes). Previously only the §6.2 GRAMMAR of these rules was differentialed
 # (PART 4 parses them); the applied verdict was pinned for deny/allow only. Per engine:
 #   * an idiomatic unresolved call under `deny Unknown` must FAIL (exit 1);
