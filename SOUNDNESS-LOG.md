@@ -756,3 +756,16 @@ suite 119 green. candor-swift 0.8.10.
 era (R22–R27, R29 swift; R30, R31 rust-scan; R28) is now closed + gated. The 7 remaining open SILENT
 residuals (R2–R8) are all FUNDAMENTAL syntactic limits — accepted flood-vs-precision tradeoffs, not
 resolution bugs. The fixable-silent count is ZERO.
+
+### 2026-07-11 — real-world dogfood of the swift wave (swift-argument-parser)
+
+Validated the R22–R28 swift wave (0.8.7–0.8.10) on REAL third-party code, not just fixtures: candor-swift
+0.8.10 over Apple's swift-argument-parser (an idiom-dense, generic/property-wrapper/Decodable-heavy pure
+arg-parsing library — a hard target). Result: **no fabrication** — a library that touches no Fs/Net/Exec/Db
+reported none; the only concrete effect was **Env (7 fns)**, and it's GROUND-TRUTH CORRECT — the source has
+`getenv(key.rawValue)` in Platform.swift, candor charges `Platform.Environment.subscript` (a SUBSCRIPT
+accessor — the very machinery the wave touched) with `direct:[Env]`, and it propagates transitively to the
+shell-completion detectors that read the environment. The remaining 183 fns are `Unknown`-only — honest
+over-disclosure on genuinely-unresolvable Decodable-synthesis / property-wrapper / generic code (sound; the
+§4 marker, not silence). So the 10-fix wave introduces no fabrication on real code and charges real effects
+correctly. Confidence: the wave is validated beyond fixtures on a real, ground-truth-checked corpus.
