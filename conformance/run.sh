@@ -1230,6 +1230,37 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 12c — UNVERIFIED differential (integrations/FIX-SPEC.md, eval/fixloop/DISPATCH-NOTE.md): the provable-
+# purity disclosure means the same thing in every engine. `domain::price` calls through a FUNCTION VALUE →
+# Unknown; `pure domain` PASSES it, but its purity is UNVERIFIED. Every engine's `unverified` MUST flag the
+# same function with the same `deny Unknown domain` upgrade (leaf-normalized). Four-way.
+# ====================================================================================================
+cp -r "$HERE/unverified" "$W/unv"
+UNVPOL="$W/unv/policy"
+"$SCAN" "$W/unv/rust" >/dev/null 2>&1 && "$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVPOL" 1 > "$W/rust_unv.json" 2>/dev/null
+javac -d "$W/unvjout" $(find "$W/unv/java" -name '*.java') 2>/dev/null && java -jar "$JAR" "$W/unvjout" --json "$W/unvjava.json" >/dev/null 2>&1 && java -jar "$JAR" unverified "$W/unvjava.json" "$UNVPOL" --json > "$W/java_unv.json" 2>/dev/null
+UNVTS=""; [ -n "$TS_OK" ] && node "$TS_DIR/scan.mjs" "$W/unv/ts" "$W/unvts" >/dev/null 2>&1 && node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVPOL" > "$W/ts_unv.json" 2>/dev/null && UNVTS=1
+UNVSW=""; [ -n "$SW_OK" ] && env -u CANDOR_CONFIG "$SW_BIN" "$W/unv/swift" --out "$W/unvsw" >/dev/null 2>&1 && env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVPOL" > "$W/sw_unv.json" 2>/dev/null && UNVSW=1
+python3 - "$W/rust_unv.json" "$W/java_unv.json" "${UNVTS:+$W/ts_unv.json}" "${UNVSW:+$W/sw_unv.json}" <<'PY' || rc=1
+import json, sys
+def norm(path, sep):
+    d = json.load(open(path))
+    # leaf-normalize each hole: (fn leaf, upgrade). The upgrade is engine-independent (deny Unknown domain).
+    return (bool(d["ok"]), sorted((h["fn"].split(sep)[-1], h["upgrade"]) for h in d["unverified"]))
+argv = sys.argv[1:]
+rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
+tv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
+sv = norm(argv[3], ".") if len(argv) > 3 and argv[3] else None
+print("[12c] UNVERIFIED differential  (fn-value port under `pure domain` → a provable-purity hole)")
+for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("candor-swift", sv)]:
+    if v is not None: print(f"  {n:12s} ok={v[0]}  holes={v[1]}")
+match = rv[1] and all(v == rv for v in (jv, tv, sv) if v is not None)  # a hole is found and all agree
+print("  -> " + ("MATCH — every engine discloses the same unverified-purity hole + the same upgrade"
+                 if match else "DIVERGE — the engines disagree on the provable-purity disclosure"))
+sys.exit(0 if match else 1)
+PY
+
+# ====================================================================================================
 # PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
 # TARGET's ancestors supplies the policy → the gate fires (exit 1) with no flag and no env; (b) the
