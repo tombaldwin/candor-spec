@@ -1299,6 +1299,37 @@ print("  -> " + ("MATCH — every engine emits the same sorted multi-effect upgr
 sys.exit(0 if match else 1)
 PY
 
+# 12c-multi — the TIE-BREAK: when TWO in-scope rules both govern the same passing-but-Unknown fn, which one
+# does the disclosure name? Policy `pure domain` THEN `deny Net domain` — the fn passes BOTH (no real effect;
+# no Net) and is Unknown. Every engine must name the FIRST governing rule (parse order) → `deny Unknown domain`,
+# NOT the second (`deny Net Unknown domain`). Pins first-match + iteration order across the fold, so a future
+# one-engine refactor (e.g. splitting pure/deny into separate lists, or break-on-first-in-scope) can't silently
+# disclose a different rule than the other three (max-review finding, 2026-07-11).
+UNVPOLM="$W/unv/policy-multi"
+"$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVPOLM" 1 > "$W/rust_unvm.json" 2>/dev/null
+java -jar "$JAR" unverified "$W/unvjava.json" "$UNVPOLM" --json > "$W/java_unvm.json" 2>/dev/null
+[ -n "$UNVTS" ] && node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVPOLM" > "$W/ts_unvm.json" 2>/dev/null
+[ -n "$UNVSW" ] && env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVPOLM" > "$W/sw_unvm.json" 2>/dev/null
+python3 - "$W/rust_unvm.json" "$W/java_unvm.json" "${UNVTS:+$W/ts_unvm.json}" "${UNVSW:+$W/sw_unvm.json}" <<'PY' || rc=1
+import json, sys
+def norm(path, sep):
+    d = json.load(open(path))
+    return sorted((h["fn"].split(sep)[-1], h["upgrade"]) for h in d["unverified"])
+argv = sys.argv[1:]
+rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
+tv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
+sv = norm(argv[3], ".") if len(argv) > 3 and argv[3] else None
+print("[12c-multi] UNVERIFIED tie-break  (two governing rules `pure domain`+`deny Net domain` → the FIRST wins)")
+for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("candor-swift", sv)]:
+    if v is not None: print(f"  {n:12s} holes={v}")
+# the first governing rule is `pure domain` → upgrade `deny Unknown domain` (NOT the later `deny Net …`)
+want = ("price", "deny Unknown domain")
+match = rv and all(want in v for v in (rv, jv, tv, sv) if v is not None) and all(v == rv for v in (jv, tv, sv) if v is not None)
+print("  -> " + ("MATCH — every engine names the FIRST governing rule (`deny Unknown domain`), same tie-break"
+                 if match else "DIVERGE — the engines disagree on which of two governing rules the disclosure names"))
+sys.exit(0 if match else 1)
+PY
+
 # ====================================================================================================
 # PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.9 — candor-scan/java/ts/swift 0.9.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
