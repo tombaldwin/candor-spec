@@ -33,7 +33,11 @@ that a conformant implementation declares it implements (the envelope's `spec`).
 distinct from an engine's *build id* (a git hash, §2.1) and from its *release semver*. An engine's
 release **major.minor tracks the spec it implements** — `candor-java 0.9.x` declares spec `0.9`, a sibling
 still on the previous floor declares `0.8` — with
-the patch floating per-engine; internal library crates (e.g. `candor-report`) keep their own semver.
+the patch floating per-engine. A candor implementation's **internal library crates** (e.g. the Rust repo's
+`candor-report` schema types and `candor-classify` policy/classifier) MAY keep an independent semver, but
+where they publish to a public registry alongside the engines they SHOULD align to the toolchain version, so
+a registry visitor doesn't read a just-updated internal crate as lagging — they carry no external-consumer
+contract to protect. (The candor-rust crates align to the spec minor as of 0.9.)
 
 ### Conformance tiers
 
