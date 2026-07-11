@@ -1167,6 +1167,39 @@ print("  -> " + ("MATCH — the boundary remedy (site · pure span · hoist targ
 sys.exit(0 if match else 1)
 PY
 
+# 12b, sidecar-ABSENT: the report engines whose §2 report EMBEDS inline `calls` (candor-query, candor-java,
+# candor-swift) must emit the SAME remedy when the `.callgraph.json` sidecar is gone — they fall back to the
+# inline calls. (candor-query never reads the sidecar; java/swift fall back to `calls`.) A regression here is
+# the degenerate empty-graph "no clean hoist" the /code-review caught in java. candor-ts is EXCLUDED on
+# purpose: its report carries no inline `calls` (the sidecar is its only graph), so its fix/fix-gate FAIL LOUD
+# (exit 2) without a sidecar rather than emit a degenerate remedy — asserted separately below.
+rm -f "$W"/fix/rust/.candor/report.*.callgraph.json "$W"/fjava.callgraph.json "$W"/fts.callgraph.json "$W"/fsw.*.callgraph.json 2>/dev/null
+"$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL" 1 > "$W/rust_fix2.json" 2>/dev/null
+java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL" --json > "$W/java_fix2.json" 2>/dev/null
+[ -n "$SW_FIX" ] && env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL" > "$W/sw_fix2.json" 2>/dev/null
+python3 - "$W/rust_fix2.json" "$W/java_fix2.json" "${SW_FIX:+$W/sw_fix2.json}" <<'PY' || rc=1
+import json, sys
+def norm(path, sep):
+    d = json.load(open(path))
+    leaf = lambda xs: sorted(x.split(sep)[-1] for x in xs)
+    return (bool(d["ok"]),
+            sorted((tuple(leaf(r["site"])), tuple(leaf(r["deniedSpan"])), tuple(leaf(r["hoistTo"])),
+                    tuple(leaf(r.get("hoistHigher", []))), r["layer"], bool(r["cleanHoist"]), r["effect"]) for r in d["remedies"]))
+argv = sys.argv[1:]
+rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
+sv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
+print("[12b] FIX-GATE differential, SIDECAR-ABSENT  (inline-`calls` fallback must match the sidecar cut)")
+ok = rv[1] and all(v == rv for v in (jv, sv) if v is not None)  # rv[1] non-empty: a remedy still comes out
+print("  -> " + ("MATCH — the inline-`calls` engines (query/java/swift) emit the identical remedy sidecar-less"
+                 if ok else "DIVERGE — a sidecar-less report gives a different (likely degenerate) remedy in some engine"))
+sys.exit(0 if ok else 1)
+PY
+# candor-ts (sidecar-only graph): fix-gate MUST fail loud (exit 2), never a degenerate "no crossings".
+if [ -n "$TS_FIX" ]; then
+  node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL" >/dev/null 2>&1
+  [ "$?" -eq 2 ] || { echo "  -> DIVERGE — candor-ts fix-gate without a sidecar must exit 2 (fail loud), not compute"; rc=1; }
+fi
+
 # ====================================================================================================
 # PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
