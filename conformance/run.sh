@@ -1270,6 +1270,35 @@ print("  -> " + ("MATCH — every engine discloses the same unverified-purity ho
 sys.exit(0 if match else 1)
 PY
 
+# 12c-deny — the SAME hole under a `deny Net Db domain` rule exercises the OTHER upgrade branch: the
+# multi-effect `deny <E…> Unknown <scope>` form. `pure domain` (above) only pins the empty-effects branch;
+# this pins the effect-list formatting AND its ORDER (every engine sorts → `deny Db Net Unknown domain`),
+# where a drift would otherwise pass unnoticed. Reuses the reports/classes already produced above.
+UNVPOLD="$W/unv/policy-deny"
+"$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVPOLD" 1 > "$W/rust_unvd.json" 2>/dev/null
+java -jar "$JAR" unverified "$W/unvjava.json" "$UNVPOLD" --json > "$W/java_unvd.json" 2>/dev/null
+[ -n "$UNVTS" ] && node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVPOLD" > "$W/ts_unvd.json" 2>/dev/null
+[ -n "$UNVSW" ] && env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVPOLD" > "$W/sw_unvd.json" 2>/dev/null
+python3 - "$W/rust_unvd.json" "$W/java_unvd.json" "${UNVTS:+$W/ts_unvd.json}" "${UNVSW:+$W/sw_unvd.json}" <<'PY' || rc=1
+import json, sys
+def norm(path, sep):
+    d = json.load(open(path))
+    return (bool(d["ok"]), sorted((h["fn"].split(sep)[-1], h["upgrade"]) for h in d["unverified"]))
+argv = sys.argv[1:]
+rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
+tv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
+sv = norm(argv[3], ".") if len(argv) > 3 and argv[3] else None
+print("[12c-deny] UNVERIFIED multi-effect branch  (same hole under `deny Net Db domain` → the `deny <E…> Unknown` upgrade)")
+for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("candor-swift", sv)]:
+    if v is not None: print(f"  {n:12s} ok={v[0]}  holes={v[1]}")
+# the expected upgrade is the SORTED effect list — `deny Db Net Unknown domain` — in EVERY engine
+want = ("price", "deny Db Net Unknown domain")
+match = rv[1] and all(want in v[1] for v in (rv, jv, tv, sv) if v is not None) and all(v == rv for v in (jv, tv, sv) if v is not None)
+print("  -> " + ("MATCH — every engine emits the same sorted multi-effect upgrade `deny Db Net Unknown domain`"
+                 if match else "DIVERGE — the engines disagree on the multi-effect upgrade (effect set or ORDER)"))
+sys.exit(0 if match else 1)
+PY
+
 # ====================================================================================================
 # PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.9 — candor-scan/java/ts/swift 0.9.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
@@ -1305,6 +1334,33 @@ for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("cand
 found = bool(rv) and all(v == rv for v in (jv, tv, sv) if v is not None)  # a hole is disclosed and all agree
 print("  -> " + ("MATCH — every engine's gate auto-discloses the same unverified-purity hole + upgrade"
                  if found else "DIVERGE — an engine's gate went silent on the provable-purity gap"))
+sys.exit(0 if found else 1)
+PY
+
+# 12d-deny — the gate auto-disclosure over the multi-effect branch: a `--policy deny Net Db domain` scan must
+# print the SAME `deny Db Net Unknown domain` upgrade the `unverified` subcommand does (12c-deny), four-way.
+"$SCAN" "$W/unv/rust" --out "$W/gdd_rust" --policy "$UNVPOLD" > /dev/null 2> "$W/gdd_rust.err"
+java -jar "$JAR" "$W/unvjout" --policy "$UNVPOLD" > /dev/null 2> "$W/gdd_java.err"
+[ -n "$GDTS" ] && node "$TS_DIR/scan.mjs" "$W/unv/ts" --out "$W/gdd_ts" --policy "$UNVPOLD" > /dev/null 2> "$W/gdd_ts.err"
+[ -n "$GDSW" ] && env -u CANDOR_CONFIG "$SW_BIN" "$W/unv/swift" --out "$W/gdd_sw" --policy "$UNVPOLD" > /dev/null 2> "$W/gdd_sw.err"
+python3 - "$W/gdd_rust.err" "$W/gdd_java.err" "${GDTS:+$W/gdd_ts.err}" "${GDSW:+$W/gdd_sw.err}" <<'PY' || rc=1
+import re, sys
+PAT = re.compile(r"`([^`]+)`\s*→\s*add\s*`([^`]+)`")
+def holes(path):
+    if not path: return None
+    txt = open(path, encoding="utf-8", errors="replace").read()
+    return sorted((fn.replace("::", ".").split(".")[-1], up.strip()) for fn, up in PAT.findall(txt))
+argv = sys.argv[1:]
+rv, jv = holes(argv[0]), holes(argv[1])
+tv = holes(argv[2]) if len(argv) > 2 else None
+sv = holes(argv[3]) if len(argv) > 3 else None
+print("[12d-deny] GATE AUTO-DISCLOSURE multi-effect branch  (`--policy deny Net Db domain` note → sorted upgrade)")
+for n, v in [("candor-scan", rv), ("candor-java", jv), ("candor-ts", tv), ("candor-swift", sv)]:
+    if v is not None: print(f"  {n:12s} note-holes={v}")
+want = ("price", "deny Db Net Unknown domain")
+found = bool(rv) and all(want in v for v in (rv, jv, tv, sv) if v is not None) and all(v == rv for v in (jv, tv, sv) if v is not None)
+print("  -> " + ("MATCH — every engine's gate note emits the same sorted multi-effect upgrade"
+                 if found else "DIVERGE — an engine's gate note disagrees on the multi-effect upgrade"))
 sys.exit(0 if found else 1)
 PY
 
