@@ -52,7 +52,11 @@ The `[n]` labels in the runner's output, in run order:
     verdict agree (candor-java file-based; candor-query prefix-based, also serving candor-swift's
     reports; candor-ts exposes no containment command).
 12. **Gate verdict** — `--gate-json` re-emits the policy verdict as machine JSON that agrees with the
-    exit code; `ok` and the `{rule, fn, effects}` set are pinned (SPEC §3.3 ⟨0.8⟩).
+    exit code; `ok` and the `{rule, fn, effects}` set are pinned (SPEC §3.3 ⟨0.8⟩). **12b the FIX-GATE
+    remedy** (`fix/`, integrations/FIX-SPEC.md) — the remedial companion: the same orderflow under `deny
+    Net domain` yields the same boundary fix in every engine (candor-query/java/ts), leaf-normalized —
+    the same direct site, pure span, hoist target, layer and `cleanHoist`. Where PART 12 pins *that* a
+    boundary was crossed, 12b pins *where the effect belongs*.
 13. **`.candor/config`** — discovery, precedence and the fail-closed posture agree (SPEC §3.4):
     config-gate ⇒ 1, env-override ⇒ 0, typo'd config ⇒ 2.
 14. **Chaining** (`CANDOR_DEPS`, SPEC §2) — join-inherit across a report boundary, stale-report

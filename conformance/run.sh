@@ -1110,6 +1110,51 @@ sys.exit(0 if not fails else 1)
 PY
 
 # ====================================================================================================
+# PART 12b — FIX-GATE differential (integrations/FIX-SPEC.md): the remedy for a boundary crossing means the
+# same thing in every engine. `whatif`/`--gate-json` say a boundary was crossed; `fix-gate` says WHERE the
+# effect belongs + the hoist refactor. The same orderflow (api→domain→infra, all Net, the leaf direct) under
+# `deny Net domain` MUST yield the same cut in each engine: same direct site, same pure span, same hoist
+# target, same layer, same cleanHoist — modulo function-name spelling (the leaf-normalized shape). The
+# remedial companion to PART 12's gate verdict; three-engine (R+J+T — swift has no `fix` port yet).
+# ====================================================================================================
+cp -r "$HERE/fix" "$W/fix"
+FIXPOL="$W/fix/policy"
+"$SCAN" "$W/fix/rust" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on the fix/rust fixture"; exit 2; }
+"$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL" 1 > "$W/rust_fix.json" 2>/dev/null
+javac -d "$W/fjout" $(find "$W/fix/java" -name '*.java') 2>/dev/null || { echo "FAIL: javac on fix/java"; exit 2; }
+java -jar "$JAR" "$W/fjout" --json "$W/fjava.json" >/dev/null 2>&1 || { echo "FAIL: candor-java errored on fix/java"; exit 2; }
+java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL" --json > "$W/java_fix.json" 2>/dev/null
+TS_FIX=""
+if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
+  node "$TS_DIR/scan.mjs" "$W/fix/ts" "$W/fts" >/dev/null 2>&1 \
+    && node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL" > "$W/ts_fix.json" 2>/dev/null \
+    && TS_FIX=1 \
+    || { echo "FAIL: candor-ts is working but fix-gate produced no remedy — the FIX-SPEC parity witness vanished"; exit 2; }
+fi
+
+python3 - "$W/rust_fix.json" "$W/java_fix.json" "${TS_FIX:+$W/ts_fix.json}" <<'PY' || rc=1
+import json, sys
+def norm(path, sep):
+    d = json.load(open(path))
+    leaf = lambda xs: sorted(x.split(sep)[-1] for x in xs)
+    # the remedy, leaf-normalized: (site, pure span, hoist target, layer, cleanHoist, effect)
+    return (bool(d["ok"]),
+            sorted((tuple(leaf(r["site"])), tuple(leaf(r["deniedSpan"])), tuple(leaf(r["hoistTo"])),
+                    r["layer"], bool(r["cleanHoist"]), r["effect"]) for r in d["remedies"]))
+rv, jv = norm(sys.argv[1], "::"), norm(sys.argv[2], ".")
+tv = norm(sys.argv[3], ".") if len(sys.argv) > 3 and sys.argv[3] else None
+print("\n[12b] FIX-GATE differential  (fix-gate  ·  policy `deny Net domain`  ·  orderflow api→domain→infra)")
+print(f"  candor-scan: ok={rv[0]}  remedies={rv[1]}")
+print(f"  candor-java: ok={jv[0]}  remedies={jv[1]}")
+if tv is not None:
+    print(f"  candor-ts:   ok={tv[0]}  remedies={tv[1]}")
+match = rv == jv and (tv is None or tv == rv)
+print("  -> " + ("MATCH — the boundary remedy (site · pure span · hoist target · layer) is identical across the engines"
+                 if match else "DIVERGE — the engines disagree on where the effect belongs or what stays pure"))
+sys.exit(0 if match else 1)
+PY
+
+# ====================================================================================================
 # PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
 # TARGET's ancestors supplies the policy → the gate fires (exit 1) with no flag and no env; (b) the
@@ -1503,6 +1548,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
