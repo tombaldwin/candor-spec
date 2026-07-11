@@ -1131,8 +1131,19 @@ if [ -n "$TS_OK" ] && [ -f "$TS_DIR/query.mjs" ]; then
     && TS_FIX=1 \
     || { echo "FAIL: candor-ts is working but fix-gate produced no remedy — the FIX-SPEC parity witness vanished"; exit 2; }
 fi
+# candor-swift's `fix`/`fix-gate` port shipped 2026-07-11 — a read-only query over the report/callgraph a
+# scan wrote. Four-way whenever the engine works: a working swift that can't emit a remedy is present-but-
+# broken and FAILS, never a skip (same posture as PART 4's grammar witness).
+SW_FIX=""
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  env -u CANDOR_CONFIG "$SW_BIN" "$W/fix/swift" --out "$W/fsw" >/dev/null 2>&1 \
+    && env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL" > "$W/sw_fix.json" 2>/dev/null \
+    && python3 -c 'import json,sys; json.load(open(sys.argv[1]))["remedies"]' "$W/sw_fix.json" >/dev/null 2>&1 \
+    && SW_FIX=1 \
+    || { echo "FAIL: candor-swift is working but fix-gate produced no remedy — the FIX-SPEC parity witness vanished"; exit 2; }
+fi
 
-python3 - "$W/rust_fix.json" "$W/java_fix.json" "${TS_FIX:+$W/ts_fix.json}" <<'PY' || rc=1
+python3 - "$W/rust_fix.json" "$W/java_fix.json" "${TS_FIX:+$W/ts_fix.json}" "${SW_FIX:+$W/sw_fix.json}" <<'PY' || rc=1
 import json, sys
 def norm(path, sep):
     d = json.load(open(path))
@@ -1141,14 +1152,16 @@ def norm(path, sep):
     return (bool(d["ok"]),
             sorted((tuple(leaf(r["site"])), tuple(leaf(r["deniedSpan"])), tuple(leaf(r["hoistTo"])),
                     r["layer"], bool(r["cleanHoist"]), r["effect"]) for r in d["remedies"]))
-rv, jv = norm(sys.argv[1], "::"), norm(sys.argv[2], ".")
-tv = norm(sys.argv[3], ".") if len(sys.argv) > 3 and sys.argv[3] else None
+argv = sys.argv[1:]
+rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
+tv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
+sv = norm(argv[3], ".") if len(argv) > 3 and argv[3] else None
 print("\n[12b] FIX-GATE differential  (fix-gate  ·  policy `deny Net domain`  ·  orderflow api→domain→infra)")
 print(f"  candor-scan: ok={rv[0]}  remedies={rv[1]}")
 print(f"  candor-java: ok={jv[0]}  remedies={jv[1]}")
-if tv is not None:
-    print(f"  candor-ts:   ok={tv[0]}  remedies={tv[1]}")
-match = rv == jv and (tv is None or tv == rv)
+if tv is not None: print(f"  candor-ts:   ok={tv[0]}  remedies={tv[1]}")
+if sv is not None: print(f"  candor-swift:ok={sv[0]}  remedies={sv[1]}")
+match = all(v == rv for v in (jv, tv, sv) if v is not None)
 print("  -> " + ("MATCH — the boundary remedy (site · pure span · hoist target · layer) is identical across the engines"
                  if match else "DIVERGE — the engines disagree on where the effect belongs or what stays pure"))
 sys.exit(0 if match else 1)
