@@ -1200,6 +1200,35 @@ if [ -n "$TS_FIX" ]; then
   [ "$?" -eq 2 ] || { echo "  -> DIVERGE — candor-ts fix-gate without a sidecar must exit 2 (fail loud), not compute"; rc=1; }
 fi
 
+# 12b, SANDWICHED layer: an allowed layer CALLED BY a denied one (top → mid → inner → fetch, `deny Net
+# domain`). The nearest allowed frontier (`mid`) is not a clean hoist — a denied caller (`top`) would still
+# inherit the effect. Every engine MUST report cleanHoist=false, identically. (/code-review — was a misleading
+# "hoist to mid" that wouldn't clear `top`.)
+cp -r "$HERE/fix-sandwich" "$W/sw"
+SWPOL="$W/sw/policy"
+"$SCAN" "$W/sw/rust" >/dev/null 2>&1 && "$QUERY" fix-gate "$W/sw/rust/.candor/report" "$SWPOL" 1 > "$W/rust_sw.json" 2>/dev/null
+javac -d "$W/swjout" $(find "$W/sw/java" -name '*.java') 2>/dev/null && java -jar "$JAR" "$W/swjout" --json "$W/swjava.json" >/dev/null 2>&1 && java -jar "$JAR" fix-gate "$W/swjava.json" "$SWPOL" --json > "$W/java_sw.json" 2>/dev/null
+SWTS=""; [ -n "$TS_OK" ] && node "$TS_DIR/scan.mjs" "$W/sw/ts" "$W/swts" >/dev/null 2>&1 && node "$TS_DIR/query.mjs" fix-gate "$W/swts" "$SWPOL" > "$W/ts_sw.json" 2>/dev/null && SWTS=1
+SWSW=""; [ -n "$SW_OK" ] && env -u CANDOR_CONFIG "$SW_BIN" "$W/sw/swift" --out "$W/swsw" >/dev/null 2>&1 && env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/swsw" "$SWPOL" > "$W/sw_sw.json" 2>/dev/null && SWSW=1
+python3 - "$W/rust_sw.json" "$W/java_sw.json" "${SWTS:+$W/ts_sw.json}" "${SWSW:+$W/sw_sw.json}" <<'PY' || rc=1
+import json, sys
+def clean_flags(path):
+    d = json.load(open(path))
+    return [bool(r["cleanHoist"]) for r in d["remedies"]], len(d["remedies"])
+print("[12b] FIX-GATE differential, SANDWICHED layer  (allowed layer called by a denied one → NOT a clean hoist)")
+names = ["candor-scan", "candor-java", "candor-ts", "candor-swift"]
+ok = True
+for p, n in zip(sys.argv[1:], names):
+    if not p: continue
+    flags, cnt = clean_flags(p)
+    good = cnt >= 1 and all(f is False for f in flags)  # a remedy exists and NONE claims a clean hoist
+    ok = ok and good
+    print(f"  {n:12s} remedies={cnt} cleanHoist={flags} {'ok' if good else 'DIVERGE'}")
+print("  -> " + ("MATCH — every engine reports the sandwiched frontier as NOT a clean hoist"
+                 if ok else "DIVERGE — an engine still claims a clean hoist into a sandwiched layer"))
+sys.exit(0 if ok else 1)
+PY
+
 # ====================================================================================================
 # PART 13 — .CANDOR/CONFIG differential (SPEC §config): the checked-in gate source means the same thing
 # in every engine. Three pinned behaviors, per engine: (a) a .candor/config discovered from the SCAN
