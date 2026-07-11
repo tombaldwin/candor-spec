@@ -10,3 +10,6 @@ pub mod domain {
 pub mod api {
     pub fn get() { crate::domain::bulk(); }
 }
+pub mod app {
+    pub fn run() { crate::api::get(); }
+}
