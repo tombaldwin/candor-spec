@@ -12,3 +12,6 @@ enum domain {
 enum api {
     static func get() { domain.bulk() }
 }
+enum app {
+    static func run() { api.get() }
+}

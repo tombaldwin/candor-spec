@@ -1148,10 +1148,10 @@ import json, sys
 def norm(path, sep):
     d = json.load(open(path))
     leaf = lambda xs: sorted(x.split(sep)[-1] for x in xs)
-    # the remedy, leaf-normalized: (site, pure span, hoist target, layer, cleanHoist, effect)
+    # the remedy, leaf-normalized: (site, pure span, hoist target, HIGHER hoist options, layer, cleanHoist, effect)
     return (bool(d["ok"]),
             sorted((tuple(leaf(r["site"])), tuple(leaf(r["deniedSpan"])), tuple(leaf(r["hoistTo"])),
-                    r["layer"], bool(r["cleanHoist"]), r["effect"]) for r in d["remedies"]))
+                    tuple(leaf(r.get("hoistHigher", []))), r["layer"], bool(r["cleanHoist"]), r["effect"]) for r in d["remedies"]))
 argv = sys.argv[1:]
 rv, jv = norm(argv[0], "::"), norm(argv[1], ".")
 tv = norm(argv[2], ".") if len(argv) > 2 and argv[2] else None
