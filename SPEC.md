@@ -26,6 +26,10 @@ rung**: it adds no report-schema or verdict change (a 0.8 report and a 0.8 gate 
 under 0.9), but promotes the remedial tool surface — `fix`/`fix-gate`, `unverified`, and the gate's
 provable-purity auto-disclosure — into the contract's pinned surfaces (§3.1/§3.3), so a 0.9-conformant engine
 MUST carry them. See the [tier note](#conformance-tiers) for why that is a contract bump and not merely a patch.
+**0.10 is staged** (not yet the declared floor): another tier-2 promotion — the §3.3.1 canonical query grammar
+(report discovery + `--report`, `--json` selection, `--policy` as a flag), pinned four-way by conformance
+PART 17. Its ⟨0.10⟩ surfaces are additive and deprecated-alias-compatible, so a 0.9 invocation still runs; the
+floor ratchets to 0.10 when every engine declares it.
 
 The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the
 **pinned tool surfaces** (the §3.1 query shapes, the §3.3 command-line surface, the §6.2 policy grammar) —
@@ -49,10 +53,11 @@ change is a spec bump or a patch:
   code). An engine that diverges here produces output another engine or a consumer **cannot trust** —
   a report that means something different, a verdict that disagrees. Cross-engine agreement on tier 1 is
   what "the gate means the same thing in every language" rests on.
-- **Tier 2 — the pinned tool surfaces.** The §3.1 query shapes and the §3.3 command-line surface —
-  `whatif`, `fix`/`fix-gate`, `unverified`, `rewire`, `--agents`, and the advisory gate disclosures. An
-  engine missing or diverging on a tier-2 surface is **non-conformant to the rung**, but its reports and
-  verdicts are still trustworthy — a consumer just can't reach for that tool there.
+- **Tier 2 — the pinned tool surfaces.** The §3.1 query shapes, the §3.3 command-line surface, and the
+  §3.3.1 query grammar — `whatif`, `fix`/`fix-gate`, `unverified`, `rewire`, `--agents`, the advisory gate
+  disclosures, and the uniform way a query is invoked (report discovery, `--report`, `--json`). An engine
+  missing or diverging on a tier-2 surface is **non-conformant to the rung**, but its reports and verdicts
+  are still trustworthy — a consumer just can't reach for that tool there.
 
 Both tiers are part of the `spec` a conformant engine declares, and both are conformance-pinned. The
 version rule follows from the tiers: a **tier-1 breaking** change bumps the major and moves lockstep;
@@ -640,6 +645,39 @@ subcommands of the scanner — MUST expose the same `--version`/`-V` and `--help
 its `--help` listing the available queries. The query *names and JSON shapes* are already pinned
 cross-engine by item 10; this fixes the surrounding CLI so the tool is driven identically too.
 
+#### 3.3.1 The query command-line grammar (REQUIRED for any exposed query verb) ⟨0.10⟩
+
+§3.1 pins the query **names and JSON shapes**; this pins the **invocation** around them, so a query is
+driven identically in every language — `candor where Net` is one command, not four. For each §3.1 verb an
+engine exposes, it MUST accept:
+
+```text
+<cmd> <verb> <verb-args…> [--report <locator>] [--policy <file>] [--json] [--strict] [--include-unknown]
+```
+
+- **Report resolution.** With no `--report`, the engine discovers the report by walking UP from the CWD
+  for a `.candor/` directory and using its `report` prefix (the §3.4 discovery mechanism; a `CANDOR_REPORT`
+  env var overrides). `--report <locator>` overrides discovery, where a `<locator>` resolves by one rule: a
+  **directory** → `<dir>/.candor/report`; a path ending `.json` → that **full report path**; otherwise a
+  **prefix** (`<prefix>.<crate>.<backend>.json`). The comparative verbs `diff` and `gains` instead take two
+  positional locators, `<current> <baseline>`, in that order (§3.1) — they compare two explicit reports, so
+  discovery does not apply.
+- **Verb args** are positional, in the §3.1 order: `where <Effect>`; `show`/`callers`/`impact` `<fn>`;
+  `path`/`whatif`/`fix` `<fn> <Effect>`; `map`/`reachable`/`blindspots`/`fix-gate`/`unverified` none;
+  `containment [<baseline>]`. The report is a **flag**, never a leading positional, so the first token after
+  the verb is unambiguously the verb's own argument.
+- **`--json`** selects JSON (stdout MUST then be pure JSON, per §3.3). **`--policy <file>`** supplies a
+  policy, honouring `CANDOR_POLICY` then `.candor/config` when the flag is absent (§3.3/§3.4) — never a
+  positional. **`--strict`** (on `unverified`) and **`--include-unknown`** (on `callers`) keep their §3.1
+  meaning.
+
+The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb
+(candor-swift ships only `fix`/`fix-gate`/`unverified`), but every verb it *does* expose MUST accept this
+grammar. An engine MAY continue to accept prior positional forms — a leading report, a `0|1` JSON sentinel,
+a positional policy — as **deprecated** aliases that emit a stderr deprecation note; they are removed no
+earlier than the next breaking bump, so this rung stays byte-compatible with 0.9. An engine SHOULD ship an
+ergonomic entry point named `candor` that discovers the report and unifies scan and query under one command.
+
 **The gate verdict** ⟨0.8⟩ (`--gate-json`). The shape:
 
 ```text
@@ -1114,8 +1152,10 @@ A **sound engine** conforms to candor-spec if it:
    contract, item 11), for an engine declaring `spec ≥ 0.8`, `--gate-json` (the structured
    gate verdict), and, for an engine declaring `spec ≥ 0.9`, the **remedial tool surface** —
    `fix`/`fix-gate` and `unverified` (§3.1/§3.3) plus the gate's provable-purity auto-disclosure (a
-   verdict-preserving advisory note on a `--policy` scan) — with flag names and help wording consistent
-   across engines;
+   verdict-preserving advisory note on a `--policy` scan), and, for an engine declaring `spec ≥ 0.10`,
+   every exposed §3.1 query verb driven through the **canonical query grammar** of §3.3.1 — report
+   discovery with a `--report` override, `--json` selection, `--policy` as a flag — with flag names and
+   help wording consistent across engines;
 6. uses the §1 vocabulary and §6 codes where they apply, and, if it enforces any policy mode, parses
    the §6.2 policy DSL exactly (so a policy file means the same thing in every language);
 7. documents, plainly and in its own docs, what it cannot see;
@@ -1219,6 +1259,16 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.10 (staged — not yet the declared floor)** — additive, wire- and invocation-compatible with 0.9:
+  another **tier-2 (pinned-tool-surface) rung**. No report-schema or verdict change. It promotes the
+  **§3.3.1 canonical query grammar** into the pinned surface: for every §3.1 query verb an engine exposes,
+  one invocation shape across all languages — the report **discovered** from `.candor/` (walk-up, §3.4) with
+  a `--report <locator>` override, `--json` selecting JSON, `--policy <file>` a flag (never a positional).
+  The pre-0.10 positional forms (a leading report, the `0|1` JSON sentinel, a positional policy) stay
+  accepted as **deprecated aliases** with a stderr note, removed no earlier than the next major — so a 0.9
+  invocation still runs. Conformance **PART 17** pins the grammar four-way (discovery ≡ explicit `--report`,
+  cross-engine agreement, `--json` selection, `--policy`-as-flag). Rationale and per-engine impact in
+  `CLI-GRAMMAR-DESIGN.md`.
 - **0.9 (all code engines declare `0.9`; conformance-pinned)** —
   additive, wire-compatible with 0.8: a **tier-2 (pinned-tool-surface) rung** (see *[Conformance
   tiers](#conformance-tiers)*). No report-schema, effect-vocabulary, or verdict change — a 0.8 report and a
