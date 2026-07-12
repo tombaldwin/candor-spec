@@ -529,6 +529,85 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 4f — SURFACE-BEST-FIND differential (the cold-repo "most surprising reach" opener): every engine   [TIER 2]
+# ends a scan by surfacing the SAME single most-surprising transitive reach on a shared fixture — a
+# benign-named function (`Settings::load`) inheriting Fs three hops away via a `read` source in another
+# module. The heuristic is pure call-graph + name analysis, so a parallel fixture MUST yield the same
+# winner in every language: the disclosure line `candor: most surprising reach — … load … Fs`. Pins that
+# the opener is consistent per engine (SURFACE-BEST-FIND-DESIGN.md P3), not that it's clever.
+# ====================================================================================================
+mkdir -p "$W/surf/rust/src" "$W/surf/ts" "$W/surf/java/src/app"
+cat > "$W/surf/rust/Cargo.toml" <<'EOF'
+[package]
+name = "surffix"
+version = "0.0.0"
+edition = "2021"
+EOF
+cat > "$W/surf/rust/src/lib.rs" <<'EOF'
+pub struct Settings;
+impl Settings { pub fn load() -> bool { refresh() } }
+fn refresh() -> bool { compute() }
+fn compute() -> bool { io_read_thing() }
+pub fn io_read_thing() -> bool { std::fs::read("/tmp/x").is_ok() }
+EOF
+SURF_RUST=$("$SCAN" "$W/surf/rust" 2>&1)
+cat > "$W/surf/java/src/app/Settings.java" <<'EOF'
+package app;
+public class Settings { public static boolean load() { return Chain.refresh(); } }
+EOF
+cat > "$W/surf/java/src/app/Chain.java" <<'EOF'
+package app;
+public class Chain { public static boolean refresh() { return compute(); } static boolean compute() { return Io.readThing(); } }
+EOF
+cat > "$W/surf/java/src/app/Io.java" <<'EOF'
+package app;
+public class Io { public static boolean readThing() { try { java.nio.file.Files.readString(java.nio.file.Path.of("/tmp/x")); } catch (Exception e) {} return true; } }
+EOF
+javac -d "$W/surf/java/app" $(find "$W/surf/java/src" -name '*.java') 2>/dev/null
+SURF_JAVA=$(java -jar "$JAR" "$W/surf/java/app" 2>&1)
+SURF_TS=""
+if [ -n "$TS_PRESENT" ]; then
+  cat > "$W/surf/ts/cases.ts" <<'EOF'
+import * as fsm from "node:fs";
+class Settings { static load(): boolean { return refresh(); } }
+function refresh(): boolean { return compute(); }
+function compute(): boolean { return ioReadThing(); }
+export function ioReadThing(): boolean { fsm.readFileSync("/tmp/x"); return true; }
+export { Settings };
+EOF
+  SURF_TS=$(node "$TS_DIR/scan.mjs" "$W/surf/ts/cases.ts" "$W/surf/tsout" 2>&1)
+fi
+SURF_SW=""
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/surf/swift"
+  printf 'import Foundation\nstruct Settings { static func load() -> Bool { return refresh() } }\nfunc refresh() -> Bool { return compute() }\nfunc compute() -> Bool { return ioReadThing() }\nfunc ioReadThing() -> Bool { _ = FileManager.default.contents(atPath: "/tmp/x"); return true }\n' > "$W/surf/swift/m.swift"
+  SURF_SW=$("$SW_BIN" "$W/surf/swift" --out "$W/surf/swout" 2>&1)
+fi
+python3 - "$SURF_RUST" "$SURF_JAVA" "$SURF_TS" "$TS_PRESENT" "$SURF_SW" "$SW_PRESENT" <<'PY' || rc=1
+import sys
+rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sw, sw_present = sys.argv[5], sys.argv[6]
+print("\n[4f] SURFACE-BEST-FIND differential  (the cold-repo opener names the SAME surprising reach)")
+ok = True
+def check(name, out):
+    global ok
+    # the marker + the benign winner (`load`) + the effect (Fs). Language-natural qual all contain "load".
+    hit = "most surprising reach" in out and "load" in out and "Fs" in out
+    print(f"  {name:12s} -> {'MATCH' if hit else 'DIVERGE'}"
+          + ("" if hit else "  (did not surface `load` reaching Fs as the opener)"))
+    ok = ok and hit
+check("candor-scan", rust)
+check("candor-java", java)
+if ts_present:
+    check("candor-ts", ts)
+if sw_present:
+    check("candor-swift", sw)
+print("  -> " + ("MATCH — every engine's opener names the same benign→Fs reach"
+                 if ok else "DIVERGE — an engine surfaced a different opener (or none)"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
 # PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the   [TIER 2]
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
@@ -1961,6 +2040,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
