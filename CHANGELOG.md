@@ -12,9 +12,28 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.8 — current floor
+## 0.10 — staged (not yet the declared floor)
 
-All four code engines declare `0.8`; the floor is conformance-pinned (PART 12, the gate-verdict
+Another **tier-2 (pinned-tool-surface)** rung, additive over 0.9 and invocation-compatible with it. The
+**§3.3.1 canonical query grammar**: for every §3.1 query verb an engine exposes, one invocation shape in
+every language — the report **discovered** from `.candor/` (walk-up, §3.4) with a `--report <locator>`
+override, `--json` selecting JSON, `--policy <file>` a flag never a positional. Pre-0.10 positional forms (a
+leading report, the `0|1` JSON sentinel, a positional policy) stay accepted as **deprecated aliases** with a
+stderr note, removed no earlier than the next major. Conformance **PART 17** pins it four-way. Design +
+per-engine impact: [CLI-GRAMMAR-DESIGN.md](CLI-GRAMMAR-DESIGN.md).
+
+## 0.9 — current floor
+
+All code engines declare `0.9`; the floor is conformance-pinned (PART 12b/12c/12d). A **tier-2
+(pinned-tool-surface)** rung, additive and wire-compatible with 0.8 (a 0.8 report and `--gate-json` verdict
+are byte-identical under 0.9). It promotes the **remedial tool loop** into the pinned §3.1/§3.3 surface:
+`fix`/`fix-gate` (compute the boundary hoist-refactor), `unverified` (the provable-purity disclosure), and
+the gate's provable-purity **auto-disclosure** (a verdict-preserving advisory note on a `--policy` scan).
+Full surface-by-surface record in [SPEC.md §8](SPEC.md#8-changelog).
+
+## 0.8
+
+All four code engines declare `0.8`; conformance-pinned (PART 12, the gate-verdict
 differential). Additive and wire-compatible with 0.7.
 
 - **The structured gate verdict** (§3.3) — `--gate-json` emits `{ spec, ok, violations:[{rule, fn, effects,
