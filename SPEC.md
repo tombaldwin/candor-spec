@@ -675,8 +675,13 @@ The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engi
 (candor-swift ships only `fix`/`fix-gate`/`unverified`), but every verb it *does* expose MUST accept this
 grammar. An engine MAY continue to accept prior positional forms — a leading report, a `0|1` JSON sentinel,
 a positional policy — as **deprecated** aliases that emit a stderr deprecation note; they are removed no
-earlier than the next breaking bump, so this rung stays byte-compatible with 0.9. An engine SHOULD ship an
-ergonomic entry point named `candor` that discovers the report and unifies scan and query under one command.
+earlier than the next breaking bump, so this rung stays byte-compatible with 0.9. Each engine exposes its
+query surface under its own **qualified** name (`candor-query`, `candor-ts-query`, `candor-java`,
+`candor-swift`). Because the grammar is uniform, the bare **`candor`** name SHOULD be owned by a single
+language-aware **dispatcher** that routes a query by the discovered report's backend and a scan by the
+project manifest to the matching engine — not shipped four times by four engines, which would collide on
+`PATH`. The dispatcher MUST route unambiguously or fail loudly (a polyglot report/project or a missing engine
+is an error, never a silent wrong-engine run).
 
 **The gate verdict** ⟨0.8⟩ (`--gate-json`). The shape:
 

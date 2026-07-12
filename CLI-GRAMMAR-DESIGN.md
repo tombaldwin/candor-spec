@@ -83,14 +83,23 @@ it MUST accept the canonical grammar.* Swift keeps its three verbs but drives th
 drift/guard over transcripts, not report queries) and is out of scope here — though it already follows the
 shared flag conventions (`--json`/`--policy`/`--strict`).
 
-## The front-end name (SHOULD)
+## The front-end name (SHOULD) — one dispatcher, not four collisions
 
-The grammar above is what conformance pins, whether it's served by a raw binary or a wrapper. Layered on top,
-each engine SHOULD ship an ergonomic entry point literally named **`candor`** that discovers the report and
-unifies scan + query under one command — so `candor where Net` is not just *grammatical* everywhere but
-*spelled* the same everywhere. Rust has it (`candor` → `cargo-candor`). The others grow it as a thin
-distribution nicety: candor-ts a `candor` npm bin, candor-java a `candor` launcher/jbang alias, candor-swift a
-renamed/aliased entry. This is ergonomics (a SHOULD), separable from the REQUIRED grammar.
+The grammar above is what conformance pins, whether it's served by a raw binary or a wrapper. But the bare
+**`candor`** *name* needs a single owner: if candor-ts (npm), candor-rust, candor-java, and candor-swift each
+shipped a `candor` binary, they'd collide on `PATH` — last install wins — and each is a *language-specific*
+engine, so a mixed setup would silently run the wrong one. That is the exact "wastes your time / does the
+wrong thing" failure the product is built against.
+
+So each engine keeps its **qualified** name (`candor-query`/`candor-scan`, `candor-ts-query`/`candor-ts`,
+`candor-java`, `candor-swift`), and the bare `candor` is a single language-aware **dispatcher** (in the
+umbrella repo, `bin/candor`). Because the grammar is uniform, routing is deterministic: a **query** goes to
+the engine whose backend the discovered report declares (`.scan`/`.lint` → Rust, `.JS` → TS, `.jvm` → Java,
+`.Swift` → Swift); a **scan** goes to the engine whose manifest the target holds (`Cargo.toml` → Rust,
+`package.json`/`tsconfig.json` → TS, Gradle/Maven/`*.java` → Java, `Package.swift` → Swift). Ambiguity (a
+polyglot report or project) and a missing engine are **loud errors**, never a silent wrong-engine run. In the
+common single-engine environment there's no collision and the dispatcher just finds the one engine present.
+This is ergonomics (a SHOULD), separable from the REQUIRED grammar.
 
 ## Back-compat & phasing
 
