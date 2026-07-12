@@ -46,7 +46,7 @@ Domain engines (units are not functions; ride the version ladder on their own sc
   engines (JVM, Rust, TypeScript, Swift), asserting they all infer the spec-mandated effect set, agree
   on the policy verdict, the `--gate-json` verdict + exit code (⟨0.8⟩), the `.candor/config` discovery
   and fail-closed posture, the query shapes (incl. `blindspots`, the containment ratchet, the
-  unresolved-dispatch frontier), the κ-coverage ledger, the masked-literal fail-closed gate, and the
+  unresolved-dispatch frontier), the coverage ledger, the masked-literal fail-closed gate, and the
   §6.2 grammar (`bash conformance/run.sh`). Conformance and cross-impl agreement in one run.
 
 ## Why per-language tools sharing one spec

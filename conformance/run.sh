@@ -9,7 +9,7 @@
 #
 # TIER TAGS. Each PART header carries [TIER 1] or [TIER 2] (SPEC §"Conformance tiers"). TIER 1 pins the
 # INTEROP FLOOR — the report schema, effect vocabulary, the Unknown trust marker, the policy VERDICT and
-# grammar, the literal surfaces, the κ ledger, config fail-closed sourcing, chaining, and the baseline
+# grammar, the literal surfaces, the coverage ledger, config fail-closed sourcing, chaining, and the baseline
 # guard: a divergence here yields output another engine or a consumer CANNOT TRUST. TIER 2 pins the
 # TOOL SURFACES — the read-only query shapes, `rewire`, `fix`/`fix-gate`, `unverified`, and the gate's
 # advisory disclosures: a divergence breaks a TOOL's cross-engine uniformity, but reports and verdicts stay
@@ -448,8 +448,8 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
-# PART 4c — κ-coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
-# external package the scanned code demonstrably calls ("κ doesn't know …"), and must NOT name the
+# PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
+# external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
 # what's pinned is the disclosure behavior, not the string values.
 # ====================================================================================================
@@ -508,11 +508,11 @@ python3 - "$LED_RUST" "$LED_JAVA" "$LED_TS" "$TS_PRESENT" "$LED_SW" "$SW_PRESENT
 import sys
 rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 sw, sw_present = (sys.argv[5], sys.argv[6]) if len(sys.argv) > 6 else ("", "")
-print("\n[4c] κ-COVERAGE LEDGER differential  (SPEC §7 item 14 — unlisted-but-called packages are NAMED)")
+print("\n[4c] COVERAGE LEDGER differential  (SPEC §7 item 14 — unlisted-but-called packages are NAMED)")
 ok = True
 def check(name, out, pkg, frontier):
     global ok
-    named = "κ doesn't know" in out and pkg in out
+    named = "classifier doesn't cover" in out and pkg in out
     quiet = frontier not in out
     print(f"  {name:12s} -> {'MATCH' if named and quiet else 'DIVERGE'}"
           + ("" if named else f" (did not name {pkg})") + ("" if quiet else f" (named the frontier {frontier})"))
@@ -1445,7 +1445,7 @@ fi
 # (b) STALE-DOWNGRADE — a dep report whose producing version was doctored is not trusted: the call
 #     downgrades to `Unknown`, never a stale Net claim (§2.1 at the join);
 # (c) EMPTY-REPORT COVERAGE — an all-pure dep's EMPTY report is a purity CLAIM: the call reads pure
-#     and the κ ledger must NOT name the covered package (§2 rule 3).
+#     and the coverage ledger must NOT name the covered package (§2 rule 3).
 # candor-swift joined the consumers 2026-07-09 (Deps.swift: pkg#leaf/pkg#tail2 index, import-gated,
 # ambiguous-drops; stale → `dep-stale:<pkg>` Unknown) — its row is REQUIRED whenever the engine works.
 # ====================================================================================================
@@ -1543,13 +1543,13 @@ for name, e, pkg in engines:
     down = "go" in stale and "Unknown" in stale["go"].get("inferred", []) \
            and "Net" not in stale["go"].get("inferred", [])
     pure = all("Net" not in f.get("inferred", []) and "Unknown" not in f.get("inferred", []) for f in empty.values())
-    covered = not ("κ doesn't know" in err_empty and pkg in err_empty)
+    covered = not ("classifier doesn't cover" in err_empty and pkg in err_empty)
     good = join and down and pure and covered
     detail = "".join([
         "" if join else " (join: app fn must inherit exactly {Net} + the host literal)",
         "" if down else " (stale: a doctored producing version must downgrade to Unknown, not keep Net)",
         "" if pure else " (empty: an all-pure dep report is a purity claim — the call must read pure)",
-        "" if covered else f" (empty: the κ ledger must NOT name {pkg} — a loaded report COVERS its package, §2 rule 3)"])
+        "" if covered else f" (empty: the coverage ledger must NOT name {pkg} — a loaded report COVERS its package, §2 rule 3)"])
     print(f"  {name:12s} -> {'MATCH' if good else 'DIVERGE'}{detail}")
     ok = ok and good
 print("  -> " + ("MATCH — chaining joins, distrusts stale producers, and honors empty-report coverage in every consuming engine"
@@ -1961,6 +1961,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
