@@ -1928,6 +1928,31 @@ java -jar "$JAR" "$W/cont_jcur" --json "$P17/cont_j/.candor/report.cur.jvm.json"
 ( cd "$P17/cont_j" && java -jar "$JAR" containment "$W/cont_jbase.json" --json ) >/dev/null 2>&1
 [ "$?" = 1 ] || p17fail "java containment: discovery form \`containment <baseline>\` must GATE (exit 1 on the Fs→svc leak), not drop to report mode"
 
+# (4) A report loaded by a direct <file>.json path loads its SIDECAR call graph too: transitive `callers`
+#     via --report <.json> MUST equal the prefix form (and be non-empty) — else the sidecar is silently
+#     dropped and a blast-radius query under-reports at exit 0 (the §4 cardinal sin; regressed once here).
+sidecar_eq() { # $1 label ; $2 prefix-form json ; $3 json-form json
+  python3 -c 'import json,sys
+leaf=lambda x: x.split("::")[-1].split(".")[-1]
+a=json.load(open(sys.argv[1])); b=json.load(open(sys.argv[2]))
+ta=sorted(map(leaf,a.get("transitive",[]))); tb=sorted(map(leaf,b.get("transitive",[])))
+sys.exit(0 if ta==tb and len(ta)>0 else 1)' "$2" "$3" 2>/dev/null \
+    || p17fail "$1: transitive callers via --report <.json> must equal the prefix form AND be non-empty (sidecar dropped?)"
+}
+RJSON="$(ls "$W"/rust/.candor/report*.scan.json 2>/dev/null | grep -v -e callgraph -e hierarchy | head -1)"
+"$QUERY" callers transitive_leaf --report "$W/rust/.candor/report" --json > "$P17/r_cg_pfx.json"  2>/dev/null
+"$QUERY" callers transitive_leaf --report "$RJSON" --json                 > "$P17/r_cg_json.json" 2>/dev/null
+sidecar_eq "rust callers <.json>" "$P17/r_cg_pfx.json" "$P17/r_cg_json.json"
+java -jar "$JAR" callers transitive_leaf --report "$P17/j" --json                             > "$P17/j_cg_pfx.json"  2>/dev/null
+java -jar "$JAR" callers transitive_leaf --report "$P17/j/.candor/report.app.jvm.json" --json > "$P17/j_cg_json.json" 2>/dev/null
+sidecar_eq "java callers <.json>" "$P17/j_cg_pfx.json" "$P17/j_cg_json.json"
+if [ -n "$TS_OK" ]; then
+  TJSON="$(ls "$P17"/t/.candor/report*.json 2>/dev/null | grep -v -e callgraph -e hierarchy | head -1)"
+  node "$TS_DIR/query.mjs" callers transitive_leaf --report "$P17/t/.candor/report" --json > "$P17/t_cg_pfx.json"  2>/dev/null
+  node "$TS_DIR/query.mjs" callers transitive_leaf --report "$TJSON" --json                > "$P17/t_cg_json.json" 2>/dev/null
+  sidecar_eq "ts callers <.json>" "$P17/t_cg_pfx.json" "$P17/t_cg_json.json"
+fi
+
 if [ "$P17_OK" = 0 ]; then
   echo "  -> MATCH — every engine drives a query the same way (discovery ≡ --report ≡ OLD positional, --json, --policy flag); a missing report fails loud (exit 2); CANDOR_REPORT=<dir> resolves; containment discovery gates"
 else
