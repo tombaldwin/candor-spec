@@ -656,6 +656,106 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 4h — SURFACE TOUR robustness (the review's cardinal-sin fixes): `tour 0` must FAIL LOUD (exit 2),    [TIER 2]
+# not print a false "nothing hidden"; and with the callgraph sidecar DELETED, tour must STILL surface the
+# reach by falling back to the report's inline `calls` — never silently drop to zero reaches. Reuses the
+# PART 4g reports (each engine already scanned its surf fixture above).
+# ====================================================================================================
+echo ""
+echo "[4h] SURFACE TOUR robustness  (tour 0 → exit 2; a deleted callgraph sidecar still surfaces via inline calls)"
+P4H_OK=0
+p4h() { echo "     FAIL $1"; P4H_OK=1; }
+n0() { ( "$@" ) >/dev/null 2>&1; [ "$?" = 2 ]; }
+n0 "$QUERY" tour 0 --report "$W/surf/rust/.candor/report"       || p4h "rust: tour 0 must exit 2 (false all-clear otherwise)"
+n0 java -jar "$JAR" tour 0 --report "$W/surf/jrep.json"         || p4h "java: tour 0 must exit 2"
+[ -n "$TS_PRESENT" ] && { n0 node "$TS_DIR/query.mjs" tour 0 --report "$W/surf/tsrep"      || p4h "ts: tour 0 must exit 2"; }
+[ -n "$SW_PRESENT" ] && { n0 env -u CANDOR_CONFIG "$SW_BIN" tour 0 --report "$W/surf/swrep" || p4h "swift: tour 0 must exit 2"; }
+# Delete every callgraph sidecar next to the surf reports, then re-run tour: it must fall back to inline calls.
+rm -f "$W"/surf/rust/.candor/report.*.callgraph.json "$W"/surf/jrep*.callgraph.json \
+      "$W"/surf/tsrep*.callgraph.json "$W"/surf/swrep*.callgraph.json 2>/dev/null
+nosidecar() { # $1 label ; $2 tour --json output (sidecar deleted)
+  python3 -c 'import json,sys
+r=json.loads(sys.argv[1] or "{}").get("reaches",[])
+sys.exit(0 if r and "load" in r[0].get("fn","") and r[0].get("effect")=="Fs" else 1)' "$2" 2>/dev/null \
+    || p4h "$1: tour dropped all reaches with the callgraph sidecar deleted (silent under-report)"
+}
+nosidecar rust  "$("$QUERY" tour --report "$W/surf/rust/.candor/report" --json 2>/dev/null)"
+nosidecar java  "$(java -jar "$JAR" tour --report "$W/surf/jrep.json" --json 2>/dev/null)"
+[ -n "$TS_PRESENT" ] && nosidecar ts    "$(node "$TS_DIR/query.mjs" tour --report "$W/surf/tsrep" --json 2>/dev/null)"
+[ -n "$SW_PRESENT" ] && nosidecar swift "$(env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/surf/swrep" --json 2>/dev/null)"
+if [ "$P4H_OK" = 0 ]; then
+  echo "  -> MATCH — every engine rejects N=0 and survives a missing sidecar without a false all-clear"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
+# PART 4i — SURFACE test-code exclusion: a benign-named function IN A TEST CONTEXT (each engine's idiom —   [TIER 2]
+# a Rust `mod tests`, a Java `.tests.` package, a TS `*.test.ts` file, a Swift `*Tests` type) that inherits
+# Fs must NEVER be surfaced as a reach — the scan-note/tour point at real code, not test scaffolding.
+# ====================================================================================================
+mkdir -p "$W/surft/rust/src" "$W/surft/java/src/app/tests"
+printf '[package]\nname = "surftfix"\nversion = "0.0.0"\nedition = "2021"\n' > "$W/surft/rust/Cargo.toml"
+cat > "$W/surft/rust/src/lib.rs" <<'EOF'
+pub fn reader() -> bool { std::fs::read("/tmp/x").is_ok() }
+pub mod tests { pub fn load() -> bool { crate::reader() } }
+EOF
+"$SCAN" "$W/surft/rust" >/dev/null 2>&1
+TX_RUST=$("$QUERY" tour --report "$W/surft/rust/.candor/report" --json 2>/dev/null)
+cat > "$W/surft/java/src/app/Reader.java" <<'EOF'
+package app;
+public class Reader { public static boolean read() { try { java.nio.file.Files.readString(java.nio.file.Path.of("/tmp/x")); } catch (Exception e) {} return true; } }
+EOF
+cat > "$W/surft/java/src/app/tests/Data.java" <<'EOF'
+package app.tests;
+public class Data { public static boolean load() { return app.Reader.read(); } }
+EOF
+javac -d "$W/surft/java/app" $(find "$W/surft/java/src" -name '*.java') 2>/dev/null
+java -jar "$JAR" "$W/surft/java/app" --json "$W/surft/jrep.json" >/dev/null 2>&1
+TX_JAVA=$(java -jar "$JAR" tour --report "$W/surft/jrep.json" --json 2>/dev/null)
+TX_TS=""
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$W/surft/ts"
+  printf 'import * as fsm from "node:fs";\nexport function reader(): boolean { fsm.readFileSync("/tmp/x"); return true; }\n' > "$W/surft/ts/reader.ts"
+  printf 'import { reader } from "./reader";\nexport function load(): boolean { return reader(); }\n' > "$W/surft/ts/cases.test.ts"
+  node "$TS_DIR/scan.mjs" "$W/surft/ts" "$W/surft/tsrep" >/dev/null 2>&1
+  TX_TS=$(node "$TS_DIR/query.mjs" tour --report "$W/surft/tsrep" --json 2>/dev/null)
+fi
+TX_SW=""
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/surft/swift"
+  printf 'import Foundation\nfunc reader() -> Bool { _ = FileManager.default.contents(atPath: "/tmp/x"); return true }\nstruct DataTests { static func load() -> Bool { return reader() } }\n' > "$W/surft/swift/m.swift"
+  env -u CANDOR_CONFIG "$SW_BIN" "$W/surft/swift" --out "$W/surft/swrep" >/dev/null 2>&1
+  TX_SW=$(env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/surft/swrep" --json 2>/dev/null)
+fi
+python3 - "$TX_RUST" "$TX_JAVA" "$TX_TS" "$TS_PRESENT" "$TX_SW" "$SW_PRESENT" <<'PY' || rc=1
+import json, sys
+rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sw, sw_present = sys.argv[5], sys.argv[6]
+print("\n[4i] SURFACE test-code exclusion  (a benign test-context reach is NEVER surfaced)")
+ok = True
+def check(name, out):
+    global ok
+    try:
+        reaches = json.loads(out or "{}").get("reaches", [])
+        excluded = not any("load" in r.get("fn", "") for r in reaches)
+    except Exception:
+        excluded = False
+    print(f"  {name:12s} -> {'MATCH' if excluded else 'DIVERGE'}"
+          + ("" if excluded else "  (surfaced the test-context `load` — test-code not excluded)"))
+    ok = ok and excluded
+check("candor-scan", rust)
+check("candor-java", java)
+if ts_present:
+    check("candor-ts", ts)
+if sw_present:
+    check("candor-swift", sw)
+print("  -> " + ("MATCH — every engine excludes the test-context reach"
+                 if ok else "DIVERGE — an engine surfaced test scaffolding as a reach"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
 # PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the   [TIER 2]
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
@@ -2088,6 +2188,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + test-exclusion + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
