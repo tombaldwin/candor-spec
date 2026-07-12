@@ -1331,7 +1331,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.9 — candor-scan/java/ts/swift 0.9.0):   [TIER 2]
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.10 — candor-scan/java/ts/swift 0.10.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
