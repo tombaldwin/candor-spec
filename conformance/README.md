@@ -69,6 +69,12 @@ The `[n]` labels in the runner's output, in run order:
     guard surfaces landed 2026-07-10; the item-5 MUST is satisfied, not narrowed.)
 16. **Applied `deny Unknown` / `pure`-vs-`Unknown` / `forbid` layering** — the remaining §6/§6.2
     verdicts agree, including nested-scope segment matching.
+17. **Query CLI grammar** (§3.3.1) [TIER 2] — every engine drives a query the same way: the report
+    **discovered** from a `.candor/` ancestor ≡ passed as `--report <locator>` (dir / prefix / `.json`
+    path) ≡ the deprecated leading-positional form, `--json` selecting JSON, `--policy` a flag not a
+    positional. Rust+Java always; TS/Swift when present (Swift shares only `fix-gate`, so it joins the
+    policy-flag leg + a discovery check). Pins that the pre-0.10 positional forms still resolve (a stderr
+    deprecation note, identical JSON), so the rung stays byte-compatible with 0.9. Staged 0.10.
 
 Between parts 9 and 10 run four **generated batteries** (unnumbered): an effect × indirection matrix
 (`gen_differential.py`), the gate-masking differential (`gen_masking.py` — the fail-closed AS-EFF-008

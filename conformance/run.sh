@@ -1787,8 +1787,122 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ====================================================================================================
+# PART 17 — query CLI GRAMMAR differential (SPEC §3.3.1): every engine drives a query the SAME way.        [TIER 2]
+# §3.1/PART 5 pin the query SHAPES; this pins the INVOCATION around them — the report DISCOVERED from a
+# `.candor/` ancestor (or `--report <locator>`: a dir, a prefix, or a `.json` path), `--json` selecting
+# JSON, `--policy` a FLAG not a positional — so `candor where Fs` is one command in every language. Also
+# proves the pre-0.10 positional forms still resolve as a DEPRECATED alias (a stderr note, identical JSON),
+# so the rung stays byte-compatible with 0.9. Comparison is canonical-JSON (content, key-order-insensitive:
+# candor-java's Map.of ordering is per-run). Rust+Java always; TS/Swift when present. Swift shares only
+# `fix-gate` (no `where`), so it joins the policy-flag leg (+ a discovery check there).
+# ====================================================================================================
+P17="$W/p17"; mkdir -p "$P17/j/.candor" "$P17/t/.candor"
+P17_OK=0
+p17fail() { echo "     FAIL $1"; P17_OK=1; }
+canoneq() { # $1 label ; $2 fileA ; $3 fileB — content-equal as canonical JSON?
+  python3 -c 'import json,sys
+a=json.load(open(sys.argv[1])); b=json.load(open(sys.argv[2]))
+sys.exit(0 if json.dumps(a,sort_keys=True)==json.dumps(b,sort_keys=True) else 1)' "$2" "$3" 2>/dev/null \
+    || p17fail "$1"
+}
+
+# --- discovery fixtures: a `.candor/report` each engine's discovery can walk UP to from its dir ----------
+#   rust already holds $W/rust/.candor/ from PART 1; java/ts scan the SAME Cases fixtures into a fresh one.
+java -jar "$JAR" "$W/jout" --json "$P17/j/.candor/report.app.jvm.json" >/dev/null 2>&1 \
+  || p17fail "java: could not write the discovery report"
+[ -n "$TS_OK" ] && ( cd "$TS_DIR" && node scan.mjs Cases.ts "$P17/t/.candor/report" ) >/dev/null 2>&1
+
+# --- `where Fs` four ways, per single-report engine: discovered ≡ --report(dir) ≡ --report(prefix|path) ≡
+#     OLD positional. The canonical forms' stderr MUST be clean; the OLD form MUST emit a deprecation note.
+( cd "$W/rust" && "$QUERY" where Fs --json ) > "$P17/r_disc.json" 2>"$P17/r_disc.err"
+"$QUERY" where Fs --report "$W/rust"                --json > "$P17/r_dir.json" 2>/dev/null
+"$QUERY" where Fs --report "$W/rust/.candor/report" --json > "$P17/r_pfx.json" 2>/dev/null
+"$QUERY" where "$W/rust/.candor/report" Fs 1                > "$P17/r_old.json" 2>"$P17/r_old.err"
+[ -s "$P17/r_disc.err" ] && p17fail "rust where: a canonical form wrote to stderr"
+[ -s "$P17/r_old.err" ]  || p17fail "rust where: the OLD positional form emitted no deprecation note"
+
+( cd "$P17/j" && java -jar "$JAR" where Fs --json ) > "$P17/j_disc.json" 2>"$P17/j_disc.err"
+java -jar "$JAR" where Fs --report "$P17/j"                             --json > "$P17/j_dir.json" 2>/dev/null
+java -jar "$JAR" where Fs --report "$P17/j/.candor/report.app.jvm.json" --json > "$P17/j_pfx.json" 2>/dev/null
+java -jar "$JAR" where "$P17/j/.candor/report.app.jvm.json" Fs          --json > "$P17/j_old.json" 2>"$P17/j_old.err"
+[ -s "$P17/j_disc.err" ] && p17fail "java where: a canonical form wrote to stderr"
+[ -s "$P17/j_old.err" ]  || p17fail "java where: the OLD positional form emitted no deprecation note"
+
+if [ -n "$TS_OK" ]; then
+  ( cd "$P17/t" && node "$TS_DIR/query.mjs" where Fs --json ) > "$P17/t_disc.json" 2>"$P17/t_disc.err"
+  node "$TS_DIR/query.mjs" where Fs --report "$P17/t"                --json > "$P17/t_dir.json" 2>/dev/null
+  node "$TS_DIR/query.mjs" where Fs --report "$P17/t/.candor/report" --json > "$P17/t_pfx.json" 2>/dev/null
+  node "$TS_DIR/query.mjs" where "$P17/t/.candor/report" Fs                 > "$P17/t_old.json" 2>"$P17/t_old.err"
+  [ -s "$P17/t_disc.err" ] && p17fail "ts where: a canonical form wrote to stderr"
+  [ -s "$P17/t_old.err" ]  || p17fail "ts where: the OLD positional form emitted no deprecation note"
+fi
+
+python3 - "$P17" "$TS_OK" <<'PY' || P17_OK=1
+import json, os, re, sys
+P17, ts = sys.argv[1], bool(sys.argv[2])
+canon = lambda p: json.dumps(json.load(open(p)), sort_keys=True)
+leaf  = lambda x: re.split(r'[.:$]+', x)[-1]
+print("\n[17] QUERY-GRAMMAR differential  (discovery ≡ --report ≡ OLD positional; --json selects; --policy a flag)")
+ok = True
+for name, pre in [("rust","r"), ("java","j")] + ([("ts","t")] if ts else []):
+    try:
+        vals = {f: canon(f"{P17}/{pre}_{f}.json") for f in ("disc","dir","pfx","old")}
+        d = json.load(open(f"{P17}/{pre}_disc.json"))
+        shape = d.get("effect") == "Fs" and isinstance(d.get("directly"), list) and isinstance(d.get("inherited"), list)
+    except Exception as e:
+        print(f"  {name:5s} where -> DIVERGE (a form produced no/invalid JSON: {e})"); ok = False; continue
+    same = len(set(vals.values())) == 1
+    print(f"  {name:5s} where -> {'MATCH' if same and shape else 'DIVERGE'}"
+          + ("" if same else "  (the four invocations disagree)")
+          + ("" if shape else "  (discovered `where Fs` is not the pinned shape — discovery broken)"))
+    ok = ok and same and shape
+sys.exit(0 if ok else 1)
+PY
+
+# --- policy is a FLAG (fix-gate): NEW `--policy <p>` ≡ OLD positional policy; four-way. Scans its OWN fresh
+#     fix fixtures — PART 12b strips the callgraph sidecars from its copies (its sidecar-absent test), and a
+#     fix-gate needs the sidecar, so we test grammar here on healthy reports. Swift also gets a discovery
+#     check (it has no `where`).
+fgpair() { # $1 label ; $2 new-json ; $3 old-json ; $4 old-err
+  canoneq "$1 fix-gate: --policy(flag) != positional policy" "$2" "$3"
+  [ -s "$4" ] || p17fail "$1 fix-gate: the OLD positional form emitted no deprecation note"
+}
+cp -r "$HERE/fix" "$P17/fx"; FPOL="$P17/fx/policy"
+"$SCAN" "$P17/fx/rust" >/dev/null 2>&1 || p17fail "rust: fix fixture scan failed"
+javac -d "$P17/fxjc" $(find "$P17/fx/java" -name '*.java') 2>/dev/null \
+  && java -jar "$JAR" "$P17/fxjc" --json "$P17/fxjava.json" >/dev/null 2>&1 || p17fail "java: fix fixture scan failed"
+"$QUERY" fix-gate --report "$P17/fx/rust/.candor/report" --policy "$FPOL" --json > "$P17/r_fg_n.json" 2>/dev/null
+"$QUERY" fix-gate "$P17/fx/rust/.candor/report" "$FPOL" 1                        > "$P17/r_fg_o.json" 2>"$P17/r_fg_o.err"
+fgpair rust "$P17/r_fg_n.json" "$P17/r_fg_o.json" "$P17/r_fg_o.err"
+java -jar "$JAR" fix-gate --report "$P17/fxjava.json" --policy "$FPOL" --json > "$P17/j_fg_n.json" 2>/dev/null
+java -jar "$JAR" fix-gate "$P17/fxjava.json" "$FPOL" --json                    > "$P17/j_fg_o.json" 2>"$P17/j_fg_o.err"
+fgpair java "$P17/j_fg_n.json" "$P17/j_fg_o.json" "$P17/j_fg_o.err"
+if [ -n "$TS_OK" ]; then
+  node "$TS_DIR/scan.mjs" "$P17/fx/ts" "$P17/fxts" >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" fix-gate --report "$P17/fxts" --policy "$FPOL" > "$P17/t_fg_n.json" 2>/dev/null
+  node "$TS_DIR/query.mjs" fix-gate "$P17/fxts" "$FPOL"                   > "$P17/t_fg_o.json" 2>"$P17/t_fg_o.err"
+  fgpair ts "$P17/t_fg_n.json" "$P17/t_fg_o.json" "$P17/t_fg_o.err"
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  env -u CANDOR_CONFIG "$SW_BIN" "$P17/fx/swift" --out "$P17/fxsw" >/dev/null 2>&1
+  env -u CANDOR_CONFIG "$SW_BIN" fix-gate --report "$P17/fxsw" --policy "$FPOL" --json > "$P17/s_fg_n.json" 2>/dev/null
+  env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$P17/fxsw" "$FPOL"                          > "$P17/s_fg_o.json" 2>"$P17/s_fg_o.err"
+  fgpair swift "$P17/s_fg_n.json" "$P17/s_fg_o.json" "$P17/s_fg_o.err"
+  mkdir -p "$P17/s/.candor"
+  env -u CANDOR_CONFIG "$SW_BIN" "$P17/fx/swift" --out "$P17/s/.candor/report" >/dev/null 2>&1
+  ( cd "$P17/s" && env -u CANDOR_CONFIG "$SW_BIN" fix-gate --policy "$FPOL" --json ) > "$P17/s_fg_disc.json" 2>/dev/null
+  canoneq "swift fix-gate: discovered != --report" "$P17/s_fg_disc.json" "$P17/s_fg_n.json"
+fi
+
+if [ "$P17_OK" = 0 ]; then
+  echo "  -> MATCH — every engine drives a query the same way: discovery ≡ --report ≡ OLD positional, --json selects, --policy is a flag"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + κ ledger + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
