@@ -938,7 +938,7 @@ and classify the dependency's calls accordingly, killing the `Unknown` it would 
 The trust is **declared-not-verified**: the report is only as trustworthy as the declaration, exactly
 like a cap type (and unlike the engine's own analysis, which is checked). An effect name outside §1
 MUST void the declaration loudly (a typo must not silently *narrow* a surface), and a declaration
-that under-claims is caught the moment the source *is* analysed; the κ ledger (§7) names every
+that under-claims is caught the moment the source *is* analysed; the coverage ledger (§7) names every
 dependency still opaque, so a missing manifest is visible, never silent. The edge cases are fixed
 normatively so the engines can't drift on them (a cross-engine manifest differential is tracked
 conformance work; these MUSTs bind regardless): an **empty** array (`candorEffects: []`) is a positive
@@ -1191,7 +1191,7 @@ It SHOULD additionally (items 9–13):
     identically. The cross-impl conformance suite checks this for effect sets, the `whatif` verdict +
     blast radius, the `fix`/`fix-gate` remedy (PART 12b), the `unverified` provable-purity disclosure and
     its gate auto-disclosure (PARTs 12c/12d), the `rewire` verdict, the `§6.2` policy-DSL parse, the §2
-    tables extraction, the item-14 κ-ledger disclosure, and the read-only queries' JSON shapes +
+    tables extraction, the item-14 coverage ledger disclosure, and the read-only queries' JSON shapes +
     name-match ladder;
 11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and
     consumes this implementation's reports; the per-language counterpart of this repo's
@@ -1251,16 +1251,16 @@ It SHOULD additionally (items 9–13):
 And, as of spec 0.4, it MUST also (the number is kept from its SHOULD-era introduction, so references
 to "item 14" stay valid):
 
-14. **disclose the curated classifier's blind spots per scan — the κ-coverage ledger.** Every
+14. **disclose the curated classifier's blind spots per scan — the coverage ledger.** Every
     candor engine classifies external calls against a curated table, and an UNLISTED package
     contributes nothing: invisible, not `Unknown`. That is the documented weaker edge of item 4's promise,
     and historically its sharpest (an unlisted password-hashing library read silently pure on
     exactly the call a security review cared about). A conforming engine MUST therefore emit,
     with each scan, the external packages the scanned code **demonstrably calls** that the
     classifier neither classifies nor has reviewed-pure, named with call counts: per-scan
-    evidence in the receipt, not a documentation footnote. The disclosure line begins with the
-    canonical marker **`κ doesn't know`** so consumers (and the conformance suite, which asserts
-    it) can find it without per-engine wording knowledge. Exempt from the disclosure: the
+    evidence in the receipt, not a documentation footnote. The disclosure line contains the
+    canonical marker **`classifier doesn't cover`** so consumers (and the conformance suite, which
+    asserts it) can find it without per-engine wording knowledge. Exempt from the disclosure: the
     platform/builtin frontier (the classifier's actual job), packages the classifier covers
     verb-precisely (zero classifications can mean the code touches only their pure surface),
     and packages a chained sibling report covers (§2, including an EMPTY report, whose silence
@@ -1329,7 +1329,7 @@ declare it via the envelope's `spec`.
   - Reference impl: candor-java (`--gate-json`, captured at the single diagnostic sink); then candor-scan,
     candor-ts and candor-swift in turn. All four declare `0.8`; the conformance gate-verdict differential
     (PART 12) pins their agreement on the shared fixtures. The candor-agents domain engine (§4) rides the
-    ladder behind them: its 0.8.0 adds `.candor/config`, `--gate-json` and the item-14 κ ledger, declaring
+    ladder behind them: its 0.8.0 adds `.candor/config`, `--gate-json` and the item-14 coverage ledger, declaring
     `0.8`.
   - **(amended)** §2.1 the **stale-baseline posture**: a baseline GUARD given a baseline from a
     different (or absent) producing version MUST fail closed without evaluating (the unreadable-policy
@@ -1444,7 +1444,7 @@ declare it via the envelope's `spec`.
   - **§2.1 version-trust at the chain join** is MUST (and a MISSING producer version is as
     unverifiable as a mismatched one — downgrade to `Unknown`). The trust contract (§4) extended
     across report boundaries; the engines had measurably drifted under SHOULD.
-  - **§7 item 14, the κ-coverage ledger,** is MUST (conformance Part 4c already enforced it): the
+  - **§7 item 14, the coverage ledger,** is MUST (conformance Part 4c already enforced it): the
     per-scan disclosure is the executable form of item 7's honesty obligation.
   - **`hash` emission** is MUST for every producer (any report can become a chained sibling; a
     hashless report is silently unchainable — the under-report direction).
@@ -1460,7 +1460,7 @@ declare it via the envelope's `spec`.
   - §4 the **bounded-CHA discipline** for dispatch over local abstractions (resolve ≤12 local
     implementors, the shared bound; otherwise honest `Unknown`; external-abstraction misses must be
     documented);
-  - §7 item 14: the **κ-coverage ledger** (disclose unlisted-but-called packages per scan), pinned
+  - §7 item 14: the **coverage ledger** (disclose unlisted-but-called packages per scan), pinned
     by conformance Part 4c.
 - **0.3 (amended 2026-06-11)** — additive within 0.3, wire-compatible both ways (a pre-amendment 0.3
   reader parses a post-amendment report — `tables` is one more OPTIONAL literal-surface field on the
@@ -1526,7 +1526,7 @@ discipline) so every step lands machine-checked.
    `impact`/`blindspots`, the name-match ladder, `callers --include-unknown`. Judged by **PART 5**
    (query JSON shapes), **PART 11** (containment + the AS-EFF-010 ratchet, where implemented), and the
    dispatch-frontier differential.
-7. **§7 — the κ-coverage ledger, `--agents`, and the checklist items.** The per-scan `κ doesn't know`
+7. **§7 — the coverage ledger, `--agents`, and the checklist items.** The per-scan `classifier doesn't cover`
    disclosure (item 14), the embedded agent contract (item 11), the self-gate (item 12), the soundness
    harness (item 13). Judged by **PART 4c** (the ledger differential) and **PART 7**; items 12–13 live
    in the engine's own CI.

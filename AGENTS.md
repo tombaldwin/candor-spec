@@ -123,7 +123,7 @@ instead of grepping, same names and output shapes in every language:
 is in the set), the effect list **may be incomplete** — read the source for that function before
 relying on it. Never conclude a function is pure if it is marked `unresolved`.
 
-Also read the scan's **κ-coverage ledger** line, which starts with the marker `κ doesn't know`
+Also read the scan's **coverage ledger** line, which starts with the marker `classifier doesn't cover`
 (SPEC §7 item 14): it names the external packages the scanned code demonstrably calls that the
 engine's classifier has neither classified nor reviewed pure. Those packages are *invisible* in the
 report — not even `Unknown` — so the ledger is the report's blind-spot receipt: an empty ledger means
