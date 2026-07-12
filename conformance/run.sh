@@ -1022,9 +1022,11 @@ java -jar "$JAR" "$W/cont_jbase" --json "$W/cont_jbase.json" >/dev/null 2>&1 || 
 # scan the Rust current/base states (candor-scan analyzes source in place)
 "$SCAN" "$W/containment/rust/current" >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on containment/rust/current"; exit 2; }
 "$SCAN" "$W/containment/rust/base"    >/dev/null 2>&1 || { echo "FAIL: candor-scan errored on containment/rust/base"; exit 2; }
-# REPORT mode (the diagnostic)
-java -jar "$JAR" containment "$W/cont_jcur.json" --json > "$W/cont_jrep.json" 2>/dev/null
-"$QUERY" containment "$W/containment/rust/current/.candor/report" --json > "$W/cont_rrep.json" 2>/dev/null
+# REPORT mode (the diagnostic). §3.3.1: containment's SINGLE positional is the BASELINE, so the report-mode
+# diagnostic (no baseline) supplies the report via --report — a bare `containment <report>` now discovers +
+# ratchets, never re-reads the lone positional as the report (the cardinal-sin gate-off this rung fixes).
+java -jar "$JAR" containment --report "$W/cont_jcur.json" --json > "$W/cont_jrep.json" 2>/dev/null
+"$QUERY" containment --report "$W/containment/rust/current/.candor/report" --json > "$W/cont_rrep.json" 2>/dev/null
 # RATCHET mode (current vs base — AS-EFF-010); capture exit codes (1 = leak)
 java -jar "$JAR" containment "$W/cont_jcur.json" "$W/cont_jbase.json" --json > "$W/cont_jrat.json" 2>/dev/null; jrat=$?
 "$QUERY" containment "$W/containment/rust/current/.candor/report" "$W/containment/rust/base/.candor/report" --json > "$W/cont_rrat.json" 2>/dev/null; rrat=$?
@@ -1895,8 +1897,39 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   canoneq "swift fix-gate: discovered != --report" "$P17/s_fg_disc.json" "$P17/s_fg_n.json"
 fi
 
+# --- ROBUSTNESS: the §3.3.1 loud-failure + gating rules, pinned four-way (the cardinal-sin fixes) ---------
+# (1) No report → LOUD exit 2. A query that cannot resolve its report MUST NOT answer empty at exit 0 (§4).
+mkdir -p "$P17/empty"
+noreport() { # $1 label ; $2… command — run from an empty dir with discovery env cleared
+  ( cd "$P17/empty" && env -u CANDOR_REPORT -u CANDOR_CONFIG "${@:2}" ) >/dev/null 2>&1
+  [ "$?" = 2 ] || p17fail "$1: a missing report must exit 2 (loud), not answer empty at exit 0"
+}
+noreport "rust no-report" "$QUERY" where Fs --json
+noreport "java no-report" java -jar "$JAR" where Fs --json
+[ -n "$TS_OK" ] && noreport "ts no-report" node "$TS_DIR/query.mjs" where Fs --json
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && noreport "swift no-report" "$SW_BIN" fix-gate --policy "$FPOL" --json
+
+# (2) CANDOR_REPORT=<dir> resolves like --report (dir → <dir>/.candor/report), identically, from any CWD.
+( cd / && env CANDOR_REPORT="$W/rust" "$QUERY" where Fs --json ) > "$P17/r_env.json" 2>/dev/null
+canoneq "rust CANDOR_REPORT=<dir> != discovered" "$P17/r_env.json" "$P17/r_disc.json"
+( cd / && env CANDOR_REPORT="$P17/j" java -jar "$JAR" where Fs --json ) > "$P17/j_env.json" 2>/dev/null
+canoneq "java CANDOR_REPORT=<dir> != discovered" "$P17/j_env.json" "$P17/j_disc.json"
+if [ -n "$TS_OK" ]; then
+  ( cd / && env CANDOR_REPORT="$P17/t" node "$TS_DIR/query.mjs" where Fs --json ) > "$P17/t_env.json" 2>/dev/null
+  canoneq "ts CANDOR_REPORT=<dir> != discovered" "$P17/t_env.json" "$P17/t_disc.json"
+fi
+
+# (3) containment's SINGLE positional is the BASELINE — the discovery ratchet GATES (exit 1 on a leak),
+#     never silently drops to non-gating report mode. Reuses PART 11's leak fixtures (current LEAKS vs base).
+( cd "$W/containment/rust/current" && "$QUERY" containment "$W/containment/rust/base/.candor/report" --json ) >/dev/null 2>&1
+[ "$?" = 1 ] || p17fail "rust containment: discovery form \`containment <baseline>\` must GATE (exit 1 on the Fs→svc leak), not drop to report mode"
+mkdir -p "$P17/cont_j/.candor"
+java -jar "$JAR" "$W/cont_jcur" --json "$P17/cont_j/.candor/report.cur.jvm.json" >/dev/null 2>&1
+( cd "$P17/cont_j" && java -jar "$JAR" containment "$W/cont_jbase.json" --json ) >/dev/null 2>&1
+[ "$?" = 1 ] || p17fail "java containment: discovery form \`containment <baseline>\` must GATE (exit 1 on the Fs→svc leak), not drop to report mode"
+
 if [ "$P17_OK" = 0 ]; then
-  echo "  -> MATCH — every engine drives a query the same way: discovery ≡ --report ≡ OLD positional, --json selects, --policy is a flag"
+  echo "  -> MATCH — every engine drives a query the same way (discovery ≡ --report ≡ OLD positional, --json, --policy flag); a missing report fails loud (exit 2); CANDOR_REPORT=<dir> resolves; containment discovery gates"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi

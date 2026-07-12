@@ -657,15 +657,30 @@ engine exposes, it MUST accept:
 
 - **Report resolution.** With no `--report`, the engine discovers the report by walking UP from the CWD
   for a `.candor/` directory and using its `report` prefix (the §3.4 discovery mechanism; a `CANDOR_REPORT`
-  env var overrides). `--report <locator>` overrides discovery, where a `<locator>` resolves by one rule: a
-  **directory** → `<dir>/.candor/report`; a path ending `.json` → that **full report path**; otherwise a
-  **prefix** (`<prefix>.<crate>.<backend>.json`). The comparative verbs `diff` and `gains` instead take two
-  positional locators, `<current> <baseline>`, in that order (§3.1) — they compare two explicit reports, so
-  discovery does not apply.
+  env var overrides). `--report <locator>` overrides discovery. A `<locator>` — whether from `--report` or
+  `CANDOR_REPORT`, resolved **identically** — is one rule: a **directory** → `<dir>/.candor/report`; a path
+  ending `.json` → that **single report file loaded directly** (any `.json` file, whatever its internal
+  dot-segments, so one engine can query another's report by path); otherwise a **prefix**
+  (`<prefix>.<crate>.<backend>.json`). The comparative verbs `diff` and `gains` instead take two positional
+  locators, `<current> <baseline>`, in that order (§3.1) — they compare two explicit reports, so discovery
+  does not apply.
+- **No report is a loud failure.** If the report cannot be resolved to an existing file — discovery finds no
+  `.candor/`, or a `--report`/`CANDOR_REPORT` locator names nothing — the engine MUST print a clear error
+  identifying what it looked for and **exit 2**. It MUST NOT emit an empty or degenerate answer at exit 0: a
+  query that cannot find its report must never read as a clean "nothing here" (the §4 cardinal sin). A
+  `--report` given with no value is likewise an exit-2 error, never a silent fall-back to discovery.
 - **Verb args** are positional, in the §3.1 order: `where <Effect>`; `show`/`callers`/`impact` `<fn>`;
   `path`/`whatif`/`fix` `<fn> <Effect>`; `map`/`reachable`/`blindspots`/`fix-gate`/`unverified` none;
   `containment [<baseline>]`. The report is a **flag**, never a leading positional, so the first token after
-  the verb is unambiguously the verb's own argument.
+  the verb is the verb's own argument. In particular a **single** bare positional to `containment` is the
+  **baseline** (the gating ratchet), report discovered — never re-read as the report (which would silently
+  drop to non-gating report mode); the bare report-only form migrates to `--report`.
+- **Deprecated positional forms are arity-gated.** An engine that still accepts the pre-0.10 positional forms
+  MUST only treat a leading positional as the deprecated report, or strip a trailing `0|1` sentinel, or claim
+  a trailing positional as the deprecated policy, when the positional count **exceeds** the verb's canonical
+  arity (there is a surplus). It MUST NOT consume, probe, or reinterpret a positional that the canonical form
+  needs — so `where Net` is always the effect `Net`, never a report lookup, and `show 1` keeps `1` as the
+  query. Ambiguity here resolves toward the canonical (discovering) reading, never toward a silent gate-off.
 - **`--json`** selects JSON (stdout MUST then be pure JSON, per §3.3). **`--policy <file>`** supplies a
   policy, honouring `CANDOR_POLICY` then `.candor/config` when the flag is absent (§3.3/§3.4) — never a
   positional. **`--strict`** (on `unverified`) and **`--include-unknown`** (on `callers`) keep their §3.1
