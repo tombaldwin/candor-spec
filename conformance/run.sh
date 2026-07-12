@@ -608,6 +608,54 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 4g — SURFACE TOUR differential (`candor tour`): the on-demand top-N query names the SAME opener as   [TIER 2]
+# the scan-time note. Reuses the PART 4f fixtures (benign `Settings::load` inheriting Fs three hops via a
+# `read` source in another module): scan each into a report, run `tour --json`, and assert every engine's
+# top reach is `…load…` performing Fs — so the guided-poke verb is consistent per engine too.
+# ====================================================================================================
+"$SCAN" "$W/surf/rust" >/dev/null 2>&1
+TOUR_RUST=$("$QUERY" tour --report "$W/surf/rust/.candor/report" --json 2>/dev/null)
+java -jar "$JAR" "$W/surf/java/app" --json "$W/surf/jrep.json" >/dev/null 2>&1
+TOUR_JAVA=$(java -jar "$JAR" tour --report "$W/surf/jrep.json" --json 2>/dev/null)
+TOUR_TS=""
+if [ -n "$TS_PRESENT" ]; then
+  node "$TS_DIR/scan.mjs" "$W/surf/ts/cases.ts" "$W/surf/tsrep" >/dev/null 2>&1
+  TOUR_TS=$(node "$TS_DIR/query.mjs" tour --report "$W/surf/tsrep" --json 2>/dev/null)
+fi
+TOUR_SW=""
+if [ -n "$SW_PRESENT" ]; then
+  env -u CANDOR_CONFIG "$SW_BIN" "$W/surf/swift" --out "$W/surf/swrep" >/dev/null 2>&1
+  TOUR_SW=$(env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/surf/swrep" --json 2>/dev/null)
+fi
+python3 - "$TOUR_RUST" "$TOUR_JAVA" "$TOUR_TS" "$TS_PRESENT" "$TOUR_SW" "$SW_PRESENT" <<'PY' || rc=1
+import json, sys
+rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sw, sw_present = sys.argv[5], sys.argv[6]
+print("\n[4g] SURFACE TOUR differential  (`candor tour` names the same top reach as the scan opener)")
+ok = True
+def check(name, out):
+    global ok
+    try:
+        reaches = json.loads(out).get("reaches", [])
+        top = reaches[0] if reaches else {}
+        hit = "load" in top.get("fn", "") and top.get("effect") == "Fs"
+    except Exception:
+        hit = False
+    print(f"  {name:12s} -> {'MATCH' if hit else 'DIVERGE'}"
+          + ("" if hit else "  (tour's top reach is not `load` performing Fs)"))
+    ok = ok and hit
+check("candor-scan", rust)
+check("candor-java", java)
+if ts_present:
+    check("candor-ts", ts)
+if sw_present:
+    check("candor-swift", sw)
+print("  -> " + ("MATCH — `candor tour` surfaces the same top reach in every engine"
+                 if ok else "DIVERGE — an engine's tour ranks a different top reach (or has no tour)"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
 # PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the   [TIER 2]
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
@@ -2040,6 +2088,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
