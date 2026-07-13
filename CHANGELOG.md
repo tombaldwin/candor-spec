@@ -12,9 +12,25 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.10 — current floor
+## 0.11 — current floor
 
-All code engines declare `0.10`; the floor is conformance-pinned (PART 17). Another **tier-2
+All code engines declare `0.11`; the floor is conformance-pinned (PARTs 4f–4k). Another **tier-2
+(pinned-tool-surface)** rung, additive over 0.10 and invocation-compatible with it. The **§3.1
+surprising-reach surface**: the scan-time opener (the single most surprising transitive reach — a
+mundane-named function inheriting a boundary effect from hops away — with a ready-to-run `path`
+command), the **`tour [<N>]`** verb (the same ranking on demand, top-N, + a pinned JSON shape), and
+`path`'s human-readable default. One deterministic shared heuristic (salience × benignity × hops ×
+crossing) with a **salience floor** (`Clock`/`Log`/`Rand` never surface), **module-segment test
+exclusion** (never the leaf name), and the explicit "nothing hidden" fallback over a manufactured
+surprise. Also ⟨0.11⟩: **found-but-corrupt loudness** — a located report yielding no trustworthy
+functions fails loudly, syntactic and semantic corruption alike (a well-formed `functions: []` stays a
+valid pure report); the coverage-ledger marker de-jargoned (**`classifier doesn't cover`**, was `κ
+doesn't know` — a consumer grepping the old marker must update); and the plural-`packages` tour-header
+label. Design: candor-rust SURFACE-BEST-FIND-DESIGN.md.
+
+## 0.10
+
+All code engines declare `0.10`; conformance-pinned (PART 17). Another **tier-2
 (pinned-tool-surface)** rung, additive over 0.9 and invocation-compatible with it. The
 **§3.3.1 canonical query grammar**: for every §3.1 query verb an engine exposes, one invocation shape in
 every language — the report **discovered** from `.candor/` (walk-up, §3.4) with a `--report <locator>`
