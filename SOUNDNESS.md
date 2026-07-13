@@ -317,3 +317,4 @@ weekly released-artifacts leg. Strict mode is a standing CI property, no longer 
 | candor-scan κ-ledger §2 rule-3 gap | 2026-07-09 | scan `2d32086` | over-disclosure on chained empty reports | fixed, PART 14-pinned |
 | candor-java mutation_probe rot | 2026-07-09 | java `a6c60c0` | meta-soundness decay (3/14 patch-error) | re-anchored 14/14, weekly CI |
 | Coverage wave — never-executed gate surfaces | 2026-07-10 | all engines | **4 bugs in 0-coverage surfaces** (strict-gate 001 over-fire, guard fail-open, positional swallow, watch no-quit) + swift payload-host parity | all fixed red-then-green; TESTING.md standards |
+| Corrupt-report false all-clear (read side) | 2026-07-13 | rust `1952eaf` + ts `d0d0b1f` | **READ-side cardinal sin** — a found-but-unparseable report → `tour` "nothing hidden" / `map` empty at exit 0 (rust+ts; java/swift immune) | fixed loud exit 2 (syntactic + semantic), PART 4k-pinned four-way + unit/fuzz gates |
