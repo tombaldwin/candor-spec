@@ -504,7 +504,14 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   documentation catch-up: the engines have shipped it and the conformance suite has pinned its shape
   since the ⟨0.5⟩ query parts — the §2.1 and §5.1 references resolve here.)*
 - **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's
-  provenance (the call chain to its source), and the blast radius from entry points.
+  provenance (the call chain to its source), and the blast radius from entry points. ⟨0.11⟩ `path`'s
+  default output is the human-readable indented chain (it is the command the §3.1 *surprising-reach*
+  surfaces hand to a cold reader); `--json` selects the pinned shape below.
+- **tour `[<N>]`** ⟨0.11⟩: the N (default 10) most *surprising* transitive reaches in the report — each a
+  benign-named function that inherits a high-salience effect from hops away — with a ready-to-run
+  `path` command per entry. The on-demand form of the scan-time opener (below); both MUST rank with the
+  same heuristic so they cannot disagree. `N` MUST be a positive integer: `tour 0` is a usage error
+  (exit 2), because an empty tour over an effectful package would read as an all-clear.
 - **blindspots** ⟨0.6⟩: the Unknown SOURCES — the calls the engine genuinely could not resolve (each
   carries `unknownWhy` — reflection, an over-wide dispatch, a fn-pointer), ranked by how many functions
   transitively inherit `Unknown` through each. The actionable inverse of a widely-propagated `Unknown`: a
@@ -541,6 +548,7 @@ diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":
 gains    { "gained":[Effect…], "byFunction":[ { "fn", "effect" } ], …optional provenance fields }
 reachable { "entryPoints":int, "effects": { "<Effect>": { "count":int, "via":[fn…] } } }
 path      { "effect", "fn", "path":[ { "fn", "loc", "source":bool } ] }
+tour      { "reaches":[ { "effect", "fn", "hops":int, "loc", "score":int, "source" } ] }   ⟨0.11⟩
 impact    { "fn", "affectedCount":int, "affected":[fn…], "entryPoints":[ { "fn", "inferred":[…] } ] }
 blindspots { "sources":[ { "fn", "why":[…], "reaches":int, "affected"?:[fn…] } ], "totalUnknown":int }   ⟨0.6⟩
 ```
@@ -563,6 +571,31 @@ it just computed, so the list is required. `path` is the forward dual: a shortes
 to the nearest unit performing `effect` **directly** (`source: true`), each step carrying its `loc`;
 an empty `path` is the correct "no local source on a path" answer (the source is cross-boundary,
 framework-synthesised, or `Unknown`), never an error.
+
+**The surprising-reach surface** ⟨0.11⟩ (`tour`, and the scan-time opener). An engine SHOULD surface,
+at scan time, the single most surprising transitive reach in what it just analyzed — a mundane-named
+function that inherits a boundary effect from hops away — as one line with a ready-to-run `path`
+command; `tour` is the same ranking on demand, top-N. The heuristic is deterministic and shared (no
+model, no network): `score = salience × benignity × hops-factor × crossing`, where **salience** classes
+the reached effect (`Net`/`Exec`/`Db`/`Ipc` high; `Fs`/`Env` mid; `Clock`/`Log`/`Rand` and everything
+else **zero** — a mundane reach is never presented as surprising), **benignity** prefers a function
+whose leaf name reads effect-free (a `load`/`settings`/`get…` lexicon) and excludes names that already
+announce the effect (`fetch`, `exec`, `write…`), **hops-factor** rewards distance to the source, and
+**crossing** rewards a module boundary on the chain. Functions in **test contexts are excluded** (a
+module segment named `test`/`tests`, or the language's test-file/`…Tests`-type idiom — never by the
+leaf name, which would hide a production `test_connection`). When nothing clears the bar the correct
+output is the explicit fallback ("nothing hidden") — a manufactured surprise is worse than none. The
+cross-impl suite pins the surface four-way: the same fixture yields the same top reach in every engine,
+the salience floor holds, and test contexts stay excluded.
+
+**A located report that yields no trustworthy functions MUST fail loudly** ⟨0.11⟩ (exit 2, the failure
+disclosed), never read as an empty report: a report file that is *found* but cannot be parsed — or
+parses to the wrong shape (a `null`/scalar document, a bare array of junk entries, a non-array
+`functions`) — is corrupt input, not an effect-free package. Returning an empty answer over it is the
+§4 false all-clear: `tour` would print "nothing hidden", and a policy gate over the empty `map` would
+pass. A **well-formed** report that legitimately lists zero functions (`functions: []`) remains a valid
+pure report and MUST NOT trip this rule. (The twin of §3.1's no-report-loud rule for `diff`, and of
+§3.3.1's rule that a locator matching no files fails loudly — this one covers *found-but-corrupt*.)
 
 `blindspots` ⟨0.6⟩ is the *source* view of `Unknown`: each entry is a unit whose OWN body has an
 unresolvable call (so it carries `unknownWhy`, required on such a unit — §4), with `reaches` the size of
@@ -1279,6 +1312,18 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.11 (UNRELEASED — accumulating on main)** — additive, wire- and invocation-compatible with 0.10:
+  another **tier-2 (pinned-tool-surface) rung**, no report-schema or verdict change. It promotes the
+  **§3.1 surprising-reach surface** into the pinned tools: the scan-time opener, the **`tour [<N>]`**
+  verb (+ its JSON shape), `path`'s human-readable default, the shared deterministic ranking heuristic
+  (salience floor: `Clock`/`Log`/`Rand` never surface; test contexts excluded by module segment, never
+  by leaf name), and the "nothing hidden" fallback over a manufactured surprise. Also ⟨0.11⟩: **a
+  located report yielding no trustworthy functions fails loudly** (found-but-corrupt is never an empty
+  all-clear — syntactic and semantic corruption alike, while a well-formed `functions: []` stays a
+  valid pure report), and the coverage-ledger marker de-jargoned (`classifier doesn't cover`).
+  Conformance pins it four-way: PARTs 4f (opener), 4g (tour + the plural-`packages` header label),
+  4h (tour 0 → exit 2; sidecar-loss fallback), 4i (test exclusion), 4j (salience floor),
+  4k (corrupt-report loudness).
 - **0.10 (all code engines declare `0.10`; conformance-pinned)** — additive, wire- and
   invocation-compatible with 0.9: another **tier-2 (pinned-tool-surface) rung**. No report-schema or verdict
   change. It promotes the
