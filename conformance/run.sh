@@ -666,16 +666,16 @@ plural_hdr() { # $1 label ; $2 locator ; $3.. cmd — asserts the human header n
   case "$hdr" in *"in com.a:"*) ;; *) echo "     FAIL $1: tour header did not name the packages' common prefix (got: ${hdr:0:80})"; return 1;; esac
 }
 P4G2_OK=0
-printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
+printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.11"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
 plural_hdr rust "$W/plural/r" "$QUERY" || P4G2_OK=1
-printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
+printf '%s' '{ "candor": {"version":"t","spec":"0.11"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
 plural_hdr java "$W/plural/j.jvm.json" java -jar "$JAR" || P4G2_OK=1
 if [ -n "$TS_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.11"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
   plural_hdr ts "$W/plural/t" node "$TS_DIR/query.mjs" || P4G2_OK=1
 fi
 if [ -n "$SW_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.11"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
   plural_hdr swift "$W/plural/s" env -u CANDOR_CONFIG "$SW_BIN" || P4G2_OK=1
 fi
 if [ "$P4G2_OK" = 0 ]; then
@@ -1711,7 +1711,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.10 — candor-scan/java/ts/swift 0.10.0):   [TIER 2]
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.11 — candor-scan/java/ts/swift 0.11.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
