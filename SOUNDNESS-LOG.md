@@ -802,3 +802,20 @@ Residual (tracked, not rushed): the four-way conformance pin covers SYNTACTIC co
 report). candor-ts now also fails loud on SEMANTIC corruption (null/wrong-shape); whether candor-rust
 /java/swift are equally loud on those specific malformed-but-valid-JSON shapes is unverified — a
 follow-up sweep, not a known divergence (all four refuse to under-report on the syntactic case).
+
+### 2026-07-13 — corrupt-report false all-clear, the cross-engine sweep (rust+java, residual closed)
+
+Follow-up to the entry above, resolving its tracked residual. Probing the semantic-corruption shapes
+(a `null` doc, a bare junk array `[1,2,3]`, a non-array `functions`) across ALL four engines found the
+false all-clear was NOT ts-only: the bare junk-array shape ALSO read as "nothing hidden" at exit 0 in
+candor-rust AND candor-java. Both parse `[1,2,3]` as a legacy bare array, drop every entry for a
+missing `fn`, and read the net-empty result as an effect-free crate. (swift + ts were already loud on
+it.) FIXED: candor-rust `load_entries_inner` marks hard_fail when a file parsed but all its entries
+were dropped (`fdb5e63`); candor-java `load()` throws → loud exit 2 when a non-empty report array
+yields zero usable functions (`60d812b`). A WELL-FORMED empty `functions: []` report still exits 0 in
+all four (the only non-corrupt empty — parity preserved, pinned by a clean-empty complement seed).
+Conformance PART 4k now pins BOTH shapes (syntactic + semantic) plus the complement, four-way. Residual
+CLOSED: all four engines fail loud on null / junk-array / wrong-typed `functions`, and exit 0 only on a
+valid empty report. KEY LESSON reinforced (the write-fmt pattern, now on the read side): a find in one
+engine is a SWEEP trigger for ALL — the semantic-corruption false all-clear was a shared blind spot in
+three of four engines that per-engine testing would have missed.
