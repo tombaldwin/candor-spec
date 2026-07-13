@@ -655,6 +655,35 @@ print("  -> " + ("MATCH — `candor tour` surfaces the same top reach in every e
 sys.exit(0 if ok else 1)
 PY
 
+# 4g addendum — the PLURAL `packages` envelope (SPEC §2's JVM shape, which candor-java's own scan emits)
+# must feed the tour header in EVERY engine: several packages name their longest common dotted prefix.
+# Dogfood find: java's tour on its own multi-package report printed the raw FILENAME because every
+# engine's reportPackage read only the singular `package`. Fixture: packages ["com.a.x","com.a.y"] →
+# the header must say "in com.a:" (each engine gets its own qual-shaped functions so the reach surfaces).
+mkdir -p "$W/plural"
+plural_hdr() { # $1 label ; $2 locator ; $3.. cmd — asserts the human header names the common prefix
+  hdr="$( "${@:3}" tour --report "$2" 2>/dev/null | head -1 )"
+  case "$hdr" in *"in com.a:"*) ;; *) echo "     FAIL $1: tour header did not name the packages' common prefix (got: ${hdr:0:80})"; return 1;; esac
+}
+P4G2_OK=0
+printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
+plural_hdr rust "$W/plural/r" "$QUERY" || P4G2_OK=1
+printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
+plural_hdr java "$W/plural/j.jvm.json" java -jar "$JAR" || P4G2_OK=1
+if [ -n "$TS_PRESENT" ]; then
+  printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
+  plural_hdr ts "$W/plural/t" node "$TS_DIR/query.mjs" || P4G2_OK=1
+fi
+if [ -n "$SW_PRESENT" ]; then
+  printf '%s' '{ "candor": {"version":"t","spec":"0.10"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
+  plural_hdr swift "$W/plural/s" env -u CANDOR_CONFIG "$SW_BIN" || P4G2_OK=1
+fi
+if [ "$P4G2_OK" = 0 ]; then
+  echo "  -> MATCH — every engine's tour header honours the plural packages envelope (common prefix)"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 # ====================================================================================================
 # PART 4h — SURFACE TOUR robustness (the review's cardinal-sin fixes): `tour 0` must FAIL LOUD (exit 2),    [TIER 2]
 # not print a false "nothing hidden"; and with the callgraph sidecar DELETED, tour must STILL surface the
