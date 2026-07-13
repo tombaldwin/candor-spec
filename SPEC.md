@@ -510,8 +510,9 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   signal) vs a **new** fn that performs it (a feature). Reports omit pure functions (§2), so baseline
   existence is keyed on the **baseline callgraph sidecar**: `"existing"` = in the baseline report OR a
   baseline-callgraph node (caller or callee); `"new"` = in neither; `"unknown"` = absent from the
-  baseline report and no baseline callgraph was found — existence undecidable, disclosed rather than
-  guessed (§4). The vocabulary is closed (those three values); the human/TSV output is unchanged
+  baseline report while the baseline callgraph is absent OR incomplete (a matched sidecar failed to
+  load — a partial graph must not downgrade an existing-fn gain to a feature-looking "new") —
+  existence undecidable, disclosed rather than guessed (§4). The vocabulary is closed (those three values); the human/TSV output is unchanged
   (`origin` is the machine surface).
 - **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points. ⟨0.11⟩ `path`'s
@@ -1325,7 +1326,7 @@ declare it via the envelope's `spec`.
 - **0.12 (UNRELEASED — accumulating on main)** — additive, wire- and invocation-compatible with 0.11:
   the **`gains` `origin` field** (§3.1) — each `byFunction` entry names whether the gaining fn existed
   at the baseline (`existing`, the supply-chain attack signal: shipped pure, now performs the effect),
-  is new (`new`, a feature), or is undecidable without a baseline callgraph (`unknown`, disclosed).
+  is new (`new`, a feature), or is undecidable (`unknown`, disclosed — the baseline callgraph is absent or PARTIAL: a corrupt sidecar must not downgrade the attack signal to "new").
   Existence keys on the baseline callgraph sidecar because reports omit pure functions. Promoted from
   the candor-gains prototype's driver into the open query; human/TSV output unchanged.
 - **0.11 (all code engines declare `0.11`; conformance-pinned)** — additive, wire- and invocation-compatible with 0.10:

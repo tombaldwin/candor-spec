@@ -750,24 +750,24 @@ clean_empty_ok() {
   "${@:3}" tour --report "$2" >/dev/null 2>&1
   [ "$?" = 0 ] || p4k "$1: a well-formed empty report did NOT exit 0 (loud rule over-fires on a valid empty report)"
 }
-mkdir -p "$W/surfc/rust/.candor"
+mkdir -p "$W/corrupt/rust/.candor"
 # (a) SYNTACTIC — corrupt a copy of each engine's surf report so discovery finds it and the PARSE fails.
-for f in "$W"/surf/rust/.candor/report.*.scan.json; do [ -e "$f" ] && printf '%s' "$TRUNC" > "$W/surfc/rust/.candor/$(basename "$f")"; done
-loud_corrupt "rust  (syntactic)" "$W/surfc/rust/.candor/report" "$QUERY"
-printf '%s' "$TRUNC" > "$W/surfc/jrep.jvm.json";  loud_corrupt "java  (syntactic)" "$W/surfc/jrep.jvm.json" java -jar "$JAR"
-[ -n "$TS_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/surfc/tsrep.JS.json";     loud_corrupt "ts    (syntactic)" "$W/surfc/tsrep" node "$TS_DIR/query.mjs"; }
-[ -n "$SW_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/surfc/swrep.Swift.json";  loud_corrupt "swift (syntactic)" "$W/surfc/swrep" env -u CANDOR_CONFIG "$SW_BIN"; }
+for f in "$W"/surf/rust/.candor/report.*.scan.json; do [ -e "$f" ] && printf '%s' "$TRUNC" > "$W/corrupt/rust/.candor/$(basename "$f")"; done
+loud_corrupt "rust  (syntactic)" "$W/corrupt/rust/.candor/report" "$QUERY"
+printf '%s' "$TRUNC" > "$W/corrupt/jrep.jvm.json";  loud_corrupt "java  (syntactic)" "$W/corrupt/jrep.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/corrupt/tsrep.JS.json";     loud_corrupt "ts    (syntactic)" "$W/corrupt/tsrep" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/corrupt/swrep.Swift.json";  loud_corrupt "swift (syntactic)" "$W/corrupt/swrep" env -u CANDOR_CONFIG "$SW_BIN"; }
 # (b) SEMANTIC — a valid-JSON bare junk array. Standalone report files (report-glob names per engine).
-printf '%s' "$JUNK_ARR" > "$W/surfc/rj.demo.scan.json"; loud_corrupt "rust  (semantic)" "$W/surfc/rj" "$QUERY"
-printf '%s' "$JUNK_ARR" > "$W/surfc/jj.jvm.json";       loud_corrupt "java  (semantic)" "$W/surfc/jj.jvm.json" java -jar "$JAR"
-[ -n "$TS_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/surfc/tj.JS.json";    loud_corrupt "ts    (semantic)" "$W/surfc/tj" node "$TS_DIR/query.mjs"; }
-[ -n "$SW_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/surfc/sj.Swift.json"; loud_corrupt "swift (semantic)" "$W/surfc/sj" env -u CANDOR_CONFIG "$SW_BIN"; }
+printf '%s' "$JUNK_ARR" > "$W/corrupt/rj.demo.scan.json"; loud_corrupt "rust  (semantic)" "$W/corrupt/rj" "$QUERY"
+printf '%s' "$JUNK_ARR" > "$W/corrupt/jj.jvm.json";       loud_corrupt "java  (semantic)" "$W/corrupt/jj.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/corrupt/tj.JS.json";    loud_corrupt "ts    (semantic)" "$W/corrupt/tj" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/corrupt/sj.Swift.json"; loud_corrupt "swift (semantic)" "$W/corrupt/sj" env -u CANDOR_CONFIG "$SW_BIN"; }
 # COMPLEMENT — a well-formed empty report must NOT trip the loud rule (exit 0, parity across engines).
 EMPTY='{ "candor": { "version": "conf" }, "functions": [] }'
-printf '%s' "$EMPTY" > "$W/surfc/re.demo.scan.json"; clean_empty_ok "rust  (clean-empty)" "$W/surfc/re" "$QUERY"
-printf '%s' "$EMPTY" > "$W/surfc/je.jvm.json";       clean_empty_ok "java  (clean-empty)" "$W/surfc/je.jvm.json" java -jar "$JAR"
-[ -n "$TS_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/surfc/te.JS.json";    clean_empty_ok "ts    (clean-empty)" "$W/surfc/te" node "$TS_DIR/query.mjs"; }
-[ -n "$SW_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/surfc/se.Swift.json"; clean_empty_ok "swift (clean-empty)" "$W/surfc/se" env -u CANDOR_CONFIG "$SW_BIN"; }
+printf '%s' "$EMPTY" > "$W/corrupt/re.demo.scan.json"; clean_empty_ok "rust  (clean-empty)" "$W/corrupt/re" "$QUERY"
+printf '%s' "$EMPTY" > "$W/corrupt/je.jvm.json";       clean_empty_ok "java  (clean-empty)" "$W/corrupt/je.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/corrupt/te.JS.json";    clean_empty_ok "ts    (clean-empty)" "$W/corrupt/te" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/corrupt/se.Swift.json"; clean_empty_ok "swift (clean-empty)" "$W/corrupt/se" env -u CANDOR_CONFIG "$SW_BIN"; }
 if [ "$P4K_OK" = 0 ]; then
   echo "  -> MATCH — every engine fails loud on a corrupt report (syntactic + semantic), none over-fires on a valid empty one"
 else
@@ -821,8 +821,15 @@ print("\n[4i] SURFACE test-code exclusion  (a benign test-context reach is NEVER
 ok = True
 def check(name, out):
     global ok
+    # An EMPTY capture (engine crashed, exited loud, or the scan step failed) must be a DIVERGE —
+    # json.loads("{}") would otherwise read as an empty reach list and pass the very check the part
+    # exists to run (a fail-open oracle; max-review find).
+    if not (out or "").strip():
+        print(f"  {name:12s} -> DIVERGE  (no tour output — the engine crashed or the fixture scan failed)")
+        ok = False
+        return
     try:
-        reaches = json.loads(out or "{}").get("reaches", [])
+        reaches = json.loads(out).get("reaches", [])
         excluded = not any("load" in r.get("fn", "") for r in reaches)
     except Exception:
         excluded = False
@@ -887,8 +894,15 @@ print("\n[4j] SURFACE salience floor  (a mundane Clock-only reach is NEVER surfa
 ok = True
 def check(name, out):
     global ok
+    # An EMPTY capture must be a DIVERGE, never a pass — an engine that CRASHES on the salience
+    # fixture would otherwise parse as {} -> zero reaches -> "quiet" -> MATCH (fail-open; max-review
+    # find). The honest quiet answer is a JSON body with an empty reaches list, not silence.
+    if not (out or "").strip():
+        print(f"  {name:12s} -> DIVERGE  (no tour output — the engine crashed or the fixture scan failed)")
+        ok = False
+        return
     try:
-        reaches = json.loads(out or "{}").get("reaches", [])
+        reaches = json.loads(out).get("reaches", [])
         quiet = len(reaches) == 0
     except Exception:
         quiet = False
@@ -1147,8 +1161,27 @@ if [ -n "$SW_PRESENT" ]; then
   rm -f "$W/gorigin/sbase.M.Swift.callgraph.json"
   gocheck "swift (no baseline callgraph)" "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" unknown unknown
 fi
+# PARTIAL baseline graph (max-review find): a corrupt sidecar must never downgrade the attack signal
+# to a feature-looking "new" — a fn absent from the surviving edges is "unknown", not "new". rust/ts/
+# swift merge multi-sidecar families (a VALID sidecar knowing only g + a CORRUPT second one → non-empty
+# partial graph); java reads one sidecar per report path (corrupt single sidecar → same invariant).
+printf '{ "%s": [] }' "m::g" > "$W/gorigin/rbase.demo.scan.callgraph.json"
+printf '{ corrupt' > "$W/gorigin/rbase.demo2.scan.callgraph.json"
+gocheck "rust (partial baseline callgraph)" "m::f" "m::h" "$("$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --json 2>/dev/null)" unknown unknown
+printf '{ corrupt' > "$W/gorigin/jbase.jvm.callgraph.json"
+gocheck "java (corrupt baseline callgraph)" "m.f" "m.h" "$(java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --json 2>/dev/null)" unknown unknown
+if [ -n "$TS_PRESENT" ]; then
+  printf '{ "%s": [] }' "m.g" > "$W/gorigin/tbase.a.callgraph.json"
+  printf '{ corrupt' > "$W/gorigin/tbase.b.callgraph.json"
+  gocheck "ts (partial baseline callgraph)" "m.f" "m.h" "$(node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" 2>/dev/null)" unknown unknown
+fi
+if [ -n "$SW_PRESENT" ]; then
+  printf '{ "%s": [] }' "M.g" > "$W/gorigin/sbase.M.Swift.callgraph.json"
+  printf '{ corrupt' > "$W/gorigin/sbase.N.Swift.callgraph.json"
+  gocheck "swift (partial baseline callgraph)" "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" unknown unknown
+fi
 if [ "$P5B_OK" = 0 ]; then
-  echo "  -> MATCH — every engine separates existing-fn gains from new-fn gains, and discloses unknown without a baseline callgraph"
+  echo "  -> MATCH — every engine separates existing-fn gains from new-fn gains, and discloses unknown on an absent OR partial baseline callgraph"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
