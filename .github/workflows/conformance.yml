@@ -183,6 +183,18 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: candor-spec
+          fetch-depth: 0   # need the tag history to pin the suite to the released spec
+      # Pin the conformance SUITE to the latest published spec tag — the released engines were
+      # validated against THAT contract, not main. main accrues tier-2 surface parts (e.g. the
+      # surface-best-find/tour parts) ahead of the next engine publish; running them against the
+      # already-released binaries is a false floor failure. When the next version publishes (spec
+      # tag + engines together) this automatically starts enforcing the new parts. Self-maintaining.
+      - name: Pin the suite to the latest released spec tag
+        run: |
+          cd "$GITHUB_WORKSPACE/candor-spec"
+          TAG="$(git describe --tags --abbrev=0)"
+          echo "released floor: validating the published engines against conformance @ $TAG"
+          git checkout -q "$TAG"
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
