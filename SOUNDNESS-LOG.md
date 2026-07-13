@@ -819,3 +819,28 @@ CLOSED: all four engines fail loud on null / junk-array / wrong-typed `functions
 valid empty report. KEY LESSON reinforced (the write-fmt pattern, now on the read side): a find in one
 engine is a SWEEP trigger for ALL — the semantic-corruption false all-clear was a shared blind spot in
 three of four engines that per-engine testing would have missed.
+
+### 2026-07-13 — the loudness rule left unfinished: verbs × surfaces (max-review wave, all fixed)
+
+The post-0.11 max review (44 agents, 15 CONFIRMED findings) exposed the sequel to the corrupt-report
+entry above: the fix was swept across ENGINES but not across VERBS and SURFACES. The loud rule landed
+in the shared single-report loaders — but candor-rust's comparative verbs (gains/diff/containment) kept
+their own quiet loader, candor-ts's MCP tools (all 15 loadReport sites, plus the report resource)
+never consulted the new hardFail tag, ts gains/diff had no files-at-locator guard at all, and the
+brand-new swift gains verb reproduced the semantic-corruption hole from scratch. Each was an exit-0
+empty all-clear a CI gate would trust — the same §4 class, resurfacing one surface over from where it
+was fixed. Also found: the gains `origin` field downgraded the supply-chain ATTACK signal to a
+feature-looking "new" whenever the baseline callgraph was PARTIAL (a disclosed-and-dropped corrupt
+sidecar) rather than absent — in all four engines at once, because all four ported the same reference
+ladder; and the conformance suite's OWN 4i/4j oracles were fail-open (an engine that crashed on the
+fixture parsed as {} → MATCH), quietly capable of masking the class.
+
+ALL FIXED same-day (rust 5390e66, java 654ad50 — which also caught a THIRD stdout-channel instance and
+now unions multi-report baseline sidecars, ts 2d73b6f — bonus hole: MCP baselines bypassed
+resolvePrefix confinement, swift 9d1ad94, spec d52089d, umbrella 1fbe269, web ad7c50d). GATED:
+conformance PART 5b grew the partial-graph checks; 4i/4j oracles fail closed on empty output; 4k's
+fixtures isolated from 4j's dir; per-engine unit/CLI/process-test pins throughout; dispatcher + web
+smoke regression gates. KEY LESSON (extends the write-fmt and read-side lessons): a new invariant must
+be swept across the full MATRIX — every ENGINE × every VERB that loads the same data × every SURFACE
+(CLI, MCP, LSP, resources) — and the conformance oracle that pins it must itself fail CLOSED. A fix
+that lands in the shared loader but not in a verb's private loader is the same bug wearing a new file.
