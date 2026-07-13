@@ -756,6 +756,72 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 4j — SURFACE salience floor (corpus-dogfood refinement): a benign function whose ONLY reach is a     [TIER 2]
+# mundane effect (Clock/Log/Rand — salience 0) must NOT be surfaced as "the most surprising reach"; the
+# engine reports "nothing hidden" honestly instead of over-promising. Only Net/Exec/Db/Ipc/Fs/Env surface.
+# ====================================================================================================
+mkdir -p "$W/surfc/rust/src" "$W/surfc/java/src/app"
+printf '[package]\nname = "surfcfix"\nversion = "0.0.0"\nedition = "2021"\n' > "$W/surfc/rust/Cargo.toml"
+cat > "$W/surfc/rust/src/lib.rs" <<'EOF'
+pub struct Settings;
+impl Settings { pub fn load() -> u128 { stamp() } }
+fn stamp() -> u128 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() }
+EOF
+"$SCAN" "$W/surfc/rust" >/dev/null 2>&1
+TC_RUST=$("$QUERY" tour --report "$W/surfc/rust/.candor/report" --json 2>/dev/null)
+cat > "$W/surfc/java/src/app/Settings.java" <<'EOF'
+package app;
+public class Settings { public static long load() { return Clock.stamp(); } }
+EOF
+cat > "$W/surfc/java/src/app/Clock.java" <<'EOF'
+package app;
+public class Clock { public static long stamp() { return System.currentTimeMillis(); } }
+EOF
+javac -d "$W/surfc/java/app" $(find "$W/surfc/java/src" -name '*.java') 2>/dev/null
+java -jar "$JAR" "$W/surfc/java/app" --json "$W/surfc/jrep.json" >/dev/null 2>&1
+TC_JAVA=$(java -jar "$JAR" tour --report "$W/surfc/jrep.json" --json 2>/dev/null)
+TC_TS=""
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$W/surfc/ts"
+  printf 'class Settings { static load(): number { return stamp(); } }\nfunction stamp(): number { return Date.now(); }\nexport { Settings };\n' > "$W/surfc/ts/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/surfc/ts/cases.ts" "$W/surfc/tsrep" >/dev/null 2>&1
+  TC_TS=$(node "$TS_DIR/query.mjs" tour --report "$W/surfc/tsrep" --json 2>/dev/null)
+fi
+TC_SW=""
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/surfc/swift"
+  printf 'import Foundation\nstruct Settings { static func load() -> Double { return stamp() } }\nfunc stamp() -> Double { return Date().timeIntervalSince1970 }\n' > "$W/surfc/swift/m.swift"
+  env -u CANDOR_CONFIG "$SW_BIN" "$W/surfc/swift" --out "$W/surfc/swrep" >/dev/null 2>&1
+  TC_SW=$(env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/surfc/swrep" --json 2>/dev/null)
+fi
+python3 - "$TC_RUST" "$TC_JAVA" "$TC_TS" "$TS_PRESENT" "$TC_SW" "$SW_PRESENT" <<'PY' || rc=1
+import json, sys
+rust, java, ts, ts_present = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sw, sw_present = sys.argv[5], sys.argv[6]
+print("\n[4j] SURFACE salience floor  (a mundane Clock-only reach is NEVER surfaced)")
+ok = True
+def check(name, out):
+    global ok
+    try:
+        reaches = json.loads(out or "{}").get("reaches", [])
+        quiet = len(reaches) == 0
+    except Exception:
+        quiet = False
+    print(f"  {name:12s} -> {'MATCH' if quiet else 'DIVERGE'}"
+          + ("" if quiet else "  (surfaced a mundane Clock reach as `most surprising`)"))
+    ok = ok and quiet
+check("candor-scan", rust)
+check("candor-java", java)
+if ts_present:
+    check("candor-ts", ts)
+if sw_present:
+    check("candor-swift", sw)
+print("  -> " + ("MATCH — every engine stays quiet on a Clock-only crate (nothing hidden)"
+                 if ok else "DIVERGE — an engine over-promised on a mundane reach"))
+sys.exit(0 if ok else 1)
+PY
+
+# ====================================================================================================
 # PART 5 — read-only query SHAPE differential: run show/where/callers/map on both engines and assert the   [TIER 2]
 # JSON *shape* (the keys an agent parses) is identical. The function-name VALUES are language-natural
 # (`a::b` vs `a.b`), so this pins structure, not content — catching a field rename or a restructured
@@ -808,7 +874,7 @@ if [ -n "$TS_OK" ]; then
   TSQ diff    "$W/ts" "$W/ts" 1         > "$W/t_diff.json"       2>/dev/null
   TSQ impact  "$W/ts" transitive_leaf 1 > "$W/t_impact.json"     2>/dev/null
   TSQ gains   "$W/ts" "$W/ts"            > "$W/t_gains.json"      2>/dev/null
-  TSQ path    "$W/ts" transitive_caller Fs > "$W/t_path.json"     2>/dev/null
+  TSQ path    "$W/ts" transitive_caller Fs --json > "$W/t_path.json"     2>/dev/null
   TSQ blindspots "$W/ts"                   > "$W/t_blindspots.json" 2>/dev/null
   TSQ reachable "$W/ts"                    > "$W/t_reachable.json" 2>/dev/null
 fi
@@ -2188,6 +2254,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + test-exclusion + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + test-exclusion + salience floor + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
