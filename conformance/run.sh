@@ -690,46 +690,57 @@ else
 fi
 
 # ====================================================================================================
-# PART 4k — SURFACE TOUR corrupt-report loudness (dogfood find, candor-rust/ts): a report that is FOUND    [TIER 2]
-# but wholly FAILS TO PARSE must make `tour` exit NON-ZERO with the corruption DISCLOSED — never print
-# "nothing hidden" (a §4 cardinal-sin false all-clear over corrupt input). candor-rust/ts's tolerant
-# loader returned an empty entry set → "nothing hidden" at exit 0; java (throws) and swift (→ no-report)
-# already died loud. Teeth: we CORRUPT A COPY of each engine's real surf report (PART 4g already proved a
-# VALID one surfaces a reach), so discovery finds it and the parse — not a missing file — is what fails.
+# PART 4k — SURFACE TOUR corrupt-report loudness (dogfood find, candor-rust/java/ts): a report that is     [TIER 2]
+# FOUND but yields NO trustworthy functions must make `tour` exit NON-ZERO with the corruption DISCLOSED —
+# never print "nothing hidden" (a §4 cardinal-sin false all-clear over corrupt input). Two corruption
+# shapes, because they exposed DIFFERENT engines: (a) SYNTACTIC — a truncated/unparseable envelope (rust
+# +ts returned []→"nothing hidden"; java/swift already loud); (b) SEMANTIC — a valid-JSON but wrong-shape
+# report, a bare `[1,2,3]` array whose entries are all junk (rust+java parsed it as a legacy array, dropped
+# every entry, and read the empty result as all-clear; ts/swift already loud). The COMPLEMENT pins the
+# other side: a WELL-FORMED empty `functions: []` report is NOT corrupt and must exit 0 (never over-fire).
+# Teeth: (a) corrupts a COPY of each engine's real surf report (PART 4g proved a valid one surfaces a
+# reach); (b)/(complement) write standalone report files each engine's --report discovers.
 # ====================================================================================================
 echo ""
-echo "[4k] SURFACE TOUR corrupt-report loudness  (a found-but-unparseable report → exit ≠0, disclosed, never 'nothing hidden')"
+echo "[4k] SURFACE TOUR corrupt-report loudness  (a found-but-untrustworthy report → exit ≠0, disclosed, never 'nothing hidden')"
 P4K_OK=0
 p4k() { echo "     FAIL $1"; P4K_OK=1; }
-TRUNC='{ "candor": {}, "functions": [ { "fn": "x.'   # a truncated envelope — valid-looking prefix, unparseable
-# $1 label ; $2 report locator (points at the corrupted copy)  — asserts: exit≠0 AND stdout has no
-# "nothing hidden" all-clear AND stderr discloses the corruption (proving the file was found + parsed).
+TRUNC='{ "candor": {}, "functions": [ { "fn": "x.'   # (a) a truncated envelope — valid prefix, unparseable
+JUNK_ARR='[1, 2, 3]'                                  # (b) a bare array whose entries are all junk (no `fn`)
+# $1 label ; $2 report locator ; $3.. cmd  — asserts exit≠0 AND stdout has no "nothing hidden" all-clear
+# AND stderr discloses the corruption (proving the report was found + rejected, not merely missing).
 loud_corrupt() {
   out="$( "${@:3}" tour --report "$2" 2>"$W/4k.err" )"; code=$?
   err="$(cat "$W/4k.err" 2>/dev/null)"
   if [ "$code" = 0 ]; then p4k "$1: tour exited 0 over a corrupt report (false all-clear)"; return; fi
   case "$out" in *"nothing hidden"*) p4k "$1: tour printed 'nothing hidden' over a corrupt report"; return;; esac
-  case "$err" in *parse*|*OMITTED*|*MalformedJson*|*"could not"*|*"failed to load"*) ;; *) p4k "$1: corruption not disclosed on stderr (err=${err:0:80})";; esac
+  case "$err" in *parse*|*OMITTED*|*malformed*|*MalformedJson*|*"could not"*|*"no usable"*|*"failed to load"*) ;; *) p4k "$1: corruption not disclosed on stderr (err=${err:0:80})";; esac
 }
-# rust — corrupt a copy of the surf report dir
+# $1 label ; $2 report locator ; $3.. cmd — the COMPLEMENT: a well-formed EMPTY report must exit 0.
+clean_empty_ok() {
+  "${@:3}" tour --report "$2" >/dev/null 2>&1
+  [ "$?" = 0 ] || p4k "$1: a well-formed empty report did NOT exit 0 (loud rule over-fires on a valid empty report)"
+}
 mkdir -p "$W/surfc/rust/.candor"
+# (a) SYNTACTIC — corrupt a copy of each engine's surf report so discovery finds it and the PARSE fails.
 for f in "$W"/surf/rust/.candor/report.*.scan.json; do [ -e "$f" ] && printf '%s' "$TRUNC" > "$W/surfc/rust/.candor/$(basename "$f")"; done
-loud_corrupt rust "$W/surfc/rust/.candor/report" "$QUERY"
-# java — corrupt a copy of jrep.json
-printf '%s' "$TRUNC" > "$W/surfc/jrep.jvm.json"
-loud_corrupt java "$W/surfc/jrep.jvm.json" java -jar "$JAR"
-# ts — corrupt a copy of the ts surf report
-if [ -n "$TS_PRESENT" ]; then
-  printf '%s' "$TRUNC" > "$W/surfc/tsrep.JS.json"
-  loud_corrupt ts "$W/surfc/tsrep" node "$TS_DIR/query.mjs"
-fi
-# swift — corrupt a copy of the swift surf report
-if [ -n "$SW_PRESENT" ]; then
-  printf '%s' "$TRUNC" > "$W/surfc/swrep.Swift.json"
-  loud_corrupt swift "$W/surfc/swrep" env -u CANDOR_CONFIG "$SW_BIN"
-fi
+loud_corrupt "rust  (syntactic)" "$W/surfc/rust/.candor/report" "$QUERY"
+printf '%s' "$TRUNC" > "$W/surfc/jrep.jvm.json";  loud_corrupt "java  (syntactic)" "$W/surfc/jrep.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/surfc/tsrep.JS.json";     loud_corrupt "ts    (syntactic)" "$W/surfc/tsrep" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$TRUNC" > "$W/surfc/swrep.Swift.json";  loud_corrupt "swift (syntactic)" "$W/surfc/swrep" env -u CANDOR_CONFIG "$SW_BIN"; }
+# (b) SEMANTIC — a valid-JSON bare junk array. Standalone report files (report-glob names per engine).
+printf '%s' "$JUNK_ARR" > "$W/surfc/rj.demo.scan.json"; loud_corrupt "rust  (semantic)" "$W/surfc/rj" "$QUERY"
+printf '%s' "$JUNK_ARR" > "$W/surfc/jj.jvm.json";       loud_corrupt "java  (semantic)" "$W/surfc/jj.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/surfc/tj.JS.json";    loud_corrupt "ts    (semantic)" "$W/surfc/tj" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$JUNK_ARR" > "$W/surfc/sj.Swift.json"; loud_corrupt "swift (semantic)" "$W/surfc/sj" env -u CANDOR_CONFIG "$SW_BIN"; }
+# COMPLEMENT — a well-formed empty report must NOT trip the loud rule (exit 0, parity across engines).
+EMPTY='{ "candor": { "version": "conf" }, "functions": [] }'
+printf '%s' "$EMPTY" > "$W/surfc/re.demo.scan.json"; clean_empty_ok "rust  (clean-empty)" "$W/surfc/re" "$QUERY"
+printf '%s' "$EMPTY" > "$W/surfc/je.jvm.json";       clean_empty_ok "java  (clean-empty)" "$W/surfc/je.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/surfc/te.JS.json";    clean_empty_ok "ts    (clean-empty)" "$W/surfc/te" node "$TS_DIR/query.mjs"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$EMPTY" > "$W/surfc/se.Swift.json"; clean_empty_ok "swift (clean-empty)" "$W/surfc/se" env -u CANDOR_CONFIG "$SW_BIN"; }
 if [ "$P4K_OK" = 0 ]; then
-  echo "  -> MATCH — every engine fails loud on a corrupt report, none prints a false all-clear"
+  echo "  -> MATCH — every engine fails loud on a corrupt report (syntactic + semantic), none over-fires on a valid empty one"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
