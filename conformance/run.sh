@@ -690,6 +690,51 @@ else
 fi
 
 # ====================================================================================================
+# PART 4k — SURFACE TOUR corrupt-report loudness (dogfood find, candor-rust/ts): a report that is FOUND    [TIER 2]
+# but wholly FAILS TO PARSE must make `tour` exit NON-ZERO with the corruption DISCLOSED — never print
+# "nothing hidden" (a §4 cardinal-sin false all-clear over corrupt input). candor-rust/ts's tolerant
+# loader returned an empty entry set → "nothing hidden" at exit 0; java (throws) and swift (→ no-report)
+# already died loud. Teeth: we CORRUPT A COPY of each engine's real surf report (PART 4g already proved a
+# VALID one surfaces a reach), so discovery finds it and the parse — not a missing file — is what fails.
+# ====================================================================================================
+echo ""
+echo "[4k] SURFACE TOUR corrupt-report loudness  (a found-but-unparseable report → exit ≠0, disclosed, never 'nothing hidden')"
+P4K_OK=0
+p4k() { echo "     FAIL $1"; P4K_OK=1; }
+TRUNC='{ "candor": {}, "functions": [ { "fn": "x.'   # a truncated envelope — valid-looking prefix, unparseable
+# $1 label ; $2 report locator (points at the corrupted copy)  — asserts: exit≠0 AND stdout has no
+# "nothing hidden" all-clear AND stderr discloses the corruption (proving the file was found + parsed).
+loud_corrupt() {
+  out="$( "${@:3}" tour --report "$2" 2>"$W/4k.err" )"; code=$?
+  err="$(cat "$W/4k.err" 2>/dev/null)"
+  if [ "$code" = 0 ]; then p4k "$1: tour exited 0 over a corrupt report (false all-clear)"; return; fi
+  case "$out" in *"nothing hidden"*) p4k "$1: tour printed 'nothing hidden' over a corrupt report"; return;; esac
+  case "$err" in *parse*|*OMITTED*|*MalformedJson*|*"could not"*|*"failed to load"*) ;; *) p4k "$1: corruption not disclosed on stderr (err=${err:0:80})";; esac
+}
+# rust — corrupt a copy of the surf report dir
+mkdir -p "$W/surfc/rust/.candor"
+for f in "$W"/surf/rust/.candor/report.*.scan.json; do [ -e "$f" ] && printf '%s' "$TRUNC" > "$W/surfc/rust/.candor/$(basename "$f")"; done
+loud_corrupt rust "$W/surfc/rust/.candor/report" "$QUERY"
+# java — corrupt a copy of jrep.json
+printf '%s' "$TRUNC" > "$W/surfc/jrep.jvm.json"
+loud_corrupt java "$W/surfc/jrep.jvm.json" java -jar "$JAR"
+# ts — corrupt a copy of the ts surf report
+if [ -n "$TS_PRESENT" ]; then
+  printf '%s' "$TRUNC" > "$W/surfc/tsrep.JS.json"
+  loud_corrupt ts "$W/surfc/tsrep" node "$TS_DIR/query.mjs"
+fi
+# swift — corrupt a copy of the swift surf report
+if [ -n "$SW_PRESENT" ]; then
+  printf '%s' "$TRUNC" > "$W/surfc/swrep.Swift.json"
+  loud_corrupt swift "$W/surfc/swrep" env -u CANDOR_CONFIG "$SW_BIN"
+fi
+if [ "$P4K_OK" = 0 ]; then
+  echo "  -> MATCH — every engine fails loud on a corrupt report, none prints a false all-clear"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
 # PART 4i — SURFACE test-code exclusion: a benign-named function IN A TEST CONTEXT (each engine's idiom —   [TIER 2]
 # a Rust `mod tests`, a Java `.tests.` package, a TS `*.test.ts` file, a Swift `*Tests` type) that inherits
 # Fs must NEVER be surfaced as a reach — the scan-note/tour point at real code, not test scaffolding.
@@ -2254,6 +2299,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + test-exclusion + salience floor + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
