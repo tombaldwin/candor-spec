@@ -504,7 +504,15 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   supply-chain view of `diff` (§5.1): a dependency release that quietly grew `Net`/`Exec` is exactly
   what this surfaces, and a stable surface raises no alarm (`gained: []`). *(Recorded ⟨0.8⟩ as a
   documentation catch-up: the engines have shipped it and the conformance suite has pinned its shape
-  since the ⟨0.5⟩ query parts — the §2.1 and §5.1 references resolve here.)*
+  since the ⟨0.5⟩ query parts — the §2.1 and §5.1 references resolve here.)* ⟨0.12⟩ Each `byFunction`
+  entry carries **`origin`**, separating the two alarms a bare gain conflates: a fn that **existed at
+  the baseline** and gained the effect (shipped pure, now does `Net` — the supply-chain *attack*
+  signal) vs a **new** fn that performs it (a feature). Reports omit pure functions (§2), so baseline
+  existence is keyed on the **baseline callgraph sidecar**: `"existing"` = in the baseline report OR a
+  baseline-callgraph node (caller or callee); `"new"` = in neither; `"unknown"` = absent from the
+  baseline report and no baseline callgraph was found — existence undecidable, disclosed rather than
+  guessed (§4). The vocabulary is closed (those three values); the human/TSV output is unchanged
+  (`origin` is the machine surface).
 - **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's
   provenance (the call chain to its source), and the blast radius from entry points. ⟨0.11⟩ `path`'s
   default output is the human-readable indented chain (it is the command the §3.1 *surprising-reach*
@@ -547,7 +555,7 @@ callers  { "of":[fn…], "direct":[fn…], "transitive":[fn…] }
 map      { "<module>": { "effects":[…], "functions":int } }
 diff     { "changes": [ { "fn", "gained":[…], "introduced":[…], "inherited":[…], "lost":[…],
            "status": "changed"|"new"|"removed" } ], …optional provenance fields }
-gains    { "gained":[Effect…], "byFunction":[ { "fn", "effect" } ], …optional provenance fields }
+gains    { "gained":[Effect…], "byFunction":[ { "effect", "fn", "origin":"existing"|"new"|"unknown" } ], …optional provenance fields }   ⟨0.12⟩ origin
 reachable { "entryPoints":int, "effects": { "<Effect>": { "count":int, "via":[fn…] } } }
 path      { "effect", "fn", "path":[ { "fn", "loc", "source":bool } ] }
 tour      { "reaches":[ { "effect", "fn", "hops":int, "loc", "score":int, "source" } ] }   ⟨0.11⟩
@@ -1314,6 +1322,12 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.12 (UNRELEASED — accumulating on main)** — additive, wire- and invocation-compatible with 0.11:
+  the **`gains` `origin` field** (§3.1) — each `byFunction` entry names whether the gaining fn existed
+  at the baseline (`existing`, the supply-chain attack signal: shipped pure, now performs the effect),
+  is new (`new`, a feature), or is undecidable without a baseline callgraph (`unknown`, disclosed).
+  Existence keys on the baseline callgraph sidecar because reports omit pure functions. Promoted from
+  the candor-gains prototype's driver into the open query; human/TSV output unchanged.
 - **0.11 (all code engines declare `0.11`; conformance-pinned)** — additive, wire- and invocation-compatible with 0.10:
   another **tier-2 (pinned-tool-surface) rung**, no report-schema or verdict change. It promotes the
   **§3.1 surprising-reach surface** into the pinned tools: the scan-time opener, the **`tour [<N>]`**

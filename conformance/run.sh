@@ -1087,6 +1087,73 @@ sys.exit(0 if ok else 1)
 PY
 
 # ====================================================================================================
+# PART 5b — GAINS ORIGIN differential (spec 0.12 staged, §3.1): each `gains --json` byFunction entry    [TIER 2]
+# carries `origin`, separating the supply-chain ATTACK signal (a fn that EXISTED at the baseline —
+# shipped pure, now performs the effect) from a NEW fn (a feature). Reports omit pure functions, so
+# baseline existence keys on the BASELINE CALLGRAPH sidecar; with no baseline callgraph the origin is
+# "unknown" — disclosed, never guessed. Fixture per engine (own qual + filename shapes, verified against
+# each loader): baseline report lists only g (Fs); the baseline callgraph knows pure f; current has
+# f→Net (existing!), g unchanged, h→Net (new). Then the sidecar is DELETED → both must read "unknown".
+# ====================================================================================================
+echo ""
+echo "[5b] GAINS ORIGIN differential  (existing-fn gain vs new-fn vs unknown, keyed on the baseline callgraph)"
+P5B_OK=0
+p5b() { echo "     FAIL $1"; P5B_OK=1; }
+mkdir -p "$W/gorigin"
+# $1 label; $2 f-qual; $3 g-qual; $4 h-qual; $5 base report; $6 base callgraph sidecar; $7 cur report
+gow() { # write one engine's fixture pair
+  printf '{ "candor": {"version":"t","spec":"0.11"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
+  printf '{ "%s": ["%s"], "%s": [] }' "$2" "$3" "$3" > "$6"
+  printf '{ "candor": {"version":"t","spec":"0.11"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
+}
+# $1 label; $2 f-qual; $3 h-qual; $4 gains JSON output; $5 expected-f-origin; $6 expected-h-origin
+gocheck() {
+  python3 - "$1" "$2" "$3" "$4" "$5" "$6" <<'PY' || P5B_OK=1
+import json, sys
+label, fq, hq, out, want_f, want_h = sys.argv[1:7]
+try:
+    ent = {e["fn"]: e.get("origin") for e in json.loads(out).get("byFunction", [])}
+except Exception as ex:
+    print(f"     FAIL {label}: gains --json did not parse ({ex})"); sys.exit(1)
+ok = True
+for q, want in ((fq, want_f), (hq, want_h)):
+    got = ent.get(q)
+    if got != want:
+        print(f"     FAIL {label}: {q} origin = {got!r}, want {want!r}"); ok = False
+sys.exit(0 if ok else 1)
+PY
+}
+# rust — <prefix>.demo.scan.json family
+gow rust "m::f" "m::g" "m::h" "$W/gorigin/rbase.demo.scan.json" "$W/gorigin/rbase.demo.scan.callgraph.json" "$W/gorigin/rcur.demo.scan.json"
+gocheck rust "m::f" "m::h" "$("$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --json 2>/dev/null)" existing new
+rm -f "$W/gorigin/rbase.demo.scan.callgraph.json"
+gocheck "rust (no baseline callgraph)" "m::f" "m::h" "$("$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --json 2>/dev/null)" unknown unknown
+# java — <prefix>.jvm.json + <prefix>.jvm.callgraph.json
+gow java "m.f" "m.g" "m.h" "$W/gorigin/jbase.jvm.json" "$W/gorigin/jbase.jvm.callgraph.json" "$W/gorigin/jcur.jvm.json"
+gocheck java "m.f" "m.h" "$(java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --json 2>/dev/null)" existing new
+rm -f "$W/gorigin/jbase.jvm.callgraph.json"
+gocheck "java (no baseline callgraph)" "m.f" "m.h" "$(java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --json 2>/dev/null)" unknown unknown
+# ts — <prefix>.json + <prefix>.callgraph.json (no backend infix in this engine's own shape)
+if [ -n "$TS_PRESENT" ]; then
+  gow ts "m.f" "m.g" "m.h" "$W/gorigin/tbase.json" "$W/gorigin/tbase.callgraph.json" "$W/gorigin/tcur.json"
+  gocheck ts "m.f" "m.h" "$(node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" 2>/dev/null)" existing new
+  rm -f "$W/gorigin/tbase.callgraph.json"
+  gocheck "ts (no baseline callgraph)" "m.f" "m.h" "$(node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" 2>/dev/null)" unknown unknown
+fi
+# swift — <prefix>.<pkg>.Swift.json + <prefix>.<pkg>.Swift.callgraph.json
+if [ -n "$SW_PRESENT" ]; then
+  gow swift "M.f" "M.g" "M.h" "$W/gorigin/sbase.M.Swift.json" "$W/gorigin/sbase.M.Swift.callgraph.json" "$W/gorigin/scur.M.Swift.json"
+  gocheck swift "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" existing new
+  rm -f "$W/gorigin/sbase.M.Swift.callgraph.json"
+  gocheck "swift (no baseline callgraph)" "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" unknown unknown
+fi
+if [ "$P5B_OK" = 0 ]; then
+  echo "  -> MATCH — every engine separates existing-fn gains from new-fn gains, and discloses unknown without a baseline callgraph"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
 # PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written   [TIER 1]
 # from the spec documents alone; here it answers the SAME Part-1 oracle as the Rust and JVM engines.
 # Optional: skips (loudly) when the engine or node isn't available, so the suite never blocks on it.
@@ -2339,6 +2406,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
