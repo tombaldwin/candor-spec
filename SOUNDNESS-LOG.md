@@ -769,3 +769,36 @@ shell-completion detectors that read the environment. The remaining 183 fns are 
 over-disclosure on genuinely-unresolvable Decodable-synthesis / property-wrapper / generic code (sound; the
 §4 marker, not silence). So the 10-fix wave introduces no fabrication on real code and charges real effects
 correctly. Confidence: the wave is validated beyond fixtures on a real, ground-truth-checked corpus.
+
+### 2026-07-13 — corrupt-report false all-clear on the read side (query verbs), rust+ts (fixed)
+
+Dogfooding `candor tour` on a real crate (pgman), a report locator pointed at an unparseable file
+made `tour` print "candor: nothing hidden — every effect sits where its name says it should" at exit
+0. Root cause was NOT in the analyzer — it was the READ side (candor-query / candor-ts query.mjs): the
+loud report loader failed loud only when the prefix matched NO files. When it matched a report that
+then FAILED to parse, the tolerant loader disclosed on stderr but returned an EMPTY entry set →
+Ok(empty). Every loud-consuming verb inherited a false all-clear: `tour` said "nothing hidden", and a
+policy `map`/gate over the empty report would PASS — the §4 cardinal sin, over corrupt input rather
+than mis-analyzed code. A valid report always LISTS its functions (even a pure crate lists them with
+empty effect sets), so zero entries AFTER a matched file was found is always the corrupt case, never
+an effect-free crate.
+
+FIXED four-way-consistent: candor-rust `load_entries_loud` and candor-ts `loadReport`/loadReportOrDie
+now return a hard error (exit 2, disclosed) when a found report yields no trustworthy functions. The
+candor-ts fix has TWO halves — the fuzzer caught that the first pass only closed SYNTACTIC corruption
+(a JSON parse throw); a report that parses to valid JSON of the WRONG SHAPE (a `null` doc, a bare junk
+array, a non-array `functions`) still returned [] at exit 0, the same false all-clear in semantic
+clothing. Both halves closed; a WELL-FORMED empty `functions: []` envelope still exits 0 (parity with
+Rust — the only non-corrupt empty). java (throws → exit 2) and swift (→ no-report → exit 2) were
+already immune; the fix brings rust+ts into line. GATED: candor-query unit test
+`corrupt_report_fails_loud`; candor-ts CLI-9 tests + fuzz robustness seeds (all six corrupt shapes →
+loud exit 2, silent stdout; plus a clean-empty complement seed); conformance PART 4k pins the
+tour-loudness invariant four-way (a found-but-unparseable report → exit ≠0, disclosed, never "nothing
+hidden"). KEY LESSON: the cardinal sin lives on the READ side too, not just the classifier — a
+trustworthy analyzer can still be made to emit a false all-clear by a corrupt/typo'd report locator,
+and "tolerate corrupt input" must never degrade into "report empty == all-clear".
+
+Residual (tracked, not rushed): the four-way conformance pin covers SYNTACTIC corruption (truncated
+report). candor-ts now also fails loud on SEMANTIC corruption (null/wrong-shape); whether candor-rust
+/java/swift are equally loud on those specific malformed-but-valid-JSON shapes is unverified — a
+follow-up sweep, not a known divergence (all four refuse to under-report on the syntactic case).
