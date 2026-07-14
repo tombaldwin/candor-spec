@@ -126,6 +126,19 @@ contradicts it. That is what makes a leading reference safe, and it splits the p
   once" earns its cost.
 - A genuinely **language-specific** capability (e.g. JVM/Spring-only semantics) stays an engine feature, or
   at most an explicitly-optional engine-specific section — it does **not** advance the shared ladder.
+- **Engine SPEC EXTENSIONS (2026-07-14).** An **ecosystem-specific surface** — one whose sources exist in
+  a single engine's world (e.g. iOS privacy-sensor effects) — MAY be led by the **motivated engine** rather
+  than the reference, as a **spec extension**: a standalone contract document living in that engine's repo
+  (`SPEC-EXTENSION-<name>.md`), written spec-first with the same rigor as this document (vocabulary,
+  classification sources, disclosure posture, fabrication fences). Extension effects ride the normal §2
+  forward-compatibility rule (a consumer tolerates unknown effect names), and the report envelope SHOULD
+  disclose active extensions (`"extensions": ["<name>/<version>"]`) so a consumer can tell an extension
+  effect from a typo. An extension can later be **promoted into this document** as a shared rung (when a
+  second engine implements it, or by decision) — its text moves here, the ⟨rung⟩ marker records the
+  promotion, and the conformance suite picks it up; or it can be **adopted by another engine** directly
+  (both implement the same extension doc; the extension's own text is then their differential's oracle).
+  An extension never holds the shared floor back and a floor claim never speaks for it — the same posture
+  as a domain engine's schedule.
 
 So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the
 contract: `0.7` remains a complete, frozen floor every engine still meets, and `0.8` is the next rung —

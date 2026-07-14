@@ -1,6 +1,7 @@
 # The `Llm` effect — design (family-level, pre-implementation)
 
-**Status: DESIGN (2026-07-14). Target: a 0.13/0.14 vocabulary rung, java-led per the ladder.**
+**Status: DECIDED (Tom, 2026-07-14) — all three open questions resolved as recommended (name `Llm`;
+embeddings/moderation count; local inference counts). Next: the java reference implementation.**
 
 ## Why
 
@@ -43,10 +44,9 @@ among every other outbound call. As its own effect it becomes:
   fabricated onto a non-model host is the precision failure to fence), and the per-engine SDK lists
   become curated surface (the κ ledger continues to disclose uncovered providers).
 
-## Open questions (decide before implementation)
+## Decisions (Tom, 2026-07-14)
 
-1. Name: `Llm` (recommended — the question users ask) vs `Ai`/`Model` (broader, vaguer).
-2. Does an embeddings/moderation call count? (Recommend yes — same exfil surface; one effect, no
-   sub-taxonomy.)
-3. Local inference (ollama/llama.cpp): still `Llm`? (Recommend yes + the host literal discloses
-   localhost — the gate question is "does this code consult a model", not "does it pay OpenAI".)
+1. Name: **`Llm`**.
+2. Embeddings/moderation calls **count** — one effect, no sub-taxonomy (same exfil surface).
+3. Local inference (ollama/llama.cpp) **counts** — the host literal discloses localhost; the gate
+   question is "does this code consult a model", not "does it pay a provider".
