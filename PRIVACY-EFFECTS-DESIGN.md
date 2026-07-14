@@ -1,7 +1,7 @@
 # The privacy-sensor effect cluster — design (swift-led, pre-implementation)
 
-**Status: DESIGN (2026-07-14). Target: a swift-led vocabulary rung + a `privacy-manifest` product verb.
-Requires one ladder decision (below).**
+**Status: DECIDED (Tom, 2026-07-14) — proceed as a swift-led SPEC EXTENSION + a `privacy-manifest`
+product verb. Next: draft candor-swift/SPEC-EXTENSION-privacy.md, then implement.**
 
 ## Why
 
@@ -39,14 +39,14 @@ Server-side engines (rust/java-server/ts-node) have no native analog for most of
 absent effect as N/A, not a gap. Real analogs exist later (Android's location/camera APIs for a
 JVM-Android target; browser geolocation/getUserMedia for ts-web) — staged, not first-wave.
 
-## The ladder decision (Tom's)
+## The ladder decision — RESOLVED (Tom, 2026-07-14)
 
-The versioning policy says the REFERENCE engine (candor-java) may lead a minor rung. This rung is
-inherently swift-led — java has nothing to lead with. Options:
-1. **Amend the policy**: "the motivated engine MAY lead a rung whose surface is ecosystem-specific,
-   with the spec text written first" (recommended — it is the ladder's own logic applied honestly);
-2. Keep java-first formality: land the vocabulary in SPEC.md via a java no-op declaration, swift
-   implements. (Works, reads hollow.)
+**Ecosystem-specific rungs are led by the motivated engine as a SPEC EXTENSION** (SPEC.md §Versioning
+policy, the engine-extensions clause): candor-swift writes `SPEC-EXTENSION-privacy.md` in its own repo
+— the full contract (vocabulary, classification sources, disclosure posture, fabrication fences) —
+implements against it, and discloses it in the envelope (`"extensions": ["privacy/1"]`). The extension
+can later be promoted into the main spec as a shared rung, or adopted verbatim by another engine
+(the Android/JVM and browser/ts analogs are the obvious future adopters).
 
 ## Costs + sequencing
 
