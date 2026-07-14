@@ -513,6 +513,63 @@ sys.exit(1 if fails else 0)
 PYLLM
 
 # ====================================================================================================
+# PART 4n — SPEC-EXTENSION tolerance (SPEC §2 extensions, §2 forward-compatibility): a report that carries   [TIER 1]
+# an EXTENSION effect (candor-swift privacy/1: Location/Camera/…) + the `extensions` envelope field must be
+# TOLERATED by every OTHER engine's query loader — the extension effect is an unknown name to them, and a
+# consumer MUST ignore unknown fields/effects, never choke. A swift-led ecosystem extension only lands its
+# effects in swift; the cross-engine guarantee it needs is that the rest of the family keeps reading its
+# reports. Synthetic report (no engine has to implement privacy/1 to prove tolerance).
+# ====================================================================================================
+mkdir -p "$W/ext"
+cat > "$W/ext/report.demo.scan.json" <<'EOF'
+{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.13" },
+  "extensions": ["privacy/1"],
+  "package": "app",
+  "functions": [
+    { "fn": "app::loc::here", "inferred": ["Location", "Net"], "direct": ["Location"] },
+    { "fn": "app::caller", "inferred": ["Location", "Net"], "calls": ["app::loc::here"] } ] }
+EOF
+cat > "$W/ext/report.JS.json" <<'EOF'
+{ "candor": { "version": "t", "toolchain": "node", "spec": "0.13" },
+  "extensions": ["privacy/1"], "package": "app",
+  "functions": [
+    { "fn": "app.loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
+    { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.loc.here"] } ] }
+EOF
+cat > "$W/ext/report.jvm.json" <<'EOF'
+{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.13" },
+  "extensions": ["privacy/1"], "package": "app",
+  "functions": [
+    { "fn": "app.Loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
+    { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.Loc.here"] } ] }
+EOF
+echo ""
+echo "[4n] SPEC-EXTENSION tolerance  (a privacy/1 report + extensions field is read by every OTHER engine)"
+P4N_OK=0
+p4n() { echo "     FAIL $1"; P4N_OK=1; }
+# The §2 forward-compat guarantee is TOLERATION: an engine that does not know the extension effect must
+# still LOAD the report and OPERATE (map/show a known effect) without crashing or rejecting it — never a
+# "cannot read report". It is NOT required to SURFACE the unknown effect (rust/ts preserve it as an opaque
+# string and can query it; java's typed loader drops it — both compliant; cross-engine SURFACING of
+# extension effects is a future enhancement, noted in SPEC-EXTENSION-privacy.md). So the pin is: the
+# report is read, `map` answers, and the KNOWN co-effect (Net, present on the same fns) still surfaces.
+tolerant() { # $1 label ; $2 report locator ; $3.. query cmd
+  "${@:3}" map --report "$2" >/dev/null 2>"$W/ext/err"; local mc=$?
+  if [ "$mc" != 0 ]; then p4n "$1: map over an extension report exited $mc (should tolerate + answer)"; return; fi
+  case "$(cat "$W/ext/err" 2>/dev/null)" in *"cannot read"*|*"failed to"*|*"could not"*) p4n "$1: rejected the extension report as unreadable";; esac
+  # the KNOWN co-effect Net must still surface (proves the report's effect data was read, not dropped whole)
+  "${@:3}" where Net --report "$2" --json 2>/dev/null | grep -q "here" || p4n "$1: the known co-effect Net did not surface from an extension report"
+}
+tolerant "rust" "$W/ext/report.demo.scan.json" "$QUERY"
+tolerant "java" "$W/ext/report.jvm.json" java -jar "$JAR"
+[ -n "$TS_PRESENT" ] && tolerant "ts" "$W/ext/report" node "$TS_DIR/query.mjs"
+if [ "$P4N_OK" = 0 ]; then
+  echo "  -> MATCH — every engine tolerates an extension report (loads, answers, the known co-effect surfaces)"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);

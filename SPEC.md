@@ -247,6 +247,16 @@ a consumer (and the §2 chaining coverage rule) can tell what an **empty** repor
 parsing entry hashes. When the field is absent, coverage is derivable from the entries' `hash`
 prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
+**Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§"Versioning
+policy" — an ecosystem-specific effect surface led by the motivated engine, e.g. the candor-swift
+`privacy/1` Apple-sensor cluster) MUST disclose the active extensions in the envelope as
+`"extensions": ["<name>/<version>", …]`, a top-level array of `name/version` strings — omitted when no
+extension effect is active (so a plain report is byte-unchanged). This lets a consumer tell an extension
+effect name from a typo and know the surface was computed; the effect names themselves ride the
+forward-compatibility rule below (a consumer tolerates them like any unknown effect). An extension's own
+contract document (in the leading engine's repo, `SPEC-EXTENSION-<name>.md`) fixes its vocabulary and
+classification; it MAY later be promoted into this document as a shared rung.
+
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
 the fields this document defines are the interchange contract, not a closed schema.
