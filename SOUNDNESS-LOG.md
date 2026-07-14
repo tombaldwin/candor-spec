@@ -973,3 +973,28 @@ pins). Conformance PART 4p (the four-way top-level/initializer differential) unc
 these are engine-shape refinements within the contract it pins. LESSON (again): the primary fix's probe
 battery wrote effects in the common shape; the residuals lived in the shapes it didn't — always sweep the
 siblings (tuple vs identifier, static-block vs field-init, member vs global).
+
+### 2026-07-14 — const-indirected host: source-engine recall to java's parity (unreleased on main)
+
+Dogfooding real Rust LLM clients (aichat, async-openai) surfaced a cross-engine RECALL gap (not a soundness
+violation): the Llm host-literal refinement fired only for an INLINE literal at the call. Real clients put
+the host in a `const`/`static` and build the URL by interpolation/format — `const API_BASE =
+"https://api.openai.com"; fetch(`${API_BASE}/chat`)`. SPEC §1 says a "STATICALLY-KNOWN request to a
+recognized model host" → Llm; a literal const IS statically known, so the SOURCE-LEVEL engines
+(rust/ts/swift) were UNDER-conforming. candor-java was already sound (javac inlines `static final String`
+→ the literal is in the bytecode). Fixed rust/ts/swift with conservative const-string propagation: index a
+`const/let NAME = "literal"` (module/global + one level of local), resolve it at the host arg for three
+shapes — bare ref, interpolation/format HEAD, const-left concat — then run the EXISTING host-extraction +
+refinement (so Llm, Db jdbc, and Net-allowlist hosts all benefit, effect-agnostic). SOUNDNESS held four
+ways: a non-model const host (a CDN) stays bare Net (no fabrication); a runtime/config host, a reassignable
+`var`/`let`, a literal-prefix-before-interpolation, and a non-const first arg all stay bare Net, never a
+guess. Pinned by conformance **PART 4q** (const model host → Llm+Net; const CDN → Net; four-way incl. the
+java inlining reference).
+
+HONEST CORRECTION of the motivating dogfood: **aichat re-scans to 0 Llm — the SOUND answer, not a miss.**
+Its providers read the host from RUNTIME config (`get_api_base()`), the const only a fallback
+(`format!("{}/…", api_base.trim_end_matches(…))` — a method-chain result, not a bare const), so the host is
+genuinely not statically known and MUST stay bare Net (java wouldn't flag it either). The guard correctly
+held on real code — a good negative-control outcome. The feature's real value is the PURE-const pattern
+(a hardcoded base with no runtime override). LESSON: a dogfound "gap" can be the engine being correctly
+conservative; verify the target is actually statically-knowable before calling it an under-report.
