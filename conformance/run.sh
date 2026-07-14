@@ -579,6 +579,94 @@ else
 fi
 
 # ====================================================================================================
+# PART 4o — Llm model-SDK-surface differential (SPEC §1 ⟨0.13⟩): a call into a curated MODEL-PROVIDER   [TIER 1]
+# CLIENT classifies `Llm` IN ADDITION to `Net`, the SECOND classification source (distinct from PART 4m's
+# host literal) and the one real code most uses. Each engine curates its OWN per-ecosystem SDK surface
+# (rust MODEL_SDK_CRATES, java Rules.MODEL_SDK_PACKAGES, ts MODEL_SDK_RE, swift MODEL_SDK_TYPES) — the
+# highest DRIFT risk in the rung, so it needs a differential. A plain non-model Net call in the same
+# module must stay bare `Net` (the surface is scoped to the curated clients, never bleeds). Reference-led:
+# an engine not yet emitting Llm here is SKIPPED, not failed. Fixtures are hermetic (no network, no real
+# dependency install) — each engine resolves its own way (rust crate path, java owner package, ts a
+# minimal node_modules type stub, swift the imported type name).
+# ====================================================================================================
+mkdir -p "$W/llmsdk/rust/src" "$W/llmsdk/java/q" "$W/llmsdk/java/dev/langchain4j/model/chat"
+cat > "$W/llmsdk/rust/Cargo.toml" <<'EOF'
+[package]
+name = "llmsdk"
+version = "0.0.0"
+edition = "2021"
+EOF
+# rust: a path-qualified call whose crate root is a curated model SDK (async-openai) → Llm+Net; a plain
+# reqwest call to a non-model host → Net only (candor-scan resolves both syntactically, no crate built).
+printf 'pub fn sdk() { let _ = async_openai::Client::new(); }\npub async fn plain() { let _ = reqwest::get("https://api.example.com/x").await; }\n' > "$W/llmsdk/rust/src/lib.rs"
+"$SCAN" "$W/llmsdk/rust" >/dev/null 2>&1
+SDK_RUST="$(ls "$W"/llmsdk/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+# java: a call whose bytecode owner is a curated model-SDK package (dev.langchain4j.model.*) → Llm+Net; a
+# plain JDK URL fetch to a non-model host → Net only. The langchain4j owner is a compiled stub class.
+printf 'package dev.langchain4j.model.chat;\npublic class ChatModel { public String generate(String p) { return p; } }\n' > "$W/llmsdk/java/dev/langchain4j/model/chat/ChatModel.java"
+printf 'package q;\nimport dev.langchain4j.model.chat.ChatModel;\npublic class L {\n  static String sdk() { return new ChatModel().generate("hi"); }\n  static void plain() throws Exception { new java.net.URL("https://api.example.com/x").openConnection().getInputStream(); }\n}\n' > "$W/llmsdk/java/q/L.java"
+javac -d "$W/llmsdk/jout" "$W/llmsdk/java/dev/langchain4j/model/chat/ChatModel.java" "$W/llmsdk/java/q/L.java" 2>/dev/null
+java -jar "$JAR" "$W/llmsdk/jout" --json "$W/llmsdk/java.json" >/dev/null 2>&1
+SDK_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  # ts: a call into the curated `openai` package → Llm+Net; a plain fetch to a non-model host → Net only.
+  # The package is a minimal hermetic type stub in node_modules (the checker resolves the method chain
+  # back to module "openai" without any real install).
+  mkdir -p "$W/llmsdk/ts/node_modules/openai"
+  printf '{ "name": "openai", "version": "4.0.0", "types": "index.d.ts", "main": "index.js" }\n' > "$W/llmsdk/ts/node_modules/openai/package.json"
+  printf 'export default class OpenAI {\n  chat: { completions: { create(body: any): Promise<any> } };\n  constructor(opts?: any);\n}\n' > "$W/llmsdk/ts/node_modules/openai/index.d.ts"
+  : > "$W/llmsdk/ts/node_modules/openai/index.js"
+  printf 'import OpenAI from "openai";\nconst c = new OpenAI();\nexport async function sdk() { return c.chat.completions.create({ model: "m", messages: [] }); }\nexport function plain() { return fetch("https://api.example.com/x"); }\n' > "$W/llmsdk/ts/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/llmsdk/ts/cases.ts" "$W/llmsdk/ts_out" >/dev/null 2>&1
+  SDK_TS="$W/llmsdk/ts_out.json"
+fi
+SDK_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  # swift: a call constructing/using the curated `OpenAI` type (MacPaw) → Llm+Net; a plain URLSession call
+  # to a non-model host → Net only. SwiftSyntax matches the imported type name (guarded against fabrication
+  # by the declared/local-types rule — a non-model local type never classifies).
+  mkdir -p "$W/llmsdk/swift"
+  printf 'import OpenAI\nimport Foundation\nfunc sdk() { let c = OpenAI(apiToken: "x"); _ = c.chats(query: .init(messages: [], model: "m")) }\nfunc plain() { _ = URLSession.shared.dataTask(with: "https://api.example.com/x") { _,_,_ in } }\n' > "$W/llmsdk/swift/cases.swift"
+  "$SW_BIN" "$W/llmsdk/swift/cases.swift" --out "$W/llmsdk/sw_out" >/dev/null 2>&1
+  SDK_SW=$(ls "$W"/llmsdk/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+python3 - "$SDK_RUST" "$W/llmsdk/java.json" "$SDK_TS" "$SDK_SW" <<'PYSDK' || rc=1
+import json, sys, os
+def eff(path, sep):
+    d = json.load(open(path))
+    return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
+print("\n[4o] Llm model-SDK-surface differential  (SPEC §1 ⟨0.13⟩ — a curated model-SDK call is Llm+Net; a plain non-model Net call stays bare Net)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
+fails = 0; pinned = 0
+for name, path, sep in engines:
+    e = eff(path, sep)
+    sdk = e.get("sdk", set())
+    plain = e.get("plain", set())
+    if "Llm" not in sdk:
+        print(f"  {name:6s} -> SKIP (does not yet declare the Llm model-SDK surface — reference-led rung)")
+        continue
+    pinned += 1
+    checks = {
+        "sdk":   ("Llm" in sdk and "Net" in sdk),          # a curated model-SDK client call → Llm+Net
+        "plain": ("Llm" not in plain and "Net" in plain),  # a plain non-model Net call → bare Net (no SDK-surface bleed)
+    }
+    bad = [k for k, v in checks.items() if not v]
+    if bad:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE on {bad}  (sdk={sorted(sdk)} plain={sorted(plain)})")
+    else:
+        print(f"  {name:6s} -> MATCH  (model-SDK call Llm+Net; plain Net call stays bare Net — surface scoped, no bleed)")
+if pinned == 0:
+    print("  -> (no engine declares the Llm model-SDK surface yet)")
+else:
+    print("  -> " + ("MATCH — every engine that declares Llm classifies a curated model-SDK call Llm+Net, a plain call Net"
+                     if not fails else f"DIVERGE — {fails} engine(s) disagree"))
+sys.exit(1 if fails else 0)
+PYSDK
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
@@ -2570,6 +2658,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
