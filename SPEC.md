@@ -205,7 +205,11 @@ guessed, and the coverage ledger (§7) discloses an uncovered provider package l
 Embeddings and moderation calls count (one effect, no sub-taxonomy); a LOCAL model endpoint counts too
 (the host literal discloses localhost — the question is "does this consult a model", not "does it pay a
 provider"). As a §1 vocabulary addition it is tier-1 ADDITIVE: a consumer already tolerates unknown
-effect names (§2 forward-compatibility), and a pre-⟨0.13⟩ policy simply never names `Llm`.
+effect names (§2 forward-compatibility), and a pre-⟨0.13⟩ policy simply never names `Llm`. Both sources
+are pinned four-way by conformance: **PART 4m** the host-literal refinement (with fabrication guards — an
+S3 bucket named "bedrock", a remote host on `:11434` stay bare `Net`) and **PART 4o** the per-ecosystem
+model-SDK surface (a curated client call is `Llm+Net`; a plain non-model `Net` call in the same module
+stays bare `Net` — the surface never bleeds).
 
 ## 2. The report
 
