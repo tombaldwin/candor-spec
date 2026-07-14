@@ -1,7 +1,26 @@
 # The `Llm` effect — design (family-level, pre-implementation)
 
-**Status: DECIDED (Tom, 2026-07-14) — all three open questions resolved as recommended (name `Llm`;
-embeddings/moderation count; local inference counts). Next: the java reference implementation.**
+**Status: IN IMPLEMENTATION (2026-07-14) — spec §1 written (SPEC.md ⟨0.13⟩), java reference in progress
+(reference-led rung). All three open questions decided as recommended (name `Llm`; embeddings/moderation
+count; local inference counts).**
+
+## The shared model-host table (the four engines implement this verbatim — the conformance oracle)
+
+Case-insensitive host match; a SUBDOMAIN of a listed host counts. Anything else stays bare `Net`.
+
+    api.openai.com                          api.mistral.ai
+    api.anthropic.com                       api.cohere.ai / api.cohere.com
+    generativelanguage.googleapis.com       api.groq.com
+    *.bedrock*.amazonaws.com  (bedrock-runtime.<region>.amazonaws.com)   api.together.xyz
+    openrouter.ai                           api.perplexity.ai
+    <any host>:11434  (a local Ollama endpoint — the local-inference-counts decision)
+
+A statically-known request to one of these → `Llm` IN ADDITION to `Net` (Net is never dropped — a model
+call IS network I/O, mirroring how an Exec-refined subprocess keeps `Exec`). An unknown host or an
+uncovered SDK stays bare `Net`/`Unknown`; the §7 ledger discloses the uncovered provider. The table
+lives beside each engine's command-head table (candor-java Literals.commandHeadEffects,
+candor-rust classify_command_head, …) as a shared verbatim block, so it can't drift.
+
 
 ## Why
 
