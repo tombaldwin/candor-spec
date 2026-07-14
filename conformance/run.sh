@@ -818,6 +818,84 @@ sys.exit(1 if fails else 0)
 PYCH
 
 # ====================================================================================================
+# PART 4r — LITERAL-HEAD HOST differential (SPEC §1 — a host that is COMPLETE in the literal head of a   [TIER 1]
+# composed URL, with interpolation only in the PATH): `fetch(`https://api.anthropic.com/v1/${p}`)` /
+# `format!("https://…/{}", p)` / `"https://…/" + p` — the most common real-world URL shape. The host is
+# statically known (the authority is terminated by a `/` WITHIN the literal head, before any placeholder),
+# so §1 requires the same Llm/Db/Net refinement as an inline literal. The SOUNDNESS BOUNDARY is pinned:
+# a SPLIT authority (`https://api.${x}.com/…` — placeholder inside the authority) stays bare Net, and a
+# literal-head NON-model host (a CDN) stays bare Net — no fabrication. Reference-led: an engine not yet
+# extracting the literal head is SKIPPED. All four extract it (java from the runtime-concat bytecode).
+# ====================================================================================================
+mkdir -p "$W/lh/rust/src" "$W/lh/java/q"
+cat > "$W/lh/rust/Cargo.toml" <<'EOF'
+[package]
+name = "lh"
+version = "0.0.0"
+edition = "2021"
+EOF
+# rust: format! whose format-string literal completes the authority before `{}`; a split authority; a CDN.
+printf 'pub async fn chat(p: &str) { let _ = reqwest::Client::new().post(format!("https://api.anthropic.com/v1/{}", p)).send().await; }\npub async fn split(x: &str) { let _ = reqwest::Client::new().post(format!("https://api.{}.com/v1/y", x)).send().await; }\npub async fn cdn(p: &str) { let _ = reqwest::Client::new().post(format!("https://cdn.example.com/v1/{}", p)).send().await; }\n' > "$W/lh/rust/src/lib.rs"
+"$SCAN" "$W/lh/rust" >/dev/null 2>&1
+LH_RUST="$(ls "$W"/lh/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+# java: runtime string concat whose literal LEFT completes the authority (both javac concat shapes).
+printf 'package q;\npublic class L {\n  static void chat(String p) throws Exception { new java.net.URL("https://api.anthropic.com/v1/" + p).openConnection().getInputStream(); }\n  static void split(String x) throws Exception { new java.net.URL("https://api." + x + ".com/v1/y").openConnection().getInputStream(); }\n  static void cdn(String p) throws Exception { new java.net.URL("https://cdn.example.com/v1/" + p).openConnection().getInputStream(); }\n}\n' > "$W/lh/java/q/L.java"
+javac -d "$W/lh/jout" "$W/lh/java/q/L.java" 2>/dev/null
+java -jar "$JAR" "$W/lh/jout" --json "$W/lh/java.json" >/dev/null 2>&1
+LH_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  # ts: a template whose literal head completes the authority; a split authority; a CDN.
+  printf 'export async function chat(p: string) { return fetch(`https://api.anthropic.com/v1/${p}`); }\nexport async function split(x: string) { return fetch(`https://api.${x}.com/v1/y`); }\nexport async function cdn(p: string) { return fetch(`https://cdn.example.com/v1/${p}`); }\n' > "$W/lh/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/lh/cases.ts" "$W/lh/ts_out" >/dev/null 2>&1
+  LH_TS="$W/lh/ts_out.json"
+fi
+LH_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  # swift: a string interpolation whose first literal segment completes the authority; split; CDN.
+  mkdir -p "$W/lh/swift"
+  printf 'import Foundation\nfunc chat(_ p: String) { _ = URLSession.shared.dataTask(with: "https://api.anthropic.com/v1/\\(p)") { _,_,_ in } }\nfunc split(_ x: String) { _ = URLSession.shared.dataTask(with: "https://api.\\(x).com/v1/y") { _,_,_ in } }\nfunc cdn(_ p: String) { _ = URLSession.shared.dataTask(with: "https://cdn.example.com/v1/\\(p)") { _,_,_ in } }\n' > "$W/lh/swift/cases.swift"
+  "$SW_BIN" "$W/lh/swift/cases.swift" --out "$W/lh/sw_out" >/dev/null 2>&1
+  LH_SW=$(ls "$W"/lh/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+python3 - "$LH_RUST" "$W/lh/java.json" "$LH_TS" "$LH_SW" <<'PYLH' || rc=1
+import json, sys, os
+def eff(path, sep):
+    d = json.load(open(path))
+    return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
+print("\n[4r] LITERAL-HEAD HOST differential  (SPEC §1 — a host complete in the literal head is Llm+Net like an inline literal; a split authority / CDN head stays bare Net)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
+fails = 0; pinned = 0
+for name, path, sep in engines:
+    e = eff(path, sep)
+    chat = e.get("chat", set())
+    split = e.get("split", set())
+    cdn = e.get("cdn", set())
+    if "Llm" not in chat:
+        print(f"  {name:6s} -> SKIP (does not yet extract a literal-head host — reference-led)")
+        continue
+    pinned += 1
+    checks = {
+        "chat":  ("Llm" in chat and "Net" in chat),      # a literal-head MODEL host → Llm+Net (like inline)
+        "split": ("Llm" not in split and "Net" in split),# a placeholder INSIDE the authority → bare Net (boundary)
+        "cdn":   ("Llm" not in cdn and "Net" in cdn),    # a literal-head NON-model host → bare Net (fabrication guard)
+    }
+    bad = [k for k, v in checks.items() if not v]
+    if bad:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE on {bad}  (chat={sorted(chat)} split={sorted(split)} cdn={sorted(cdn)})")
+    else:
+        print(f"  {name:6s} -> MATCH  (literal-head model host Llm+Net; split authority + CDN head bare Net — no fabrication)")
+if pinned == 0 and not fails:
+    print("  -> (no engine extracts a literal-head host yet)")
+else:
+    print("  -> " + ("MATCH — every engine extracts a host complete in the literal head (model→Llm+Net), never a split authority or CDN"
+                     if not fails else f"DIVERGE — {fails} engine(s) disagree"))
+sys.exit(1 if fails else 0)
+PYLH
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
@@ -2809,6 +2887,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

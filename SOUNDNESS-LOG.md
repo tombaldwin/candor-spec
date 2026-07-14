@@ -998,3 +998,24 @@ genuinely not statically known and MUST stay bare Net (java wouldn't flag it eit
 held on real code — a good negative-control outcome. The feature's real value is the PURE-const pattern
 (a hardcoded base with no runtime override). LESSON: a dogfound "gap" can be the engine being correctly
 conservative; verify the target is actually statically-knowable before calling it an under-report.
+
+### 2026-07-15 — literal-head host: four-way recall to the most common URL shape (unreleased on main)
+
+The complement to the const-host work (2026-07-14), and higher-frequency: a URL whose LITERAL HEAD already
+contains the complete host with interpolation only in the PATH — `fetch(`https://api.openai.com/v1/${p}`)`
+/ `format!("https://…/{}", p)` / `"https://…/" + p` — read bare Net in ALL FOUR engines (java too: javac
+does not fold a RUNTIME concat, and the host extractors only read a plain string literal). The host is
+statically known → §1 under-conformance. Fixed four-way: at the host arg, accept a composed URL
+(template / format! / interpolation / concat) when its first STATIC segment completes `scheme://authority/`
+— a `/` after `://` WITHIN the literal, before any placeholder — then extract the authority (minus :port)
+and run the EXISTING host refinement (Llm/Db/Net, effect-agnostic). candor-java recovers the literal prefix
+from BOTH javac concat shapes (`makeConcatWithConstants` indy recipe + classic StringBuilder append chain).
+SOUNDNESS BOUNDARY pinned by conformance **PART 4r**: a SPLIT authority (`https://api.${x}.com/…` — the
+placeholder is inside the authority, no `/` terminates it in the literal) stays bare Net; a whole-host
+interpolation, an unterminated host, and an interpolated-port-before-`/` all stay bare Net (safe
+under-reports); a literal-head NON-model host (a CDN) stays bare Net (fabrication guard). Committed
+UNVERSIONED, batched with the held const-host work (PART 4q) — floor stays 0.14, publish held. Each engine
+independently re-verified on the full boundary battery; tests green (ts 393, swift 212, java 358, rust
+229). LESSON: the two host-resolution gaps (const-anchored head `${CONST}/x` vs literal-complete head
+`https://host/${x}`) are complementary halves of "the host is statically knowable but not a bare literal" —
+real code uses both; pin the boundary (what is NOT resolvable) as hard as the positive.
