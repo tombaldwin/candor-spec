@@ -872,3 +872,33 @@ green. KEY LESSON (extends "engine × verb × surface"): for a SECURITY signal, 
 DECISION CHAIN — not just "is the input parsed correctly" but "is the ORACLE the decision reads
 (cache, hash key, cross-engine sidecar) itself trustworthy, and does an undecidable oracle fail TOWARD
 the alarm". A cached empty is as dangerous as a parsed empty.
+
+### 2026-07-14 — Llm/privacy max review (r3): a NEW attribution surface over-matches (fabrication) — all fixed
+
+The review of the Llm + privacy/1 feature waves (38 agents, 15 confirmed) found the failure mode a new
+EFFECT introduces: not the silent under-report, but its mirror — FABRICATION by over-matching the new
+attribution predicate, PLUS cross-engine divergence because only the happy path was pinned.
+- **Host-predicate over-match (all engines):** the Ollama rule fired on ANY host with port 11434 (an
+  unrelated internal service → fabricated Llm); the Bedrock rule matched the SUBSTRING "bedrock" (an S3
+  bucket `bedrock-backups.s3.amazonaws.com` → fabricated Llm). Fixed to PRECISE rules four-way (Ollama =
+  loopback host only; Bedrock = first-label service bedrock-runtime/bedrock-agent-runtime). Only java was
+  briefed initially → the sibling parity gap was itself caught by grepping the four predicates, not by a
+  test — the lesson that a shared table needs a shared FIX, checked across all copies.
+- **ts :11434 on the RAW literal:** `axios.post("/v1/x:11434/y")` (a relative path) fabricated Llm because
+  the port regex ran against the whole string, not an extracted host. Fixed: predicates run on the PARSED
+  host, never the raw argument.
+- **swift AVAudioEngine → Mic fabrication:** a general audio-graph type (playback) charged Mic; member-
+  gated to .inputNode. The privacy ASYMMETRY was made explicit: never fabricate Llm (unknown host stays
+  Net), but OVER-disclose an ambiguous privacy CAPTURE ({Camera,Mic}) — a missed sensor in a manifest is
+  the costly error.
+- **Under-report mirror (the dogfood, candor-scan):** reqwest was claimed-COVERED but only its convenience
+  fns were classified — the BUILDER idiom (Client::builder()...post(url).send()), the dominant real-world
+  form and ebman's actual api.anthropic.com call, was silently missed AND undisclosed. Fixed: the builder
+  chain classifies Net + captures the host → Llm fires. The Llm gate-evasion twin (a model-SDK call that
+  also classified Net dropped Llm) was fixed the same wave.
+- **Toothless pin:** PART 4m only tested the happy path, so it couldn't catch any of the above; given
+  NEGATIVE fabrication cases (s3-bedrock bucket, remote :11434) it now fails on over-classification.
+KEY LESSON: a new EFFECT's attribution table is a two-sided risk — it can UNDER-match (miss the effect,
+the classic sin) OR OVER-match (fabricate, a precision failure that erodes trust just as fast). Pin BOTH
+directions (a positive AND a negative case) in conformance, and check a shared predicate's FIX across
+every engine that copied it, not just the one the reviewer happened to file it against.
