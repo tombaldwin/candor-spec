@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.13** — all code engines declare `0.13`; the floor is conformance-pinned. How versions
+**Version 0.14** — all code engines declare `0.14`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -227,7 +227,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.13" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.14" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -307,6 +307,12 @@ Each entry:
                                          // (a module-boundary export surface, the CJS shape),
                                          // "agent"/"command"/"skill"/"cron"/"session"/"hooks"
                                          // (an agent-fleet report).
+                                         // ⟨0.14⟩ A module's TOP-LEVEL executable code (module-load
+                                         // statements, a JVM static initializer) that performs an
+                                         // effect MUST be attributed to an "initializer" unit — a
+                                         // silently-dropped top-level effect is the cardinal sin (a
+                                         // false-pure report). Conformance PART 4p pins it; N/A for a
+                                         // language with no top-level executable code (Rust).
                                          // INFORMATIVE, never semantic: effects, edges and joins
                                          // mean exactly the same for every kind — the field lets a
                                          // consumer render/filter sensibly when reports from
@@ -458,7 +464,7 @@ The header has THREE fields, on two distinct axes. Keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain`: the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec`: the **candor-spec contract version** this engine implements (`"0.13"`). This is the version
+- `spec`: the **candor-spec contract version** this engine implements (`"0.14"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version; they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -1372,6 +1378,15 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.14 (all code engines declare `0.14`; conformance-pinned)** — additive, wire-compatible with 0.13.
+  The **top-level / initializer unit**: a module whose top-level executable code performs an effect is
+  attributed to an INITIALIZER unit (`unitKind:"initializer"`), never a false-"pure" empty report. A
+  module-load-time model call (top-level `await fetch("…api.openai.com…")`, an IIFE, a bare
+  `readFileSync`, a JVM static initializer) was SILENTLY DROPPED by candor-ts and candor-swift (a
+  `deny Llm`/`deny Net`/`deny Fs` gate passed it — the cardinal sin); candor-java's `<clinit>` was
+  already sound (the reference), rust is N/A (no top-level executable code). Each engine's unit NAME
+  differs (java `<clinit>`, ts `<module>`, swift `<main>`); the effect model is identical. Conformance
+  **PART 4p** pins it. Report bytes change where a previously-empty top-level module now carries a unit.
 - **0.13 (all code engines declare `0.13`; conformance-pinned)** — additive, wire- and invocation-compatible
   with 0.12: the **`Llm` effect** (§1) — a machine-learning model-provider call, refining `Net` the way
   `Db` does (a model-SDK surface + a known-model-host literal refinement; an unknown host/SDK stays bare
