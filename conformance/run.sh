@@ -448,6 +448,71 @@ sys.exit(1 if fails else 0)
 PY
 
 # ====================================================================================================
+# PART 4m — Llm host-literal differential (SPEC §1 ⟨0.13⟩): a statically-known request to a KNOWN MODEL   [TIER 1]
+# HOST classifies `Llm` IN ADDITION to `Net` (Net is never dropped — a model call IS network I/O); an
+# UNKNOWN host stays bare `Net`. Each engine scans its idiomatic call to api.anthropic.com + a non-model
+# host, from the shared model-host table (candor-spec LLM-EFFECT-DESIGN.md). Reference-led: an engine that
+# does NOT yet emit Llm here is SKIPPED, not failed — the rung is pinned across the engines that implement
+# it and the floor rises when the last lands (SPEC §Versioning, incremental-proof).
+# ====================================================================================================
+mkdir -p "$W/llm/rust/src" "$W/llm/java/q"
+cat > "$W/llm/rust/Cargo.toml" <<'EOF'
+[package]
+name = "llm"
+version = "0.0.0"
+edition = "2021"
+EOF
+printf 'pub fn chat() { let _ = std::net::TcpStream::connect("api.anthropic.com:443"); }\npub fn other() { let _ = std::net::TcpStream::connect("api.example.com:443"); }\n' > "$W/llm/rust/src/lib.rs"
+printf 'package q;\npublic class L {\n  static void chat() throws Exception { new java.net.URL("https://api.anthropic.com/v1/messages").openConnection().getInputStream(); }\n  static void other() throws Exception { new java.net.URL("https://api.example.com/x").openConnection().getInputStream(); }\n}\n' > "$W/llm/java/q/L.java"
+"$SCAN" "$W/llm/rust" >/dev/null 2>&1
+LLM_RUST="$(ls "$W"/llm/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+javac -d "$W/llm/jout" "$W/llm/java/q/L.java" 2>/dev/null
+java -jar "$JAR" "$W/llm/jout" --json "$W/llm/java.json" >/dev/null 2>&1
+LLM_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  printf 'export function chat() { return fetch("https://api.anthropic.com/v1/messages"); }\nexport function other() { return fetch("https://api.example.com/x"); }\n' > "$W/llm/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/llm/cases.ts" "$W/llm/ts_out" >/dev/null 2>&1
+  LLM_TS="$W/llm/ts_out.json"
+fi
+LLM_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/llm/swift"
+  printf 'import Foundation\nfunc chat() { _ = URLSession.shared.dataTask(with: "https://api.anthropic.com/v1/messages") { _,_,_ in } }\nfunc other() { _ = URLSession.shared.dataTask(with: "https://api.example.com/x") { _,_,_ in } }\n' > "$W/llm/swift/cases.swift"
+  "$SW_BIN" "$W/llm/swift/cases.swift" --out "$W/llm/sw_out" >/dev/null 2>&1
+  LLM_SW=$(ls "$W"/llm/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+python3 - "$LLM_RUST" "$W/llm/java.json" "$LLM_TS" "$LLM_SW" <<'PYLLM' || rc=1
+import json, sys, os
+def eff(path, sep):
+    d = json.load(open(path))
+    return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
+print("\n[4m] Llm HOST-LITERAL differential  (SPEC §1 ⟨0.13⟩ — a known model host is Llm+Net; unknown stays Net)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
+fails = 0; pinned = 0
+for name, path, sep in engines:
+    e = eff(path, sep)
+    chat, other = e.get("chat", set()), e.get("other", set())
+    if "Llm" not in chat and "Llm" not in other:
+        print(f"  {name:6s} -> SKIP (does not yet declare Llm — reference-led rung)")
+        continue
+    pinned += 1
+    ok = ("Llm" in chat and "Net" in chat) and ("Llm" not in other and "Net" in other)
+    if not ok:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE  chat={sorted(chat)} other={sorted(other)} (want chat superset of Llm,Net; other = Net)")
+    else:
+        print(f"  {name:6s} -> MATCH  chat=Llm,Net  other=Net")
+if pinned == 0:
+    print("  -> (no engine declares Llm yet)")
+else:
+    print("  -> " + ("MATCH — every engine that declares Llm classifies the model host Llm+Net, the unknown host Net"
+                     if not fails else f"DIVERGE — {fails} engine(s) disagree"))
+sys.exit(1 if fails else 0)
+PYLLM
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
@@ -2439,6 +2504,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
