@@ -742,6 +742,82 @@ sys.exit(1 if fails else 0)
 PYTL
 
 # ====================================================================================================
+# PART 4q — CONST-INDIRECTED HOST differential (SPEC §1 — a STATICALLY-KNOWN request via a string    [TIER 1]
+# CONSTANT resolves the same as an inline literal): real clients put the model host in a `const`/`static`
+# and build the URL by interpolation/format (`const API_BASE="https://…"; fetch(`${API_BASE}/x`)`). The
+# host IS statically known, so §1 requires the same Llm (and Db / Net-allowlist) refinement as an inline
+# literal. candor-java was already sound here (javac inlines `static final String`); the SOURCE-LEVEL
+# engines (rust/ts/swift) resolve a literal-valued const at the host arg. A NON-model const host (a CDN)
+# must stay bare Net — the fabrication guard: propagation must not paint Llm onto a static non-model host,
+# and a runtime/config host stays masked. Reference-led: an engine not yet resolving consts is SKIPPED.
+# ====================================================================================================
+mkdir -p "$W/ch/rust/src" "$W/ch/java/q"
+cat > "$W/ch/rust/Cargo.toml" <<'EOF'
+[package]
+name = "ch"
+version = "0.0.0"
+edition = "2021"
+EOF
+# rust: a model host and a CDN host, each in a const, each used via format!("{}/…", CONST).
+printf 'const API_BASE: &str = "https://api.anthropic.com/v1";\nconst CDN: &str = "https://cdn.example.com";\npub async fn chat() { let _ = reqwest::Client::new().post(format!("{}/messages", API_BASE)).send().await; }\npub async fn cdn() { let _ = reqwest::Client::new().post(format!("{}/asset", CDN)).send().await; }\n' > "$W/ch/rust/src/lib.rs"
+"$SCAN" "$W/ch/rust" >/dev/null 2>&1
+CH_RUST="$(ls "$W"/ch/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+# java: static final String constants (javac inlines them) + concat at the URL.
+printf 'package q;\npublic class L {\n  static final String API_BASE = "https://api.anthropic.com/v1";\n  static final String CDN = "https://cdn.example.com";\n  static void chat() throws Exception { new java.net.URL(API_BASE + "/messages").openConnection().getInputStream(); }\n  static void cdn() throws Exception { new java.net.URL(CDN + "/asset").openConnection().getInputStream(); }\n}\n' > "$W/ch/java/q/L.java"
+javac -d "$W/ch/jout" "$W/ch/java/q/L.java" 2>/dev/null
+java -jar "$JAR" "$W/ch/jout" --json "$W/ch/java.json" >/dev/null 2>&1
+CH_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  # ts: a const model host and a const CDN, each used via a `${CONST}/…` template.
+  printf 'const API_BASE = "https://api.anthropic.com/v1";\nconst CDN = "https://cdn.example.com";\nexport async function chat() { return fetch(`${API_BASE}/messages`); }\nexport async function cdn() { return fetch(`${CDN}/asset`); }\n' > "$W/ch/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/ch/cases.ts" "$W/ch/ts_out" >/dev/null 2>&1
+  CH_TS="$W/ch/ts_out.json"
+fi
+CH_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  # swift: a global `let` model host and CDN, each used via string interpolation.
+  mkdir -p "$W/ch/swift"
+  printf 'import Foundation\nlet apiBase = "https://api.anthropic.com/v1"\nlet cdn = "https://cdn.example.com"\nfunc chat() { _ = URLSession.shared.dataTask(with: "\\(apiBase)/messages") { _,_,_ in } }\nfunc cdnCall() { _ = URLSession.shared.dataTask(with: "\\(cdn)/asset") { _,_,_ in } }\n' > "$W/ch/swift/cases.swift"
+  "$SW_BIN" "$W/ch/swift/cases.swift" --out "$W/ch/sw_out" >/dev/null 2>&1
+  CH_SW=$(ls "$W"/ch/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+python3 - "$CH_RUST" "$W/ch/java.json" "$CH_TS" "$CH_SW" <<'PYCH' || rc=1
+import json, sys, os
+def eff(path, sep):
+    d = json.load(open(path))
+    return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
+print("\n[4q] CONST-INDIRECTED HOST differential  (SPEC §1 — a const-anchored model host is Llm+Net like an inline literal; a const CDN host stays bare Net)")
+engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
+fails = 0; pinned = 0
+for name, path, sep in engines:
+    e = eff(path, sep)
+    chat = e.get("chat", set())
+    cdn = e.get("cdn", set()) or e.get("cdnCall", set())
+    if "Llm" not in chat:
+        print(f"  {name:6s} -> SKIP (does not yet resolve a const-indirected host — reference-led)")
+        continue
+    pinned += 1
+    checks = {
+        "chat": ("Llm" in chat and "Net" in chat),       # a const-anchored MODEL host → Llm+Net (like inline)
+        "cdn":  ("Llm" not in cdn and "Net" in cdn),      # a const-anchored NON-model host → bare Net (no fabrication)
+    }
+    bad = [k for k, v in checks.items() if not v]
+    if bad:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE on {bad}  (chat={sorted(chat)} cdn={sorted(cdn)})")
+    else:
+        print(f"  {name:6s} -> MATCH  (const model host Llm+Net; const CDN host bare Net — no fabrication)")
+if pinned == 0 and not fails:
+    print("  -> (no engine resolves const-indirected hosts yet)")
+else:
+    print("  -> " + ("MATCH — every engine resolves a const-anchored host like an inline literal (model→Llm+Net, CDN→Net)"
+                     if not fails else f"DIVERGE — {fails} engine(s) disagree"))
+sys.exit(1 if fails else 0)
+PYCH
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
@@ -2733,6 +2809,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
