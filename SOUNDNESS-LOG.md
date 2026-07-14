@@ -902,3 +902,43 @@ KEY LESSON: a new EFFECT's attribution table is a two-sided risk — it can UNDE
 the classic sin) OR OVER-match (fabricate, a precision failure that erodes trust just as fast). Pin BOTH
 directions (a positive AND a negative case) in conformance, and check a shared predicate's FIX across
 every engine that copied it, not just the one the reviewer happened to file it against.
+
+### 2026-07-14 — dogfood: top-level module effects silently dropped (ts + swift)
+
+Broadening the 0.13 real-world dogfood (cloning real OSS LLM-SDK consumers), a scan of
+openai-quickstart-node surfaced only the files with NAMED functions; the feature scripts that call the
+SDK at **top-level module scope** (`embeddings/index.js`: `const e = await openai.embeddings.create(...)`
+at load, no wrapping function) produced an **empty report, exit 0** — a valid "pure" verdict for a module
+that reaches a model provider. Isolated hermetically (no resolution dependence): a module whose top-level
+runs `readFileSync("/etc/config")` (Fs) + `fetch("https://api.openai.com/...")` (Llm+Net) → `functions:
+[]`, exit 0 in **candor-ts**. Same in **candor-swift** for top-level `main.swift` code (Fs + Llm+Net → 0
+units). A `deny Llm` / `deny Net` / `deny Fs` gate PASSES such a module — the cardinal sin (silent
+under-report / false all-clear) for a whole class of real code: ESM top-level await, side-effecting setup
+modules, serverless handler files, config modules that call out.
+
+CROSS-ENGINE: **candor-java is SOUND here** — a `static { … }` initializer doing the same classifies
+`p.S.<clinit> → [Llm, Net]`. **candor-rust N/A** (no top-level executable code; only `fn main`). So this
+is a TWO-engine gap (ts, swift), and a cross-engine DIVERGENCE (java attributes, ts/swift drop). It is
+SPEC-BACKED: SPEC §2 `unitKind` explicitly recommends `"initializer"` for "a JVM `<clinit>`, a lazy/static
+initializer" — the unit model already covers top-level/init units; ts and swift simply never synthesize
+one for a module's own top-level statements.
+
+STATUS: **FIXED + gated (spec 0.14, 2026-07-14).** candor-ts synthesizes a `<module>` unit and
+candor-swift a `<main>` unit per file with top-level statements (`unitKind:"initializer"`), carrying the
+top-level statements' direct effects + call edges (transitive top-level reach); minted lazily so a pure
+top-level never gains an empty unit. Injected at the single choke point — candor-ts `enclosing()` now
+returns the module unit when the parent walk reaches the SourceFile (the decorator→null guard preserved,
+so decorator applications stay unattributed); candor-swift adds a `visit(SourceFileSyntax)` collector
+(declaration items excluded → a called function's effects reach `<main>` via an edge, not inlined).
+Pinned four-way by conformance **PART 4p** (java `<clinit>` / ts `<module>` / swift `<main>` each →
+initializer unit Llm+Net; rust N/A). Independently verified: the probe battery flips EMPTY → attributed;
+ts `npm test` + swift `swift test` (201) + smoke green. REFINED SCOPE (the investigation payoff): the
+ONLY hole was BARE top-level executable statements — every DECLARATION initializer (class fields, static
+blocks, static/instance fields, computed props, swift global-var inits) was ALREADY sound in all engines,
+and top-level code that delegates to a NAMED function already tripped the gate via that function; the
+false-pure hole was only inline top-level effects with no named landing spot (the openai-quickstart
+`embeddings/index.js` pattern). Distinct from the SOUNDNESS.md "lazy-init (deferred initializer forced
+elsewhere)" 🟢 row — that is a function FORCING a deferred init; this is the module's own load-time code.
+KEY LESSON (repeat): dogfood on REAL code finds the class the fixtures don't — every prior conformance
+fixture wrote its effects inside a named function, so the top-level unit was never exercised. The
+published-artifact scan (npx candor-ts@0.13.0) surfaced it.

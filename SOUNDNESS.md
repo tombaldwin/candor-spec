@@ -59,6 +59,7 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 | direct / local-call / method-recv / loop-elem / field / callback (6 basic indirections) | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢⁴ |
 | key-collision (same-named unit clobber → wrong attribution) | 🟡 | — | — | 🟡 | 🟡 | 🟡 |
 | **lazy-init (deferred initializer forced elsewhere)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
+| **top-level module code (load-time effect → initializer unit)** ⟨0.14⟩ | — | — | 🟢 | 🟢 | 🟢 | — |
 | deferred-iterator (lazy seq built≠consumed) ³ | 🟡 | 🟢 | 🟡 | 🟡 | 🟡 | — |
 | **fire-and-forget / spawned task** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢⁴ |
 | **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |

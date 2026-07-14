@@ -531,7 +531,7 @@ PYLLM
 # ====================================================================================================
 mkdir -p "$W/ext"
 cat > "$W/ext/report.demo.scan.json" <<'EOF'
-{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.13" },
+{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.14" },
   "extensions": ["privacy/1"],
   "package": "app",
   "functions": [
@@ -539,14 +539,14 @@ cat > "$W/ext/report.demo.scan.json" <<'EOF'
     { "fn": "app::caller", "inferred": ["Location", "Net"], "calls": ["app::loc::here"] } ] }
 EOF
 cat > "$W/ext/report.JS.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "node", "spec": "0.13" },
+{ "candor": { "version": "t", "toolchain": "node", "spec": "0.14" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
     { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.loc.here"] } ] }
 EOF
 cat > "$W/ext/report.jvm.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.13" },
+{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.14" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.Loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
@@ -665,6 +665,81 @@ else:
                      if not fails else f"DIVERGE — {fails} engine(s) disagree"))
 sys.exit(1 if fails else 0)
 PYSDK
+
+# ====================================================================================================
+# PART 4p — TOP-LEVEL / INITIALIZER-unit differential (SPEC §2 unitKind ⟨0.14⟩): a MODULE whose top-level   [TIER 1]
+# executable code performs an effect must attribute it to an INITIALIZER unit (unitKind "initializer") —
+# NEVER an empty/"pure" report. A module-load-time model call (`fetch("https://api.openai.com/…")` at file
+# top level, a JVM static initializer) is the cardinal-sin test: it was silently dropped by candor-ts and
+# candor-swift (a false all-clear a `deny Llm` gate passed) until the ⟨0.14⟩ fix. Each engine's own unit
+# NAME differs (java `<clinit>`, ts `<module>`, swift `<main>`) — the differential keys on the unitKind +
+# the effect set, not the name. RUST is N/A: it has no top-level executable code (a `const`/`static` must
+# be const-evaluable — no I/O at load), so there is nothing to attribute; it is reported N/A, not skipped.
+# ====================================================================================================
+mkdir -p "$W/tl/java/q"
+# java: a static initializer performing a model call → the <clinit> unit, unitKind "initializer".
+printf 'package q;\npublic class T {\n  static { try { new java.net.URL("https://api.openai.com/x").openConnection().getInputStream(); } catch (Exception e) {} }\n}\n' > "$W/tl/java/q/T.java"
+javac -d "$W/tl/jout" "$W/tl/java/q/T.java" 2>/dev/null
+java -jar "$JAR" "$W/tl/jout" --json "$W/tl/java.json" >/dev/null 2>&1
+TL_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  # ts: a bare top-level statement (no wrapping function) doing a model call → the <module> unit.
+  printf 'fetch("https://api.openai.com/x");\n' > "$W/tl/cases.ts"
+  node "$TS_DIR/scan.mjs" "$W/tl/cases.ts" "$W/tl/ts_out" >/dev/null 2>&1
+  TL_TS="$W/tl/ts_out.json"
+fi
+TL_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  # swift: a bare top-level statement in main.swift doing a model call → the <main> unit.
+  mkdir -p "$W/tl/swift"
+  printf 'import Foundation\nlet _ = URLSession.shared.dataTask(with: "https://api.openai.com/x") { _,_,_ in }\n' > "$W/tl/swift/main.swift"
+  "$SW_BIN" "$W/tl/swift/main.swift" --out "$W/tl/sw_out" >/dev/null 2>&1
+  TL_SW=$(ls "$W"/tl/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+python3 - "$W/tl/java.json" "$TL_TS" "$TL_SW" <<'PYTL' || rc=1
+import json, sys, os
+def initunit(path):
+    # return the effect set of the report's INITIALIZER unit (unitKind == "initializer"), or None if the
+    # report is empty / has no such unit — the silent-under-report signature.
+    d = json.load(open(path))
+    fns = d.get("functions", [])
+    for e in fns:
+        if e.get("unitKind") == "initializer":
+            return set(e.get("inferred", []))
+    return None
+print("\n[4p] TOP-LEVEL / INITIALIZER-unit differential  (SPEC §2 unitKind ⟨0.14⟩ — a module's top-level model call is an initializer unit, never a false-pure empty report)")
+print("  rust   -> N/A (no top-level executable code; a const/static is const-evaluated — nothing runs at load)")
+engines = [("java", sys.argv[1])]
+if os.path.exists(sys.argv[2]): engines.append(("ts", sys.argv[2]))
+if len(sys.argv) > 3 and os.path.exists(sys.argv[3]): engines.append(("swift", sys.argv[3]))
+fails = 0; pinned = 0
+for name, path in engines:
+    ic = initunit(path)
+    if ic is None:
+        # no initializer unit at all: either the engine does not yet model top-level units (reference-led
+        # SKIP) OR the cardinal-sin regression (a top-level effect dropped). Distinguish by whether the
+        # report is otherwise empty — an empty report here IS the silent under-report we pin against.
+        d = json.load(open(path))
+        if not d.get("functions"):
+            fails += 1
+            print(f"  {name:6s} -> DIVERGE  (EMPTY report — a top-level model call was SILENTLY DROPPED, the cardinal sin)")
+        else:
+            print(f"  {name:6s} -> SKIP (models top-level differently; no initializer unit — reference-led)")
+        continue
+    pinned += 1
+    ok = ("Llm" in ic and "Net" in ic)
+    if not ok:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE  initializer unit = {sorted(ic)} (want superset of Llm,Net)")
+    else:
+        print(f"  {name:6s} -> MATCH  (top-level model call → initializer unit Llm+Net)")
+if pinned == 0 and not fails:
+    print("  -> (no engine models a top-level initializer unit yet)")
+else:
+    print("  -> " + ("MATCH — every engine attributes a top-level model call to an initializer unit (Llm+Net); none reports false-pure"
+                     if not fails else f"DIVERGE — {fails} engine(s) drop or mis-classify the top-level effect"))
+sys.exit(1 if fails else 0)
+PYTL
 
 # ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
@@ -885,16 +960,16 @@ plural_hdr() { # $1 label ; $2 locator ; $3.. cmd — asserts the human header n
   case "$hdr" in *"in com.a:"*) ;; *) echo "     FAIL $1: tour header did not name the packages' common prefix (got: ${hdr:0:80})"; return 1;; esac
 }
 P4G2_OK=0
-printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.13"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
+printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
 plural_hdr rust "$W/plural/r" "$QUERY" || P4G2_OK=1
-printf '%s' '{ "candor": {"version":"t","spec":"0.13"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
+printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
 plural_hdr java "$W/plural/j.jvm.json" java -jar "$JAR" || P4G2_OK=1
 if [ -n "$TS_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.13"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
   plural_hdr ts "$W/plural/t" node "$TS_DIR/query.mjs" || P4G2_OK=1
 fi
 if [ -n "$SW_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.13"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
   plural_hdr swift "$W/plural/s" env -u CANDOR_CONFIG "$SW_BIN" || P4G2_OK=1
 fi
 if [ "$P4G2_OK" = 0 ]; then
@@ -1335,9 +1410,9 @@ p5b() { echo "     FAIL $1"; P5B_OK=1; }
 mkdir -p "$W/gorigin"
 # $1 label; $2 f-qual; $3 g-qual; $4 h-qual; $5 base report; $6 base callgraph sidecar; $7 cur report
 gow() { # write one engine's fixture pair
-  printf '{ "candor": {"version":"t","spec":"0.13"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
+  printf '{ "candor": {"version":"t","spec":"0.14"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
   printf '{ "%s": ["%s"], "%s": [] }' "$2" "$3" "$3" > "$6"
-  printf '{ "candor": {"version":"t","spec":"0.13"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
+  printf '{ "candor": {"version":"t","spec":"0.14"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
 }
 # $1 label; $2 f-qual; $3 h-qual; $4 gains JSON output; $5 expected-f-origin; $6 expected-h-origin
 gocheck() {
@@ -2030,7 +2105,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.13 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.14 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
@@ -2658,6 +2733,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"

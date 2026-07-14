@@ -12,7 +12,22 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.13 — current floor
+## 0.14 — current floor
+
+All code engines declare `0.14`; the floor is conformance-pinned (PART 4p). A **tier-1 additive**
+rung, wire-compatible with 0.13 — a **soundness fix** for the cardinal sin (silent under-report).
+
+- The **top-level / initializer unit** (§2 `unitKind`) — a module whose **top-level executable code**
+  performs an effect is now attributed to an INITIALIZER unit (`unitKind:"initializer"`), never a
+  false-`"pure"` empty report. A module-load-time model call — top-level `await fetch("…api.openai.com…")`,
+  an IIFE, a bare `readFileSync`, a JVM static initializer — was **silently dropped** by candor-ts and
+  candor-swift (a `deny Llm`/`deny Net`/`deny Fs` gate passed it). Found by dogfooding a real OSS LLM app.
+  candor-java's `<clinit>` was already sound (the reference); rust is **N/A** (no top-level executable
+  code — a `const`/`static` is const-evaluated). Each engine's unit NAME differs (java `<clinit>`, ts
+  `<module>`, swift `<main>`); the effect model is identical. Conformance **PART 4p** pins it. Report bytes
+  change where a previously-empty top-level module now carries a unit.
+
+## 0.13
 
 All code engines declare `0.13`; the floor is conformance-pinned (PARTs 4m/4n). A **tier-1 additive**
 rung (a new §1 effect + a new envelope field), wire- and invocation-compatible with 0.12 (a consumer
