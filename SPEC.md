@@ -164,6 +164,7 @@ vocabulary:
 | Effect | Meaning |
 |---|---|
 | `Net` | network I/O — sockets, HTTP clients, cloud-SDK request dispatch |
+| `Llm` | a call to a machine-learning MODEL provider — the outbound request a model SDK or a known model host dispatches ⟨0.13⟩ |
 | `Fs` | filesystem read/write |
 | `Db` | database query execution |
 | `Exec` | spawning / controlling a subprocess |
@@ -186,6 +187,25 @@ classified — not as `Log`, not as `Fs`. Classifying them would flood every CLI
 is for calls into a logging/tracing *framework*, whose presence is an architectural fact. The four code
 engines agree on this; an implementation that does classify console output MUST use a
 language-specific effect name, not `Log`.
+
+**`Llm`** ⟨0.13⟩ refines `Net` the way `Db` does: a call whose SINK is a machine-learning model
+provider (a chat/completion/embedding/moderation request) is `Llm`, not bare `Net` — the question
+"which functions in this code (or in a dependency) talk to a model provider" is a distinct
+supply-chain surface (whatever reaches the prompt leaves the process; the response is an
+injection ingress; it is a cost/latency boundary). Two classification sources, mirroring the existing
+machinery:
+(a) a **model-SDK surface** — the provider clients each ecosystem curates (OpenAI / Anthropic /
+Google-GenAI / AWS Bedrock / Mistral / Cohere / Ollama and the LangChain invoke surfaces); and
+(b) a **host-literal refinement** — a statically-known request to a recognized model host
+(`api.openai.com`, `api.anthropic.com`, `generativelanguage.googleapis.com`, `*.bedrock*.amazonaws.com`,
+a local `…:11434` Ollama endpoint) classifies `Llm` exactly as a jdbc URL classifies `Db`. An UNKNOWN
+host, or an SDK the engine's curated list does not cover, stays bare `Net` (or `Unknown`) — never
+guessed, and the coverage ledger (§7) discloses an uncovered provider package like any other.
+`Llm` is a **boundary effect** (§6.1) and scores high in the §3.1 surprising-reach salience set.
+Embeddings and moderation calls count (one effect, no sub-taxonomy); a LOCAL model endpoint counts too
+(the host literal discloses localhost — the question is "does this consult a model", not "does it pay a
+provider"). As a §1 vocabulary addition it is tier-1 ADDITIVE: a consumer already tolerates unknown
+effect names (§2 forward-compatibility), and a pre-⟨0.13⟩ policy simply never names `Llm`.
 
 ## 2. The report
 
@@ -1078,7 +1098,7 @@ much `Db` it does. The total is domain-dependent; the dispersion is an architect
 
 Two classes of effect:
 
-- **boundary**: `Db`, `Net`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
+- **boundary**: `Db`, `Net`, `Llm`, `Exec`, `Fs`, `Ipc`, `Clipboard`. These *should* be contained in a
   dedicated layer; their dispersion is the signal. (`Clipboard` is external-resource I/O, a boundary
   capability, so it is contained/scored, not cross-cutting.)
 - **cross-cutting**: `Log`, `Clock`, `Rand`, `Env`. Pervasive by nature (logging/timestamps everywhere is
@@ -1338,6 +1358,14 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.13 (UNRELEASED — reference-led, candor-java first)** — additive, wire- and invocation-compatible
+  with 0.12: the **`Llm` effect** (§1) — a machine-learning model-provider call, refining `Net` the way
+  `Db` does (a model-SDK surface + a known-model-host literal refinement; an unknown host/SDK stays bare
+  `Net`). A boundary effect (§6.1), high salience in the §3.1 surprising-reach surface, and the sharpest
+  form of the `gains`/`origin` alarm ("a dependency bump added an `Llm` call"). Tier-1 additive: a
+  pre-⟨0.13⟩ consumer tolerates the new effect name and a pre-⟨0.13⟩ policy never names it. The reference
+  engine declares `0.13` ahead of the floor; the floor rises to 0.13 when the last code engine implements
+  it, pinned by the conformance host-literal + SDK-surface differential.
 - **0.12 (all code engines declare `0.12`; conformance-pinned)** — additive, wire- and invocation-compatible with 0.11:
   the **`gains` `origin` field** (§3.1) — each `byFunction` entry names whether the gaining fn existed
   at the baseline (`existing`, the supply-chain attack signal: shipped pure, now performs the effect),
