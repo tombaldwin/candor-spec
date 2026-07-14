@@ -17,11 +17,11 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.12** — all code engines declare `0.12`; the floor is conformance-pinned. How versions
+**Version 0.13** — all code engines declare `0.13`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.12 is a
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.13 adds the `Llm` effect** (§1) — a machine-learning model-provider call, a boundary effect refining `Net`; a tier-1 additive vocabulary rung (a consumer already tolerates unknown effect names, so a pre-0.13 report/policy is unaffected). It also adds the `extensions` envelope field (§2) for engine spec extensions (the candor-swift `privacy/1` sensor cluster). **0.12 was a
 pinned-tool-surface rung**: it adds no report-schema or verdict change (a 0.11 report and a 0.11 gate verdict
 are byte-identical under 0.12), but promotes the §3.1 `gains` **`origin`** field — the supply-chain
 existing-fn/new-fn/unknown split, keyed on the baseline callgraph, with the partial-graph rule and the
@@ -223,7 +223,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.12" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.13" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -454,7 +454,7 @@ The header has THREE fields, on two distinct axes. Keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain`: the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec`: the **candor-spec contract version** this engine implements (`"0.12"`). This is the version
+- `spec`: the **candor-spec contract version** this engine implements (`"0.13"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version; they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -1368,7 +1368,7 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.13 (UNRELEASED — reference-led, candor-java first)** — additive, wire- and invocation-compatible
+- **0.13 (all code engines declare `0.13`; conformance-pinned)** — additive, wire- and invocation-compatible
   with 0.12: the **`Llm` effect** (§1) — a machine-learning model-provider call, refining `Net` the way
   `Db` does (a model-SDK surface + a known-model-host literal refinement; an unknown host/SDK stays bare
   `Net`). A boundary effect (§6.1), high salience in the §3.1 surprising-reach surface, and the sharpest

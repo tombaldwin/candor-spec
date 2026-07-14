@@ -12,9 +12,29 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.12 — current floor
+## 0.13 — current floor
 
-All code engines declare `0.12`; the floor is conformance-pinned (PART 5b). Another **tier-2
+All code engines declare `0.13`; the floor is conformance-pinned (PARTs 4m/4n). A **tier-1 additive**
+rung (a new §1 effect + a new envelope field), wire- and invocation-compatible with 0.12 (a consumer
+already tolerates unknown effect names, so a pre-0.13 report/policy is unaffected). Two additions:
+
+- The **`Llm` effect** (§1) — a machine-learning model-provider call (chat/completion/embedding/
+  moderation), a **boundary effect refining `Net`** the way `Db` does. Classified from a known
+  **model-host literal** (`api.openai.com`, `api.anthropic.com`, Bedrock runtime, a loopback Ollama
+  `:11434`, …) OR a curated **model-SDK surface** per ecosystem; an unknown host/SDK stays bare `Net`,
+  never guessed. Gate-able (`deny Llm ai/`), the sharpest `gains`/`origin` supply-chain alarm ("a
+  dependency bump added an `Llm` call"), high surprising-reach salience. Conformance **PART 4m** pins it
+  four-way including negative fabrication cases (an S3 bucket named "bedrock", a remote `:11434`).
+- The **`extensions` envelope field** (§2) — an engine classifying effects from a **spec extension**
+  discloses `"extensions": ["<name>/<version>"]`; omitted when inactive. The first extension is
+  candor-swift's **`privacy/1`** — six Apple privacy-sensor effects (Location/Camera/Mic/Contacts/Photos/
+  Notify) + the **`privacy-manifest`** verb (verify an app's Info.plist against its code-level sensor
+  reach). Its contract lives in candor-swift/SPEC-EXTENSION-privacy.md; **PART 4n** pins that every other
+  engine TOLERATES an extension report.
+
+## 0.12
+
+All code engines declare `0.12`; conformance-pinned (PART 5b). A **tier-2
 (pinned-tool-surface)** rung, additive over 0.11 and invocation-compatible with it. The **§3.1 `gains`
 `origin` field**: each `byFunction` entry separates the supply-chain *attack* signal (`existing` — a fn
 that shipped pure at the baseline now performs the effect) from a feature (`new`) and from the
