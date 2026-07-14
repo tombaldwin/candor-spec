@@ -844,3 +844,31 @@ smoke regression gates. KEY LESSON (extends the write-fmt and read-side lessons)
 be swept across the full MATRIX — every ENGINE × every VERB that loads the same data × every SURFACE
 (CLI, MCP, LSP, resources) — and the conformance oracle that pins it must itself fail CLOSED. A fix
 that lands in the shared loader but not in a verb's private loader is the same bug wearing a new file.
+
+### 2026-07-14 — max review r2: the alarm mutes through STORAGE and IDENTITY, not just parsing (all fixed)
+
+The second max review of the gains/loudness work (43 agents, 50 verified → 15 distinct defects) found the
+supply-chain ⚠⚠ alarm could still be downgraded to ⚠ (or exit-0) through seams the first review's
+parse-focused sweep didn't reach — the existence ORACLE itself, not the report parse:
+- **candor-gains corpus (2 finds):** an absent sidecar was cached as a fabricated `"{}"` — an
+  authoritative-empty existence oracle that tiered every baseline-pure gain as new-function; and the
+  corpus key hashed report bytes alone, so two versions differing only in PURE functions (identical
+  reports, different graphs) silently shared one cached graph — cross-version existence contamination.
+  The canonical attack (a shipped-pure fn now phones home) muted in both. FIXED: null-not-`{}` (→
+  undecidable → alarm tier), hash over report+graph content.
+- **candor-java (1):** the multi-report baseline union was engine-BLIND — a foreign engine's sidecar
+  beside a sidecar-less java report served as "evidence", and foreign quals are systematically absent
+  from a foreign graph → systematic "new" where "unknown" was right. FIXED: engine-owned union.
+- **candor-swift (2):** per-entry junk silently dropped without disclosure; one corrupt sibling among
+  valid ones passed exit-0. FIXED to rust's disclose-count + net-empty-loud rule (tightened a
+  clean-empty+corrupt case too).
+- **candor-rust (1):** the §2.1 mismatch disclosure was `--json`-scoped — the human TSV form
+  (candor-run.sh's self-review input) presented a reclassification gain as real. FIXED: both modes.
+Plus routing (dispatcher token-less→JS misrouted `baseline.json`-shaped files, and a ts report beside a
+tokened family was shadowed — both closed by envelope-sniffing + an unconditional probe) and the two new
+candor-ts watcher/reader features (rotation-replay flood, overlay clobber/wedge, wrong default root,
+out-of-tree-baseline refusal, lexicographic `since`) — none alarm-muting, all fixed + pinned red-then-
+green. KEY LESSON (extends "engine × verb × surface"): for a SECURITY signal, audit the whole
+DECISION CHAIN — not just "is the input parsed correctly" but "is the ORACLE the decision reads
+(cache, hash key, cross-engine sidecar) itself trustworthy, and does an undecidable oracle fail TOWARD
+the alarm". A cached empty is as dangerous as a parsed empty.
