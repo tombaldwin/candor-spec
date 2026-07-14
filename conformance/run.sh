@@ -462,22 +462,22 @@ name = "llm"
 version = "0.0.0"
 edition = "2021"
 EOF
-printf 'pub fn chat() { let _ = std::net::TcpStream::connect("api.anthropic.com:443"); }\npub fn other() { let _ = std::net::TcpStream::connect("api.example.com:443"); }\n' > "$W/llm/rust/src/lib.rs"
-printf 'package q;\npublic class L {\n  static void chat() throws Exception { new java.net.URL("https://api.anthropic.com/v1/messages").openConnection().getInputStream(); }\n  static void other() throws Exception { new java.net.URL("https://api.example.com/x").openConnection().getInputStream(); }\n}\n' > "$W/llm/java/q/L.java"
+printf 'pub fn chat() { let _ = std::net::TcpStream::connect("api.anthropic.com:443"); }\npub fn other() { let _ = std::net::TcpStream::connect("api.example.com:443"); }\npub fn bedrock() { let _ = std::net::TcpStream::connect("bedrock-runtime.us-east-1.amazonaws.com:443"); }\npub fn s3bucket() { let _ = std::net::TcpStream::connect("bedrock-backups.s3.amazonaws.com:443"); }\npub fn rport() { let _ = std::net::TcpStream::connect("svc.internal.example.com:11434"); }\n' > "$W/llm/rust/src/lib.rs"
+printf 'package q;\npublic class L {\n  static void chat() throws Exception { new java.net.URL("https://api.anthropic.com/v1/messages").openConnection().getInputStream(); }\n  static void other() throws Exception { new java.net.URL("https://api.example.com/x").openConnection().getInputStream(); }\n  static void bedrock() throws Exception { new java.net.URL("https://bedrock-runtime.us-east-1.amazonaws.com/x").openConnection().getInputStream(); }\n  static void s3bucket() throws Exception { new java.net.URL("https://bedrock-backups.s3.amazonaws.com/x").openConnection().getInputStream(); }\n  static void rport() throws Exception { new java.net.URL("https://svc.internal.example.com:11434/x").openConnection().getInputStream(); }\n}\n' > "$W/llm/java/q/L.java"
 "$SCAN" "$W/llm/rust" >/dev/null 2>&1
 LLM_RUST="$(ls "$W"/llm/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
 javac -d "$W/llm/jout" "$W/llm/java/q/L.java" 2>/dev/null
 java -jar "$JAR" "$W/llm/jout" --json "$W/llm/java.json" >/dev/null 2>&1
 LLM_TS="/nonexistent"
 if [ -n "$TS_PRESENT" ]; then
-  printf 'export function chat() { return fetch("https://api.anthropic.com/v1/messages"); }\nexport function other() { return fetch("https://api.example.com/x"); }\n' > "$W/llm/cases.ts"
+  printf 'export function chat() { return fetch("https://api.anthropic.com/v1/messages"); }\nexport function other() { return fetch("https://api.example.com/x"); }\nexport function bedrock() { return fetch("https://bedrock-runtime.us-east-1.amazonaws.com/x"); }\nexport function s3bucket() { return fetch("https://bedrock-backups.s3.amazonaws.com/x"); }\nexport function rport() { return fetch("https://svc.internal.example.com:11434/x"); }\n' > "$W/llm/cases.ts"
   node "$TS_DIR/scan.mjs" "$W/llm/cases.ts" "$W/llm/ts_out" >/dev/null 2>&1
   LLM_TS="$W/llm/ts_out.json"
 fi
 LLM_SW="/nonexistent"
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$W/llm/swift"
-  printf 'import Foundation\nfunc chat() { _ = URLSession.shared.dataTask(with: "https://api.anthropic.com/v1/messages") { _,_,_ in } }\nfunc other() { _ = URLSession.shared.dataTask(with: "https://api.example.com/x") { _,_,_ in } }\n' > "$W/llm/swift/cases.swift"
+  printf 'import Foundation\nfunc chat() { _ = URLSession.shared.dataTask(with: "https://api.anthropic.com/v1/messages") { _,_,_ in } }\nfunc other() { _ = URLSession.shared.dataTask(with: "https://api.example.com/x") { _,_,_ in } }\nfunc bedrock() { _ = URLSession.shared.dataTask(with: "https://bedrock-runtime.us-east-1.amazonaws.com/x") { _,_,_ in } }\nfunc s3bucket() { _ = URLSession.shared.dataTask(with: "https://bedrock-backups.s3.amazonaws.com/x") { _,_,_ in } }\nfunc rport() { _ = URLSession.shared.dataTask(with: "https://svc.internal.example.com:11434/x") { _,_,_ in } }\n' > "$W/llm/swift/cases.swift"
   "$SW_BIN" "$W/llm/swift/cases.swift" --out "$W/llm/sw_out" >/dev/null 2>&1
   LLM_SW=$(ls "$W"/llm/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
 fi
@@ -486,24 +486,33 @@ import json, sys, os
 def eff(path, sep):
     d = json.load(open(path))
     return {e["fn"].split(sep)[-1]: set(e.get("inferred", [])) for e in d["functions"]}
-print("\n[4m] Llm HOST-LITERAL differential  (SPEC §1 ⟨0.13⟩ — a known model host is Llm+Net; unknown stays Net)")
+print("\n[4m] Llm HOST-LITERAL differential  (SPEC §1 ⟨0.13⟩ — model hosts Llm+Net; unknown/s3-bedrock/remote-11434 stay bare Net)")
 engines = [("rust", sys.argv[1], "::"), ("java", sys.argv[2], ".")]
 if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "."))
 if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4], "."))
 fails = 0; pinned = 0
 for name, path, sep in engines:
     e = eff(path, sep)
-    chat, other = e.get("chat", set()), e.get("other", set())
-    if "Llm" not in chat and "Llm" not in other:
+    chat = e.get("chat", set())
+    other = e.get("other", set())
+    if "Llm" not in chat and "Llm" not in e.get("bedrock", set()):
         print(f"  {name:6s} -> SKIP (does not yet declare Llm — reference-led rung)")
         continue
     pinned += 1
-    ok = ("Llm" in chat and "Net" in chat) and ("Llm" not in other and "Net" in other)
-    if not ok:
+    bedrock, s3b, rport = e.get("bedrock", set()), e.get("s3bucket", set()), e.get("rport", set())
+    checks = {
+        "chat":     ("Llm" in chat and "Net" in chat),        # a known model host → Llm+Net
+        "bedrock":  ("Llm" in bedrock and "Net" in bedrock),  # the Bedrock RUNTIME endpoint → Llm+Net
+        "other":    ("Llm" not in other and "Net" in other),  # an unknown host → bare Net (no fabrication)
+        "s3bucket": ("Llm" not in s3b and "Net" in s3b),      # an S3 bucket NAMED bedrock → NOT Llm (fabrication guard)
+        "rport":    ("Llm" not in rport and "Net" in rport),  # a remote host on :11434 → NOT Llm (fabrication guard)
+    }
+    bad = [k for k, v in checks.items() if not v]
+    if bad:
         fails += 1
-        print(f"  {name:6s} -> DIVERGE  chat={sorted(chat)} other={sorted(other)} (want chat superset of Llm,Net; other = Net)")
+        print(f"  {name:6s} -> DIVERGE on {bad}  (chat={sorted(chat)} bedrock={sorted(bedrock)} other={sorted(other)} s3bucket={sorted(s3b)} rport={sorted(rport)})")
     else:
-        print(f"  {name:6s} -> MATCH  chat=Llm,Net  other=Net")
+        print(f"  {name:6s} -> MATCH  (model hosts Llm+Net; unknown/s3-bedrock/remote-:11434 stay bare Net — no fabrication)")
 if pinned == 0:
     print("  -> (no engine declares Llm yet)")
 else:
