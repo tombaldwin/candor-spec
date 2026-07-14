@@ -942,3 +942,34 @@ elsewhere)" 🟢 row — that is a function FORCING a deferred init; this is the
 KEY LESSON (repeat): dogfood on REAL code finds the class the fixtures don't — every prior conformance
 fixture wrote its effects inside a named function, so the top-level unit was never exercised. The
 published-artifact scan (npx candor-ts@0.13.0) surfaced it.
+
+### 2026-07-14 — top-level follow-ons: swift tuple-global drop + ts static-block label (0.14.1)
+
+Probing ADJACENT cases after the 0.14 top-level rung (the discipline: a new unit-attribution seam is a
+two-sided risk — audit the shapes the primary fix didn't exercise) surfaced two residuals, both fixed and
+shipped as engine patch 0.14.1 (spec stays 0.14 — these are conformance fixes TO the existing §2
+initializer contract, not a new rung).
+
+- **candor-swift: a tuple-destructured global was SILENTLY DROPPED** (a real cardinal-sin residual, same
+  class). `let (a, b) = effectfulInit()` at file scope binds names, so the `<main>` collector excludes it
+  (it is a declaration, not a bare statement) — but the global-var unit path guarded on
+  `IdentifierPatternSyntax` only, so a TUPLE pattern fell through and its initializer effect vanished (a
+  `deny Fs` gate passed it). The NAMED global (`let cfg = …`) was already sound; only the tuple shape was
+  lost. FIX: a `boundNames(pattern)` helper (recurses tuples) mints a lazy first-touch unit per bound name
+  carrying the shared initializer — sound over-approximation (any name's first read forces the lazy
+  global). Same fix covers the type-member sibling `static let (p, q) = …` (found during verification —
+  "fix the copied guard everywhere"). Remaining rarer residual, NOTED not fixed: an INSTANCE tuple stored
+  property (`let (a,b) = …` runs in the ctor, not first-touch) — obscure, disproportionate to fold into
+  <init>.
+- **candor-ts: a `static { … }` block was MISLABELED** (precision, NOT a silent drop — the effect was
+  caught). Its body folded into the instance `C.constructor` unit (and carried no `unitKind`), so `new
+  C()` falsely appeared to perform the static-init effect. FIX: a `staticBlockUnit` mints `C.<static-init>`
+  with `unitKind:"initializer"` (mirrors the `<module>` synthesis), intercepted in `enclosing()` before
+  the ClassDeclaration→ctor mapping. A `static x = fetch()` FIELD initializer still folds into the ctor —
+  a lower-stakes precision nuance (effect caught, class still gated), left as noted.
+
+Gated: candor-swift TopLevelMainProcessTests (+2 tuple pins), candor-ts test.mjs §8b (+3 static-block
+pins). Conformance PART 4p (the four-way top-level/initializer differential) unchanged and still green —
+these are engine-shape refinements within the contract it pins. LESSON (again): the primary fix's probe
+battery wrote effects in the common shape; the residuals lived in the shapes it didn't — always sweep the
+siblings (tuple vs identifier, static-block vs field-init, member vs global).
