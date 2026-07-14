@@ -12,9 +12,23 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.11 — current floor
+## 0.12 — current floor
 
-All code engines declare `0.11`; the floor is conformance-pinned (PARTs 4f–4k). Another **tier-2
+All code engines declare `0.12`; the floor is conformance-pinned (PART 5b). Another **tier-2
+(pinned-tool-surface)** rung, additive over 0.11 and invocation-compatible with it. The **§3.1 `gains`
+`origin` field**: each `byFunction` entry separates the supply-chain *attack* signal (`existing` — a fn
+that shipped pure at the baseline now performs the effect) from a feature (`new`) and from the
+undecidable case (`unknown` — the baseline callgraph is absent OR partial: a corrupt sidecar must never
+downgrade the alarm). Existence keys on the baseline callgraph because reports omit pure functions;
+`gains --json` also carries `baseline_version`/`engine_version` + the §2.1 producing-build mismatch
+disclosure in every engine. Alongside the rung: the corrupt-report loudness rule completed across the
+comparative verbs and the MCP surface (the 0.11 rule applied engine × verb × surface), and candor-swift
+gained the `gains` verb (its first). Conformance **PART 5b** pins the differential four-way, including
+the partial-sidecar and no-baseline cases.
+
+## 0.11
+
+All code engines declare `0.11`; conformance-pinned (PARTs 4f–4k). Another **tier-2
 (pinned-tool-surface)** rung, additive over 0.10 and invocation-compatible with it. The **§3.1
 surprising-reach surface**: the scan-time opener (the single most surprising transitive reach — a
 mundane-named function inheriting a boundary effect from hops away — with a ready-to-run `path`
