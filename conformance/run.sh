@@ -896,6 +896,122 @@ sys.exit(1 if fails else 0)
 PYLH
 
 # ====================================================================================================
+# PART 4s — COVERAGE ENVELOPE differential (SPEC §2 ⟨0.15 staged⟩): the κ-coverage ledger travels WITH   [TIER 1]
+# the report — a scan with an UNCOVERED external dep emits `"coverage": {"uncovered": [{"name","calls"}]}`
+# naming it, a FULLY-COVERED scan OMITS the field entirely (byte-compatible), the affected function carries
+# a per-fn disclosure (`invisible` non-empty OR reads `Unknown` — §2 blesses either), and the --gate-json
+# verdict RE-DISCLOSES coverage as a VERDICT-PRESERVING advisory (ok/violations/exit unchanged — the ⟨0.9⟩
+# auto-disclosure precedent). Motivation: a report that reads as total lets a downstream verb answer with
+# false confidence (the wikipedia-ios privacy-manifest find, SOUNDNESS-LOG 2026-07-15; COVERAGE-DESIGN.md).
+# Reference-led: an engine not yet emitting the envelope field is SKIPPED.
+# ====================================================================================================
+mkdir -p "$W/cov/rust/src" "$W/cov/java/ext" "$W/cov/java/q" "$W/cov/ts/node_modules/somedep" "$W/cov/swift"
+# rust: a declared-but-uncovered dep + a covered effectful fn (for the gate leg)
+cat > "$W/cov/rust/Cargo.toml" <<'EOF'
+[package]
+name = "cov"
+version = "0.0.0"
+edition = "2021"
+[dependencies]
+somedep = "1"
+EOF
+printf 'pub fn f() { somedep::do_thing(); }\npub mod api { pub fn hit() { let _ = std::net::TcpStream::connect("h:80"); } }\n' > "$W/cov/rust/src/lib.rs"
+"$SCAN" "$W/cov/rust" >/dev/null 2>&1
+COV_RUST="$(ls "$W"/cov/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+printf 'deny Net api\n' > "$W/cov/policy.txt"
+CANDOR_POLICY="$W/cov/policy.txt" "$SCAN" "$W/cov/rust" --gate-json "$W/cov/rust_verdict.json" >/dev/null 2>&1
+# java: an external package off the scan path + a covered Net fn
+printf 'package ext;\npublic class Lib { public static void doThing(){} }\n' > "$W/cov/java/ext/Lib.java"
+printf 'package q;\npublic class L {\n  static void f(){ ext.Lib.doThing(); }\n  static void hit() throws Exception { new java.net.URL("https://h.example.com/x").openConnection().getInputStream(); }\n}\n' > "$W/cov/java/q/L.java"
+javac -d "$W/cov/jall" "$W/cov/java/ext/Lib.java" "$W/cov/java/q/L.java" 2>/dev/null
+mkdir -p "$W/cov/jout/q" && cp "$W/cov/jall/q/L.class" "$W/cov/jout/q/"
+java -jar "$JAR" "$W/cov/jout" --json "$W/cov/java.json" >/dev/null 2>&1
+printf 'deny Net q\n' > "$W/cov/jpolicy.txt"
+java -jar "$JAR" "$W/cov/jout" --policy "$W/cov/jpolicy.txt" --gate-json "$W/cov/java_verdict.json" >/dev/null 2>&1
+COV_TS="/nonexistent"; COV_TS_V="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  # ts: a declared+installed-but-uncovered package (typed stub) + a covered Net fn
+  printf '{"name":"covts","version":"1.0.0","dependencies":{"somedep":"^1.0.0"}}\n' > "$W/cov/ts/package.json"
+  printf '{"name":"somedep","version":"1.0.0","main":"index.js","types":"index.d.ts"}\n' > "$W/cov/ts/node_modules/somedep/package.json"
+  printf 'export function doThing(): void;\n' > "$W/cov/ts/node_modules/somedep/index.d.ts"
+  : > "$W/cov/ts/node_modules/somedep/index.js"
+  printf 'import { doThing } from "somedep";\nexport function f(){ return doThing(); }\n' > "$W/cov/ts/dep.ts"
+  printf 'export function hit(){ return fetch("https://h.example.com/x"); }\n' > "$W/cov/ts/api.ts"
+  node "$TS_DIR/scan.mjs" "$W/cov/ts" "$W/cov/ts_out" >/dev/null 2>&1
+  COV_TS="$W/cov/ts_out.json"
+  printf 'deny Net api\n' > "$W/cov/tspolicy.txt"
+  node "$TS_DIR/scan.mjs" "$W/cov/ts" --policy "$W/cov/tspolicy.txt" --gate-json "$W/cov/ts_verdict.json" >/dev/null 2>&1
+  COV_TS_V="$W/cov/ts_verdict.json"
+fi
+COV_SW="/nonexistent"; COV_SW_V="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  # swift: an uncovered imported module + a covered Net fn
+  printf 'import SomeSDK\nimport Foundation\nfunc f() { SomeSDK.doThing() }\nenum Api { static func hit() { _ = URLSession.shared.dataTask(with: "https://h.example.com/x") { _,_,_ in } } }\n' > "$W/cov/swift/cases.swift"
+  "$SW_BIN" "$W/cov/swift/cases.swift" --out "$W/cov/sw_out" >/dev/null 2>&1
+  COV_SW=$(ls "$W"/cov/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
+  printf 'deny Net Api\n' > "$W/cov/swpolicy.txt"
+  "$SW_BIN" "$W/cov/swift/cases.swift" --policy "$W/cov/swpolicy.txt" --gate-json "$W/cov/sw_verdict.json" >/dev/null 2>&1
+  COV_SW_V="$W/cov/sw_verdict.json"
+fi
+python3 - "$COV_RUST" "$W/cov/rust_verdict.json" "$W/cov/java.json" "$W/cov/java_verdict.json" "$COV_TS" "$COV_TS_V" "$COV_SW" "$COV_SW_V" <<'PYCOV' || rc=1
+import json, sys, os
+def load(p):
+    try: return json.load(open(p))
+    except Exception: return None
+print("\n[4s] COVERAGE ENVELOPE differential  (SPEC §2 ⟨0.15 staged⟩ — the κ ledger travels with the report; the gate re-discloses it verdict-preserving)")
+engines = [("rust", sys.argv[1], sys.argv[2]), ("java", sys.argv[3], sys.argv[4])]
+if os.path.exists(sys.argv[5]): engines.append(("ts", sys.argv[5], sys.argv[6]))
+if os.path.exists(sys.argv[7]): engines.append(("swift", sys.argv[7], sys.argv[8]))
+fails = 0; pinned = 0
+for name, rp, vp in engines:
+    r = load(rp)
+    if r is None:
+        fails += 1; print(f"  {name:6s} -> DIVERGE (report unreadable)"); continue
+    cov = r.get("coverage")
+    if cov is None:
+        print(f"  {name:6s} -> SKIP (does not yet emit the coverage envelope — reference-led)")
+        continue
+    pinned += 1
+    names = {e.get("name") for e in cov.get("uncovered", [])}
+    ok_env = any(("somedep" in n) or ("ext" in n) or ("SomeSDK" in n) for n in names) and \
+             all(isinstance(e.get("calls"), int) and e["calls"] >= 1 for e in cov.get("uncovered", []))
+    # per-fn disclosure: the dep-calling fn carries invisible OR reads Unknown
+    fn_ok = False
+    for f in r.get("functions", []):
+        inv = f.get("invisible") or []
+        if any(("somedep" in i) or ("ext" in i) or ("SomeSDK" in i) for i in inv): fn_ok = True; break
+        if "Unknown" in f.get("inferred", []): fn_ok = True
+    v = load(vp)
+    gate_ok = bool(v) and v.get("ok") is False and len(v.get("violations", [])) >= 1 and \
+              isinstance(v.get("coverage"), dict) and v["coverage"].get("uncovered", 0) >= 1
+    bad = [k for k, okk in [("envelope", ok_env), ("per-fn", fn_ok), ("gate-advisory", gate_ok)] if not okk]
+    if bad:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE on {bad}  (cov={json.dumps(cov)[:90]} verdict={json.dumps(v)[:110] if v else None})")
+    else:
+        print(f"  {name:6s} -> MATCH  (envelope names the uncovered dep; per-fn disclosed; gate verdict ok:false+violations with the coverage advisory)")
+if pinned == 0 and not fails:
+    print("  -> (no engine emits the coverage envelope yet)")
+else:
+    print("  -> " + ("MATCH — the κ ledger travels with the report and the gate re-discloses it, verdict-preserving"
+                     if not fails else f"DIVERGE — {fails} engine(s) disagree"))
+sys.exit(1 if fails else 0)
+PYCOV
+# 4s-b: the OMISSION leg — a fully-covered scan must NOT carry a coverage key (byte-compat pin)
+mkdir -p "$W/cov/pure_rust/src"
+printf '[package]\nname = "purecov"\nversion = "0.0.0"\nedition = "2021"\n' > "$W/cov/pure_rust/Cargo.toml"
+printf 'pub fn g() { let _ = std::fs::read("/x"); }\n' > "$W/cov/pure_rust/src/lib.rs"
+"$SCAN" "$W/cov/pure_rust" >/dev/null 2>&1
+PURE_RUST="$(ls "$W"/cov/pure_rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+python3 - "$PURE_RUST" <<'PYCOVB' || rc=1
+import json, sys
+r = json.load(open(sys.argv[1]))
+if "coverage" in r:
+    print("  [4s-b] rust  -> DIVERGE — a fully-covered scan must OMIT the coverage key"); sys.exit(1)
+print("  [4s-b] fully-covered scan omits the coverage key (byte-compat) — MATCH")
+PYCOVB
+
+# ====================================================================================================
 # PART 4c — coverage ledger differential (SPEC §7 item 14): every engine must NAME an unlisted   [TIER 1]
 # external package the scanned code demonstrably calls ("classifier doesn't cover …"), and must NOT name the
 # platform/builtin frontier. Package naming is language-natural (crate / java package / npm name);
@@ -2887,6 +3003,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
