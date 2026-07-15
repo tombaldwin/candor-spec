@@ -1041,3 +1041,18 @@ crate) must NOT read pure — trace the glob/rebind to the origin crate to discl
 chaining), or at minimum mark the call Unknown. HARD CONSTRAINT: no fabrication — local-pure and std calls
 must stay pure; the 1337-crate realworld-oracle must not gain fabrications. VERDICT: REAL, high-severity,
 fix+gate (held per Tom's publish-hold).
+
+### 2026-07-15 — candor-ts: process.env read via bracket/alias/destructure/`in` was silent (dogfood, FIXED)
+
+Dogfooding chalk/supports-color: candor-ts classified `Env` ONLY for a direct `process.env.KEY` dot access.
+It silently missed (read pure) `process.env["KEY"]` (bracket), `const env = process.env; env.KEY` (alias),
+`const {KEY} = process.env` (destructure), and `"KEY" in process.env` (membership) — all common config
+idioms. supports-color reads env via `const {env}=process; 'FORCE_COLOR' in env; env.TERM` → reported 0 Env.
+Engine-specific (a JS global-property idiom; rust/java/swift read env via function calls). Bounded: candor-ts
+already handles fs/child_process alias+destructure correctly, so this was process.env-specific, not a general
+alias-resolution gap. FIXED: extended the recognizer to bracket access, symbol-based const-alias tracking
+(`x = process.env`, cleared on reassignment), destructuring, and `in` — including `import process from
+'node:process'` as the process global. NO fabrication: a non-env object / a fn param / a reassigned-away
+local stays pure (verified). Gated by candor-ts test.mjs (+13 checks) — engine-local, no cross-engine
+differential (the idiom doesn't map to the other languages). VERDICT: REAL, moderate (Env is benign but
+gate-relevant), fixed + gated, held per Tom's publish-hold.
