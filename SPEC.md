@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.14** — all code engines declare `0.14`; the floor is conformance-pinned. How versions
+**Version 0.15** — all code engines declare `0.15`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -227,7 +227,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.14" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.15" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -488,7 +488,7 @@ The header has THREE fields, on two distinct axes. Keep them separate:
   mismatched one) and, on a mismatch, treat the inherited effects as
   unverified (downgrade to `Unknown`) rather than trust them.
 - `toolchain`: the language/runtime channel (`nightly-…`, `stable`, `jdk-21`).
-- `spec`: the **candor-spec contract version** this engine implements (`"0.14"`). This is the version
+- `spec`: the **candor-spec contract version** this engine implements (`"0.15"`). This is the version
   *this document* carries, NOT the engine's build id or the package's release version; they evolve
   independently (a binary-only scanner fix bumps the release, not the spec). An implementation MUST emit
   `spec` so a consumer can tell which contract a report conforms to, and SHOULD source it from a single
@@ -1402,7 +1402,7 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.15 (STAGED — implemented all-engine, publish held)** — additive, wire-compatible with 0.14: the
+- **0.15 (all code engines declare `0.15`; conformance-pinned)** — additive, wire-compatible with 0.14: the
   **`coverage` envelope field** (§2) — the κ-coverage ledger as data (`{"uncovered":[{"name","calls"}]}`,
   omitted when empty), so "what the scan couldn't see" travels with the report; the per-function
   **`invisible`** field formalized (§2 — the ledger attributed per fn; engines already emitted it);

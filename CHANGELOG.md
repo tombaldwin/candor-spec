@@ -12,7 +12,31 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.14 — current floor
+## 0.15 — current floor
+
+All code engines declare `0.15`; the floor is conformance-pinned (PARTs 4q/4r/4s). A **tier-1 additive**
+rung, wire-compatible with 0.14. Three groups, all found/driven by real-world corpus testing:
+
+- The **`coverage` envelope field** (§2) — the κ-coverage ledger travels WITH the report
+  (`{"uncovered": [{"name", "calls"}]}`, omitted when empty — a fully-covered report is byte-identical),
+  the per-function **`invisible`** field formalized, and **verb conditionality**: every engine's
+  `--gate-json` re-discloses coverage as a verdict-preserving advisory, `gains --json` carries the ledger
+  + `coverageDelta {nowUncovered, noLongerUncovered}`, and candor-swift's `privacy-manifest` marks its
+  verdict `conditional: true` with a human ⚠ when uncovered modules could hide sensor usage (the
+  wikipedia-ios false-confidence fix). Design: [COVERAGE-DESIGN.md](COVERAGE-DESIGN.md). **PART 4s** pins
+  it four-way (+ the omitted-when-covered byte-compat leg).
+- **Host-resolution recall** (§1, "a statically-known request") — a model/Db/Net host that is statically
+  knowable but not a bare literal now resolves like an inline literal, both halves: a CONST-anchored head
+  (`const API_BASE = "…"; fetch(`${API_BASE}/x`)`; java was already sound via static-final inlining) and
+  a LITERAL-COMPLETE head with an interpolated path (`https://api.openai.com/v1/${p}`, `format!`, runtime
+  concat from bytecode — all four engines). Sound boundaries pinned: a split authority, an interpolated
+  port, and a non-model (CDN) host stay bare `Net`. **PARTs 4q + 4r**.
+- **Soundness fixes** (candor-scan: cross-crate glob-reexport/use-rebind silent drop — sqlx-postgres's
+  TCP-to-Postgres read pure; cfg_if! macro arms now expanded; block-nested `use` resolved. candor-ts:
+  `process.env` via bracket/alias/destructure/`in` now classifies Env). Zero fabrication across the
+  1337-crate realworld-oracle.
+
+## 0.14
 
 All code engines declare `0.14`; the floor is conformance-pinned (PART 4p). A **tier-1 additive**
 rung, wire-compatible with 0.13 — a **soundness fix** for the cardinal sin (silent under-report).
