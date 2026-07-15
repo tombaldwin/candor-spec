@@ -1056,3 +1056,19 @@ alias-resolution gap. FIXED: extended the recognizer to bracket access, symbol-b
 local stays pure (verified). Gated by candor-ts test.mjs (+13 checks) — engine-local, no cross-engine
 differential (the idiom doesn't map to the other languages). VERDICT: REAL, moderate (Env is benign but
 gate-relevant), fixed + gated, held per Tom's publish-hold.
+
+### 2026-07-15 — candor-scan glob-reexport/use-rebind silent drop: FIXED
+
+Fix for the 2026-07-15 cross-crate glob-reexport find (above). candor-scan now maps a module-qualified call
+to its origin through a GLOB re-export (`use x::prelude::*`, recorded under a GLOB_KEY sentinel) and a
+`use crate::name` re-bind (resolved through the crate-root re-exports), not only a direct `use x::module`.
+Cross-file plumbing added `root_reexports` (captured from the crate root file, seeded into every file's use
+map, folded into the incremental digest → byte-identical). Guardrails prevent fabrication: a BARE qualifier
+(`dotenvy::var`) is never glob-rewritten (keeps external identity); `self::`/`super::` rebinds keep their
+literal (module-relative). Re-export chains traced ONE hop through the crate root; 2+ globs = ambiguous →
+honest under-report (never guess the prelude). VERIFIED: iso A/B/C/D all disclose the origin (single scan) +
+recover Net under chaining; **sqlx-postgres recovered real effects** — `PgListener::connect → Net`,
+`PgConnection::begin`/`begin_with → Db` (Net 0→1, Db 4→7), previously silently pure. NO FABRICATION: clap_builder
+byte-identical, reqwest +14 pure blind-spot disclosures (Ipc:3 = real Unix-socket transport, verified in
+source) with 0 phantom effects, sqlx-core Net:9 preserved; cargo test green (scan 97, +3 focused). Engine-local
+(ts/swift/java resolve re-exports natively — verified), gated by candor-scan tests, held per Tom's publish-hold.
