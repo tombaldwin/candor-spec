@@ -531,7 +531,7 @@ PYLLM
 # ====================================================================================================
 mkdir -p "$W/ext"
 cat > "$W/ext/report.demo.scan.json" <<'EOF'
-{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.14" },
+{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.15" },
   "extensions": ["privacy/1"],
   "package": "app",
   "functions": [
@@ -539,14 +539,14 @@ cat > "$W/ext/report.demo.scan.json" <<'EOF'
     { "fn": "app::caller", "inferred": ["Location", "Net"], "calls": ["app::loc::here"] } ] }
 EOF
 cat > "$W/ext/report.JS.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "node", "spec": "0.14" },
+{ "candor": { "version": "t", "toolchain": "node", "spec": "0.15" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
     { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.loc.here"] } ] }
 EOF
 cat > "$W/ext/report.jvm.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.14" },
+{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.15" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.Loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
@@ -896,7 +896,7 @@ sys.exit(1 if fails else 0)
 PYLH
 
 # ====================================================================================================
-# PART 4s — COVERAGE ENVELOPE differential (SPEC §2 ⟨0.15 staged⟩): the κ-coverage ledger travels WITH   [TIER 1]
+# PART 4s — COVERAGE ENVELOPE differential (SPEC §2 ⟨0.15⟩): the κ-coverage ledger travels WITH   [TIER 1]
 # the report — a scan with an UNCOVERED external dep emits `"coverage": {"uncovered": [{"name","calls"}]}`
 # naming it, a FULLY-COVERED scan OMITS the field entirely (byte-compatible), the affected function carries
 # a per-fn disclosure (`invisible` non-empty OR reads `Unknown` — §2 blesses either), and the --gate-json
@@ -958,7 +958,7 @@ import json, sys, os
 def load(p):
     try: return json.load(open(p))
     except Exception: return None
-print("\n[4s] COVERAGE ENVELOPE differential  (SPEC §2 ⟨0.15 staged⟩ — the κ ledger travels with the report; the gate re-discloses it verdict-preserving)")
+print("\n[4s] COVERAGE ENVELOPE differential  (SPEC §2 ⟨0.15⟩ — the κ ledger travels with the report; the gate re-discloses it verdict-preserving)")
 engines = [("rust", sys.argv[1], sys.argv[2]), ("java", sys.argv[3], sys.argv[4])]
 if os.path.exists(sys.argv[5]): engines.append(("ts", sys.argv[5], sys.argv[6]))
 if os.path.exists(sys.argv[7]): engines.append(("swift", sys.argv[7], sys.argv[8]))
@@ -1230,16 +1230,16 @@ plural_hdr() { # $1 label ; $2 locator ; $3.. cmd — asserts the human header n
   case "$hdr" in *"in com.a:"*) ;; *) echo "     FAIL $1: tour header did not name the packages' common prefix (got: ${hdr:0:80})"; return 1;; esac
 }
 P4G2_OK=0
-printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
+printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec":"0.15"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
 plural_hdr rust "$W/plural/r" "$QUERY" || P4G2_OK=1
-printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
+printf '%s' '{ "candor": {"version":"t","spec":"0.15"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
 plural_hdr java "$W/plural/j.jvm.json" java -jar "$JAR" || P4G2_OK=1
 if [ -n "$TS_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.15"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
   plural_hdr ts "$W/plural/t" node "$TS_DIR/query.mjs" || P4G2_OK=1
 fi
 if [ -n "$SW_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec":"0.14"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
+  printf '%s' '{ "candor": {"version":"t","spec":"0.15"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
   plural_hdr swift "$W/plural/s" env -u CANDOR_CONFIG "$SW_BIN" || P4G2_OK=1
 fi
 if [ "$P4G2_OK" = 0 ]; then
@@ -1680,9 +1680,9 @@ p5b() { echo "     FAIL $1"; P5B_OK=1; }
 mkdir -p "$W/gorigin"
 # $1 label; $2 f-qual; $3 g-qual; $4 h-qual; $5 base report; $6 base callgraph sidecar; $7 cur report
 gow() { # write one engine's fixture pair
-  printf '{ "candor": {"version":"t","spec":"0.14"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
+  printf '{ "candor": {"version":"t","spec":"0.15"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
   printf '{ "%s": ["%s"], "%s": [] }' "$2" "$3" "$3" > "$6"
-  printf '{ "candor": {"version":"t","spec":"0.14"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
+  printf '{ "candor": {"version":"t","spec":"0.15"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
 }
 # $1 label; $2 f-qual; $3 h-qual; $4 gains JSON output; $5 expected-f-origin; $6 expected-h-origin
 gocheck() {
@@ -2375,7 +2375,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.14 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.15 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
