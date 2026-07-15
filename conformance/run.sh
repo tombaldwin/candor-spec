@@ -2803,6 +2803,58 @@ else
   echo "  -> DIVERGE — see FAIL rows"; rc=1
 fi
 
+# ⟨0.16 staged⟩ the ratchet fires only on a REAL boundary effect; a pure fn that gains ONLY `Unknown` (an
+# unresolved call — the §4 trust marker, not an effect) is DISCLOSED as advisory, exit 0. On real version
+# bumps an Unknown-only gain is dominated by resolution noise (SOUNDNESS-LOG 2026-07-16), so failing on it
+# would break CI on innocuous updates. Per engine: baseline-pure `fmt` (a callgraph node) gains an
+# engine-idiomatic UNRESOLVED call (fn-pointer / reflection / dynamic value / opaque closure) — SAME fn
+# identity — and must exit 0, print the advisory note, and NOT [AS-EFF-005].
+echo "[15c] Unknown-only gain is ADVISORY four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→Unknown: exit 0 + note, no fail)"
+PUW="$W/peu"; mkdir -p "$PUW/jbu/q" "$PUW/jau/q" "$PUW/rbu/src" "$PUW/rau/src" "$PUW/tbu" "$PUW/tau" "$PUW/swbu/pe" "$PUW/swau/pe"
+# java: fmt pure → fmt does reflection (Unknown), same descriptor fmt(String)
+printf 'package q;\npublic class P {\n static int fmt(String s){ return s.length(); }\n static void keep(){ fmt("z"); }\n}\n' > "$PUW/jbu/q/P.java"
+printf 'package q;\npublic class P {\n static int fmt(String s) throws Exception { return (int) String.class.getMethod("length").invoke(s); }\n static void keep(){ try { fmt("z"); } catch (Exception e) {} }\n}\n' > "$PUW/jau/q/P.java"
+javac -d "$PUW/jbc" "$PUW/jbu/q/P.java" 2>/dev/null && javac -d "$PUW/jac" "$PUW/jau/q/P.java" 2>/dev/null || { echo "FAIL: javac ⟨0.16⟩ Unknown fixtures"; exit 2; }
+# rust: fmt pure → fmt calls a fn pointer (Unknown), same name fmt
+printf '[package]\nname = "pe"\nversion = "0.0.0"\nedition = "2021"\n' | tee "$PUW/rbu/Cargo.toml" > "$PUW/rau/Cargo.toml"
+printf 'pub fn helper()->usize{ 0 }\npub fn fmt(s:&str)->usize{ s.len() }\n' > "$PUW/rbu/src/lib.rs"
+printf 'pub fn helper()->usize{ 0 }\npub fn fmt(s:&str)->usize{ let g: fn()->usize = helper; g() }\n' > "$PUW/rau/src/lib.rs"
+# ts: fmt pure → fmt invokes a Function-typed value (Unknown), same name fmt
+printf 'export function fmt(s: string): number { return s.length; }\nexport function keep(): number { return fmt("z"); }\n' > "$PUW/tbu/pe.ts"
+printf 'export function fmt(s: string): number { const f: Function = (globalThis as any).x; return f(); }\nexport function keep(): number { return fmt("z"); }\n' > "$PUW/tau/pe.ts"
+# swift: fmt pure → fmt gains a CLOSURE-PARAM call (Unknown). candor-swift keys on the base name `fmt`,
+# so fmt(_:) and fmt(_:_:) are the same node; the invoked closure param is an unresolved call.
+printf 'import Foundation\nfunc fmt(_ s: String) -> Int { s.count }\nfunc anchor() { _ = FileManager.default.contents(atPath: "/x") }\nanchor()\n' > "$PUW/swbu/pe/a.swift"
+printf 'import Foundation\nfunc fmt(_ s: String, _ opaque: () -> Void) -> Int { opaque(); return s.count }\nfunc anchor() { _ = FileManager.default.contents(atPath: "/x") }\nanchor()\n' > "$PUW/swau/pe/a.swift"
+# baselines (sidecar-writing form)
+java -jar "$JAR" "$PUW/jbc" --json "$PUW/jbase.json" >/dev/null 2>&1 || { echo "FAIL: java ⟨0.16⟩ Unknown baseline"; exit 2; }
+"$SCAN" "$PUW/rbu" --out "$PUW/rbase" >/dev/null 2>&1 || { echo "FAIL: scan ⟨0.16⟩ Unknown baseline"; exit 2; }
+[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$PUW/tbu/pe.ts" "$PUW/tbase" >/dev/null 2>&1; }
+PU_SWBASE=""
+[ -n "$SWBASE" ] && { "$SW_BIN" "$PUW/swbu/pe" --out "$PUW/sbase" >/dev/null 2>&1; PU_SWBASE="$PUW/sbase.pe.Swift.json"; }
+PU_OK=0
+peurow() { # $1 label  $2 basereport  --  after-scan-cmd...
+  local label=$1 base=$2; shift 2; shift
+  local after=("$@"); local sidecar="${base%.json}.callgraph.json"
+  [ -f "$sidecar" ] || { echo "     FAIL $label: no baseline sidecar"; return 1; }
+  local out rc noteseen=no fireseen=no
+  out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" 2>&1); rc=$?
+  printf '%s' "$out" | grep -q "\[AS-EFF-005\]" && fireseen=yes
+  printf '%s' "$out" | grep -qi "Unknown" && printf '%s' "$out" | grep -qi "advisory" && noteseen=yes
+  echo "  $label exit=$rc fired=$fireseen advisory-note=$noteseen"
+  [ "$rc" = 0 ] && [ "$fireseen" = no ] && [ "$noteseen" = yes ] && return 0
+  echo "     FAIL $label: expected exit 0, NO [AS-EFF-005], an Unknown advisory note"; return 1
+}
+peurow "candor-java " "$PUW/jbase.json" -- java -jar "$JAR" "$PUW/jac" || PU_OK=1
+peurow "candor-scan " "$PUW/rbase.pe.scan.json" -- "$SCAN" "$PUW/rau" || PU_OK=1
+[ -n "$TS_OK" ] && [ -f "$PUW/tbase.callgraph.json" ] && { peurow "candor-ts   " "$PUW/tbase.json" -- node "$TS_DIR/scan.mjs" "$PUW/tau/pe.ts" "$PUW/tu_out" || PU_OK=1; }
+[ -n "$PU_SWBASE" ] && [ -f "${PU_SWBASE%.json}.callgraph.json" ] && { peurow "candor-swift" "$PU_SWBASE" -- "$SW_BIN" "$PUW/swau/pe" --out "$PUW/su_out" || PU_OK=1; }
+if [ "$PU_OK" = 0 ]; then
+  echo "  -> MATCH — an Unknown-only gain is advisory (exit 0 + note), never a CI-breaking regression, in every engine"
+else
+  echo "  -> DIVERGE — see FAIL rows"; rc=1
+fi
+
 # ====================================================================================================
 # PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER   [TIER 1]
 # granularity, incl. NESTED scopes). Previously only the §6.2 GRAMMAR of these rules was differentialed
@@ -3076,6 +3128,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
