@@ -1019,3 +1019,25 @@ independently re-verified on the full boundary battery; tests green (ts 393, swi
 229). LESSON: the two host-resolution gaps (const-anchored head `${CONST}/x` vs literal-complete head
 `https://host/${x}`) are complementary halves of "the host is statically knowable but not a bare literal" —
 real code uses both; pin the boundary (what is NOT resolvable) as hard as the positive.
+
+### 2026-07-15 — candor-scan: cross-crate call via glob-re-export / use-rebind silently dropped (dogfood, CONFIRMED)
+
+Autonomous dogfood of real crates (sqlx). A cross-crate EFFECTFUL call reached through a **glob re-export**
+(`use extern_crate::prelude::*`) OR a **`use crate::localname` re-bind in a submodule** is reported PURE and
+NOT disclosed anywhere — no effect, no Unknown, no coverage-ledger entry. Contrast a DIRECT
+`use extern_crate::module` (`use sqlx_core::net`), which correctly discloses the crate in the ledger.
+Isolated four ways (repro iso_A glob / iso_B nested-mod-rebind / iso_C glob-fullpath = all silent+undisclosed;
+iso_D direct = disclosed). WORSE than a single-scan gap: the effect is FULLY LOST even under proper `--deps`
+chaining (case A chained → still PURE; case D chained → correctly Net) — so it is not recoverable in ANY
+workflow. Real-world hit: **sqlx-postgres `PgStream::connect` (the TCP dial to Postgres) reads PURE** — it does
+`pub(crate) use sqlx_core::driver_prelude::*` then `use crate::net; net::connect_tcp(host, port, …)`. This is
+a ubiquitous Rust idiom (every crate with a `prelude`/`driver_prelude` glob; every submodule `use crate::x`),
+so the blast radius is large: any Net/Fs/Db/Exec reached this way vanishes. ROOT: candor-scan attributes a
+cross-crate call only through a DIRECT `use extern::module` binding; a glob or a `use crate::name` rebind
+loses the external origin, the qualifier resolves to no local module definition, and the call falls into a
+"resolved to nothing → PURE" hole instead of "unresolved/external → disclosed or Unknown". FIX (honesty-first,
+in progress): an unresolved module-qualified call (qualifier is neither a known local module NOR a known
+crate) must NOT read pure — trace the glob/rebind to the origin crate to disclose it (and edge it for
+chaining), or at minimum mark the call Unknown. HARD CONSTRAINT: no fabrication — local-pure and std calls
+must stay pure; the 1337-crate realworld-oracle must not gain fabrications. VERDICT: REAL, high-severity,
+fix+gate (held per Tom's publish-hold).
