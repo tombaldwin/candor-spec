@@ -551,6 +551,14 @@ An implementation SHOULD support:
 - **no-ambient**: flag any *direct* use of ambient authority (an effect performed without holding a
   matching capability), pushing toward a capability-passing / capability-secure style.
 - **baseline guard**: diff against a saved report and flag functions that *gained* an effect.
+  ⟨0.16 staged⟩ Existence is keyed on the **baseline callgraph sidecar when present** (§2.2 — it lists
+  pure leaves, which reports omit): a function in the baseline callgraph whose baseline effect set is
+  therefore ∅ and which now performs ANY effect is a GAIN violation — the formerly-pure→effectful
+  transition is the sharpest supply-chain shape and must not read as exempt "new code". Without the
+  sidecar, existence degrades to report-only (a formerly-pure fn reads as new — the pre-⟨0.16⟩
+  semantics); a PRESENT-but-corrupt sidecar fails closed like a corrupt baseline (a broken sidecar
+  must not silently narrow the guard). This is the `gains` `origin` existence rule (§3.1 ⟨0.12⟩)
+  applied to the scan-time ratchet.
 - **policy**: enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
   "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
   invariant an agent can't see from a local edit.
@@ -1402,6 +1410,11 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.16 (STAGED)** — the **callgraph-aware baseline guard** (§7 item 5): AS-EFF-005 existence keyed
+  on the baseline callgraph sidecar when present, so a formerly-pure function turning effectful is a
+  GAIN violation rather than exempt "new code" (the `gains` `origin` existence rule applied to the
+  scan-time ratchet); sidecar absent → report-only degradation, sidecar corrupt → fail closed.
+  Conformance PART 15 extended with the pure→effectful case.
 - **0.15 (all code engines declare `0.15`; conformance-pinned)** — additive, wire-compatible with 0.14: the
   **`coverage` envelope field** (§2) — the κ-coverage ledger as data (`{"uncovered":[{"name","calls"}]}`,
   omitted when empty), so "what the scan couldn't see" travels with the report; the per-function
