@@ -1141,3 +1141,24 @@ external-crate use in a nested block discloses like module-level; fd's `determin
 cmds=[gls,ls] (the gls-check now Exec, propagates up). NO FABRICATION: fd only gains Exec:5, clap/ripgrep
 byte-identical, inner-fn-guard + pure-nested negatives hold; cargo test 242 green; clippy -D warnings CLEAN
 (ran this time — the lesson from the cfg_if CI miss). Engine-local, gated by candor-scan tests, held.
+
+### 2026-07-15 — the coverage envelope: FIXED four-way (⟨0.15 staged⟩)
+
+Closure for the DESIGN finding above (coverage ledger absent from report JSON → verb over-confidence).
+Built at full scope per Tom's "do the absolute best possible": (1) the §2 `coverage` envelope field — the κ
+ledger as data, OMITTED when empty (fully-covered reports byte-identical, verified per-engine against
+pre-change binaries); (2) the per-fn `invisible` field FORMALIZED (audit: rust/java/swift already emitted
+it; ts emits BOTH postures — invisible for resolvable-but-uncovered, Unknown for unresolvable — the design
+doc's audit table corrected); (3) VERB CONDITIONALITY, verdict-preserving (the ⟨0.9⟩ precedent): every
+engine's --gate-json re-discloses coverage as an advisory (ok/violations/exit unchanged — byte-identical
+verdicts on covered scans, pinned); gains --json carries the current ledger + coverageDelta
+{nowUncovered, noLongerUncovered} (names-only compare, java's reference shape adopted cross-engine
+mid-wave); candor-swift privacy-manifest gains `conditional: true` + the human ⚠ line. ARCHITECTURE:
+engines emit direct facts; verbs compute transitive conditionality from the callgraph they already load —
+one shared ledger computation per engine feeds stderr/envelope/gate so the three can never disagree.
+THE ACCEPTANCE EXHIBIT: wikipedia-ios privacy-manifest, before {ok:true, no caveat — false confidence} →
+after {ok:true, conditional:true, coverage:{uncovered:19}, "⚠ verdict is conditional on 19 uncovered
+modules…"}, exits unchanged. Conformance **PART 4s** pins four-way (envelope named + omitted-when-covered +
+per-fn disclosure + gate advisory verdict-preserving); full suite green. Tests: java 365, ts 417 main
+(full battery green), swift 220 + smoke 99, rust 248 + clippy clean. Engine code marked ⟨0.15 staged⟩;
+spec §2/§8 + COVERAGE-DESIGN.md committed; ALL HELD unversioned per the publish-hold.

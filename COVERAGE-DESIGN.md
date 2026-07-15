@@ -22,7 +22,7 @@ ledger is honest) but at the **artifact** layer: the trust caveat doesn't travel
 
 | surface | rust | java | swift | ts |
 |---|---|---|---|---|
-| per-function disclosure | `invisible: [crate]` on the wire | `invisible: [pkg]` on the wire | `invisible: [module]` on the wire | `Unknown` + `unknownWhy` (a *stronger* posture: the fn is marked untrusted, not just annotated) |
+| per-function disclosure | `invisible: [crate]` on the wire | `invisible: [pkg]` on the wire | `invisible: [module]` on the wire | BOTH postures (corrected during the wave): `invisible` for a RESOLVABLE-but-uncovered package; `Unknown` + `unknownWhy` for an UNRESOLVABLE import (the stronger posture — participates in gating) |
 | scan-level ledger | stderr only | stderr only | stderr only | stderr only |
 
 So per-function attribution substantially **exists but is unspecced** (three engines emit `invisible`;
@@ -72,7 +72,7 @@ A report-consuming verb whose verdict could be changed by uncovered reach MUST d
   (and in ts, uncovered reach already trips it).
 - **`gains`**: the JSON gains the same `"coverage"` block from the CURRENT report's envelope; when
   the baseline's ledger differs (a dep became uncovered between scans — itself a signal), disclose
-  `"coverageDelta"`. Human TSV unchanged (pinned consumer surface).
+  `"coverageDelta": {"nowUncovered": [names], "noLongerUncovered": [names]}` — compared on NAMES only (a call-count wobble is ordinary code change; a package entering/leaving the uncovered set is the signal), emitted whenever the name sets differ (including has/lacks either side). Human TSV unchanged (pinned consumer surface).
 
 Architecture note: engines emit **direct** facts (per-fn `invisible`, envelope `coverage`); verbs
 compute **transitive** conditionality from the callgraph they already load. No new propagation
