@@ -1072,3 +1072,20 @@ recover Net under chaining; **sqlx-postgres recovered real effects** — `PgList
 byte-identical, reqwest +14 pure blind-spot disclosures (Ipc:3 = real Unix-socket transport, verified in
 source) with 0 phantom effects, sqlx-core Net:9 preserved; cargo test green (scan 97, +3 focused). Engine-local
 (ts/swift/java resolve re-exports natively — verified), gated by candor-scan tests, held per Tom's publish-hold.
+
+### 2026-07-15 — candor-scan: effects inside cfg_if! macro dropped (dogfood, FIXED)
+
+Dogfooding sqlx-core: effects inside a `cfg_if::cfg_if! { if #[cfg(..)]{..} else {..} }` macro block were
+dropped — a covered `std::net`/`std::fs` call inside a cfg_if! arm read PURE. candor-scan already traverses
+matches!/vec!/format!/assert!/dbg! correctly; cfg_if! was the specific miss (treated as an opaque external
+macro). Technically DISCLOSED (ledger "cfg_if uncovered") but MISLEADINGLY — it named cfg_if the crate when
+the dropped effect was the user's own covered call, and unrecoverable (a macro, no crate report to chain).
+FIXED: visit_macro now parses the cfg_if arm grammar (`if #[cfg]{..} [else if..]* [else{..}]?`) and walks
+EVERY arm's block through the normal effect walk (all-arm over-approximation, consistent with the existing
+all-cfg-branch handling); a non-conforming shape falls back to the opaque path (never panics). RECALL WIN:
+sqlx-core `net::socket::connect_tcp` [] → [Net] (its cfg_if arm reaches connect_tcp_async_io → a real
+TcpStream connect — this also solves the "connect_tcp reads pure" sub-mystery from the glob-fix investigation).
+60 functions cleared of the misleading invisible:[cfg_if] disclosure. NO FABRICATION: clap_builder
+byte-identical, spot-checked pure functions stay pure; cargo test green (scan 97→102, +5). Bounded to
+cfg_if! (matches/vec/format/etc. verified sound; thread_local! declaration correctly pure = lazy first-touch).
+Engine-local, gated by candor-scan tests, held per Tom's publish-hold.
