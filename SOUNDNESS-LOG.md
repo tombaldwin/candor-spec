@@ -1174,3 +1174,42 @@ falsifiable form of dogfooding"), candor's own `deny Fs lang` policy on its own 
 their own repos in smoke tests. Where an entry above says "dogfound on <third-party repo>", read
 "found by real-world corpus testing on <repo>". Prior entries are not rewritten (append-only); this note
 governs, and new entries use the correct terms.
+
+---
+
+## 2026-07-16 — ⟨0.16⟩ baseline-guard corpus test: the Unknown-gain false-positive class
+
+Real-world corpus test of the ⟨0.16 staged⟩ callgraph-aware baseline guard (keys existence on the
+baseline callgraph sidecar → a formerly-PURE fn turning effectful is a GAIN), BEFORE shipping 0.16.
+Method: version-pair scans (scan v_old → baseline+sidecar; scan v_new under CANDOR_BASELINE) — the exact
+"you bumped a dependency" scenario. 10 rust crate pairs (candor-scan, syntactic) + 1 JVM jar pair (gson,
+sound bytecode) + candor-on-candor self-gate.
+
+RESULTS:
+- **Control (rescan the SAME version vs its own baseline): CLEAN in every case** (10/10 rust, gson,
+  self-gate) — 0 fires. The guard does not false-positive on unchanged code. Good.
+- **Version-bump fires: 3 rust (serde ×2, itertools ×1) + 1 JVM (gson). ALL were gained-`Unknown`.
+  ZERO were a real capability gain** (no Net/Fs/Db/Exec/Llm anywhere in the corpus).
+- Triage:
+  - serde `VariantRefDeserializer::{struct,tuple}_variant` 1.0.190→1.0.210: **byte-identical source**,
+    yet classified pure→Unknown — the syntactic backend's dispatch resolution flipped under surrounding-
+    code churn. FALSE POSITIVE.
+  - itertools `Powerset::size_hint` 0.11→0.12: code genuinely changed, but the gain is only Unknown (an
+    unresolved call to a new helper) — a WEAK signal, not a capability.
+  - gson `ConstructorConstructor$9.construct` 2.9.0→2.10.1 (SOUND engine): gained Unknown, but `$9` is an
+    anonymous class whose positional numbering is unstable across versions — a DIFFERENT class matched by
+    an unstable name. FALSE POSITIVE (identity) + Unknown.
+
+FINDING: the ⟨0.16⟩ guard's exit-1 (CI-breaking) currently fires on an **Unknown-only** gain. On real
+dependency bumps this is the DOMINANT (here, the only) fire class, and it is dominated by noise:
+syntactic dispatch-resolution variance (rust) and unstable synthetic-member identity (jvm anon `$N`).
+Unknown is the §4 TRUST MARKER, not an effect — `pure` policies already exclude it (PART 16, the
+2026-07-09 deny-alignment). So exit-1 on pure→Unknown would break CI on innocuous bumps — a
+false-alarm class that erodes gate trust (the cardinal sin inverted).
+
+RECOMMENDATION (staged 0.16, not yet shipped — fold in before ship): the baseline guard ratchets (exit 1)
+only on gaining a REAL boundary effect (Net/Fs/Db/Exec/Llm/Env/Clock/Ipc/Log/Rand/Clipboard); an
+Unknown-ONLY gain is DISCLOSED as advisory (a note, exit 0) — consistent with the family's existing
+Unknown-is-not-an-effect treatment. Preserves the real supply-chain signal (pure→Net = exit 1;
+conformance PART 15b uses pure→Fs, still passes) while removing the false-positive class. Four-way +
+PART 15b amendment. **RESOLVED 2026-07-16**: built four-way (rust reference + java/ts/swift), each with a real-effect-still-fails check; conformance PART 15c (pure→Unknown = exit 0 + advisory note, no [AS-EFF-005]) green four-way; the corpus that found it (serde, itertools) now exit 0 + advisory. Staged with the rest of ⟨0.16⟩.

@@ -558,7 +558,14 @@ An implementation SHOULD support:
   sidecar, existence degrades to report-only (a formerly-pure fn reads as new — the pre-⟨0.16⟩
   semantics); a PRESENT-but-corrupt sidecar fails closed like a corrupt baseline (a broken sidecar
   must not silently narrow the guard). This is the `gains` `origin` existence rule (§3.1 ⟨0.12⟩)
-  applied to the scan-time ratchet.
+  applied to the scan-time ratchet. **The ratchet (exit 1) fires only on gaining a REAL boundary
+  effect**; a gain of `Unknown` ALONE — the §4 trust marker, not an effect (`pure` policies already
+  exclude it) — is DISCLOSED as advisory (a note, exit unchanged), never a hard failure. Rationale
+  (2026-07-16 corpus test, SOUNDNESS-LOG): on real dependency bumps an Unknown-only gain is dominated
+  by noise — syntactic dispatch-resolution variance, and unstable synthetic-member identity (a JVM
+  anonymous class's positional `$N` differs across versions) — so ratcheting on it would break CI on
+  innocuous bumps. A gain that includes any real effect still fails; the disclosure of the Unknown-gain
+  keeps the "say what changed" ethos without the false alarm.
 - **policy**: enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
   "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
   invariant an agent can't see from a local edit.
