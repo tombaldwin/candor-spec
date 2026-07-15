@@ -1089,3 +1089,26 @@ TcpStream connect — this also solves the "connect_tcp reads pure" sub-mystery 
 byte-identical, spot-checked pure functions stay pure; cargo test green (scan 97→102, +5). Bounded to
 cfg_if! (matches/vec/format/etc. verified sound; thread_local! declaration correctly pure = lazy first-touch).
 Engine-local, gated by candor-scan tests, held per Tom's publish-hold.
+
+### 2026-07-15 — candor-scan: block-nested `use` not tracked (dogfood, CONFIRMED, DEFERRED)
+
+Dogfooding fd: a `use path::X` inside a NESTED BLOCK (`{ use std::process::Command; Command::new(..).status(); }`
+/ an `if`/`else` arm) is not tracked → the call resolves to nothing → PURE. Module-level and fn-BODY-level uses
+work (verified); only block-nested are missed. SILENT for std calls (std isn't ledger-disclosed). Real hit: fd
+main.rs:442 `else { use std::process::{Command,Stdio}; Command::new("gls").status() }` reads pure. NARROW
+(block-nested use is uncommon vs module/fn-level) but real. Fix lives in the same use-resolution the glob fix
+touched (extend use-binding capture to nested block scopes). STATUS: DEFERRED — recorded not fixed, to avoid a
+late-autonomous-run agent round + clippy churn; a focused follow-up in candor-scan collector's use-handling
+closes it. VERDICT: REAL, narrow, tracked residual.
+
+### 2026-07-15 — autonomous dogfood+audit run summary
+
+An ~8h autonomous run (Tom: dogfood then audit, held on main unversioned). Swept 4 engines across ~18 real
+repos. FINDINGS: (1) candor-scan glob-reexport/use-rebind silent drop [HIGH — FIXED, oracle-green]; (2)
+candor-ts process.env bracket/alias/destructure/in recall [MOD — FIXED]; (3) candor-scan cfg_if! macro
+effect-drop [MOD — FIXED, oracle-green]; (4) candor-scan block-nested use [NARROW — deferred]. All fixes
+held-committed unversioned, gated by engine tests, CI/oracle-validated. NEGATIVE CONTROLS (engine-sound, no
+fabrication): sqlx, clap, undici, express, reqwest, axum, ripgrep, Alamofire, swift-nio, TCA, okhttp,
+langchain4j (Llm:133 ✓), spring-web, nix, fd, tokio(covered), argmax(disclosed). LESSON reinforced: the
+triage bar is "is the target actually statically-knowable / is it disclosed" — most apparent gaps were the
+engine being correctly conservative or transitively-correct; the 4 real ones were undisclosed/misleading holes.
