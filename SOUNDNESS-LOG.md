@@ -1129,3 +1129,15 @@ report field, and have report-consuming verbs mark verdicts CONDITIONAL when mod
 ("underDeclared:none is conditional on N invisible modules"). Directly serves the core honesty ethos (no
 false all-clear). Found via the verb-layer dogfood angle. STATUS: surfaced for design decision, not
 unilaterally fixed (report-schema change spanning the family). VERDICT: REAL, moderate, DESIGN.
+
+### 2026-07-15 — candor-scan block-nested `use`: FIXED (was deferred)
+
+Fixed the block-nested-use silent drop (recorded deferred above). `fninfo` collected function-local `use`
+statements from only the TOP level of the fn body; a `LocalUseCollector` (syn::visit::Visit) now walks the
+whole body tree and expands every nested `use`. Scope guard (load-bearing): stops at nested fn/impl/mod items
+so an inner fn's imports don't leak onto the enclosing fn (proved — without it, `outer()` fabricates Exec).
+VERIFIED: all four nesting forms (block, if/else arm, match arm, loop body) resolve like a module-level use;
+external-crate use in a nested block discloses like module-level; fd's `determine_ls_command` [] → [Exec] with
+cmds=[gls,ls] (the gls-check now Exec, propagates up). NO FABRICATION: fd only gains Exec:5, clap/ripgrep
+byte-identical, inner-fn-guard + pure-nested negatives hold; cargo test 242 green; clippy -D warnings CLEAN
+(ran this time — the lesson from the cfg_if CI miss). Engine-local, gated by candor-scan tests, held.
