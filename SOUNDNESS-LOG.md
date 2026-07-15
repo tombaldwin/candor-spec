@@ -1112,3 +1112,20 @@ fabrication): sqlx, clap, undici, express, reqwest, axum, ripgrep, Alamofire, sw
 langchain4j (Llm:133 ✓), spring-web, nix, fd, tokio(covered), argmax(disclosed). LESSON reinforced: the
 triage bar is "is the target actually statically-knowable / is it disclosed" — most apparent gaps were the
 engine being correctly conservative or transitively-correct; the 4 real ones were undisclosed/misleading holes.
+
+### 2026-07-15 — DESIGN FINDING: coverage ledger absent from report JSON → verbs give over-confident verdicts
+
+Dogfooding privacy-manifest on a real OSS iOS app (wikipedia-ios). The verb's verdict does not surface the
+underlying scan's COVERAGE GAP. wikipedia-ios uses Location/Photos in uncovered WMF framework modules
+(disclosed at SCAN time: 19 modules invisible), so a scan of Wikipedia/Code alone reports Location/Photos
+over-declared + ok:true, with NO coverage caveat in the verdict. Safe direction here (over-declaration), but
+the dangerous mirror is real: an UNDER-declaration in an uncovered module would be silently missed and read as
+a clean "✓ ok". ROOT (spans ALL engines + ALL report-consuming verbs): the coverage/κ ledger is a scan-time
+STDERR artifact — NOT in the report JSON (swift report keys: candor/extensions/functions/package; rust:
+candor/package/functions). So a downstream verb reading the JSON (privacy-manifest, gains, containment, a
+gate) cannot re-disclose that its answer is conditional on partial coverage. This is a §2 report-envelope
+DESIGN question (Tom's call, like the extensions/unitKind decisions): make the coverage ledger a first-class
+report field, and have report-consuming verbs mark verdicts CONDITIONAL when modules/deps are uncovered
+("underDeclared:none is conditional on N invisible modules"). Directly serves the core honesty ethos (no
+false all-clear). Found via the verb-layer dogfood angle. STATUS: surfaced for design decision, not
+unilaterally fixed (report-schema change spanning the family). VERDICT: REAL, moderate, DESIGN.
