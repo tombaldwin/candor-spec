@@ -1162,3 +1162,15 @@ modules…"}, exits unchanged. Conformance **PART 4s** pins four-way (envelope n
 per-fn disclosure + gate advisory verdict-preserving); full suite green. Tests: java 365, ts 417 main
 (full battery green), swift 220 + smoke 99, rust 248 + clippy clean. Engine code marked ⟨0.15 staged⟩;
 spec §2/§8 + COVERAGE-DESIGN.md committed; ALL HELD unversioned per the publish-hold.
+
+### 2026-07-15 — terminology correction (Tom): "dogfood" ≠ real-world corpus testing
+
+Correction, appended per this log's own append-only rule rather than rewriting entries. Several entries
+above (the 2026-07-15 run especially) say "dogfood"/"dogfooding" for what is actually **real-world corpus
+testing** — running the engines against THIRD-PARTY codebases (sqlx, okhttp, chalk, fd, wikipedia-ios, …).
+That is the project's established term (the candor-rust `realworld-oracle` workflow; the per-engine
+"corpus rounds"). **"Dogfooding" is reserved for candor-on-candor** — the SPEC §7 self-gate ("the
+falsifiable form of dogfooding"), candor's own `deny Fs lang` policy on its own code, the engines scanning
+their own repos in smoke tests. Where an entry above says "dogfound on <third-party repo>", read
+"found by real-world corpus testing on <repo>". Prior entries are not rewritten (append-only); this note
+governs, and new entries use the correct terms.
