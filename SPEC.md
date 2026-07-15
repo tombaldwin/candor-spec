@@ -261,6 +261,19 @@ forward-compatibility rule below (a consumer tolerates them like any unknown eff
 contract document (in the leading engine's repo, `SPEC-EXTENSION-<name>.md`) fixes its vocabulary and
 classification; it MAY later be promoted into this document as a shared rung.
 
+⟨0.15⟩ **The `coverage` envelope field** — the κ-coverage ledger (§7 item 14) as data, so "what the
+scan couldn't see" travels WITH the report instead of evaporating on stderr:
+`"coverage": { "uncovered": [ { "name": "<package>", "calls": <n> }, … ] }` — one entry per uncovered
+external package/module this code demonstrably calls (language-natural names, the same list and counts
+as the stderr disclosure), **omitted entirely when nothing is uncovered** (a fully-covered scan's
+report is byte-identical to a pre-⟨0.15⟩ one). Motivation (SOUNDNESS-LOG 2026-07-15): a report that
+reads as total lets a downstream verb answer with false confidence — a `privacy-manifest` "ok" over an
+app whose sensor usage lives in an uncovered framework module, a `gains` "no gains" over an uncovered
+dep. A report-consuming verb whose verdict could change under uncovered reach MUST re-disclose this
+field in its own output (verdict-preserving — the ⟨0.9⟩ gate auto-disclosure precedent; §3.1/§3.3):
+the verdict/exit does not change, the caveat travels. Closing the gap remains chaining's job (§2
+CANDOR_DEPS); `coverage` is how an unclosed gap stays visible.
+
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
 the fields this document defines are the interchange contract, not a closed schema.
@@ -299,6 +312,17 @@ Each entry:
                                          // an unresolved higher-order target, often resolved by widening
                                          // the analysed inputs). Omitted when this fn introduces no
                                          // direct Unknown.
+  "invisible":    ["somepkg"],           // OPTIONAL ⟨0.15⟩ (formalizes what engines already emit):
+                                         // the UNCOVERED external packages this fn DEMONSTRABLY
+                                         // calls — the per-function attribution of the envelope
+                                         // `coverage` ledger. `inferred: []` with a non-empty
+                                         // `invisible` means "pure as far as candor could see, but
+                                         // it calls into N packages the classifier doesn't cover" —
+                                         // NOT a purity claim. Direct calls only; transitive reach
+                                         // is the consumer's join over `calls`. An engine MAY
+                                         // instead mark such a fn `Unknown` (a STRONGER posture —
+                                         // it participates in gating); an engine MUST do at least
+                                         // one, never silently pure.
   "unitKind":     "accessor",            // OPTIONAL ⟨0.5⟩: what KIND of unit this entry is, when it
                                          // is not an ordinary function/method. Absent = "function".
                                          // Recommended values: "initializer" (static/class init —
@@ -1378,6 +1402,15 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.15 (STAGED — implemented all-engine, publish held)** — additive, wire-compatible with 0.14: the
+  **`coverage` envelope field** (§2) — the κ-coverage ledger as data (`{"uncovered":[{"name","calls"}]}`,
+  omitted when empty), so "what the scan couldn't see" travels with the report; the per-function
+  **`invisible`** field formalized (§2 — the ledger attributed per fn; engines already emitted it);
+  and **verb conditionality** (§3.1/§3.3) — a report-consuming verb whose verdict could change under
+  uncovered reach re-discloses coverage in its output, verdict-preserving (`privacy-manifest` gains a
+  conditional marker, `--gate-json` an advisory note, `gains` the current ledger + delta). Motivated by
+  the wikipedia-ios privacy-manifest false-confidence find (SOUNDNESS-LOG 2026-07-15); design in
+  [COVERAGE-DESIGN.md](COVERAGE-DESIGN.md). Conformance **PART 4s** pins it four-way.
 - **0.14 (all code engines declare `0.14`; conformance-pinned)** — additive, wire-compatible with 0.13.
   The **top-level / initializer unit**: a module whose top-level executable code performs an effect is
   attributed to an INITIALIZER unit (`unitKind:"initializer"`), never a false-"pure" empty report. A
