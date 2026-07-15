@@ -2731,6 +2731,79 @@ else
 fi
 
 # ====================================================================================================
+# PART 15b — ⟨0.16 staged⟩ the CALLGRAPH-AWARE baseline guard (SPEC §7 item 5, the ⟨0.16⟩ paragraph).  [TIER 1]
+# PART 15 pins the guard on an ALREADY-effectful fn WIDENING. This pins the sharpest supply-chain shape:
+# a formerly-PURE fn turning effectful. Reports omit pure fns (§2.2), so pre-0.16 such a fn read as
+# exempt "new code" and ESCAPED. The fix keys existence on the baseline CALLGRAPH sidecar (which lists
+# pure leaves), exactly as `gains` `origin` (§3.1 ⟨0.12⟩) does. Per engine, three sub-cases:
+#   present  — sidecar beside the baseline, a baseline-pure fn now effectful → [AS-EFF-005] + exit 1
+#   absent   — sidecar removed → degrade to report-only existence (the pure fn reads as new) → exit 0
+#   corrupt  — sidecar present but unparseable → fail closed (exit 2), like a corrupt baseline; a broken
+#              sidecar must not silently narrow the guard back to report-only
+# Fixtures: a pure `calc` (omitted from the report, a callgraph node) + an effectful `keep` that calls
+# it; the AFTER fixture makes `calc` do I/O. Baselines are scanned in-run (same-build by construction),
+# in the sidecar-writing form (java --json / scan --out / ts prefix / swift --out all emit the sibling).
+# ====================================================================================================
+echo
+echo "[15b] CALLGRAPH-AWARE guard four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→effectful: present/absent/corrupt)"
+PEW="$W/pe"; mkdir -p "$PEW/jb/q" "$PEW/ja/q" "$PEW/rb/src" "$PEW/ra/src" "$PEW/tb" "$PEW/ta" "$PEW/swb/pe" "$PEW/swa/pe"
+# java: pure calc + effectful keep; AFTER makes calc read a file
+printf 'package q;\npublic class P {\n static int calc(String s){ return s.length(); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); calc("z"); }\n}\n' > "$PEW/jb/q/P.java"
+printf 'package q;\npublic class P {\n static int calc(String s) throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/y")); return s.length(); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); calc("z"); }\n}\n' > "$PEW/ja/q/P.java"
+javac -d "$PEW/jbc" "$PEW/jb/q/P.java" 2>/dev/null && javac -d "$PEW/jac" "$PEW/ja/q/P.java" 2>/dev/null || { echo "FAIL: javac on the ⟨0.16⟩ guard fixtures"; exit 2; }
+# rust: same shape, one crate name so fn keys match across before/after
+printf '[package]\nname = "pe"\nversion = "0.0.0"\nedition = "2021"\n' | tee "$PEW/rb/Cargo.toml" > "$PEW/ra/Cargo.toml"
+printf 'pub fn calc(s: &str) -> usize { s.len() }\npub fn keep() { let _ = std::fs::read("/x"); let _ = calc("z"); }\n' > "$PEW/rb/src/lib.rs"
+printf 'pub fn calc(s: &str) -> usize { let _ = std::fs::read("/y"); s.len() }\npub fn keep() { let _ = std::fs::read("/x"); let _ = calc("z"); }\n' > "$PEW/ra/src/lib.rs"
+# ts: same basename in sibling dirs so module-qualified fn names match
+printf 'import * as fsm from "node:fs";\nexport function calc(s: string): number { return s.length; }\nexport function keep(): void { fsm.readFileSync("/x"); calc("z"); }\n' > "$PEW/tb/pe.ts"
+printf 'import * as fsm from "node:fs";\nexport function calc(s: string): number { fsm.readFileSync("/y"); return s.length; }\nexport function keep(): void { fsm.readFileSync("/x"); calc("z"); }\n' > "$PEW/ta/pe.ts"
+# swift: same leaf dir name "pe" so the package segment matches across before/after
+printf 'import Foundation\nfunc calc(_ s: String) -> Int { s.count }\nfunc keep() { _ = FileManager.default.contents(atPath: "/x"); _ = calc("z") }\n' > "$PEW/swb/pe/a.swift"
+printf 'import Foundation\nfunc calc(_ s: String) -> Int { _ = FileManager.default.contents(atPath: "/y"); return s.count }\nfunc keep() { _ = FileManager.default.contents(atPath: "/x"); _ = calc("z") }\n' > "$PEW/swa/pe/a.swift"
+# scan the baselines (sidecar-writing form). same binaries → same-build by construction.
+java -jar "$JAR" "$PEW/jbc" --json "$PEW/jbase.json" >/dev/null 2>&1 || { echo "FAIL: java ⟨0.16⟩ baseline scan"; exit 2; }
+"$SCAN" "$PEW/rb" --out "$PEW/rbase" >/dev/null 2>&1 || { echo "FAIL: scan ⟨0.16⟩ baseline scan"; exit 2; }
+[ -f "$PEW/rbase.pe.scan.callgraph.json" ] || { echo "FAIL: scan ⟨0.16⟩ baseline wrote no callgraph sidecar"; exit 2; }
+[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$PEW/tb/pe.ts" "$PEW/tbase" >/dev/null 2>&1; [ -s "$PEW/tbase.callgraph.json" ] || { echo "FAIL: ts ⟨0.16⟩ baseline sidecar"; exit 2; }; }
+PE_SWBASE=""
+if [ -n "$SWBASE" ]; then
+  "$SW_BIN" "$PEW/swb/pe" --out "$PEW/sbase" >/dev/null 2>&1
+  PE_SWBASE="$PEW/sbase.pe.Swift.json"; [ -s "${PE_SWBASE%.json}.callgraph.json" ] || { echo "FAIL: swift ⟨0.16⟩ baseline sidecar"; exit 2; }
+fi
+PE_OK=0
+perow() { # $1 label  $2 basereport  --  after-scan-cmd...
+  local label=$1 base=$2; shift 2; shift  # drop the leading --
+  local after=("$@")
+  local sidecar="${base%.json}.callgraph.json"
+  [ -f "$sidecar" ] || { echo "     FAIL $label: no baseline sidecar at $sidecar"; return 1; }
+  local out p a c seen=no
+  # present — the pure→effectful transition must be a GAIN
+  out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" 2>&1); p=$?
+  printf '%s' "$out" | grep -q "\[AS-EFF-005\]" && seen=yes
+  # absent — degrade to report-only (the pure fn reads as new), exit 0
+  mv "$sidecar" "$sidecar.bak"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" >/dev/null 2>&1; a=$?
+  mv "$sidecar.bak" "$sidecar"
+  # corrupt — fail closed (exit 2)
+  cp "$sidecar" "$sidecar.keep"; printf '{' > "$sidecar"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" >/dev/null 2>&1; c=$?
+  mv "$sidecar.keep" "$sidecar"
+  echo "  $label present=$p(seen=$seen) absent=$a corrupt=$c"
+  [ "$p" = 1 ] && [ "$seen" = yes ] && [ "$a" = 0 ] && [ "$c" = 2 ] && return 0
+  echo "     FAIL $label: expected present=1+[AS-EFF-005] absent=0 corrupt=2"; return 1
+}
+perow "candor-java " "$PEW/jbase.json" -- java -jar "$JAR" "$PEW/jac" || PE_OK=1
+perow "candor-scan " "$PEW/rbase.pe.scan.json" -- "$SCAN" "$PEW/ra" || PE_OK=1
+[ -n "$TS_OK" ] && { perow "candor-ts   " "$PEW/tbase.json" -- node "$TS_DIR/scan.mjs" "$PEW/ta/pe.ts" "$PEW/t_pe_out" || PE_OK=1; }
+[ -n "$PE_SWBASE" ] && { perow "candor-swift" "$PE_SWBASE" -- "$SW_BIN" "$PEW/swa/pe" --out "$PEW/s_pe_out" || PE_OK=1; }
+if [ "$PE_OK" = 0 ]; then
+  echo "  -> MATCH — every engine keys existence on the baseline callgraph: pure→effectful is caught, absent degrades, corrupt fails closed"
+else
+  echo "  -> DIVERGE — see FAIL rows"; rc=1
+fi
+
+# ====================================================================================================
 # PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER   [TIER 1]
 # granularity, incl. NESTED scopes). Previously only the §6.2 GRAMMAR of these rules was differentialed
 # (PART 4 parses them); the applied verdict was pinned for deny/allow only. Per engine:
@@ -3003,6 +3076,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
