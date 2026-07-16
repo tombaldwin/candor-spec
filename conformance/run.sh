@@ -1296,18 +1296,35 @@ P4L_OK=0
 p4l() { echo "     FAIL $1"; P4L_OK=1; }
 MU='{"candor":{"version":"t","toolchain":"stable","spec":"0.17"},"package":"mu","functions":[{"fn":"a.loadA","inferred":["Unknown"],"unknownWhy":["dispatch:x"]},{"fn":"a.loadB","inferred":["Unknown"],"unknownWhy":["dispatch:y"]},{"fn":"db.query","inferred":["Fs"],"direct":["Fs"]}]}'
 mkdir -p "$W/mu"
-qual() { # $1 label ; $2… command — output must qualify, not the false "nothing hidden"
+qual() { # $1 label ; $2… command — output must qualify with the RIGHT counts, not the false "nothing hidden"
   local out; out="$("${@:2}" 2>&1)"
   case "$out" in
     *"nothing hidden"*) p4l "$1: printed the FALSE 'nothing hidden' over a ⅔-Unknown graph";;
-    *"are Unknown"*blindspots*) ;;                       # OK — qualified
-    *) p4l "$1: did not qualify (want 'N of M … are Unknown … blindspots'), got: ${out:0:70}";;
+    # Pin the COUNTS (2 Unknown of 3 effectful), not just the shape — an engine miscounting the Unknown
+    # fraction would still qualify-with-wrong-numbers and pass a shape-only check (Fable-review finding F5).
+    *"2 of 3"*"are Unknown"*blindspots*) ;;              # OK — qualified with the right counts
+    *"are Unknown"*blindspots*) p4l "$1: qualified but with the WRONG counts (want '2 of 3'), got: ${out:0:80}";;
+    *) p4l "$1: did not qualify (want '2 of 3 … are Unknown … blindspots'), got: ${out:0:70}";;
   esac
 }
 printf '%s' "$MU" > "$W/mu/r.mu.scan.json"; qual "rust tour"  "$QUERY" tour --report "$W/mu/r.mu.scan.json"
 printf '%s' "$MU" > "$W/mu/j.jvm.json";     qual "java tour"  java -jar "$JAR" tour --report "$W/mu/j.jvm.json"
 [ -n "$TS_PRESENT" ] && { printf '%s' "$MU" > "$W/mu/t.json";       qual "ts tour"    node "$TS_DIR/query.mjs" tour --report "$W/mu/t.json"; }
 [ -n "$SW_PRESENT" ] && { printf '%s' "$MU" > "$W/mu/s.Swift.json"; qual "swift tour" env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/mu/s.Swift.json"; }
+# The MACHINE half (Fable-review finding E): `tour --json` over the same ⅔-Unknown report must NOT be a bare
+# `{"reaches":[]}` a consumer reads as clean — it carries the additive `"unknown":{"count":2,"total":3}`
+# disclosure, byte-identical four-way (2 Unknown of 3 effectful).
+qualj() { # $1 label ; $2… command — the --json output must carry the unknown disclosure with the right counts
+  local out; out="$("${@:2}" 2>/dev/null)"
+  case "$out" in
+    *'"unknown":{"count":2,"total":3}'*) ;;             # OK — additive disclosure, right counts, sorted keys
+    *) p4l "$1 --json: missing/!=  \"unknown\":{\"count\":2,\"total\":3} (a JSON consumer reads {reaches:[]} as clean), got: ${out:0:90}";;
+  esac
+}
+qualj "rust tour"  "$QUERY" tour --report "$W/mu/r.mu.scan.json" --json
+qualj "java tour"  java -jar "$JAR" tour --report "$W/mu/j.jvm.json" --json
+[ -n "$TS_PRESENT" ] && qualj "ts tour"    node "$TS_DIR/query.mjs" tour --report "$W/mu/t.json" --json
+[ -n "$SW_PRESENT" ] && qualj "swift tour" env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/mu/s.Swift.json" --json
 if [ "$P4L_OK" = 0 ]; then
   echo "  -> MATCH — no engine reassures 'nothing hidden' over a mostly-Unknown graph"
 else
@@ -1788,26 +1805,38 @@ fi
 # reaches for expecting a gate — is REJECTED loud (exit 2), NEVER swallowed into an exit-0 false-clean. The
 # gorigin fixtures carry a real gain (m::f gained an effect), so --strict must bite. (The effect-SPECIFIC
 # gate stays the scan-time `deny <E> gained` policy — AS-EFF-005, pinned in PART 15.)
-echo "[5b] GAINS exit-code contract  (advisory exit 0 · --strict exit 1 on ANY gain · --policy rejected exit 2)"
+echo "[5b] GAINS exit-code contract  (advisory 0 · --strict 1 on a gain · --strict 0 on none · --policy rejected 2)"
+# gains_exit: run a command, assert its exit code. gains_reject: additionally assert the stderr NAMES the
+# real gate (AS-EFF-005), so an engine that spec-violatingly ACCEPTS --policy and merely fails to read a
+# missing file (also exit 2) can't pass for the wrong reason — the policy file we pass EXISTS.
+GPOL="$W/gorigin/readable.policy"; printf 'deny Net someLayer\n' > "$GPOL"
 gains_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
   [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: gains exit $got, expected $want"; rc=1; }; }
-gains_exit "rust advisory"  0 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase"
-gains_exit "rust --strict"  1 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --strict
-gains_exit "rust --policy"  2 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --policy /x
-gains_exit "java advisory"  0 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json"
-gains_exit "java --strict"  1 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --strict
-gains_exit "java --policy"  2 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --policy /x
+gains_reject() { local label="$1"; shift; local err; err="$( "$@" 2>&1 >/dev/null )"; local got=$?
+  [ "$got" = 2 ] || { echo "  -> DIVERGE — $label: gains --policy exit $got, expected 2"; rc=1; }
+  case "$err" in *AS-EFF-005*) ;; *) echo "  -> DIVERGE — $label: --policy rejection must NAME the AS-EFF-005 scan gate (got: ${err:0:60})"; rc=1;; esac; }
+# rust — advisory 0, --strict 1 on a gain, --strict 0 over NO gain (same report both sides), --policy rejected+named.
+gains_exit   "rust advisory"      0 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase"
+gains_exit   "rust --strict"      1 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --strict
+gains_exit   "rust --strict clean" 0 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rcur" --strict
+gains_reject "rust --policy"         "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --policy "$GPOL"
+gains_exit   "java advisory"      0 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json"
+gains_exit   "java --strict"      1 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --strict
+gains_exit   "java --strict clean" 0 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jcur.jvm.json" --strict
+gains_reject "java --policy"         java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --policy "$GPOL"
 if [ -n "$TS_OK" ]; then
-  gains_exit "ts advisory"  0 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase"
-  gains_exit "ts --strict"  1 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --strict
-  gains_exit "ts --policy"  2 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --policy /x
-fi
+  gains_exit   "ts advisory"      0 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase"
+  gains_exit   "ts --strict"      1 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --strict
+  gains_exit   "ts --strict clean" 0 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tcur" --strict
+  gains_reject "ts --policy"         node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --policy "$GPOL"
+else echo "  (ts gains exit-code checks SKIPPED — engine unavailable)"; fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
-  gains_exit "swift advisory" 0 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase"
-  gains_exit "swift --strict" 1 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --strict
-  gains_exit "swift --policy" 2 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --policy /x
-fi
-echo "  -> checked advisory=0 / --strict=1 / --policy=reject-2 on every working engine (a gain is present)"
+  gains_exit   "swift advisory"      0 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase"
+  gains_exit   "swift --strict"      1 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --strict
+  gains_exit   "swift --strict clean" 0 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/scur" --strict
+  gains_reject "swift --policy"         env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --policy "$GPOL"
+else echo "  (swift gains exit-code checks SKIPPED — engine unavailable)"; fi
+echo "  -> checked advisory=0 / --strict=1 / --strict-clean=0 / --policy=reject-2-named on every working engine"
 
 # ====================================================================================================
 # PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written   [TIER 1]
@@ -2285,18 +2314,29 @@ PY
 # `unverified --strict`. Same crossing (the orderflow under `deny Net domain`), two exit codes by flag, pinned
 # four-way. Checked HERE while the callgraph sidecars still exist (the sidecar-absent block below strips them,
 # which disables candor-ts fix-gate). Mirrors the proven positional invocations above, adding `--strict`.
-echo "[12b] FIX-GATE exit-code contract  (advisory exit 0 · --strict exit 1 while a crossing remains)"
+echo "[12b] FIX-GATE exit-code contract  (advisory 0 · --strict 1 while a crossing remains · --strict 0 when clean)"
 fixgate_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
   [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: fix-gate exit $got, expected $want"; rc=1; }; }
-fixgate_exit "rust advisory" 0 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL"
-fixgate_exit "rust --strict" 1 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL" --strict
-fixgate_exit "java advisory" 0 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL"
-fixgate_exit "java --strict" 1 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL" --strict
-[ -n "$TS_FIX" ] && fixgate_exit "ts advisory" 0 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL"
-[ -n "$TS_FIX" ] && fixgate_exit "ts --strict" 1 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL" --strict
-[ -n "$SW_FIX" ] && fixgate_exit "swift advisory" 0 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL"
-[ -n "$SW_FIX" ] && fixgate_exit "swift --strict" 1 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL" --strict
-echo "  -> checked advisory=0 / --strict=1 on every working engine (a crossing is present)"
+# A policy that matches NO layer → no crossing → even --strict exits 0 (the "unchanged otherwise" control: it
+# catches an engine that wired --strict to an unconditional exit 1, which the crossing-present checks miss).
+CLEANPOL="$W/fix/clean.policy"; printf 'deny Net nonexistentlayer\n' > "$CLEANPOL"
+fixgate_exit "rust advisory"      0 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL"
+fixgate_exit "rust --strict"      1 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL" --strict
+fixgate_exit "rust --strict clean" 0 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$CLEANPOL" --strict
+fixgate_exit "java advisory"      0 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL"
+fixgate_exit "java --strict"      1 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL" --strict
+fixgate_exit "java --strict clean" 0 java -jar "$JAR" fix-gate "$W/fjava.json" "$CLEANPOL" --strict
+if [ -n "$TS_FIX" ]; then
+  fixgate_exit "ts advisory"      0 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL"
+  fixgate_exit "ts --strict"      1 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL" --strict
+  fixgate_exit "ts --strict clean" 0 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$CLEANPOL" --strict
+else echo "  (ts fix-gate exit-code checks SKIPPED — engine unavailable)"; fi
+if [ -n "$SW_FIX" ]; then
+  fixgate_exit "swift advisory"      0 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL"
+  fixgate_exit "swift --strict"      1 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL" --strict
+  fixgate_exit "swift --strict clean" 0 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$CLEANPOL" --strict
+else echo "  (swift fix-gate exit-code checks SKIPPED — engine unavailable)"; fi
+echo "  -> checked advisory=0 / --strict=1 / --strict-clean=0 on every working engine (a crossing is present)"
 
 # 12b, sidecar-ABSENT: the report engines whose §2 report EMBEDS inline `calls` (candor-query, candor-java,
 # candor-swift) must emit the SAME remedy when the `.callgraph.json` sidecar is gone — they fall back to the
@@ -2390,6 +2430,32 @@ print("  -> " + ("MATCH — every engine discloses the same unverified-purity ho
                  if match else "DIVERGE — the engines disagree on the provable-purity disclosure"))
 sys.exit(0 if match else 1)
 PY
+
+# 12c, EXIT-CODE contract (#3 / Fable-review finding F2): `unverified` is the THIRD advisory verb of the
+# ⟨0.18⟩ trio (SPEC §3.3.1), but only fix-gate/gains had their exit codes pinned. Pin it here too: advisory
+# (exit 0) discloses the hole; `--strict` → exit 1 while a hole remains; `--strict` over a policy with NO hole
+# stays 0 (the "unchanged otherwise" control). Reuses the reports produced above; UNVPOL has a hole.
+echo "[12c] UNVERIFIED exit-code contract  (advisory 0 · --strict 1 while a hole remains · --strict 0 when clean)"
+unv_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
+  [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: unverified exit $got, expected $want"; rc=1; }; }
+UNVCLEAN="$W/unv/clean.policy"; printf 'pure nonexistentlayer\n' > "$UNVCLEAN"
+unv_exit "rust advisory"      0 "$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVPOL"
+unv_exit "rust --strict"      1 "$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVPOL" --strict
+unv_exit "rust --strict clean" 0 "$QUERY" unverified "$W/unv/rust/.candor/report" "$UNVCLEAN" --strict
+unv_exit "java advisory"      0 java -jar "$JAR" unverified "$W/unvjava.json" "$UNVPOL"
+unv_exit "java --strict"      1 java -jar "$JAR" unverified "$W/unvjava.json" "$UNVPOL" --strict
+unv_exit "java --strict clean" 0 java -jar "$JAR" unverified "$W/unvjava.json" "$UNVCLEAN" --strict
+if [ -n "$UNVTS" ]; then
+  unv_exit "ts advisory"      0 node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVPOL"
+  unv_exit "ts --strict"      1 node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVPOL" --strict
+  unv_exit "ts --strict clean" 0 node "$TS_DIR/query.mjs" unverified "$W/unvts" "$UNVCLEAN" --strict
+else echo "  (ts unverified exit-code checks SKIPPED — engine unavailable)"; fi
+if [ -n "$UNVSW" ]; then
+  unv_exit "swift advisory"      0 env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVPOL"
+  unv_exit "swift --strict"      1 env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVPOL" --strict
+  unv_exit "swift --strict clean" 0 env -u CANDOR_CONFIG "$SW_BIN" unverified "$W/unvsw" "$UNVCLEAN" --strict
+else echo "  (swift unverified exit-code checks SKIPPED — engine unavailable)"; fi
+echo "  -> checked advisory=0 / --strict=1 / --strict-clean=0 on every working engine (a hole is present)"
 
 # 12c-deny — the SAME hole under a `deny Net Db domain` rule exercises the OTHER upgrade branch: the
 # multi-effect `deny <E…> Unknown <scope>` form. `pure domain` (above) only pins the empty-effects branch;
@@ -3179,9 +3245,11 @@ badtarget "rust typo'd flag"  "$QUERY" where Fs --polciy /x --report "$W/rust/.c
 badtarget "java typo'd flag"  java -jar "$JAR" where Fs --polciy /x --report "$P17/j/.candor/report.app.jvm.json"
 [ -n "$TS_OK" ] && badtarget "ts typo'd flag" node "$TS_DIR/query.mjs" where Fs --polciy /x --report "$P17/t"
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && badtarget "swift typo'd flag" env -u CANDOR_CONFIG "$SW_BIN" tour --polciy /x --report "$P17/s"
-tolerated() { # $1 label ; $2… command — a valid candor flag from another engine must NOT be rejected (exit 2)
+tolerated() { # $1 label ; $2… command — a valid cross-engine flag must be TOLERATED. The command uses a
+  # valid report, so tolerance means it runs to a clean exit 0 — NOT merely "exit != 2": a crash (rust panic
+  # 101, a JVM exit 1) is also != 2 yet means the flag broke the engine, which "!= 2" would wave through.
   ( "${@:2}" ) >/dev/null 2>&1
-  [ "$?" != 2 ] || p17fail "$1: rejected `--text` (a valid cross-engine output flag it must tolerate)"
+  [ "$?" = 0 ] || p17fail "$1: a valid cross-engine output flag (--text) must run clean (exit 0), not error"
 }
 tolerated "rust --text"  "$QUERY" where Fs --text --report "$W/rust/.candor/report"
 tolerated "java --text"  java -jar "$JAR" where Fs --text --report "$P17/j/.candor/report.app.jvm.json"

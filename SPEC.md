@@ -833,8 +833,8 @@ engine exposes, it MUST accept:
   that gate, never a silently-dropped flag that lets the run exit 0.
 
 The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb
-(candor-swift ships only `fix`/`fix-gate`/`unverified`), but every verb it *does* expose MUST accept this
-grammar. An engine MAY continue to accept prior positional forms — a leading report, a `0|1` JSON sentinel,
+(candor-swift exposes a subset — e.g. `fix`/`fix-gate`/`unverified`/`tour`/`gains` — not the full read-only
+set), but every verb it *does* expose MUST accept this grammar. An engine MAY continue to accept prior positional forms — a leading report, a `0|1` JSON sentinel,
 a positional policy — as **deprecated** aliases that emit a stderr deprecation note; they are removed no
 earlier than the next breaking bump, so this rung stays byte-compatible with 0.9. Each engine exposes its
 query surface under its own **qualified** name (`candor-query`, `candor-ts-query`, `candor-java`,
