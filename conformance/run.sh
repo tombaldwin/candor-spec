@@ -1782,6 +1782,33 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# PART 5b, EXIT-CODE contract (#3 corpus re-audit): gains is a diff view — ADVISORY (exit 0) by default. Two
+# guards pinned four-way: (a) `--strict` fails on ANY gained effect (exit 1) so a supply-chain CI job can
+# require a dependency bump introduce no new capability; (b) an unknown flag — notably a `--policy` a user
+# reaches for expecting a gate — is REJECTED loud (exit 2), NEVER swallowed into an exit-0 false-clean. The
+# gorigin fixtures carry a real gain (m::f gained an effect), so --strict must bite. (The effect-SPECIFIC
+# gate stays the scan-time `deny <E> gained` policy — AS-EFF-005, pinned in PART 15.)
+echo "[5b] GAINS exit-code contract  (advisory exit 0 · --strict exit 1 on ANY gain · --policy rejected exit 2)"
+gains_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
+  [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: gains exit $got, expected $want"; rc=1; }; }
+gains_exit "rust advisory"  0 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase"
+gains_exit "rust --strict"  1 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --strict
+gains_exit "rust --policy"  2 "$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --policy /x
+gains_exit "java advisory"  0 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json"
+gains_exit "java --strict"  1 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --strict
+gains_exit "java --policy"  2 java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --policy /x
+if [ -n "$TS_OK" ]; then
+  gains_exit "ts advisory"  0 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase"
+  gains_exit "ts --strict"  1 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --strict
+  gains_exit "ts --policy"  2 node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" --policy /x
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  gains_exit "swift advisory" 0 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase"
+  gains_exit "swift --strict" 1 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --strict
+  gains_exit "swift --policy" 2 env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --policy /x
+fi
+echo "  -> checked advisory=0 / --strict=1 / --policy=reject-2 on every working engine (a gain is present)"
+
 # ====================================================================================================
 # PART 6 — the THIRD engine (candor-ts): the derivability proof, run live. The TS slice was written   [TIER 1]
 # from the spec documents alone; here it answers the SAME Part-1 oracle as the Rust and JVM engines.
@@ -2252,6 +2279,24 @@ print("  -> " + ("MATCH — the boundary remedy (site · pure span · hoist targ
                  if match else "DIVERGE — the engines disagree on where the effect belongs or what stays pure"))
 sys.exit(0 if match else 1)
 PY
+
+# 12b, EXIT-CODE contract (#3 corpus re-audit): fix-gate is ADVISORY (exit 0) by default — the agent fix-loop
+# reads the remedy and edits — but `--strict` makes an OUTSTANDING crossing a CI failure (exit 1), matching
+# `unverified --strict`. Same crossing (the orderflow under `deny Net domain`), two exit codes by flag, pinned
+# four-way. Checked HERE while the callgraph sidecars still exist (the sidecar-absent block below strips them,
+# which disables candor-ts fix-gate). Mirrors the proven positional invocations above, adding `--strict`.
+echo "[12b] FIX-GATE exit-code contract  (advisory exit 0 · --strict exit 1 while a crossing remains)"
+fixgate_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
+  [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: fix-gate exit $got, expected $want"; rc=1; }; }
+fixgate_exit "rust advisory" 0 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL"
+fixgate_exit "rust --strict" 1 "$QUERY" fix-gate "$W/fix/rust/.candor/report" "$FIXPOL" --strict
+fixgate_exit "java advisory" 0 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL"
+fixgate_exit "java --strict" 1 java -jar "$JAR" fix-gate "$W/fjava.json" "$FIXPOL" --strict
+[ -n "$TS_FIX" ] && fixgate_exit "ts advisory" 0 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL"
+[ -n "$TS_FIX" ] && fixgate_exit "ts --strict" 1 node "$TS_DIR/query.mjs" fix-gate "$W/fts" "$FIXPOL" --strict
+[ -n "$SW_FIX" ] && fixgate_exit "swift advisory" 0 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL"
+[ -n "$SW_FIX" ] && fixgate_exit "swift --strict" 1 env -u CANDOR_CONFIG "$SW_BIN" fix-gate "$W/fsw" "$FIXPOL" --strict
+echo "  -> checked advisory=0 / --strict=1 on every working engine (a crossing is present)"
 
 # 12b, sidecar-ABSENT: the report engines whose §2 report EMBEDS inline `calls` (candor-query, candor-java,
 # candor-swift) must emit the SAME remedy when the `.callgraph.json` sidecar is gone — they fall back to the
