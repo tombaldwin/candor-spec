@@ -821,8 +821,16 @@ engine exposes, it MUST accept:
   query. Ambiguity here resolves toward the canonical (discovering) reading, never toward a silent gate-off.
 - **`--json`** selects JSON (stdout MUST then be pure JSON, per §3.3). **`--policy <file>`** supplies a
   policy, honouring `CANDOR_POLICY` then `.candor/config` when the flag is absent (§3.3/§3.4) — never a
-  positional. **`--strict`** (on `unverified`) and **`--include-unknown`** (on `callers`) keep their §3.1
-  meaning.
+  positional. **`--include-unknown`** (on `callers`) keeps its §3.1 meaning.
+- **`--strict` — the advisory-verb CI gate** ⟨0.18⟩. `unverified`, `fix-gate`, and `gains` are ADVISORY: they
+  disclose (an unverified-purity hole, a boundary crossing, a supply-chain gain) and exit **0** by default, so
+  an agent edit-loop reads the finding and acts without the run reading as failed. `--strict` turns each into
+  a CI gate — **exit 1 while a finding remains** (`unverified`: an Unknown hole; `fix-gate`: an outstanding
+  crossing; `gains`: ANY gained effect), unchanged otherwise. An engine exposing any of these three verbs MUST
+  honour `--strict` this way; a typo'd or a not-applicable flag stays an exit-2 error (§3.3.1), never a silent
+  swallow. In particular `gains` has **no `--policy`** — the effect-specific supply-chain gate is a `deny <E>
+  gained` policy at scan time (`AS-EFF-005`, §6) — so a `--policy` passed to `gains` is an exit-2 error naming
+  that gate, never a silently-dropped flag that lets the run exit 0.
 
 The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb
 (candor-swift ships only `fix`/`fix-gate`/`unverified`), but every verb it *does* expose MUST accept this
