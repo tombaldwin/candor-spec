@@ -17,11 +17,16 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.17** — all code engines declare `0.17`; the floor is conformance-pinned. How versions
+**Version 0.18** — all code engines declare `0.18`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.13 adds the `Llm` effect** (§1) — a machine-learning model-provider call, a boundary effect refining `Net`; a tier-1 additive vocabulary rung (a consumer already tolerates unknown effect names, so a pre-0.13 report/policy is unaffected). It also adds the `extensions` envelope field (§2) for engine spec extensions (the candor-swift `privacy/1` sensor cluster). **0.12 was a
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.18 is a pinned-tool-surface
+rung** (no report-schema or verdict change): it pins the **`--strict` advisory-verb CI gate** (§3.3.1) — `fix-gate`,
+`gains`, and `unverified` are advisory (exit 0) and `--strict` makes each a CI gate (exit 1 while a finding
+remains); a typo'd or not-applicable flag (notably `--policy` on `gains`) is an exit-2 error, never a silent
+swallow; and the surface/`tour` **mostly-Unknown disclosure** — never a bare "nothing hidden" (nor a
+`tour --json` `{"reaches":[]}`) over a graph whose Unknowns are the hidden part. **0.13 adds the `Llm` effect** (§1) — a machine-learning model-provider call, a boundary effect refining `Net`; a tier-1 additive vocabulary rung (a consumer already tolerates unknown effect names, so a pre-0.13 report/policy is unaffected). It also adds the `extensions` envelope field (§2) for engine spec extensions (the candor-swift `privacy/1` sensor cluster). **0.12 was a
 pinned-tool-surface rung**: it adds no report-schema or verdict change (a 0.11 report and a 0.11 gate verdict
 are byte-identical under 0.12), but promotes the §3.1 `gains` **`origin`** field — the supply-chain
 existing-fn/new-fn/unknown split, keyed on the baseline callgraph, with the partial-graph rule and the
@@ -227,7 +232,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.17" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.18" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1425,7 +1430,19 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.17 (all code engines declare `0.17`; conformance-pinned)** — **query target validation** (§3.1, a
+- **0.18 (all code engines declare `0.18`; conformance-pinned)** — a **pinned-tool-surface** rung (no
+  report-schema or verdict change; a 0.17 report and gate verdict are byte-identical under 0.18). Two TIER-2
+  required additions, both enforcing the §4 "never a false all-clear" rule at the tool surface: **(1) the
+  `--strict` advisory-verb CI gate** (§3.3.1) — `fix-gate`, `gains`, and `unverified` are advisory (exit 0),
+  and `--strict` makes each a CI gate (exit 1 while a finding remains: an outstanding crossing, ANY gained
+  effect, an unverified-purity hole); a typo'd or not-applicable flag is an exit-2 error (never a silent
+  swallow that disarms a gate), and `gains` has no `--policy` — passing one is an exit-2 error naming the
+  scan-time `deny <E> gained` gate (`AS-EFF-005`). **(2) the surface/`tour` mostly-Unknown disclosure** — over
+  a graph where ≥⅓ of effectful functions are `Unknown` (unresolved calls whose transitive effects are
+  unanalyzed), the scan opener and `tour` MUST NOT print the bare "nothing hidden"; they qualify (naming the
+  Unknown count + `blindspots`), and `tour --json` carries an additive `unknown: {count, total}` field rather
+  than a bare `{"reaches": []}` a machine reads as clean. Pinned four-way by conformance PARTs 4l, 5b, 12b, 12c.
+- **0.17 (all code engines declared `0.17`; conformance-pinned)** — **query target validation** (§3.1, a
   TIER-2 required addition enforcing the §4 "never a false all-clear" rule at the query surface): `where
   <Effect>` and `callers <fn>` now **fail loud (exit 2)** on an unknown/typo'd effect or a nonexistent
   function, instead of returning an empty result at exit 0 (which read as an authoritative "nothing performs

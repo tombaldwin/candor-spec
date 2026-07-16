@@ -12,7 +12,18 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.15 — current floor
+## 0.18 — current floor (the trust-trio)
+
+A pinned-tool-surface rung (no report-schema or verdict change; a 0.17 report and gate verdict are
+byte-identical under 0.18). Two TIER-2 required additions, both enforcing §4 "never a false all-clear" at the
+tool surface: **(1)** the `--strict` advisory-verb CI gate (§3.3.1) — `fix-gate`/`gains`/`unverified` advisory
+at exit 0, `--strict` → exit 1 while a finding remains; a typo'd/not-applicable flag is an exit-2 error (never
+a silent swallow), and `gains` has no `--policy` (a passed one names the `deny <E> gained` scan gate); **(2)**
+the surface/`tour` mostly-Unknown disclosure — never "nothing hidden" (nor a `tour --json` `{"reaches":[]}`)
+over a ≥⅓-Unknown graph. Pinned four-way by conformance PARTs 4l, 5b, 12b, 12c. (Rungs 0.16/0.17 are recorded
+in [SPEC.md §8](SPEC.md#8-changelog).)
+
+## 0.15
 
 All code engines declare `0.15`; the floor is conformance-pinned (PARTs 4q/4r/4s). A **tier-1 additive**
 rung, wire-compatible with 0.14. Three groups, all found/driven by real-world corpus testing:
