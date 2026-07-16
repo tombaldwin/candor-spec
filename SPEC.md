@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.16** — all code engines declare `0.16`; the floor is conformance-pinned. How versions
+**Version 0.17** — all code engines declare `0.17`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -227,7 +227,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.16" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.17" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1417,6 +1417,18 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.17 (all code engines declare `0.17`; conformance-pinned)** — **query target validation** (§3.1, a
+  TIER-2 required addition enforcing the §4 "never a false all-clear" rule at the query surface): `where
+  <Effect>` and `callers <fn>` now **fail loud (exit 2)** on an unknown/typo'd effect or a nonexistent
+  function, instead of returning an empty result at exit 0 (which read as an authoritative "nothing performs
+  it" / "nothing calls it" for a question that was never validly posed). A KNOWN effect that is merely absent
+  stays a legitimate 0-result; an unknown effect NAME present in the report (a spec extension) is still
+  accepted — so the error fires only when the name is neither known nor present. `callers` stays exit-0 when
+  only the effect-relevant fallback graph is available (no callgraph sidecar), where a miss is inconclusive
+  rather than proof of absence. Conformance PART 17 pins the loud-failure four-way. Engine-side this release
+  also carries recall + output-uniformity + remediation-text fixes (candor-ts HTTP-client import recall,
+  prose-at-a-TTY query output, the empty-scope remedy label) — none of which change the report or gate
+  contract, so they ride the same floor.
 - **0.16 (all code engines declare `0.16`; conformance-pinned)** — the **callgraph-aware baseline guard**
   (§7 item 5): AS-EFF-005 existence keyed on the baseline callgraph sidecar when present, so a formerly-
   pure function turning effectful is a GAIN violation rather than exempt "new code" (the `gains` `origin`

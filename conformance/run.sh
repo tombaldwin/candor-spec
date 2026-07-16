@@ -531,7 +531,7 @@ PYLLM
 # ====================================================================================================
 mkdir -p "$W/ext"
 cat > "$W/ext/report.demo.scan.json" <<'EOF'
-{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.16" },
+{ "meta": { "version": "t", "toolchain": "stable", "spec": "0.17" },
   "extensions": ["privacy/1"],
   "package": "app",
   "functions": [
@@ -539,14 +539,14 @@ cat > "$W/ext/report.demo.scan.json" <<'EOF'
     { "fn": "app::caller", "inferred": ["Location", "Net"], "calls": ["app::loc::here"] } ] }
 EOF
 cat > "$W/ext/report.JS.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "node", "spec": "0.16" },
+{ "candor": { "version": "t", "toolchain": "node", "spec": "0.17" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
     { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.loc.here"] } ] }
 EOF
 cat > "$W/ext/report.jvm.json" <<'EOF'
-{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.16" },
+{ "candor": { "version": "t", "toolchain": "jdk-21", "spec": "0.17" },
   "extensions": ["privacy/1"], "package": "app",
   "functions": [
     { "fn": "app.Loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
@@ -1230,16 +1230,16 @@ plural_hdr() { # $1 label ; $2 locator ; $3.. cmd — asserts the human header n
   case "$hdr" in *"in com.a:"*) ;; *) echo "     FAIL $1: tour header did not name the packages' common prefix (got: ${hdr:0:80})"; return 1;; esac
 }
 P4G2_OK=0
-printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec": "0.16"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
+printf '%s' '{ "meta": {"version":"t","toolchain":"stable","spec": "0.17"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"settings::Settings::load","inferred":["Fs"],"calls":["io::write_file"]}, {"fn":"io::write_file","loc":"src/io.rs:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/r.demo.scan.json"
 plural_hdr rust "$W/plural/r" "$QUERY" || P4G2_OK=1
-printf '%s' '{ "candor": {"version":"t","spec": "0.16"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
+printf '%s' '{ "candor": {"version":"t","spec": "0.17"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com.a.x.Settings.load","inferred":["Fs"],"calls":["com.a.y.Disk.writeFile"]}, {"fn":"com.a.y.Disk.writeFile","loc":"Disk.java:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/j.jvm.json"
 plural_hdr java "$W/plural/j.jvm.json" java -jar "$JAR" || P4G2_OK=1
 if [ -n "$TS_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec": "0.16"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
+  printf '%s' '{ "candor": {"version":"t","spec": "0.17"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"com_a.Settings.load","inferred":["Fs"],"calls":["com_a.io.writeFile"]}, {"fn":"com_a.io.writeFile","loc":"src/io.ts:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/t.JS.json"
   plural_hdr ts "$W/plural/t" node "$TS_DIR/query.mjs" || P4G2_OK=1
 fi
 if [ -n "$SW_PRESENT" ]; then
-  printf '%s' '{ "candor": {"version":"t","spec": "0.16"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
+  printf '%s' '{ "candor": {"version":"t","spec": "0.17"}, "packages": ["com.a.x","com.a.y"], "functions": [ {"fn":"Settings.load","inferred":["Fs"],"calls":["Disk.writeFile"]}, {"fn":"Disk.writeFile","loc":"Sources/Disk.swift:3","inferred":["Fs"],"direct":["Fs"]} ] }' > "$W/plural/s.Swift.json"
   plural_hdr swift "$W/plural/s" env -u CANDOR_CONFIG "$SW_BIN" || P4G2_OK=1
 fi
 if [ "$P4G2_OK" = 0 ]; then
@@ -1680,9 +1680,9 @@ p5b() { echo "     FAIL $1"; P5B_OK=1; }
 mkdir -p "$W/gorigin"
 # $1 label; $2 f-qual; $3 g-qual; $4 h-qual; $5 base report; $6 base callgraph sidecar; $7 cur report
 gow() { # write one engine's fixture pair
-  printf '{ "candor": {"version":"t","spec": "0.16"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
+  printf '{ "candor": {"version":"t","spec": "0.17"}, "functions": [ {"fn":"%s","inferred":["Fs"],"direct":["Fs"]} ] }' "$3" > "$5"
   printf '{ "%s": ["%s"], "%s": [] }' "$2" "$3" "$3" > "$6"
-  printf '{ "candor": {"version":"t","spec": "0.16"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
+  printf '{ "candor": {"version":"t","spec": "0.17"}, "functions": [ {"fn":"%s","inferred":["Net"],"direct":["Net"]}, {"fn":"%s","inferred":["Fs"],"direct":["Fs"]}, {"fn":"%s","inferred":["Net"],"direct":["Net"]} ] }' "$2" "$3" "$4" > "$7"
 }
 # $1 label; $2 f-qual; $3 h-qual; $4 gains JSON output; $5 expected-f-origin; $6 expected-h-origin
 gocheck() {
@@ -2375,7 +2375,7 @@ sys.exit(0 if match else 1)
 PY
 
 # ====================================================================================================
-# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.16 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
+# PART 12d — GATE AUTO-DISCLOSURE differential (spec 0.17 — candor-scan/java/ts/swift 0.13.0):   [TIER 2]
 # a plain `--policy` gate scan must emit the SAME provable-purity holes that `unverified` (12c) reports —
 # automatically, as an advisory stderr note, WITHOUT the operator knowing to run the subcommand. This pins
 # the discovery path: every engine, scanning the fn-value-port fixture under `pure domain`, PASSES the gate
@@ -3075,6 +3075,23 @@ noreport "rust no-report" "$QUERY" where Fs --json
 noreport "java no-report" java -jar "$JAR" where Fs --json
 [ -n "$TS_OK" ] && noreport "ts no-report" node "$TS_DIR/query.mjs" where Fs --json
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && noreport "swift no-report" "$SW_BIN" fix-gate --policy "$FPOL" --json
+
+# (1b) BAD TARGET → LOUD exit 2 (corpus-audit #3): a typo'd EFFECT name (`where Network`) or a nonexistent
+#      FUNCTION (`callers zzz`) must NOT answer empty at exit 0 — that reads as an authoritative all-clear for
+#      a question never posed (§4). Pinned for where/callers (path/impact already gate) across the engines that
+#      implement them (swift has neither verb). Uses the discovery reports scanned above; --report avoids the cd.
+badtarget() { # $1 label ; $2… command — expect exit 2
+  ( "${@:2}" ) >/dev/null 2>&1
+  [ "$?" = 2 ] || p17fail "$1: a typo'd effect / nonexistent fn must exit 2 (loud), not answer empty at exit 0"
+}
+badtarget "rust where <typo effect>"  "$QUERY" where Netwerk --report "$W/rust/.candor/report"
+badtarget "rust callers <bad fn>"     "$QUERY" callers zzz_no_such_fn --report "$W/rust/.candor/report"
+badtarget "java where <typo effect>"  java -jar "$JAR" where Netwerk --report "$P17/j/.candor/report.app.jvm.json"
+badtarget "java callers <bad fn>"     java -jar "$JAR" callers zzz_no_such_fn --report "$P17/j/.candor/report.app.jvm.json"
+if [ -n "$TS_OK" ]; then
+  badtarget "ts where <typo effect>"  node "$TS_DIR/query.mjs" where Netwerk --report "$P17/t"
+  badtarget "ts callers <bad fn>"     node "$TS_DIR/query.mjs" callers zzz_no_such_fn --report "$P17/t"
+fi
 
 # (2) CANDOR_REPORT=<dir> resolves like --report (dir → <dir>/.candor/report), identically, from any CWD.
 ( cd / && env CANDOR_REPORT="$W/rust" "$QUERY" where Fs --json ) > "$P17/r_env.json" 2>/dev/null
