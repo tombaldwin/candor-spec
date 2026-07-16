@@ -1283,6 +1283,38 @@ else
 fi
 
 # ====================================================================================================
+# PART 4l — SURFACE mostly-Unknown qualification (re-audit cardinal sin): when ≥⅓ of effectful functions    [TIER 2]
+# are Unknown (unresolved calls — a missing tsconfig / unresolvable imports silently degrade the graph to
+# no-transitive-analysis) AND nothing surprising clears the bar, tour must NOT print the reassuring
+# "nothing hidden" — that is a FALSE all-clear over a graph whose Unknowns ARE the hidden part. Every engine
+# instead qualifies (names the Unknown count + `candor blindspots`). Four-way. A mostly-Unknown report has 2
+# Unknown + 1 Fs leaf (nothing surprising), so the fallback fires — but the Unknown fraction (⅔) trips the guard.
+# ====================================================================================================
+echo ""
+echo "[4l] SURFACE mostly-Unknown qualification  (never a false 'nothing hidden' over a ≥⅓-Unknown graph)"
+P4L_OK=0
+p4l() { echo "     FAIL $1"; P4L_OK=1; }
+MU='{"candor":{"version":"t","toolchain":"stable","spec":"0.17"},"package":"mu","functions":[{"fn":"a.loadA","inferred":["Unknown"],"unknownWhy":["dispatch:x"]},{"fn":"a.loadB","inferred":["Unknown"],"unknownWhy":["dispatch:y"]},{"fn":"db.query","inferred":["Fs"],"direct":["Fs"]}]}'
+mkdir -p "$W/mu"
+qual() { # $1 label ; $2… command — output must qualify, not the false "nothing hidden"
+  local out; out="$("${@:2}" 2>&1)"
+  case "$out" in
+    *"nothing hidden"*) p4l "$1: printed the FALSE 'nothing hidden' over a ⅔-Unknown graph";;
+    *"are Unknown"*blindspots*) ;;                       # OK — qualified
+    *) p4l "$1: did not qualify (want 'N of M … are Unknown … blindspots'), got: ${out:0:70}";;
+  esac
+}
+printf '%s' "$MU" > "$W/mu/r.mu.scan.json"; qual "rust tour"  "$QUERY" tour --report "$W/mu/r.mu.scan.json"
+printf '%s' "$MU" > "$W/mu/j.jvm.json";     qual "java tour"  java -jar "$JAR" tour --report "$W/mu/j.jvm.json"
+[ -n "$TS_PRESENT" ] && { printf '%s' "$MU" > "$W/mu/t.json";       qual "ts tour"    node "$TS_DIR/query.mjs" tour --report "$W/mu/t.json"; }
+[ -n "$SW_PRESENT" ] && { printf '%s' "$MU" > "$W/mu/s.Swift.json"; qual "swift tour" env -u CANDOR_CONFIG "$SW_BIN" tour --report "$W/mu/s.Swift.json"; }
+if [ "$P4L_OK" = 0 ]; then
+  echo "  -> MATCH — no engine reassures 'nothing hidden' over a mostly-Unknown graph"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
 # PART 4k — SURFACE TOUR corrupt-report loudness (dogfood find, candor-rust/java/ts): a report that is     [TIER 2]
 # FOUND but yields NO trustworthy functions must make `tour` exit NON-ZERO with the corruption DISCLOSED —
 # never print "nothing hidden" (a §4 cardinal-sin false all-clear over corrupt input). Two corruption
