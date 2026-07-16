@@ -227,7 +227,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.15" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.16" },
   "functions": [ /* the entries below */ ]
 }
 ```
