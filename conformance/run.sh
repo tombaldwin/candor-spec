@@ -2731,7 +2731,7 @@ else
 fi
 
 # ====================================================================================================
-# PART 15b — ⟨0.16 staged⟩ the CALLGRAPH-AWARE baseline guard (SPEC §7 item 5, the ⟨0.16⟩ paragraph).  [TIER 1]
+# PART 15b — ⟨0.16⟩ the CALLGRAPH-AWARE baseline guard (SPEC §7 item 5, the ⟨0.16⟩ paragraph).  [TIER 1]
 # PART 15 pins the guard on an ALREADY-effectful fn WIDENING. This pins the sharpest supply-chain shape:
 # a formerly-PURE fn turning effectful. Reports omit pure fns (§2.2), so pre-0.16 such a fn read as
 # exempt "new code" and ESCAPED. The fix keys existence on the baseline CALLGRAPH sidecar (which lists
@@ -2803,7 +2803,7 @@ else
   echo "  -> DIVERGE — see FAIL rows"; rc=1
 fi
 
-# ⟨0.16 staged⟩ the ratchet fires only on a REAL boundary effect; a pure fn that gains ONLY `Unknown` (an
+# ⟨0.16⟩ the ratchet fires only on a REAL boundary effect; a pure fn that gains ONLY `Unknown` (an
 # unresolved call — the §4 trust marker, not an effect) is DISCLOSED as advisory, exit 0. On real version
 # bumps an Unknown-only gain is dominated by resolution noise (SOUNDNESS-LOG 2026-07-16), so failing on it
 # would break CI on innocuous updates. Per engine: baseline-pure `fmt` (a callgraph node) gains an

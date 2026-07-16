@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.15** — all code engines declare `0.15`; the floor is conformance-pinned. How versions
+**Version 0.16** — all code engines declare `0.16`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -551,7 +551,7 @@ An implementation SHOULD support:
 - **no-ambient**: flag any *direct* use of ambient authority (an effect performed without holding a
   matching capability), pushing toward a capability-passing / capability-secure style.
 - **baseline guard**: diff against a saved report and flag functions that *gained* an effect.
-  ⟨0.16 staged⟩ Existence is keyed on the **baseline callgraph sidecar when present** (§2.2 — it lists
+  ⟨0.16⟩ Existence is keyed on the **baseline callgraph sidecar when present** (§2.2 — it lists
   pure leaves, which reports omit): a function in the baseline callgraph whose baseline effect set is
   therefore ∅ and which now performs ANY effect is a GAIN violation — the formerly-pure→effectful
   transition is the sharpest supply-chain shape and must not read as exempt "new code". Without the
@@ -1417,11 +1417,15 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.16 (STAGED)** — the **callgraph-aware baseline guard** (§7 item 5): AS-EFF-005 existence keyed
-  on the baseline callgraph sidecar when present, so a formerly-pure function turning effectful is a
-  GAIN violation rather than exempt "new code" (the `gains` `origin` existence rule applied to the
-  scan-time ratchet); sidecar absent → report-only degradation, sidecar corrupt → fail closed.
-  Conformance PART 15 extended with the pure→effectful case.
+- **0.16 (all code engines declare `0.16`; conformance-pinned)** — the **callgraph-aware baseline guard**
+  (§7 item 5): AS-EFF-005 existence keyed on the baseline callgraph sidecar when present, so a formerly-
+  pure function turning effectful is a GAIN violation rather than exempt "new code" (the `gains` `origin`
+  existence rule applied to the scan-time ratchet); sidecar absent → report-only degradation, sidecar
+  corrupt → fail closed. The ratchet fires only on gaining a REAL boundary effect; an `Unknown`-only gain
+  (the §4 trust marker, not an effect) is disclosed as advisory, exit unchanged — on real dependency
+  bumps an Unknown-only gain is dominated by resolution noise, so failing on it would break CI on
+  innocuous updates. Conformance PART 15b (pure→effectful) + PART 15c (Unknown-only advisory) pin it
+  four-way.
 - **0.15 (all code engines declare `0.15`; conformance-pinned)** — additive, wire-compatible with 0.14: the
   **`coverage` envelope field** (§2) — the κ-coverage ledger as data (`{"uncovered":[{"name","calls"}]}`,
   omitted when empty), so "what the scan couldn't see" travels with the report; the per-function
