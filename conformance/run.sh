@@ -3125,6 +3125,24 @@ if [ -n "$TS_OK" ]; then
   badtarget "ts callers <bad fn>"     node "$TS_DIR/query.mjs" callers zzz_no_such_fn --report "$P17/t"
 fi
 
+# (1c) TYPO'd FLAG → LOUD exit 2 (corpus re-audit #2): a `-`-prefixed token that is not a known candor flag is
+# NEVER swallowed as a positional — a silent `--polciy` runs the query with NO policy and exits green (a CI
+# author who typos --policy ships a gate that never fires; the same silent-guess cardinal sin). AND every
+# engine TOLERATES another engine's valid flag: `--text`/`--human` are candor-ts output-mode flags, so a
+# prose-default engine (rust/java/swift) must accept them (cross-engine `candor <verb> --text` never errors).
+badtarget "rust typo'd flag"  "$QUERY" where Fs --polciy /x --report "$W/rust/.candor/report"
+badtarget "java typo'd flag"  java -jar "$JAR" where Fs --polciy /x --report "$P17/j/.candor/report.app.jvm.json"
+[ -n "$TS_OK" ] && badtarget "ts typo'd flag" node "$TS_DIR/query.mjs" where Fs --polciy /x --report "$P17/t"
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && badtarget "swift typo'd flag" env -u CANDOR_CONFIG "$SW_BIN" tour --polciy /x --report "$P17/s"
+tolerated() { # $1 label ; $2… command — a valid candor flag from another engine must NOT be rejected (exit 2)
+  ( "${@:2}" ) >/dev/null 2>&1
+  [ "$?" != 2 ] || p17fail "$1: rejected `--text` (a valid cross-engine output flag it must tolerate)"
+}
+tolerated "rust --text"  "$QUERY" where Fs --text --report "$W/rust/.candor/report"
+tolerated "java --text"  java -jar "$JAR" where Fs --text --report "$P17/j/.candor/report.app.jvm.json"
+[ -n "$TS_OK" ] && tolerated "ts --text" node "$TS_DIR/query.mjs" where Fs --text --report "$P17/t"
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && tolerated "swift --text" env -u CANDOR_CONFIG "$SW_BIN" tour --text --report "$P17/s"
+
 # (2) CANDOR_REPORT=<dir> resolves like --report (dir → <dir>/.candor/report), identically, from any CWD.
 ( cd / && env CANDOR_REPORT="$W/rust" "$QUERY" where Fs --json ) > "$P17/r_env.json" 2>/dev/null
 canoneq "rust CANDOR_REPORT=<dir> != discovered" "$P17/r_env.json" "$P17/r_disc.json"
