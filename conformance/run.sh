@@ -239,9 +239,12 @@ python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" "${SW_POL_OK:+$
 import json, os, sys
 def norm(p):
     d = json.load(open(p))
-    # `unknownClasses` (reason-scoped Unknown) is compared four-way: absent and [] both normalize to (),
-    # so a bare deny stays comparable while a `deny E Unknown[class…]` pins the reason-class parsing.
-    deny   = sorted((tuple(sorted(r["effects"])), r["scope"], tuple(sorted(r.get("unknownClasses", [])))) for r in d["deny"])
+    # `unknownClasses` (reason-scoped Unknown) + `netClasses` (Net destination-class) are compared four-way:
+    # absent and [] both normalize to (), so a bare deny stays comparable while a `deny E Unknown[class…]` /
+    # `deny Net[dest…]` pins the reason-class + destination-class parsing across all engines.
+    deny   = sorted((tuple(sorted(r["effects"])), r["scope"],
+                     tuple(sorted(r.get("unknownClasses", []))),
+                     tuple(sorted(r.get("netClasses", [])))) for r in d["deny"])
     allow  = sorted((r["effect"], r["scope"], tuple(sorted(r["values"]))) for r in d["allow"])
     forbid = sorted((r["from"], r["to"]) for r in d["forbid"])
     return deny, allow, forbid
@@ -2109,6 +2112,22 @@ echo
 ) || { echo "policy-matching differential: FAILED"; rc=1; }
 
 # ====================================================================================================
+# NET DESTINATION-CLASS differential (FOUR-WAY, SPEC §1/§6.2 ⟨0.21⟩) — the applied sibling of the PART 4
+# `Net[dest…]` grammar diff. Runs `deny Net[unknown-host]` over an equivalent fixture in every engine and
+# asserts the FAIL-CLOSED security posture: a known-telemetry host (curated TELEMETRY_HOSTS), a known-
+# partner (model host), and a config `net-partner` are TOLERATED (PASS); an unknown-host + a runtime-masked
+# host are DENIED (FAIL). A PASS on the exfil/runtime case is the cardinal sin — an exfiltration Net slipping
+# the gate. Reuses gen_masking.py's engine harness + the binaries this run resolved (NET-DESTINATION-CLASS-DESIGN.md).
+[ -f "$HERE/gen_netclass.py" ] || { echo "FAIL: gen_netclass.py is missing"; exit 2; }
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_netclass.py"
+) || { echo "net destination-class differential: FAILED"; rc=1; }
+
+# ====================================================================================================
 # DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩) — `callers --include-unknown`. One shared scenario
 # (Base.op with >fan-out impls, one reaching Sink.touch; a Dispatcher dispatching Base.op) across the
 # class/protocol engines (java, ts, swift; rust has no dispatch: → empty frontier, excluded). Asserts all
@@ -3363,6 +3382,6 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
