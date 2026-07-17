@@ -25,3 +25,7 @@ allow Fs # comment-only after the keyword
 deny Net Db                       # NBSP is NOT a separator (ASCII-only); token unrecognized -> dropped by all engines
 deny Net Net                          # duplicate effect tokens dedup to a set (all engines)
 allow Net dup.example.com dup.example.com   # duplicate values dedup
+deny Net Unknown[reflect,dispatch] api      # reason-scoped Unknown: narrow to those classes (all engines)
+deny Exec Unknown[dynamic]                   # the `dynamic` alias expands to every genuine class
+deny Db Unknown[*] svc                        # `*` ⇒ all classes ⇒ empty filter (like bare Unknown)
+deny Fs Unknown[bogus,reflect] io            # an unknown reason-class token is dropped with a warning; reflect kept
