@@ -17,11 +17,17 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.18** — all code engines declare `0.18`; the floor is conformance-pinned. How versions
+**Version 0.19** — all code engines declare `0.19`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
+below. The ⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.18 is a pinned-tool-surface
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.19 is a tool-surface
+rung** (no report-schema change): it adds **reason-scoped `Unknown` policies** (§6.2) — `deny E Unknown[class…]`
+narrows the `Unknown` part of a deny to a fixed reason-class vocabulary {reflect,dispatch,indirect,native,unresolved,setup}
+(with the `dynamic`/`*` aliases and config `unknown-alias` names); bare `deny E Unknown` is unchanged
+(`Unknown[*]`, soundness-by-default), the reason class propagates transitively like the effect, and an
+AS-EFF-006 `Unknown` verdict carries a **`reasonClass`** field (§3.3) — so a pre-0.19 policy/consumer is
+unaffected. **0.18 is a pinned-tool-surface
 rung** (no report-schema or verdict change): it pins the **`--strict` advisory-verb CI gate** (§3.3.1) — `fix-gate`,
 `gains`, and `unverified` are advisory (exit 0) and `--strict` makes each a CI gate (exit 1 while a finding
 remains); a typo'd or not-applicable flag (notably `--policy` on `gains`) is an exit-2 error, never a silent
@@ -232,7 +238,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.18" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.19" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1471,7 +1477,19 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.18 (all code engines declare `0.18`; conformance-pinned)** — a **pinned-tool-surface** rung (no
+- **0.19 (all code engines declare `0.19`; conformance-pinned)** — a **tool-surface** rung (no report-schema
+  change; a 0.18 report is byte-identical under 0.19). TIER-2 required: **reason-scoped `Unknown` policies**
+  (§6.2). A `deny` may narrow its `Unknown` part to a fixed cross-engine reason-class vocabulary —
+  `deny E Unknown[reflect,dispatch,indirect,native,unresolved,setup]` — projecting the §4 `unknownWhy` reasons;
+  with the built-in `dynamic` alias (every genuine class, excl. `setup`), `*`, and config-defined
+  `unknown-alias <name> = <class…>` names. Bare `deny E Unknown` is **unchanged** (`Unknown[*]`, fires on any —
+  soundness-by-default), an unrecognized/unclassified reason maps to `unresolved` (conservative), and the
+  reason class propagates transitively along the call graph exactly as the `Unknown` effect does. An
+  AS-EFF-006 `--gate-json` verdict whose `effects` include `Unknown` carries a new **`reasonClass`** array (all
+  classes on the fn). A pre-0.19 policy and verdict-consumer are unaffected (the bracket syntax + field are
+  additive). Pinned four-way in conformance PART 4 (parse + `unknownClasses` + config alias) and PART 12 (the
+  `reasonClass` structural invariant). See `REASON-SCOPED-UNKNOWN-DESIGN.md`.
+- **0.18 (code engines declared `0.18`; conformance-pinned)** — a **pinned-tool-surface** rung (no
   report-schema or verdict change; a 0.17 report and gate verdict are byte-identical under 0.18). Two TIER-2
   required additions, both enforcing the §4 "never a false all-clear" rule at the tool surface: **(1) the
   `--strict` advisory-verb CI gate** (§3.3.1) — `fix-gate`, `gains`, and `unverified` are advisory (exit 0),
