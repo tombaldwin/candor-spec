@@ -10,7 +10,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [1. Effects](#1-effects)
 - [2. The report](#2-the-report) — [2.1 Provenance](#21-provenance-the-candor-header) · [2.2 The sidecars](#22-the-call-graph-sidecar)
 - [3. Modes](#3-modes) — [3.1 Read-only queries](#31-read-only-queries-should) · [3.2 Pre-edit and structural tools](#32-pre-edit-and-structural-tools-should) · [3.3 The command-line surface](#33-the-command-line-surface-required) · [3.4 The configuration file](#34-the-configuration-file--candorconfig-should)
-- [4. The trust contract](#4-the-trust-contract--the-core-of-candor)
+- [4. The trust contract](#4-the-trust-contract--the-core-of-candor) — [4.0 The disclosure model `(S, D)`](#40-the-disclosure-model-formally--a-signature-is-a-pair-s-d)
 - [5. Capabilities](#5-capabilities-conformance) — [5.1 The effect manifest](#51-the-effect-manifest--declared-effects-for-an-opaque-dependency-05)
 - [6. Diagnostics](#6-diagnostics-as-eff-00x) — [6.1 Containment](#61-containment--the-architecture-quality-signal-deliberately-not-a-score) · [6.2 The policy DSL](#62-the-policy-dsl-normative)
 - [7. Conformance checklist](#7-conformance-checklist-for-an-implementation)
@@ -1019,6 +1019,43 @@ consumer can rely on is **disclosure** (what the engine couldn't see is marked, 
 not omniscience. A clean report means *the implementation found no effect and disclosed every gap it
 hit* — read it as "more thorough than review, and honest about its blind spots," not as a proof of
 purity.
+
+### 4.0 The disclosure model, formally — a signature is a pair `(S, D)`
+
+The prose above has a precise carrier. A function's signature is a **pair `(S, D)`**:
+
+- `S ⊆ E` — the **determined** effects: those the engine positively classified (the report's `direct`/
+  `inferred`, minus the `Unknown` marker).
+- `D` — a set of **disclosure reasons**: the reason-tagged sources of `Unknown` (the `unknownWhy` classes,
+  §4's reason vocabulary). `D = ∅` ⇔ **sound-complete** (no blind spot); `D ≠ ∅` ⇔ `Unknown` present, and
+  `Unknown ∈ inferred` is exactly the serialized marker that `D ≠ ∅`.
+
+Order the pairs **componentwise**: `(S₁, D₁) ⊑ (S₂, D₂)  iff  S₁ ⊆ S₂ ∧ D₁ ⊆ D₂`. This is a genuine product
+lattice (join = componentwise `∪`), so `⊑` is a real **partial order** — in particular antisymmetric. The
+naïve "one flat set with `Unknown` in it, ordered by `⊆`-or-`Unknown∈T`" is only a *preorder* (it cannot tell
+`{Net, Unknown}` from `{Unknown}`, which reason-scoping relies on); the pair carrier fixes this. Two
+consequences the model must get right:
+
+- `(E, ∅)` ("performs every effect, fully determined") and `(∅, {r})` ("determined-pure so far, but with an
+  undischarged blind spot `r`") are **incomparable** — so `{Unknown}` is **not** `⊤`. Top is `(E, AllReasons)`;
+  the undetermined signature `(∅, D)` sits off to the side, not above the concrete ones.
+- The transitive effect set (§2.2) is the **least fixpoint** of the monotone componentwise join over this
+  finite lattice (Knaster–Tarski) — a callee's `(S, D)` joins into its caller's, so both `S` and the reason
+  set `D` propagate along the call graph (which is why a reason class travels transitively, §6.2 ⟨0.19⟩).
+
+The policy verbs (§6.2) are **monotone predicates** over `(S, D)`:
+
+| verb | fires iff |
+|---|---|
+| `pure <scope>` | `S = ∅ ∧ D = ∅` is required; violated when `S ≠ ∅` (an effect) — `D ≠ ∅` alone is AS-EFF-003 disclosure, not AS-EFF-006 |
+| `deny e` | `e ∈ S` |
+| `deny e Unknown` | `e ∈ S ∨ D ≠ ∅` |
+| `deny e Unknown[c…]` | `e ∈ S ∨ (D ∩ {c…}) ≠ ∅` — the reason-scoped gate reads the `D` component directly |
+
+So **reason-scoped `Unknown` (⟨0.19⟩) is the `D` component made policy-addressable**, and the completeness
+manifest's `analyzed`/`unanalyzed` (§2) is what lets a consumer tell `(∅, ∅)` (provably pure) from a function
+never placed in the lattice at all (dropped — outside `analyzed`). This subsection formalizes the operational
+rules that follow; it adds no new obligation.
 
 **Dispatch over a local abstraction — the bounded-CHA discipline** (all four code engines): a
 call dispatched through a locally-declared abstraction (a Rust `dyn`/`impl`/generic-bound trait, a
