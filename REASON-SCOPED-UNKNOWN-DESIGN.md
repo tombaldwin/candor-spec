@@ -1,4 +1,11 @@
-# Reason-scoped `Unknown` policies — `deny E Unknown[class]` ⟨proposed⟩
+# Reason-scoped `Unknown` policies — `deny E Unknown[class]` ⟨SHIPPED four-way 2026-07-17⟩
+
+> **Status:** implemented in all four engines (java reference, rust, ts, swift) with a shared closed
+> `ReasonClass` set {reflect, dispatch, indirect, native, unresolved, setup}, the `dynamic`/`*` aliases,
+> and the A2 under-gating lint. The reason CLASS propagates transitively along the call graph at gate-eval
+> time (the report's `unknownWhy` stays direct-only), so `deny E Unknown[reflect]` fires on a caller that
+> inherits a reflect-caused `Unknown` from a callee — a transitive-reason under-gating gap found + fixed
+> during the port. Pinned four-way in conformance PART 4 (parsepolicy `unknownClasses`).
 
 Make the *reason* a policy first-class citizen: a gate can deny an effect that is either determined **or**
 undetermined-for-a-reason-class-you-care-about, instead of the all-or-nothing `deny E Unknown`.
