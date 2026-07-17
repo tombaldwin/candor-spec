@@ -1,12 +1,13 @@
-# `Net` destination-class — telemetry vs. exfiltration, made gate-able ⟨java reference built⟩
+# `Net` destination-class — telemetry vs. exfiltration, made gate-able ⟨SHIPPED spec 0.20⟩
 
-> **Status (2026-07-17):** the **java reference** is implemented + tested (`candor-java`): the curated
-> `TELEMETRY_HOSTS` set + `netDestClass` classifier, the config `net-partner` key, the per-fn `netClass`
-> report field (transitive, fail-closed on a masked/runtime surface, cross-jar propagated), the `deny
-> Net[dest…]` policy grammar + gate eval, the verdict `netClass`, and the `parsepolicy` dump — pinned by
-> `NetDestClassPolicyTest`. Open questions #1–4 below were resolved on the recommended defaults (tight
-> curated telemetry, config-only partners, a model host is `known-partner` via `isModelHost`). Remaining:
-> the **rust/ts/swift ports** + the **four-way conformance PART + SPEC §1/§6.2** (targets spec **0.21**).
+> **Status (2026-07-17):** SHIPPED four-way as **spec 0.20** — `candor-java` (reference), `candor-rust`
+> (stable backend + nightly deep engine), `candor-ts`, `candor-swift`. The curated `TELEMETRY_HOSTS` set +
+> `netDestClass` classifier, the config `net-partner` key, the per-fn `netClass` report field (transitive,
+> fail-closed on a masked/runtime surface, cross-jar propagated), the `deny Net[dest…]` policy grammar + gate
+> eval, the verdict `netClass`, and the `parsepolicy` dump. Pinned four-way in conformance PART 4
+> (`netClasses` parse) + `gen_netclass.py` (the fail-closed gate posture); SPEC §2 (`netClass`) + §6.2
+> (`Net[dest…]`). Open questions #1–4 were resolved on the recommended defaults (tight curated telemetry,
+> config-only partners, a model host is `known-partner` via `isModelHost`).
 
 Refine the `Net` effect with a **destination CLASS** per host — `known-telemetry`, `known-partner`,
 `unknown-host` — so a gate can say *"the domain layer may reach our declared partners and telemetry, but
@@ -95,7 +96,7 @@ Net` narrower (the `unknown-alias` legibility rule).
 A new PART pins `netClass` four-way (the curated `TELEMETRY_HOSTS` set is shared verbatim, like `MODEL_HOSTS`
 — PART 4l precedent) + the `Net[class]` grammar (PART 4) + the fail-closed `unknown-host` posture on a
 masked/unresolved host. A tier-1 additive schema field + a tier-2 policy/config surface — a real vocabulary
-rung (est. **0.21**), additive (a pre-0.21 report/policy is unaffected).
+rung (spec **0.20**), additive (a pre-0.20 report/policy is unaffected).
 
 ## What this is NOT
 

@@ -17,11 +17,16 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.19** — all code engines declare `0.19`; the floor is conformance-pinned. How versions
+**Version 0.20** — all code engines declare `0.20`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
+below. The ⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.19 is a tool-surface
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.20 is an additive
+rung**: it adds the **`Net` destination-class** (§2/§6.2) — a per-function **`netClass`** field
+(`known-telemetry`/`known-partner`/`unknown-host`) and a **`deny Net[unknown-host]`** security gate (egress
+only to known destinations; fail-closed on a masked/runtime host) — plus a reason-class **query surface**
+(`blindspots --stats`/`--class`, `unverified --class`, §3.1). A pre-0.20 report/policy is unaffected (the
+field + bracket syntax are additive). **0.19 is a tool-surface
 rung** (no report-schema change): it adds **reason-scoped `Unknown` policies** (§6.2) — `deny E Unknown[class…]`
 narrows the `Unknown` part of a deny to a fixed reason-class vocabulary {reflect,dispatch,indirect,native,unresolved,setup}
 (with the `dynamic`/`*` aliases and config `unknown-alias` names); bare `deny E Unknown` is unchanged
@@ -238,7 +243,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec": "0.19" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.20" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1516,7 +1521,7 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.21 (STAGED — engines still declare `0.19`; ships when the rung is cut)** — an **additive** rung: the
+- **0.20 (all code engines declare `0.20`; conformance-pinned)** — an **additive** rung. Primary: the
   **`Net` destination-class**. A per-function **`netClass`** report field (§2) refines the `Net` `hosts` surface
   into `known-telemetry` (a curated four-way-verbatim `TELEMETRY_HOSTS` set) / `known-partner` (a config
   `net-partner <host>` OR a model host) / `unknown-host` (the fail-closed default — a masked/runtime host, or a
@@ -1524,10 +1529,12 @@ declare it via the envelope's `spec`.
   the security use case *"egress only to known destinations"* is gate-able where bare `deny Net` (all
   destinations, unchanged) is all-or-nothing. The class propagates transitively like the effect; the verdict
   carries `netClass` on a `Net` denial. Fail-closed by construction: an asserted-safe class comes only from an
-  exact host-literal match, so an exfiltration `Net` can never slip a `deny Net[unknown-host]`. A pre-0.21
-  report/policy is unaffected (field + bracket syntax are additive). Pinned four-way in conformance PART 4
-  (`netClasses` parse) + the Net destination-class differential (`gen_netclass.py` — the fail-closed gate
-  posture). See `NET-DESTINATION-CLASS-DESIGN.md`.
+  exact host-literal match, so an exfiltration `Net` can never slip a `deny Net[unknown-host]`. Pinned four-way
+  in conformance PART 4 (`netClasses` parse) + the Net destination-class differential (`gen_netclass.py` — the
+  fail-closed gate posture); see `NET-DESTINATION-CLASS-DESIGN.md`. Also TIER-2: a reason-class **query
+  surface** — `blindspots --stats` (the §4 reason-class distribution) + `blindspots --class`/`unverified
+  --class` (filter by class), sizing and drilling into the blind-spot cost the 0.19 gate acts on. A pre-0.20
+  report/policy/consumer is unaffected (the field, the bracket syntax, and the new flags are additive).
 - **0.19 (all code engines declare `0.19`; conformance-pinned)** — a **tool-surface** rung (no report-schema
   change; a 0.18 report is byte-identical under 0.19). TIER-2 required: **reason-scoped `Unknown` policies**
   (§6.2). A `deny` may narrow its `Unknown` part to a fixed cross-engine reason-class vocabulary —
