@@ -1242,3 +1242,18 @@ caught-with-index VIOLATION / complete-when-no-pure) + 2 e2e (index emitted with
 that runs an effect is caught, not folded). 99 unit + 495 suite green. verify stays UNPUBLISHED on
 main. Follow-on (open): a full-universe loc index for rust/swift IF they gain a language-level oracle
 arm; end-lines would additionally close the disclosed "module-top-level code after a fn" residual.
+
+### 2026-07-17 — corpus follow-on: the loc index needed SPANS (the start-only fix was regressive)
+
+Correction/completion of the entry above. Corpus-testing the oracle on a real 7k-line app (stock-trading's
+smoke test) showed the start-line-only loc index was not just incomplete but REGRESSIVE: a real
+`fs.readFileSync` deep inside an effectful `run()` bucketed onto a PURE test-callback arrow declared
+earlier (the arrow was the greatest declaration ≤ the site, though it had already closed) → a
+DETERMINISTIC false cardinal-sin VIOLATION (exit 1) on honest code. Adding all-fn START locs CAUSED this
+by putting pure nested arrows where they shadow their enclosing effectful fn for later sites. Root cause:
+attribution needs function SPANS, not starts. FIXED (candor-ts `a218ef9`): every fn record carries
+`endLine`; the sidecar is now `{fn:{loc,end}}`; `attribute()` picks the INNERMOST fn whose [start,end]
+CONTAINS the site. The real smoke test flips VIOLATED→HOLDS; the seeded silent-miss still VIOLATES; +2
+unit (101 unit + 495 suite green). LESSON: a synthetic fixture (my /tmp/vapp) validated the silent-miss
+fix but could not have surfaced the false-positive regression — only real code with big functions holding
+nested pure callbacks did. Corpus testing earns its keep precisely on the cases you would not think to write.
