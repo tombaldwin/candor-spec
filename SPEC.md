@@ -1261,6 +1261,47 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
 - **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
 
+**Reason-scoped `Unknown` (`deny E Unknown[class…]`)** ⟨0.19⟩**.** In a `deny`, the `Unknown` token MAY
+carry a bracketed **reason-class filter**: `Unknown[reflect,dispatch]` denies the `Unknown` part only for a
+function whose `Unknown` arises from one of the listed classes; a concrete effect in the same rule (`deny Net
+Unknown[reflect] api`) is unaffected. The classes are the **closed, normative projection** of the §4
+`unknownWhy` reasons onto a fixed cross-engine vocabulary — a reader of the policy knows the class set
+without reading any engine's raw reason strings:
+
+| class | raw `unknownWhy` prefixes it projects |
+|---|---|
+| `reflect` | reflection / metaprogramming (`reflect:*`, `dynamicMemberLookup`) |
+| `dispatch` | unresolved virtual/dynamic dispatch, invokedynamic, same-name ambiguity (`dispatch:*`, `indy*`, `ambiguous*`) |
+| `indirect` | callback / closure / function-value / async-continuation indirection (`callback:*`, `closure*`, `task-handoff*`) |
+| `native` | FFI / native boundary (`native:*`) |
+| `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |
+| `setup` | the analysis is not wired up — fixable, not a real hole (`missing-config`, `no-tsconfig`, no-`node_modules`) |
+
+The projection is **conservative**: a raw reason matching no listed prefix maps to `unresolved`, and a
+function whose `Unknown` carries no recorded reason is treated as `unresolved` — so a narrowed filter never
+*silently* tolerates a hole it failed to classify. The reason class **propagates transitively** along the
+call graph exactly as the `Unknown` effect does: a function that inherits `Unknown` from a callee is scoped
+by that callee's reason class (the `unknownWhy` a report emits stays per-function/direct; the *gate*
+resolves the transitive class). Filter forms:
+
+- bare **`Unknown`** and **`Unknown[*]`** mean **all classes** — a pre-0.18 `deny E Unknown` is byte-identical
+  (soundness-by-default; narrowing is opt-in).
+- **`Unknown[dynamic]`** is a built-in alias for every *genuine* class (`reflect,dispatch,indirect,native,unresolved`
+  — excludes `setup`): the recommended usable strict gate.
+- an **unrecognized class token** in the brackets is **dropped with a warning** (the rule keeps its recognized
+  classes); a narrowed filter that omits `unresolved` SHOULD emit an **advisory under-gating lint** (it may
+  tolerate holes the engine could not classify).
+- **`pure`** is unaffected — it fails on *any* `Unknown` (all classes) this rung; reason-scoping is a `deny`-side
+  feature only.
+
+A conformant `--gate-json` verdict (§3.3) records, on an `AS-EFF-006` violation whose `effects` include
+`Unknown`, a **`reasonClass`** array listing **all** reason classes present on the function (not just the
+matched one), so a consumer sees every reason the strict gate bit. Config MAY define a **named class alias**
+via a `.candor/config` `unknown-alias <name> = <class,…>` entry that a rule references **explicitly**
+(`Unknown[<name>]`); a config alias is a spelling convenience only — it MUST NOT change what bare `deny E
+Unknown` means (that is always `Unknown[*]`, everywhere), so a policy's denied set is always legible from the
+policy alone.
+
 **Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not
 substring**. Split both on the language's path separator (`::` in Rust, `.` on the JVM) — **and on the
 language's nested-scope boundaries**, the same boundaries the §3.1 query name ladder recognizes: the

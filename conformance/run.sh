@@ -2220,8 +2220,21 @@ exits = dict(zip(["candor-java", "candor-scan", "candor-ts", "candor-swift"], ma
 engines = [("candor-java", "gv_java", True), ("candor-scan", "gv_scan", True),
            ("candor-ts", "gv_ts", exits["candor-ts"] >= 0), ("candor-swift", "gv_swift", exits["candor-swift"] >= 0)]
 leaf = lambda s: s.replace("::", ".").split(".")[-1]
+VALID_RC = {"reflect", "dispatch", "indirect", "native", "unresolved", "setup"}
+rc_violations = []  # §6.2 ⟨0.19⟩ structural invariant, checked on every engine's verdicts
 def norm(path):
     d = json.load(open(path))
+    # §6.2 ⟨0.19⟩ reasonClass invariant (representation-agnostic — the VALUES may legitimately differ across
+    # engines, but the CONTRACT is fixed): an AS-EFF-006 violation whose effects include `Unknown` MUST carry
+    # a non-empty `reasonClass` of valid tokens; any other violation MUST NOT carry one. Guards every engine's
+    # verdict without pinning class values (which are representationally divergent).
+    for x in d["violations"]:
+        rc = x.get("reasonClass", [])
+        has_unknown = x["rule"] == "AS-EFF-006" and "Unknown" in x.get("effects", [])
+        if has_unknown and (not rc or any(t not in VALID_RC for t in rc)):
+            rc_violations.append(f"{path}: {x['rule']} on `{x['fn']}` denies Unknown but reasonClass={rc} (must be non-empty valid tokens)")
+        if not has_unknown and rc:
+            rc_violations.append(f"{path}: {x['rule']} on `{x['fn']}` carries reasonClass={rc} without denying Unknown")
     v = sorted((x["rule"], leaf(x["fn"]), tuple(sorted(x.get("effects", []))))
                for x in d["violations"] if x["rule"] != "AS-EFF-007")
     return d.get("spec"), bool(d["ok"]), v
@@ -2246,8 +2259,11 @@ for n, stem, required in engines:
         fails.append(f"{n}: exit {ex} on a violating gate (must be 1)")
     if ok is not (ex == 0):
         fails.append(f"{n}: verdict ok={ok} DISAGREES with exit {ex} — the §3.3 MUST")
+fails += rc_violations  # §6.2 ⟨0.19⟩ reasonClass structural invariant (representation-agnostic)
 for f in fails:
     print(f"     FAIL {f}")
+if not rc_violations:
+    print("  reasonClass invariant: OK (no Unknown-denial verdict malformed a reasonClass — SPEC §6.2 ⟨0.19⟩)")
 print("  -> " + ("MATCH — every declaring engine emits the same faithful verdict AND exit (ok:false · 006+008 on `save` · {Fs} · exit 1)"
                  if not fails else "DIVERGE — see FAIL lines"))
 sys.exit(0 if not fails else 1)
