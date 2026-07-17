@@ -6,11 +6,14 @@
 > time (the report's `unknownWhy` stays direct-only), so `deny E Unknown[reflect]` fires on a caller that
 > inherits a reflect-caused `Unknown` from a callee — a transitive-reason under-gating gap found + fixed
 > during the port. **SPEC §6.2 grammar written** (⟨0.19⟩); the **`reasonClass` verdict field** (§3.3 — all
-> classes on the fn, on an AS-EFF-006 Unknown denial) ships four-way. Pinned four-way in conformance PART 4
-> (parsepolicy `unknownClasses`) + PART 12 (a representation-agnostic `reasonClass` structural invariant).
-> **Still open (§4):** the config `unknown-alias` key (user-defined named alias) — parked as a small rung
-> (a config-subsystem + parser-signature change for a "spelling convenience" `dynamic` already covers); and
-> the §3 `setup`-vs-genuine loud scan-time diagnostic.
+> classes on the fn, on an AS-EFF-006 Unknown denial) ships four-way; and the **config `unknown-alias` key**
+> (§4 — a user-defined `.candor/config` `unknown-alias <name> = <class,…>` referenced explicitly as
+> `Unknown[<name>]`; multi-value; discovered by walking up from the policy/scan target; a config alias may
+> NOT shadow a built-in and NEVER changes what bare `deny E Unknown` means) ships four-way (gate +
+> config-aware `parsepolicy`). Pinned four-way in conformance PART 4 (parsepolicy `unknownClasses` + a
+> checked-in `.candor/config` resolving `Unknown[<alias>]`) + PART 12 (a representation-agnostic
+> `reasonClass` structural invariant). **Only remaining piece (§3):** the `setup`-vs-genuine loud scan-time
+> diagnostic.
 
 Make the *reason* a policy first-class citizen: a gate can deny an effect that is either determined **or**
 undetermined-for-a-reason-class-you-care-about, instead of the all-or-nothing `deny E Unknown`.

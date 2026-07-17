@@ -29,3 +29,6 @@ deny Net Unknown[reflect,dispatch] api      # reason-scoped Unknown: narrow to t
 deny Exec Unknown[dynamic]                   # the `dynamic` alias expands to every genuine class
 deny Db Unknown[*] svc                        # `*` ⇒ all classes ⇒ empty filter (like bare Unknown)
 deny Fs Unknown[bogus,reflect] io            # an unknown reason-class token is dropped with a warning; reflect kept
+deny Net Unknown[risky] api2                  # config `unknown-alias risky` → reflect,native,dispatch (discovered .candor/config)
+deny Exec Unknown[telemetry] jobs             # config `unknown-alias telemetry` → indirect
+deny Db Unknown[reflect] audit                # `reflect` stays the built-in class (the config alias `reflect` is REJECTED as reserved)
