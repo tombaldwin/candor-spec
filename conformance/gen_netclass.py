@@ -84,6 +84,8 @@ def _case(id, rule, policy, expect, host=None, runtime=False, config=None):
 CASES = [
     _case("telemetry_tolerated", "known-telemetry (sentry.io) tolerated", "deny Net[unknown-host]",
           "pass", host="sentry.io"),
+    _case("posthog_telemetry_tolerated", "known-telemetry (posthog.com subdomain, 0.20.1 corpus-grown) tolerated",
+          "deny Net[unknown-host]", "pass", host="us.i.posthog.com"),
     _case("model_partner_tolerated", "known-partner (model host api.openai.com) tolerated", "deny Net[unknown-host]",
           "pass", host="api.openai.com"),
     _case("config_partner_tolerated", "config net-partner (api.stripe.com) tolerated", "deny Net[unknown-host]",
