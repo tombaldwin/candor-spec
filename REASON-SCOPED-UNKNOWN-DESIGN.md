@@ -12,14 +12,22 @@
 > NOT shadow a built-in and NEVER changes what bare `deny E Unknown` means) ships four-way (gate +
 > config-aware `parsepolicy`). Pinned four-way in conformance PART 4 (parsepolicy `unknownClasses` + a
 > checked-in `.candor/config` resolving `Unknown[<alias>]`) + PART 12 (a representation-agnostic
-> `reasonClass` structural invariant). The **`setup`-vs-genuine diagnostic** (§3) ships in **candor-ts**
-> (the reference / canonical case — the referee's "no `npm install`" fatigue vector): a call into a
-> declared-but-uninstalled dep is tagged `no-node_modules:<pkg>` (class `setup`), and a loud scan-time line
-> counts them + names the fix (`npm install`), separate from real dynamism (`Unknown[dynamic]` excludes
-> `setup`, so a strict gate bites genuine holes while tolerating the fixable ones). The `setup` *classification*
-> is four-way already, so gate tolerance works everywhere; **the remaining per-engine follow-on** is the
-> `setup` *emission* in java (classpath), swift (SDK/modules) — and rust largely gets it free via the existing
-> κ coverage ledger (uncovered deps are already separated from `Unknown`).
+> `reasonClass` structural invariant). The **`setup`-vs-genuine split** (§3) is **complete four-way**, but by
+> two mechanisms — not one emission ported everywhere:
+> - **candor-ts** emits a per-fn `setup` tag, because ts *resolves* types (TS checker + node_modules) and a
+>   missing dep produces a genuine `Unknown`: a call into a declared-but-uninstalled dep is tagged
+>   `no-node_modules:<pkg>` (class `setup`, precise because in npm the import specifier IS the package), + a
+>   loud scan-time remediation. `Unknown[dynamic]` excludes `setup`, so a strict gate bites real dynamism
+>   while tolerating the fixable holes.
+> - **candor-java / -rust / -swift** route a mis-config / uncovered-dep call to the **κ coverage ledger**
+>   (`invisible` + a remediation note), NOT a genuine `Unknown` (java `Candor.java:1364-1373`) — so the
+>   separation already exists there and needs no tag. A per-fn `setup`-`Unknown` emission would be **unsafe**:
+>   with no clean import→package/module mapping (Maven groupId ≠ package; SwiftSyntax does no cross-module
+>   resolution), a wrong tag moves a genuine `dispatch`/`reflect` hole into the `Unknown[dynamic]`-tolerated
+>   bucket = **under-gating** (the cardinal sin). So it is deliberately NOT emitted.
+> - **candor-swift** additionally gets a SAFE scan-level SETUP *warning* (2026-07-17): a `Package.swift` that
+>   declares dependencies but has no fetched `.build/checkouts` prints a "run `swift build`" remediation — the
+>   analog of ts's missing-node_modules warning, without any per-fn `setup` tag.
 
 Make the *reason* a policy first-class citizen: a gate can deny an effect that is either determined **or**
 undetermined-for-a-reason-class-you-care-about, instead of the all-or-nothing `deny E Unknown`.
@@ -75,16 +83,19 @@ configure the scan, not to change the code. This distinction is the second half 
 **Two findings from the four-engine `unknownWhy` audit (2026-07-16) — both are reference-implementation
 prerequisites, not free:**
 
-1. **`setup` emission — LANDED in candor-ts (2026-07-17), a per-engine follow-on elsewhere.** It requires a
-   NEW per-function emission: when the scan detects it is mis-configured, the resulting `Unknown`s must carry
-   a `setup`-class reason. **candor-ts now does this** for the canonical case — a call whose head binds to a
-   DECLARED-but-UNINSTALLED dependency (package.json ∖ node_modules) is tagged `no-node_modules:<pkg>` (class
-   `setup`), resolvable even when the pkg isn't installed because the import statement is syntactically local;
-   a loud scan-time SETUP diagnostic counts them + names the `npm install` fix. Where an engine does NOT yet
-   emit it (java classpath, swift SDK), its setup-holes fall into `unresolved` — which is **safe** (still
-   gated by `dynamic`/`*`), just not yet *separable* for tolerance. So `setup` tolerance is opt-in AND
-   opt-in-per-engine-as-it-lands. (rust largely gets it free: the κ coverage ledger already separates
-   uncovered deps from `Unknown`.)
+1. **`setup` emission — RESOLVED (2026-07-17), by TWO mechanisms, not one ported emission.** The
+   four-engine reality (confirmed by reading each engine): only **candor-ts** produces a genuine `Unknown`
+   from a mis-config, because it *resolves* types. So ts emits the per-fn tag — a call whose head binds to a
+   DECLARED-but-UNINSTALLED dependency (package.json ∖ node_modules) → `no-node_modules:<pkg>` (class
+   `setup`), resolvable even uninstalled because the import statement is syntactically local; + a loud SETUP
+   remediation. **candor-java / -rust / -swift do NOT** produce a setup-`Unknown`: a call into an unmodeled /
+   off-classpath package is routed to the κ **coverage ledger** (`invisible` + a remediation note), already
+   separated from genuine `Unknown` (java `Candor.java:1364-1373`; rust/swift `invisible`). Emitting a per-fn
+   `setup` tag there would be **unsafe** (no reliable import→package/module mapping ⇒ a wrong tag under-gates
+   via `Unknown[dynamic]`'s exclusion of `setup`), so it is deliberately not done. candor-swift adds only a
+   SAFE scan-level SETUP *warning* (a `Package.swift` declaring deps with no fetched `.build/checkouts`). Net:
+   the setup/genuine SEPARATION holds four-way — per-fn `setup` where resolution makes it precise (ts), the
+   coverage ledger everywhere else.
 2. **The reflection class is emitted unevenly** — ts is rich (`reflect:*`), swift has `reflecting`/
    `dynamicMemberLookup`, but **rust and java do not emit a `reflect` reason at all** (a `Class.forName`+
    `invoke` hole currently reads `dispatch`/`unresolved` in java). So `deny E Unknown[reflect]` would MISS
