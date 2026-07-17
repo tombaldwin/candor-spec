@@ -1213,3 +1213,32 @@ Unknown-ONLY gain is DISCLOSED as advisory (a note, exit 0) — consistent with 
 Unknown-is-not-an-effect treatment. Preserves the real supply-chain signal (pure→Net = exit 1;
 conformance PART 15b uses pure→Fs, still passes) while removing the false-positive class. Four-way +
 PART 15b amendment. **RESOLVED 2026-07-16**: built four-way (rust reference + java/ts/swift), each with a real-effect-still-fails check; conformance PART 15c (pure→Unknown = exit 0 + advisory note, no [AS-EFF-005]) green four-way; the corpus that found it (serde, itertools) now exit 0 + advisory. Staged with the rest of ⟨0.16⟩.
+
+### 2026-07-17 — the honesty-oracle attribution hole (verify dogfood, candor-ts)
+
+Dogfooding `candor verify` (the dynamic honesty oracle — runs a program under a runtime capture and
+checks `observed(f) ⊆ inferred(f) ∪ {Unknown}` per executed fn) found a silent false-all-clear IN
+THE ORACLE — the exact failure it exists to catch. The Node arm's runtime→fn attribution anchored a
+captured effect site to the nearest fn whose declaration line ≤ the site line, drawing ONLY from the
+§2 report's EFFECTFUL fns. Pure fns are omitted from §2 (no loc), so a fn candor called pure carried
+no anchor: an effect executed inside it folded onto the nearest PRECEDING effectful fn, whose claim
+usually already covered it, and the cardinal-sin escape vanished. Reproduced end-to-end: a pure
+`computeTotal` between two Fs fns ran `readFileSync`; the oracle reported HOLDS, 0 violations.
+
+Scope: **Node arm only.** The JVM `-javaagent` arm attributes at ASM transform time by the TRUE
+enclosing method (no line-nearest guess), so it caught the identical seeded case (`computeTotal` →
+VIOLATION exit 1) — empirically re-confirmed, no change. The syscall arm is program-level (no per-fn
+attribution). No static engine relies on this attribution; it is oracle-internal, not a §2 classifier
+regression — so no spec change and no version move.
+
+FIXED (candor-ts `5d3e19d`): scan emits `<prefix>.locs.json`, the declaration loc of EVERY analyzed
+fn (pure included — the internal `fns` map already held them; only serialization dropped them). The
+oracle attributes over the full universe, so a pure fn's effect anchors to ITSELF and surfaces as a
+VIOLATION. Without the index it FAILS CLOSED: `attributionComplete=false` + a ⚠ disclosure ("not a
+sound all-clear") whenever unlocated pure fns exist (`analyzed.count > |functions|`) — never a silent
+HOLDS. The sidecar is excluded from report-sibling discovery (`isReport` + the CANDOR_DEPS dir filter,
+which also closed a latent `.hierarchy.json` gap). Gated: 3 unit (fold-without-index DISCLOSED /
+caught-with-index VIOLATION / complete-when-no-pure) + 2 e2e (index emitted with pure fns; a pure fn
+that runs an effect is caught, not folded). 99 unit + 495 suite green. verify stays UNPUBLISHED on
+main. Follow-on (open): a full-universe loc index for rust/swift IF they gain a language-level oracle
+arm; end-lines would additionally close the disclosed "module-top-level code after a fn" residual.
