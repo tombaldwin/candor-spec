@@ -955,8 +955,9 @@ bumps). With the ratchet on, the **current** `Unknown` surface is grandfathered 
 in the baseline shows no gain, so it never fails — and only a **new** `Unknown` (a blind spot the baseline did
 not have) raises AS-EFF-005. A team freezes today's report as the baseline and the strict gate ratchets the
 `Unknown` surface *down* rather than failing everywhere on day one; a new `Unknown` is grandfathered by
-regenerating the baseline. (Reference engine: candor-java; the other engines MAY follow — the flag is additive
-and, when unset, leaves the AS-EFF-005 contract byte-identical.)
+regenerating the baseline. Shipped four-way (java/rust/ts/swift); the flag is additive and, when unset, leaves
+the AS-EFF-005 contract byte-identical, so — like the other opt-in flags (`closed-world`, `taint`) — it is
+per-engine tested rather than conformance-differential-pinned.
 
 An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for
 enforcement, but SHOULD be disclosed**: one stderr line naming the keys this engine recognizes and
