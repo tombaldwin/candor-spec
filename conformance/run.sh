@@ -239,7 +239,9 @@ python3 - "$W/rust_pol.json" "$W/java_pol.json" "$W/ts_pol.json" "${SW_POL_OK:+$
 import json, os, sys
 def norm(p):
     d = json.load(open(p))
-    deny   = sorted((tuple(sorted(r["effects"])), r["scope"]) for r in d["deny"])
+    # `unknownClasses` (reason-scoped Unknown) is compared four-way: absent and [] both normalize to (),
+    # so a bare deny stays comparable while a `deny E Unknown[class…]` pins the reason-class parsing.
+    deny   = sorted((tuple(sorted(r["effects"])), r["scope"], tuple(sorted(r.get("unknownClasses", [])))) for r in d["deny"])
     allow  = sorted((r["effect"], r["scope"], tuple(sorted(r["values"]))) for r in d["allow"])
     forbid = sorted((r["from"], r["to"]) for r in d["forbid"])
     return deny, allow, forbid
