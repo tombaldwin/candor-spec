@@ -12,8 +12,14 @@
 > NOT shadow a built-in and NEVER changes what bare `deny E Unknown` means) ships four-way (gate +
 > config-aware `parsepolicy`). Pinned four-way in conformance PART 4 (parsepolicy `unknownClasses` + a
 > checked-in `.candor/config` resolving `Unknown[<alias>]`) + PART 12 (a representation-agnostic
-> `reasonClass` structural invariant). **Only remaining piece (§3):** the `setup`-vs-genuine loud scan-time
-> diagnostic.
+> `reasonClass` structural invariant). The **`setup`-vs-genuine diagnostic** (§3) ships in **candor-ts**
+> (the reference / canonical case — the referee's "no `npm install`" fatigue vector): a call into a
+> declared-but-uninstalled dep is tagged `no-node_modules:<pkg>` (class `setup`), and a loud scan-time line
+> counts them + names the fix (`npm install`), separate from real dynamism (`Unknown[dynamic]` excludes
+> `setup`, so a strict gate bites genuine holes while tolerating the fixable ones). The `setup` *classification*
+> is four-way already, so gate tolerance works everywhere; **the remaining per-engine follow-on** is the
+> `setup` *emission* in java (classpath), swift (SDK/modules) — and rust largely gets it free via the existing
+> κ coverage ledger (uncovered deps are already separated from `Unknown`).
 
 Make the *reason* a policy first-class citizen: a gate can deny an effect that is either determined **or**
 undetermined-for-a-reason-class-you-care-about, instead of the all-or-nothing `deny E Unknown`.
@@ -69,13 +75,16 @@ configure the scan, not to change the code. This distinction is the second half 
 **Two findings from the four-engine `unknownWhy` audit (2026-07-16) — both are reference-implementation
 prerequisites, not free:**
 
-1. **`setup` is not emitted as an `unknownWhy` today** — it is a scan-time *warning channel*
-   (missing-tsconfig / no-`node_modules` / classpath), so functions that go `Unknown` because the scan is
-   mis-configured are currently tagged **`unresolved`**, not distinguishable from genuine unresolved holes.
-   The setup/genuine split (§3) therefore requires a NEW per-function emission: when the scan detects it is
-   mis-configured, the resulting `Unknown`s must carry a `setup`-class reason. Until an engine does this,
-   its setup-holes fall into `unresolved` — which is **safe** (still gated by `dynamic`/`*`), just not yet
-   *separable* for tolerance. So `setup` tolerance is opt-in AND opt-in-per-engine-as-it-lands.
+1. **`setup` emission — LANDED in candor-ts (2026-07-17), a per-engine follow-on elsewhere.** It requires a
+   NEW per-function emission: when the scan detects it is mis-configured, the resulting `Unknown`s must carry
+   a `setup`-class reason. **candor-ts now does this** for the canonical case — a call whose head binds to a
+   DECLARED-but-UNINSTALLED dependency (package.json ∖ node_modules) is tagged `no-node_modules:<pkg>` (class
+   `setup`), resolvable even when the pkg isn't installed because the import statement is syntactically local;
+   a loud scan-time SETUP diagnostic counts them + names the `npm install` fix. Where an engine does NOT yet
+   emit it (java classpath, swift SDK), its setup-holes fall into `unresolved` — which is **safe** (still
+   gated by `dynamic`/`*`), just not yet *separable* for tolerance. So `setup` tolerance is opt-in AND
+   opt-in-per-engine-as-it-lands. (rust largely gets it free: the κ coverage ledger already separates
+   uncovered deps from `Unknown`.)
 2. **The reflection class is emitted unevenly** — ts is rich (`reflect:*`), swift has `reflecting`/
    `dynamicMemberLookup`, but **rust and java do not emit a `reflect` reason at all** (a `Class.forName`+
    `invoke` hole currently reads `dispatch`/`unresolved` in java). So `deny E Unknown[reflect]` would MISS
