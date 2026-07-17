@@ -1,4 +1,12 @@
-# The completeness manifest — distinguishing "provably pure" from "never seen" ⟨proposed⟩
+# The completeness manifest — distinguishing "provably pure" from "never seen" ⟨SHIPPED spec 0.21⟩
+
+> **Status (2026-07-17):** SHIPPED four-way as spec 0.21. `analyzed:{count,digest}` + `unanalyzed:[{path,
+> reason}]` in the report envelope; the machine-legible incomplete gate verdict (`{ok:false, incomplete:true,
+> unanalyzed}` + exit 2) closing the machine-consumer false-all-clear (Gap 2, the sharp one); Gap 3 (isolated
+> pure leaf is a §2.2 node) confirmed compliant four-way (no fix needed). FNV-1a-64 digest, one algorithm
+> across engines (values differ — quals differ). SPEC §2 + §3.3.1; pinned four-way in `gen_completeness.py`.
+> The `candor verify` dynamic oracle (§3 below) that would CONSUME `analyzed`/`unanalyzed` remains the open
+> follow-on (closes sub-case (ii), the misjudgment; the manifest closes (i), the enumeration drop).
 
 Carry the set of functions the scan **analyzed**, so a function's absence from the report can be read as
 *provably pure* (analyzed, no effects) rather than ambiguously *pure-or-silently-dropped*.

@@ -17,12 +17,17 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.20** — all code engines declare `0.20`; the floor is conformance-pinned. How versions
+**Version 0.21** — all code engines declare `0.21`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
+below. The ⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.20 is an additive
-rung**: it adds the **`Net` destination-class** (§2/§6.2) — a per-function **`netClass`** field
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.21 is a tier-1 additive
+rung — the completeness manifest** (§2 + §3.3.1): the envelope carries **`analyzed: {count, digest}`** and
+**`unanalyzed: [{path, reason}]`** so a consumer distinguishes *provably-pure* (analyzed, omitted) from
+*never-seen*, and incompleteness is **machine-legible** — a configured gate over source that failed to parse
+now fails closed (exit 2) with an `{ok:false, incomplete:true, unanalyzed}` verdict instead of a stderr-only
+warning a JSON consumer couldn't see. Additive: a pre-0.21 consumer ignoring the fields is unaffected. **0.20
+is an additive rung**: it adds the **`Net` destination-class** (§2/§6.2) — a per-function **`netClass`** field
 (`known-telemetry`/`known-partner`/`unknown-host`) and a **`deny Net[unknown-host]`** security gate (egress
 only to known destinations; fail-closed on a masked/runtime host) — plus a reason-class **query surface**
 (`blindspots --stats`/`--class`, `unverified --class`, §3.1). A pre-0.20 report/policy is unaffected (the
@@ -243,7 +248,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.20" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.21" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -289,6 +294,27 @@ dep. A report-consuming verb whose verdict could change under uncovered reach MU
 field in its own output (verdict-preserving — the ⟨0.9⟩ gate auto-disclosure precedent; §3.1/§3.3):
 the verdict/exit does not change, the caveat travels. Closing the gap remains chaining's job (§2
 CANDOR_DEPS); `coverage` is how an unclosed gap stays visible.
+
+⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The
+report **omits pure functions** (§2 lists only effectful/`Unknown` units), so the consuming convention is
+"absent ⇒ pure." Two envelope fields make that convention *backed* rather than a universal claim the report
+can't support — distinguishing **provably-pure** (analyzed, no effects) from **never-seen** (a unit the scan
+never judged, the cardinal-sin drop), and making incompleteness **machine-legible**:
+
+- `"analyzed": { "count": <n>, "digest": "<hex>" }` — the ANALYZED UNIVERSE: `count` = the units candor
+  formed an effect judgment for (effectful + pure) = the §2.2 call-graph node set (pure leaves included). So a
+  consumer reading the **bare envelope** computes the pure count = `analyzed.count − |functions|` and reads a
+  unit's membership: in `functions` ⇒ effectful/`Unknown`; a §2.2 node not in `functions` ⇒ **provably pure**;
+  in **neither** ⇒ **never analyzed** (candor makes no purity claim). `digest` is an opaque, **within-engine**-
+  stable fingerprint of the sorted analyzed-qual set (a same-input re-scan agrees; compare same-engine only —
+  qualifiers differ across engines). Present whenever the engine can enumerate its analyzed set.
+- `"unanalyzed": [ { "path": "<file>", "reason": "<why>" } ]` — the TARGET's own source candor could NOT
+  analyze (a file that failed to read/parse; a skipped unparseable class). Its units are absent NOT because
+  pure but because never seen — disclosed on stderr today but INVISIBLE to a machine reading the JSON, so a
+  bare report *looked* complete. **Omitted entirely when empty** (a complete scan is byte-identical to a
+  pre-⟨0.21⟩ report). Distinct from `coverage` (an unmodeled *dependency*): `unanalyzed` is the target's own
+  unseen source. A truly-isolated pure unit (uncalled, calling nothing) MUST still be a §2.2 call-graph node
+  (empty adjacency), so its membership reads *analyzed-pure*, never *never-seen*.
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
@@ -784,7 +810,7 @@ engine identically. Every implementation's scanner MUST accept:
 | `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
-| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given, **except on exit 2**: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. Does not change the exit code. |
+| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. On **exit 2** it writes a verdict only for an INCOMPLETE analysis (the ⟨0.21⟩ machine-legible incomplete verdict, §3.3.1) — never for a broken gate config. Does not change the exit code. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
@@ -889,10 +915,18 @@ verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 Two further MUSTs guard the verdict's integrity:
 
-- **On exit 2 (could-not-evaluate) NO verdict is written.** An unreadable policy, an invalid baseline,
-  an unknown flag — the run could not evaluate the gate, so there is no faithful verdict to emit;
-  writing `ok: true` (or `ok: false`) would fabricate one. The "written whenever the flag is given"
-  rule above carries this single exception.
+- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two
+  exit-2 causes and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
+  unknown flag) — the gate could not be evaluated at all, so NO verdict is written (a fabricated verdict would
+  be a guess); **(b) an INCOMPLETE analysis** (a source file failed to read/parse — the target's own code was
+  not fully seen) — here the engine SHOULD write a machine-legible **incomplete verdict**
+  `{ spec, ok: false, incomplete: true, unanalyzed: [ { path, reason } ], analyzed: { count } }` and exit 2.
+  This is not a fabrication: `ok: false` is honest (the gate did not certify) and `incomplete: true` +
+  `unanalyzed` say *why*, so a CI/agent reading the JSON learns the gate couldn't certify over unseen code
+  rather than having to scrape stderr — closing the machine-consumer false-all-clear the manifest fixes (a
+  green report over unanalyzed source). A configured gate over incompletely-analyzed code MUST fail closed
+  (exit ≠ 0); a real violation (exit 1) still dominates. A bare scan with no gate does not exit 2 — it
+  discloses `unanalyzed` in the report (exit 0). The `analyzed: { count }` count rides EVERY verdict (Gap 1).
 - **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A
   per-member write lets a clean last member overwrite an earlier violator's verdict — shipped as
   exactly that bug in candor-scan 0.8.1, where a workspace's `gate.json` said `ok: true` while the
@@ -1521,6 +1555,20 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.21 (all code engines declare `0.21`; conformance-pinned)** — a **tier-1 additive** rung: the
+  **completeness manifest** (COMPLETENESS-MANIFEST-DESIGN.md). The report envelope gains **`analyzed: {count,
+  digest}`** — the analyzed universe (effectful + pure = the §2.2 node set), so a bare-envelope consumer
+  computes `analyzed.count − |functions|` = the pure count and reads a unit as *effectful* / *provably-pure*
+  (a §2.2 node absent from `functions`) / *never-seen* (in neither); the digest is an opaque within-engine-
+  stable fingerprint (FNV-1a-64, one algorithm four-way; compare same-engine only). The envelope + gate
+  verdict gain **`unanalyzed: [{path, reason}]`** — the target's own source candor could not read/parse,
+  disclosed on stderr before but INVISIBLE to a machine reading the JSON. **The sharp fix (§3.3.1):** a
+  configured gate over incompletely-analyzed source now FAILS CLOSED — exit 2 with a machine-legible
+  `{ok:false, incomplete:true, unanalyzed:[…], analyzed:{count}}` verdict, instead of a green report (or an
+  exit-2 with no verdict) a CI/agent read as an all-clear over code candor never saw. A real violation still
+  exits 1; a bare scan discloses `unanalyzed` and stays exit 0. Additive (a pre-0.21 report/verdict is
+  byte-compatible bar the fields); Gap 3 (a truly-isolated pure unit is a §2.2 node) is a conformance pin.
+  Pinned four-way in `gen_completeness.py`. See COMPLETENESS-MANIFEST-DESIGN.md.
 - **0.20 (all code engines declare `0.20`; conformance-pinned)** — an **additive** rung. Primary: the
   **`Net` destination-class**. A per-function **`netClass`** report field (§2) refines the `Net` `hosts` surface
   into `known-telemetry` (a curated four-way-verbatim `TELEMETRY_HOSTS` set) / `known-partner` (a config
