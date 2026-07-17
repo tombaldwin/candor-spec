@@ -947,6 +947,16 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `closed-world` | `CANDOR_CLOSED_WORLD` | boolean (`true`/`1`/`yes`, or a bare key) |
 | `taint` | `CANDOR_TAINT` | boolean — enables the §3 **risk** mode (AS-EFF-007; two names, one mode) |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
+| `unknown-ratchet` | `CANDOR_UNKNOWN_RATCHET` | boolean — with a `baseline`, a **newly-introduced** `Unknown` fails AS-EFF-005 (default: Unknown-only gains are advisory) |
+
+**`unknown-ratchet`** (opt-in, default off) makes `deny E Unknown` adoptable on legacy DI/reflection-heavy
+code. Ordinarily an `Unknown`-only gain vs the `baseline` is *advisory* (resolution noise dominates on version
+bumps). With the ratchet on, the **current** `Unknown` surface is grandfathered — a function already `Unknown`
+in the baseline shows no gain, so it never fails — and only a **new** `Unknown` (a blind spot the baseline did
+not have) raises AS-EFF-005. A team freezes today's report as the baseline and the strict gate ratchets the
+`Unknown` surface *down* rather than failing everywhere on day one; a new `Unknown` is grandfathered by
+regenerating the baseline. (Reference engine: candor-java; the other engines MAY follow — the flag is additive
+and, when unset, leaves the AS-EFF-005 contract byte-identical.)
 
 An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for
 enforcement, but SHOULD be disclosed**: one stderr line naming the keys this engine recognizes and
