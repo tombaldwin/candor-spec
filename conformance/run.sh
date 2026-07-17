@@ -1593,6 +1593,43 @@ if [ -n "$TS_OK" ]; then
   TSQ reachable "$W/ts"                    > "$W/t_reachable.json" 2>/dev/null
 fi
 
+# PART 5c — blindspots --stats (SPEC §3.1 ⟨0.20⟩): the reason-class distribution. Three-way (R+J+T — swift
+# has no `blindspots` verb). The exact class COUNTS diverge representationally (an engine classifies its own
+# Unknowns), so this pins the CONTRACT structurally: `byClass` carries exactly the six classes as integers,
+# `sources`/`totalUnknown` are integers, every count ≤ sources, and the class memberships sum to ≥ sources
+# (every source classifies to ≥1 class — never a silent drop). Identical shape in all three declaring engines.
+"$QUERY" blindspots "$RUST_PREFIX" --stats --json  > "$W/r_bstats.json" 2>/dev/null
+java -jar "$JAR" blindspots "$W/java.json" --stats --json > "$W/j_bstats.json" 2>/dev/null
+[ -n "$TS_OK" ] && TSQ blindspots "$W/ts" --stats --json > "$W/t_bstats.json" 2>/dev/null
+python3 - "$W" "${TS_OK:+ts}" <<'PY' || rc=1
+import json, os, sys
+W = sys.argv[1]; ts = len(sys.argv) > 2 and sys.argv[2] == "ts"
+CLASSES = ["reflect", "dispatch", "indirect", "native", "unresolved", "setup"]
+engines = [("candor(rust)", "r_bstats"), ("candor-java", "j_bstats")] + ([("candor-ts", "t_bstats")] if ts else [])
+print("\n[5c] BLINDSPOTS --stats  (SPEC §3.1 ⟨0.20⟩ — reason-class distribution; structural, three-way)")
+fails = []
+for name, stem in engines:
+    p = f"{W}/{stem}.json"
+    if not os.path.exists(p) or os.path.getsize(p) == 0:
+        fails.append(f"{name}: --stats produced no output"); continue
+    d = json.load(open(p))
+    bc = d.get("byClass", {})
+    if sorted(bc.keys()) != sorted(CLASSES):
+        fails.append(f"{name}: byClass keys {sorted(bc.keys())} != the six classes")
+    src, tot = d.get("sources"), d.get("totalUnknown")
+    if not isinstance(src, int) or not isinstance(tot, int):
+        fails.append(f"{name}: sources/totalUnknown must be integers, got {src}/{tot}"); continue
+    if any(not isinstance(v, int) or v < 0 or v > src for v in bc.values()):
+        fails.append(f"{name}: a byClass count is not a 0..sources integer: {bc} (sources={src})")
+    if sum(bc.values()) < src:
+        fails.append(f"{name}: class memberships {sum(bc.values())} < sources {src} — a source went unclassified")
+    print(f"  {name:13s} sources={src} totalUnknown={tot} byClass={bc}")
+for f in fails: print(f"     FAIL {f}")
+print("  -> " + ("MATCH — every declaring engine emits the same `byClass`/sources/totalUnknown shape, counts internally consistent"
+                 if not fails else "DIVERGE — see FAIL lines"))
+sys.exit(0 if not fails else 1)
+PY
+
 # A crashed query leaves a 0-byte redirect file the comparison would then choke on with a bare
 # JSONDecodeError — name the engine and query instead, before the python ever runs.
 P5_FILES="r_show r_where r_callers r_map r_diff r_impact r_gains r_path r_blindspots r_reachable r_ladder_act r_ladder_nion r_ladder_svc \
