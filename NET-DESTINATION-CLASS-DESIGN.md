@@ -1,4 +1,12 @@
-# `Net` destination-class — telemetry vs. exfiltration, made gate-able ⟨proposed⟩
+# `Net` destination-class — telemetry vs. exfiltration, made gate-able ⟨java reference built⟩
+
+> **Status (2026-07-17):** the **java reference** is implemented + tested (`candor-java`): the curated
+> `TELEMETRY_HOSTS` set + `netDestClass` classifier, the config `net-partner` key, the per-fn `netClass`
+> report field (transitive, fail-closed on a masked/runtime surface, cross-jar propagated), the `deny
+> Net[dest…]` policy grammar + gate eval, the verdict `netClass`, and the `parsepolicy` dump — pinned by
+> `NetDestClassPolicyTest`. Open questions #1–4 below were resolved on the recommended defaults (tight
+> curated telemetry, config-only partners, a model host is `known-partner` via `isModelHost`). Remaining:
+> the **rust/ts/swift ports** + the **four-way conformance PART + SPEC §1/§6.2** (targets spec **0.21**).
 
 Refine the `Net` effect with a **destination CLASS** per host — `known-telemetry`, `known-partner`,
 `unknown-host` — so a gate can say *"the domain layer may reach our declared partners and telemetry, but

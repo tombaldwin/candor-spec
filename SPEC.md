@@ -372,9 +372,13 @@ Each entry:
                                          // commands statically visible. Same rules as `hosts`.
   "paths":        ["/etc/app"],          // OPTIONAL: when `Fs` is present, the LITERAL filesystem
                                          // paths statically visible. Same rules as `hosts`.
-  "tables":       ["ledger.entries"]     // OPTIONAL: when `Db` is present, the LITERAL database
+  "tables":       ["ledger.entries"],    // OPTIONAL: when `Db` is present, the LITERAL database
                                          // tables statically visible (table-position identifiers
                                          // in a SQL string literal). Same rules as `hosts`.
+  "netClass":     ["unknown-host"]       // ⟨0.21⟩ OPTIONAL: when `Net` is present, the DESTINATION
+                                         // classes in the fn's transitive Net surface —
+                                         // known-telemetry / known-partner / unknown-host (§6.2).
+                                         // Fail-closed: a masked/runtime host is unknown-host.
 }
 ```
 
@@ -1308,6 +1312,41 @@ via a `.candor/config` `unknown-alias <name> = <class,…>` entry that a rule re
 Unknown` means (that is always `Unknown[*]`, everywhere), so a policy's denied set is always legible from the
 policy alone.
 
+**`Net` destination-class (`deny Net[dest…]`)** ⟨0.21⟩**.** In a `deny`, the `Net` token MAY carry a bracketed
+**destination-class filter**: `deny Net[unknown-host]` denies the `Net` part only for a function whose `Net`
+reaches a host of one of the listed classes; a concrete effect in the same rule is unaffected. This makes the
+industry security use case gate-able — *"the domain layer may egress to declared partners and telemetry, but
+not to an unknown host"* — which bare `deny Net` (all destinations) cannot express. The closed, normative
+vocabulary refines a `Net` host literal (the §2 `hosts` surface) into a **destination class**:
+
+| class | source of truth | meaning |
+|---|---|---|
+| `known-telemetry` | a curated, four-way-**verbatim** `TELEMETRY_HOSTS` set (the `MODEL_HOSTS` precedent) — analytics / monitoring / error-tracking | a benign observability endpoint |
+| `known-partner` | a config-declared `.candor/config` `net-partner <host>` (per-project) **OR** a model host (the §1 `Llm` refinement — a declared-ish external API) | a host the project recognizes as a business partner |
+| `unknown-host` | the honest default — every visible host on neither list, **AND** every function whose `Net` host is unresolved / runtime-computed / structurally masked | candor makes no claim; could be benign or exfiltration |
+
+The classifier is **fail-closed** — the DUAL of the reason-class conservatism: an asserted-safe class
+(`known-telemetry`/`known-partner`) is assigned **only** from an exact host-literal match against the curated
+set / declared partners (the literal IS the match key). Everything else is `unknown-host`: an unresolved or
+runtime-computed host, a **structurally-masked** surface (an AS-EFF-008 incomplete `Net` — so a benign visible
+telemetry host can never certify a function that *also* reaches an invisible endpoint), and any host on neither
+list. So `deny Net[unknown-host]` fails closed on anything candor cannot positively identify — over-reporting
+the exfiltration risk, never under-reporting it. The destination class **propagates transitively** along the
+call graph exactly as the `Net` effect does. Filter forms mirror `Unknown[…]`:
+
+- bare **`Net`** and **`Net[*]`** mean **all destinations** — a pre-0.21 `deny Net` is byte-identical
+  (backward-compatible; narrowing is opt-in).
+- an **unrecognized class token** in the brackets is **dropped with a warning** (the rule keeps its recognized
+  classes).
+- **`pure`** is unaffected — it fails on *any* `Net`; destination-scoping is a `deny`-side feature only.
+
+Per-function, a conformant report MAY carry a **`netClass`** array (§2) — the destination classes present in a
+function's transitive `Net` surface — and an `AS-EFF-006` `--gate-json` verdict whose `effects` include `Net`
+records the same array (all classes on the function, not just the matched one), so a consumer sees which class
+the security gate bit. `net-partner` is per-project and so MUST be config-declared, never a universal list; and
+like `unknown-alias` it is a spelling of *"I accept `Net` to this host"* — it can never make a bare `deny Net`
+narrower, so a policy's denied set stays legible from the policy alone. (Design: `NET-DESTINATION-CLASS-DESIGN.md`.)
+
 **Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not
 substring**. Split both on the language's path separator (`::` in Rust, `.` on the JVM) — **and on the
 language's nested-scope boundaries**, the same boundaries the §3.1 query name ladder recognizes: the
@@ -1477,6 +1516,18 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.21 (STAGED — engines still declare `0.19`; ships when the rung is cut)** — an **additive** rung: the
+  **`Net` destination-class**. A per-function **`netClass`** report field (§2) refines the `Net` `hosts` surface
+  into `known-telemetry` (a curated four-way-verbatim `TELEMETRY_HOSTS` set) / `known-partner` (a config
+  `net-partner <host>` OR a model host) / `unknown-host` (the fail-closed default — a masked/runtime host, or a
+  host on neither list). A `deny` may narrow its `Net` part to those classes — **`deny Net[unknown-host]`** — so
+  the security use case *"egress only to known destinations"* is gate-able where bare `deny Net` (all
+  destinations, unchanged) is all-or-nothing. The class propagates transitively like the effect; the verdict
+  carries `netClass` on a `Net` denial. Fail-closed by construction: an asserted-safe class comes only from an
+  exact host-literal match, so an exfiltration `Net` can never slip a `deny Net[unknown-host]`. A pre-0.21
+  report/policy is unaffected (field + bracket syntax are additive). Pinned four-way in conformance PART 4
+  (`netClasses` parse) + the Net destination-class differential (`gen_netclass.py` — the fail-closed gate
+  posture). See `NET-DESTINATION-CLASS-DESIGN.md`.
 - **0.19 (all code engines declare `0.19`; conformance-pinned)** — a **tool-surface** rung (no report-schema
   change; a 0.18 report is byte-identical under 0.19). TIER-2 required: **reason-scoped `Unknown` policies**
   (§6.2). A `deny` may narrow its `Unknown` part to a fixed cross-engine reason-class vocabulary —

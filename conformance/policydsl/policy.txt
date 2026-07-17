@@ -32,3 +32,7 @@ deny Fs Unknown[bogus,reflect] io            # an unknown reason-class token is 
 deny Net Unknown[risky] api2                  # config `unknown-alias risky` → reflect,native,dispatch (discovered .candor/config)
 deny Exec Unknown[telemetry] jobs             # config `unknown-alias telemetry` → indirect
 deny Db Unknown[reflect] audit                # `reflect` stays the built-in class (the config alias `reflect` is REJECTED as reserved)
+deny Net[unknown-host] domain2                # Net destination-class: narrow to unknown-host (the security gate; all engines)
+deny Net[known-telemetry,unknown-host] obs    # multiple destination classes on one rule
+deny Net[*] anywhere                          # `*` ⇒ all destinations ⇒ empty filter (like bare Net)
+deny Net[bogus,unknown-host] mixed           # an unknown destination-class is dropped with a warning; unknown-host kept
