@@ -1564,3 +1564,35 @@ arm decoding the `<dyn>` sentinel by leaf, like the Call arm. `record_return` al
 OK. Rust-only — swift/ts/java already handle getter-returns-interface (probed). Session dispatch-vein arc:
 R32–R42, ~17 fixes across all four engines, R41 done partly in PARALLEL (swift subagent + main-loop rust),
 every one regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
+
+### 2026-07-18 — dispatch-vein LONG-TAIL residuals (characterized, queued — NOT silent-unknowns)
+
+After R32–R43 the trait-object/dispatch vein is covered comprehensively (direct calls; provided-method →
+required override; trait/interface defaults; generic & dyn params; fields; HashMap values; Arc<Mutex>/RefCell
+guard chains; Option/Result unwrap in all forms; getter/method returning a bare trait object; supertraits).
+The remaining misses are the NICHE long tail — each real but progressively rarer; recorded here so they are
+documented, not silently dropped, and picked up in a focused pass:
+
+ • rust — a METHOD returning a COLLECTION of trait objects (`for d in r.all()` where `all() -> Vec<Box<dyn
+   Doer>>`): `record_return` records a SCALAR `<dyn>` sentinel for a direct dyn return (R42) but not an
+   ELEMENT-dyn sentinel for a collection return, and `resolve_elem_trait_leaves` has no method-call arm →
+   silent-pure. Needs a distinct element-dyn return sentinel (the scalar one means "the value IS a dyn" for
+   resolve_recv_traits; conflating them would mistype `r.all()` as a dyn). Moderate.
+ • rust — NESTED containers `Vec<Option<Box<dyn>>>` (`for o in xs { if let Some(d) = o { .. } }`): `trait_leaves`
+   doesn't peel Option, so the Vec element `o` gets no dyn leaves and the inner if-let has nothing to unwrap.
+   Two-level unwrap; niche.
+ • rust — TUPLE-destructured factory return `let (_, d) = make_pair()` where `make_pair() -> (u32, Box<dyn
+   Doer>)`: the tuple binder doesn't capture a dyn element. Niche.
+ • rust — BLANKET impls `impl<T: Super> Ext for T` + `i.ext()`: candor keys `trait_impls` by concrete type, so
+   a blanket impl (applies to all T meeting a bound) isn't in the CHA universe → silent-pure. Structurally
+   harder (blanket resolution). Moderately common for extension-trait crates.
+ • rust — `Default::default()` TURBOFISH/inferred (`let c: Cfg = Default::default()` with an effectful
+   `impl Default for Cfg`): the explicit `Cfg::default()` resolves, but the inferred form needs to edge the
+   annotated type's `default` (like `charge_from` does for `From`/`.into()`). Niche (effectful Default is
+   unusual).
+ • ts — a sub-interface SUPER-method (`s.base()` on `s: Sub` where `interface Sub extends Sup`, base ∈ Sup)
+   reads Unknown (disclosed, SOUND — not a cardinal sin) rather than the precise Fs java/rust give. A
+   PRECISION opportunity, not a soundness bug; left per the honesty-first posture.
+
+The rust supertrait fix (R43) has a cross-engine sibling: swift MISSES it SILENT-PURE (the same cardinal sin);
+java handles it (bytecode CHA); ts discloses Unknown (sound). The swift fix is in flight (parallel subagent).
