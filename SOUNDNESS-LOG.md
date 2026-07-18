@@ -1773,3 +1773,35 @@ qualified key mismatch, then the collision — is the template for the next owne
 Residual register: R48/R49/R52/R53 all CLOSED this session (+ R50/R51 shipped). The rust-scan receiver/
 dispatch/macro/drop surface is now saturated for the veins probed; open long-tail is the niche dispatch
 shapes (blanket impls R45, nested Vec<Option<Box<dyn>>> R46) + ts super-interface precision (R47, disclosed).
+
+### 2026-07-19 — residual-register CLEARED: R45/R46/R47 + Unary-deref (rust-scan + candor-ts)
+
+The "do the remaining open items" pass — every open residual closed, each regression-gated + A/B
+zero-fabrication + four-way conformance OK.
+
+**R45 blanket impls** (`edf35b3`). `x.ext()` from `impl<T> Ext for T` read pure (the blanket body's qual is
+`T::ext`, the generic self param). FIX: a cache-threaded `blanket_methods` map (leaf -> self-param, ambiguous
+-> ""); a TYPED unresolved `x.leaf()` edges to `by_tail2["<param>::leaf"]`. Gated to a typed receiver so an
+inherent method resolves first (regression: `calls_inherent` stays Net, not the blanket's Fs). A/B zero
+fabrication across futures-util (13 blanket impls)/syn/hyper/h2/tower — effectful blanket bodies are rare, so
+no recovery, but the vein is closed.
+
+**R46 dispatch long-tail** (`d2a58d2` nesting + `bf8ed07` tuple). (a) Nested `Vec<Option<Box<dyn>>>` /
+`Option<Vec<Box<dyn>>>`: `elem_trait_leaves` peel steps now compose (trait_leaves-or-elem_trait_leaves) and
+`resolve_elem_trait_leaves` on a bare var falls back to `trait_vars`, so the outer-then-inner unwrap keeps the
+dispatch. (b) Tuple-of-dyn destructure (`let (d,_) = pair; d.go()`): a new per-fn `tuple_trait_of` (param),
+inline-cast element extraction, and a `<tupledyn>` return sentinel (factory) — all three source forms. The
+turbofish sub-case already worked. FULLY closed.
+
+**R47 ts super-interface** (candor-ts `94d1658`). `s.base()` on `s: Sub` (`interface Sub extends Sup`, base on
+Sup) read disclosed-Unknown. FIX: register an impl class under its interface's transitive SUPER-interfaces
+(climb `extends`), so the super-method CHA finds it — the ts sibling of the rust/swift supertrait dispatch.
+553 tests + fabrication probe OK.
+
+**Unary-deref** (`249c947`). `(*b).method()` read pure — `resolve_recv_type` had no Unary arm; since candor
+collapses pointers to pointees, `*b` is transparent (recurse into the operand).
+
+The residual register is now EMPTY of open SILENT rows. Session arc (2026-07-18/19): R32–R53 + Unary-deref —
+~24 soundness fixes across rust-scan/candor-ts (+ earlier java/swift), every one A/B-validated and
+conformance-clean. The rust-scan receiver/dispatch/macro/drop/tuple surface is saturated for all probed veins;
+dynamic ground truth (the syscall oracle) remains the growth axis (§3 #1).
