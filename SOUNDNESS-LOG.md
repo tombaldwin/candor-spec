@@ -1518,3 +1518,35 @@ across params, generic bounds, AND fields. Session dispatch-vein arc complete: R
 override), R33-R35 (swift deinit/generic-operator/@dynamicCallable), R36 (rust trait-default), R37/R37b/R40
 (rust dyn-collection param/generic/field), R38 (java method-ref), R39 (swift generic-array) — every one
 regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
+
+### 2026-07-18 — R41: container / Option trait-object dispatch (candor-rust `0b0881e` + candor-swift `54e54c8`, done IN PARALLEL)
+
+Extending the collection-of-trait-objects vein to the remaining common container shapes, and — as a test of
+parallel execution — the rust and swift halves were done SIMULTANEOUSLY (a background subagent took swift
+while the main loop took rust), reconverging only at four-way conformance (the one serialization point). Both
+were independent repos, so no conflict; conformance OK after.
+
+ • candor-rust (`0b0881e`): (1) MAP VALUES `HashMap<String, Box<dyn Handler>>` via `.values()` —
+   `elem_trait_leaves` takes a map's 2nd type arg; (2) SMART-POINTER / interior-mutability chains
+   `Arc<Mutex<Vec<Box<dyn>>>>` / `Rc<RefCell<..>>` — `elem_trait_leaves` peels Mutex/RwLock/RefCell/Cell and
+   `resolve_elem_trait_leaves` peels the guard chain (`.lock`/`.unwrap`/`.borrow`/`.read`/`.as_ref`/…);
+   (3) OPTION/RESULT unwrap in EVERY form — `.map`/`for`/`.iter()` (elem_trait_leaves peels Option/Result to
+   the payload) PLUS the pattern forms `if let Some(d)` (visit_expr_if), `match { Some(d) => }`
+   (visit_expr_match), `let Some(d) = o else` (visit_local), each scoping the payload into `trait_vars` via a
+   `some_ok_binding` helper. Corpus A/B: ZERO over-fire + 4 GENUINE recoveries in pgman — `cancel_running_query`
+   et al. dispatch a `let Some(d) = self.cancel_dispatcher.as_ref() else` over `Option<Box<dyn CancelDispatcher>>`
+   whose `PgCancelDispatcher::dispatch` does `tracing::warn!` = Log (silent-missed before).
+
+ • candor-swift (`54e54c8`, background subagent): the swift twin — dict `.values` iteration, optional if-let,
+   and optional `.map` over `[any Doer]` / `(any Doer)?` all read pure. Fixes in CallCollector: `elementTypeOf`
+   yields the dict VALUE for a `.values` base; the OptionalBinding visitor binds a protoTyped-param unwrap into
+   `vars` so the existing `localProtocols` dispatch fires; the `.map` element-closure falls back to the
+   protoTyped payload. All funnel into the existing bounded-CHA `protoDispatches`. 244 tests + regression; A/B
+   pollen 3 NEW (genuine — `severities.values.contains { $0 != .none }` types `$0` as a local enum whose
+   Comparable `!=` witness reads honest Unknown via R34, sound), others 0.
+
+ts + java already handled all these container/optional forms (probed: Map values, Optional.ifPresent/get,
+Record.values). PARALLELISM NOTE: a cross-engine vein is N independent fix-cycles that fan out to per-engine
+subagents (separate repos, separate build+test) and reconverge at four-way conformance; within one engine the
+edit→build→test→A/B cycle stays sequential. This session's arc: R32–R41, ~15 fixes across all four engines,
+every one regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
