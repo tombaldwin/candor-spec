@@ -1496,3 +1496,25 @@ its own pass to avoid rushing ~15-site multi-file plumbing (incl. the MergedDecl
 registries/observers-as-fields are common, so this is high-priority. The swift/ts/java field forms should be
 swept at the same time (java erases generics + the enhanced-for over a field already worked in the R37 probe;
 ts/swift field-of-existential likely already handled — confirm).
+
+### 2026-07-18 — R40: the collection-of-trait-objects FIELD form (candor-rust `3f5dd5a`) — vein now fully closed
+
+The queued follow-on from the R37b entry, DONE. `struct Registry { handlers: Vec<Box<dyn Handler>> }` +
+`self.handlers.iter().for_each(|h| h.handle())` read silent-pure — R37/R37b's `elem_trait_of` covered PARAMS
+only. FIX: a new `field_elem_trait` index (trait-object counterpart of `field_elem`), populated in
+`collect_decls`'s struct-field walk via `elem_trait_leaves` + the struct's `generic_bounds_of_generics`
+(covers `Vec<Box<dyn Handler>>` AND a generic `Vec<T>` field on `struct Registry<T: Handler>`), threaded
+through the cache/merge layer (FileDecls/MergedDecls/merge_decls, serde-default, FOLDED INTO
+`decl_index_digest` — the `every_merged_decls_field_is_folded_into_the_digest` guard proves the incremental
+cache won't serve a stale FnInfo) + ElemIndexes → the collector's `resolve_elem_trait_leaves` Field arm.
+~15-site plumbing, all mechanical, no merge-layer bug. Gated: full workspace + digest guard + extended
+regression (concrete / for_each / generic FIELD carry; concrete-element field pure); corpus A/B ~950 real
+fns ZERO over-fire; four-way conformance OK.
+
+CROSS-ENGINE SWEEP of the field form (probed): swift (`self.handlers: [any Handler]` for-loop + forEach),
+ts (`this.handlers: Handler[]`), java (`List<Handler>` enhanced-for + `forEach(Handler::handle)`) ALL
+already handle it → rust was the sole miss. So the collection-of-trait-objects vein is now CLOSED four-way
+across params, generic bounds, AND fields. Session dispatch-vein arc complete: R32 (four-way provided→
+override), R33-R35 (swift deinit/generic-operator/@dynamicCallable), R36 (rust trait-default), R37/R37b/R40
+(rust dyn-collection param/generic/field), R38 (java method-ref), R39 (swift generic-array) — every one
+regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
