@@ -1628,3 +1628,38 @@ tuple-destructure of a dyn factory return, BLANKET impls (`impl<T: Bound> Ext fo
 turbofish; ts sub-interface super-method precision (Unknown→Fs). Session dispatch arc: R32–R44 across all four
 engines, ~20 fixes, R41/R43 halves done in PARALLEL via subagents, every one regression-gated + corpus-A/B'd
 + four-way-conformance-clean, all on 0.22.
+
+### 2026-07-18 — post-dispatch probing: gate surface verified sound; R48/R49 characterized (rust-scan)
+
+After the R32–R44 dispatch arc saturated, probed two fresh families. **(1) The gate/verify surface** —
+confirmed SOUND on both axes a machine consumer depends on. `Unknown` handling: `deny Fs` does NOT silently
+pass a disclosed `Unknown` (prints the `→ add 'deny Fs Unknown'` remediation), `deny Unknown` catches it, and
+a MISTYPED reason-class (`Unknown[callback]` where the class is `unresolved`) FAILS CLOSED (flags anyway, not a
+silent pass). Completeness manifest (0.21): an unparseable file under `deny Fs` yields **exit 2**,
+`ok:false, incomplete:true`, and names the unanalyzed file — no green gate over code candor couldn't read.
+**(2) Two theoretical rust-scan veins found + characterized as residuals, NOT shipped**, both on evidence:
+
+**R48 — local `macro_rules!` with a DIRECT-I/O template.** `macro_rules! do_io { () => { fs::write(..) } }`
+reads pure (`visit_macro` scans invocation ARG tokens + expands `cfg_if!`, never the definition template).
+Metavar templates (`$m` interpolating a caller expr) ARE already caught (the effectful call comes from the
+arg). Zero corpus incidence: dozens of crates, 8 `macro_rules!` total, NONE direct-I/O (only the synthetic
+probe). Pre-designed fix (deferred): cache-threaded `local_macros` map → `$`-strip + parse-or-skip the arm
+template + inline `visit_block`. Not shipped — 15-site plumbing for a construct that never appears (real
+effectful macros interpolate a caller expr or call a fn, both already caught).
+
+**R49 — local effectful-`Drop` guard held as a struct FIELD.** `struct Session { _g: Guard }` constructed
+locally runs `Guard::drop` at scope exit but reads pure; only the DIRECT case (a local of the drop-type) is
+charged. A prototype fix (transitive drop-owner closure over `drop_types` × `fields`/`field_elem`, no new
+cache plumbing) was BUILT + regression-green, then **REVERTED on the A/B gate**: it fabricated **14 false
+`Unknown`s on flate2** — `Compress::new`/`Decompress::new`/… CONSTRUCT AND RETURN the owner, whose owned
+`Stream` FFI-Drop runs in the CALLER's scope, not the constructor's. Field-owners are overwhelmingly
+constructed-to-be-RETURNED (resource wrappers), so the returned-value ESCAPE case DOMINATES this vein — unlike
+direct guards (used locally), where the same over-approximation is rare/accepted (the existing
+`returns_via_let` over-charge). A correct fix needs a swift-R33-style escape gate, which needs return-type info
+not cheaply available (FnInfo carries none; the `returns` index is leaf-keyed so `::new` collides → dropped
+ambiguous). Zero corpus incidence for direct effects (flate2, the only real local-Drop crate, flushes to a
+generic writer — not a classified effect). LESSON: the A/B gate did its job — a fix that is green on synthetic
+regressions can still do NET HARM on real code; the naive drop-field extension fabricates on the pervasive
+constructor pattern while helping ~zero real cases. Both R48/R49 are documented-with-fix, not accepted-blind:
+the honesty-first posture prefers a disclosed known-gap over shipping either a no-incidence plumbing round or a
+fabricating over-approximation.
