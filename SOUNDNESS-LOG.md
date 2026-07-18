@@ -1706,3 +1706,26 @@ incidence + touches `visit_local`'s hot typing path; the safe fix is a clone-onl
 never charge the clone). Session receiver-typing arc: R50 (inline struct-literal) + R51 (smart-pointer ctor)
 shipped, R52 residual — all discovered while sitting in `resolve_recv_type`/`ctor_type` after the R48/R49
 probes; the A/B gate passed both ships (zero over-fire) and had rejected R49 (14 flate2 fabrications).
+
+### 2026-07-18 — R52 SHIPPED: clone-rebind type-carry recovers the clone-then-use idiom (candor-rust `2f487dd`)
+
+Characterized as a residual earlier this session, then reconsidered + shipped when the A/B revealed it
+recovers REAL silent-pure. `let b = a.clone(); b.method()` read pure — `ctor_type` doesn't consult `vars`
+for the clone receiver, so `b` typed to nothing and `b.method()` dropped. `Clone::clone(&self) -> Self` is
+type-preserving, so the rebind keeps the receiver's type. FIX: at the `let` binding, an untyped
+`<expr>.clone()` init carries `resolve_recv_type(<expr>)` to the binding. The clone CALL stays uncharged, so
+the anti-fabrication guard (`smart_pointer_receiver_resolves_pointee_method_but_not_clone`: `arc.clone()` is
+the pure `Arc::clone`, never the effectful pointee clone) is untouched — verified a local `let db =
+Arc::new(Inner); db.clone()` with an EFFECTFUL `Inner::clone` stays pure. This is THE async-service idiom:
+`let self_ = self.clone(); self_.call_async(dst).await` (tower/hyper `Service::call` clone self into the async
+block) and `let mut cmd = self.cmd.clone(); cmd.build()` (command builders). A/B — ALL recoveries, ZERO
+concrete fabrication, ZERO removed: **hyper-util `HttpConnector::call` → [Log,Unknown]** (CONFIRMED: `let mut
+self_ = self.clone(); self_.call_async(dst)` → the DNS/TCP connect path's `trace!` + the async dispatch, a
+genuine silent-pure recovery — the tower Service pattern), **clap_builder +30** (Usage/Parser/Validator clone
+`self.cmd: Command` then `cmd.build()`/`find_subcommand`, which dispatch through `Box<dyn TypedValueParser>`
+value parsers → honest Unknown; `MapValueParser` has a real `callback:unresolved call` at the leaf). reqwest/
+bytes/mio/tower-service/syn/tokio/serde_json: zero change. LESSON: don't pre-judge a vein's value by a crude
+incidence grep — the clone-rebind looked like "3–4 per crate, mostly not-fixable", but the A/B on real code
+showed the `self.clone()`-into-async-block pattern is pervasive and was silently dropping whole Service::call
+effect chains. The session receiver-typing arc is now R50 + R51 + R52 all SHIPPED (inline struct-literal,
+smart-pointer ctor, clone-rebind); R48/R49/R53 residual. Four-way conformance OK after each.
