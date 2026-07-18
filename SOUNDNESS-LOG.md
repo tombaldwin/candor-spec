@@ -1729,3 +1729,47 @@ incidence grep — the clone-rebind looked like "3–4 per crate, mostly not-fix
 showed the `self.clone()`-into-async-block pattern is pervasive and was silently dropping whole Service::call
 effect chains. The session receiver-typing arc is now R50 + R51 + R52 all SHIPPED (inline struct-literal,
 smart-pointer ctor, clone-rebind); R48/R49/R53 residual. Four-way conformance OK after each.
+
+### 2026-07-18 — residuals closed: R53 (UFCS), R48 (local macro), R49 (drop-field)
+
+"Close residuals" pass — all three open rust-scan residuals fixed, each A/B-validated + regression-gated +
+four-way conformance OK, every one turning out sound (and two far more valuable than their "low incidence"
+estimates suggested).
+
+**R53 — trait-qualified UFCS** (`dbc1e24`). `<T as Trait>::m(&t)` / `Trait::m(&t)` dropped silent (no fn
+`Trait::m`; the impl is `T::m`). FIX: an ADDITIONAL precise typed `T::method` edge from the STATICALLY-KNOWN
+receiver — the qself type of `<T as Trait>::m` (explicit impl, correct even for an associated fn) or the first
+arg's type of `Trait::m(&t)`. NEVER CHA-over-all-impls (T is known → charging other impls fabricates). Gate:
+`LocalTrait.methods` filtered to `&self` methods (both its uses are receiver calls), so an ASSOCIATED fn
+(`Trait::build(&data)`) is never mis-read as a receiver call on `data`. A/B zero concrete over-fire ~2600 fns
+(only +Unknown recoveries, e.g. syn `Box::parse` resolving `<Pat as ParseQuote>::parse`). Controls pass.
+
+**R48 — local `macro_rules!` template** (`94f333c`). A bare `NAME!(..)` whose TEMPLATE does I/O read pure
+(syn leaves the body opaque; the arg-walk sees only invocation args). FIX: collect each `macro_rules!` → its
+arm tokens (a cache-threaded string map mirroring const_strings — new `local_macros` through FileDecls/
+MergedDecls/merge/digest); at a bare invocation, `$`-strip metavars + parse-or-skip each arm as a block +
+inline-visit it (recursion-guarded; only ever ADDS visibility). FAR higher value than "zero incidence": it
+recovers the PERVASIVE local-logging-wrapper pattern (`macro_rules! trace { ($($a:tt)*) => { tracing::trace!(
+$($a)*) } }`) — tokio-util +4 Log (FramedImpl::poll_*), h2 +8 Log (proto_err! wrapping tracing::debug), zero
+fabrication. The original do_io!/log_file!/call_sink! probes + the metavar case all work.
+
+**R49 — effectful-Drop guard as a struct FIELD** (`3e2a52c`). The hard one — the first prototype A/B-reverted
+(14 flate2 fabrications) because a constructor's owned drop-type ESCAPES into the returned aggregate
+(`Compress::new` builds a `Stream`, returns the `Compress`). FIX has three parts: (1) a transitive drop-owner
+closure (`drop_types` × `fields`/`field_elem`, leaf-keyed, to a fixpoint); (2) a RETURN-ESCAPE gate — skip the
+field charge when the fn returns a local aggregate or drop-type (a new `FnInfo.ret_idents`, `-> Self` resolved
+to the impl type). The gate is a CONSERVATIVE MEMBERSHIP check, not ownership traversal, because flate2's
+parallel read/write/bufread modules create leaf-name COLLISIONS (three `GzEncoder`s etc.) that defeat precise
+ownership — a membership check stays sound there (over-skips toward under-report, never fabricates); (3)
+ADDITIVE-only — the shipped DIRECT drop-glue is untouched, so no new under-reports (an earlier variant that
+also gated the direct case removed 12 flate2 + 13 h2 charges of uncertain correctness → rejected). A/B: ZERO
+concrete fabrication AND zero removed across flate2/syn/h2/tokio-util/hyper/clap/reqwest; recovers the clean
+local-guard-as-field cases; flate2 +2 (the two `reset` methods legitimately flush+recreate the FFI stream).
+LESSON: when precise analysis is defeated by a corpus pathology (name collisions), a conservative membership
+gate + additive-only composition buys soundness without trading the cardinal sin for its mirror
+(under-report). The debugging path — instrument `drops_here`/`escaping`/`owned_drops`, find the leaf-vs-
+qualified key mismatch, then the collision — is the template for the next ownership-closure bug.
+
+Residual register: R48/R49/R52/R53 all CLOSED this session (+ R50/R51 shipped). The rust-scan receiver/
+dispatch/macro/drop surface is now saturated for the veins probed; open long-tail is the niche dispatch
+shapes (blanket impls R45, nested Vec<Option<Box<dyn>>> R46) + ts super-interface precision (R47, disclosed).
