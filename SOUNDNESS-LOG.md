@@ -1353,3 +1353,28 @@ sweep discipline exists to catch. DURABLE: when one engine surfaces a "provided 
 override" vein, sweep the OTHER three immediately — the driving mechanism differs per language (std trait
 provided method / JDK abstract-class provided method / protocol-extension default / node-stream public API)
 but the silent-pure outcome is identical, and cross-engine agreement HID it in all four at once.
+
+### 2026-07-18 — R33 deinit-glue: an effectful deinit charges the constructing scope (candor-swift `3f5b0f4`)
+
+Probing the destructor/cleanup family (the deliberate R32 leftover). Confirmed swift-only: rust's Drop-glue
+already charges the constructing scope (verified — `let r = Resource;`→Fs, `factory()->Resource`→pure);
+java's finalizer/Cleaner is non-deterministic (rightly not scope-attributed) and try-with-resources emits an
+explicit `close()`; ts has no deterministic destructor. candor-swift MINTED `Type.deinit` but its own comment
+said "there is no single caller site to charge" — so `func f() { let r = Resource(); … }` with an effectful
+`Resource.deinit` read SILENT-PURE at every caller (a `deny Fs` false all-clear, deterministic under ARC for
+a non-escaping local).
+
+FIX (CallCollector), mirroring rust's let-bound Drop-glue: a `let`/`var` LOCAL bound to a fresh CONSTRUCTION
+(the ctor/factory-CALL branch, never a bare-identifier alias) of a local type edges to `<t>.deinit`. TWO
+subtleties earned in corpus A/B: (1) emit a `propertyEdges` SOFT edge, NOT a typed Call — a typed
+`Struct.deinit` fell through to the external-protocol member-dispatch fallback and FABRICATED Unknown for any
+conformer of a non-pure external protocol (pollen's `PollenActivityAttributes: ActivityAttributes` — a struct
+with no deinit — got a spurious Unknown on `start()`); the soft edge resolves-or-drops via resolveQual and
+never reaches that fallback. (2) a returned binding ESCAPES (`let v = View(); return v` — the pervasive SwiftUI
+`makeNSView` factory) must be skipped, via a per-function returned-identifier pre-scan (ReturnedNameCollector)
+— else 6 makeNSView methods in pollen over-charged. Field-store (`self.f = Type()`) and alias (`let r = other`)
+are structurally excluded (not the ctor-binding branch). GATES: 240 suite green + regression; ZERO over-fire
+A/B across ~1483 real functions (pollen, swift-argument-parser, candor-swift-self — 0 changed after both
+subtleties fixed); four-way conformance OK. DURABLE: the destructor/cleanup vein is deterministic ONLY where
+the language guarantees scope-exit destruction (rust Drop, swift ARC deinit of a non-escaping local) — a
+GC/finalizer language (java, ts) has no such edge, so this class is a two-engine concern, both now closed.
