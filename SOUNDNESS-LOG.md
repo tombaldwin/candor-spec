@@ -1413,3 +1413,29 @@ candor-swift-self), four-way conformance OK. DURABLE: swift has a LONG tail of d
 result builders) — each a separate desugar path that must be wired into the effect graph; sweep them as a
 family, and the discriminator for "fix vs leave" is whether the dispatch target is LOCAL (fix, precise) or
 EXTERNAL (leave — CHA would fabricate or flood, per the Iterator/Add precedent).
+
+### 2026-07-18 — R36: rust trait-default → required-method dispatch (candor-rust `7f80e41`)
+
+The general form of the R32 vein (a default method calling a requirement) swept across all four engines.
+Java (`default void saveAll(){ persist(); }`) and TS (`abstract class Store { abstract persist(); saveAll(){
+this.persist(); } }`) already resolve it — java via bytecode CHA on the default's `invokeinterface this.persist`,
+ts via class-CHA — and swift via R32's protocol-extension→conformer dispatch. candor-RUST was the one miss:
+inside a trait default, decls.rs types `self` as the TRAIT, so `self.persist()` is `Store::persist` — a bodiless
+REQUIREMENT (no unit) and the existing trait-default fallback keys `type_to_traits` on IMPL types, not the trait
+— so an effectful `impl Store for Db { fn persist }` reached ONLY through the default read silent-pure.
+
+FIX (scan.rs typed-method fallback): when the receiver type is a LOCAL TRAIT (`trait_decls`) declaring `leaf`
+and nothing resolved locally, CHA `leaf` over the trait's IMPLS (`trait_impls`) and edge to each impl witness,
+bounded ≤12. The `trait_decls` gate stops a struct-named receiver from hijacking; the bounded union is sound
+(a default's callers can use any impl); a pure impl contributes nothing. GATES: full workspace + regression
+`trait_default_dispatches_required_to_impl_witness`; corpus A/B ~950 real fns ZERO effect changes (flate2 gains
+2 call-graph edges to PURE compression targets — coverage, not fabrication); four-way conformance OK. So this
+vein is now closed four-way: rust R36 (fix), swift R32, java + ts (already sound). Also part of the broad
+autonomous dispatch-vein sweep that confirmed SOUND (no fix): default-parameter effects, property observers /
+subscripts / computed getters, property wrappers, `perform`, async/concurrency (Task/async-let/TaskGroup/
+setTimeout/Promise-executor), keypath, result builders, `defer`, `map`/`forEach` closures, rust `Index` /
+`?`-effectful-From / enum / closure-field, java Stream / CompletableFuture / enum-abstract / anon-inner /
+Runnable, ts async-gen / yield* / Proxy / #private / object-getter. TS method DECORATORS that rewrite a method
+to inject an effect are a known UNFIXABLE limitation (blanket-Unknown on every decorated call would flood the
+ubiquitous metadata-only `@Get`/`@Input`; the effect mis-attributes to the decorator fn) — the "can't see
+arbitrary runtime metaprogramming" boundary.
