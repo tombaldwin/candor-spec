@@ -1684,3 +1684,25 @@ over-approximation. Four-way conformance OK. FOUR-WAY SWEEP: ts (`new RowIter().
 syntax distinct from a call; the others construct via `new`/`T(..)` calls that already type the receiver.
 LESSON pair with R49: incidence is low for BOTH, but R50 ships (correct + zero-over-fire) while R49 doesn't
 (fabricates) — the discriminator is the A/B gate, not the incidence.
+
+### 2026-07-18 — R51: smart-pointer ctor typed as its pointee (candor-rust `f93bd6a`)
+
+Second REAL ship of the receiver-typing sweep (after R50). `let db = Arc::new(Db::new()); db.migrate()`
+read silent-pure — `ctor_type`'s Call arm typed the ctor as the impl-less wrapper "Arc" and DROPPED the
+`<Db>` generic arg, so `db.migrate()` sought "Arc::migrate" and dropped. `type_path` already peels an
+`Arc<Db>` FIELD/param (the duct corpus find — a whole public API pure because `self.0: Arc<ExpressionInner>`);
+this closes the LOCAL-BINDING form `let x = Arc::new(..)` + the inline `Arc::new(Db::new()).query()` shape.
+FIX: `ctor_type` types a transparent owned smart-pointer ctor (`Box`/`Rc`/`Arc::new(x)`) as the pointee
+(the arg's `ctor_type`); Mutex/RefCell/RwLock/Cell are NOT peeled (their `.lock()`/`.borrow()` live on the
+wrapper, so `Arc::new(Mutex::new(x))` stays "Mutex"). SOUND: the value auto-derefs to the pointee, and the
+`local_types` gate confines the `Type::method` link to LOCAL types. A/B **zero over-fire AND zero removal
+across ~2400 real fns**; recovers the realistic Arc<Service>/Box<Engine> setup pattern. CRITICAL CHECK — the
+fix types `db` as the pointee "Db", so I verified it did NOT open the clone-fabrication hole the existing
+`smart_pointer_receiver_resolves_pointee_method_but_not_clone` test guards: a local `let db = Arc::new(Inner);
+db.clone()` with an EFFECTFUL `Inner::clone` stays pure (the general `.clone()` suppression is receiver-type-
+independent). Regression added; four-way conformance OK; rust-specific (Box/Rc/Arc have no java/ts/swift
+analog). The clone-REBIND sibling (`let b = a.clone(); b.run()` loses `b`'s type) is left as R52 — low
+incidence + touches `visit_local`'s hot typing path; the safe fix is a clone-only type-carry (carry the type,
+never charge the clone). Session receiver-typing arc: R50 (inline struct-literal) + R51 (smart-pointer ctor)
+shipped, R52 residual — all discovered while sitting in `resolve_recv_type`/`ctor_type` after the R48/R49
+probes; the A/B gate passed both ships (zero over-fire) and had rejected R49 (14 flate2 fabrications).
