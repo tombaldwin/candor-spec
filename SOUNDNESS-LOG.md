@@ -1663,3 +1663,24 @@ regressions can still do NET HARM on real code; the naive drop-field extension f
 constructor pattern while helping ~zero real cases. Both R48/R49 are documented-with-fix, not accepted-blind:
 the honesty-first posture prefers a disclosed known-gap over shipping either a no-incidence plumbing round or a
 fabricating over-approximation.
+
+### 2026-07-18 — R50: inline struct-literal receiver typed (candor-rust `71fad60`)
+
+A REAL (shipped) fix in the same probing session that produced R48/R49 (both residual). A value
+CONSTRUCTED INLINE and immediately consumed read silent-pure: `for _ in (RowIter { conn }) {}` and
+`(RowIter { conn }).count()` — the iterator-forcing edge (`charge_iter_next`) and method resolution both
+type the receiver via `resolve_recv_type`, which handled a constructor CALL (`Expr::Call` → `ctor_type`) but
+had no `Expr::Struct` arm, so an inline struct literal returned None. FIX: one `Expr::Struct` arm delegating
+to `ctor_type` (which already types a struct literal via `type_from_value_path`); `Paren`/`Group` wrappers
+were already unwrapped by existing arms, so a parenthesised for-head (Rust grammar REQUIRES the literal
+parenthesised there) reaches it. The var / method-result / consuming-combinator cases already worked — only
+the inline-literal receiver was missed. SOUND: the receiver genuinely IS that type, and scan.rs's
+`local_types` gate confines any resulting `Type::method` link to LOCAL types → never fabricates. Contrast
+with R49 (reverted): R49's A/B fabricated 14 Unknowns on flate2; THIS A/B is **zero over-fire AND zero
+removal across ~2600 real fns** (syn 1442, serde_json 348, tokio 148, clap_builder 142, hyper 124,
+candor-scan 73, flate2 48, regex 16) — the same gate cleanly separating a sound completion from a fabricating
+over-approximation. Four-way conformance OK. FOUR-WAY SWEEP: ts (`new RowIter().drive()`) and swift
+(`RowIter().drive()`) both already SOUND — rust-specific because only Rust has struct-literal construction
+syntax distinct from a call; the others construct via `new`/`T(..)` calls that already type the receiver.
+LESSON pair with R49: incidence is low for BOTH, but R50 ships (correct + zero-over-fire) while R49 doesn't
+(fabricates) — the discriminator is the A/B gate, not the incidence.
