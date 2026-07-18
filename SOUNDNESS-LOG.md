@@ -1322,3 +1322,34 @@ carries; pure-impl + coincidental-write + std-sink stay pure); ZERO over-fire A/
 abstract `in.read()`); four-way conformance OK. So R32 is closed in the rust AND jvm engines. Cross-engine
 vein check still OPEN for candor-ts (a Node `Writable._write` reached via `.write()`) and candor-swift (a
 protocol extension's provided method driving a required witness) — probing next.
+
+### 2026-07-18 — R32 sweep COMPLETE: swift + ts siblings (candor-swift `ef1d1c7`, candor-ts `77cd4ae`)
+
+Completing the cross-engine R32 sweep. Both remaining engines had the same family — a PROVIDED method
+driving a required override the engine never reached — confirmed by probe (each a `deny Fs` false all-clear):
+
+ • candor-swift: an UNQUALIFIED requirement call inside a PROTOCOL EXTENSION (`extension Sink { func
+   provided() { req() } }`) dispatches to the conforming type's WITNESS. `req()` (implicit self, `Self: Sink`)
+   was collected as a plain Call, never a protoDispatch, so the extension never dispatched to conformers →
+   `s.provided()` → `S.req`'s Fs read pure. FIX (CallCollector): an unqualified call inside a protocol
+   extension/default body also records a protoDispatch(protocol, name); the Driver's existing bounded-CHA
+   (≤12 conformers, protocolMethods guard) resolves it ONLY for a real requirement, so a bare free-fn call
+   is filtered there and still resolved by the plain Call (kept — no loss, the `viaFree` control proved it).
+   238 suite + regression; 0 over-fire A/B ~1.5k fns (pollen, self, swift-argument-parser — the last
+   protocol-extension-heavy).
+
+ • candor-ts: a node:stream Writable's public `.write()`/`.end()` drive the user's `_write`/`_writev`/
+   `_final`/`_transform`/`_flush` and a Readable's `.read()` drives `_read` — INSIDE node core, invisible.
+   A custom effectful stream reached only via the public API read pure. FIX (scan.mjs): at `recv.method()`,
+   when method is a stream driver and `recv`'s class transitively `extends` a node stream base (matched
+   SYNTACTICALLY by canonical base name that is NOT a local class — resolves WITHOUT @types/node, and a
+   project `class Writable` shadows), edge to the local `_write`/`_read` override. resolve-or-skip: non-stream
+   receiver / external stream / inert override adds nothing (the `viaInert`/`viaLogger` controls proved no
+   fabrication). 551 suite + 5 regression checks; 0 over-fire A/B ~770 fns (got, node-tar — stream-heavy).
+
+Four-way conformance OK after each. R32 is now closed in ALL FOUR engines — the exact shape of a
+cross-engine-agreement blind spot (every engine agreeing on the wrong pure answer) that the SOUNDNESS-LOG
+sweep discipline exists to catch. DURABLE: when one engine surfaces a "provided method drives a required
+override" vein, sweep the OTHER three immediately — the driving mechanism differs per language (std trait
+provided method / JDK abstract-class provided method / protocol-extension default / node-stream public API)
+but the silent-pure outcome is identical, and cross-engine agreement HID it in all four at once.
