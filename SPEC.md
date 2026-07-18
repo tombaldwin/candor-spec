@@ -17,11 +17,15 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.21** — all code engines declare `0.21`; the floor is conformance-pinned. How versions
+**Version 0.22** — all code engines declare `0.22`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
+below. The ⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.21 is a tier-1 additive
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.22 is a tier-2 rung — the
+`verify` oracle**: candor's dynamic honesty check — `observed(f) ⊆ inferred(f) ∪ {Unknown}` per executed function —
+shipped per-engine as `candor verify` with mechanism-independent capture arms and a fail-closed exit-2 verdict
+when runtime attribution is incomplete; per-engine, not conformance-differential. The report and verdict schema
+are unchanged from 0.21, so a 0.21 consumer is unaffected. **0.21 is a tier-1 additive
 rung — the completeness manifest** (§2 + §3.3.1): the envelope carries **`analyzed: {count, digest}`** and
 **`unanalyzed: [{path, reason}]`** so a consumer distinguishes *provably-pure* (analyzed, omitted) from
 *never-seen*, and incompleteness is **machine-legible** — a configured gate over source that failed to parse
@@ -248,7 +252,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.21" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.22" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1602,6 +1606,17 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.22 (all code engines declare `0.22`; conformance-pinned)** — a **tier-2** rung: the **`verify` oracle**,
+  candor's dynamic honesty check. `candor verify` runs the analyzed program and asserts, per executed function,
+  that observed runtime effects are contained in the report's declared set up to `Unknown` — `observed(f) ⊆
+  inferred(f) ∪ {Unknown}` — falsifying a silent under-report (the cardinal sin) at runtime. It ships with
+  mechanism-independent capture arms (a language-level preload, a JVM `-javaagent`, a syscall parser) and fails
+  **closed** (exit 2) when runtime attribution is incomplete rather than certifying a clean pass. The oracle is
+  **per-engine** (not conformance-differential — like the other tool surfaces). The rung also folds in two
+  corpus-found soundness fixes (a JVM bridge-method attribution false-positive; a Node effect-polymorphism
+  boundary — `process.env` aliased through a parameter) and the opt-in **unknown-ratchet** gate flag. The report
+  and verdict **schema are unchanged from 0.21** — a 0.21 consumer reads a 0.22 report/verdict unaffected.
 
 - **0.21 (all code engines declare `0.21`; conformance-pinned)** — a **tier-1 additive** rung: the
   **completeness manifest** (COMPLETENESS-MANIFEST-DESIGN.md). The report envelope gains **`analyzed: {count,

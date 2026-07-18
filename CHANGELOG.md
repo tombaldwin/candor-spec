@@ -12,7 +12,14 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.18 — current floor (the trust-trio)
+## 0.22 — current floor (the `verify` oracle)
+
+The **`verify` oracle** rung — candor's dynamic honesty check (`observed(f) ⊆ inferred(f) ∪ {Unknown}` per
+executed function), shipped per-engine as `candor verify` with a fail-closed exit-2 incomplete-attribution
+verdict; the report and verdict schema are unchanged from 0.21. See **SPEC.md §8** for the authoritative,
+full changelog (this file summarizes).
+
+## 0.18 — the trust-trio
 
 A pinned-tool-surface rung (no report-schema or verdict change; a 0.17 report and gate verdict are
 byte-identical under 0.18). Two TIER-2 required additions, both enforcing §4 "never a false all-clear" at the
