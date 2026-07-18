@@ -1257,3 +1257,41 @@ CONTAINS the site. The real smoke test flips VIOLATED→HOLDS; the seeded silent
 unit (101 unit + 495 suite green). LESSON: a synthetic fixture (my /tmp/vapp) validated the silent-miss
 fix but could not have surfaced the false-positive regression — only real code with big functions holding
 nested pure callbacks did. Corpus testing earns its keep precisely on the cases you would not think to write.
+
+### 2026-07-18 — provided io::Write/io::Read methods → the local required-method impl (candor-rust, both front-ends)
+
+Probing candor-rust indirect-effect veins (session e1c32da9, Tom "keep going"). Confirmed sound on
+closure-in-iterator, fn-pointer→Unknown, `set_var`/`var`→Env, `Command::spawn`→Exec, custom `dyn Sink`/
+`dyn Fn`→Unknown. Then a DECISIVE fixture surfaced a real silent under-report: a std-PROVIDED trait method
+whose body lives in std and dispatches back into the receiver's REQUIRED method. `w.write_all(..)` /
+`w.write_fmt(..)` drive `io::Write::write`; `w.write_char(..)` drives `fmt::Write::write_str`;
+`r.read_to_end(..)`/`read_to_string`/`read_exact` drive `io::Read::read` — the driving happens INSIDE std,
+invisible to the scan. So a call on a CONCRETE LOCAL `impl Write`/`impl Read` whose `write`/`read` is
+effectful read PURE at EVERY caller, even on a concrete receiver (a `FileSink` doing `fs::write` inside its
+`write`, reached via `s.write_all()`, with a pure ctor → the Fs vanished). Only the `write!`/`writeln!`
+MACRO writer edge had been recovered; the direct METHOD-CALL form had not — asymmetric with the custom
+`dyn Sink` case, which correctly disclosed Unknown.
+
+FIX, both Rust front-ends (the shipped stable scan AND the nightly MIR lint — one spec, so both):
+ • candor-scan (`445a1e0`): `is_write_provided`/`is_read_provided` (lang.rs) + a coercion charge in
+   `visit_expr_method_call` (collector.rs), exactly like the existing iterator-`next` / `to_string`-`fmt`
+   coercions. Resolve-or-skip on the concrete local type via `charge_coercion` — a std `Vec`/`File`/`String`
+   receiver is absent from `trait_impls` (LOCAL impls only) → no edge; a generic/`dyn` receiver yields no
+   concrete type → the documented external-dispatch miss, unchanged. `s.write_all()` → precise Fs.
+ • dylint lint (`445a1e0`): generalized `fmt_write_local_edge` → `io_provided_local_edge`, lifting the
+   callee-name gate from `write_fmt`-only to the full provided-method set, driven method chosen by
+   (trait, provided-method) so an io method never resolves against `fmt::Write` and vice-versa. `w.write_all()`
+   → Fs* + its honest Unknown residual (identical to the pre-existing `write!`-macro `via_write_io` case).
+
+Both engines now recover the effect AND AGREE. GATES: full candor-rust workspace suite green (new
+in-process regression `provided_io_methods_reach_local_impl_required_method` in candor-scan tests.rs +
+extended `ui/write_trait.rs` with the direct method-call forms, re-blessed); ZERO over-fire — A/B on ~900
+real functions (candor-rust members, ebman, pgman, tb-tui-common, termcolor, flate2) diffed 0 changed,
+and the pure-impl + std-`Vec`-receiver controls stay pure (no fabrication); four-way conformance OK. The
+generic/`dyn` Write/Read consumer staying pure is the SAME documented no-fabrication boundary as
+`fn f(it: impl Iterator)` (charging it would fabricate a local impl's effect onto a pure generic fn) —
+sound because the effect is disclosed at the concrete constructor (`File::create`/`TcpStream::connect`).
+LESSON: candor-rust already models Iterator (`collect`→`next`), Display (`to_string`→`fmt`), From, Deref,
+and operators as provided→required coercions — io::Write/io::Read were the one std-trait family missing
+that treatment. When an engine hand-lists the std traits whose provided methods drive a required method,
+audit the list for completeness: a missing family is a silent-pure vein on every concrete local impl.
