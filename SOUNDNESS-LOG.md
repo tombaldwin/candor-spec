@@ -1378,3 +1378,38 @@ A/B across ~1483 real functions (pollen, swift-argument-parser, candor-swift-sel
 subtleties fixed); four-way conformance OK. DURABLE: the destructor/cleanup vein is deterministic ONLY where
 the language guarantees scope-exit destruction (rust Drop, swift ARC deinit of a non-escaping local) — a
 GC/finalizer language (java, ts) has no such edge, so this class is a two-engine concern, both now closed.
+
+### 2026-07-18 — R34 + R35: swift generic-operator + @dynamicCallable dispatch (candor-swift `7f6ba58`, `2667fdc`)
+
+Continuing the autonomous probe of indirect-dispatch veins. Confirmed SOUND (no fix) across a wide battery:
+default-parameter effects (folded into the fn — `caller()` that omits the arg carries; only the explicit-arg
+caller over-reports, a precision cost not a sin), property observers `didSet`/`willSet`, subscripts get/set,
+computed getters, property WRAPPERS, `perform(#selector)` (discloses Unknown), async/concurrency (Task /
+async let / TaskGroup / detached / setTimeout / queueMicrotask / Promise executor — spawned-closure effects
+charged lexically), keypath access, result builders, `defer`, `map` closures, and rust's `Index` trait. Two
+real SILENT-PURE misses found + fixed, both swift-only:
+
+ • R34 — a GENERIC/protocol-typed OPERATOR: `a + b` where `a: T: P` and `P` declares `static func +`.
+   candor-swift dispatches a generic METHOD (`x.act()` on `x: T: P`) to conformers via bounded CHA, but the
+   operator visitor only edged a CONCRETE localTypes operand — a generic/protocol operand resolved no
+   concrete type → an effectful `+` witness read pure. FIX: when neither operand is concrete-local, check
+   each operand identifier for a protoTyped binding and emit a protoDispatch(P, op); the Driver's bounded CHA
+   resolves the conformer witnesses, gated on P declaring `op` (a std `Numeric`/`Comparable` bound has no
+   local witness → nothing). NOTE rust has the same generic-operator shape but its operators are ALWAYS on
+   external `std::ops` traits, which candor-scan deliberately does NOT CHA (dispatching to all local `Add`
+   impls would fabricate `Fs` on an `i32+i32` call) — so rust's `adds_generic<T: Add>`→pure is the documented
+   external-trait boundary, not a fixable sin. Swift was fixable precisely because its operator protocol is
+   LOCAL. java/ts have no operator overloading.
+
+ • R35 — a `@dynamicCallable` value: `c(1, 2)` desugars to `c.dynamicallyCall(withArguments:)`, an effectful
+   witness that read pure (candor edged only the `callAsFunction` value-call desugar). FIX: at a bare `f()`
+   on a local-type instance, also emit a `<t>.dynamicallyCall` soft edge; resolveQual drops it for a
+   non-@dynamicCallable type. Niche (Python-interop / DSLs) but a real cardinal sin. `@dynamicMemberLookup`
+   (`d.member`) already disclosed Unknown — sound, left as-is.
+
+Each: full suite green + a named regression, ZERO over-fire A/B ~1483 real fns (pollen, swift-argument-parser,
+candor-swift-self), four-way conformance OK. DURABLE: swift has a LONG tail of dispatch-desugar veins
+(operators, callAsFunction, dynamicallyCall, dynamicMemberLookup, keypath, subscript, property wrappers,
+result builders) — each a separate desugar path that must be wired into the effect graph; sweep them as a
+family, and the discriminator for "fix vs leave" is whether the dispatch target is LOCAL (fix, precise) or
+EXTERNAL (leave — CHA would fabricate or flood, per the Iterator/Add precedent).
