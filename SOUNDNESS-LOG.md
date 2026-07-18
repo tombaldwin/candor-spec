@@ -1550,3 +1550,17 @@ Record.values). PARALLELISM NOTE: a cross-engine vein is N independent fix-cycle
 subagents (separate repos, separate build+test) and reconverge at four-way conformance; within one engine the
 edit→build→test→A/B cycle stays sequential. This session's arc: R32–R41, ~15 fixes across all four engines,
 every one regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
+
+### 2026-07-18 — R42: a METHOD factory returning a trait object dispatches (candor-rust `2c59637`)
+
+`self.handler().go()` where `handler(&self) -> &dyn Doer` / `-> Box<dyn Doer>` read silent-pure, while a
+free/static `Reg::make().go()` (an `Expr::Call`) already dispatched. Root cause: `resolve_recv_type`'s
+MethodCall arm walked THROUGH the chain to the base receiver's type (`Reg`), so the concrete path fired
+(`Reg::go`, unresolved) and shadowed dispatch; `resolve_recv_traits` had only a free-fn Call arm, no
+MethodCall arm. FIX (collector): (1) `resolve_recv_type` returns None for a method whose recorded return is
+a `<dyn>` sentinel (None only declines typing, never fabricates); (2) `resolve_recv_traits` gains a MethodCall
+arm decoding the `<dyn>` sentinel by leaf, like the Call arm. `record_return` already encoded `&dyn`/`Box<dyn>`/
+`impl Trait` method returns. Full workspace + regression; corpus A/B ~950 fns 0 over-fire; four-way conformance
+OK. Rust-only — swift/ts/java already handle getter-returns-interface (probed). Session dispatch-vein arc:
+R32–R42, ~17 fixes across all four engines, R41 done partly in PARALLEL (swift subagent + main-loop rust),
+every one regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
