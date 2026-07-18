@@ -124,6 +124,10 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 | ~~R23~~ | swift | **setter `newValue` read silent-pure**: an effect reached THROUGH a setter's implicit value param (`set { newValue.write(toFile:) }` on a computed property/subscript, or a `willSet`) was dropped — `newValue` was never typed, so a member call on it didn't resolve. Hit computed-property + subscript setters, `willSet`, and renamed params `set(v)`. **FIXED 2026-07-10** (0.8.8): the accessor unit's `newValue`/named param is seeded with the property/subscript element type. `newValue`-as-arg to a resolved call already worked (the receiver case is the hole); pure setter stays pure. `==`/`+`/subscript-getter probed sound; ts/kotlin/rust use explicit typed setter params — swift-specific. | ~~SILENT low-med~~ CLOSED | — | prose: SOUNDNESS-LOG.md, 2026-07-10 setter-newValue entry; gate `DriverResolutionProcessTests.testSetterNewValueIsTypedSoEffectsThroughItResolve` |
 | ~~R22~~ | swift | **inherited property accessors read silent-pure**: an effectful computed property / `didSet`-`willSet` observer / subscript whose BODY lives on a superclass was dropped when accessed through a subclass (`d.payload`, `s.name=x`, two-level) — property-edge resolution matched only the OWN type's `Type.member` unit while the method-call path already climbed `supertypesOf` (the R18 vein, property edition). **FIXED 2026-07-10** (0.8.7): property edges now climb `supertypesOf` (transitive; override-wins so no fabrication; pure inherited stays pure). candor-ts + java checked SOUND (not shared). | ~~SILENT med~~ CLOSED | — | prose: SOUNDNESS-LOG.md, 2026-07-10 inherited-property-accessor entry; gate `DriverResolutionProcessTests.testInheritedPropertyAccessorEffectsClimbTheHierarchy` |
 | ~~R21~~ | family porcelain | the **2026-07-09 whole-project review's fail-open class**: gate surfaces converting "the gate could not run" into green — cargo-candor `policy` build-failure `\|\| true` and `guard` with no baseline ever snapshotted; java `--gate-json` unwritable → exit 0, `CANDOR_DEPS` typo silently ignored; ts MCP `candor_whatif` bad policy path + configured-but-empty policy falsy-skipped; agents `gate_reports` fail-open dead code + undisclosed observed-paths truncation. The engine-level fail-closed doctrine had never swept the OUTPUT/auxiliary channels or the shell porcelain. **FIXED 2026-07-09** (same-day wave, per repo; conformance PARTs 14–15 + wrapper CI lanes added as standing gates). | ~~fail-open~~ CLOSED | — | prose: SOUNDNESS-LOG.md, 2026-07-09 whole-project review entry |
+| ~~R32–R44~~ | ALL FOUR (cross-engine dispatch era, 2026-07-18) | **~20 trait-object / dynamic-dispatch cardinal sins** found + FIXED across every engine: provided-method→override (R32, four-way), swift deinit-glue / generic-operator / @dynamicCallable / generic-array / super-protocol (R33–R35, R39, R43-swift), rust trait-default / dyn-collection-param/generic/field / method-returns-dyn(-collection) / supertrait (R36, R37/R37b/R40, R42/R44, R43), java unbound-interface-method-ref (R38), container/Option dispatch four-way (R41). Each regression-gated + corpus-A/B'd (genuine jsoup Clock + pgman Log recoveries) + four-way-conformance-clean, on 0.22. Two halves done in PARALLEL via subagents (R41, R43). | ~~SILENT (systematic, shared)~~ CLOSED | — | full prose: SOUNDNESS-LOG.md, 2026-07-18 entries (R32→R44) |
+| R45 | rust-scan | **blanket impl** `impl<T: Bound> Ext for T` + `x.ext()` — a blanket impl isn't in the concrete-keyed CHA universe, so an effectful blanket body reads silent-pure. Auto-resolving risks fabrication (a blanket method leaf edged onto any unresolved same-name call) + needs a threaded blanket index. | SILENT (open) | low/niche | effectful blanket bodies uncommon; poor fix risk/reward — documented-accepted for now |
+| R46 | rust-scan | dispatch long-tail: nested `Vec<Option<Box<dyn>>>` (Option not peeled in the element), tuple-destructured dyn factory return, `Default::default()` turbofish (inferred type's effectful default). | SILENT (open) | v.low/niche | each a narrow nesting/inference shape; queued |
+| R47 | ts | a sub-interface SUPER-method (`s.base()` on `s: Sub`, `interface Sub extends Sup`) reads Unknown, not the precise Fs java/rust give. | DISCLOSED (precision) | n/a | sound (Unknown disclosed) — a precision opportunity, not a cardinal sin; honesty-first posture keeps it |
 
 ## 6. The metric (track these four; each "step forward" moves one)
 
@@ -154,19 +158,37 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
    recall 23 sound. So the systemic write-fmt shared blind spot is now caught by EXTERNAL ground truth, not
    just engine-internal fixtures. NEXT: more uncalibrated recall probes; deepen each effect's real-crate
    diversity.*
-3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-11: **7 open (R2–R8), all
-   low/v.low; 0 med+** — and every one is a FUNDAMENTAL syntactic limit (accepted flood-vs-precision
-   tradeoffs). **Zero FIXABLE silent residuals remain**: the whole R22–R31 wave + R28 are closed+gated (R24–R27, R29 opened + FIXED same day; R28 conditional-conformance-on-stdlib open, niche). Everything opened since the baseline (R13, R14/R16, R17–R21) was driven to CLOSED — see the
-   register and the LOG. Target: 0 med+; lows documented-accepted.*
-4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-10): FIVE find
-   eras so far — the 5th is the **swift-resolution era** (2026-07-10, autonomous): the syntactic swift engine's
-   access-path/dispatch resolution had a vein of silent holes — R22–R27 + R29 (inherited accessors, setter
-   newValue, projected/keypath, generic where-clause/type-level bound, resultBuilder), all fixed + gated +
-   (0.8.7/0.8.8 shipped, 0.8.9 staged); R28 open (niche). 8 further non-accessor seams probed sound. The
-   era's find-rate is now dropping toward zero. Earlier four eras — seam-class, κ-coverage, porcelain, coverage — every find fixed and standing-gated;
-   convergence NOT reached, and each era shift re-opens the find-rate. That is the epistemic frame (§1)
-   working as designed: the instrument's job is to make each new era's finds cheap and standing-gated, not
-   to declare victory.*
+3. **Open SILENT residuals** (§5) = count by severity. *As of 2026-07-11 this read "**zero FIXABLE
+   silent residuals remain**" — and the **2026-07-18 cross-engine dispatch era FALSIFIED that** (the §1
+   point, live): a fresh systematic hunt of the trait-object/dispatch vein found **~20 fixable cardinal
+   sins across all four engines** (R32–R44 in the LOG), every one now FIXED + regression-gated + corpus-
+   A/B'd + four-way-conformance-clean. So "zero fixable remain" is never a provable state, only "none
+   found by the hunts run so far." After that wave: the open residuals are again the FUNDAMENTAL syntactic
+   limits (R2–R8, low/v.low) PLUS a NEW niche dispatch long-tail — blanket impls `impl<T: B> Ext for T`
+   (fabrication-risk to auto-resolve; low value), nested `Vec<Option<Box<dyn>>>`, tuple-destructured dyn
+   returns, `Default::default()` turbofish, and a ts super-interface PRECISION gap (reads sound Unknown,
+   not a cardinal sin) — all characterized in the LOG (2026-07-18 long-tail entry), niche, none med+.
+   Target: 0 med+; lows/niche documented-accepted; keep hunting fresh veins (the count is a floor, not a proof).*
+4. **Find-rate** = cardinal sins found per fresh adversarial round. *Lede (as of 2026-07-18): SIX find
+   eras — the 6th is the **cross-engine dispatch era** (2026-07-18, autonomous, part in PARALLEL via
+   subagents): a systematic sweep of the trait-object / dynamic-dispatch vein across ALL FOUR engines found
+   ~20 cardinal sins — R32 (a PROVIDED method driving a required OVERRIDE, four-way + a real jsoup Clock
+   recovery), R33–R35 (swift deinit-glue / generic-operator / @dynamicCallable), R36 (rust trait-default →
+   requirement, java/ts already sound), R37/R37b/R40 (rust dyn-collection: param / generic bound / field),
+   R38 (java unbound interface-method-ref), R39 (swift generic-array), R41 (container/Option dispatch —
+   HashMap values, Arc<Mutex> guard chains, Option/Result unwrap in every form; rust + swift IN PARALLEL,
+   real pgman Log recovery), R42/R44 (rust method returning a bare/collection trait object), R43 (supertrait
+   / super-protocol dispatch, rust + swift in parallel). Every one fixed + regression-gated + corpus-A/B'd +
+   four-way-conformance-clean, all on 0.22. This era MASSIVELY re-opened the find-rate — the 5th (swift-
+   resolution) era's "dropping toward zero" was premature for the SHARED dispatch vein, which had a deep
+   systematic hole in every engine (the exact cross-engine-agreement blind spot §1 warns of: engines agreeing
+   on the wrong PURE answer). After it, fresh NON-dispatch probes (closures / threads / channels / iterator
+   adapters / std-I/O classification / stdio) came back SOUND — the dispatch vein is now saturated; the era's
+   find-rate is dropping. Earlier five eras — seam-class, κ-coverage, porcelain, coverage, swift-resolution —
+   every find fixed and standing-gated; convergence NOT reached, and each era shift re-opens the find-rate.
+   That is the epistemic frame (§1) working as designed: two parallel subagent branches even had their OWN
+   corpus-A/B gates catch over-fires mid-flight (R43-swift's 139-fn Unknown blast, self-corrected). The
+   instrument's job is to make each new era's finds cheap and standing-gated, not to declare victory.*
    - *Inheritance-of-accessors probe (2026-07-10): 1 find — swift inherited property accessors (computed
      getter / `didSet` / subscript) read silent-pure through a subclass while inherited METHODS climbed
      (R22, fixed 0.8.7, gated). A "covered seam, uncovered edition" find: the accessor climb existed for
