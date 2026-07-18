@@ -283,16 +283,80 @@ def r_lazy_init(eff, name, sfx):
     }
 
 
+# ---- renderers: concrete_trait_recv (Case C) -- a trait/interface/protocol method invoked via method
+# syntax on a VALUE LITERAL of a concrete type (no binding, no typed param): `T0().run()` where T0 is a
+# unit-struct/class with `impl Task for T0`. The engine must resolve the value-literal receiver's type to
+# its trait-method impl and infer the effect -- NOT silent-pure. (candor-rust silent-pure bug, fixed
+# 0c9f218 Case C; java/ts/swift already resolved it.)
+def r_concrete_trait_recv(eff, name, sfx):
+    # Type names MUST be Upper-initial and UNDERSCORE-FREE: the value-literal receiver `T0.run()` is the
+    # crux of Case C, and an engine (candor-scan) distinguishes a unit-struct value literal from a
+    # SCREAMING_SNAKE const by "Upper-initial WITHOUT an underscore", so an underscore-suffixed type name
+    # (e.g. `T0_fs_cr`) would read as a const and silently NOT resolve — hiding the very bug this pins.
+    cap = sfx.capitalize()  # fs -> Fs ; net -> Net ; ...  (unique per cell, no underscore)
+    Tr = f"TaskCr{cap}"     # the trait / interface / protocol
+    T0 = f"CrT{cap}"        # the concrete impl, used as a VALUE LITERAL at the call site
+    return {
+        "rust":  f'pub trait {Tr} {{ fn run(&self); }}\n'
+                 f'pub struct {T0};\n'
+                 f'impl {Tr} for {T0} {{ fn run(&self) {{ {eff["sink"]["rust"]} }} }}\n'
+                 f'pub fn {name}() {{ {T0}.run(); }}',
+        "java":  f'  interface {Tr} {{ void run() throws Exception; }}\n'
+                 f'  static class {T0} implements {Tr} {{ public void run() {{ {eff["sink"]["java"]} }} }}\n'
+                 f'  public static void {name}() throws Exception {{ new {T0}().run(); }}',
+        "ts":    f'interface {Tr} {{ run(): void; }}\n'
+                 f'class {T0} implements {Tr} {{ run(): void {{ {eff["sink"]["ts"]} }} }}\n'
+                 f'export function {name}(): void {{ new {T0}().run(); }}',
+        "swift": f'protocol {Tr} {{ func run() }}\n'
+                 f'struct {T0}: {Tr} {{ func run() {{ {eff["sink"]["swift"]} }} }}\n'
+                 f'func {name}() {{ {T0}().run() }}',
+    }
+
+
+# ---- renderers: fn_returned_dyn (Case D) -- dispatch through a FACTORY fn returning a boxed/existential
+# trait object: `fn get() -> Box<dyn Task> { .. } ; get().run()`. The factory-call receiver has no nominal
+# type; the engine must resolve it via CHA to the visible impl and infer the effect -- NOT silent-pure.
+# (candor-rust silent-pure bug, fixed 0c9f218 Case D; java/ts/swift already resolved it.)
+def r_fn_returned_dyn(eff, name, sfx):
+    # Underscore-free Upper-initial type names (same rationale as Case C: keep the concrete impl from
+    # reading as a const in any engine's value-literal heuristic).
+    cap = sfx.capitalize()
+    Tr = f"TaskFd{cap}"     # the trait / interface / protocol
+    T0 = f"FdT{cap}"        # the sole concrete impl (CHA resolves to it)
+    get = f"getFd{cap}"     # the factory returning the trait-object type
+    return {
+        "rust":  f'pub trait {Tr} {{ fn run(&self); }}\n'
+                 f'struct {T0};\n'
+                 f'impl {Tr} for {T0} {{ fn run(&self) {{ {eff["sink"]["rust"]} }} }}\n'
+                 f'fn {get}() -> Box<dyn {Tr}> {{ Box::new({T0}) }}\n'
+                 f'pub fn {name}() {{ {get}().run(); }}',
+        "java":  f'  interface {Tr} {{ void run() throws Exception; }}\n'
+                 f'  static class {T0} implements {Tr} {{ public void run() {{ {eff["sink"]["java"]} }} }}\n'
+                 f'  static {Tr} {get}() {{ return new {T0}(); }}\n'
+                 f'  public static void {name}() throws Exception {{ {get}().run(); }}',
+        "ts":    f'interface {Tr} {{ run(): void; }}\n'
+                 f'class {T0} implements {Tr} {{ run(): void {{ {eff["sink"]["ts"]} }} }}\n'
+                 f'function {get}(): {Tr} {{ return new {T0}(); }}\n'
+                 f'export function {name}(): void {{ {get}().run(); }}',
+        "swift": f'protocol {Tr} {{ func run() }}\n'
+                 f'struct {T0}: {Tr} {{ func run() {{ {eff["sink"]["swift"]} }} }}\n'
+                 f'func {get}() -> any {Tr} {{ return {T0}() }}\n'
+                 f'func {name}() {{ {get}().run() }}',
+    }
+
+
 INDIRECTIONS = [
-    dict(id="direct",         render=r_direct,         accept=acc_exact),
-    dict(id="local_call",     render=r_local_call,     accept=acc_exact),
-    dict(id="method_recv",    render=r_method_recv,    accept=acc_exact),
-    dict(id="loop_elem",      render=r_loop_elem,      accept=acc_exact),
-    dict(id="field",          render=r_field,          accept=acc_exact),
-    dict(id="callback",       render=r_callback,       accept=acc_callback),
-    dict(id="implicit_conv",  render=r_implicit_conv,  accept=acc_exact),
-    dict(id="fire_forget",    render=r_fire_forget,    accept=acc_exact),
-    dict(id="lazy_init",      render=r_lazy_init,      accept=acc_exact),
+    dict(id="direct",              render=r_direct,              accept=acc_exact),
+    dict(id="local_call",          render=r_local_call,          accept=acc_exact),
+    dict(id="method_recv",         render=r_method_recv,         accept=acc_exact),
+    dict(id="loop_elem",           render=r_loop_elem,           accept=acc_exact),
+    dict(id="field",               render=r_field,               accept=acc_exact),
+    dict(id="callback",            render=r_callback,            accept=acc_callback),
+    dict(id="implicit_conv",       render=r_implicit_conv,       accept=acc_exact),
+    dict(id="fire_forget",         render=r_fire_forget,         accept=acc_exact),
+    dict(id="lazy_init",           render=r_lazy_init,           accept=acc_exact),
+    dict(id="concrete_trait_recv", render=r_concrete_trait_recv, accept=acc_exact),
+    dict(id="fn_returned_dyn",     render=r_fn_returned_dyn,     accept=acc_exact),
 ]
 
 
