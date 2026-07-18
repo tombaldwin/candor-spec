@@ -1467,3 +1467,32 @@ Continuing the autonomous dispatch-vein sweep — the heterogeneous-collection i
    target). Both closed. Session dispatch-vein tally: R32 (four-way provided→override), R33 (swift deinit),
    R34 (swift generic-operator), R35 (swift @dynamicCallable), R36 (rust trait-default), R37 (rust dyn-vec),
    R38 (java method-ref) — every one gated with a regression + corpus A/B + four-way conformance, all riding 0.22.
+
+### 2026-07-18 — R37b + R39: generic-bound collection elements (candor-rust `b00f2e6`, candor-swift `c67506c`)
+
+Extending the collection-of-trait-objects vein (R37) from concrete `dyn` elements to GENERIC-BOUND elements.
+
+ • R37b (candor-rust `b00f2e6`): `fn f<T: Doer>(items: Vec<T>) { for it in items { it.go() } }` (and
+   `where T: Doer`, and `.iter().for_each`) read silent-pure — R37 seeded `elem_trait_of` with EMPTY generic
+   bounds, so a bare `T` element didn't resolve. FIX: (1) thread `generic_bounds_of(sig)` into
+   `elem_trait_leaves` so `T` resolves through its bound to `["Doer"]`; (2) the for-loop / adapter binders
+   PREFER the trait-object route whenever `elem_trait_of` is non-empty — `elem_type` returns the bogus
+   generic-param name "T" (not None) for a `Vec<T>` element, so the old `elem.is_none()` gate took the dead
+   concrete route. 0 over-fire A/B ~950 fns.
+
+ • R39 (candor-swift `c67506c`): the swift twin — `func f<T: Doer>(items: [T])` iterated read pure while the
+   existential `[any Doer]` worked. FIX: resolve the array element through `genericBounds` in the param
+   seeding (one line), mirroring the plain-`x: T` generic resolution, so `[T: Doer]` types the element as
+   the protocol `Doer`. 0 over-fire A/B ~1.5k fns. Both gated with regressions + four-way conformance OK.
+
+OPEN (next target, precisely characterized — NOT a silent residual, a queued mechanical fix): the candor-rust
+FIELD form — `struct Registry { handlers: Vec<Box<dyn Handler>> }` + `self.handlers.iter().for_each(|h|
+h.handle())` — still reads silent-pure. R37/R37b seeded `elem_trait_of` for PARAMS (per-fn `seed_elem_of`);
+the FIELD form needs a parallel `field_elem_trait` index (the trait-object counterpart of `field_elem`)
+populated in `collect_decls` from the struct field walk (using the struct's `generic_bounds_of_generics`,
+already computed there) and threaded through the cache/merge layer + `ElemIndexes` + the collector's
+`resolve_elem_trait_leaves` Field arm — exactly the shape of the existing `field_elem` plumbing. Deferred to
+its own pass to avoid rushing ~15-site multi-file plumbing (incl. the MergedDecls merge) at session depth;
+registries/observers-as-fields are common, so this is high-priority. The swift/ts/java field forms should be
+swept at the same time (java erases generics + the enhanced-for over a field already worked in the R37 probe;
+ts/swift field-of-existential likely already handled — confirm).
