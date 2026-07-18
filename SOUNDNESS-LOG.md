@@ -1596,3 +1596,20 @@ documented, not silently dropped, and picked up in a focused pass:
 
 The rust supertrait fix (R43) has a cross-engine sibling: swift MISSES it SILENT-PURE (the same cardinal sin);
 java handles it (bytecode CHA); ts discloses Unknown (sound). The swift fix is in flight (parallel subagent).
+
+### 2026-07-18 — R43-swift: the super-protocol sibling (candor-swift `11f40a7`, parallel subagent)
+
+The R43 supertrait vein's swift half, done as a parallel background subagent while the main loop did rust
+R42/R43. `s.base()` where `base ∈ Sup`, `s: any Sub` / `T: Sub`, `protocol Sub: Sup` read silent-pure — two
+gates rejected the inherited member: DeclCollector never recorded the `: Sup` inheritance clause (protocols
+don't go through `pushType`), and the protoDispatch gate checked `protocolMethods[Sub].contains(member)` only.
+FIX: a dedicated `protocolSupers: [String: Set<String>]` map (recorded from the protocol inheritance clause,
+threaded through the per-file merge) + a transitive `protoOrSuperDeclares(proto, member)` walk at the
+protoDispatch AND protoPropRead gates; on a super match it still CHAs `conformers[Sub]`. GATE: 245 tests +
+regression; A/B ZERO over-fire (pollen/swift-argument-parser/self all 0). NOTABLE — the subagent's FIRST
+approach reused the existing `supertypesOf`/`conformers` transitive index for protocol inheritance and
+OVER-FIRED badly (a 139-fn Unknown blast on swift-argument-parser, because a protocol name in `conformers[P]`
+polluted every concrete-dispatch CHA over P and broke its `impls.count == conf.count` guard); it caught this
+in its own corpus A/B and switched to the dedicated map — the A/B gate doing exactly its job on a parallel
+branch. So the supertrait vein is closed: rust R43, swift `11f40a7`, java (bytecode CHA) already; ts discloses
+sound Unknown (a precision residual, not a sin). Four-way conformance OK after reconvergence.
