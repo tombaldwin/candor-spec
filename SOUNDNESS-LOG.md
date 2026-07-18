@@ -1613,3 +1613,18 @@ polluted every concrete-dispatch CHA over P and broke its `impls.count == conf.c
 in its own corpus A/B and switched to the dedicated map — the A/B gate doing exactly its job on a parallel
 branch. So the supertrait vein is closed: rust R43, swift `11f40a7`, java (bytecode CHA) already; ts discloses
 sound Unknown (a precision residual, not a sin). Four-way conformance OK after reconvergence.
+
+### 2026-07-18 — R44: method/factory returning a collection of trait objects (candor-rust `afcd20a`)
+
+Cleared the most common of the just-queued long-tail residuals. `for d in r.all()` where `all() -> Vec<Box<dyn
+Doer>>`, and `if let Some(d) = self.opt()` where `opt() -> Option<Box<dyn>>`, read silent-pure (record_return
+recorded the Vec return as the useless "Vec"). R42 handled a SCALAR-dyn return; this is the COLLECTION sibling.
+FIX: a new `<elemdyn>` return sentinel (element bound leaves for a collection-of-dyn return), filtered from
+concrete typing in `ctor_type` like the scalar `<dyn>`, decoded by new MethodCall/Call arms in
+`resolve_elem_trait_leaves` (falling back to the scalar `<dyn>` for an Option-returning method, safe because
+that arm is only reached in a collection/option context). Full workspace + regression; corpus A/B ~950 fns 0
+over-fire; four-way conformance OK. REMAINING long-tail (still queued): rust nested `Vec<Option<Box<dyn>>>`,
+tuple-destructure of a dyn factory return, BLANKET impls (`impl<T: Bound> Ext for T`), `Default::default()`
+turbofish; ts sub-interface super-method precision (Unknown→Fs). Session dispatch arc: R32–R44 across all four
+engines, ~20 fixes, R41/R43 halves done in PARALLEL via subagents, every one regression-gated + corpus-A/B'd
++ four-way-conformance-clean, all on 0.22.
