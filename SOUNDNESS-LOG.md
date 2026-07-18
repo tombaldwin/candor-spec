@@ -1439,3 +1439,31 @@ Runnable, ts async-gen / yield* / Proxy / #private / object-getter. TS method DE
 to inject an effect are a known UNFIXABLE limitation (blanket-Unknown on every decorated call would flood the
 ubiquitous metadata-only `@Get`/`@Input`; the effect mis-attributes to the decorator fn) — the "can't see
 arbitrary runtime metaprogramming" boundary.
+
+### 2026-07-18 — R37 (rust collection-of-trait-objects) + R38 (java unbound interface-method-ref)
+
+Continuing the autonomous dispatch-vein sweep — the heterogeneous-collection iteration shape, probed four-way.
+
+ • R37 (candor-rust `27b0e34`): iterating a COLLECTION OF TRAIT OBJECTS — `for it in &items { it.go() }` /
+   `items.iter().for_each(|it| it.go())` over `items: Vec<Box<dyn Doer>>` (or `&[Box<dyn>]`) — read
+   silent-pure. `elem_type` returns None for a `dyn`/`impl` element (no nominal path), so the loop/closure
+   var was untyped and its method call dropped. FIX: a new `elem_trait_leaves` (the trait-object counterpart
+   of `elem_type`) seeds an `elem_trait_of` map per collection PARAM; the for-loop + iterator-adapter-closure
+   binders type the element var into `trait_vars` (bounded-CHA dispatch) instead of `vars`. A concrete-element
+   collection keeps the `vars` route (no over-fire); a >12-impl dispatch discloses Unknown per the existing
+   bound. Corpus A/B ~950 real fns 0 regressions + one GENUINE recovery: ebman `run_rules(&[Box<dyn Rule>])`
+   over 18 rule impls (>12) now discloses Unknown instead of silent-pure. Swift already handled `[any Doer]`;
+   ts (array-of-interface) + java (List<Interface> enhanced-for) already handled it too.
+
+ • R38 (candor-java `7047572`): an UNBOUND interface-method reference — `stream.forEach(Doer::go)` /
+   `list.removeIf(Rule::stale)` — targets an ABSTRACT method (no body), so the LambdaMetafactory Handle edge
+   was silent-pure, while the equivalent LAMBDA (`it -> it.go()`) worked via its synthetic body's
+   invokeinterface CHA. The ubiquitous idiomatic-streams shape read pure at every caller. FIX: at the Handle
+   site, CHA the method-ref target over the owner's PROJECT impls exactly like a direct invokeinterface —
+   narrow → edge every override, broad (>CHA_FANOUT_LIMIT) → Unknown. A concrete/lambda/static-pure target is
+   unchanged. Corpus A/B ~12.4k real JVM fns ZERO over-fire/regression. Distinct from the R37 sweep: this is
+   the METHOD-REF sugar of forEach dispatch (ts/swift desugar method-refs to lambdas/closures the analyzer
+   already walks, so the sugar is transparent there; java's bytecode method-ref is a distinct invokedynamic
+   target). Both closed. Session dispatch-vein tally: R32 (four-way provided→override), R33 (swift deinit),
+   R34 (swift generic-operator), R35 (swift @dynamicCallable), R36 (rust trait-default), R37 (rust dyn-vec),
+   R38 (java method-ref) — every one gated with a regression + corpus A/B + four-way conformance, all riding 0.22.
