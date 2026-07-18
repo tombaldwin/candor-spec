@@ -1295,3 +1295,30 @@ LESSON: candor-rust already models Iterator (`collect`→`next`), Display (`to_s
 and operators as provided→required coercions — io::Write/io::Read were the one std-trait family missing
 that treatment. When an engine hand-lists the std traits whose provided methods drive a required method,
 audit the list for completeness: a missing family is a silent-pure vein on every concrete local impl.
+
+### 2026-07-18 — R32 cross-engine sweep: the JVM sibling (candor-java `453cbe9`)
+
+The R32 vein (a provided Write/Read method driving the receiver's required override, the driving
+invisible inside std/JDK) is not rust-specific — the SOUNDNESS-LOG discipline is to sweep every engine.
+The JVM analog: `java.io.Writer.write(String)`/`write(int)`/`append(..)` are CONCRETE JDK methods that
+drive the abstract `Writer.write(char[],int,int)`; `Reader.read(char[])`/`skip`/`InputStream.transferTo`
+drive the abstract read. A CUSTOM effectful `Writer`/`Reader` subclass reached ONLY via a provided
+overload read PURE at every caller — CONFIRMED a `deny Fs` false all-clear on a probe (`w.write("hello")`
+on a `LoudWriter extends Writer` whose abstract override does `Files.write` → escaped the gate).
+
+candor-java already had the R16 machinery (reentryTargets CHAs a C_WRITE/C_APPEND contract to a project
+override) but only fired it on the SINK ARG of a constructed formatting facade (`new PrintWriter(sink)`) —
+never on a DIRECT inherited call's RECEIVER. FIX (contractReentry): a new C_READ contract + key the reentry
+on the RECEIVER's TYPE being a java.io stream (isJavaIoStreamType via transSupers), NOT on `min.owner` — an
+`invokevirtual` owns the inherited overload at the receiver's STATIC type, usually the project subclass
+(`W$LoudWriter`), not the JDK base, so an owner-based gate missed every project-typed receiver (the first
+cut fired only for the rare base-typed local `Writer w = new LoudWriter()`). reentryTargets then CHAs the
+override; a std FileWriter/StringWriter or a coincidental non-io `write()` resolves to no local override →
+nothing. GATES: full suite 412 green + `directProvidedIoMethodReachesReceiverOverride` (every receiver form
+carries; pure-impl + coincidental-write + std-sink stay pure); ZERO over-fire A/B across ~12k real functions
+(uflexi 10619, tomlib, spring-demo, candor-java-self — 0 changed) with a GENUINE recovery on jsoup —
+`DataUtil.crossStreams` + `HttpConnection$Response.writePost` gained a real, previously-SILENT `Clock`
+(they drive `ControllableInputStream.read`, whose timeout tracking is Clock — reachable but dropped at the
+abstract `in.read()`); four-way conformance OK. So R32 is closed in the rust AND jvm engines. Cross-engine
+vein check still OPEN for candor-ts (a Node `Writable._write` reached via `.write()`) and candor-swift (a
+protocol extension's provided method driving a required witness) — probing next.
