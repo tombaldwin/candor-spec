@@ -1899,3 +1899,29 @@ existing rule is the parity oracle.
 ALREADY covers ORM connection-open. `DB_CRATES` (sqlx/postgres/tokio_postgres/diesel/sea_orm/deadpool_postgres/
 …) match `connect`/`connect_timeout` in the Db verb block (candor-classify lib.rs:1605). So the vein was closed
 three-way already (java Driver.connect, rust DB_CRATES ::connect) and candor-ts was the CONFIRMED lone straggler.)*
+
+### 2026-07-19 — extended TS hunt across the ukri-tfs AWS-Lambda monorepo (34 source roots)
+
+Following the typeorm fix (`9459e8f`), swept candor-ts across 15 ukri-tfs services + 10 packages (34 source
+roots, node_modules installed so the curated κ tier + @types mapping are live) with the effect-API file-level
+cross-check. RESULT: the completeness manifest holds; the one new fixable sin was the typeorm one, already
+shipped. Confirmations worth recording:
+- **The modular AWS SDK v3 is correctly DISCLOSED, not silent.** `@aws-sdk/client-sns`/`-sqs`/`-ses` are
+  κ-uncovered, so SNS `.publish()`, SQS `.receiveMessage()`, SES `.sendEmail()` read `inferred:[]` WITH
+  `invisible:['@aws-sdk/client-sns',…]` + `coverage.uncovered` naming them — a disclosed boundary on every
+  AWS effect, not a false all-clear. (candor DOES model `@aws-sdk/client-bedrock-runtime` → Llm.)
+- typeorm `@Entity`/`@Column` classes (metadata) and `import { Headers, Response } from 'node-fetch'`
+  (TYPE-only imports) correctly read pure — not sins.
+- CHARACTERIZED RESIDUAL (known class, NOT cheaply fixable): an external **INTERFACE** method whose impl
+  lives in an uncovered sibling package reads PURE where a concrete external CLASS call gets `invisible`.
+  `post-decision DomainEventPublisher.publish*` calls `channels.X.publish()` on `OutboundChannel` (an
+  interface from `@ukri-tfs/message-handling`), whose real impl `AwsOutboundChannel.publish` reaches SNS
+  (Net) — so Net is reachable but read pure with no disclosure. candor discloses `invisible` for a call on a
+  concrete external class (`new SNS()`, receiver pinned to the package) but an external interface method has
+  no body and candor does not CHA into the sibling package's implementations. The only blanket fix
+  (external-interface method → invisible) would FLOOD `logger.info()`/every DI'd interface — the same
+  unfixable tradeoff recorded at the decorator-injection limitation (SOUNDNESS-LOG line ~1439). Tracked here
+  as a known residual; a real fix needs cross-package (workspace) report chaining, not a κ rule. DURABLE: a
+  real framework monorepo separates the concrete-external-class disclosure (sound) from the
+  external-interface-dispatch residual (the logger-flood class) — the AWS SDK proves the manifest works; the
+  message-handling interface proves the boundary's edge.
