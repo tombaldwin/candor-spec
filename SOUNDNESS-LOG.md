@@ -1966,3 +1966,22 @@ byte-identical. FOLLOW-ONS: transitive workspace-dep chaining (a dep's own works
 (java/swift analogs — rust already has --deps); spec the `interfaceUnion` field + the `CANDOR_WORKSPACE_CHAIN`
 flag. DURABLE: per-package scanning of a monorepo is a systematic under-report multiplier — chaining is not a
 nicety but the difference between reading a microservice backend as mostly-pure and seeing its real reach.
+
+### 2026-07-19 — workspace chaining: transitive fixpoint + the four-way assessment + spec (candor-ts `c6b8767`, spec `9ba6b9b`)
+
+Two follow-ons to the `--workspace` productionization. (1) TRANSITIVE chaining: `--workspace` now scans the
+workspace dep graph to a monotone FIXPOINT (each dep re-scanned WITH the accumulating deps dir chained), so a
+dep's calls into ITS OWN workspace deps resolve — bounded by dep-graph depth, converges in ~9s for
+post-decision's 5 deps. Monotone → always a superset of direct-only; the marginal gain is corpus-dependent
+(ukri-tfs effects are mostly one hop away). (2) FOUR-WAY ASSESSMENT (the honest result, now spec'd in
+`WORKSPACE-CHAINING-DESIGN.md`): the SILENT-PURE form of the cross-package interface-dispatch miss was UNIQUE
+to candor-ts. It leans on the TS type checker to type the receiver, then keys the chain lookup on the
+interface METHOD SIGNATURE (no body → no entry → join missed → PURE). The other engines fall to a disclosed
+`Unknown` for an unresolved external dispatch instead — candor-swift explicitly (Driver.swift:454-475: an
+unmodeled external protocol member → Unknown with `why: dispatch:Sup.member`, a MODELED one like Fluent Model
+CRUD → Db), rust similar via its never-silent posture, java sidesteps via whole-classpath bytecode. So the
+rung's SOUNDNESS value is ts-specific and SHIPPED; the four-way roll is the OPTIONAL PRECISION arm (turn a
+disclosed Unknown into the exact chained effect) — promoted to a floor rung only when it earns its keep on a
+real Unknown-heavy corpus. DURABLE: not every "four-way vein" is a four-way SIN — sometimes one engine's
+resolution strategy (ts's type-checker-keyed lookup) creates a silent-pure hole the others' never-silent
+default already covers; the honest roll assesses posture per engine before porting.
