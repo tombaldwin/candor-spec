@@ -1925,3 +1925,25 @@ shipped. Confirmations worth recording:
   real framework monorepo separates the concrete-external-class disclosure (sound) from the
   external-interface-dispatch residual (the logger-flood class) — the AWS SDK proves the manifest works; the
   message-handling interface proves the boundary's edge.
+
+### 2026-07-19 — workspace report chaining PROTOTYPE: the external-interface-dispatch residual, disclosed (candor-ts `710178e`)
+
+The external-INTERFACE-dispatch residual characterized in the ukri-tfs entry above (a consumer's
+`channels.X.publish()` on an `OutboundChannel` imported from the sibling package
+`@ukri-tfs/message-handling`, whose impl reaches SNS/Net, reading PURE) now has a working prototype fix via
+CROSS-PACKAGE (workspace) report chaining — the candor-ts analog of rust `--deps`. Three parts, one of which
+was a load-bearing GENERAL bug: (1) `declModule` returned the RAW ABSOLUTE PATH for a workspace-symlinked dep
+(real path has no `node_modules/` segment) → an unmatchable κ key + an ugly `invisible:[/abs/path]` + the
+chain never joined; fixed to walk up to the nearest package.json `name` (ungated correctness improvement).
+(2) `crossDeps` now carries+inherits `invisible`, so a chained dep's own blind boundary travels to the
+consumer as ITS `invisible` (transitive disclosure across the edge; active only under `CANDOR_DEPS`).
+(3) synthetic interface-CHA union entries (`Iface.method` = union over local impls, reusing the existing
+`interfaceImpls` universe) so a consumer's interface-method lookup resolves — GATED behind
+`CANDOR_WORKSPACE_CHAIN` so default reports stay byte-identical / four-way-conformance-safe. VALIDATED on the
+REAL post-decision service: chaining message-handling turns `DomainEventPublisherV1.publish*` from pure into
+`invisible:[@aws-sdk/client-sns, @aws-sdk/smithy-client, ajv]`. Unit 103 / integration 553 / probe / lint
+green; fuzz unchanged (the lone deep_nesting stack-depth failure is pre-existing on baseline). This confirms
+the residual was NOT the unfixable logger-flood class after all — it is fixable with report chaining (the
+right fix, as predicted), NOT a blanket external-interface→Unknown. Productionizing (auto-scan workspace
+deps, spec the `interfaceUnion` field + flag) is the follow-on. DURABLE: the workspace-symlink `declModule`
+bug means ANY monorepo dep's effects were mis-keyed — a general recall gap the chaining work surfaced.
