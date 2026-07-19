@@ -35,6 +35,9 @@
   "unknown_dyn": [
     "Unknown"
   ],
+  "sync_callback_opaque": [
+    "Unknown"
+  ],
   "combined": [
     "Fs",
     "Net"

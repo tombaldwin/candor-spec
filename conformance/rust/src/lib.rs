@@ -25,6 +25,10 @@ pub fn pure_fn() -> i32 { 1 + 2 }
 pub struct Dyn { pub f: fn() }
 pub fn unknown_dyn(d: &Dyn) { (d.f)(); }
 
+// An OPAQUE callable handed to a SYNCHRONOUS higher-order invoker (for_each/forEach) is a call the
+// engine cannot resolve to a body -> Unknown, never silently pure (four-way sync-callback-invoker rung).
+pub fn sync_callback_opaque<F: Fn(&i32)>(items: &[i32], cb: F) { items.iter().for_each(cb); }
+
 // --- composition: union + transitive propagation ----------------------------------------------------
 pub fn combined() { let _ = std::fs::read("/tmp/x"); let _ = std::net::TcpStream::connect("h:1"); }
 pub fn transitive_leaf() { let _ = std::fs::read("/tmp/x"); }
