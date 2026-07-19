@@ -113,6 +113,34 @@ it in a method (`external → Unknown`), plus a sibling that stores a `new FileI
 (`construction-carried → Fs`). Each engine must agree, and must never fabricate `Fs` on the external case.
 The R17 entry-point case becomes a corollary row.
 
+## Status (2026-07-20)
+
+- **Phase 1 — SHIPPED (candor-java `8537909`).** The intraprocedural half: a stream-consuming utility whose
+  InputStream/Reader argument was NOT opened in this method (`newType == null` — a param/field/return)
+  discloses Unknown at the call site (`externalStreamUtility`), never in `classify()` (so the source/sink
+  stance table stands). Closes `ZipArchiveInputStream.readFully` and 31 sibling readers on commons-compress;
+  the compress runtime oracle goes 1→0. The in-scope-open case stays pure-relative (no redundant Unknown) —
+  *more* precise than the blanket κ-rule, which fired on 18 in-scope cases too. Regression pins both.
+- **The coverage-crediting companion — SHIPPED (candor-java `fbb8cda`).** The verify oracle's transitive
+  attribution now stops at an uncovered-package boundary (VerifyCli passes `coverage.uncovered` → the agent;
+  `Trace.emit` stops once its stack walk crosses an uncovered frame). Closes the `getResolver` false positive
+  (configuration2 oracle 1→0); strictly sound, zero masking (a miss through all-covered frames still has no
+  uncovered frame on its stack → still caught). Regression pins both halves.
+- **Phase 2 — NOT YET BUILT (the co-scan precision refinement).** Phase 1's Unknown is the honest LIBRARY-view
+  answer; whole-program, when the app AND the library are co-scanned and the concrete stream crosses the
+  construction boundary (`new ZipArchiveInputStream(new FileInputStream(f))`), it propagates a *redundant*
+  Unknown to the app's zip-processing functions ({Fs, Unknown} where {Fs} would do). Suppressing it needs the
+  construction-carried binding (§3): a whole-program field-origin summary computed from the actual `new C(args)`
+  sites — which requires a provenance PRE-PASS over the program (the field-origin must be known before a read
+  is analysed). Real value in the co-scan gate scenario, but genuinely more machinery (a second frame pass or
+  a re-propagating post-pass) than Phase 1; scoped as its own effort, not rushed onto the tail of the
+  intraprocedural fix. The in-*function* open case (open and read in one method) is ALREADY precise via Phase 1.
+- **Phase 3 — assessed as largely N/A for a four-engine sweep.** The specific `STREAM_CONSUMING_UTILITIES`
+  table is java-ecosystem (commons-io/Guava); the sibling engines don't share it, so — like the filter-close
+  and doPrivileged veins — this is JVM-specific by mechanism. The general *principle* (an external-origin
+  stream read discloses Unknown) would apply per-engine to each ecosystem's own utilities, but there is no
+  shared conformance case to pin. The return-origin factory half (§2) remains a general future precision item.
+
 ## Versioning
 
 A report-shape-neutral **precision** rung (it only changes inferred sets in the sound direction — narrows

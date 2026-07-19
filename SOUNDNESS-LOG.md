@@ -2218,3 +2218,41 @@ for stream-consuming utilities (recovers library-view reads at the cost of redun
 DURABLE: once the reconcile engine's finds on good targets are all deliberate-model-boundaries rather than
 silent-pure bugs, the classifier has converged — the remaining decisions are about the disclosure MODEL, not
 the κ rules. candor-java commits this arc: …,3a63266,3353860,04f3b97 (last = doc-only).
+
+### 2026-07-20 — value provenance Phase 1 + coverage crediting: the two model boundaries RESOLVED
+
+Tom's "absolute best product, ignoring effort" call → build interprocedural value provenance (dissolve the
+source/sink trade-off) + the companion oracle fix. Both concrete findings from the convergence
+(readFully = source/sink boundary; getResolver = coverage boundary) are now RESOLVED soundly, each with a
+regression pinning it. Design: VALUE-PROVENANCE-DESIGN.md.
+
+**Phase 1 (candor-java 8537909) — external-origin stream read → Unknown.** The intraprocedural half. A
+stream-consuming utility (commons-io IOUtils.read/copy/toByteArray, Guava ByteStreams/CharStreams) reads the
+stream passed to it; candor's source/sink stance classifies these pure-relative — sound when the stream was
+opened IN THIS method (a fresh `new FileInputStream`, newType set, so the method carries the Fs), a silent
+under-report when the argument is a PARAM/FIELD opened elsewhere. New CALL-SITE handler `externalStreamUtility`:
+an InputStream/Reader arg with `newType == null` (not a fresh in-scope `new`) discloses Unknown — at the call
+site, NOT in classify(), so the pure-relative stance table stands. This is R17's `entryAbstractStream`
+generalised from "an entry point's own param" to "any stream not opened here". Effect: readFully(byte[],int)
+→ Unknown, compress runtime oracle 1→0, 32 net-new external-stream recoveries; the in-scope-open case stays
+pure (no redundant Unknown — MORE precise than the reverted blanket κ-rule, which also fired on 18 in-scope
+cases). A/B commons-io +6. Regression `externalStreamReadViaUtilityIsUnknownButInScopeOpenStaysPure` pins
+external-field/param → Unknown AND in-scope-open → Fs-not-Unknown.
+
+**Coverage crediting (candor-java fbb8cda) — the verify oracle stops at an uncovered boundary.** The
+transitive attribution blamed a project caller for an effect it reaches only THROUGH a package candor cannot
+see (getResolver → `new xml.resolver.tools.CatalogResolver(manager)` → the ctor calls back an instrumented
+manager method that does Net). VerifyCli now passes `coverage.uncovered` to the agent (CANDOR_VERIFY_UNCOVERED);
+`Trace.emit` walks the stack from the leaf outward and STOPS attributing once it crosses an uncovered-package
+frame. Strictly sound, ZERO masking: a genuine miss reached through ALL-COVERED frames has no uncovered frame
+on its stack → still attributed → still caught. configuration2 oracle 1→0. Regression
+`attributionStopsAtUncoveredBoundaryButNotThroughCoveredFrames` pins BOTH halves end-to-end (an uncovered Sink
+ctor calling back an app Task → outer credited; a seeded-pure midCovered through covered frames → still flagged).
+
+DURABLE: the source/sink stance and the coverage envelope are DELIBERATE model boundaries; the fix is not to
+abandon them but to (Phase 1) CHECK the stance's "a caller-opened stream" assumption at the call site via the
+existing intraprocedural provenance, and (crediting) teach the oracle to honour the coverage disclosure it
+already emits. Both are report-shape-neutral precision, sound-direction-only. Phase 2 (whole-program co-scan
+precision via construction-carried binding) is scoped but unbuilt — it needs a provenance pre-pass and is
+narrower-value; Phase 1's in-function-open case is already precise. candor-java commits this arc:
+…,04f3b97,8537909,fbb8cda.
