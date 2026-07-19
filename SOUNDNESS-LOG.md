@@ -2177,3 +2177,44 @@ disclosed-incompleteness the oracle must learn to credit; and a highly-connected
 POOR vein-hunting target (candor over-reports so broadly that few functions are pure enough to falsify) —
 prefer moderately-connected codebases where sound-complete (D=∅) functions actually exist. No code shipped
 this run (correctly — the only actionable item is a paper-affecting oracle change deferred to Tom).
+
+### 2026-07-19 — compress re-verify (fixes hold) + the source/sink boundary + reconcile CONVERGENCE
+
+Two confirmations + a second model-boundary, closing out the reconcile arc.
+
+**(a) commons-compress re-verified — the 3 earlier fixes HOLD.** Re-ran the transitive oracle on compress
+under the current engine (sync-callback c755acd + filter-close 2433db6 + owner-agnostic ead40c6 all in):
+**174 fns checked, 1 violation** (was 4). The 3 previously-found veins (ArchiveInputStream.forEach,
+CompressFilterOutputStream.close, ZipArchiveOutputStream.destroy) are CONFIRMED closed under the runtime
+oracle, not just the scan. The 1 remaining = the documented `ZipArchiveInputStream.readFully(byte[],int)`
+residual.
+
+**(b) readFully IS the source/sink-stance boundary, NOT a classifier miss.** Root-caused: two-arg readFully
+→ `org.apache.commons.io.IOUtils.read(in, b, off, len)` (EXTERNAL commons-io, candor-CLASSIFIED via the κ
+rule, so NOT invisible) reads the wrapped `in`; at runtime `in` is file-backed → Fs, but candor read it
+pure. candor's commons-io rule descriptor-matches File/Path→Fs, URL→Net, and lets the STREAM overloads fall
+through to null — the DELIBERATE **source/sink stance**: Fs/Net is charged at a stream's CREATION, reads are
+pure-relative (`ClassifierLongTailTest.commonsIoFollowsTheSourceSinkStance` pins
+`IOUtils.toByteArray(InputStream)→null` = "a caller-opened stream is pure-relative"). A prototype promoting
+the stream verbs (read/copy/toByteArray/…) to Unknown recovered **50 net-new** archive-parser readers on
+compress (all genuine wrapped-stream reads, 3 redundant, 0 fabrication) — but BROKE the stance test: it
+imposes charge-at-USE on the whole library. The transitive oracle attributes a file-backed read to the READ
+site; the creation-site stance charges the OPEN site (for a library, in the caller = out of scope) — a
+model-vs-oracle boundary, the library-view under-report of the source/sink stance. Reverted the prototype;
+kept only a documenting comment + 3 stance-pinning table rows (candor-java 04f3b97). Whether to shift the
+stance toward charge-at-use for stream utilities (whole-program soundness vs library-view completeness) is a
+DESIGN decision, deferred to Tom.
+
+**RECONCILE CONVERGENCE.** Two independent well-exercised codebases this arc (configuration2, compress
+re-verify) each returned exactly ONE oracle "violation", and BOTH turned out to be candor's DELIBERATE
+modeling boundaries — the coverage/invisible boundary (getResolver → unmodeled xml.resolver ctor) and the
+source/sink stance (readFully → caller-opened stream) — NOT silent-pure classifier bugs. So the
+reconcile-against-reality engine has CONVERGED on the classifier: 5 codebases → 15 clean veins found+fixed
+(super-call, sync-callback [4-way], filter-close, stream read/write delegate, doPrivileged); the 6th/7th
+surface only model-boundary cases. The two open items are both Tom's design calls, cleanly characterized: (1)
+should the verify oracle CREDIT the invisible/coverage disclosure channel (path-based, sound) so it stops
+false-positiving on unmodeled-library effects; (2) should the source/sink stance shift toward charge-at-use
+for stream-consuming utilities (recovers library-view reads at the cost of redundant Unknowns whole-program).
+DURABLE: once the reconcile engine's finds on good targets are all deliberate-model-boundaries rather than
+silent-pure bugs, the classifier has converged — the remaining decisions are about the disclosure MODEL, not
+the κ rules. candor-java commits this arc: …,3a63266,3353860,04f3b97 (last = doc-only).
