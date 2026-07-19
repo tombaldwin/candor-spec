@@ -3406,6 +3406,23 @@ fi
 P18="$W/p18"; mkdir -p "$P18"; P18_OK=0
 p18fail() { echo "     FAIL $1"; P18_OK=1; }
 
+# --- candor-scan (rust): dep exports a trait + impl doing Fs; app calls ch.publish() on &dyn Trait -------
+mkdir -p "$P18/rs/dep/src" "$P18/rs/app/src" "$P18/rs/deps"
+printf '[package]\nname = "dep"\nversion = "0.0.0"\nedition = "2021"\n' > "$P18/rs/dep/Cargo.toml"
+printf 'pub trait OutboundChannel { fn publish(&self); }\npub struct AwsChannel;\nimpl OutboundChannel for AwsChannel { fn publish(&self) { let _ = std::fs::remove_file("/tmp/x"); } }\n' > "$P18/rs/dep/src/lib.rs"
+printf '[package]\nname = "app"\nversion = "0.0.0"\nedition = "2021"\n[dependencies]\ndep = { path = "../dep" }\n' > "$P18/rs/app/Cargo.toml"
+printf 'use dep::OutboundChannel;\npub fn use_ch(ch: &dyn OutboundChannel) { ch.publish(); }\n' > "$P18/rs/app/src/lib.rs"
+CANDOR_WORKSPACE_CHAIN=1 "$SCAN" "$P18/rs/dep" --json > "$P18/rs/deps/dep.json" 2>/dev/null
+CANDOR_DEPS="$P18/rs/deps" "$SCAN" "$P18/rs/app" --json > "$P18/rs_app.json" 2>/dev/null
+python3 -c 'import json,sys
+r=json.load(open(sys.argv[1])); u=[f for f in r["functions"] if f["fn"].endswith("use_ch")]
+sys.exit(0 if u and "Fs" in (u[0].get("inferred") or []) else 1)' "$P18/rs_app.json" \
+    || p18fail "candor-scan: use_ch did not inherit Fs across the chained trait (read pure)"
+python3 -c 'import json,sys
+r=json.load(open(sys.argv[1]))
+sys.exit(0 if any(f.get("interfaceUnion") and f["hash"].endswith("#OutboundChannel::publish") for f in r["functions"]) else 1)' "$P18/rs/deps/dep.json" \
+    || p18fail "candor-scan: dep emitted no interfaceUnion entry for OutboundChannel::publish"
+
 if [ -n "$TS_OK" ]; then
   mkdir -p "$P18/ts/dep" "$P18/ts/app/node_modules"
   printf '{"name":"dep","version":"0.0.0","types":"index.ts","main":"index.js"}' > "$P18/ts/dep/package.json"
@@ -3445,7 +3462,7 @@ fi
 
 echo "PART 18 — cross-package interface dispatch (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md)"
 if [ "$P18_OK" = 0 ]; then
-  echo "  -> MATCH — candor-ts + candor-swift both resolve a chained interface/protocol method to the impl's effect (never pure); the union entry is emitted producer-side"
+  echo "  -> MATCH — candor-scan + candor-ts + candor-swift all resolve a chained interface/protocol/trait method to the impl's effect (never pure); the union entry is emitted producer-side"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
