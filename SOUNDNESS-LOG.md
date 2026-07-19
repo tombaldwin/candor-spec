@@ -1894,3 +1894,8 @@ follow-on, no corpus miss observed). Spec CLASSIFIER.md §TS-Db amended to state
 explicitly. Durable: dogfooding a REAL framework app (typeorm/Nest, a fastify service) finds ecosystem sins
 a synthetic seam never would; and when one engine surfaces a Db/lifecycle vein, the reference engine's
 existing rule is the parity oracle.
+
+*(Correction to the entry above, same-day verification: the rust "untested follow-on" is resolved — rust
+ALREADY covers ORM connection-open. `DB_CRATES` (sqlx/postgres/tokio_postgres/diesel/sea_orm/deadpool_postgres/
+…) match `connect`/`connect_timeout` in the Db verb block (candor-classify lib.rs:1605). So the vein was closed
+three-way already (java Driver.connect, rust DB_CRATES ::connect) and candor-ts was the CONFIRMED lone straggler.)*
