@@ -2005,3 +2005,24 @@ shape: project-conforms-to-external) suggested. DURABLE: repo-reading ONE resolu
 gap; the 2-package empirical fixture is the honest oracle for "does this engine read cross-package interface
 dispatch as pure?" — and both source engines did. rust roll (trait-union) is the remaining source-engine
 follow-on; java sidesteps via whole-classpath bytecode.
+
+### 2026-07-19 — interfaceUnion rolled to candor-scan (rust) → PART 18 THREE-WAY + swift --workspace (rust `c51a369`, swift `d7ed521`, spec `5413b49`)
+
+The workspace-chaining `interfaceUnion` rung now ships on ALL THREE source engines. (1) candor-scan (rust):
+PRODUCER trait-CHA union entries (gated CANDOR_WORKSPACE_CHAIN, unioning trait_impls over trait_decls'
+methods) + a CONSUMER fix — an external `&dyn Trait` dispatch was a documented miss (dropped to PURE because
+the trait's impls live in another crate, so in-crate CHA found nothing); now, when the trait resolves via
+`use` to a dependency-qualified path (not std/core/alloc), it emits a crate-qualified `Call` so the CANDOR_DEPS
+chain resolves it against the dep's union entry. A/B on syn/serde_json/h2: **+80 recoveries, 0 fabrication, 0
+removed** — the recoveries are genuine external-trait dispatches (serde_json's serialize/deserialize/
+next_key_seed → invisible:[serde]/[indexmap], previously silent-pure). So UNCHAINED it now discloses
+`invisible:[crate]` (was pure); CHAINED it resolves the precise effect. candor-scan tests 124+48 pass. (2)
+candor-swift gained the `--workspace` flag (parse `.package(path:)` from Package.swift, scan+chain to a
+fixpoint) for ergonomics parity with ts. CONFORMANCE **PART 18 is now THREE-WAY** (candor-scan + candor-ts +
+candor-swift each resolve a chained interface/protocol/trait method to the impl's effect + emit the union
+entry) — full suite green. FINAL FOUR-WAY PICTURE: the silent-pure cross-package interface/protocol/trait
+dispatch hole existed in ALL THREE source engines (each via a different resolution path — ts's bodyless
+interface-signature chain key, swift's external-protocol receiver, rust's cross-crate `&dyn` impl-drop);
+java is N/A (whole-classpath bytecode). DURABLE (reinforced): the 2-package empirical fixture — not a
+code-read of one resolution path — is the honest oracle for "does this engine read cross-package dispatch as
+pure?"; it read pure in every source engine. All rides 0.22, unpublished.
