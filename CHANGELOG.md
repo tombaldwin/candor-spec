@@ -12,7 +12,16 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.22 — current floor (the `verify` oracle)
+## 0.23 — current floor (cross-package interface dispatch)
+
+The **cross-package interface-dispatch** rung — the optional `interfaceUnion` report entry (a synthetic
+`pkg#Iface.method` union over a package's local implementers) + the `--workspace`/`--deps` auto-discovery
+convention, so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to the impl's
+effect instead of reading pure. Gated behind `CANDOR_WORKSPACE_CHAIN` (a default report is byte-identical),
+three-way conformance-pinned (PART 18: candor-scan + candor-ts + candor-swift; java N/A via whole-classpath
+bytecode). See **SPEC.md §2** + **WORKSPACE-CHAINING-DESIGN.md**.
+
+## 0.22 — the `verify` oracle
 
 The **`verify` oracle** rung — candor's dynamic honesty check (`observed(f) ⊆ inferred(f) ∪ {Unknown}` per
 executed function), shipped per-engine as `candor verify` with a fail-closed exit-2 incomplete-attribution
