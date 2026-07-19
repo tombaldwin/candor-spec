@@ -1,9 +1,10 @@
 # Workspace report chaining — cross-package interface dispatch (design)
 
-*Status: PROTOTYPE in candor-ts (spec 0.22 line, `--workspace`, gated). This document specs the
+*Status: SHIPS on candor-ts + candor-swift (spec 0.22 line, gated behind `CANDOR_WORKSPACE_CHAIN`), and
+conformance **PART 18** pins the field + the cross-package resolution across both — the ≥2-engine + pinned
+threshold for a rung (the ladder discipline, [[candor-versioning-ladder]]). This document specs the
 `interfaceUnion` report field, the `--workspace` discovery flag, and the cross-package-interface-dispatch
-rule, and records the four-way rollout plan. Not yet a floor rung — it becomes one when ≥2 engines ship it
-and conformance pins it (the ladder discipline, [[candor-versioning-ladder]]).*
+rule. Remaining: the candor-rust roll (trait-union entries); candor-java is N/A (whole-classpath bytecode).*
 
 ## The problem
 
@@ -72,30 +73,27 @@ ugly `invisible:[/abs/path]`).
 
 ## Four-way status & rollout
 
-**The key finding: the *silent-pure* version of this gap was UNIQUE to candor-ts.** The other source engines
-already **disclose** for unresolved cross-package dispatch rather than reading pure — so for them the
-`interfaceUnion` is a *precision* upgrade (a disclosed `Unknown` → the precise chained effect), not a
-soundness fix.
+`interfaceUnion` now SHIPS on **two** engines (candor-ts + candor-swift), the threshold for a floor rung
+(conformance PART 18 pins the field + the cross-package resolution).
 
-| engine | chaining infra | `invisible` through chain | cross-pkg interface/protocol dispatch — posture | discovery flag |
+| engine | chaining infra | `invisible` through chain | cross-pkg interface/protocol dispatch | discovery flag |
 |---|---|---|---|---|
-| **candor-ts** | ✓ (§2) | ✓ (added here) | WAS **silent-pure** (a cardinal sin) → **FIXED** via `interfaceUnion` (gated) | ✓ `--workspace` |
-| **candor-swift** | ✓ (Deps.swift) | ✓ (already) | **SOUND** — an unmodeled external protocol's member is disclosed `Unknown` (`Driver.swift:454-475`, `why: dispatch:Sup.member`), never silent-pure; a MODELED external protocol (Fluent `Model` CRUD → Db) is classified. `interfaceUnion` would only sharpen `Unknown`→precise. | manual `CANDOR_DEPS` today |
-| **candor-rust** | ✓ `--deps` | confirm | trait-object dispatch is heavily handled (R32–R44, bounded CHA); an unresolved cross-crate trait call discloses Unknown per the same never-silent posture — assess for the precise-effect upgrade | ✓ `--deps` (Cargo) |
+| **candor-ts** | ✓ (§2) | ✓ (added here) | WAS **silent-pure** → **FIXED** via `interfaceUnion` (gated) | ✓ `--workspace` |
+| **candor-swift** | ✓ (Deps.swift) | ✓ (already) | WAS **silent-pure** for an external-protocol-typed receiver (an interface method on a value whose protocol is imported from a chained package read PURE) → **FIXED** via protocol-CHA `interfaceUnion` (gated). NB a *project* type conforming to an *external* protocol is already handled soundly (`Driver.swift:454-475`: unmodeled → `Unknown`, Fluent `Model` → Db) — a different shape. | manual `CANDOR_DEPS` today |
+| **candor-rust** | ✓ `--deps` | confirm | trait-object dispatch heavily handled (R32–R44, bounded CHA); assess the cross-crate-trait shape against the 2-package test — likely the same precise-effect roll | ✓ `--deps` (Cargo) |
 | **candor-java** | ✓ (§2) | confirm | **N/A** — the bytecode engine is typically given the whole classpath, so cross-module interface dispatch resolves natively (it sees every `invokeinterface` target's class) | classpath, not a flag |
 
-Why ts was the outlier: it leans on the TS type checker to type the receiver, then keys the chain lookup on
-the *interface method signature* (no body → no entry → the join missed → **pure**). swift/rust reach an
-unresolved external dispatch through their own name/CHA resolution and fall to the **never-silent** `Unknown`
-default instead. So the rung's soundness value was ts-specific and is **shipped**; the four-way roll is the
-optional precision arm (turn a disclosed `Unknown` into the exact chained effect where a dep report exists).
+The empirical result on a 2-package fixture (protocol in a dep, effectful conformer, consumer calling the
+protocol method): **both** ts and swift read the consumer call **PURE** when the dep is unchained, and both
+now disclose the **precise chained effect** with `interfaceUnion` + the dep report chained. So this was a
+genuine silent-pure hole in the source engines (each reached it through a different resolution path — ts keys
+the chain lookup on the bodyless interface method signature; swift on an unresolved external-protocol
+receiver), not merely a precision gap. The bytecode engine (java) sidesteps it by seeing all classes.
 
-Rollout: pin the `interfaceUnion` field + `--workspace`/`--deps` convention here (done); the precision roll to
-swift/rust is promoted to a floor rung only if/when it earns its keep on a real corpus (an `Unknown`-heavy
-monorepo where the precise effect materially changes a gate) and conformance pins it. The empirical test for
-any engine: a 2-package fixture (interface in a dep, impl reaching an effect, consumer calling the interface
-method) — a SOUND engine discloses (`Unknown`/`invisible`/effect), never pure; `interfaceUnion` upgrades a
-disclosed `Unknown` to the precise effect.
+Rollout: `interfaceUnion` field + `--workspace`/`--deps` convention pinned here and in conformance PART 18
+(done for ts+swift); rust is the remaining source-engine roll (trait-union entries), java is N/A. The
+empirical test for any engine: a 2-package fixture — a consumer calling an interface/protocol method whose
+declaration comes from a chained dep must resolve to the union entry's effect (not read pure).
 
 ## Measured value
 

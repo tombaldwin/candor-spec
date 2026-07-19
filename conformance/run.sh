@@ -3396,8 +3396,62 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# PART 18 — CROSS-PACKAGE INTERFACE DISPATCH (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md).            [TIER 2]
+# A consumer calling an interface/protocol method on a value whose type is imported from a CHAINED dep MUST
+# resolve to the implementation's effect (via the producer's synthetic `interfaceUnion` union entry), never
+# read pure. Pins the two engines that ship the rung (candor-ts + candor-swift); rust is a follow-on, java is
+# N/A (whole-classpath bytecode sees the impl). Producer scans the dep with CANDOR_WORKSPACE_CHAIN=1; the
+# consumer chains that report. Runs per shipping engine when present.
+# ====================================================================================================
+P18="$W/p18"; mkdir -p "$P18"; P18_OK=0
+p18fail() { echo "     FAIL $1"; P18_OK=1; }
+
+if [ -n "$TS_OK" ]; then
+  mkdir -p "$P18/ts/dep" "$P18/ts/app/node_modules"
+  printf '{"name":"dep","version":"0.0.0","types":"index.ts","main":"index.js"}' > "$P18/ts/dep/package.json"
+  printf 'export interface I { doIt(): Promise<void>; }\nexport class Impl implements I { async doIt(): Promise<void> { await fetch("http://example.com"); } }\n' > "$P18/ts/dep/index.ts"
+  printf '{"name":"app","version":"0.0.0"}' > "$P18/ts/app/package.json"
+  printf 'import { I } from "dep";\nexport function use(x: I): Promise<void> { return x.doIt(); }\n' > "$P18/ts/app/index.ts"
+  cp -r "$P18/ts/dep" "$P18/ts/app/node_modules/dep"
+  ( cd "$TS_DIR" && CANDOR_WORKSPACE_CHAIN=1 node scan.mjs "$P18/ts/dep" --json ) > "$P18/ts_dep.json" 2>/dev/null
+  ( cd "$TS_DIR" && CANDOR_DEPS="$P18/ts_dep.json" node scan.mjs "$P18/ts/app" --json ) > "$P18/ts_app.json" 2>/dev/null
+  python3 -c 'import json,sys
+r=json.load(open(sys.argv[1])); u=[f for f in r["functions"] if f["fn"].endswith("use")]
+sys.exit(0 if u and "Net" in (u[0].get("inferred") or []) else 1)' "$P18/ts_app.json" \
+    || p18fail "candor-ts: use() did not inherit Net across the chained interface (read pure)"
+  python3 -c 'import json,sys
+r=json.load(open(sys.argv[1]))
+sys.exit(0 if any(f.get("interfaceUnion") and f["hash"].endswith("#I.doIt") for f in r["functions"]) else 1)' "$P18/ts_dep.json" \
+    || p18fail "candor-ts: dep emitted no interfaceUnion entry for I.doIt"
+fi
+
+if [ -n "$SW_OK" ]; then
+  mkdir -p "$P18/sw/dep/Sources/Dep" "$P18/sw/app/Sources/App"
+  printf '// swift-tools-version:5.5\nimport PackageDescription\nlet package = Package(name: "Dep", targets: [.target(name: "Dep")])\n' > "$P18/sw/dep/Package.swift"
+  printf 'import Foundation\npublic protocol OutboundChannel { func publish(_ m: String) }\npublic final class AwsChannel: OutboundChannel { public init() {} public func publish(_ m: String) { try? FileManager.default.removeItem(atPath: "/tmp/x") } }\n' > "$P18/sw/dep/Sources/Dep/channel.swift"
+  printf '// swift-tools-version:5.5\nimport PackageDescription\nlet package = Package(name: "App", targets: [.target(name: "App")])\n' > "$P18/sw/app/Package.swift"
+  printf 'import Foundation\nimport Dep\npublic func use(_ ch: OutboundChannel) { ch.publish("x") }\n' > "$P18/sw/app/Sources/App/use.swift"
+  CANDOR_WORKSPACE_CHAIN=1 "$SW_BIN" "$P18/sw/dep" --json > "$P18/sw_dep.json" 2>/dev/null
+  CANDOR_DEPS="$P18/sw_dep.json" "$SW_BIN" "$P18/sw/app" --json > "$P18/sw_app.json" 2>/dev/null
+  python3 -c 'import json,sys
+r=json.load(open(sys.argv[1])); u=[f for f in r["functions"] if f["fn"].endswith("use")]
+sys.exit(0 if u and "Fs" in (u[0].get("inferred") or []) else 1)' "$P18/sw_app.json" \
+    || p18fail "candor-swift: use() did not inherit Fs across the chained protocol (read pure)"
+  python3 -c 'import json,sys
+r=json.load(open(sys.argv[1]))
+sys.exit(0 if any(f.get("interfaceUnion") and f["hash"].endswith("#OutboundChannel.publish") for f in r["functions"]) else 1)' "$P18/sw_dep.json" \
+    || p18fail "candor-swift: dep emitted no interfaceUnion entry for OutboundChannel.publish"
+fi
+
+echo "PART 18 — cross-package interface dispatch (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md)"
+if [ "$P18_OK" = 0 ]; then
+  echo "  -> MATCH — candor-ts + candor-swift both resolve a chained interface/protocol method to the impl's effect (never pure); the union entry is emitted producer-side"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
