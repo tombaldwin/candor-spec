@@ -2095,3 +2095,42 @@ and its siblings key on the method NAME, the exact-owner engine is the likely un
 name-keyed, hierarchy-agnostic form for the universal-contract idioms (forEach), reserving owner-scoping
 for the genuinely type-specific ones (Optional.ifPresent). Riding candor-java 0.22, candor-scan/ts/swift
 unpublished — harness-blocked, Tom remote.
+
+### 2026-07-19 — commons-vfs2: the doPrivileged + filter/buffered-stream delegate veins (5th reconcile codebase)
+
+The reconcile-against-reality engine's 5th independent codebase: Apache commons-vfs2 (a virtual filesystem
+whose architecture IS stream/FileObject delegation — chosen deliberately as high vein-yield; Net 591 / Fs
+609 / Log 629 / Env 427 / Clock 420 / Rand 358, the first Net-AND-Fs-heavy corpus, vs the Fs-only io/
+compress). Ran its OFFLINE provider suites (local/ram/temp/zip/jar/tar/bzip2/gzip/filter/util/cache) in one
+JVM via ConsoleLauncher under the transitive `candor verify` agent. **4 real silent under-reports**, two
+distinct veins, both closed, oracle re-run confirms **0 violations (was 4), exit 0**:
+
+(1) **`AccessController.doPrivileged` as a synchronous invoking HOF** (candor-java `3a63266`). `Privileged
+FileReplicator.init` → `AccessController.doPrivileged(new InitAction())` where InitAction is a project
+`PrivilegedExceptionAction` whose `run()` calls the wrapped replicator's effectful `init()` (Net/Fs); candor
+read the caller PURE because it did not model doPrivileged as INVOKING `action.run()` — the exact
+creation-edge asymmetry `namedFunctionalToHof` already fixes for `Stream.forEach`/`List.sort`, just missing
+this invoker + these SAM interfaces. FIX: `doPrivileged` → `isInvokingHof`; `PrivilegedAction`/
+`PrivilegedExceptionAction` → `isHofFunctionalIface`. Both init/replicateFile now resolve (CHA effect set
+over the wrapped FileReplicator, covering observed Net/Fs). A/B io 1188→1188, compress 824→824 (zero — they
+don't use doPrivileged). Regression `SoundnessSweepTest.doPrivilegedActionRunsSynchronouslyAndPropagates`.
+
+(2) **filter/buffered stream read/write/skip DELEGATE to the unknown wrapped sink** (candor-java `3353860`,
+extending the close/flush rule `2433db6`). `MonitorOutputStream.write`/`flush` → `super.write`/`super.flush`
+(super = BufferedOutputStream) → the wrapped `out` — here a RAM sink updating lastModified = Clock — read
+PURE. Extended the wrapped-sink rule to the ACTIVE-I/O methods (read/write/skip) and the Buffered* bases:
+Filter/Buffered {Output,Input}Stream/{Reader,Writer} read/write/skip/flush/close → Unknown. NATURALLY NARROW
+— the abstract declared type (`OutputStream x = new Buffered…`) has bytecode owner java/io/OutputStream and
+does NOT match; only the exact-typed or `super.`-from-subclass call matches, i.e. the delegating-subclass
+vein itself. A/B io 1188→1192 (+4), compress 824→828 (+4), vfs2 800→831 (+31 — ALL genuine Monitor/Raw/
+Http/Ftp/Sftp stream delegates, several reaching Net through wrapped network sources the offline suite could
+not even exercise). Zero fabrication, no flood. Regression `StructuralDispatchTest.bufferedAndFilterStream
+ReadWriteDelegateToUnknownWrappedSink`. Both veins are JVM-java.io/java.security-SPECIFIC by mechanism (no
+doPrivileged / no java.io FilterStream in the sibling engines — like the super-call and filter-close veins,
+the other three engines are immune by construction), so no four-way sweep needed.
+
+DURABLE: delegation-heavy corpora are the high-yield hunting ground for the reconcile engine — vfs2's whole
+design is stream/component wrapping, and it surfaced 4 finds where the Fs-only libraries were nearly clean.
+And the wrapped-sink Unknown rule is safe to broaden precisely BECAUSE the abstract-declared-type call keeps
+owner=java/io/OutputStream (unmatched) — the exact-owner match self-limits to the super-from-subclass vein.
+candor-java commits now include 3a63266, 3353860. All unpublished (harness-blocked, Tom remote).
