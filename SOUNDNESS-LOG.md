@@ -1805,3 +1805,28 @@ The residual register is now EMPTY of open SILENT rows. Session arc (2026-07-18/
 ~24 soundness fixes across rust-scan/candor-ts (+ earlier java/swift), every one A/B-validated and
 conformance-clean. The rust-scan receiver/dispatch/macro/drop/tuple surface is saturated for all probed veins;
 dynamic ground truth (the syscall oracle) remains the growth axis (§3 #1).
+
+### 2026-07-19 — code review of the receiver-typing cohort: 3 fabrications fixed + R53 reverted (candor-rust `8585c42`)
+
+A high-effort multi-agent code review of the R45–R53 receiver-typing/close-residuals fixes found FABRICATIONS
+the corpus A/B had passed (the A/B crates lacked the exact shapes; the review reached them by construction):
+- **R48 arm-union** — `macro_template_blocks` walked EVERY arm of a multi-arm `macro_rules!`; an invocation
+  matches ONE arm, so a `(log)=>{Log}; (save)=>{fs::write}` macro charged Fs to a `log`-only call. FIX: expand
+  ONLY single-arm macros (count total arms incl. unparseable).
+- **R48 metavar-callee** — `$f()`/`$x.m()` `$`-stripped to a bare `f()`/`x.m()` that resolved to a same-named
+  local fn/method. FIX: mark macro-expanded calls `is_macro` → suppresses LOCAL resolution while keeping
+  classification of `::`-qualified std/crate calls (fs::write→Fs, tracing::trace!→Log survive).
+- **R45 blanket collision** — a receiver type whose inherent `leaf` was AMBIGUOUS (tail2 collision →
+  resolve_target None) fell through to the blanket and fabricated. FIX: fire the blanket only when the
+  receiver type has NO local `leaf` at all.
+- **R53 UFCS — REVERTED**: the typed `T::method` edge could resolve to T's INHERENT `method` when the call
+  ran the trait's DEFAULT (candor keys both as `T::m`). No cheap gate distinguishes them + no concrete
+  recoveries (only +Unknown on syn), so the edge was withdrawn to an honest under-report. The `&self`-methods
+  filter is kept.
+The sound-direction findings (R49 whole-fn escape gate; R46 trait_vars fallback on non-compiling code) are
+left as documented over-approximations (under-report / dead-code over-connection, never fabrication). Net A/B
+post-fix: recoveries kept (tokio-util/hyper Log, clap/syn Unknown), h2 proto_err +8 Log dropped (multi-arm),
+ZERO concrete fabrication, ZERO removed. Full suite + four-way conformance OK. LESSON: a fix green on the
+corpus can still carry a fabrication only CONSTRUCTION reaches — corpus A/B and adversarial review are
+complementary on the FABRICATION axis, not just the missed-effect axis; and an un-gatable fix is REVERTED,
+not shipped behind a hopeful gate.
