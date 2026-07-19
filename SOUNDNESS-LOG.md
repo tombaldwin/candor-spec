@@ -1830,3 +1830,38 @@ ZERO concrete fabrication, ZERO removed. Full suite + four-way conformance OK. L
 corpus can still carry a fabrication only CONSTRUCTION reaches — corpus A/B and adversarial review are
 complementary on the FABRICATION axis, not just the missed-effect axis; and an un-gatable fix is REVERTED,
 not shipped behind a hopeful gate.
+
+### 2026-07-19 — dogfood negative control: the completeness manifest holds on 20 fresh crates (candor-rust scan, deployed)
+
+A proactive corpus round (two batches, 20 crates) on real crates NOT previously scanned this session, run
+with the deployed stable `candor-scan` — chosen for high effect-surface behind abstraction. Batch 1:
+**openssl-probe, rustls-native-certs, home, dirs-sys, tar, nix, mio, native-tls, which, walkdir, tempfile,
+url, rayon**. Batch 2 (bigger FFI/IO/global-state surface): **git2 (234 fns), socket2 (129), tracing-subscriber
+(204), zip (133), tokio-util (151), hyper-util (133), memmap2, filetime, signal-hook-registry**. Method: dump
+each report,
+flag any function that is `inferred:[]` AND carries NO `invisible`/`unknown`/coverage disclosure AND whose
+`calls` reach an effect-looking symbol — the exact silent-under-report signature. **Result: 0 candidates.**
+Every pure function is either genuinely pure or travels with a disclosure. Specifics worth recording:
+- **The coverage envelope names every uncovered external boundary, per-function AND per-crate.**
+  `rustls-native-certs::macos::load_native_certs` is `inferred:[]` — but carries `invisible:[security_framework,
+  pki_types]`, and the report's `coverage.uncovered` lists `security_framework(3), schannel(1), pki_types(4),
+  openssl_probe(1)`. So the cert-trust-store reach is a DISCLOSED boundary, not a false all-clear. `nix`
+  (198 fns, a raw-libc FFI crate) prints its own coverage line to stderr (`memoffset(10), bitflags(1) …
+  INVISIBLE … NOT a claim they're pure`) and still lands 0 pure-with-no-disclosure.
+- **Transitive propagation intact on real code:** candor's own "most surprising reach" line surfaced
+  `nix::sys::wait::wait → Exec`, 1 hop via `waitpid`.
+- **One classification checked for over-report and cleared:** `waitpid → Exec` looked like it might be a
+  fabrication (reaping ≠ executing), but `candor-classify` lib.rs:226 deliberately lists the libc
+  process-control family (`wait/waitpid/wait3/wait4/waitid/popen/pclose`) as Exec — subprocess *lifecycle*,
+  matching the spec's `Exec (subprocess)`. Intentional, documented, correct.
+This is a clean **negative control** (in the RQ3 sense — evidence the instrument isn't merely confirming what
+it went looking for) and an independent re-validation of the COMPLETENESS-MANIFEST rung (spec 0.21) on fresh
+real code: the load-bearing property is that `inferred:[]` never travels alone when an external boundary was
+crossed — and on this corpus it never did. **Precision observation (sound, not a sin):** in without-`--deps`
+mode the envelope is conservative to a fault — `tracing-subscriber` reports 151/204 functions as `invisible:[…]`
+(every non-effectful fn discloses an unresolved external ref: `tracing_core`, `matchers`, …), 0 bare-pure. The
+attachment is call-site-driven (the body references an unresolved external path), not blanket, so it is honest;
+but it is noisy, and `--deps` chaining is the precision path that collapses most of these to pure. Over-disclosure
+never causes a false all-clear, so this is a UX/precision axis, not a soundness one. Root cause of why these
+rounds now come up clean where pre-0.21 they would not: the manifest turned the unresolved-external-call vein
+(historically the dominant silent-under-report source) into a disclosed `invisible`/`coverage.uncovered` edge.
