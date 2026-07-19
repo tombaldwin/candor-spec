@@ -2026,3 +2026,23 @@ interface-signature chain key, swift's external-protocol receiver, rust's cross-
 java is N/A (whole-classpath bytecode). DURABLE (reinforced): the 2-package empirical fixture — not a
 code-read of one resolution path — is the honest oracle for "does this engine read cross-package dispatch as
 pure?"; it read pure in every source engine. All rides 0.22, unpublished.
+
+### 2026-07-19 — code review of the interfaceUnion rung: a three-way collision-fabrication guard (rust `b4ae3b9`, swift `0de57e4`, ts `4a75e5c`)
+
+Adversarial code review of the workspace-chaining / interfaceUnion work (the review workflow crashed on an
+infra StructuredOutput error, so it was done inline). Found ONE real cross-crate FABRICATION risk the corpus
+A/B had not exercised, present in all three source engines' union emission: the union entry is keyed by a
+NAME (trait leaf / protocol conformer's bare tail type / interface name), so a same-name COLLISION merges two
+unrelated declarations — `mod a { trait T } mod b { trait T }` (rust), `A.Foo`/`B.Foo` (swift), two
+`interface I` in different files (ts) — and the union entry `pkg#T::m` would then carry an UNRELATED type's
+impl effect. A cross-package consumer of the pure declaration would inherit the effectful one's effect (an
+over-report). The in-crate dispatch already bails to Unknown on this (rust `collector.rs lt.count > 1` "never
+guess between traits"; swift/ts have the same never-guess discipline) — the EMISSION did not mirror it. FIX
+(three-way): skip the ambiguous name (rust `lt.count > 1`; swift `ownersByTail[t].count > 1`; ts
+`ifaceNameCounts[name] > 1`) — an honest under-report, never a guess. Verified with an adversarial 2-trait
+rust fixture (a::T pure + b::T Fs → NO `T::go` union entry emitted); single-decl fixtures still resolve; all
+engine suites green (rust 124+48, swift 245, ts 103+553+probe); conformance PART 18 still green three-way.
+DURABLE: a NAME-keyed CHA index (leaf/tail/bare-name) that the in-crate path guards with a never-guess rule
+must carry the SAME guard when its union is EXPOSED to cross-package consumers — the exposure is a new place
+the collision can fabricate. And: a corpus A/B is necessary-not-sufficient (the collision shape wasn't in
+syn/serde_json/h2) — constructive review reaches it by construction, the recurring lesson.
