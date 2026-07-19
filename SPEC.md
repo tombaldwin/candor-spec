@@ -17,11 +17,18 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.22** — all code engines declare `0.22`; the floor is conformance-pinned. How versions
+**Version 0.23** — all code engines declare `0.23`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
-below. The ⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
+below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.22 is a tier-2 rung — the
+so an older-version consumer that ignores the newer optional fields is unaffected. **0.23 is a tier-1 additive
+rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
+report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
+`CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
+the impl's effect instead of reading pure — plus the `--workspace`/`--deps` auto-discovery convention.
+Three-way conformance-pinned (PART 18: candor-scan + candor-ts + candor-swift; java is N/A — whole-classpath
+bytecode resolves cross-module dispatch natively). Because it is gated, a default report is byte-identical and
+a 0.22 consumer is unaffected. **0.22 is a tier-2 rung — the
 `verify` oracle**: candor's dynamic honesty check — `observed(f) ⊆ inferred(f) ∪ {Unknown}` per executed function —
 shipped per-engine as `candor verify` with mechanism-independent capture arms and a fail-closed exit-2 verdict
 when runtime attribution is incomplete; per-engine, not conformance-differential. The report and verdict schema
@@ -252,7 +259,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.22" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.23" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -1614,6 +1621,18 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.23 (all code engines declare `0.23`; conformance-pinned three-way)** — a **tier-1 additive** rung: the
+  **cross-package interface-dispatch** rung (§2, `WORKSPACE-CHAINING-DESIGN.md`). Adds the optional
+  **`interfaceUnion`** report entry — a synthetic `pkg#Iface.method` union over a package's local implementers
+  (interfaces/protocols/traits) — emitted **gated** behind `CANDOR_WORKSPACE_CHAIN`, so a CHAINED consumer's
+  cross-package interface/protocol/trait dispatch resolves to the implementation's effect instead of reading
+  silent-pure; plus the **`--workspace`/`--deps`** auto-discovery convention (scan a monorepo's local deps into
+  `.candor/deps/` and chain them, transitively to a fixpoint). Conformance **PART 18** pins it three-way
+  (candor-scan + candor-ts + candor-swift; java is N/A — whole-classpath bytecode resolves cross-module
+  dispatch natively). Because emission is gated, a **default report is byte-identical** — a 0.22 consumer reads
+  a 0.23 report unaffected. The empirical finding: the silent-pure cross-package dispatch hole existed in every
+  source engine, each via a different resolution path.
 
 - **0.22 (all code engines declare `0.22`; conformance-pinned)** — a **tier-2** rung: the **`verify` oracle**,
   candor's dynamic honesty check. `candor verify` runs the analyzed program and asserts, per executed function,

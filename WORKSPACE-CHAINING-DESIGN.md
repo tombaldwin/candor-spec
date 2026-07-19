@@ -1,6 +1,6 @@
 # Workspace report chaining — cross-package interface dispatch (design)
 
-*Status: SHIPS on all three SOURCE engines — candor-scan (rust) + candor-ts + candor-swift (spec 0.22 line,
+*Status: SHIPS on all three SOURCE engines — candor-scan (rust) + candor-ts + candor-swift (spec 0.23 line,
 gated behind `CANDOR_WORKSPACE_CHAIN`), and conformance **PART 18** pins the field + the cross-package
 resolution across all three (the ladder discipline, [[candor-versioning-ladder]]). candor-java is N/A
 (whole-classpath bytecode resolves cross-module dispatch natively). This document specs the `interfaceUnion`
