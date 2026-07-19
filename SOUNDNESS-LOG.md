@@ -2134,3 +2134,46 @@ design is stream/component wrapping, and it surfaced 4 finds where the Fs-only l
 And the wrapped-sink Unknown rule is safe to broaden precisely BECAUSE the abstract-declared-type call keeps
 owner=java/io/OutputStream (unmatched) — the exact-owner match self-limits to the super-from-subclass vein.
 candor-java commits now include 3a63266, 3353860. All unpublished (harness-blocked, Tom remote).
+
+### 2026-07-19 — commons-configuration2: a CLEAN run + the coverage-boundary false-positive (6th reconcile codebase)
+
+The 6th reconcile codebase, picked to diversify structural IDIOMS away from stream-delegation: Apache
+commons-configuration2 (builder chains, reflection bean instantiation, provider/handler delegation; a very
+CONNECTED callgraph — AbstractConfiguration CHA-smears through JNDI(Net)/Database(Db)/Environment(Env)/file
+(Fs) impls, so nearly every method transitively reaches everything: the scan profile is a near-uniform
+~1520/effect). Ran its effect-rich offline suites (root incl. DatabaseConfiguration=embedded HSQLDB Db,
+Environment=Env, file configs=Fs; + builder/io/tree/beanutils/convert/interpol/plist/event) single-JVM under
+the transitive `candor verify` agent → **130 functions checked, 1 "violation" — and that one is NOT a
+classifier cardinal sin.** So this structurally-different, effect-rich codebase is **CLEAN of classifier
+silent-under-reports** — a convergence signal (5 codebases → 15 clean veins fixed; the 6th → 0 new veins).
+
+The 1 flagged "violation": `CatalogResolver.getResolver` → observed Net, inferred []. Root cause: it lazily
+constructs `new org.apache.xml.resolver.tools.CatalogResolver(manager)` — an UNMODELED THIRD-PARTY class
+(candor scanned target/classes WITHOUT the xml-resolver dep) whose ctor does Net (fetches an XML catalog) at
+runtime. This is a **coverage-boundary case, working AS DESIGNED, not a silent-pure**: candor's scan already
+DISCLOSES the blind reach — getResolver's report entry carries `invisible: ["org.apache.xml.resolver.tools"]`
+and the gate emits `coverage: {uncovered: 17, packages: [… org.apache.xml.resolver, xml.resolver.tools …]}`
+(the 0.15 coverage-envelope + 0.21 completeness-manifest rungs). The Net originates ENTIRELY inside the
+uncovered package; candor never saw it and honestly says so via the `invisible`/`coverage` channel (never
+"pure through a named package"). The naive "fix" — promote a non-empty `invisible` reach to `Unknown` in
+`inferred` — was MEASURED and REJECTED: it flips **129 functions** to Unknown on configuration2, almost all
+BENIGN (createPropertiesWriter/parseProperty/unescapePropertyName → commons-text string helpers that are
+PURE), i.e. the fabrication mirror — flooding `inferred` for any code not scanned with all deps, the exact
+thing candor's `invisible ≠ Unknown` design deliberately prevents. (Confirmed with a minimal ctor-vs-method
+repro: an uncovered-external call is `invisible` NOT `Unknown` for BOTH ctor and method — the earlier
+`resolveEntity` Unknown came from OTHER unresolved dispatch, not the invisible call.)
+
+So the miss is on the ORACLE side, not the classifier: `HonestyCheck` (verify) flags `observed ⊄ inferred ∧
+Unknown ∉ inferred` as a VIOLATION but does NOT credit the `invisible`/`coverage.uncovered` disclosure
+channel, so it reports a false positive whenever a fn reaches an effect purely through a disclosed-uncovered
+package. The SOUND refinement is PATH-BASED (don't blame frame F for an effect whose observed stack routes
+F→leaf THROUGH a frame in an uncovered package — candor's static chain legitimately breaks there and
+disclosed it); the LENIENT version (any non-empty `invisible` excuses any escaped effect) is UNSOUND — it
+would MASK a real cardinal sin in COVERED code from a fn that also happens to touch a benign uncovered lib.
+The precise fix needs effect-origin-package tracking in the verify agent + the coverage set — a shipped-
+oracle semantics change that also touches the paper's RQ1, so it is Tom's call, flagged not unilaterally
+shipped. DURABLE: not every oracle-flagged "violation" is a classifier sin — the coverage-boundary is a
+disclosed-incompleteness the oracle must learn to credit; and a highly-connected CHA-smearing codebase is a
+POOR vein-hunting target (candor over-reports so broadly that few functions are pure enough to falsify) —
+prefer moderately-connected codebases where sound-complete (D=∅) functions actually exist. No code shipped
+this run (correctly — the only actionable item is a paper-affecting oracle change deferred to Tom).
