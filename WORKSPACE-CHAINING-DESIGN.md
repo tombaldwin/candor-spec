@@ -47,13 +47,17 @@ over-approximation** (union of impls); **omitted when the union is pure** (silen
 The `interfaceUnion: true` flag marks the entry synthetic so a consumer can tell it from an analyzed unit
 (it is NOT counted in `analyzed.count`, which is the analyzed-unit universe).
 
-Because a consumer resolving `ch.publish()` on an `I`-typed receiver already keys the chain lookup on
-`pkg#I.m`, **no consumer-side change is needed** — the union entry is what the existing lookup was missing.
+In candor-ts/swift a consumer resolving `ch.publish()` on an `I`-typed receiver already keys the chain lookup
+on `pkg#I.m`, so **no consumer-side change is needed** — the union entry is what the existing lookup was
+missing. candor-scan (rust) additionally needed a small consumer fix: an external `&dyn Trait` dispatch was
+formerly DROPPED (its impls are in another crate, so in-crate CHA found nothing), so the consumer now emits a
+`use`-resolved crate-qualified `Call` (`dep::Trait::method`) that the chain then joins on `dep#Trait::method`.
 
 **2. `invisible` travels through the chain (consumer side).** A chained dep function's own blind boundary
 (an uncovered package IT calls into) must reach the consumer as **its** `invisible` — else a sibling's
 `SnsTopic.publish → invisible:[@aws-sdk/client-sns]` reads pure across the edge. (candor-swift already does
-this; candor-ts gained it with this work; candor-rust/java to confirm.)
+this; candor-ts gained it with this work; candor-rust's `DepFn.invisible` + the external-`&dyn` consumer
+resolution disclose it as `invisible:[crate]` even unchained.)
 
 **3. `--workspace` auto-discovery (ergonomics).** `candor <target> --workspace` (alias `--deps`) discovers the
 target's **symlinked** monorepo dependencies (a workspace link points OUT of `node_modules`/the module dir to
@@ -64,17 +68,17 @@ a dep's calls into *its own* workspace deps resolve too.
 
 ## Gating
 
-`interfaceUnion` emission is **opt-in** (candor-ts: env `CANDOR_WORKSPACE_CHAIN`, set by `--workspace` on the
-child scans) so a **default** scan stays byte-identical and four-way conformance is unaffected until the rung
-is pinned. A load-bearing sub-fix rode along, ungated because it is pure correctness: a **workspace-symlinked**
+`interfaceUnion` emission is **opt-in** across all three source engines (env `CANDOR_WORKSPACE_CHAIN`, set by
+`--workspace` on the child scans) so a **default** scan stays byte-identical — four-way conformance is
+unaffected, and PART 18 exercises the emission only under the flag. A load-bearing sub-fix rode along, ungated because it is pure correctness: a **workspace-symlinked**
 dep's real path has no `node_modules/` segment, so module-name resolution must walk up to the nearest
 `package.json` `name` — otherwise a monorepo dep's effects are mis-keyed (an unmatchable chain key AND an
 ugly `invisible:[/abs/path]`).
 
 ## Four-way status & rollout
 
-`interfaceUnion` now SHIPS on **two** engines (candor-ts + candor-swift), the threshold for a floor rung
-(conformance PART 18 pins the field + the cross-package resolution).
+`interfaceUnion` now SHIPS on all **three** source engines (candor-scan + candor-ts + candor-swift), pinned
+by conformance PART 18; recorded as spec rung **0.23**. candor-java is N/A (whole-classpath bytecode).
 
 | engine | chaining infra | `invisible` through chain | cross-pkg interface/protocol dispatch | discovery flag |
 |---|---|---|---|---|
@@ -94,10 +98,13 @@ repo-reading one engine's resolution path (e.g. swift's project-conforms-to-exte
 gap as precision-only; the 2-package empirical fixture is the honest oracle — and all three source engines
 read it pure.
 
-Rollout: `interfaceUnion` field + `--workspace`/`--deps` convention pinned here and in conformance PART 18
-(done for ts+swift); rust is the remaining source-engine roll (trait-union entries), java is N/A. The
-empirical test for any engine: a 2-package fixture — a consumer calling an interface/protocol method whose
-declaration comes from a chained dep must resolve to the union entry's effect (not read pure).
+Rollout: DONE for all three source engines — `interfaceUnion` field + `--workspace`/`--deps` convention pinned
+here and in conformance PART 18 (candor-scan trait-union + cross-crate `&dyn` consumer resolution, candor-ts
+interface-union, candor-swift protocol-union), recorded as spec 0.23; java is N/A. The empirical test for any
+engine: a 2-package fixture — a consumer calling an interface/protocol/trait method whose declaration comes
+from a chained dep must resolve to the union entry's effect (not read pure). Remaining follow-ons: a
+`--workspace` ergonomics flag for candor-swift now exists (parses `.package(path:)`); the umbrella strips
+`--workspace` for the JVM engine (N/A). Open: publish the 0.23 line.
 
 ## Measured value
 
