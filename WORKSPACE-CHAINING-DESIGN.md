@@ -1,10 +1,10 @@
 # Workspace report chaining — cross-package interface dispatch (design)
 
-*Status: SHIPS on candor-ts + candor-swift (spec 0.22 line, gated behind `CANDOR_WORKSPACE_CHAIN`), and
-conformance **PART 18** pins the field + the cross-package resolution across both — the ≥2-engine + pinned
-threshold for a rung (the ladder discipline, [[candor-versioning-ladder]]). This document specs the
-`interfaceUnion` report field, the `--workspace` discovery flag, and the cross-package-interface-dispatch
-rule. Remaining: the candor-rust roll (trait-union entries); candor-java is N/A (whole-classpath bytecode).*
+*Status: SHIPS on all three SOURCE engines — candor-scan (rust) + candor-ts + candor-swift (spec 0.22 line,
+gated behind `CANDOR_WORKSPACE_CHAIN`), and conformance **PART 18** pins the field + the cross-package
+resolution across all three (the ladder discipline, [[candor-versioning-ladder]]). candor-java is N/A
+(whole-classpath bytecode resolves cross-module dispatch natively). This document specs the `interfaceUnion`
+report field, the `--workspace` discovery flag, and the cross-package-interface-dispatch rule.*
 
 ## The problem
 
@@ -80,15 +80,19 @@ ugly `invisible:[/abs/path]`).
 |---|---|---|---|---|
 | **candor-ts** | ✓ (§2) | ✓ (added here) | WAS **silent-pure** → **FIXED** via `interfaceUnion` (gated) | ✓ `--workspace` |
 | **candor-swift** | ✓ (Deps.swift) | ✓ (already) | WAS **silent-pure** for an external-protocol-typed receiver (an interface method on a value whose protocol is imported from a chained package read PURE) → **FIXED** via protocol-CHA `interfaceUnion` (gated). NB a *project* type conforming to an *external* protocol is already handled soundly (`Driver.swift:454-475`: unmodeled → `Unknown`, Fluent `Model` → Db) — a different shape. | manual `CANDOR_DEPS` today |
-| **candor-rust** | ✓ `--deps` | confirm | trait-object dispatch heavily handled (R32–R44, bounded CHA); assess the cross-crate-trait shape against the 2-package test — likely the same precise-effect roll | ✓ `--deps` (Cargo) |
+| **candor-rust** | ✓ `--deps` | ✓ | WAS **silent-pure** for a `&dyn ExternalTrait` call (its impls live in another crate, so in-crate CHA found nothing and dropped it) → **FIXED**: trait-CHA `interfaceUnion` producer entries + a consumer that emits a crate-qualified `Call` for an external-`use`-resolved trait so the chain resolves (unchained it now discloses `invisible:[crate]`, was pure). A/B on syn/serde_json/h2: +80 recoveries, 0 fabrication. | ✓ `--deps` (Cargo) |
 | **candor-java** | ✓ (§2) | confirm | **N/A** — the bytecode engine is typically given the whole classpath, so cross-module interface dispatch resolves natively (it sees every `invokeinterface` target's class) | classpath, not a flag |
 
-The empirical result on a 2-package fixture (protocol in a dep, effectful conformer, consumer calling the
-protocol method): **both** ts and swift read the consumer call **PURE** when the dep is unchained, and both
-now disclose the **precise chained effect** with `interfaceUnion` + the dep report chained. So this was a
-genuine silent-pure hole in the source engines (each reached it through a different resolution path — ts keys
-the chain lookup on the bodyless interface method signature; swift on an unresolved external-protocol
-receiver), not merely a precision gap. The bytecode engine (java) sidesteps it by seeing all classes.
+The empirical result on a 2-package fixture (interface/protocol/trait in a dep, effectful impl, consumer
+calling the method): **all three source engines** read the consumer call **PURE** when the dep is unchained,
+and all three now disclose the **precise chained effect** with `interfaceUnion` + the dep report chained. So
+this was a genuine silent-pure hole in every source engine — each reached it through a different resolution
+path (ts keys the chain lookup on the bodyless interface method signature; swift on an unresolved
+external-protocol receiver; rust drops an external-`&dyn` dispatch because its impls are in another crate) —
+not merely a precision gap. The bytecode engine (java) sidesteps it by seeing all classes. HARD LESSON:
+repo-reading one engine's resolution path (e.g. swift's project-conforms-to-external handler) mis-scoped the
+gap as precision-only; the 2-package empirical fixture is the honest oracle — and all three source engines
+read it pure.
 
 Rollout: `interfaceUnion` field + `--workspace`/`--deps` convention pinned here and in conformance PART 18
 (done for ts+swift); rust is the remaining source-engine roll (trait-union entries), java is N/A. The
