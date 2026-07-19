@@ -1947,3 +1947,22 @@ the residual was NOT the unfixable logger-flood class after all — it is fixabl
 right fix, as predicted), NOT a blanket external-interface→Unknown. Productionizing (auto-scan workspace
 deps, spec the `interfaceUnion` field + flag) is the follow-on. DURABLE: the workspace-symlink `declModule`
 bug means ANY monorepo dep's effects were mis-keyed — a general recall gap the chaining work surfaced.
+
+### 2026-07-19 — workspace chaining PRODUCTIONIZED (`--workspace`) + the monorepo recall sweep (candor-ts `2af77fc`)
+
+The prototype above is now a one-command flag: `candor-ts <target> --workspace` (alias `--deps`)
+auto-discovers the target's symlinked monorepo deps, scans each into `.candor/deps/` (with interface-CHA
+union entries), and chains them — the candor-ts analog of rust `--deps`. SWEEP across all 11 ukri-tfs services:
+**+545 functions disclosed that previously read PURE** (1396 → 1941 effectful/disclosed; every service gained,
++1 to +158). SOUNDNESS of the gains verified: the split is dominated by HARD inferred effects (e.g.
+application-manager +140 = 135 hard-inferred / 5 invisible), NOT the union over-approximation — because most
+are PRECISE concrete-class resolutions through the chain: `getUserByTfsId → client.get('/users/…') → Net`
+(party-manager), `getOrganisationById → admin-services → Net`, repository calls → Db, config reads → Env, all
+traced to real workspace-client HTTP/DB calls candor was systematically under-reporting across the package
+boundary. This quantifies the SCALE of the cross-package under-report class the earlier ukri-tfs entry found a
+single instance of: a monorepo/microservice TS codebase reads HUNDREDS of its real effect reaches as pure when
+scanned per-package, because the effect lives one workspace hop away. Regression green; default (no --workspace)
+byte-identical. FOLLOW-ONS: transitive workspace-dep chaining (a dep's own workspace deps); the four-way roll
+(java/swift analogs — rust already has --deps); spec the `interfaceUnion` field + the `CANDOR_WORKSPACE_CHAIN`
+flag. DURABLE: per-package scanning of a monorepo is a systematic under-report multiplier — chaining is not a
+nicety but the difference between reading a microservice backend as mostly-pure and seeing its real reach.
