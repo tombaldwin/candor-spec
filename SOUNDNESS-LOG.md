@@ -2046,3 +2046,52 @@ DURABLE: a NAME-keyed CHA index (leaf/tail/bare-name) that the in-crate path gua
 must carry the SAME guard when its union is EXPOSED to cross-package consumers — the exposure is a new place
 the collision can fabricate. And: a corpus A/B is necessary-not-sufficient (the collision shape wasn't in
 syn/serde_json/h2) — constructive review reaches it by construction, the recurring lesson.
+
+### 2026-07-19 — the sync-callback-invoker vein, swept + pinned FOUR-WAY
+
+The transitive verify-oracle's reconcile-against-reality engine (RQ1 on independent code) surfaced this
+on Apache commons-compress: an OPAQUE functional param handed to a SYNCHRONOUS higher-order invoker
+(`Iterator.forEachRemaining`, `Iterable/Collection/Map/Stream.forEach`, `Optional.ifPresent`) read
+SILENT-PURE, while a DIRECT opaque call (`cb()`) was already correctly Unknown. candor-java closed it
+first (`c755acd`: `SYNC_CALLBACK_INVOKERS` + `isSyncCallbackInvoker`, opaque-arg-only guard so inline
+lambdas keep their edged effect). Per the standing "a find in one engine is a SWEEP trigger for ALL"
+rule, probed the other three with a calibrated repro (known-pure / known-effect / `forEach(opaqueParam)`
+/ direct `cb()`): the vein was present in ALL THREE — candor-scan (`for_each(cb)` direct-pass leaked
+while the closure-wrapped `for_each(|x| cb(x))` was already Unknown — the asymmetry was the tell),
+candor-ts (`arr.forEach(cb)` pure while `cb()` Unknown), candor-swift (`arr.forEach(cb)` pure while
+`cb()` Unknown). FIXED four-way, fanned out to three parallel subagents (separate repos, reconverged at
+conformance): candor-scan `0784052` (route the direct-pass fn-typed arg through the existing
+`expr_is_fn_typed`→unresolved path; +Option/Result combinators; A/B itertools +16 Unknown, zero fab),
+candor-swift `027b184` (`SYNC_CALLBACK_INVOKERS` table + param→`callbackInvoked` index-resolved / local→Unknown;
+250/250; A/B swift-argument-parser +5, zero fab), candor-ts `014fcd8` (`HOF_INVOKERS` opaque-callback arm
+with four guards — inline-arrow-preserved, resolvable-preserved, arg-0-only, opacity; the initial cut hit
+a `reduce`-seed and `.filter(Boolean)` false-positive, both gated; 568 tests; A/B fp-ts +10, zero fab on
+zod/ky/p-map/emittery). Each fix: additive-only, zero fabrication, full suite green, opaque-args-only so
+no inline-lambda flood.
+
+MID-RUNG CATCH — the differential did its job. Pinned the parity with a new PART 1 effect-set case,
+`sync_callback_opaque` (`list.forEach(opaqueCallback)` → expected `["Unknown"]`, added to all four
+fixtures + expected.json). First run: `Unknown/Unknown/(pure)` DIVERGE — candor-JAVA read it pure. Root
+cause: `SYNC_CALLBACK_INVOKERS` was keyed on the EXACT bytecode owner (`java/lang/Iterable`,
+`java/util/Collection`…), but `list.forEach(cb)` — the single most common form — compiles to an owner of
+the STATIC receiver type (`java/util/List`, `ArrayList`, `HashSet`, a user collection), NOT the
+`java/lang/Iterable` where the default method is declared, and candor-java has no JDK supertype index to
+normalize it. The Rust/TS/Swift arms all key their sync-invoker check on the method NAME (owner-agnostic),
+so they caught it; java's owner-exact table silently missed the most common case. FIX candor-java
+`ead40c6`: match `forEach`/`forEachOrdered`/`forEachRemaining` by name (`FOR_EACH_FAMILY`), any owner —
+the forEach idiom invokes its functional arg synchronously by contract across the whole JDK and user
+collections alike; over-disclosure stays at the floor (A/B commons-io 1188→1188 and commons-compress
+824→824: ZERO new Unknowns — the corpora's forEach sites are inline lambdas or already-Iterable-typed).
+Regression `StructuralDispatchTest.syncCallbackInvokerOwnerAgnosticListForEach`. Full four-way conformance
+green end-to-end (exit 0), `sync_callback_opaque` = Unknown in all four.
+
+DURABLE: (1) a cross-engine vein = N independent per-engine fix-cycles → fan out to subagents (separate
+repos, no shared state), reconverge at four-way conformance. (2) The conformance DIFFERENTIAL caught an
+owner-exact under-coverage (`List.forEach`) that the per-engine A/B on commons-io/compress had NOT — those
+corpora happened to lack the `List.forEach(opaqueArg)` shape, exactly as the interfaceUnion name-collision
+(prev entry) wasn't in syn/serde_json/h2. Constructive conformance reaches by construction what corpus A/B
+can miss — the recurring lesson, now twice in one week. (3) When one engine keys a check on an EXACT owner
+and its siblings key on the method NAME, the exact-owner engine is the likely under-cover — prefer the
+name-keyed, hierarchy-agnostic form for the universal-contract idioms (forEach), reserving owner-scoping
+for the genuinely type-specific ones (Optional.ifPresent). Riding candor-java 0.22, candor-scan/ts/swift
+unpublished — harness-blocked, Tom remote.
