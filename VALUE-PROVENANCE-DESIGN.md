@@ -126,15 +126,31 @@ The R17 entry-point case becomes a corollary row.
   `Trace.emit` stops once its stack walk crosses an uncovered frame). Closes the `getResolver` false positive
   (configuration2 oracle 1→0); strictly sound, zero masking (a miss through all-covered frames still has no
   uncovered frame on its stack → still caught). Regression pins both halves.
-- **Phase 2 — NOT YET BUILT (the co-scan precision refinement).** Phase 1's Unknown is the honest LIBRARY-view
-  answer; whole-program, when the app AND the library are co-scanned and the concrete stream crosses the
-  construction boundary (`new ZipArchiveInputStream(new FileInputStream(f))`), it propagates a *redundant*
-  Unknown to the app's zip-processing functions ({Fs, Unknown} where {Fs} would do). Suppressing it needs the
-  construction-carried binding (§3): a whole-program field-origin summary computed from the actual `new C(args)`
-  sites — which requires a provenance PRE-PASS over the program (the field-origin must be known before a read
-  is analysed). Real value in the co-scan gate scenario, but genuinely more machinery (a second frame pass or
-  a re-propagating post-pass) than Phase 1; scoped as its own effort, not rushed onto the tail of the
-  intraprocedural fix. The in-*function* open case (open and read in one method) is ALREADY precise via Phase 1.
+- **Phase 2 — ATTEMPTED, then STOPPED on a principled blocker (2026-07-20).** Built the groundwork (a
+  `ProvValue.fieldOrigin` carrying a read's "owner#field") and designed the whole-program field-origin summary,
+  then verified against the motivating case and found it does NOT deliver readFully's precision, for two
+  compounding reasons — and, on reflection, that the premise itself is shaky:
+  1. **The motivating field is JDK-inherited.** `ZipArchiveInputStream.readFully` reads `in`, which is
+     `java/io/FilterInputStream#in` (ArchiveInputStream extends FilterInputStream) — not a project field. Its
+     binding happens through `super(in)` (partly JDK, invisible), and the summary key `FilterInputStream#in`
+     is SHARED by every FilterInputStream subclass in the program: a context-insensitive summary would merge
+     them, so one subclass constructed anywhere with an external stream marks the field external for ALL →
+     essentially never suppresses. Phase 2's field-origin cannot precisely reach the common stream-wrapper
+     idiom (extend FilterInputStream), which is exactly the motivating shape.
+  2. **The premise is shaky.** Whole-program, `readFully → Unknown` propagating to an app function as
+     {Fs, Unknown} is not obviously a *defect*: `readFully` genuinely reads an externally-supplied stream of
+     undetermined effect, so disclosing Unknown there is HONEST, not redundant. Calling it "redundant" assumes
+     candor can prove the stream is always concrete — which for a stream flowing through object construction is
+     per-instance POINTS-TO, a different and much larger analysis than a field-origin summary, and one candor
+     deliberately does not do. So the "trade-off" Phase 2 set out to dissolve is, for the motivating case,
+     honest disclosure rather than imprecision.
+  CONCLUSION: Phase 1 + the coverage-crediting companion are the complete, sound answer for every case where
+  candor can see the stream's origin (the in-*function* open is already precise; the cross-object case is
+  honestly disclosed). A field-origin Phase 2 would help only PROJECT-declared, non-inherited, param-sourced
+  stream fields constructed uniformly with concrete streams — a narrow slice that excludes the motivating
+  idiom — and would need a whole-program pre-pass with real soundness risk (a wrongly-suppressed Unknown is a
+  cardinal sin). Not built; the groundwork was reverted to keep the tree clean. Precise whole-program stream
+  precision is a POINTS-TO item, tracked separately, not a value-provenance-summary rung.
 - **Phase 3 — assessed as largely N/A for a four-engine sweep.** The specific `STREAM_CONSUMING_UTILITIES`
   table is java-ecosystem (commons-io/Guava); the sibling engines don't share it, so — like the filter-close
   and doPrivileged veins — this is JVM-specific by mechanism. The general *principle* (an external-origin
