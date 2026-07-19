@@ -24,6 +24,10 @@ public class Cases {
   // --- the trust contract: an unanalysable call is Unknown ---
   public static void unknown_dyn(String cls) throws Exception { Class.forName(cls); }
 
+  // An OPAQUE callback handed to a SYNCHRONOUS invoker (forEach) is an unresolvable call -> Unknown,
+  // never silently pure (four-way sync-callback-invoker rung).
+  public static void sync_callback_opaque(java.util.List<Integer> xs, java.util.function.Consumer<Integer> cb) { xs.forEach(cb); }
+
   // --- composition: union + transitive propagation ---
   public static void combined() throws Exception { Files.readAllBytes(Path.of("/tmp/x")); new java.net.Socket("h", 1); }
   public static void transitive_leaf() throws Exception { Files.readAllBytes(Path.of("/tmp/x")); }
