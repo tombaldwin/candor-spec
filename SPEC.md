@@ -273,7 +273,15 @@ never by bare `fn` (names may legitimately repeat across packages).
 The envelope SHOULD also name the package the report covers, as `"package": "<name>"` (or
 `"packages": ["<name>", …]` where one compilation unit genuinely spans several, the JVM shape), so
 a consumer (and the §2 chaining coverage rule) can tell what an **empty** report covers without
-parsing entry hashes. When the field is absent, coverage is derivable from the entries' `hash`
+parsing entry hashes.
+
+**Cross-package interface dispatch** (design: `WORKSPACE-CHAINING-DESIGN.md`, prototype in candor-ts 0.22).
+A call on a value typed as an interface/protocol *imported from a chained package* resolves to the interface
+method signature, which has no body — so the chain join can miss it. An engine MAY expose the
+implementation-union as a synthetic `interfaceUnion: true` report entry (`hash: pkg#Iface.method`, effects =
+the union over local implementers), so the consumer's existing chain lookup resolves; and MAY auto-discover
+workspace deps with `--workspace`/`--deps`. Gated/opt-in until a floor rung pins it. NB the *silent-pure*
+form of this miss was candor-ts-specific; the other engines already fall to a disclosed `Unknown` here. When the field is absent, coverage is derivable from the entries' `hash`
 prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
 **Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§"Versioning
