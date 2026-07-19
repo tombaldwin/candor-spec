@@ -1865,3 +1865,32 @@ but it is noisy, and `--deps` chaining is the precision path that collapses most
 never causes a false all-clear, so this is a UX/precision axis, not a soundness one. Root cause of why these
 rounds now come up clean where pre-0.21 they would not: the manifest turned the unresolved-external-call vein
 (historically the dominant silent-under-report source) into a disclosed `invisible`/`coverage.uncovered` edge.
+
+### 2026-07-19 — four-way dogfood: TS typeorm connection-open silent-pure (candor-ts `9459e8f`); swift clean
+
+Extending the rust negative-control round to the other three engines on fresh real code, run from the
+0.22 SOURCE builds (the local install is stale at 0.17/0.18). Method: file-level cross-check — where source
+shows an effect API but the report has no matching-effect-or-Unknown function in that (non-test) file.
+- **candor-swift on `pollen`** (a real iOS app, 180 .swift files, 2921 analyzed): rich effect surface
+  correctly recovered — Clock 336, Fs 312, Unknown 435, Net 49, Exec 50, Location 63, Contacts 10, Mic 18 —
+  with `coverage.uncovered` naming MapKit/WidgetKit/Metal/… . Cross-check flagged only TEST files (excluded
+  by design). CLEAN.
+- **candor-ts on `ukri-tfs`** (a real TS services monorepo): found a genuine SILENT UNDER-REPORT.
+  `service/adaptor/repository/typeOrmDataSourceFactory.buildPostgresDataSource` did
+  `new DataSource(options).initialize()` — `.initialize()` opens the Postgres connection pool (a real Db
+  round-trip) — and read PURE (omitted from the report, no Unknown). The typeorm verb rule covered the QUERY
+  surface (find/save/execute/…) but not the DataSource LIFECYCLE. FIX (`9459e8f`): add the connection/DDL
+  I/O verbs `initialize|connect|synchronize|runMigrations|undoLastMigration|dropDatabase` to the same
+  module-gated typeorm rule (fires only on a typeorm-typed receiver; pure builder heads stay pure).
+  A/B on two services: recovery propagates transitively up the real startup chain
+  (`startService`/`buildFastifyServerConfig`/`getConnection` went `[Env,Unknown] -> [Db,Env,Unknown]` — a
+  false all-clear on Db, closed), ZERO fabrication, ZERO removed. Unit(103)+integration(553)+probe all green.
+
+FOUR-WAY SWEEP of the vein ("DB connection lifecycle is Db, not only queries"): the REFERENCE engine already
+upholds it — `Classifier.java:180` classifies `java.sql.Driver.connect` (connection-open) as Db, with a
+comment flagging it was a silent-pure hole. candor-ts was the lone straggler; now at parity. Swift/rust ORMs
+absent from the corpus (rust `sqlx`/`diesel` connection-open — e.g. `PgPool::connect` — is an untested
+follow-on, no corpus miss observed). Spec CLASSIFIER.md §TS-Db amended to state the shared principle
+explicitly. Durable: dogfooding a REAL framework app (typeorm/Nest, a fastify service) finds ecosystem sins
+a synthetic seam never would; and when one engine surfaces a Db/lifecycle vein, the reference engine's
+existing rule is the parity oracle.

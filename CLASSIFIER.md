@@ -93,7 +93,11 @@ safe for an agent to rely on.
   `node-fetch`, `WebSocket`;
   **Db** the *execution* verb (the I/O boundary, exactly the sqlx lesson in §2): `pg`/`mysql2` `query`,
   `better-sqlite3` `run`/`get`/`all`, `mongodb` `find`/`insertOne`, `ioredis` — and for the ORMs
-  (Prisma/Drizzle/TypeORM/Knex) the awaited *execution*, not the chained query builders;
+  (Prisma/Drizzle/TypeORM/Knex) the awaited *execution*, not the chained query builders. The Db surface
+  also includes **connection ESTABLISHMENT and DDL/migration execution**, not only queries: opening a pool
+  or driver connection is a real server round-trip (java: `java.sql.Driver.connect`; ts: TypeORM
+  `DataSource.initialize`/`connect`), and `synchronize`/`runMigrations`/`dropDatabase` execute DDL — so a
+  connection-factory that reads pure is a false all-clear (found dogfooding ukri-tfs);
   **Exec** `node:child_process` (`exec`/`execFile`/`spawn`/`fork`), `Bun.spawn`, `Deno.Command`;
   **Env** `process.env` access + `Deno.env.get`; **Clock** `Date.now`/`new Date()`/`performance.now`/
   `process.hrtime`; **Rand** `Math.random`, `node:crypto` (`randomBytes`/`randomUUID`), Web `crypto.getRandomValues`;
