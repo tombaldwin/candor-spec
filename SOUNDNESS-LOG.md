@@ -1985,3 +1985,23 @@ disclosed Unknown into the exact chained effect) — promoted to a floor rung on
 real Unknown-heavy corpus. DURABLE: not every "four-way vein" is a four-way SIN — sometimes one engine's
 resolution strategy (ts's type-checker-keyed lookup) creates a silent-pure hole the others' never-silent
 default already covers; the honest roll assesses posture per engine before porting.
+
+### 2026-07-19 — interfaceUnion rolled to candor-swift + pinned four-way (swift `f7acad5`, spec `297f239`)
+
+The workspace-chaining `interfaceUnion` rung now SHIPS on a SECOND engine and is conformance-pinned.
+candor-swift: gated behind `CANDOR_WORKSPACE_CHAIN`, emit synthetic `pkg#Protocol.method` union entries =
+the union over local conformers (reusing the `conformers` CHA universe), so a consumer's cross-package
+protocol call resolves. Verified end-to-end with a 2-package fixture (`use(ch: OutboundChannel)` calling
+`ch.publish()` on a chained Dep whose AwsChannel conformer does Fs → `use → Fs`). 245 swift tests pass;
+default (no flag) reports byte-identical. Conformance **PART 18** pins it: a per-shipping-engine 2-package
+fixture — the consumer must resolve the chained interface/protocol method to the impl's effect, never pure
+(ts `use→Net`, swift `use→Fs`), and the dep must emit the union entry. Full suite green (18 parts MATCH).
+CORRECTION to the earlier four-way assessment: candor-swift ALSO read the external-protocol-typed-receiver
+cross-package call as PURE when unchained (the empirical fixture proved it) — a DIFFERENT resolution path
+than ts (ts keys the chain lookup on the bodyless interface method signature; swift on an unresolved
+external-protocol receiver) but the SAME silent-pure outcome. So this was a genuine soundness fix in BOTH
+source engines, not the precision-only upgrade the earlier code-read (Driver.swift:454-475, a different
+shape: project-conforms-to-external) suggested. DURABLE: repo-reading ONE resolution path mis-scoped the
+gap; the 2-package empirical fixture is the honest oracle for "does this engine read cross-package interface
+dispatch as pure?" — and both source engines did. rust roll (trait-union) is the remaining source-engine
+follow-on; java sidesteps via whole-classpath bytecode.
