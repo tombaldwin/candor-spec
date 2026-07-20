@@ -21,6 +21,13 @@ effect instead of reading pure. Gated behind `CANDOR_WORKSPACE_CHAIN` (a default
 three-way conformance-pinned (PART 18: candor-scan + candor-ts + candor-swift; java N/A via whole-classpath
 bytecode). See **SPEC.md §2** + **WORKSPACE-CHAINING-DESIGN.md**.
 
+The 0.23 floor also carries two soundness-increasing, report-shape-neutral additions (contract unchanged):
+the **synchronous-callback-invoker** rung — an opaque callback handed to a sync higher-order invoker
+(`forEach`/`for_each`) discloses `Unknown`, machine-pinned FOUR-way (PART 1 `sync_callback_opaque`); and the
+verify oracle's **coverage crediting** — transitive attribution stops at an unanalyzed frame, so it honours
+the coverage envelope (§7.1) rather than false-positiving on a library's unmodelled-dependency effects. Both
+are documented in **SOUNDNESS-LOG.md** (the 2026-07-18/20 reconcile-against-reality arc + value provenance).
+
 ## 0.22 — the `verify` oracle
 
 The **`verify` oracle** rung — candor's dynamic honesty check (`observed(f) ⊆ inferred(f) ∪ {Unknown}` per
