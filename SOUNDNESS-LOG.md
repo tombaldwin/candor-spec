@@ -2256,3 +2256,36 @@ already emits. Both are report-shape-neutral precision, sound-direction-only. Ph
 precision via construction-carried binding) is scoped but unbuilt — it needs a provenance pre-pass and is
 narrower-value; Phase 1's in-function-open case is already precise. candor-java commits this arc:
 …,04f3b97,8537909,fbb8cda.
+
+### 2026-07-20 — code review of value provenance: 4 soundness bugs in the new code, fixed (candor-java 2694324)
+
+A high-effort workflow-backed code review of the value-provenance work (Phase 1 8537909, oracle crediting
+fbb8cda, Phase 2 552553f) found FOUR real soundness bugs in the freshly-written code — three silent-under-
+report veins and one oracle-masking — plus one efficiency issue. All CONFIRMED by the review's adversarial
+verifier, all fixed with a regression (`StructuralDispatchTest.valueProvenanceReviewFixesAreSound`). A pointed
+reminder that new analysis code is exactly where the cardinal sin hides, and that constructive review catches
+what corpus A/B (all four corpora unchanged) does not.
+
+1. **externalStreamUtility first-arg-only** — it `return`ed after the FIRST InputStream/Reader argument, so a
+   DUAL-input verb (`IOUtils.contentEquals(in,in)`) with a fresh first arg masked an external SECOND stream →
+   silent under-report. Fix: check EVERY stream arg.
+2. **cross-class field rebinding invisible** — `computeStreamFieldOrigins` scanned only PUTFIELDs where
+   `fi.owner==cn.name`, so a rebinding of an accessible field from another class (`B: a.in = external`) or a
+   nestmate write left the field wrongly suppressible. Fix: a GLOBAL stream-field key set scanned against every
+   PUTFIELD in every class; a param binding trusted only in the field's DECLARING class's own `<init>`.
+3. **ProvValue.merge dropped fieldOrigin from its short-circuit** — a control-flow join of `this.in` and an
+   external param (all else equal) returned the field value, keeping fieldOrigin → suppression fired on a value
+   that can be the external operand. Fix: merge fieldOrigin (disagreement → null), matching newType/declType.
+4. **verify oracle prefix-collision masking** — `Trace.emit` checked `inUncoveredPackage` (a dotted-PREFIX
+   match) BEFORE the QUALS lookup, so a project package under an uncovered ANCESTOR prefix (`com.acme.vendor`
+   uncovered, project `com.acme.vendor.app`) was dropped from attribution → a real miss through covered frames
+   masked. Fix: attribute any ANALYZED project frame FIRST (never a boundary); only a non-project frame in an
+   uncovered package is the boundary. Also neutralises the callback-through-uncovered concern (an inline
+   callback is edged to its caller at creation, so the caller isn't wrongly pure). Regression
+   `VerifyOracleTest.attributionStopsAtUncoveredBoundaryButNotThroughCoveredFrames` still green + the new one.
+
+Plus an efficiency fix: a consume-once `provFramesCache` so the Phase-2 pre-pass and the main pass share one
+ASM dataflow computation per stream-touching method. Verified: full suite green; corpora unchanged (compress
+861, io 1194); configuration2 oracle 0 (crediting intact), compress oracle 0. DURABLE: the reconcile engine
+finds the classifier's cardinal sins on real code; adversarial code review finds them in the analysis code
+ITSELF — run BOTH on new provenance logic.
