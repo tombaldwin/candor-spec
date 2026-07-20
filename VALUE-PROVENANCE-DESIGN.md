@@ -146,11 +146,21 @@ The R17 entry-point case becomes a corollary row.
      honest disclosure rather than imprecision.
   CONCLUSION: Phase 1 + the coverage-crediting companion are the complete, sound answer for every case where
   candor can see the stream's origin (the in-*function* open is already precise; the cross-object case is
-  honestly disclosed). A field-origin Phase 2 would help only PROJECT-declared, non-inherited, param-sourced
-  stream fields constructed uniformly with concrete streams — a narrow slice that excludes the motivating
-  idiom — and would need a whole-program pre-pass with real soundness risk (a wrongly-suppressed Unknown is a
-  cardinal sin). Not built; the groundwork was reverted to keep the tree clean. Precise whole-program stream
-  precision is a POINTS-TO item, tracked separately, not a value-provenance-summary rung.
+  honestly disclosed).
+- **Phase 2 — BUILT for the project-declared slice (candor-java `552553f`), knowingly narrow.** After the
+  blocker above, built the construction-carried binding for the cases it CAN reach soundly: a PROJECT-declared
+  (non-JDK-inherited) instance stream field proven bound only to in-scope concrete opens. `ProvValue.fieldOrigin`
+  carries a GETFIELD's "owner#name"; a pre-pass `computeStreamFieldOrigins` populates `suppressibleStreamFields`
+  — a field enters only when every binding is a self-sourcing concrete (`SELF_SOURCING_STREAMS`, filters
+  excluded): a self-open, or a ctor-param field whose every in-scope `new C(args)` site passes a self-sourcing
+  concrete (and, for soundness, the declaring class has no project subclass and ≥1 in-scope construction).
+  `externalStreamUtility` suppresses the Phase-1 Unknown for such a field. CONSERVATIVE by construction: any
+  doubt leaves the field out (a wrongly-suppressed Unknown is a cardinal sin, so the pass errs to not
+  suppressing). A/B: **zero change on commons-io/compress/vfs2/configuration2** — sound (0 wrongly-lost
+  Unknowns) but no corpus payoff, because those use FilterInputStream inheritance, not the project-declared
+  pattern; a synthetic three-way test pins the behaviour (self-open → suppressed, param+concrete → suppressed,
+  param+external → kept). So the have-both is now delivered for the project-declared slice too; the
+  JDK-inherited idiom (readFully) remains honestly disclosed, its precise resolution a POINTS-TO item.
 - **Phase 3 — assessed as largely N/A for a four-engine sweep.** The specific `STREAM_CONSUMING_UTILITIES`
   table is java-ecosystem (commons-io/Guava); the sibling engines don't share it, so — like the filter-close
   and doPrivileged veins — this is JVM-specific by mechanism. The general *principle* (an external-origin
