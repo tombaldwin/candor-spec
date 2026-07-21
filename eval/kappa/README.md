@@ -12,7 +12,14 @@ three-axis protocol with three coders and computes Cohen's κ.
   sharpened silent-vs-precision rule).
 - `kappa_perfind.csv` — the per-find three-coder label table (the confusion-matrix source).
 - `compute_kappa.py` — Cohen's κ per axis × rater-pair, raw agreement, confusion, asymptotic +
-  bootstrap (seed 20260721) 95% CIs. `python3 compute_kappa.py`.
+  **i.i.d.** bootstrap **and cluster (block) bootstrap by engine register** (seed 20260721) 95% CIs.
+  `python3 compute_kappa.py` (self-contained: reads the data shipped beside it).
+
+The cluster bootstrap resamples whole engine-registers, not individual findings, because finds within
+one engine (same author probing the same engine) are not independent — it widens the CIs to the
+effective cluster-count sample. It matters most on the weak `common-mode` axis, whose cluster-CI
+includes zero ([−0.11, 0.89]); the load-bearing `class`/`binary` axes stay well clear of zero
+(class cluster-95% [0.82, 1.00], binary [0.79, 0.96]).
 
 CAVEAT: all three coders are LLM instances applying the written rubric, so κ measures **protocol
 reproducibility**, not human inter-annotator independence (κ is correspondingly high). N=62 is the

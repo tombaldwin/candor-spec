@@ -3,8 +3,8 @@
 raw agreement, confusion matrices, asymptotic + bootstrap 95% CIs, and the per-find CSV.
 Three coders: rater1 = author labels (findings_full.author_class/instrument/commonmode);
 rater2 = blind LLM (coding_rater2); adjudicator = blind LLM under the sharpened rule (coding_adjudicator)."""
-import json, csv, math, random
-D = "/private/tmp/claude-501/-Users-tom-git-candor/e1c32da9-326f-4fda-904e-bb6bd23d4dec/scratchpad/kappa/"
+import json, csv, math, random, os
+D = os.path.dirname(os.path.abspath(__file__)) + "/"  # self-contained: read the data shipped beside this script
 random.seed(20260721)  # fixed seed -> reproducible bootstrap
 
 full = {f["id"]: f for f in json.load(open(D+"findings_full.json"))}
@@ -44,6 +44,29 @@ def bootstrap_ci(a, b, reps=5000):
     ks.sort()
     return ks[int(.025*len(ks))], ks[int(.975*len(ks))]
 
+def bootstrap_ci_clustered(a, b, cluster, reps=5000):
+    """Cluster (block) bootstrap: findings within one engine register are not independent
+    (same author probing the same engine), so resample whole engine-clusters with replacement
+    rather than individual findings. Widens the CI to the effective (cluster-count) sample size.
+    `cluster[i]` is the register key (engine) of finding i, aligned with a/b."""
+    pairs=list(zip(a,b,cluster))
+    groups={}
+    for x,y,c in pairs: groups.setdefault(c,[]).append((x,y))
+    keys=list(groups); G=len(keys)
+    ks=[]
+    for _ in range(reps):
+        chosen=[keys[random.randrange(G)] for _ in range(G)]  # resample clusters, not rows
+        aa=[]; bb=[]
+        for c in chosen:
+            for x,y in groups[c]: aa.append(x); bb.append(y)
+        try:
+            k,_,_,_,_=cohen_kappa(aa,bb)
+            if not math.isnan(k): ks.append(k)
+        except Exception: pass
+    ks.sort()
+    if not ks: return float('nan'), float('nan')
+    return ks[int(.025*len(ks))], ks[int(.975*len(ks))]
+
 def confusion(a,b):
     cats=sorted(set(a)|set(b)); m={(x,y):0 for x in cats for y in cats}
     for x,y in zip(a,b): m[(x,y)]+=1
@@ -62,8 +85,11 @@ for axis in axes:
         k,po,pe,se,cats=cohen_kappa(a,b)
         lo95,hi95 = k-1.96*se, k+1.96*se
         blo,bhi = bootstrap_ci(a,b)
+        clu=[full[i]["engine"] for i in ids]
+        cblo,cbhi = bootstrap_ci_clustered(a,b,clu)
         print(f"  {na} vs {nb}:  kappa={k:.3f}  raw-agreement={po:.3f}  "
-              f"asymp95%[{lo95:.2f},{hi95:.2f}]  boot95%[{blo:.2f},{bhi:.2f}]")
+              f"asymp95%[{lo95:.2f},{hi95:.2f}]  iid-boot95%[{blo:.2f},{bhi:.2f}]  "
+              f"cluster-boot95%[{cblo:.2f},{cbhi:.2f}]")
 
 # class-distribution per coder + FAC totals
 print(f"\n{'='*70}\nCLASS DISTRIBUTION + FALSE-ALL-CLEAR TOTALS\n{'='*70}")
