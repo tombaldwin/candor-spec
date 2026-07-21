@@ -1,0 +1,652 @@
+[
+  {
+    "id": "LOG-2026-06-18-basic-seam-rounds",
+    "date": "2026-06-18",
+    "engine": "multi",
+    "mechanism": "Across six adversarial rounds over the basic indirection seams (direct / local-call / method-recv / loop-elem / field / callback), effects reached through an indirection were read silent-pure (the specific per-round shapes are not individually itemized in the record).",
+    "evidence": "The six basic seam-class rounds each found >=1 silent under-report; all fixed and CI-gated (the basic-indirection scorecard row is now cross-engine-standing).",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-06-18-lazy-init-force",
+    "date": "2026-06-18",
+    "engine": "rust-deep",
+    "mechanism": "A deferred initializer (an effectful LazyLock init) was charged to the static it initializes but never to the function that FORCES it, so the forcing function read pure.",
+    "evidence": "Adversarial lazy-init/fire-forget/deferred-iterator probe found the forcing site read silent-pure; fixed (8bf9c6b), gated by ui/deferred_effects.rs.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R11",
+    "date": "2026-06-18",
+    "engine": "agents",
+    "mechanism": "Named-delegation narrowing trusted a prompt MENTION of an agent as proof of the spawn set, silently dropping unmentioned-but-spawnable agents (narrowed on a mention, not a proof).",
+    "evidence": "Agents seam battery found the narrowing was unsound (a bare Agent+mention dropped spawnable agents); fixed candor-agents 0.4.13 (755216a): allowlist narrows soundly, bare Agent discloses an Unknown spawn residual; gated (test.py).",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R13",
+    "date": "2026-06-18",
+    "engine": "rust-deep",
+    "mechanism": "A thread_local! forced via KEY.with(...) read PURE because the effect lives in the macro-generated init fn, orphaned behind the non-local LocalKey::with call.",
+    "evidence": "Adversarial thread_local probe found the forced init read silent-pure; fixed 2026-06-18 (6010832), gated by ui/thread_local_effects.rs.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R14+R16",
+    "date": "2026-06-18",
+    "engine": "multi",
+    "mechanism": "The WRITER side of formatting read PURE across four engines: an effectful custom sink (rust fmt::Write/io::Write via write!; swift TextOutputStream via print(to:)/write(to:); java Appendable/Writer wrapped in a JDK Formatter/PrintWriter driven by format/printf) driven by a non-local format helper was dropped, silent in all four simultaneously (distinct from the arg-Display side which all engines handled).",
+    "evidence": "Adversarial write! writer-side probe found it silent-pure in rust-deep, then a cross-engine sweep found the SAME gap silent in candor-scan, candor-swift, and candor-java -- the exact shared-blind-spot case cross-engine agreement hides; fixed in all four (deep 0e4bf50, scan 0.5.18 dabafd0, swift 0.5.22 9368311, java 0.5.40 5f86d3e).",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "kbatch24",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "Hibernate-6 / Jakarta Data persistence (StatelessSession, split SelectionQuery/MutationQuery, jakarta.data.repository.*) was unmodeled, so Db never landed on the repository endpoints.",
+    "evidence": "Real-app corpus test (Quarkus quickstart): the endpoints read inferred=[] + invisible=[org.hibernate...] with a kappa receipt naming packages (DISCLOSED, not silent); then mined verb-precisely to Db.",
+    "author_class": "precision",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch25",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "Quarkus Panache active-record (Fruit.listAll(), f.persist()) read SILENT-PURE: the call-site owner is the PROJECT entity/repo type, so the kappa-floor invisible disclosure (external owners only) never fired and CHA found no project body -> dropped to pure.",
+    "evidence": "Real-app corpus test found the Panache DB methods ABSENT from the report (no invisible, no Unknown) so the architecture gate was blind to all DB access; fixed (cf359ce), verb+hierarchy-gated, fab probe OK.",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch26-micronaut-data",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "An inherited-into-project DB call via Micronaut Data repository: an external stub base + a project subtype + an inherited persistence call read SILENT-PURE (the call owner is the project subtype, no rule fired, no project body for CHA).",
+    "evidence": "Probing batch-25's shape across the persistence ecosystem confirmed this framework silent-pure; mined + fixed (32229da), verb+hierarchy-gated, fab probe OK (lookalike save()/findAll() stays pure).",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch26-ebean",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "An inherited-into-project DB call via Ebean io.ebean.Model active-record: an external stub base + a project subtype + an inherited persistence call read SILENT-PURE (the call owner is the project subtype, no rule fired, no project body for CHA).",
+    "evidence": "Probing batch-25's shape across the persistence ecosystem confirmed this framework silent-pure; mined + fixed (32229da), verb+hierarchy-gated, fab probe OK (lookalike save()/findAll() stays pure).",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch26-activejdbc",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "An inherited-into-project DB call via ActiveJDBC org.javalite.activejdbc.Model active-record: an external stub base + a project subtype + an inherited persistence call read SILENT-PURE (the call owner is the project subtype, no rule fired, no project body for CHA).",
+    "evidence": "Probing batch-25's shape across the persistence ecosystem confirmed this framework silent-pure; mined + fixed (32229da), verb+hierarchy-gated, fab probe OK (lookalike save()/findAll() stays pure).",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch26-jooq",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "An inherited-into-project DB call via jOOQ org.jooq.impl.DAOImpl: an external stub base + a project subtype + an inherited persistence call read SILENT-PURE (the call owner is the project subtype, no rule fired, no project body for CHA).",
+    "evidence": "Probing batch-25's shape across the persistence ecosystem confirmed this framework silent-pure; mined + fixed (32229da), verb+hierarchy-gated, fab probe OK (lookalike save()/findAll() stays pure).",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch27",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "A project class subclassing a base candor DOES model at the leaf, calling an inherited method, read SILENT-PURE: the call owner is the project subclass (no rule) and classify was never re-tried against the external supertype (e.g. class MyContainer extends GenericContainer; c.start()).",
+    "evidence": "Found via Testcontainers (c.start() read pure though GenericContainer.start is modeled Exec) and extends FileInputStream; fixed at the classify site (re-run classify against each external supertype); byte-identity held on pc/jsoup/gson.",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R17",
+    "date": "2026-06-21",
+    "engine": "java",
+    "mechanism": "I/O via an ABSTRACT java.io stream param (Reader/InputStream/Writer/OutputStream) at a rooted entry point read PURE, not Unknown, when the framework injects the concrete stream (the jsoup streaming-parser pattern).",
+    "evidence": "Found by probing the framework-injected-stream shape; the entry-point param read silent-pure; fixed 2026-06-21 (provenance-gated, entry-point-scoped, R17AbstractStreamTest); surface measured near-empty.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch28",
+    "date": "2026-07-06",
+    "engine": "java",
+    "mechanism": "The pre-Spring legacy-enterprise stack (JCL/commons-logging, Joda-Time, commons-lang3, hibernate.criterion, Struts 1.x) was entirely INVISIBLE-floored, so its ~6 effectful members (logging emit -> Log, Joda now() -> Clock, RandomStringUtils -> Rand, SystemProperties -> Env, Struts TagUtils write -> Net, FormFile -> Fs) never landed.",
+    "evidence": "Real-app corpus test of a 2,257-class Struts webapp: 81 packages read invisible (disclosed, not silent); triaged 169 members and modeled the ~6 effectful ones verb-precisely; anti-fabrication twins, byte-identical jsoup/gson.",
+    "author_class": "precision",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch29",
+    "date": "2026-07-06",
+    "engine": "java",
+    "mechanism": "The next tier of legacy namespaces (commons-validator, commons-beanutils, displaytag, threeten-extra, jjwt, JDOM2, Ehcache, org.w3c.dom) was INVISIBLE-floored, so effectful members (threeten now() -> Clock, jjwt parse/Keys -> Clock/Rand, JDOM2 build(File/URL) -> Fs/Net, Ehcache acquisition -> Fs/Net) never landed.",
+    "evidence": "Real-app corpus test triaged the 68-member frontier member-by-member; disclosed invisible (not silent); modeled the effectful members precisely and covered the verified-pure remainder.",
+    "author_class": "precision",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch30-jackson",
+    "date": "2026-07-06",
+    "engine": "java",
+    "mechanism": "Jackson I/O was unmodeled: a File/Path parameter is a source/sink -> Fs, a URL -> Net (String/bytes/stream overloads pure-relative), but the descriptor rule was absent so it read invisible.",
+    "evidence": "Real-app corpus test: Jackson yields to one descriptor-driven rule; disclosed invisible then modeled (precision, not a silent sin).",
+    "author_class": "precision",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch30b-aws",
+    "date": "2026-07-06",
+    "engine": "java",
+    "mechanism": "The AWS rule's owner.endsWith(\"Client\") gate missed calls through the v1 service INTERFACES (AmazonS3.copyObject), and copy* was missing from the verb list, so a real S3 request read SILENT-INVISIBLE.",
+    "evidence": "Real-app corpus test found AmazonS3.copyObject (a real S3 request) read silent; fixed by extending the request-making surface to the Amazon*/AWS* interfaces + TransferManager and adding copy* (Net 473->534).",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "kbatch31",
+    "date": "2026-07-07",
+    "engine": "java",
+    "mechanism": "The final 37 legacy packages (111 members) were INVISIBLE-floored; also the sweep re-audit found StopWatch read the clock but went silent-pure under batch-28's lang3 coverage (a covered namespace must be re-swept when new inventory arrives).",
+    "evidence": "Real-app corpus long-tail sweep took the ledger 81->0; disclosed-then-modeled the effectful members; the StopWatch re-audit and the source/sink RETURN-type fabrication near-miss (caught by a round-12 anti-fab pin) were found in the sweep.",
+    "author_class": "precision",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-1-amazons3uri",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "The AWS Amazon*-name interface heuristic fabricated an effect on AmazonS3URI, a PURE URI parser (a name/prefix owner gate firing on a same-shaped pure value type).",
+    "evidence": "Caught by a high-effort code review (not CI); AmazonS3URI over-classified; fixed 0.8.4 (4bdb996) by requiring the effectful shape not the name, with an anti-fabrication twin.",
+    "author_class": "fabrication",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-2-redisson",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "\"any Redisson R* -> Db\" fabricated Db on getCodec/RFuture (a bare owner-prefix gate over-firing on pure members).",
+    "evidence": "Caught by code review; getCodec/RFuture over-classified Db; fixed 0.8.4 (4bdb996), anti-fab twin, byte-identical jsoup/gson.",
+    "author_class": "fabrication",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-3-jwts-parser",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "The parse*->Clock rule fabricated Clock on the no-arg Jwts.parser() factory (a bare verb-prefix gate matching a factory that starts no clock).",
+    "evidence": "Caught by code review; Jwts.parser() over-classified Clock; fixed 0.8.4 (4bdb996) to require an exact verb / a token arg, anti-fab twin.",
+    "author_class": "fabrication",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-4-stopwatch-create",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "The whole-owner StopWatch->Clock rule fabricated Clock on StopWatch.create() (a value factory, not a started clock).",
+    "evidence": "Caught by code review; StopWatch.create() over-classified Clock; fixed 0.8.4 (4bdb996) to require a started clock, anti-fab twin.",
+    "author_class": "fabrication",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-5-dynamodbmapper",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "A blanket com.amazonaws coverage grant turned an under-vouched classifier SILENT-PURE: DynamoDBMapper.save (an unmodeled facade whose owner doesn't match the *Client gate) floored silent under the coverage grant.",
+    "evidence": "Caught by code review; DynamoDBMapper.save read silent-pure; fixed 0.8.4 (4bdb996): only ledger-cover a namespace whose effectful surface is modeled (AWS/commons-io now classified-but-not-covered).",
+    "author_class": "silent",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R19-6-repo-promotion",
+    "date": "2026-07-08",
+    "engine": "java",
+    "mechanism": "A repo-promotion rule shipped in 0.8.3 promoted a project type SILENT-PURE (and a descriptor rule matched the RETURN position) among the batch 28-31 breadth work -- the under-report half of the six regressions.",
+    "evidence": "Caught by the 2026-07-08 high-effort review of the batch 28-31 shipped work (R19, six regressions total; the index labels R19 'mixed'); fixed 0.8.4 (4bdb996); the kappa_libs/mutation probes moved into scheduled CI.",
+    "author_class": "silent",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R20",
+    "date": "2026-07-09",
+    "engine": "swift",
+    "mechanism": "UserDefaults / Keychain SecItem* / Bundle resource lookups read SILENT-PURE under the covered-module floor: Foundation/Security are in PLATFORM_MODULES and vouch for everything, so an unmodeled effectful member has no invisible/Unknown floor to catch it (the Panache shape, Swift edition).",
+    "evidence": "Swift kappa batch found ubiquitous iOS persistence invisible to the gate; fixed 2026-07-09 (dd134e2): all -> Fs, verb-precise, twin-gated.",
+    "author_class": "silent",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R21-1-cargo-policy",
+    "date": "2026-07-09",
+    "engine": "rust-scan",
+    "mechanism": "cargo-candor `policy` converted \"the gate could not run\" into green: a build failure was swallowed with `|| true`.",
+    "evidence": "Whole-project review found the porcelain fail-open; fixed same day (now exit 2 with a GUARD-UNAVAILABLE sentinel); conformance PARTs 14-15 added.",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "R21-2-cargo-guard",
+    "date": "2026-07-09",
+    "engine": "rust-scan",
+    "mechanism": "cargo-candor `guard` passed green with no baseline ever snapshotted (an absent baseline read as a pass).",
+    "evidence": "Whole-project review found the fail-open; fixed same day (absent-baseline now exit 2, verdict withheld when the guard cannot evaluate).",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "R21-3-java-gatejson",
+    "date": "2026-07-09",
+    "engine": "java",
+    "mechanism": "candor-java exited 0 when the --gate-json target was unwritable, and a CANDOR_DEPS typo was silently ignored (output/auxiliary-channel fail-opens).",
+    "evidence": "Whole-project review found the fail-open output channels; fixed same day; conformance PARTs 14-15 as standing gates.",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "R21-4-ts-whatif",
+    "date": "2026-07-09",
+    "engine": "ts",
+    "mechanism": "The candor-ts MCP candor_whatif accepted a bad policy path, and a configured-but-empty policy was falsy-skipped (a gate silently not run).",
+    "evidence": "Whole-project review found the MCP fail-opens; fixed same day.",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "R21-5-agents-gatereports",
+    "date": "2026-07-09",
+    "engine": "agents",
+    "mechanism": "candor-agents gate_reports carried fail-open dead code and truncated observed paths without disclosure.",
+    "evidence": "Whole-project review found the fail-open + undisclosed truncation; fixed same day.",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-09-aseff008",
+    "date": "2026-07-09",
+    "engine": "family",
+    "mechanism": "A NORMATIVE contradiction: AS-EFF-008's opaque case had the spec TEXT lagging the conformance-pinned fail-closed behavior since the 0.5.15 hardening (the written contract had drifted from the machine-checked one).",
+    "evidence": "Surfaced by the whole-project critical review; the doc contradiction fixed in the same-day wave.",
+    "author_class": "meta",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-09-scan-ledger-rule3",
+    "date": "2026-07-09",
+    "engine": "rust-scan",
+    "mechanism": "The chained-report ledger exemption was keyed on the report filename shape + per-entry hash prefixes, so an EMPTY chained report (functions:[] purity claim) outside the .<crate>.scan.json naming still drew a spurious \"kappa doesn't know N dependencies\" note (over-disclosure).",
+    "evidence": "Caught by the new PART 14 chaining differential's FIRST run (a conformance divergence vs java/ts, the safe over-disclosure direction not a silent sin); fixed scan 0.8.4 (2d32086), keyed on the envelope package field, PART 14-pinned.",
+    "author_class": "precision",
+    "author_instrument": "cross-engine-sweep",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-09-java-mutation-rot",
+    "date": "2026-07-09",
+    "engine": "java",
+    "mechanism": "The meta-soundness mutation harness had decayed to 3/14 PATCH-ERROR (its anchors targeted the pre-extraction Candor.java) and the jackson_file mutation had become a redundancy no-op (batch-30's rule subsumed the 0.7-era readValue rule).",
+    "evidence": "Found by re-running the mutation suite; re-anchored to 14/14 caught, now runs weekly in CI; also re-anchored 4 stale kappa_libs PURE anchors.",
+    "author_class": "meta",
+    "author_instrument": "self-source",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-10-cov-strict-conformance",
+    "date": "2026-07-10",
+    "engine": "java",
+    "mechanism": "candor-java's checkConformance (CANDOR_STRICT, AS-EFF-001/002/003) was broken: it lacked SPEC 6's program-entry-point exemption from AS-EFF-001, firing on the composition root; the gate had 0% coverage in every harness.",
+    "evidence": "First-ever coverage measurement surfaced the zero-execution gate surface; pinning it found the bug, fixed red-then-green in the pinning commit.",
+    "author_class": "meta",
+    "author_instrument": "coverage",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-10-cov-agents-guard-failopen",
+    "date": "2026-07-10",
+    "engine": "agents",
+    "mechanism": "candor-agents `guard` failed open on unknown flags / extra positionals (emitted the settings fragment at exit 0 instead of failing).",
+    "evidence": "Coverage measurement surfaced the zero-execution surface; pinning found the fail-open, fixed to exit 2.",
+    "author_class": "meta",
+    "author_instrument": "coverage",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-10-cov-positional-swallow",
+    "date": "2026-07-10",
+    "engine": "agents",
+    "mechanism": "The positional-swallow class: `observe a b` (also stats/savings) silently analyzed only `b`, swallowing the extra positional without error.",
+    "evidence": "Coverage measurement surfaced the surface; pinning found the silent positional swallow, fixed.",
+    "author_class": "meta",
+    "author_instrument": "coverage",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-10-cov-ts-watch-noquit",
+    "date": "2026-07-10",
+    "engine": "ts",
+    "mechanism": "candor-ts watch had no graceful-quit path at all (Ctrl-C = signal death), which was also why its coverage read 0%.",
+    "evidence": "Coverage measurement showed the 0%-coverage surface; pinning found the missing quit path, fixed.",
+    "author_class": "meta",
+    "author_instrument": "coverage",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-10-cov-swift-payload-host",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "candor-swift captured a Net USE-verb's payload literal as a host (Channel.writeAndFlush(\"x\") -> hosts:[\"x\"]) where java/ts capture a host only at establishing forms (a precision/parity divergence).",
+    "evidence": "Found during the coverage wave (needed a family ruling); swift aligned (b737b87, report-affecting: payload \"hosts\" disappear).",
+    "author_class": "precision",
+    "author_instrument": "coverage",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R22",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "An effectful property accessor (computed getter / didSet-willSet observer / subscript) whose BODY lives on a superclass read SILENT-PURE when reached through a subclass: property-edge resolution matched only the own type's Type.member unit while the method-call path already climbed supertypesOf (the inherited-into-project vein, property edition).",
+    "evidence": "Fresh adversarial inheritance-of-accessors round found d.payload / inherited didSet / two-level read pure; fixed 0.8.7 (property edges climb supertypesOf); ts/java probed sound (not shared); gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R23",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "An effect reached THROUGH a setter's implicit value param (set { newValue.write(toFile:) } on a computed property/subscript, or a willSet) read SILENT-PURE because newValue was never typed, so a member call on it didn't resolve (hit computed-property + subscript setters, willSet, renamed set(v)).",
+    "evidence": "Operator-overload/setter probe found the setter receiver-case silent-pure (literal/static-call setter bodies DID charge); fixed 0.8.8 (seed newValue with the property/subscript element type); swift-specific; gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R24",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "A property-wrapper projectedValue accessed via $ (m.$name, an effectful projectedValue) read SILENT-PURE because the $-prefixed access didn't edge to <Wrapper>.projectedValue (candor edged wrappedValue but not the $ path).",
+    "evidence": "Accessor-vein sweep found m.$name read pure (the accessor unit was known to carry the effect, so a miss is an access-site edge gap); fixed 0.8.9 (mirror the wrappedValue edging); gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R25",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "A keypath read of an effectful computed property (h[keyPath: \\.data]) read SILENT-PURE because the implicit-root keypath resolver handled only the element-iterator form (xs.map(\\.p)), skipping the [keyPath:] subscript application (root = the receiver's own type).",
+    "evidence": "Accessor-vein sweep found the [keyPath:] form read pure; fixed 0.8.9 (resolve the subscript-applied keypath to the member accessor unit); gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R26",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "Generic-constrained dispatch via a `where T: P` clause read SILENT-PURE: only the inline <T: P> bound was collected into genericBounds, so func f<T>(_ x: T) where T: P { x.method() } didn't dispatch.",
+    "evidence": "Generic-dispatch probe found the where-clause form read pure; fixed 0.8.9 (collect where-clause conformance requirements too); gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R27",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "A type-level generic bound on a stored field read SILENT-PURE: struct Box<T: P> { let x: T } reaching x.method() didn't resolve the field typed T to its bound P, so the protocol-typed-field dispatch never fired.",
+    "evidence": "Generic-dispatch probe (a plain protocol-typed field DID dispatch, isolating the gap) found it read pure; fixed 0.8.9 (record type-level generic bounds, resolve the bounded-param field to its bound); gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R29",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "A @resultBuilder transform read SILENT-PURE: a func @SomeBuilder runs SomeBuilder.buildBlock(...) etc via the compiler transform (implicit, no call site), so an effectful builder was dropped.",
+    "evidence": "Non-accessor seam sweep found the @resultBuilder form read pure; fixed 0.8.9 (edge the annotated func to the builder type's build* units; pure builder adds nothing); v.low severity; gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R28",
+    "date": "2026-07-10",
+    "engine": "swift",
+    "mechanism": "Conditional conformance on a stdlib collection (extension Array: Saveable where Element: Saveable via xs.persist()) read SILENT-PURE: two coupled gaps -- the array-receiver -> Array-extension method edge, and the self-element $0 typing under the extension's where Element: P bound.",
+    "evidence": "Non-accessor seam sweep found xs.persist() read pure (opened 2026-07-10, niche); fixed 2026-07-11 (0.8.10) via a soft resolveQual array-receiver edge + FnInfo.selfElementType; pure conditional conformance stays pure; gated.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R30",
+    "date": "2026-07-10",
+    "engine": "rust-scan",
+    "mechanism": "A trait DEFAULT method via an empty impl read SILENT-PURE (impl Logger for S {} + s.log() inheriting Logger::log): a type whose only impl is an empty trait impl has no fn unit, so it was absent from local_types -> its typed call was un-resolvable and the default-fallback never ran.",
+    "evidence": "Cross-engine sweep to candor-scan found impl Logger for FileLogger {} + l.flush() read pure (the fallback edge formed but the report stayed pure); fixed 2026-07-11 (candor-scan 0.8.8, register every trait-impl type as local); override wins, no fabrication; gated.",
+    "author_class": "silent",
+    "author_instrument": "cross-engine-sweep",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "R31",
+    "date": "2026-07-10",
+    "engine": "rust-scan",
+    "mechanism": "A bounded-generic struct FIELD read SILENT-PURE: struct Pipe<T: Saver> { item: T } reaching self.item.save() -- field types were resolved with an empty generic-bounds map, so T never resolved to Saver (the swift R27 analog, different codebase).",
+    "evidence": "Cross-engine sweep to candor-scan found the bounded-generic field read pure; fixed 2026-07-10 (candor-scan 0.8.7, seed the struct's own <T:P>/where bounds into field trait-leaf resolution); unconstrained field stays pure; gated.",
+    "author_class": "silent",
+    "author_instrument": "cross-engine-sweep",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-13-corrupt-read-syntactic",
+    "date": "2026-07-13",
+    "engine": "multi",
+    "mechanism": "On the READ side, a found-but-unparseable report (syntactic corruption / a truncated report) made the loud loader disclose on stderr but return an EMPTY entry set -> Ok(empty), so every loud-consuming verb inherited a false all-clear (tour printed \"nothing hidden\", a policy map/gate over the empty report PASSED).",
+    "evidence": "Dogfooding candor tour on pgman with a report locator at an unparseable file printed \"nothing hidden\" at exit 0 (the cardinal sin on corrupt input); fixed four-way-consistent (rust load_entries_loud + ts loadReport now hard-error exit 2); java/swift already immune; PART 4k pins the invariant.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-13-corrupt-read-semantic",
+    "date": "2026-07-13",
+    "engine": "multi",
+    "mechanism": "A report that parses to valid JSON of the WRONG SHAPE (a null doc, a bare junk array [1,2,3], a non-array functions) still returned [] at exit 0 -- the same false all-clear in semantic clothing -- in candor-rust AND candor-java (both parse the junk array as a legacy bare array and read the net-empty result as an effect-free crate).",
+    "evidence": "Probing the semantic-corruption shapes across all four engines found the false all-clear was NOT ts-only; fixed (rust fdb5e63 marks hard_fail when all entries drop; java 60d812b throws) so all four fail loud exit 2; a well-formed empty functions:[] still exits 0; PART 4k pins both shapes.",
+    "author_class": "silent",
+    "author_instrument": "cross-engine-sweep",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-13-loud-verbs-surfaces",
+    "date": "2026-07-13",
+    "engine": "multi",
+    "mechanism": "The read-side loud rule was swept across ENGINES but not across VERBS and SURFACES: candor-rust's comparative verbs (gains/diff/containment), candor-ts's 15 MCP loadReport sites + the report resource, ts gains/diff (no files-at-locator guard), and the new swift gains verb each kept a quiet loader that returned an exit-0 empty all-clear a CI gate would trust; the gains origin field also downgraded the supply-chain attack signal to \"new\" on a PARTIAL baseline graph in all four engines.",
+    "evidence": "Post-0.11 max review (44 agents, 15 confirmed) found the same read-side false-all-clear class one surface over from where it was fixed (plus the conformance suite's OWN 4i/4j oracles fail-open, parsing an engine crash as {} -> MATCH); all fixed same-day (rust 5390e66, java 654ad50, ts 2d73b6f, swift 9d1ad94); PART 5b + fail-closed oracles.",
+    "author_class": "silent",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-14-r2-alarm-oracle",
+    "date": "2026-07-14",
+    "engine": "multi",
+    "mechanism": "The supply-chain gains alarm could be downgraded to exit-0 through the existence ORACLE itself (not the report parse): an absent sidecar cached as a fabricated \"{}\" (authoritative-empty), a corpus key hashing report bytes alone so versions differing only in pure fns shared one cached graph, candor-java's engine-BLIND multi-report baseline union, candor-swift's silent per-entry junk drop, and candor-rust's --json-only mismatch disclosure (human TSV missed it).",
+    "evidence": "Second max review (43 agents, 50 verified -> 15 distinct defects) found the canonical attack (a shipped-pure fn now phones home) muted through storage/identity seams the parse-focused sweep missed; all fixed (null-not-{}, hash over report+graph, engine-owned union, disclose-count loud, both output modes).",
+    "author_class": "silent",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-14-r3-overmatch",
+    "date": "2026-07-14",
+    "engine": "multi",
+    "mechanism": "The new Llm/privacy attribution predicate OVER-matched, fabricating effects: the Ollama rule fired on ANY host with port 11434 (an unrelated :11434 service), the Bedrock rule matched the substring \"bedrock\" (an S3 bucket bedrock-backups...), ts ran the :11434 regex on the raw literal (a relative path /v1/x:11434/y), and swift charged Mic on a general AVAudioEngine playback graph.",
+    "evidence": "Llm/privacy max review (38 agents, 15 confirmed) found the over-matches (only java briefed initially -> the sibling parity gap caught by grepping the four predicates, not a test); fixed to precise rules four-way (loopback-only, first-label service, parsed-host-not-raw, member-gated .inputNode); PART 4m given negative-case teeth.",
+    "author_class": "fabrication",
+    "author_instrument": "code-review",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-14-r3-reqwest-builder",
+    "date": "2026-07-14",
+    "engine": "rust-scan",
+    "mechanism": "The under-report MIRROR of the same wave: reqwest was claimed-COVERED but only its convenience fns were classified -- the BUILDER idiom (Client::builder()...post(url).send()), the dominant real-world form and ebman's actual api.anthropic.com call, was silently missed AND undisclosed.",
+    "evidence": "Max review r3 dogfood (candor-scan) found the builder chain silently missed; fixed (the builder chain classifies Net + captures the host -> Llm fires); the Llm gate-evasion twin fixed the same wave.",
+    "author_class": "silent",
+    "author_instrument": "code-review",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-14-toplevel-module",
+    "date": "2026-07-14",
+    "engine": "multi",
+    "mechanism": "Bare top-level module-scope executable statements that reach an effect (const e = await openai.embeddings.create(...) at load; readFileSync + fetch at module top level) produced an EMPTY report at exit 0 -- ts and swift never synthesized an initializer unit for a module's own top-level statements.",
+    "evidence": "Dogfooding openai-quickstart-node + a hermetic probe found functions:[] exit 0 for a module reaching Llm+Net+Fs (a deny gate PASSES it); java sound (<clinit>), rust N/A; fixed spec 0.14 (ts <module>, swift <main> initializer unit); PART 4p pins four-way.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-14-swift-tuple-global",
+    "date": "2026-07-14",
+    "engine": "swift",
+    "mechanism": "A tuple-destructured global (let (a, b) = effectfulInit() at file scope) was SILENTLY DROPPED: the <main> collector excludes it (a declaration, not a bare statement) but the global-var unit path guarded on IdentifierPatternSyntax only, so a TUPLE pattern fell through and its initializer effect vanished.",
+    "evidence": "Probing adjacent shapes after 0.14 found the tuple global dropped (a deny Fs gate passed it); fixed 0.14.1 (a boundNames helper mints a lazy first-touch unit per bound name); also covers the static let (p,q) sibling.",
+    "author_class": "silent",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-14-ts-static-block-label",
+    "date": "2026-07-14",
+    "engine": "ts",
+    "mechanism": "A static { ... } block was MISLABELED (its effect was caught): its body folded into the instance C.constructor unit and carried no unitKind, so new C() falsely appeared to perform the static-init effect.",
+    "evidence": "Probing adjacent shapes found the static-block mislabel (precision, not a silent drop -- the effect was caught); fixed 0.14.1 (a staticBlockUnit mints C.<static-init> with unitKind initializer).",
+    "author_class": "precision",
+    "author_instrument": "seam",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-14-const-host-recall",
+    "date": "2026-07-14",
+    "engine": "multi",
+    "mechanism": "The Llm host-literal refinement fired only for an INLINE literal at the call, so a host in a const/static built by interpolation/format (const API_BASE=\"https://api.openai.com\"; fetch(`${API_BASE}/chat`)) read bare Net -- the source-level engines (rust/ts/swift) under-conformed vs SPEC 1 (a literal const IS statically known).",
+    "evidence": "Dogfooding real Rust LLM clients (aichat, async-openai) surfaced the const-indirected recall gap (bare Net, disclosed, not a silent-pure violation); java already sound (inlines static final); fixed rust/ts/swift with conservative const-string propagation; PART 4q pins it.",
+    "author_class": "precision",
+    "author_instrument": "self-source",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-15-literal-head-host-recall",
+    "date": "2026-07-15",
+    "engine": "multi",
+    "mechanism": "A URL whose LITERAL HEAD contains the complete host with interpolation only in the PATH (fetch(`https://api.openai.com/v1/${p}`) / format! / concat) read bare Net in ALL FOUR engines (java too: javac does not fold a runtime concat) -- the host is statically known so SPEC 1 under-conformance.",
+    "evidence": "The complement to the const-host work: the literal-head shape read bare Net four-way; fixed four-way (accept a composed URL when its first static segment completes scheme://authority/); PART 4r pins the boundary (a split authority stays bare Net).",
+    "author_class": "precision",
+    "author_instrument": "self-source",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-15-scan-glob-reexport",
+    "date": "2026-07-15",
+    "engine": "rust-scan",
+    "mechanism": "A cross-crate EFFECTFUL call reached through a glob re-export (use extern::prelude::*) OR a use crate::localname re-bind in a submodule read PURE and was NOT disclosed anywhere: candor-scan attributes a cross-crate call only through a DIRECT use extern::module binding, so a glob/rebind lost the external origin and the call fell into a \"resolved to nothing -> PURE\" hole.",
+    "evidence": "Autonomous corpus test of sqlx found sqlx-postgres PgStream::connect (the TCP dial) read PURE; isolated four ways (glob/nested-rebind/glob-fullpath silent, direct disclosed); the effect is lost even under --deps chaining; fixed 2026-07-15 (map the qualified call to its origin through the glob/rebind), sqlx recovered real Net/Db.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-15-ts-process-env",
+    "date": "2026-07-15",
+    "engine": "ts",
+    "mechanism": "candor-ts classified Env ONLY for a direct process.env.KEY dot access; it silently missed process.env[\"KEY\"] (bracket), const env=process.env; env.KEY (alias), const {KEY}=process.env (destructure), and \"KEY\" in process.env (membership).",
+    "evidence": "Dogfooding chalk/supports-color found env reads reported 0 Env (silent, engine-specific); fixed 2026-07-15 (extend the recognizer to bracket/alias/destructure/in); no fabrication; gated.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-15-scan-cfgif",
+    "date": "2026-07-15",
+    "engine": "rust-scan",
+    "mechanism": "Effects inside a cfg_if::cfg_if! { if #[cfg(..)]{..} else {..} } macro block were dropped: candor-scan treated cfg_if! as an opaque external macro, so a covered std::net/std::fs call inside a cfg_if! arm read PURE (technically disclosed as \"cfg_if uncovered\" but misleadingly, and unrecoverable).",
+    "evidence": "Dogfooding sqlx-core found cfg_if! arm effects dropped (sqlx-core net::socket::connect_tcp [] -> [Net] after fix); fixed 2026-07-15 (parse the cfg_if arm grammar, walk every arm's block); no fabrication; gated.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-15-scan-block-nested-use",
+    "date": "2026-07-15",
+    "engine": "rust-scan",
+    "mechanism": "A use path::X inside a NESTED BLOCK ({ use std::process::Command; Command::new(..).status(); } / an if/else arm / match arm / loop body) was not tracked -> the call resolved to nothing -> PURE (module-level and fn-body-level uses worked; only block-nested were missed).",
+    "evidence": "Dogfooding fd found main.rs:442's else { use std::process::Command; Command::new(\"gls\").status() } read pure (silent for std calls); fixed 2026-07-15 (a LocalUseCollector walks the whole body, scope-guarded at nested fn/impl/mod); fd determine_ls_command [] -> [Exec]; no fabrication.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "no"
+  },
+  {
+    "id": "LOG-2026-07-15-coverage-ledger-design",
+    "date": "2026-07-15",
+    "engine": "family",
+    "mechanism": "The coverage/kappa ledger is a scan-time STDERR artifact, NOT in the report JSON, so a downstream verb reading the JSON (privacy-manifest, gains, containment, a gate) cannot re-disclose that its answer is conditional on partial coverage -- an under-declaration in an uncovered module would be silently missed and read as a clean \"ok\".",
+    "evidence": "Dogfooding privacy-manifest on wikipedia-ios: a scan of Wikipedia/Code alone reported ok:true with NO coverage caveat despite 19 invisible modules; surfaced as a report-envelope DESIGN question (spans all engines + all report-consuming verbs); later fixed four-way as the coverage envelope (spec 0.15), PART 4s.",
+    "author_class": "silent",
+    "author_instrument": "self-source",
+    "author_commonmode": "yes"
+  },
+  {
+    "id": "LOG-2026-07-16-baseline-unknown-fp",
+    "date": "2026-07-16",
+    "engine": "multi",
+    "mechanism": "The staged 0.16 callgraph-aware baseline guard's exit-1 (CI-breaking) fired on an Unknown-ONLY gain (a formerly-pure fn now reading pure->Unknown from syntactic dispatch-resolution variance or an unstable JVM anonymous-class $N name), even though Unknown is the trust marker not a real capability gain.",
+    "evidence": "Real-world corpus test (10 rust crate pairs + gson) found 3 rust + 1 JVM fires, ALL gained-Unknown, ZERO a real capability gain (serde byte-identical source flipped pure->Unknown; gson $9 anon-class name unstable) -- a false-alarm class that would break CI on innocuous bumps; RESOLVED 2026-07-16 four-way (ratchet only on a real boundary effect; Unknown-only = advisory exit 0); PART 15c.",
+    "author_class": "meta",
+    "author_instrument": "kappa-batch",
+    "author_commonmode": "yes"
+  }
+]
