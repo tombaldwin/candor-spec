@@ -18,8 +18,11 @@ three-axis protocol with three coders and computes Cohen's κ.
 The cluster bootstrap resamples whole engine-registers, not individual findings, because finds within
 one engine (same author probing the same engine) are not independent — it widens the CIs to the
 effective cluster-count sample. It matters most on the weak `common-mode` axis, whose cluster-CI
-includes zero ([−0.11, 0.89]); the load-bearing `class`/`binary` axes stay well clear of zero
-(class cluster-95% [0.82, 1.00], binary [0.79, 0.96]).
+includes zero ([−0.11, 0.89]); the load-bearing `class`/`binary` axes stay clear of zero across **all three
+coder-pairs** — cluster-95% lower bounds run **0.60–0.82 (class)** and **0.48–0.79 (binary)** (not just the
+most favourable pair). With only G=8 unequal engine-clusters (java=22, swift=11, multi=8, rust-scan=9,
+agents=4, ts=4, rust-deep=2, family=2) the percentile cluster interval is unstable and is not uniformly
+wider than the i.i.d. one — read the range, not a single pair.
 
 CAVEAT: all three coders are LLM instances applying the written rubric, so κ measures **protocol
 reproducibility**, not human inter-annotator independence (κ is correspondingly high). N=62 is the
