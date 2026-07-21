@@ -92,13 +92,17 @@ for axis in axes:
               f"asymp95%[{lo95:.2f},{hi95:.2f}]  iid-boot95%[{blo:.2f},{bhi:.2f}]  "
               f"cluster-boot95%[{cblo:.2f},{cbhi:.2f}]")
 
-# class-distribution per coder + FAC totals
-print(f"\n{'='*70}\nCLASS DISTRIBUTION + FALSE-ALL-CLEAR TOTALS\n{'='*70}")
+# class-distribution per coder + honesty-critical totals
+# NOTE: "honesty-critical" = silent under-report UNION its fabrication dual. It is NOT the
+# false-all-clear count, which is the SILENT subset only (the cardinal sin proper). We print both
+# so neither is mistaken for the other: honesty_critical = silent + fabrication; false_all_clear = silent.
+print(f"\n{'='*70}\nCLASS DISTRIBUTION + HONESTY-CRITICAL / FALSE-ALL-CLEAR TOTALS\n{'='*70}")
 for name,src in (("rater1(author)",full),("rater2",r2),("adjud",adj)):
     cl=[lab(src,i,'class') for i in ids]
-    fac=sum(1 for i in ids if binfac(lab(src,i,'class'))=="FAC")
+    hc=sum(1 for i in ids if binfac(lab(src,i,'class'))=="FAC")  # binfac groups silent+fabrication
     from collections import Counter
-    print(f"  {name}: {dict(Counter(cl))}  | false-all-clear(FAC)={fac} "
+    print(f"  {name}: {dict(Counter(cl))}  | honesty-critical(silent+fab)={hc} "
+          f"| false-all-clear(silent only)={cl.count('silent')} "
           f"(silent={cl.count('silent')} fabrication={cl.count('fabrication')})")
 
 # confusion matrix rater1 vs rater2 on class (the load-bearing one)
@@ -108,9 +112,11 @@ cats,m=confusion(a,b)
 print("rows=rater1, cols=rater2:", cats)
 for x in cats: print(f"  {x:12s}", [m[(x,y)] for y in cats])
 
-# min FAC across coders (the "invariant" claim)
+# min honesty-critical (silent+fab) across coders (the "invariant" claim); false-all-clear = silent only
 facs=[sum(1 for i in ids if binfac(lab(s,i,'class'))=="FAC") for s in (full,r2,adj)]
-print(f"\nFAC per coder: {facs}  -> min={min(facs)}, max={max(facs)}")
+sil=[[lab(s,i,'class') for i in ids].count('silent') for s in (full,r2,adj)]
+print(f"\nhonesty-critical (silent+fab) per coder: {facs}  -> floor={min(facs)}, max={max(facs)}")
+print(f"false-all-clear (silent only) per coder: {sil}  -> floor={min(sil)}, max={max(sil)}")
 
 # write per-find CSV
 with open(D+"kappa_perfind.csv","w",newline="") as fh:
