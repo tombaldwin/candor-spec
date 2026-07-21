@@ -87,7 +87,9 @@ for axis in axes:
         blo,bhi = bootstrap_ci(a,b)
         clu=[full[i]["engine"] for i in ids]
         cblo,cbhi = bootstrap_ci_clustered(a,b,clu)
-        pabak = 2*po - 1  # prevalence-and-bias-adjusted kappa (Byrt et al. 1993) = 2*p_observed - 1
+        pabak = 2*po - 1  # prevalence-and-bias-adjusted kappa (Byrt et al. 1993) = 2*p_observed - 1.
+        # NOTE: on a binary axis with 2 coders, PABAK = 2*p_o - 1 exactly — a restatement of raw
+        # agreement, not independent evidence of reliability. Reported for comparability only.
         print(f"  {na} vs {nb}:  kappa={k:.3f}  raw-agreement={po:.3f}  PABAK={pabak:.3f}  "
               f"asymp95%[{lo95:.2f},{hi95:.2f}]  iid-boot95%[{blo:.2f},{bhi:.2f}]  "
               f"cluster-boot95%[{cblo:.2f},{cbhi:.2f}]")

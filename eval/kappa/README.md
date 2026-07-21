@@ -11,9 +11,10 @@ three-axis protocol with three coders and computes Cohen's κ.
 - `coding_rater2.json`, `coding_adjudicator.json` — two blind LLM re-codings (adjudicator under the
   sharpened silent-vs-precision rule).
 - `kappa_perfind.csv` — the per-find three-coder label table (the confusion-matrix source).
-- `compute_kappa.py` — Cohen's κ per axis × rater-pair, raw agreement, confusion, asymptotic +
+- `compute_kappa.py` — Cohen's κ per axis × rater-pair, raw agreement, asymptotic +
   **i.i.d.** bootstrap **and cluster (block) bootstrap by engine register** (seed 20260721) 95% CIs.
-  `python3 compute_kappa.py` (self-contained: reads the data shipped beside it).
+  `python3 compute_kappa.py` (self-contained: reads the data shipped beside it). The compute script
+  emits the confusion matrix (rater1×rater2 on the class axis; others derivable from the per-find CSV).
 
 The cluster bootstrap resamples whole engine-registers, not individual findings, because finds within
 one engine (same author probing the same engine) are not independent — it widens the CIs to the
@@ -26,4 +27,6 @@ wider than the i.i.d. one — read the range, not a single pair.
 
 CAVEAT: all three coders are LLM instances applying the written rubric, so κ measures **protocol
 reproducibility**, not human inter-annotator independence (κ is correspondingly high). N=62 is the
-clean 3-way intersection (rater 2 re-unitized 3 finds). A human replication is the open camera-ready item.
+clean 3-way intersection (rater 2 re-unitized 3 finds). Accordingly `coding_rater2.json` carries 76
+entries against the 65 findings — rater 2 split 3 findings into finer units, and only the 62-way
+intersection is coded three ways — so a 76-vs-65 diff between the files is expected, not an error. A human replication is the open camera-ready item.
