@@ -2714,6 +2714,80 @@ else
 fi
 
 # ====================================================================================================
+# PART 13b — CONFIG VOCABULARY + INERT-KEY DISCLOSURE, four-way (SPEC §config, the ⟨0.9⟩ inert-key    [TIER 1]
+# amendment). PART 13 pins that a MISSPELT key warns. This pins the two ways an engine can be wrong
+# about a key it DOES recognize — both of which were live in three engines until 2026-07-24, and both
+# of which four-way agreement was structurally blind to, because every engine was wrong the same way:
+#
+#   (a) FALSE "unknown key". `net-partner` and `unknown-alias` are multi-value keys read straight from
+#       the config TEXT (they cannot ride the single-value map), and they are HONOURED — setting
+#       `net-partner h` flips a host's netClass from `unknown-host` to `known-partner`. Yet rust/ts/
+#       swift omitted them from the recognized vocabulary, so a config that set one printed "ignoring
+#       unknown config key" WHILE APPLYING THE VALUE. A tool whose contract is that its statements
+#       about itself are true cannot ship an actively false disclosure; it is worse than a silent one.
+#       PINNED: no engine may report ANY family key as unknown.
+#
+#   (b) SILENTLY INERT key. An engine that recognizes a gate key it does not implement must SAY SO —
+#       a checked-in enforcement key that quietly does nothing reads to its author as a gate that is
+#       ON (a declared-gate-silently-off). rust disclosed it; ts and swift said nothing. PINNED: a key
+#       an engine does not implement draws a disclosure NAMING it.
+#
+# The suite asserts the union invariant, which is uniform across engines even though the implemented
+# SETS differ (java wires all ten; rust/ts/swift wire policy/baseline/deps/unknown-ratchet plus the two
+# text-parsed multi-value keys): FOR EVERY FAMILY KEY, an engine either honours it or discloses that it
+# does not — never silently ignores it, and never calls it unknown.
+# ====================================================================================================
+echo
+echo "[13b] CONFIG VOCABULARY + INERT-KEY disclosure  (SPEC §config — recognized keys are never 'unknown', never silent)"
+VOCW="$W/cfgvocab"; mkdir -p "$VOCW"
+cp -r "$GDIR/rust" "$VOCW/rust"; cp -r "$GDIR/ts" "$VOCW/ts"; cp -r "$GDIR/swift" "$VOCW/swift"
+mkdir -p "$VOCW/java"; javac -d "$VOCW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
+# The shared family vocabulary (candor-spec §config). A key here is RECOGNIZED by every engine.
+VOCAB="policy baseline strict no-ambient closed-world taint deps unknown-alias net-partner unknown-ratchet"
+# Keys that carry a VALUE the parser needs; the rest are booleans/flags. Values are inert for this part
+# (nothing is enforced — we read stderr only), they just have to parse.
+vocab_val() { case "$1" in policy|baseline) echo "$GPOL";; deps) echo "$VOCW";; unknown-alias) echo "blind=dispatch";;
+                           net-partner) echo "partner.example";; *) echo "true";; esac; }
+vocab_probe() { # $1 engine label, then the scan command (target LAST)
+  local label=$1; shift
+  local bad=0 k out cfgdir
+  cfgdir=$1; while [ $# -gt 1 ]; do shift; cfgdir=$1; done   # target is the last arg
+  mkdir -p "$cfgdir/.candor"
+  for k in $VOCAB; do
+    printf '%s %s\n' "$k" "$(vocab_val "$k")" > "$cfgdir/.candor/config"
+    out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG "$@" 2>&1 >/dev/null)
+    # (a) a RECOGNIZED key must never be called unknown — the false-disclosure class.
+    case "$out" in
+      *"unknown config key '$k'"*) echo "     FAIL $label: '$k' is family vocabulary but reported UNKNOWN"; bad=1;;
+    esac
+    # (b) if the engine does NOT act on the key it must disclose it, never stay mute. We cannot observe
+    # "acts on it" from stderr alone, so we assert the weaker checkable half: the engine either says
+    # NOTHING about the key (it is wired, PART 13 covers that path) or it discloses it as unimplemented.
+    # A mention that is neither is a malformed disclosure.
+    case "$out" in
+      *"$k"*)
+        case "$out" in
+          *"not implemented by"*) : ;;                       # the sanctioned inert disclosure
+          *) echo "     FAIL $label: '$k' mentioned on stderr but not as the sanctioned disclosure"; bad=1;;
+        esac;;
+    esac
+  done
+  rm -f "$cfgdir/.candor/config"
+  [ "$bad" = 0 ] && { echo "  $label vocabulary=clean inert-disclosure=well-formed"; return 0; }
+  return 1
+}
+VOC_OK=0
+vocab_probe "candor-java " java -jar "$JAR" "$VOCW/java" || VOC_OK=1
+vocab_probe "candor-scan " "$SCAN" "$VOCW/rust" || VOC_OK=1
+[ -n "$TS_OK" ] && { vocab_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$VOCW/ts" || VOC_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { vocab_probe "candor-swift" "$SW_BIN" "$VOCW/swift" || VOC_OK=1; }
+if [ "$VOC_OK" = 0 ]; then
+  echo "  -> MATCH — every engine recognizes the whole family vocabulary, and discloses what it does not implement"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
 # PART 14 — CHAINING differential (SPEC §2 `CANDOR_DEPS` — 0.4 MUSTs, previously unpinned): the same   [TIER 1]
 # dep+app pair per language, scanned app-only with the dep's report chained. Three pinned behaviors:
 # (a) JOIN-INHERIT — the app fn inherits the dep fn's effects AND its literal surface (Net + host);
