@@ -3588,7 +3588,20 @@ if [ -n "$TS_PRESENT" ]; then
   CANDOR_DEPS="$W/ie/tsdep.json" node "$TS_DIR/scan.mjs" "$W/ie/ts/app" --allow-js --out "$W/ie/tsapp" >/dev/null 2>&1
   IE_TS="$W/ie/tsapp.json"
 fi
-python3 - "$W/ie/japp.json" "$IE_RS" "$IE_TS" <<'PYIE' || P19_OK=1
+# ---- swift: a dep package with an effectful global; the app reads it across the module boundary.
+IE_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/ie/sw/deplib/Sources/DepLib" "$W/ie/sw/app/Sources/App"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "DepLib", products: [.library(name: "DepLib", targets: ["DepLib"])], targets: [.target(name: "DepLib")])\n' > "$W/ie/sw/deplib/Package.swift"
+  printf 'import Foundation\npublic let depCfg = ProcessInfo.processInfo.environment["IE_CFG"] ?? ""\n' > "$W/ie/sw/deplib/Sources/DepLib/Cfg.swift"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(path: "../deplib")], targets: [.executableTarget(name: "App", dependencies: [.product(name: "DepLib", package: "deplib")])])\n' > "$W/ie/sw/app/Package.swift"
+  printf 'import DepLib\nprint(depCfg.count)\n' > "$W/ie/sw/app/Sources/App/main.swift"
+  ( cd "$W/ie/sw/deplib" && "$SW_BIN" . >/dev/null 2>&1 )
+  cp "$W"/ie/sw/deplib/.candor/report.*.Swift.json "$W/ie/swdep.json" 2>/dev/null
+  ( cd "$W/ie/sw/app" && CANDOR_DEPS="$W/ie/swdep.json" "$SW_BIN" . >/dev/null 2>&1 )
+  IE_SW=$(ls "$W"/ie/sw/app/.candor/report.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
+fi
+python3 - "$W/ie/japp.json" "$IE_RS" "$IE_TS" "$IE_SW" <<'PYIE' || P19_OK=1
 import json, sys, os
 def effectful(path):
     """True when SOME unit in the report carries a non-Unknown effect — the consumer is not reading pure."""
@@ -3601,6 +3614,7 @@ print("\n[19] INITIALIZER EDGE ACROSS THE SCAN BOUNDARY  (a chained dependency's
 engines = [("java", sys.argv[1])]
 if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2]))
 if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3]))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("swift", sys.argv[4]))
 fails = 0
 for name, path in engines:
     got = effectful(path)
@@ -3610,14 +3624,12 @@ for name, path in engines:
         fails += 1
         why = "unreadable report" if got is None else "consumer reads PURE — the dependency initializer was dropped"
         print(f"  {name:6s} -> DIVERGE  ({why})")
-print("  swift  -> not exercised here: its dependency chaining is package-scoped and its own half of this vein")
-print("            (a lazy GLOBAL read, `acfed07`) is pinned by the engine's own suite, not this differential")
 sys.exit(1 if fails else 0)
 PYIE
 
 echo "PART 19 — initializer edge across the scan boundary (SOUNDNESS-VEIN-initializer-edge.md)"
 if [ "$P19_OK" = 0 ]; then
-  echo "  -> MATCH — a chained dependency's initializer reaches its consumer in java + rust + ts; unchained, each engine is unchanged"
+  echo "  -> MATCH — a chained dependency's initializer reaches its consumer in all four engines; unchained, each is unchanged"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
