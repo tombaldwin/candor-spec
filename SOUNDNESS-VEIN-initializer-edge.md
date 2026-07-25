@@ -57,7 +57,7 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 | **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | sound INSIDE the scan; **the dependency side was MISSING → FIXED** `candor-java` |
 | **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound inside the scan; **dependency side FIXED** `c4d0ca3` |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
-| **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` |
+| **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` (intra-package) + `7a1b077` (chained dep) |
 
 **Rust has the dependency side open too.** Reading a *dependency's* lazy static forces its initializer, and
 a chained report records it as `<lazy>::…NAME` — but only LOCAL statics are in `lazy_statics`, so the
