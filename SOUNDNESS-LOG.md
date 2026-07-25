@@ -2354,3 +2354,44 @@ hang to a partial trace — the verdict still stands if the marker fired, and th
 candor-swift as a schedule/dispatch-gated step in `ci.yml`. Recall is always reported **as a fraction of the
 falsifiable set, with the uncalibrated remainder printed by name** — an oracle falsifiable on 3 of 20
 drivers has a recall of 1.0 and is still nearly blind, so the two numbers travel together.
+
+### 2026-07-25 — how far up a call chain can the Node oracle falsify? (measured, not asserted)
+
+The companion to the same day's syscall-arm calibration. `candor-ts/sensitivity.mjs` asks whether the oracle
+catches an effect at the function that **performs** it, disclosure stripped, and answers 8/8. The question
+one level up is the one H actually turns on: candor's signatures are **transitive**, so a false all-clear can
+sit on a **caller** whose leaf is perfectly honest. Whether this arm could see that was recorded as "weaker
+against a dropped-caller-edge miss" — an adjective standing in for a measurement.
+
+**`candor-ts/transitive-recall.mjs`.** Seven three-deep `entry → mid → leaf` chains hold the effect and the
+depth fixed and vary **only** the boundary between caller and leaf. Every signature is stripped to
+complete-pure, so the oracle is the only net. Each frame reads one of four things — and the taxonomy is the
+substance:
+
+| verdict | meaning |
+|---|---|
+| `CHARGED` | the oracle reached it — a lie here would be caught |
+| `UNCORROBORATED` | out of reach, but candor discloses — H holds on the **analyzer's own claim**, no independent check |
+| `BLIND` | out of reach **and** claimed complete-pure — a lie here is invisible |
+| `NO-REACH` | the control's callers, off the causal path by construction |
+
+**Result: 7 of 12 on-path caller frames reachable, 5 uncorroborated, 0 blind.** And the rule is sharp: the
+oracle charges up to the function whose **source span lexically contains the continuation**, and nothing
+above it — callers suspended across an `await` are off the stack when the effect fires. A probe fixture
+confirms the mechanism instead of leaving it a story: move the continuation into a helper outside the
+caller's span and that caller drops out of reach exactly as predicted.
+
+**Why the middle verdict earns its own row.** Scoring those 5 as caught would credit the falsifier for the
+analyzer's work; scoring them as blind would manufacture a defect out of a correct answer. They are frames
+where we are **trusting candor, not confirming it**, and the number is only meaningful if that is said.
+
+**A control the first draft did not have, and needed.** An earlier version used fire-and-forget chains
+(`mid` schedules a timer and returns) and reported **four blind frames**. They were nothing of the kind: the
+caller genuinely never reaches the effect, so `pure` is correct. Every scored shape now `await`s the work —
+the caller provably cannot have returned — with one fire-and-forget shape kept as an explicit control.
+**Durable: a recall battery needs a negative control or it will invent blind spots out of correct answers.**
+
+**Gate.** Reds on a blind frame or an inconclusive shape (a fixture whose effect never ran measured nothing),
+and **verified to catch**: forcing the uncorroborated frames to classify as blind reds it. The uncorroborated
+count is a property of JavaScript, not a defect — closing it needs continuation-tracking capture
+(`AsyncLocalStorage`), which stays future work. Wired into candor-ts CI as its own step. candor-ts `cf91b95`.
