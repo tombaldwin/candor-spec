@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: candor-ts intra-project FIXED (`70553c3`); swift FIXED (`acfed07`); candor-ts EXTERNAL half open.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: CLOSED for what is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
@@ -205,8 +205,14 @@ edge has to exist first.
    `<module>` unit, for every specifier that resolves **inside the scanned set**. Both ends are analyzed, so
    this is precise, needs no `Unknown`, and carries **no flood at all**: an edge into a pure initializer
    yields a pure unit, which the report omits. This is the fix; the external half is what remains.
-2. **Then** dependency reports become chainable through that edge, and scanning **dependency initializers
-   only** becomes worthwhile — module top level is a tiny fraction of a package's code, so the cost is small
+2. **DONE (candor-ts `3643cd9`).** With the edge in place, a chained dep report resolves it — and the data
+   was already present: a dep's module units hash under `<pkg>#<module>`, a package's initializers share
+   that one key, so `crossDeps` already held the exact effect set. The edge simply never consulted it.
+   Effects attach directly (the dep's unit lives in another report), as chained CALL effects already do.
+   With `graceful-fs` chained, `proper-lockfile`'s `lib.lockfile.<module>` picks up its `Clock` and that
+   propagates to `index.<module>` — which is what I originally, wrongly, claimed chaining alone would do.
+   An unchained dependency is untouched: the guard makes a scan without chained reports byte-identical.
+   Scanning **dependency initializers only** to produce those reports automatically — module top level is a tiny fraction of a package's code, so the cost is small
    and the answer exact. It also sharpens `gains`: *"a dependency bump added a top-level `Net` call"* is the
    supply-chain signal candor exists to raise, and it lives precisely here.
 3. **Disclose only when neither is available** — an unreadable or absent dependency. That set is small
