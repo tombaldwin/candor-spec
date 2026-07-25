@@ -1,6 +1,6 @@
 # Vein: effect mechanisms that die at the scan boundary (ALL FOUR ENGINES)
 
-**Status: OPEN — reproduced and gate-confirmed, not fixed.** Found 2026-07-25 by a fan-out sweep after the
+**Status: OPEN — reproduced and gate-confirmed in all four engines. First mechanism fixed in one engine (rust implicit stringification, `1623a07`); the rest open.** Found 2026-07-25 by a fan-out sweep after the
 [initializer edge](SOUNDNESS-VEIN-initializer-edge.md) turned out to be one instance of a general shape.
 
 ## The shape, and why it is worse than a missing feature
@@ -48,7 +48,7 @@ a general limitation:
 
 | mechanism | chained result |
 |---|---|
-| implicit stringification (`Display::fmt` at a `format!` hole) | **silent-pure** |
+| implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `1623a07` — was silent-pure |
 | `Drop` glue — a dependency type whose `Drop` writes a file | **silent-pure** |
 | `&dyn Trait` / `Vec<Box<dyn Trait>>` where the trait is the dependency's | silent-pure by default; recovered **only** if `CANDOR_WORKSPACE_CHAIN` was set when the *dependency* was scanned, which `--deps` does not do |
 | a value bound from a dependency's factory (`let c = deplib::build(); c.fetch()`) | silent-pure — **no return-type information travels in the report**, so the receiver is untyped and every later method call drops |
@@ -58,6 +58,10 @@ a general limitation:
 
 1. **The join only fires on crate-qualified call paths.** Desugared edges — `Display::fmt` at a format hole,
    `Drop::drop` at scope exit — produce no such path, so the dep report's correct entry is never consulted.
+   **The `Display` half is now fixed (`1623a07`)**, and the fix is the template for the rest: emit the call
+   shape the join *already* understands (`cr::Type::method`, whose tail2 is exactly the dep report's key)
+   rather than adding a resolution path. Gate back to exit 1; A/B zero gains and zero losses on five real
+   crates. `Drop::drop` at scope exit is the same shape and is next.
 2. **No return types in the report**, so a receiver bound from a dependency factory is untyped.
 3. **`interfaceUnion` is shipped-but-off in the default `--deps` path** (child scans do not set
    `CANDOR_WORKSPACE_CHAIN`).
