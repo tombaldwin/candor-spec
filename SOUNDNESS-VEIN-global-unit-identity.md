@@ -88,9 +88,29 @@ overloads of each other.
    convenience wrapper delegating to a generic implementation of the same name is a normal library shape.
 
 Choosing correctly needs the caller's **imports** and Swift's real overload resolution, which a syntactic
-engine does not have. One promising lead, not yet pursued: the delegating call at `:110` is **explicitly
-module-qualified in source**, so honouring a module-qualified call precisely — and only then preferring the
-caller's module for genuinely unqualified ones — may separate the two cases. That is the next thing to try. Distinct units then resolve exactly — no disclosure needed and no genuine reach
+engine does not have — for the UNQUALIFIED half. The lead out of that second measurement turned out to be a
+distinct, bigger find:
+
+### The QUALIFIED half was a separate cardinal sin, and is FIXED (candor-swift `7cec437`)
+
+`Core.shared()` — a module-qualified free call — is neither `typed` (its base names a module, not a type)
+nor `unqualified`, so it matched **no branch** of the resolution chain and produced **no edge at all**:
+
+    Sources/Util/Util.swift   func delegates() -> String { Core.shared() }   ->  PURE
+
+A caller of a function that reads the filesystem, reported sound-complete pure. Instrumenting the call
+records (after two wrong guesses about where the module name went) showed the qualifier is **not** lost: the
+collector keeps the base on the call as `extOwner` and only strips `call.path` to the bare leaf. So the fix
+is exact rather than heuristic — the base must be a real target that is not also a local type, and that
+target must declare exactly one free function of the name, or nothing resolves.
+
+**A/B: zero losses on candor-swift and swift-syntax, one gain** —
+`assertMacroExpansion(…)#1` picks up `['Unknown']` because its module-qualified delegation now resolves.
+The very case that motivated this vein, recovered on third-party code.
+
+**Still open: the UNQUALIFIED collision.** `localCall()` calling its own module's `shared()` still reads
+`['Env','Fs']`, because the two modules' same-named functions are grouped as overloads of one another. The
+two failed measurements above are why that half needs import-awareness rather than another heuristic. Distinct units then resolve exactly — no disclosure needed and no genuine reach
 lost, which is why **filtering the edge is the wrong fix**: it removes the fabrication and the real effect
 together (measured on swift — the reader loses its genuine `Env` and disappears from the report).
 
