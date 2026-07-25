@@ -54,10 +54,16 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 
 | engine | the analogue | result |
 |---|---|---|
-| **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | **SOUND** — `App.<clinit> { Env* }` *and* `App2.use { Env* }` |
+| **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | sound INSIDE the scan; **the dependency side was MISSING → FIXED** `candor-java` |
 | **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | **SOUND** — `main { Env }`, one hop via `<lazy>::DBG` |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
 | **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` |
+
+**And neither was java, on the other side of the boundary.** It models `<clinit>` correctly for a scanned
+class, which is what made it look clean — but when the owner is a dependency the edge pointed at nothing,
+even with the dep's report chained (the report records that unit under the ordinary method-ref hash;
+nothing looked for it). Fixed by inheriting it, mirroring how a cross-jar CALL already inherits, with
+superclasses included per JVMS §5.5. So the vein reached **three** engines, not two.
 
 Swift is not N/A: `import` forces nothing, but a **read** does, and that edge is dropped:
 
