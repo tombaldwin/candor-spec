@@ -2395,3 +2395,72 @@ the caller provably cannot have returned — with one fire-and-forget shape kept
 and **verified to catch**: forcing the uncorroborated frames to classify as blind reds it. The uncorroborated
 count is a property of JavaScript, not a defect — closing it needs continuation-tracking capture
 (`AsyncLocalStorage`), which stays future work. Wired into candor-ts CI as its own step. candor-ts `cf91b95`.
+
+### 2026-07-25 — the falsifier's own stack was truncated at ten frames (Node arm)
+
+Found while trying to close the previous entry's 5 uncorroborated frames with continuation tracking. The
+continuation work recovered only one frame, and rather than publish a number I could not explain I traced it
+— the standing rule. The explanation was not about async at all.
+
+**The find.** `candor-ts`'s preload attributes an effect to **every project frame on the stack**
+(`verify-emit.mjs`), which is what makes the Node arm transitive. It reads that stack from
+`new Error().stack`. V8 captures at most `Error.stackTraceLimit` frames and **the default is TEN** — several
+of which the patched builtin, the emit path and Node's internals consume before app code is reached. The
+engine never raised it. So on any chain deeper than a handful, **the OUTERMOST project frames were silently
+dropped from the trace**, and a caller the trace never mentions is a caller whose false all-clear the oracle
+cannot catch.
+
+**Measured on a 16-deep plain synchronous chain: 5 of 16 frames charged.** No boundary crossed, no async
+involved, nothing in the oracle's output announcing a truncation. **Fixed** by raising the limit for the
+duration of our own capture and restoring it (the application's `Error` behaviour is untouched); the same
+probe now charges **16 of 16**. Bounded at `CAPTURE_DEPTH = 256` and the bound is stated, not assumed
+infinite. candor-ts `verify-emit.mjs`.
+
+**Why it matters beyond the fixture.** This is the shipped falsifier, so it affects real results, and it
+biases them in the dangerous direction: truncation can only *lose* checked frames and *miss* violations,
+never invent them. Every Node-arm "H held" was therefore weaker than it read, over an effectively shallower
+frame set than reported. The held-out slice was re-run on the corrected engine and filed **beside** the
+frozen record rather than replacing it (`results-depthfix/`, `EXPECT_SHA`/`RESULTS_DIR` overrides) — amending
+a pre-registered pin in place would restate a result as though the original run had never happened.
+
+**A second defect the first had been hiding.** With the outer frames restored, **CommonJS module-loader
+reads turned out to be charged to the program**: `require()` reads a file, the loader performs that read
+while every module in the chain is still on the stack, so a program whose only "effect" is `require()` was
+charged `Fs` at every require site — the fabrication mirror, in the instrument built to catch its opposite.
+The guard keys on the **caller**: a loader read has `node:internal/modules` immediately beneath our
+machinery; a program's own top-level `fs` call has the program's frame there. Keying on "a loader frame
+anywhere on the stack" would instead silence genuine top-level I/O during module initialization — the sin
+this oracle exists to find. Verified both directions.
+
+**And the order is the lesson.** The depth fix *alone* took the held-out slice from 3 violations to **9**,
+across five previously-clean packages. Reported at that moment they would have read as a dramatic set of new
+catches. They were artifacts of the second defect. A run between the two fixes is filed nowhere: a number
+that was never true is not a datapoint.
+
+**Corrected held-out slice** (filed beside the frozen record, never replacing it — `RERUN.md`,
+`results-corrected/`): **92 frames checked against 85**, the same 5 sound-complete, **4 violations**. Two
+were already on the record. **Two are new and were traced to source rather than counted:**
+`proper-lockfile`'s `index.<module>` ran `{Env,Fs}` while declared complete-pure — it `require`s
+`lib/lockfile` → `graceful-fs`, whose module top level reads `process.env.NODE_DEBUG` (`graceful-fs.js:35`);
+`write-file-atomic`'s `lib.index.<module>` ran `{Rand}` on the same shape. A module initializer reaching an
+**unanalyzed dependency's** top-level effect must disclose `Unknown`, not claim purity. Candidate silent
+under-reports of one class, invisible before the truncation fix because they live on the outermost frames.
+**Recorded, not repaired** — adjudicating the class is separate work.
+
+**Standing gate.** A depth probe in `transitive-recall.mjs`, verified to CATCH: revert the fix in a scratch
+copy of the engine and it reports 5/16 and exits 1. `npm test`, fuzz 25/25 and the sensitivity battery
+(8/8 disclosure, 8/8 oracle recall) are unchanged by both fixes.
+
+**On the continuation tracking that started this.** With the capture no longer truncated,
+`CANDOR_VERIFY_ASYNC_STACKS=1` (async_hooks trigger-chain inheritance) recovers **all 5** previously
+unreachable caller frames at ~1.05× — and **fabricates on 2** frames of the fire-and-forget control, charging
+callers that had already returned and left the dynamic extent. Trigger-chain inheritance cannot distinguish a
+caller *suspended awaiting* the work from one that merely *scheduled* it. So it is shipped **opt-in and off**:
+buying reach with the cardinal sin's mirror is precisely the trade this project refuses. A sound version needs
+promise-graph rather than trigger-chain tracking. The control earned its place here — without it the mode
+would have looked like a clean win.
+
+**Durable lesson.** Two entries in one day turned on the same discipline and it is worth stating plainly: *a
+number you cannot explain is not a result.* The 1-of-5 recovery looked like a modest, plausible finding about
+JavaScript semantics. It was a ten-frame limit in our own instrument, and every negative result the Node arm
+had ever produced was quietly resting on it.
