@@ -108,9 +108,26 @@ target must declare exactly one free function of the name, or nothing resolves.
 `assertMacroExpansion(…)#1` picks up `['Unknown']` because its module-qualified delegation now resolves.
 The very case that motivated this vein, recovered on third-party code.
 
-**Still open: the UNQUALIFIED collision.** `localCall()` calling its own module's `shared()` still reads
-`['Env','Fs']`, because the two modules' same-named functions are grouped as overloads of one another. The
-two failed measurements above are why that half needs import-awareness rather than another heuristic. Distinct units then resolve exactly — no disclosure needed and no genuine reach
+### And then the UNQUALIFIED half fell out — FIXED (candor-swift `7f18c38`)
+
+With the qualified form resolving on its own path, the module preference that had been reverted twice was
+re-measured and came back **clean: zero gains, zero losses** on candor-swift and swift-syntax. The
+counterexample that had killed it — `SwiftSyntaxMacrosTestSupport` delegating to
+`SwiftSyntaxMacrosGenericTestSupport.assertMacroExpansion` — is written **module-qualified**, so once
+qualified calls stopped falling through, the preference no longer had to steal that edge.
+
+**The earlier revert was right about the measurement and wrong about the cause.** The preference was being
+judged on a broken foundation. It applies to **free functions only** — for a member or initializer, a type
+declared in one module and extended in another is idiomatic, and applying it there dropped 19 real `Unknown`
+disclosures.
+
+Stated plainly: zero *gains* means neither corpus contains same-named free functions across modules with
+differing effects, so the A/B is a **no-regression** result; the recovery is pinned by the regression test,
+which asserts both halves — the qualified call charges only Core's `Fs`, the unqualified one only Util's
+`Env`.
+
+**Swift's remaining piece is the GLOBAL identity itself** (`let cfg` in two modules still merges into one
+unit). The function half — both qualified and unqualified — is now closed. Distinct units then resolve exactly — no disclosure needed and no genuine reach
 lost, which is why **filtering the edge is the wrong fix**: it removes the fabrication and the real effect
 together (measured on swift — the reader loses its genuine `Env` and disappears from the report).
 
