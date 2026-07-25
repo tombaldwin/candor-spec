@@ -48,8 +48,41 @@ idea, a missing edge. With the dependency **inside** the scanned set, candor-jav
 `Dep` **out** of the scanned set and `app.App.<clinit>` reads pure — the edge is dropped in silence rather
 than disclosed. candor-ts behaves identically on the `require` form. Fixtures: `fixtures/initializer-edge/`.
 
-Swift's globals are lazy, so `import` alone forces nothing; Rust has no top-level executable code (the same
-N/A the 0.14 rung records). So this is a **JVM + Node** vein, not four-way.
+### The four-way sweep — and my "N/A" for Swift was wrong
+
+I first recorded Swift and Rust as N/A from language semantics alone. Sweeping with fixtures instead:
+
+| engine | the analogue | result |
+|---|---|---|
+| **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | **SOUND** — `App.<clinit> { Env* }` *and* `App2.use { Env* }` |
+| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | **SOUND** — `main { Env }`, one hop via `<lazy>::DBG` |
+| **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
+| **swift** | globals are lazy, so *reading* one forces its initializer | **MISSING — the vein is live** |
+
+Swift is not N/A: `import` forces nothing, but a **read** does, and that edge is dropped:
+
+    Config.swift  let dbg = ProcessInfo…environment["NODE_DEBUG"] ?? ""   ->  dbg ['Env']   correct
+    main.swift    print(dbg.count)                                        ->  <main> ABSENT  the vein
+    Use.swift     func useMember() -> Int { return dbg.count }            ->  PURE           the vein
+    Use.swift     func useBare() -> String { return dbg }                 ->  ['Env']        already sound
+
+candor-swift **has** the mechanism (`globalReads`, "reading it edges to the global unit") and it fires for a
+bare read. It is skipped when the reference is the **base of a member access, call or subscript**
+(`CallCollector.swift`), which is by far the commoner shape — you almost always read a member *of* the
+global, not the global itself.
+
+### The obvious swift fix over-fires, and was reverted
+
+Recording the base of a member access as a global read is a two-line change. It recovers all three fixtures
+— and on candor-swift's own tree it produced **113 gains over 226 functions**, `Ipc` alone reaching 114
+units including `<main>`. Every one is a **name collision**: `globalUnitNames` is module-flat, so a local
+named `pipe`/`run`/`capture`/`env` matched a same-named top-level `let` in a *different* file (a test
+fixture), and `local.member` edged to that global's initializer. That is the cardinal sin's mirror, so the
+change was **A/B-reverted rather than shipped** — the same call as the flate2 leaf-name-collision revert.
+
+The sound version needs global resolution scoped to the **declaring module** (Swift globals are
+module-scoped, and a package's `Sources/` and `Tests/` are different modules) plus tighter local-binding
+tracking so an unresolved local cannot masquerade as a global. That is the open swift work.
 
 ## Why the obvious fix is wrong: measured
 
