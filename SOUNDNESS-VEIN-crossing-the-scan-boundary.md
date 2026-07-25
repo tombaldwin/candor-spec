@@ -144,7 +144,8 @@ whole package, so **8 of the 13 are strictly less honest chained than unchained*
 | **ts** | 5 mechanism families | `deny Fs` 1 → 0 |
 | **rust** | 5 families | `deny Clock` 1 → 0 |
 
-**Implicit stringification is silent across the boundary in all four** — the vein closed four-way on the
+**Implicit stringification was silent across the boundary in all four; rust (`1623a07`) and swift
+(`83ca73c`) are now fixed and independently verified.** — the vein closed four-way on the
 morning of the same day. In every engine the dependency's report holds the right answer under the right key
 and nothing looks for it.
 
