@@ -86,7 +86,13 @@ A parallel sweep of candor-java probed thirteen mechanisms across the same bound
     dep report:     lib/Entry.toString()Ljava/lang/String;  ->  ['Env']      <- the answer is right there
     app + chained:  (all pure)
 
-**The implicit-stringification vein, closed inside the scan that morning, is still live across it.** Also
+**The implicit-stringification vein, closed inside the scan that morning, is still live across it** — and
+the JVM gate diverges exactly as rust's does, on the same fixture:
+
+    deny Env,  both trees scanned together     -> exit 1   (violation, correct)
+    deny Env,  app alone + dep report chained  -> exit 0   (PASSES)
+
+So the finding is gate-level in **both** confirmed engines, not report-level. Also
 silent: `equals`/`hashCode` reentry on a dep key, `forEach(new DepConsumer())`, `Executor.submit` of a dep
 `Runnable`, method references (`xs.forEach(DepUtil::write)`, `d::writeInst`), inherited and default methods
 from a dep supertype, a dep provided-method driving an app requirement, and dep-interface-typed dispatch.
