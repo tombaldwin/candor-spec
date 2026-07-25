@@ -50,7 +50,8 @@ a general limitation:
 |---|---|
 | implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `1623a07` — was silent-pure |
 | `Drop` glue — a dependency type whose `Drop` writes a file | **FIXED** `a2fbe74` — was silent-pure |
-| `&dyn Trait` / `Vec<Box<dyn Trait>>` where the trait is the dependency's | silent-pure by default; recovered **only** if `CANDOR_WORKSPACE_CHAIN` was set when the *dependency* was scanned, which `--deps` does not do |
+| `&dyn Trait` where the trait is **imported** (`use deplib::Handler`) | **FIXED** `50218e3` — `--deps` now sets `CANDOR_WORKSPACE_CHAIN` on its child scans |
+| `&dyn deplib::Handler` (fully qualified) and field-typed `Vec<Box<dyn …>>` | **still silent** — the consumer never forms the crate-qualified key |
 | a value bound from a dependency's factory (`let c = deplib::build(); c.fetch()`) | silent-pure — **no return-type information travels in the report**, so the receiver is untyped and every later method call drops |
 | dispatch over an **imported** trait whose impls are all local | silent-pure — `trait_decls` is built only from local `ItemTrait` nodes, so CHA never fires |
 
@@ -67,8 +68,13 @@ first attempt used a plain `cr::Type::drop`, which the κ ledger counted as a ge
 which added report entries on two of our own crates — the coverage-envelope test caught it. The marker is
 now `cr::<drop>::Type`, consumed only by the join, exactly as the lazy-static marker is.
 2. **No return types in the report**, so a receiver bound from a dependency factory is untyped.
-3. **`interfaceUnion` is shipped-but-off in the default `--deps` path** (child scans do not set
-   `CANDOR_WORKSPACE_CHAIN`).
+3. **`interfaceUnion` was shipped-but-off in the default `--deps` path** — **FIXED (`50218e3`)**. Measured:
+   the same fixture reads `PURE` against a plainly-scanned dep report and `['Fs']` against a union-scanned
+   one, so the flag was the whole difference. **A correction to the sweep that reported this:** it claimed
+   the union recovers the field-typed `Vec<Box<dyn>>` and param-typed `&dyn` cases; neither reproduces. What
+   it recovers is the **imported-trait** form, which is the idiomatic one. A fully-qualified
+   `&dyn deplib::Handler` still reads pure because the consumer never forms the crate-qualified key — that
+   residual is real and open.
 4. **`trait_decls` is local-only.**
 5. **Coverage is crate-granular**, so one *resolved* call into a crate clears its blind flag for **every**
    call shape into that crate. This does not cause the misses above, but it removes the `invisible` /
