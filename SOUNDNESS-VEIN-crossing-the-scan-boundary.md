@@ -1,4 +1,4 @@
-# Vein: effect mechanisms that die at the scan boundary (rust)
+# Vein: effect mechanisms that die at the scan boundary (rust + JVM)
 
 **Status: OPEN — reproduced and gate-confirmed, not fixed.** Found 2026-07-25 by a fan-out sweep after the
 [initializer edge](SOUNDNESS-VEIN-initializer-edge.md) turned out to be one instance of a general shape.
@@ -77,7 +77,45 @@ happened to be present. **The miss exists identically with and without chaining.
 is (5): removing the incidental caveat. Stating it the first way would have blamed the chaining feature for
 a vein that predates it.
 
+## The JVM is worse: 13 of 13 probed shapes are silent-pure
+
+A parallel sweep of candor-java probed thirteen mechanisms across the same boundary. **Every one reads
+`PURE` chained — none reads `Unknown`.** The sharpest is the one closed four-way *earlier the same day*:
+
+    together:       app.S.show -> ['Env']        lib.Entry.toString -> ['Env']
+    dep report:     lib/Entry.toString()Ljava/lang/String;  ->  ['Env']      <- the answer is right there
+    app + chained:  (all pure)
+
+**The implicit-stringification vein, closed inside the scan that morning, is still live across it.** Also
+silent: `equals`/`hashCode` reentry on a dep key, `forEach(new DepConsumer())`, `Executor.submit` of a dep
+`Runnable`, method references (`xs.forEach(DepUtil::write)`, `d::writeInst`), inherited and default methods
+from a dep supertype, a dep provided-method driving an app requirement, and dep-interface-typed dispatch.
+The only honest control in the set — `forEach(field)` on an opaque field — stays `Unknown[task-handoff]`
+in all modes, which is what the rest should look like.
+
+Three JVM root causes, distinct from rust's:
+
+1. **CHA is project-only.** `chaTargets`/`nearestConcreteSuper` walk project-only indexes, so a dep
+   `declType` yields an empty CHA — and an empty CHA emits **no Unknown**, only a dropped edge. Worse,
+   `this.load()` on a dep superclass compiles to `invokevirtual` with the **project** class as owner, so the
+   cross-dep join is never even reached (it requires a non-project owner).
+2. **Callback/HOF surfaces are project-only, and the Unknown fallback is gated off for exactly the cases
+   they miss.** `new DepConsumer()` has a `newType`, so the opaque-handoff Unknown does not fire; a method
+   ref is an `invokedynamic` bootstrap arg, which the same guard suppresses.
+3. **A dep's own disclosed `Unknown` is dropped too** — `lib/Task.go()V` is `["Unknown"]` in the dep report
+   and its consumer certifies clean. The dependency explicitly said *"I don't know"* and the consumer
+   published a clean bill.
+
+**The information is already present in 12 of the 13.** The dep report carries the exact hashes
+(`lib/Entry.toString…`, `lib/DepUtil.write…`, `lib/DepConsumer.accept…`, `lib/DepKey.equals…`); nothing looks
+for them. Only dep-interface-typed dispatch needs something the report format does not carry (the dep's own
+hierarchy).
+
+The same κ hedge withdrawal appears here as cause (5) in rust: chaining a report clears `invisible` for the
+whole package, so **8 of the 13 are strictly less honest chained than unchained** — `A1Log.logIt` goes from
+`invisible: ["lib"]` to an unhedged pure claim, and the stderr advisory disappears.
+
 ## Not yet swept
 
-Whether the equivalents hold in java, ts and swift. The JVM sweep is in flight; the initializer-edge
-instance was four-way, so the presumption should be that these are too until measured.
+candor-ts and candor-swift. Two of four engines are confirmed; the initializer-edge instance was four-way
+and the stringification vein was four-way; the presumption should be that these are too until measured.
