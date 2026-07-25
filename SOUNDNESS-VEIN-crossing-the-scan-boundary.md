@@ -1,4 +1,4 @@
-# Vein: effect mechanisms that die at the scan boundary (rust + JVM)
+# Vein: effect mechanisms that die at the scan boundary (ALL FOUR ENGINES)
 
 **Status: OPEN — reproduced and gate-confirmed, not fixed.** Found 2026-07-25 by a fan-out sweep after the
 [initializer edge](SOUNDNESS-VEIN-initializer-edge.md) turned out to be one instance of a general shape.
@@ -121,7 +121,39 @@ The same κ hedge withdrawal appears here as cause (5) in rust: chaining a repor
 whole package, so **8 of the 13 are strictly less honest chained than unchained** — `A1Log.logIt` goes from
 `invisible: ["lib"]` to an unhedged pure claim, and the stderr advisory disappears.
 
-## Not yet swept
+## Swept: all four engines have it, and the gate flips in every one
 
-candor-ts and candor-swift. Two of four engines are confirmed; the initializer-edge instance was four-way
-and the stringification vein was four-way; the presumption should be that these are too until measured.
+| engine | silent-pure shapes | gate |
+|---|---|---|
+| **java** | **13 of 13** probed | `deny Env` 1 → 0 |
+| **swift** | **7 of 13** | `deny Env Unknown` 1 → 0 on seven mechanisms |
+| **ts** | 5 mechanism families | `deny Fs` 1 → 0 |
+| **rust** | 5 families | `deny Clock` 1 → 0 |
+
+**Implicit stringification is silent across the boundary in all four** — the vein closed four-way on the
+morning of the same day. In every engine the dependency's report holds the right answer under the right key
+and nothing looks for it.
+
+### What each engine gets RIGHT — the differences are the design lesson
+
+- **ts** recovers inheritance, factory-returned receivers (return types travel in the `.d.ts`, so rust's
+  root cause 2 does not apply), a dep's own disclosed `Unknown`, and a dep's own `invisible`.
+- **swift** carries a dep's disclosed `Unknown` *with its `whyReason`*, and its `--workspace`/`--deps` DOES
+  set `CANDOR_WORKSPACE_CHAIN` on child scans — which is the sole reason its protocol-CHA case is recovered
+  there and rust's is not. Class inheritance is honest (`Unknown[dispatch:Base.load]`), not silent.
+- **java** recovers the direct-hash call path and the `<clinit>` edge fixed the same day.
+
+So no engine is uniformly worse; each recovers what its own design happens to make reachable. **The union of
+what the four already do is close to the full fix** — which is the strongest argument that this is
+tractable rather than fundamental.
+
+### Two engine-specific findings worth their own entries
+
+- **ts, monorepo shape:** a symlinked workspace dependency produces **no disclosure at all** — no
+  `invisible`, no ledger, no advisory — because the blind branch is guarded on `/node_modules\//` while the
+  module name resolves through a different path. The published-package shape discloses correctly for the
+  same code. So in a monorepo every cross-package mechanism is silent-pure until someone remembers
+  `--workspace`.
+- **ts, interface union needs source:** a published package ships `dist` JS + `.d.ts`, and the `implements`
+  clause lives only in the typings, so the child scan emits no union entry. The mechanism is recovered for a
+  monorepo sibling and silent for a real npm dependency.
