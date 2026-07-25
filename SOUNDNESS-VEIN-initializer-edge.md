@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: CLOSED for what is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: CLOSED — including automatic dependency scanning (`fab67fd`). What is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
@@ -212,7 +212,13 @@ edge has to exist first.
    With `graceful-fs` chained, `proper-lockfile`'s `lib.lockfile.<module>` picks up its `Clock` and that
    propagates to `index.<module>` — which is what I originally, wrongly, claimed chaining alone would do.
    An unchained dependency is untouched: the guard makes a scan without chained reports byte-identical.
-   Scanning **dependency initializers only** to produce those reports automatically — module top level is a tiny fraction of a package's code, so the cost is small
+   **Producing those reports automatically is DONE too (`fab67fd`, `--dep-inits`)**: the blocker was never
+   analysis, it was that nobody had scanned the dependency. `--dep-inits` collects the bare specifiers the
+   project imports at top level — its direct dependency surface, not the whole tree — resolves each in
+   `node_modules`, scans it and chains it. On the held-out case: `write-file-atomic`'s `lib.index.<module>`
+   goes pure → `['Rand','Unknown']` with no manual staging, whole scan 2.1s including both child scans, and
+   the summary says *"scanned 2 of 6 direct dependencies"* rather than implying full coverage. Opt-in, since
+   it spawns a child scan per dependency; without the flag nothing changes. Scanning **initializers only** — module top level is a tiny fraction of a package's code, so the cost is small
    and the answer exact. It also sharpens `gains`: *"a dependency bump added a top-level `Net` call"* is the
    supply-chain signal candor exists to raise, and it lives precisely here.
 3. **Disclose only when neither is available** — an unreadable or absent dependency. That set is small
