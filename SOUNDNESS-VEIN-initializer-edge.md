@@ -116,7 +116,33 @@ nothing referenced these names, which is what makes them phantoms — and `<main
 the block's effects are still charged where they always belonged. Type members untouched. Gates: swift test,
 fabrication probe, fuzz, four-way conformance 26/0.
 
-**(a) is the remaining blocker** and **(c)** is blocked on it. Attempts 1 and 2 stay reverted.
+**(a) is the remaining blocker**, and pinning down what it actually is uncovered a **separate live
+fabrication** in the shipped engine, reproduced with a two-module fixture:
+
+    Sources/Core/Core.swift   let cfg = (try? String(contentsOfFile:"/etc/core")) ?? ""   // Fs
+    Sources/Util/Util.swift   let cfg = ProcessInfo…environment["U"] ?? ""                // Env
+                              func utilUses() -> String { return cfg }
+
+    reported:  cfg       -> ['Env','Fs']   @ Sources/Util/Util.swift
+               utilUses  -> ['Env','Fs']
+
+The two globals **merge into one unit** carrying the union of their effects, and `utilUses` — which reads
+only Util's `cfg` — inherits **`Fs` from a different module's unrelated global.** Global unit quals are bare
+names, so nothing distinguishes them. This is live today and independent of the vein.
+
+Filtering the edge is **not** an acceptable fix. Dropping the read when a name is declared in more than one
+module does remove the fabrication, and it also removes `utilUses`'s genuine `Env` — trading a fabrication
+for a silent under-report, which is the wrong direction. (Measured: with the filter, `utilUses` disappears
+from the report entirely.) The filter is also a **no-op** on candor-swift's own tree once (b) landed — the
+cross-module collisions there were all phantom-driven — so it would be unmeasured machinery as well.
+
+**(a) is therefore: give global units a module-qualified IDENTITY so they do not merge.** With distinct
+units, resolution is exact, no disclosure is needed, and no genuine reach is lost. It changes report unit
+names, so it is a spec-visible change rather than an internal one. **(c)** stays blocked on it — and (c)
+additionally needs the implicit-self and unresolved-local bases kept out of `globalReads`, which the
+`pushType` case shows are leaking (`typeStack.append(name)` recorded `typeStack` as a global read).
+
+Attempts 1, 2 and 4 stay reverted; only (b) shipped.
 
 *The methodological point: attempt 3 looked dirty only because it was measured on top of (c). Isolated, it
 was clean and shippable. Stacked changes hide which one is at fault — separate them before judging.*
