@@ -116,8 +116,23 @@ nothing referenced these names, which is what makes them phantoms — and `<main
 the block's effects are still charged where they always belonged. Type members untouched. Gates: swift test,
 fabrication probe, fuzz, four-way conformance 26/0.
 
-**(a) is the remaining blocker**, and pinning down what it actually is uncovered a **separate live
-fabrication** in the shipped engine, reproduced with a two-module fixture:
+> **UPDATE — (a) is DONE.** Global/lazy unit identity is now unique per module in all four engines
+> ([SOUNDNESS-VEIN-global-unit-identity.md](SOUNDNESS-VEIN-global-unit-identity.md); rust `5447eba`, swift
+> `b616caf`, plus swift's function-call halves `7cec437`/`7f18c38`). Re-attempting **(c)** on that foundation
+> took the fabrication count on candor-swift's own tree from **113 → 34**, and adding a guard for
+> implicit-self property reads (`self.typeStack.append(x)` is not a global read — `DeclCollector.pushType`,
+> whose whole body appends to three of its own properties, was picking up `{Env, Fs, Unknown}`) took it to
+> **26**. Still not shippable, so (c) stays reverted.
+>
+> **The remaining blocker is now precisely identified, and it is not identity.** The leftover 26 are bare
+> names that are LOCAL bindings in scopes the collector does not track — `accessorQuals`, `allFns`,
+> `conformers` and friends, which exist as bare-named units at indented locations. The guard chain (`vars`,
+> `fnTyped`, `boundLocals`, and now enclosing-type `fields`) does not cover every binding form, so a base
+> that is really a local still reaches `globalReads`. **Completing local-binding coverage is what (c) needs**
+> — a narrower and much better-understood problem than the one this vein started with.
+
+**(a) — historical note.** Pinning down what (a) actually was uncovered a **separate live fabrication** in
+the shipped engine, reproduced with a two-module fixture:
 
     Sources/Core/Core.swift   let cfg = (try? String(contentsOfFile:"/etc/core")) ?? ""   // Fs
     Sources/Util/Util.swift   let cfg = ProcessInfo…environment["U"] ?? ""                // Env
