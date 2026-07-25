@@ -90,7 +90,8 @@ several modules (`Sources/<T>` and `Tests/<T>` are different ones), so resolve a
 and drop any name declared in more than one. Fabrications fell **113 → 94**. The remainder collide *within*
 one module, so scoping alone is not enough.
 
-**Attempt 3 — the file-scope guard, a real defect found on the way.** Swift allows executable statements at
+**Attempt 3 — the file-scope guard, a real defect found on the way, and now SHIPPED on its own
+(candor-swift `080fb3e`).** Swift allows executable statements at
 file scope, so a `let` inside a top-level `if`/`for` block is lexically outside any type while being an
 ordinary **local of that block**. candor-swift registered those as module globals: its own `main.swift` has
 `let pipe = Pipe()` three blocks deep inside `if wantWorkspace { for … { … } }`, and that is where `Ipc`
@@ -106,8 +107,19 @@ than guessed), any widening of what counts as a read — which is what closing t
 directly into fabrication.
 
 So the order is: **(a) unique keying for global units, (b) the file-scope guard, (c) then the member-access
-base read.** (a) and (b) are worth doing on their own merits and each needs its own A/B; (c) is the vein fix
-and is blocked on them. All three attempts are reverted; candor-swift is unchanged.
+base read.**
+
+**(b) is DONE** — separated out and A/B'd in isolation so the result is attributable: **0 gains** on both
+candor-swift (226 → 192 units, 9 effectful phantoms dropped: `pipe`/`proc`/`env`/`pol`/`prev`/`fetched`/
+`ef`/`disclosePolicy`/`unknownAliases`) and swift-syntax (7,227 fns, 6 dropped). No reader lost an effect —
+nothing referenced these names, which is what makes them phantoms — and `<main>` is unchanged on both, so
+the block's effects are still charged where they always belonged. Type members untouched. Gates: swift test,
+fabrication probe, fuzz, four-way conformance 26/0.
+
+**(a) is the remaining blocker** and **(c)** is blocked on it. Attempts 1 and 2 stay reverted.
+
+*The methodological point: attempt 3 looked dirty only because it was measured on top of (c). Isolated, it
+was clean and shippable. Stacked changes hide which one is at fault — separate them before judging.*
 
 ## Why the obvious fix is wrong: measured
 
