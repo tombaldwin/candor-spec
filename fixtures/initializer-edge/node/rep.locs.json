@@ -1,0 +1,6 @@
+{
+ "app.<module>": {
+  "loc": "app.js:1:1",
+  "end": 4
+ }
+}
