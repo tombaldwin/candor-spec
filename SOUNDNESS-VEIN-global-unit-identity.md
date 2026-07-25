@@ -1,6 +1,6 @@
 # Vein: global/lazy unit identity is not module-qualified (rust + swift)
 
-**Status: rust FIXED (`5447eba`); swift OPEN.** Found 2026-07-25 while scoping blocker (a) of
+**Status: CLOSED — rust `5447eba`, swift `b616caf` (+ `7cec437`, `7f18c38`).** Found 2026-07-25 while scoping blocker (a) of
 [SOUNDNESS-VEIN-initializer-edge.md](SOUNDNESS-VEIN-initializer-edge.md). It is a defect in its own right,
 independent of that vein, and it is **honesty-critical in BOTH directions**.
 
@@ -16,7 +16,7 @@ module path, so the two collapse into one — carrying the union of their effect
 | **java** | `core.C.<clinit>` — fully qualified | **SOUND** |
 | **ts** | `core.core.<module>` — path-qualified | **SOUND** |
 | **rust** | `<lazy>::CFG` — the synthetic prefix **replaced** the module path | **FIXED** `5447eba` |
-| **swift** | `cfg` — bare name | **DEFECT** |
+| **swift** | `cfg` — bare name | **FIXED** `b616caf` |
 
 The two sound engines already qualify by path, so the fix has in-family precedent: this is not a new spec
 question, it is two engines not doing what the other two do. Note rust qualifies ordinary functions
@@ -126,8 +126,22 @@ differing effects, so the A/B is a **no-regression** result; the recovery is pin
 which asserts both halves — the qualified call charges only Core's `Fs`, the unqualified one only Util's
 `Env`.
 
-**Swift's remaining piece is the GLOBAL identity itself** (`let cfg` in two modules still merges into one
-unit). The function half — both qualified and unqualified — is now closed. Distinct units then resolve exactly — no disclosure needed and no genuine reach
+### The global half — FIXED (candor-swift `b616caf`)
+
+File-scope globals are **accessor** units, and the overload pass that gives ordinary functions their
+positional disambiguation excludes accessors — so nothing kept two modules' `let cfg` apart. They now get the
+same `#n` treatment, and a bare read resolves in the reader's own module (the lexical rule the free-function
+path already uses), with the plain-name fallback kept so a uniquely-named global elsewhere still resolves.
+
+    before:  cfg  -> ['Env','Fs'] @ Util.swift    coreReads / utilReads  ->  both
+    after:   cfg  -> ['Fs']  @ Core.swift         coreReads -> ['Fs']
+             cfg#1 -> ['Env'] @ Util.swift        utilReads -> ['Env']
+
+A/B: zero gains, zero losses on candor-swift and swift-syntax — plainly, neither declares the same global
+name in two modules, so that is a *no-regression* result and the recovery is pinned by the regression test.
+
+**This vein is now closed in all four engines**, and it clears **blocker (a)** of the initializer-edge vein:
+widening what counts as a global read was unsafe while identity was ambiguous, and no longer is. Distinct units then resolve exactly — no disclosure needed and no genuine reach
 lost, which is why **filtering the edge is the wrong fix**: it removes the fabrication and the real effect
 together (measured on swift — the reader loses its genuine `Env` and disappears from the report).
 
