@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: intra-project half FIXED (candor-ts `70553c3`); external half OPEN.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: candor-ts intra-project FIXED (`70553c3`); swift FIXED (`acfed07`); candor-ts EXTERNAL half open.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
@@ -57,7 +57,7 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 | **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | **SOUND** — `App.<clinit> { Env* }` *and* `App2.use { Env* }` |
 | **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | **SOUND** — `main { Env }`, one hop via `<lazy>::DBG` |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
-| **swift** | globals are lazy, so *reading* one forces its initializer | **MISSING — the vein is live** |
+| **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` |
 
 Swift is not N/A: `import` forces nothing, but a **read** does, and that edge is dropped:
 
@@ -116,6 +116,17 @@ nothing referenced these names, which is what makes them phantoms — and `<main
 the block's effects are still charged where they always belonged. Type members untouched. Gates: swift test,
 fabrication probe, fuzz, four-way conformance 26/0.
 
+> **UPDATE 2 — (c) is DONE (candor-swift `acfed07`).** Traced the leftover 26 instead of assuming they were
+> fabrications: they are the **recovery**. `let allFns = analysis.allFns` reads the global `analysis`, whose
+> initializer calls the effectful `analyze(…)`; `depsSpec` reads two globals reaching `Fs`; swift-syntax's
+> `SYNTAX_NODE_MAP` reads `SYNTAX_NODES`. Every sampled gain is a real global-to-global read that was
+> previously silent. **26 gains / 0 losses** on candor-swift, **7 / 0** on swift-syntax. The one genuine
+> fabrication was `DeclCollector.pushType` — a self-property read — and the exclusion for that is what made
+> the rest legible. **The swift half of this vein is closed.**
+>
+> Three reverts got here and each was right at the time: 113 fabrications under bare-name keying → 34 once
+> identity was unique → 26 after the self-property exclusion → all 26 verified genuine.
+>
 > **UPDATE — (a) is DONE.** Global/lazy unit identity is now unique per module in all four engines
 > ([SOUNDNESS-VEIN-global-unit-identity.md](SOUNDNESS-VEIN-global-unit-identity.md); rust `5447eba`, swift
 > `b616caf`, plus swift's function-call halves `7cec437`/`7f18c38`). Re-attempting **(c)** on that foundation
