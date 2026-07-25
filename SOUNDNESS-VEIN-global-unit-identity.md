@@ -1,6 +1,6 @@
 # Vein: global/lazy unit identity is not module-qualified (rust + swift)
 
-**Status: OPEN — characterized four-way, not fixed.** Found 2026-07-25 while scoping blocker (a) of
+**Status: rust FIXED (`5447eba`); swift OPEN.** Found 2026-07-25 while scoping blocker (a) of
 [SOUNDNESS-VEIN-initializer-edge.md](SOUNDNESS-VEIN-initializer-edge.md). It is a defect in its own right,
 independent of that vein, and it is **honesty-critical in BOTH directions**.
 
@@ -15,7 +15,7 @@ module path, so the two collapse into one — carrying the union of their effect
 |---|---|---|
 | **java** | `core.C.<clinit>` — fully qualified | **SOUND** |
 | **ts** | `core.core.<module>` — path-qualified | **SOUND** |
-| **rust** | `<lazy>::CFG` — the synthetic prefix **replaces** the module path | **DEFECT** |
+| **rust** | `<lazy>::CFG` — the synthetic prefix **replaced** the module path | **FIXED** `5447eba` |
 | **swift** | `cfg` — bare name | **DEFECT** |
 
 The two sound engines already qualify by path, so the fix has in-family precedent: this is not a new spec
@@ -48,9 +48,17 @@ built on top of global reads.
 
 ## The fix
 
-Qualify the global/lazy unit name with its **declaring module path**, as java and ts already do:
-rust `<lazy>::CFG` → module-qualified (`util_m::<lazy>::CFG` or equivalent); swift `cfg` → qualified by its
-module (`Sources/<Target>`). Distinct units then resolve exactly — no disclosure needed and no genuine reach
+Qualify the global/lazy unit name with its **declaring module path**, as java and ts already do.
+
+**rust is done** (`5447eba`): `<lazy>::CFG` → `<lazy>::util_m::CFG`. The module path goes **inside** the
+prefix so `tail2` — which is how `resolve_target` resolves a `::` path, requiring a unique hit — stays
+discriminating (`util_m::CFG`). Appending it after the name would leave tail2 identical and fix nothing;
+that placement is the whole point. A shared `lazy_qual` builds the declaration and the forcing edge so they
+cannot drift. A/B: **zero gains, zero losses on eight codebases** (regex, rayon, clap, aho-corasick,
+serde_json + three of ours) — stated plainly, none has an effectful module-scope lazy static, so that is a
+*no-regression* result and the recovery is pinned by the regression test instead.
+
+**swift remains**: `cfg` → qualify by its module (`Sources/<Target>`). Distinct units then resolve exactly — no disclosure needed and no genuine reach
 lost, which is why **filtering the edge is the wrong fix**: it removes the fabrication and the real effect
 together (measured on swift — the reader loses its genuine `Env` and disappears from the report).
 
