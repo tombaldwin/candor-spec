@@ -80,9 +80,34 @@ named `pipe`/`run`/`capture`/`env` matched a same-named top-level `let` in a *di
 fixture), and `local.member` edged to that global's initializer. That is the cardinal sin's mirror, so the
 change was **A/B-reverted rather than shipped** — the same call as the flate2 leaf-name-collision revert.
 
-The sound version needs global resolution scoped to the **declaring module** (Swift globals are
-module-scoped, and a package's `Sources/` and `Tests/` are different modules) plus tighter local-binding
-tracking so an unresolved local cannot masquerade as a global. That is the open swift work.
+### Decomposing it: the blocker is structural, and it has an order
+
+Two further attempts, both reverted, located the real obstacle. Each is recorded because the *ordering* is
+the finding — the vein fix cannot land until the layer beneath it does.
+
+**Attempt 2 — module-scoped resolution.** Swift globals are module-scoped and a SwiftPM package holds
+several modules (`Sources/<T>` and `Tests/<T>` are different ones), so resolve a read in the reader's module
+and drop any name declared in more than one. Fabrications fell **113 → 94**. The remainder collide *within*
+one module, so scoping alone is not enough.
+
+**Attempt 3 — the file-scope guard, a real defect found on the way.** Swift allows executable statements at
+file scope, so a `let` inside a top-level `if`/`for` block is lexically outside any type while being an
+ordinary **local of that block**. candor-swift registered those as module globals: its own `main.swift` has
+`let pipe = Pipe()` three blocks deep inside `if wantWorkspace { for … { … } }`, and that is where `Ipc`
+came from. Requiring a real file-scope parent chain is correct — `<main>`'s effect set is **unchanged**, so
+nothing is lost at the program level — but it did not remove the fabrications. It **re-shuffled which
+colliding declaration wins**: `DeclCollector.pushType`, whose entire body appends to three arrays, went from
+pure to `{Env, Fs, Unknown}`.
+
+**The root cause is that global units are keyed by BARE NAME.** Several declarations share a name, nothing
+distinguishes them, and every scoping refinement only changes which one a read resolves to. Until global
+units carry a **unique qualified identity** (module + declaring file, with ambiguous names dropped rather
+than guessed), any widening of what counts as a read — which is what closing the vein requires — converts
+directly into fabrication.
+
+So the order is: **(a) unique keying for global units, (b) the file-scope guard, (c) then the member-access
+base read.** (a) and (b) are worth doing on their own merits and each needs its own A/B; (c) is the vein fix
+and is blocked on them. All three attempts are reverted; candor-swift is unchanged.
 
 ## Why the obvious fix is wrong: measured
 
