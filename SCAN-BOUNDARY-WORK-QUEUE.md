@@ -45,11 +45,31 @@ cases it did, and nothing looked for it. Two caveats learned the hard way:
 - [x] implicit stringification via a dep's `Display::fmt` — `1623a07`
 - [x] drop glue via a dep's `Drop` — `a2fbe74`
 - [x] `interfaceUnion` emitted in `--deps` child scans — `50218e3`
-- [ ] **R4 — imported-trait dispatch (no chaining needed).** `use deplib::Handler; fn run(h: &dyn Handler)`
-      reads pure while the effectful `MyH::go` impl is IN THE SAME REPORT. `trait_decls` is built only from
-      local `ItemTrait` nodes, so an imported trait has no method list and CHA never fires. Fixture at
-      `/tmp/rrev`. **This one is pure local information — highest value-to-risk in the queue.**
-      Ambiguity rule: keep the existing `lt.count > 1` bail.
+- [!] **R4 — imported-trait dispatch. ATTEMPTED, REVERTED, and it needs a DECISION not a patch.**
+      `use deplib::Handler; fn run(h: &dyn Handler)` reads pure while the effectful `MyH::go` impl is IN THE
+      SAME REPORT. Implementing local CHA over an imported trait's impls does fix it — the fixture at
+      `/tmp/rrev` then matches its control exactly — **but it contradicts a deliberate prior decision**, and
+      an existing test says so in as many words:
+
+          tests.rs:1698  "external-trait local impl must not resolve (fabrication)"
+
+      That decision is defensible and I did not flip the test to make my change pass. For a STD trait it is
+      plainly right: CHA-ing `Iterator` over a local `RowIter::next` charges every `.next()` in the crate
+      with that impl's effects. Measured on the widened version: **30 fresh `Unknown`s on serde_json** from
+      the >12-impl arm alone, before the resolving arm is even considered.
+
+      So R4 is a real tension between two rules the project holds simultaneously:
+      *never leave a provable reach silent* vs *never fabricate over an unbounded impl universe.*
+      The plausible resolutions, none free:
+      1. Split the trait's PROVENANCE — CHA local impls of a trait imported from a **project dependency**
+         (`deplib::Handler`) but never one from std/core/alloc. Narrower than the current blanket rule, and
+         still an over-approximation if a third crate implements the trait.
+      2. Require a provable receiver — only resolve when the `&dyn` value's construction site is local and
+         monomorphic (the same shape rust already uses for the monomorphic-receiver retry).
+      3. Accept it as a documented residual and disclose `Unknown` only where the impl set is small and
+         wholly local.
+      **Do not implement any of these without deciding which rule wins first.** Attempted in this session,
+      reverted clean, suite green.
 - [ ] **R5 — return types in the report.** A receiver bound from a dep factory (`let c = deplib::build();
       c.fetch()`) is untyped, so every later method call drops. Needs a `returns` field in the report
       format — spec-visible, so it wants a rung and four-way agreement. Largest item here.
