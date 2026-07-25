@@ -91,9 +91,24 @@ Also open: the `--dep-inits` precision cost — all of a package's module units 
 charges the union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s
 `example/dns.js`). Narrow to the resolved entry.
 
-### swift — 7 of 13 silent; agent in flight
-Priority: stringification witnesses (local-only) → `deinit` glue (gated on `localTypes`) → protocol indexes
-(local-only, and the guard DROPS rather than emitting Unknown) → factory-bound receiver.
+### swift — 6 of 7 gate-flipping mechanisms DONE
+- [x] implicit stringification of a dep type, all three operand forms — `83ca73c` (verified independently:
+      `describeTyped -> ['Env']` across the boundary, gate back to exit 1)
+- [x] dependency `deinit` glue — `41dc8de`
+- [x] dispatch over an IMPORTED protocol with LOCAL conformers — `eae2de2`. Needs no dep report: Swift
+      spells a conformance to an imported protocol in the same inheritance clause, so `subtypesOf` already
+      had it. **Note the carve-out that made it safe** — `enum Rank: String` puts `String` in the inheritance
+      clause, so an unguarded CHA sends every call on a String-typed value into raw-value enums' methods;
+      `RAW_VALUE_BASE_TYPES` closes it and a test pins it. *This is the swift analogue of the same trap rust
+      hit at R4: an imported-supertype CHA is only safe with an explicit carve-out.*
+- [ ] **factory-bound receiver** — the one gate still flipping 1 → 0. `let c = build(); c.fetch()`: `c` is
+      untyped because no return types travel, AND the dep's `build` is pure so it is not even in the report —
+      there is no evidence `c` came from the dep at all. Blocked on the same report-format extension as
+      rust's R5. A leaf-key join (`M#fetch`) was considered and rejected: leaves like `write`/`run`/`send`
+      would fabricate on unrelated receivers.
+- Residual: the dep-CONFORMER direction of the protocol case is recovered only under `--workspace` (child
+  scans emit the union entries); a plain `--deps` report carries no hierarchy. Pinned as a residual in the
+  test rather than invented.
 
 ### cross-cutting
 - [ ] **Coverage granularity.** Package/crate-granular coverage means one *resolved* call clears the blind
