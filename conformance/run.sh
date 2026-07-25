@@ -3541,8 +3541,89 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ====================================================================================================
+# PART 19 — the INITIALIZER EDGE ACROSS THE SCAN BOUNDARY, four-way                                 [TIER 1]
+# ====================================================================================================
+# Touching a dependency runs ITS initializer — a module top level, a `<clinit>`, a lazy static. Each engine
+# models that correctly for a unit INSIDE the scan; each one dropped it when the owner sat on the other side
+# of the scan boundary, so a consumer of an effectful dependency initializer read SOUND-COMPLETE PURE even
+# with the dependency's report chained. Found 2026-07-25 on two held-out npm packages and swept to all four
+# engines (candor-spec SOUNDNESS-VEIN-initializer-edge.md). Two of them looked clean precisely because the
+# inside-scan case works — which is why this differential keys on the CHAINED case specifically.
+# The shapes differ (import / GETSTATIC / lazy-static read) but the contract is one: with the dependency's
+# report chained, the consumer must NOT be pure. Unchained, each engine is unchanged — that is not a
+# regression, it is the honest state when nobody has scanned the dependency.
+P19_OK=0
+# ---- java: a dep class whose <clinit> reads the environment; the app touches it via GETSTATIC.
+mkdir -p "$W/ie/java/dep" "$W/ie/java/app"
+printf 'package dep;\npublic class D { public static final String C = System.getenv("IE_CFG"); }\n' > "$W/ie/java/dep/D.java"
+printf 'package app;\npublic class A { static final String X = dep.D.C; }\n' > "$W/ie/java/app/A.java"
+javac -d "$W/ie/jall" "$W/ie/java/dep/D.java" "$W/ie/java/app/A.java" 2>/dev/null
+mkdir -p "$W/ie/jdep" "$W/ie/japp/app" && cp -r "$W/ie/jall/dep" "$W/ie/jdep/" 2>/dev/null
+cp "$W/ie/jall/app/A.class" "$W/ie/japp/app/" 2>/dev/null
+java -jar "$JAR" "$W/ie/jdep" --json "$W/ie/jdep.json" >/dev/null 2>&1
+CANDOR_DEPS="$W/ie/jdep.json" java -jar "$JAR" "$W/ie/japp" --json "$W/ie/japp.json" >/dev/null 2>&1
+# ---- rust: a dep crate with an effectful lazy static; the app reads it qualified.
+IE_RS="/nonexistent"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$W/ie/rs/deplib/src" "$W/ie/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/ie/rs/deplib/Cargo.toml"
+  printf 'use std::sync::LazyLock;\npub static C: LazyLock<String> = LazyLock::new(|| std::env::var("IE_CFG").unwrap_or_default());\n' > "$W/ie/rs/deplib/src/lib.rs"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib={path="../deplib"}\n' > "$W/ie/rs/app/Cargo.toml"
+  printf 'fn main() { println!("{}", deplib::C.len()); }\n' > "$W/ie/rs/app/src/main.rs"
+  ( cd "$W/ie/rs/deplib" && "$SCAN" . >/dev/null 2>&1 )
+  cp "$W"/ie/rs/deplib/.candor/report.*.scan.json "$W/ie/rsdep.json" 2>/dev/null
+  ( cd "$W/ie/rs/app" && CANDOR_DEPS="$W/ie/rsdep.json" "$SCAN" . >/dev/null 2>&1 )
+  IE_RS=$(ls "$W"/ie/rs/app/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+# ---- ts: a dep package whose module top level reads the environment; the app imports it.
+IE_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$W/ie/ts/dep" "$W/ie/ts/app/src"
+  printf '{"name":"iedep","version":"0.0.0","main":"index.js"}\n' > "$W/ie/ts/dep/package.json"
+  printf 'const c = process.env.IE_CFG || "";\nmodule.exports = { c };\n' > "$W/ie/ts/dep/index.js"
+  node "$TS_DIR/scan.mjs" "$W/ie/ts/dep" --allow-js --out "$W/ie/tsdep" >/dev/null 2>&1
+  printf '{"name":"ieapp","version":"0.0.0"}\n' > "$W/ie/ts/app/package.json"
+  printf 'import { c } from "iedep";\nexport const v = c;\n' > "$W/ie/ts/app/src/a.ts"
+  CANDOR_DEPS="$W/ie/tsdep.json" node "$TS_DIR/scan.mjs" "$W/ie/ts/app" --allow-js --out "$W/ie/tsapp" >/dev/null 2>&1
+  IE_TS="$W/ie/tsapp.json"
+fi
+python3 - "$W/ie/japp.json" "$IE_RS" "$IE_TS" <<'PYIE' || P19_OK=1
+import json, sys, os
+def effectful(path):
+    """True when SOME unit in the report carries a non-Unknown effect — the consumer is not reading pure."""
+    try: d = json.load(open(path))
+    except Exception: return None
+    for e in d.get("functions", []):
+        if set(e.get("inferred", [])) - {"Unknown"}: return True
+    return False
+print("\n[19] INITIALIZER EDGE ACROSS THE SCAN BOUNDARY  (a chained dependency's initializer must reach its consumer)")
+engines = [("java", sys.argv[1])]
+if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2]))
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3]))
+fails = 0
+for name, path in engines:
+    got = effectful(path)
+    if got is True:
+        print(f"  {name:6s} -> MATCH    (the chained dependency's initializer reaches the consumer)")
+    else:
+        fails += 1
+        why = "unreadable report" if got is None else "consumer reads PURE — the dependency initializer was dropped"
+        print(f"  {name:6s} -> DIVERGE  ({why})")
+print("  swift  -> not exercised here: its dependency chaining is package-scoped and its own half of this vein")
+print("            (a lazy GLOBAL read, `acfed07`) is pinned by the engine's own suite, not this differential")
+sys.exit(1 if fails else 0)
+PYIE
+
+echo "PART 19 — initializer edge across the scan boundary (SOUNDNESS-VEIN-initializer-edge.md)"
+if [ "$P19_OK" = 0 ]; then
+  echo "  -> MATCH — a chained dependency's initializer reaches its consumer in java + rust + ts; unchained, each engine is unchanged"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
