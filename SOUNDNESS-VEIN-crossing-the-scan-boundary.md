@@ -49,7 +49,7 @@ a general limitation:
 | mechanism | chained result |
 |---|---|
 | implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `1623a07` — was silent-pure |
-| `Drop` glue — a dependency type whose `Drop` writes a file | **silent-pure** |
+| `Drop` glue — a dependency type whose `Drop` writes a file | **FIXED** `a2fbe74` — was silent-pure |
 | `&dyn Trait` / `Vec<Box<dyn Trait>>` where the trait is the dependency's | silent-pure by default; recovered **only** if `CANDOR_WORKSPACE_CHAIN` was set when the *dependency* was scanned, which `--deps` does not do |
 | a value bound from a dependency's factory (`let c = deplib::build(); c.fetch()`) | silent-pure — **no return-type information travels in the report**, so the receiver is untyped and every later method call drops |
 | dispatch over an **imported** trait whose impls are all local | silent-pure — `trait_decls` is built only from local `ItemTrait` nodes, so CHA never fires |
@@ -61,7 +61,11 @@ a general limitation:
    **The `Display` half is now fixed (`1623a07`)**, and the fix is the template for the rest: emit the call
    shape the join *already* understands (`cr::Type::method`, whose tail2 is exactly the dep report's key)
    rather than adding a resolution path. Gate back to exit 1; A/B zero gains and zero losses on five real
-   crates. `Drop::drop` at scope exit is the same shape and is next.
+   crates. **`Drop::drop` at scope exit is now fixed too (`a2fbe74`)**, confirming the template generalises. One
+caveat learned there and worth carrying: the emitted shape must be **distinguishable from a real call**. A
+first attempt used a plain `cr::Type::drop`, which the κ ledger counted as a genuine dependency call and
+which added report entries on two of our own crates — the coverage-envelope test caught it. The marker is
+now `cr::<drop>::Type`, consumed only by the join, exactly as the lazy-static marker is.
 2. **No return types in the report**, so a receiver bound from a dependency factory is untyped.
 3. **`interfaceUnion` is shipped-but-off in the default `--deps` path** (child scans do not set
    `CANDOR_WORKSPACE_CHAIN`).
