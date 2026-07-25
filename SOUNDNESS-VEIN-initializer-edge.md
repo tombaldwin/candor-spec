@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: OPEN — characterized, not fixed.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: intra-project half FIXED (candor-ts `70553c3`); external half OPEN.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
@@ -92,7 +92,13 @@ edge has to exist first.
 
 ## Open
 
-(1) is unambiguous and is being fixed. Deciding between (2) as default-on versus opt-in, and whether the
+**(1) is DONE** — candor-ts `70553c3` models the edge for every specifier resolving inside the scanned set.
+A/B on six real repositories: **zero losses, zero gains outside an initializer unit**, recoveries verified
+against source (`node-tar`'s `lib.read-entry.<module>` reaches `Env` because `read-entry.js:3` requires
+`./normalize-windows-path.js`, whose line 6 reads `process.env` at top level; candor-ts was also
+under-reporting on **itself**). On the held-out slice `proper-lockfile` goes **1 violation → 0**:
+`index.<module>` moves from claimed-complete to disclosed. `write-file-atomic`'s finding reaches through
+`node_modules` and stays open — the two separated exactly along the line this analysis predicted. Deciding between (2) as default-on versus opt-in, and whether the
 disclosure in (3) is `Unknown` or a distinct reason class, is unresolved — the flood table is why. The two
 held-out findings reach through `node_modules`, so they stay in the record as candidate silent under-reports
 until the external half is settled.
