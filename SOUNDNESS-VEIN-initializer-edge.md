@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: CLOSED — including automatic dependency scanning (`fab67fd`). What is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: CLOSED in all four engines, both sides of the scan boundary — including automatic dependency scanning (`fab67fd`). What is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
@@ -55,7 +55,7 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 | engine | the analogue | result |
 |---|---|---|
 | **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | sound INSIDE the scan; **the dependency side was MISSING → FIXED** `candor-java` |
-| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound INSIDE the scan; **the dependency side is OPEN** |
+| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound inside the scan; **dependency side FIXED** `c4d0ca3` |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
 | **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` |
 
@@ -70,8 +70,11 @@ A prototype that emits a speculative `cr::<lazy>::NAME` call for any qualified p
 (`main -> ['Env']`) with zero effect changes across four real crates — **but it also added a callgraph node**
 (`lang::is_non_nominal_type`), because it fires for every qualified path expression, not just dependency
 statics. Shipping an edge whose scope is not bounded is how fabrication gets in, so it was **reverted**.
-The precise version threads the known dep-crate set into the collector so the call is emitted only when the
-first path segment is a covered dependency — no speculation, nothing to bound. That is the open rust work.
+**Fixed (`c4d0ca3`) by bounding it at consumption instead**: the marker call is emitted, and `scan.rs`
+consumes it ONLY in the cross-crate join, skipping it everywhere else — so it can never reach local
+resolution or the classifier, and a crate the deps index does not cover resolves to nothing. A/B on four
+codebases: zero gains, zero losses, and **no change in report entry count** (the spurious node is gone).
+Chained, `main -> ['Env']`; unchained, byte-identical.
 
 **And neither was java, on the other side of the boundary.** It models `<clinit>` correctly for a scanned
 class, which is what made it look clean — but when the owner is a dependency the edge pointed at nothing,
