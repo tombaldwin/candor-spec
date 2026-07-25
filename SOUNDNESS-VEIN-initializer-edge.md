@@ -55,9 +55,23 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 | engine | the analogue | result |
 |---|---|---|
 | **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | sound INSIDE the scan; **the dependency side was MISSING → FIXED** `candor-java` |
-| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | **SOUND** — `main { Env }`, one hop via `<lazy>::DBG` |
+| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound INSIDE the scan; **the dependency side is OPEN** |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
 | **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` |
+
+**Rust has the dependency side open too.** Reading a *dependency's* lazy static forces its initializer, and
+a chained report records it as `<lazy>::…NAME` — but only LOCAL statics are in `lazy_statics`, so the
+collector emits nothing and the consumer reads pure even with the dep chained:
+
+    deplib/src/lib.rs   pub static CFG: LazyLock<String> = LazyLock::new(|| std::env::var("DEP_CFG")…);
+    app/src/main.rs     fn main() { println!("{}", deplib::CFG.len()); }   ->  main  PURE
+
+A prototype that emits a speculative `cr::<lazy>::NAME` call for any qualified path *does* recover it
+(`main -> ['Env']`) with zero effect changes across four real crates — **but it also added a callgraph node**
+(`lang::is_non_nominal_type`), because it fires for every qualified path expression, not just dependency
+statics. Shipping an edge whose scope is not bounded is how fabrication gets in, so it was **reverted**.
+The precise version threads the known dep-crate set into the collector so the call is emitted only when the
+first path segment is a covered dependency — no speculation, nothing to bound. That is the open rust work.
 
 **And neither was java, on the other side of the boundary.** It models `<clinit>` correctly for a scanned
 class, which is what made it look clean — but when the owner is a dependency the edge pointed at nothing,
