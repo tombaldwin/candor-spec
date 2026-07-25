@@ -2464,3 +2464,55 @@ would have looked like a clean win.
 number you cannot explain is not a result.* The 1-of-5 recovery looked like a modest, plausible finding about
 JavaScript semantics. It was a ten-frame limit in our own instrument, and every negative result the Node arm
 had ever produced was quietly resting on it.
+
+### 2026-07-25 — the initializer edge, and the `gains` case that was structurally invisible
+
+The day's last thread, and the one that connects the soundness work to what the product sells.
+
+**The vein.** A module whose own top level is pure imports a module whose top level is not. Importing runs
+that top level, so the importer transitively performs the effect — and candor reported `(∅,∅)`. Found on two
+held-out npm packages by the corrected Node oracle, traced to source rather than counted:
+`proper-lockfile`'s `index.<module>` reaches `graceful-fs.js:35`'s `process.env.NODE_DEBUG` through
+`require`; `write-file-atomic`'s reaches `Rand` through `signal-exit`.
+
+**The concept was right in the reference engine; only an edge was missing** — the
+[implicit-stringification](SOUNDNESS-VEIN-implicit-stringify.md) pattern again. With the dependency inside
+the scanned set candor-java models it exactly (`app.App.<clinit> { Env* }`, one hop via `dep.Dep.<clinit>`);
+move it out and it reads pure. Full record in
+[SOUNDNESS-VEIN-initializer-edge.md](SOUNDNESS-VEIN-initializer-edge.md).
+
+**Two write-ups of mine were wrong before testing them.** I recorded the vein as being about *unanalyzed
+dependencies* and asserted that chaining a dep report via the existing `deps` key would resolve it. Chaining
+changed nothing — there was no edge for a chained report to resolve — and the edge turned out to be missing
+**even between two analyzed modules inside one project**. Both corrections are kept in the vein doc. The
+second one established the order that made everything else work: **the edge first, then the chain becomes
+useful.**
+
+**Resolution was DETERMINATION, not disclosure, at every step.** The obvious fix — disclose `Unknown` for any
+top-level import of an unanalyzed dependency — was measured and rejected: it fires on **60–100% of modules**
+across six real packages (candor-ts itself 83%), which does not make the initializer unit honest, it makes it
+uninformative. What shipped instead: the intra-project edge (`70553c3`), chained dep reports resolving it
+(`3643cd9` — the effect set was *already* in `crossDeps` under `<pkg>#<module>`, the edge just never
+consulted it), and `--dep-inits` (`fab67fd`) scanning the project's direct dependencies, because the blocker
+was never analysis — it was that nobody had scanned the dependency, and `node_modules` is on disk.
+
+**Both held-out findings resolved.** `proper-lockfile` 1 violation → 0 intra-project; `write-file-atomic`
+pure → `['Rand','Unknown']` once `signal-exit` is scanned. Neither by weakening a check or widening `Unknown`.
+
+**And the payoff.** The `gains` headline case — *"a dependency bump added a top-level `Net` call"* — was
+**structurally invisible**. Exhibit at `candor-ts/eval/dep-init-supply-chain`: the app's own source is
+unchanged; the dependency adds one file-scope `https.get`.
+
+    without --dep-inits    gained: []                                   ← the attack is invisible
+    with    --dep-inits    gained: ['Net']   src.a.<module>  origin=existing
+
+`origin: existing` is the ⟨0.12⟩ attack signal — the function **shipped pure and now performs the effect** —
+which is the distinction between a feature and a compromise, and the reason the verb exists. A commercial
+claim the tool could not previously substantiate on its own headline case.
+
+**Swift's sibling closed the same day** (globals are lazy, so a *read* forces the initializer): `acfed07`,
+after three reverts that were each right at the time — 113 fabrications under bare-name keying, 34 once
+global identity was unique per module ([SOUNDNESS-VEIN-global-unit-identity.md](SOUNDNESS-VEIN-global-unit-identity.md)),
+26 after excluding same-named instance properties, and then **all 26 traced and found genuine**. *When the
+fabrication count stops shrinking, trace the remainder before calling it fabrication — I nearly discarded a
+correct fix twice.*
