@@ -58,7 +58,39 @@ cannot drift. A/B: **zero gains, zero losses on eight codebases** (regex, rayon,
 serde_json + three of ours) — stated plainly, none has an effectful module-scope lazy static, so that is a
 *no-regression* result and the recovery is pinned by the regression test instead.
 
-**swift remains**: `cfg` → qualify by its module (`Sources/<Target>`). Distinct units then resolve exactly — no disclosure needed and no genuine reach
+**swift remains**, and it is harder than rust was. Two findings while attempting it:
+
+**Swift's sibling defect is in FUNCTIONS, not just globals.** Two modules each declaring `func shared()`
+are grouped as **overloads of one another**, every signature matches, and each caller edges to **both**:
+
+    Sources/Core/Core.swift   func shared() -> String { (try? String(contentsOfFile:"/etc/core")) ?? "" }
+                              func coreEntry() -> String { shared() }
+    Sources/Util/Util.swift   func shared() -> String { ProcessInfo…environment["U"] ?? "" }
+                              func utilEntry() -> String { shared() }
+
+    reported:  coreEntry -> ['Env','Fs']    utilEntry -> ['Env','Fs']
+
+candor-swift *does* keep the two units distinct (`shared()` / `shared()#1`, each with its own correct
+effect) — it is **resolution** that unions them. So a caller of its own module's `Fs`-only `shared` is
+charged the other module's `Env`. Swift overloads live in one scope; functions in different modules are not
+overloads of each other.
+
+**"Prefer the caller's module" is UNSOUND for Swift — measured twice, both reverted.**
+
+1. Applied to all candidates, it dropped **19 real `Unknown` disclosures** on swift-syntax. A type declared
+   in one module and *extended* in another is idiomatic Swift, so for a member or initializer "a candidate
+   in my module" does not mean "the candidate": `Bool.makeLiteralSyntax` (SwiftSyntaxBuilder) calls an
+   initializer declared in SwiftSyntax.
+2. Narrowed to **free functions only**, it still dropped one — and that one settles it.
+   `SwiftSyntaxMacrosTestSupport/Assertions.swift:110` calls
+   `SwiftSyntaxMacrosGenericTestSupport.assertMacroExpansion(…)`: **cross-module delegation between
+   same-named free functions**, where the other module's function is precisely the intended target. A
+   convenience wrapper delegating to a generic implementation of the same name is a normal library shape.
+
+Choosing correctly needs the caller's **imports** and Swift's real overload resolution, which a syntactic
+engine does not have. One promising lead, not yet pursued: the delegating call at `:110` is **explicitly
+module-qualified in source**, so honouring a module-qualified call precisely — and only then preferring the
+caller's module for genuinely unqualified ones — may separate the two cases. That is the next thing to try. Distinct units then resolve exactly — no disclosure needed and no genuine reach
 lost, which is why **filtering the edge is the wrong fix**: it removes the fabrication and the real effect
 together (measured on swift — the reader loses its genuine `Env` and disappears from the report).
 
