@@ -1,15 +1,32 @@
-# Vein: the initializer edge into an unanalyzed dependency
+# Vein: the module-import edge is not modelled (candor-ts)
 
 **Status: OPEN — characterized, not fixed.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
+> **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
+> **unanalyzed** dependency"* and asserted that chaining the dependency's report via the existing `deps` key
+> would resolve it. **Both claims were wrong, and testing them is what showed it.** Chaining `graceful-fs`'s
+> report into `proper-lockfile` changes nothing — because there is no edge to resolve. And the vein is not
+> about dependencies at all: candor-ts does not model the import edge **even when both modules are inside
+> the scanned project and both are analyzed**. The correction is kept rather than edited away; I had written
+> a mechanism story into the record without running it, which is the failure this project keeps re-learning.
+
 ## The shape
 
-A module's own top level performs no effect. It imports a dependency **whose top level does**. Importing
-runs that top level, so the importing initializer transitively performs the effect — and candor reports it
+A module's own top level performs no effect. It imports a module **whose top level does**. Importing runs
+that top level, so the importing initializer transitively performs the effect — and candor-ts reports it
 `(∅, ∅)`, sound-complete pure. Under H that is a false all-clear.
 
-Found on two held-out npm packages, traced to source rather than counted:
+**The sharp form is intra-project**, where nothing is unanalyzed and no disclosure is needed — the answer is
+simply determinable and candor-ts does not compute it:
+
+    dep.js   const dbg = process.env.NODE_DEBUG || '';   ->  dep.<module>  ['Env']     correct
+    app.js   const d = require('./dep.js');              ->  app.<module>  ABSENT      the vein
+
+Both module systems: CJS `require('./dep.js')` and ESM `import { dbg } from './dep.mjs'`. candor-java has
+the equivalent edge and gets it right (below), so this is a candor-ts gap, not a model gap.
+
+Found first on two held-out npm packages, traced to source rather than counted:
 
 - `proper-lockfile`'s `index.<module>` ran `{Env, Fs}` declared complete-pure. It requires `lib/lockfile`,
   which requires `graceful-fs`, whose module top level reads `process.env.NODE_DEBUG`
@@ -57,19 +74,25 @@ The dependency is not *invisible*; it is merely **outside the scanned set**. `no
 classpath are on disk. So the honest answer is to make the edge **determinable** rather than to widen the
 `Unknown` surface:
 
-1. **Chain the dependency's report** — the existing `deps` config key (§2 chaining) already does this, and
-   with it the edge resolves precisely, as the JVM fixture shows.
-2. **Scan dependency initializers only.** Module top level is a tiny fraction of a dependency's code, so
-   the cost is small and the answer is exact. This also sharpens `gains`: *"a dependency bump added a
-   top-level `Net` call"* is the supply-chain signal candor exists to raise, and it lives precisely here.
+**Chaining the dependency's report does NOT do it** — tested: scanning `graceful-fs` standalone gives
+`graceful-fs.<module> ['Clock','Unknown']`, and chaining that report into `proper-lockfile` leaves
+`index.<module>` absent. Nothing changes because there is no edge for the chained report to resolve. The
+edge has to exist first.
+
+1. **Model the import edge** — from the importing file's `<module>` unit to the imported module's
+   `<module>` unit, for every specifier that resolves **inside the scanned set**. Both ends are analyzed, so
+   this is precise, needs no `Unknown`, and carries **no flood at all**: an edge into a pure initializer
+   yields a pure unit, which the report omits. This is the fix; the external half is what remains.
+2. **Then** dependency reports become chainable through that edge, and scanning **dependency initializers
+   only** becomes worthwhile — module top level is a tiny fraction of a package's code, so the cost is small
+   and the answer exact. It also sharpens `gains`: *"a dependency bump added a top-level `Net` call"* is the
+   supply-chain signal candor exists to raise, and it lives precisely here.
 3. **Disclose only when neither is available** — an unreadable or absent dependency. That set is small
    enough for the disclosure to still mean something.
 
-Under (1) or (2) the flood above collapses to the genuinely-effectful initializers, which on this corpus is
-a handful.
-
 ## Open
 
-Deciding between (2) as default-on versus opt-in, and whether the disclosure in (3) is `Unknown` or a
-distinct reason class, is unresolved. Until then the vein is **recorded, not repaired**, and the two
-held-out findings stand in the record as candidate silent under-reports of this one class.
+(1) is unambiguous and is being fixed. Deciding between (2) as default-on versus opt-in, and whether the
+disclosure in (3) is `Unknown` or a distinct reason class, is unresolved — the flood table is why. The two
+held-out findings reach through `node_modules`, so they stay in the record as candidate silent under-reports
+until the external half is settled.
