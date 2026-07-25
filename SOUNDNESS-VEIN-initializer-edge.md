@@ -1,6 +1,6 @@
 # Vein: the module-import edge is not modelled (candor-ts)
 
-**Status: CLOSED in all four engines, both sides of the scan boundary — including automatic dependency scanning (`fab67fd`). What is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
+**Status: CLOSED in all four engines, both sides of the scan boundary, and PINNED by conformance PART 19 — including automatic dependency scanning (`fab67fd`). What is determinable — candor-ts `70553c3` (intra-project) + `3643cd9` (chained deps); swift `acfed07`. Only an UNCHAINED dependency is left undisclosed, deliberately.** Found 2026-07-25 on real code by the corrected Node oracle
 (see [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md) same date, and `candor-ts/soundness/confirmatory/RERUN.md`).
 
 > **CORRECTION (same day, before any fix).** This document first framed the vein as *"the edge into an
