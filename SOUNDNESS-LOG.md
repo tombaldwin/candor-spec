@@ -2289,3 +2289,68 @@ ASM dataflow computation per stream-touching method. Verified: full suite green;
 861, io 1194); configuration2 oracle 0 (crediting intact), compress oracle 0. DURABLE: the reconcile engine
 finds the classifier's cardinal sins on real code; adversarial code review finds them in the analysis code
 ITSELF — run BOTH on new provenance logic.
+
+### 2026-07-25 — the syscall arms' disclosure-recall calibration: is the oracle able to fail?
+
+**The hole.** The Rust and Swift **syscall** oracles (`soundness/realworld/run.sh` in each, plus rust's
+per-function `pf/run_pf.sh`) reported **0 violations** — and that number was not admissible as evidence the
+honesty invariant held. It is equally consistent with an instrument that *cannot* report one. A marker that
+stops firing, a report path that stops resolving, a verdict loosened during a refactor: each produces a
+silent, permanent green indistinguishable from soundness, and each is far likelier than soundness. The
+language arms (Node preload, JVM `-javaagent`) already carried a disclosure-recall battery; these two
+carried **attribution** calibration only (`oracle_pf` checks a *known* effect lands on the right frame),
+which is a different question. The paper conceded it in §6.1 as a named gap.
+
+**What was built.** `soundness/realworld/recall/disclosure_recall.sh` (+ `mutate_report.py`,
+`disclosure_recall_check.py`, `README.md`) in candor-rust and candor-swift. It runs the **real** oracle three
+or four times over, identical except that candor's report is falsified between the analyzer and the verdict
+(`CANDOR_ORACLE_MUTATE`, unset in every normal run). Nothing is stubbed — each pass builds the drivers,
+executes them, and reads real `strace` output — so what is calibrated is the deployed instrument end to end
+rather than a re-implementation of its verdict, which would have calibrated a copy.
+
+| mutant | what is falsified | catches an oracle that… |
+|---|---|---|
+| `silent` | every effect **and** every disclosure flag | never actually reads the report |
+| `wrong` | a decoy effect (`Rand`) replaces the real one | tests non-emptiness instead of *the* effect |
+| `transitive` | **only the entry point**, effect's leaf left honest | adjudicates only where the effect was issued |
+
+`transitive` is the sharp one and applies to the per-function verdict alone: it is the shape a dropped
+call-graph edge produces — the (A3) failure — and neither of the others can distinguish an oracle that
+checks *every* frame on the stack from one that checks only the leaf. A program-level verdict cannot see it
+at all, since the effect still appears somewhere in the report.
+
+**Result (Docker + `strace`, Linux/arm64).** Rust, program level: **19/19** falsifiable drivers caught on
+`silent`, **19/19** on `wrong`, 0 uncalibrated, and the fabrication mirror fired on the pure control. Rust,
+per-function: **4/4** on each of `silent`, `wrong` and `transitive` — and the transitive pass named exactly
+`main{}` in all four drivers, the one frame falsified, leaving the honest leaf unflagged. So the oracle does
+not merely notice that *something* is wrong; it localizes the lie to the frame that told it. Swift, program
+level: **12/12** on each mutant with the fabrication mirror firing, and one effect (`realtool`'s `Fs`)
+reported **uncalibrated by name** because its marker did not fire at the lowered local timeout.
+
+**Two defects the battery found on its first run, neither in the oracle:**
+
+1. **The pure control was unfalsifiable.** candor emits no `functions` entries for a wholly pure program, so
+   the mutator had nothing to edit and the `wrong` pass sailed past it — the verdict's **fabrication** branch
+   was never exercised. Fixed by *synthesizing* the claim instead of editing it. The checker refused to
+   certify until then, which is the behaviour wanted: an untested branch reads as a blind spot, not a pass.
+2. **A missing `python3` produced a wall of confident findings.** The Swift container lacked the interpreter;
+   the harness's inline reader silently returned an empty prediction for every driver and the oracle reported
+   **13 NEW UNDER-REPORTs**. Loud rather than dangerous — it fails closed — but a missing dependency should
+   not impersonate a soundness catastrophe. All three harnesses now guard on `python3` alongside `strace`.
+   Caught only because the battery's first act is to require the control pass green.
+
+A third, in the checker itself: a **multi-effect driver whose marker did not fire vanished from BOTH** the
+falsifiable set and the uncalibrated list, so recall would have read 1.0 over a quietly smaller denominator
+— the exact silent truncation the design exists to prevent, in my own code. Found on the Swift arm and
+fixed (candor-rust `c0a142c`).
+
+A fourth, environmental: under Docker Desktop, `strace` + Foundation's `Process` hangs indefinitely, which
+previously confined those Swift drivers to CI. The traced run is now bounded (`timeout 90`), degrading a
+hang to a partial trace — the verdict still stands if the marker fired, and the driver is reported
+**uncalibrated by name** if it did not.
+
+**Standing gates.** candor-rust `.github/workflows/disclosure-recall.yml` (on changes to
+`soundness/realworld/**`, weekly, and on demand — three-plus full oracle passes is too costly per-PR);
+candor-swift as a schedule/dispatch-gated step in `ci.yml`. Recall is always reported **as a fraction of the
+falsifiable set, with the uncalibrated remainder printed by name** — an oracle falsifiable on 3 of 20
+drivers has a recall of 1.0 and is still nearly blind, so the two numbers travel together.
