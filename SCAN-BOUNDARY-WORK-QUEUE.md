@@ -287,8 +287,43 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
 
       So the earlier claim in this row that the union used "the CHA universe in-scan dispatch uses" was NOT
       true as written — the bound was missing. It is true now.
-- [ ] by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — resolve over any descriptor, so
-      there is no single hash to join on.
+- [x] **by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — `dd81bfa`** (+ `47caf53`). No
+      single hash to join on, so the join enumerates the type's whole reported surface under the contract
+      NAME — what the in-scan `reentryTargets` already does over project subtypes. Six shapes reproduced
+      silent-pure split+chained; four now match their single-tree control, gate `deny Env` exit 0 → 1.
+      Three guards keep it off the leaf-name join, each verified by mutating it out: owner pinned to the
+      argument's DECLARED type; descriptor must match the contract's shape (a denylist — `default: true`);
+      shadowing per OVERLOAD, with one fixture asserting **both** failure directions (the dropped inherited
+      `append(CharSequence)` and the charged shadowed `append(char)`). 14 real jars unchained
+      byte-identical; 21 chained/split libraries, 41k analysed fns, 0 gains 0 losses. Per item 8 the clean
+      diff is not the evidence — the trigger was instrumented (1205×/523×, every declared type JDK or
+      project), so the corpus is the fabrication CONTROL and the fixtures are the evidence.
+      - **The `interfaceUnion` does not answer this one** (checked first): `Comparable`/`Appendable` are JDK
+        types, never in a scanned set, and the consumer's key is the concrete dep type anyway.
+      - **The sink bound shipped as an ALLOWLIST and was inverted — `47caf53`.** `comparesArgZero` listed
+        the element-taking sinks, so a newly-added one would default to SUPPRESSING the dep join: omissions
+        that are cardinal sins, the SAM-name allowlist shape one repo over. Today's partition is identical
+        either way, so no fixture and no corpus can tell them apart — the direction is pinned by a unit
+        test on the predicate itself, verified to catch (allowlist restored → that test and only that test
+        fails, all 33 others green).
+      - **RESIDUAL, refuted with evidence rather than deferred:** the receiver-driven form (`w.write("x")`)
+        fails only on `isJavaIoStreamType`, which needs the DEPENDENCY's supertypes. Relaxing it was
+        measured on 11 split-and-chained libraries: 161 sites over 31 dep types, only 3 of the 31 are
+        java.io streams — the rest (`PacketLineOut.writeString`, `RebaseState.readFile`,
+        `ObjectWriter.writeValueAsString`) are already resolved by the exact-hash join. ~90% wrong-receiver
+        fabrication, so the gate stays shut. Pinned as a test that says: *if this passes, the hierarchy
+        arrived — delete the residual, don't relax the gate.*
+- [ ] **CONSUME `<report>.hierarchy.json` — the dep hierarchy java ALREADY WRITES to disk.** Found while
+      closing the row above. `ReportWriter.writeHierarchy` emits every project class's direct supers +
+      interfaces beside every scan; `Loader.loadCrossDeps` reads only the report JSON, so **nothing on the
+      consumer side ever opens the sidecar**. That is precisely the `typeSurface.implements` information the
+      abstract-dep-CLASS row, swift row 3 and the write/read residual are all blocked on — and for java it
+      needs no format rung at all, only a consumer. It changes dispatch resolution globally, so it wants its
+      own A/B and its own commit.
+- [ ] **`reentryTargets` fans only DOWN the subtype index** (pre-existing, unrelated to the boundary): in a
+      single tree, `new Formatter(half)` where `Half extends Sink` inherits `append(CharSequence)` misses
+      the inherited body. The chained arm is now strictly MORE complete than the in-scan control for that
+      shape, which is the wrong way round.
 
 **A fabrication caught mid-flight, worth carrying:** the first version imported dep entries whose whole
 content is `Unknown`, which turned **12 fully-resolved jackson-databind functions Unknown** from one method
