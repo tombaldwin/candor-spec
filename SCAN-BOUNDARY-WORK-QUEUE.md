@@ -707,9 +707,42 @@ and the only conformer, app has none:
       there, and `returns` failing to hold it is itself the evidence that it came from outside the target.
       Note what this does and does not move: `deny E Unknown[dispatch]` now flips, `deny Fs` does NOT. Half 1
       converts the cardinal sin into a disclosed gap; it does not recover the effect.
-- [ ] **factory-bound receiver — the DETERMINATION half.** Still blocked on the format rung, and still
-      correctly so. A leaf-key join (`M#fetch`) remains rejected: leaves like `write`/`run`/`send` would
-      fabricate on unrelated receivers.
+- [x] **factory-bound receiver — the DETERMINATION half — DONE, candor-swift `f537ac3`.** The rung is
+      no longer blocked: SPEC §2 fixes `typeSurface.returns` and rust shipped it at `a1e53e7`. swift is
+      the second engine to take it. Canonical fixture goes exit 0 → **exit 1** on `deny Fs`, single-tree
+      control exit 1 in both arms. Every one of rust's four reverted defects is a requirement here with a
+      mutation that was RUN and confirmed to fail a named test.
+
+      **Swift's door into defect 1 is the NESTED TYPE, not the module.** `Conn` and `Mock.Conn` live in
+      one module; a leaf-keyed surface makes them one string and the PURE `openMock()` charges the real
+      client's Fs. A bare `-> Conn` written inside `enum Mock` means `Mock.Conn`, so the spelling resolves
+      OUTWARD from its declaring type path and must match a declared path EXACTLY. `localTypes` keeps only
+      the simple name, so a new `localTypePaths` was needed — the leaf-vs-qual distinction did not exist
+      in the engine before this.
+      - **The wrapper refusal needed the fixture to earn it.** `plainNominalTypeName` is stricter than
+        `typeName`, which peels `Conn?` → `Conn`. The first fixture could not tell them apart; making
+        `Conn` declare an effectful `map` and having each wrapper consumer call the WRAPPER's own `map`
+        is what turned the rule into a test. `-> Box<Conn>` is the sharp row: `Box` IS a declared local
+        type, so it is refused for being GENERIC, not for failing to resolve.
+      - **PROTOCOL returns are published, and that is the swift-specific half.** `func make() -> Proto`
+        is the commonest Swift factory; the key it forms names a requirement with no body and is answered
+        only by an `interfaceUnion` entry. Asserted BOTH ways: dep scanned plain → the row must DISCLOSE
+        (resolving it anyway would mean a guess answered the key); dep scanned with
+        `CANDOR_WORKSPACE_CHAIN` → the row RESOLVES. Surface and union are layered, never redundant —
+        the same layering the ts row records.
+      - **Counts, not output** (item 8): producer 3 564 entries across 11 real targets (swift-syntax
+        2 732, vapor 205, SQLite.swift 197, pollen 122, Alamofire 111); unchained A/B 0 gains/0 losses/0
+        entry deltas with the new `typeSurface` key as the ONLY envelope change. Consumer: 5 chained
+        consumers / 2 805 entries, 0 gains 0 losses, arm ENTERED 20 times, every one a `returns` miss —
+        the same shape rust measured (408 crates, 2 hits, 406 misses).
+      - **RESIDUAL, and it is why one guard is honestly UNPROVEN.** A nested type's method is unreachable
+        for the consumer: the key is three segments and this engine's dep index carries only `pkg#leaf`
+        and `pkg#tail2`, so it misses and discloses (fail-closed). That also means relaxing the exact
+        type-path match to a SUFFIX match fails no test and changes no corpus output — a wrong answer can
+        only ever miss. Written into the code as an open question rather than a claim; it becomes
+        load-bearing the day swift gets the full-qual index key (rust's prerequisite `5feba18`), and the
+        fixture that catches it must be written WITH that key. `-> any P` / `-> some P` returns are also
+        refused; `any P` is erased and would be safe to admit later, `some P` is not.
 - [x] **swift row 3 — ALREADY SOLVED by `interfaceUnion`; my characterisation was wrong (2026-07-26).**
       Recorded here as "NOT fixable locally" and "the strongest argument for `typeSurface.implements` in the
       whole queue". Both false. Measured:
@@ -822,6 +855,69 @@ each is actionable.
       `netClass: ["known-telemetry"]`. Each hostless idiom alone yields `unknown-host` via the empty-hosts
       branch, but that branch is per-function, so a literal sibling masks it. Same shape as the union defect
       `90af98f` fixed, one layer beneath it — and the union fix does not reach it.
+
+## Found while VERIFYING `02fb0ad` and landing swift's typeSurface rung (2026-07-26)
+
+Verification of `02fb0ad` was run in the OTHER direction, per item 0, rather than by re-running its A/B.
+**It found two silent under-reports, both introduced or inherited by the erasure gate, and both invisible
+to any corpus A/B** — each needs a name collision no measured target contains. The commit's own headline
+result stands: its A/B, its five monomorphized rows and its three erased controls all reproduce.
+
+- [x] **The ELEMENT-opacity flag outlived its block — candor-swift `71de627`.** `02fb0ad` made
+      `enterShadowScope` save UNCONDITIONALLY, reasoning correctly that a `for x in xs` binder can now ADD
+      to `monoNames`. It introduced a SECOND set, `opaqueElem`, and never added it to the save. Its stated
+      invariant — lockstep with `arrayElem`, so a rebind cannot leave a stale opacity behind a fresh
+      element type — is the CLEAR half of the discipline and is silent about the RESTORE half.
+
+          func f(_ xs: [some Speaker], _ ys: [any Speaker], _ c: Bool) {
+              if c { let ys = xs.filter { _ in true }; _ = ys }   // ys marked monomorphized
+              for y in ys { y.speak() }                            // ys is the ERASED PARAMETER again
+          }
+
+      The block closes and the CHA stays suppressed for the rest of the body: `f` is ABSENT from the
+      report, a positive purity claim about a function that performs Env. Control: rename the inner binder
+      `zs` and it is `['Env']`. Fixed as a scope, not a clear — the other direction is asserted too, since
+      dropping the flag re-opens the fabrication `02fb0ad` closed.
+- [x] **A nested `func`'s PARAMETERS were not a scope — candor-swift `83cd607`.** Inherited from
+      `d62dd69` rather than introduced by `02fb0ad`, but the same mechanism.
+      `func outer(_ s: some Speaker) { func inner(_ s: any Speaker) { s.speak() } }` read silent-pure:
+      `inner`'s receiver is an existential, the local conformers really are its witnesses, and the CHA was
+      suppressed because the ENCLOSING parameter — three lines up, a different variable — is spelled
+      `some`. Spell the outer one `any` and the identical body is `['Env']`. **This is the swift form of
+      the leak candor-rust's R4 needed its THIRD carve-out for**, running the other way: value-bag's
+      nested `impl Serializer` INHERITED the outer `&dyn`-ness and gained a fabrication; here the nested
+      item inherits the outer opacity and loses a real reach. The nested signature's own opacity is
+      re-applied so the mirror does not open.
+- [ ] **The erasure gate does not reach the LOCAL-protocol dispatch arm at all** — measured, not fixed.
+      `d62dd69`/`02fb0ad` gate the arm at `Driver.swift`'s imported-supertype CHA, which requires
+      `!localTypes.contains(owner)`. A LOCALLY-declared protocol dispatches through a different path
+      (`protoTyped`/`localProtocols` → `subtypesOf`), which never consults `opaqueRecv`. Measured on a
+      one-package fixture: `localMonoParam(_ s: some Speaker)`, `<T: Speaker>(_ s: T)`, `[some Speaker]`
+      elements and a `Relay<T: Speaker>` field ALL read `['Env']` from the effectful conformer, with the
+      only call sites passing the pure one — i.e. the fabrication those two commits closed is still open
+      through the far more common door (your own protocol, your own conformers).
+
+      A `DeclCollector.swift` comment already says so ("the LOCAL-protocol arm above is untouched … see
+      the note in SOUNDNESS-VEIN-crossing-the-scan-boundary.md") — **and that note does not exist**, which
+      is item 9 exactly. It is recorded here now. Closing it is NOT a wider `if`: the local-protocol arm
+      is what R28/R39 and the whole element-dispatch family run on, so suppressing it needs its own A/B
+      and its own second-direction fixture.
+- [ ] **Half 1's provenance conjunct fires on LOCAL methods and computed properties** — measured while
+      instrumenting the typeSurface consumer, which is the only reason it was visible. `localFreeFns`
+      removes the local leak for FREE functions only; a bare call to a METHOD or a computed property of
+      the enclosing type still looks like a dependency factory. All 20 half-1 triggers across five chained
+      real consumers are of this kind — `closureParamNames`, `fnsFor`, `sortedPlaces`, `dayHourlyValues`,
+      `withAnimation` — and not one is a dependency factory. Each gets a false
+      `Unknown[dispatch:untyped cross-package receiver]`. False uncertainty, not a cardinal sin, so it is
+      filed rather than patched; the fix is to widen the local-name exclusion beyond free functions.
+- [x] **swift carried THREE copies of the chained-dep apply path and one had drifted — `84a71ea`.** Asked
+      BEFORE adding the typeSurface consumer, exactly as this queue's rust (`7cb5748`) and java
+      (`6ab26e4`) rows instruct. The chained-GLOBAL read applied effects/`hosts`/`cmds`/`paths` and
+      dropped `tables`, `invisible` and `incomplete`: a consumer reading a dependency's effectful lazy
+      global inherited the EFFECT and none of the dependency's honesty markers, turning "Fs plus a blind
+      spot inside the dependency" into a fully-analysed `Fs`. Fixture-proven both ways; no corpus output
+      changes, because no measured target has a chained dependency global carrying a disclosure. **Three
+      engines asked, three engines guilty — the audit is worth running in candor-ts too.**
 
 ## Found in passing while landing the typeSurface rung (2026-07-26) — not boundary defects
 
