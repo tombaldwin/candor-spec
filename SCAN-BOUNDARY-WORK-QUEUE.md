@@ -503,3 +503,34 @@ and the only conformer, app has none:
 The vein is closed when, for each engine, the two-tree fixture matches its single-tree control on every
 mechanism in the table, PART 20 is green and verified-to-catch, and PAPER1 §6.1b can be rewritten from
 "currently false" to a bounded residual.
+
+## Found while fixing round 2 — three items nobody asked for
+
+Each surfaced by an agent working a different task, and each is recorded here rather than in a log because
+each is actionable.
+
+- [ ] **THE REPORT IS NOT DETERMINISTIC, and this degrades the method itself.** Four identical runs of the
+      *unmodified* candor-swift binary on pollen disagree on `unknownWhy` for **14 functions** —
+      `dispatch:CodingKey.self` vs `dispatch:String.self`, `dispatch:NSObject.results` vs
+      `dispatch:MKLocalSearchCompleterDelegate.results`: an unordered pick among a class's several
+      supertypes. Effect sets are stable; only the disclosure REASON churns.
+
+      Why this outranks a single defect: **A/B on real code is the project's primary evidence**, and a report
+      that differs from itself run-to-run injects noise into every diff. It cost one agent a false datapoint
+      before it thought to run the control against itself. It also makes `gains` — the supply-chain
+      effect-diff product — noisy between identical inputs, which is a product-facing bug, not just an
+      internal one.
+
+      Fix shape: sort the supertype candidates before picking, or emit all of them. Cheap. The reason it has
+      survived is that nobody diffs a report against ITSELF, only against another version.
+
+- [ ] **A chained dep's Unknown loses its REASON CLASS, so `deny Unknown[reflect]` cannot bite across a scan
+      boundary.** `DepFn` carries no `unknownWhy`, so an inherited Unknown classifies as `unresolved` with no
+      class. The reason-scoped gate — a shipped ⟨0.19⟩ rung — is therefore silently inert at the boundary,
+      which is exactly where a consumer most needs it. Additive fix: teach `DepFn` to carry `unknownWhy`.
+
+- [ ] **netClass fails open one level down, in the ORDINARY path** (not the union). A function combining
+      `new URL("https://sentry.io/x").openStream()` with `HttpClient.send(request, …)` reports
+      `netClass: ["known-telemetry"]`. Each hostless idiom alone yields `unknown-host` via the empty-hosts
+      branch, but that branch is per-function, so a literal sibling masks it. Same shape as the union defect
+      `90af98f` fixed, one layer beneath it — and the union fix does not reach it.
