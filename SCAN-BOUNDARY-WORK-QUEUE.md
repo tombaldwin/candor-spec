@@ -258,6 +258,27 @@ Residual, still open:
   reading pure, so it is no longer a silent under-report; resolving it precisely is the open item. Note
   swift's carve-out before copying it — a widened match here is the leaf-name trap the design note rejects.
 
+### swift — half 1 NOT YET DONE; both rows reproduced with a fixture (2026-07-26)
+
+The last engine missing from conformance PART 21. **Reproduced, not assumed** — dep declares the protocol
+and the only conformer, app has none:
+
+    dep report:  FileStore.save ['Fs']          <- the answer is present
+    app:         go(_ s: any Store) { s.save() }        ABSENT — reads PURE   (row 3)
+                 goFactory() { let s = build(); s.save() }  ABSENT — reads PURE   (row 2)
+    coverage: null   (the package is chained, so correctly no hedge)
+
+- **Row 2 (`goFactory`) is implementable now.** `rootOf` types a factory call via `returns[n]`, which holds
+  LOCAL function returns only; `build` is a dep function so the root is `nil`, no `extOwner` is formed, and
+  the member call falls through silently. Same shape as rust `5fde0d6`: mark the binding dep-provenance-
+  untyped, emit a marker, disclose `Unknown` when the file imports a COVERED package (the third conjunct).
+- **Row 3 (`go`) needs half 2.** The join forms `DepLib#Store.save` and misses, because `Store.save` is a
+  protocol REQUIREMENT — no body is ever hashed under that key, so no report can answer it. Distinguishing
+  that from a legitimate keyed-and-missed needs the dependency's HIERARCHY, i.e. `typeSurface.implements`.
+  This is the same blocker as java's dep-interface case, and java only got round it because bytecode carries
+  the opcode: `INVOKEINTERFACE` proves unanswerability without needing the hierarchy. Swift's syntax does
+  not carry an equivalent — a protocol-typed and a class-typed parameter look identical at the call site.
+
 ### swift — 6 of 7 gate-flipping mechanisms DONE
 - [x] implicit stringification of a dep type, all three operand forms — `83ca73c` (verified independently:
       `describeTyped -> ['Env']` across the boundary, gate back to exit 1)
