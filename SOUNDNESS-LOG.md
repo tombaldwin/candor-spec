@@ -2737,3 +2737,74 @@ across all eleven targets — the trigger is real and this corpus barely exercis
 honest reading of a clean A/B rather than a claim that the fix is free.
 
 Fixes: swift `d62dd69`, `81a9dc3`, `af9dbf8`, `02fb0ad`; rust `1950a27`, `7a5fc1d`.
+
+### 2026-07-26 — a proc-macro2 span crossing a thread, and the `let` annotation that never asked
+
+Two candor-rust rounds in one session, unrelated in mechanism and related in shape: both are places
+where the *question was never asked*, and in both the code carried a comment asserting a
+justification that did not cover the case (standing-bar item 9).
+
+**1. The `getrandom` parse abort was a SPAN CROSSING A THREAD.** `candor-scan` died deterministically
+on three registry crates with proc-macro2's `unreachable!("Invalid span with no related FileInfo!")`.
+The fallback `Span` is a pair of byte offsets into a THREAD-LOCAL source map; candor parses files on
+rayon workers and walks them on the collector thread (`SendFile`). The code knew half of this —
+`fn_locs` runs in the parse closure precisely because line/col only resolves there — but the
+`SendFile` contract was written as if candor were the only span reader. **syn's parser reads spans
+too.** `visit_macro` hands the macro's token stream straight back to `syn::parse2`, and
+`syn::lit::parsing::parse_negative_lit` JOINs the `-` punct's span with the literal's. A `-1` inside
+any macro body is the whole trigger; getrandom spells it
+`debug_assert!({ match ret { 0 => true, -1 => …, _ => false } })`.
+
+Three things worth keeping:
+
+- **The quiet outcome is the one that matters.** Past the end of the walking thread's map the lookup
+  panics; INSIDE it, it silently resolves against an unrelated file. Which you get depends on how much
+  each thread happened to parse — that is why the crash looked data-dependent, why it would not
+  reproduce on the file alone, and why the loud form is the tail of the distribution rather than the
+  distribution. Instrumented over 121 crates: **88 927 macro re-parses, 72.4% of them handed a stream
+  whose span this thread cannot resolve.** The A/B changed 3 crates out of 976; the counts are what
+  say the mechanism is pervasive (standing-bar item 8).
+- **The first diagnosis was not just wrong, it was inverted.** It blamed synthesized `Group::new`
+  call-site spans. `Span::call_site()` is `(0,0)`, the dummy file proc-macro2 seeds EVERY thread's
+  map with — the one span that is always valid. It is now the FIX (`respan_call_site`), applied at all
+  four sites that re-parse moved tokens.
+- **"Cannot be reduced to a fixture" was a property of the setup, not of the bug.** Parse on one
+  thread, walk on a second FRESH thread whose map holds only the dummy file, and the panic is
+  deterministic. Each of the four call sites was mutated out and its named failing test recorded.
+  A third fixture settles the attribute parsers (`parse_nested_meta`) by measurement instead of by
+  argument: they survive the same crossing.
+
+Measured on the whole local registry, both arms preserved by content hash: panics 3 → 0, **21 effect
+gains, 0 losses**, `unanalyzed` −3, 973 of 976 crates identical, every gain traced (`libc::open` →
+`Fs`, `libc::nanosleep` → `Clock`). Fix: candor-rust `4f7b704`; the per-file containment from
+`a593197` stays — this closes one trigger, not the class.
+
+**2. A `let`'s annotation can NAME a generic, and nothing asked the signature for its bound.** Opened
+by a note from the swift `02fb0ad` round asking whether rust has swift's shape — a container/field
+position where a generic bound WOULD resolve but the code never asks, i.e. correct BY ACCIDENT.
+Answered with a probe crate: every dispatch position, each with a `dyn` CONTROL beside it.
+
+The container and field positions are **not** it — `Vec<T>`, `&[T]`, `HashMap<K,T>` and every field
+form already thread the bound map and all resolve. The gap is the LOCAL `let` ANNOTATION, the one
+position Pass A cannot reach: `trait_leaves` was called with a literal empty map, so
+`let d: T = pick(); d.go()` read silent-pure while the identical PARAMETER resolved and while
+`let d: Box<dyn Doer> = x` — the same line, one spelling along — resolved too. The site was also
+short of `elem_trait_leaves`, `tuple_trait_leaves` and the `is_callable_type` map entirely.
+
+And underneath it, **a PARAMETER-position defect the accident was hiding** (standing-bar 0b): the
+tuple destructure wrote BOTH maps for a position — `tuple_types` yields the spelling (`"T"`),
+`tuple_trait_leaves` yields the bound — and `vars` wins at the call site, so the binding resolved to
+a type named `T`, which is nothing. The `dyn` spelling escaped only because `tuple_types` yields
+`None` for it. Removing the guess revealed the gap rather than causing it.
+
+976 crates: **4 gains, 0 losses**, entry +2, Unknown +3/−0. Every gain is a DISCLOSURE, not an
+effect, and every one is the existing 12-impl CHA bound reaching a receiver it could not see —
+pinned by a fixture where the PARAMETER form of a 13-impl trait reads `Unknown` in BOTH arms.
+Traced: image's `interpolate_bilinear<P: Pixel>` (`let mut out: P`), rand's `WeightedIndex::new`
+(`let mut total_weight: X`), moxcms' `lut_interp_linear_gamma_impl` (`where u32: AsPrimitive<T>`
+plus `let mut value: u32 = …; value.as_()`, which was ABSENT and so a purity claim, now
+`invisible: ["num_traits"]`), and ebman's `lint::default_rules` (`let candidates: Vec<Box<dyn Rule>>`,
+19 impls). Six guards, six mutants, six named failing tests. The residuals — tuple INDEX access, an
+unannotated rebind, a factory return bound into a local — are pinned as a test WITH the finding that
+makes them residuals: each one's `dyn` control is silent too, so they are POSITION-level gaps rather
+than this rung's "never asks". Fix: candor-rust `a80bb15`.

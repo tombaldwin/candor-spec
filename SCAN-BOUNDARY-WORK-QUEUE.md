@@ -818,6 +818,27 @@ each is actionable.
 
 ## Found in passing while landing the typeSurface rung (2026-07-26) — not boundary defects
 
+- [x] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2` — CLOSED, candor-rust
+      `4f7b704`, and the cause was a SPAN CROSSING A THREAD.** proc-macro2's fallback `Span` is a pair
+      of byte offsets into a THREAD-LOCAL source map; candor parses on rayon workers and walks on the
+      collector thread (`SendFile`). The contract was written as if candor were the only span reader —
+      **syn's parser reads spans too**, and `visit_macro` hands it the moved token stream, where
+      `parse_negative_lit` JOINs the `-` punct's span with the literal's. A `-1` in any macro body is the
+      whole trigger. Fixed by `respan_call_site` at all four sites that re-parse moved tokens; the
+      `a593197` containment stays. **`0.4.3` was crashing too** — nobody had looked.
+      - The claim that it could not be reduced was about the setup, not the bug: parse on one thread,
+        walk on a second FRESH one, and the panic is deterministic. Three fixtures, four mutants, four
+        named failing tests.
+      - The prior diagnosis was INVERTED, which is why removing `macro_template_blocks` changed nothing:
+        `Span::call_site()` is `(0,0)`, the dummy file every thread's map is seeded with — always valid,
+        and now the fix. (`macro_template_blocks` was already safe for a second reason: it re-parses from
+        a STRING, which registers a file on the current thread.)
+      - **The quiet half is the point.** Past the end of the walking thread's map the lookup panics;
+        inside it, it silently resolves against an unrelated file. Instrumented over 121 crates: 88 927
+        macro re-parses, **72.4% handed a stream this thread cannot resolve.** The A/B moved 3 crates of
+        976 — the counts are the evidence, not the diff (item 8).
+      - 976 crates, both arms hashed: panics 3 → 0, 21 gains, 0 losses, `unanalyzed` −3, 973 identical.
+      ORIGINAL ENTRY:
 - [~] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2`.** `proc-macro2`'s
       `Span::join`: *"Invalid span with no related FileInfo"*. Two things to fix, and the queue was right
       that the second matters more.
@@ -835,10 +856,18 @@ each is actionable.
         FileInfo, which is a real hazard and is NOT this bug — implemented, tested, refuted, reverted rather
         than kept as an unexplained edit. The panic survives with that path removed, and the file does not
         reproduce in isolation, so it depends on accumulated cross-file parse state.
-- [ ] **`build.rs` fails clippy `collapsible_if` on clippy 0.1.96**, present at HEAD, so
-      `cargo clippy --all-targets` over the whole workspace cannot go green today. Every recent commit
-      reports "clippy clean on the four library crates" because of it; that qualifier should stop being
-      necessary.
+- [x] **`build.rs` fails clippy `collapsible_if` — CLOSED, candor-rust `0d63ead`, and the qualifier is
+      gone.** The cause of the qualifier was never a preference: stable clippy cannot compile the
+      `rustc_private` dylint lib at all, so the `-p` list was the only thing that could work, and
+      `build.rs` (root package) fell outside it too. Nothing linted either, so 45 warnings had
+      accumulated. Fixed by adding a SECOND leg rather than widening the list — `clippy` joins the pinned
+      nightly's components in `rust-toolchain`, so the bare `cargo clippy --all-targets` resolves and CI
+      runs it beside the stable one. Verified-to-catch: restoring the nested `if` reddens the new leg.
+      - Worth carrying: the two clippy versions **do** catch different things — the stable leg then
+        flagged a `doc_lazy_continuation` the nightly leg had passed. Keeping both is not belt-and-braces.
+      - And a `clippy --fix` hazard: rewriting a `match` into `.map(…)` DELETED the comment on the `None`
+        arm, which recorded why an unpinnable local `fmt` is treated as PURE rather than `Unknown`. That
+        is a soundness argument, not decoration. Check every `--fix` diff for eaten comments.
 
 ## Residuals surfaced by the 2026-07-26 agent round (recorded so they do not live only in a transcript)
 
@@ -858,3 +887,34 @@ each is actionable.
       packages they reach through `invisible`, the CJS units report the same reach as `Unknown`. The
       disclosure survives, so this is precision, not honesty; but a consumer's answer should not depend on
       which build of the same package it happens to load.
+
+## Found while answering the swift generic-bound note (2026-07-26)
+
+- [x] **rust HAS swift's "correct by accident" shape, and it is not where the note guessed — candor-rust
+      `a80bb15`.** The note asked whether rust has a container/field position where a generic bound WOULD
+      resolve but the code never asks. Answered with a probe crate carrying every dispatch position and a
+      `dyn` CONTROL beside each row, because a silent row that is silent for a DIFFERENT reason looks
+      identical.
+
+      The container and field positions are **not** it: `Vec<T>`, `&[T]`, `HashMap<K,T>` and every field
+      form already thread the bound map (R37b/R39/R40) and all resolve. The gap is the LOCAL `let`
+      ANNOTATION — the one position Pass A cannot reach, and the collector had no bound map, so
+      `trait_leaves` took a literal `HashMap::new()`. `let d: T = pick(); d.go()` under `fn f<T: Doer>`
+      read silent-pure while the identical PARAMETER resolved, and while `let d: Box<dyn Doer> = x` —
+      the same line, one spelling along — resolved too. The site was also missing `elem_trait_leaves`,
+      `tuple_trait_leaves` and the `is_callable_type` map outright.
+
+      **A PARAMETER-position defect was hiding underneath it** (bar item 0b): the tuple destructure wrote
+      BOTH maps for a position — `tuple_types` yields the spelling (`"T"`), `tuple_trait_leaves` yields
+      the bound — and `vars` wins at the call site, so the binding resolved to a type named `T`, which is
+      nothing. The `dyn` spelling escaped only because `tuple_types` yields `None` for it.
+
+      976 crates: 4 gains, 0 losses, entry +2, Unknown +3/−0. **Every gain is a disclosure, and every one
+      is the existing 12-impl CHA bound reaching a receiver it could not see** — pinned by a fixture where
+      the PARAMETER form of a 13-impl trait reads `Unknown` in BOTH arms, so the rung moved the position
+      and not the rule. Six guards, six mutants, six named failing tests.
+
+      Residuals pinned as a test rather than a comment, WITH the finding that makes them residuals: tuple
+      INDEX access (`t.0.go()`), an unannotated rebind (`let v = xs`), and a factory return bound into a
+      local are all still silent — and so is each one's `dyn` control, so they are POSITION-level gaps
+      rather than this rung's "never asks for the bound". The test fails if one starts resolving.
