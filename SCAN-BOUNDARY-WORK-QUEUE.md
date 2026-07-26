@@ -65,7 +65,7 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
 
 ## Queue
 
-### rust — 4 of 5 done (R5 is the only one left)
+### rust — 4 of 5 done; R5's DISCLOSURE half also landed (`5fde0d6`), determination half open
 - [x] implicit stringification via a dep's `Display::fmt` — `1623a07`
 - [x] drop glue via a dep's `Drop` — `a2fbe74`
 - [x] `interfaceUnion` emitted in `--deps` child scans — `50218e3`

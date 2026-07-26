@@ -170,6 +170,16 @@ are deliberately not patched around: a leaf-key join (`M#fetch`) was considered 
 like `write`/`run`/`send` would fabricate on unrelated receivers. Trading the cardinal sin for its mirror is
 not progress.
 
+**But only their DETERMINATION half needs the format.** See
+[DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md). The engines conflate two things: a lookup
+that was *made and missed* (a genuine purity claim — dep reports omit pure functions, §2 rule 3) and one
+that was *never made* because the receiver was never typed (which licenses nothing). Only the second is the
+cardinal sin, and telling them apart needs no format change — an engine always knows whether it formed a
+key. Landed in rust as `5fde0d6`: the fixture went from a confident `PURE` to
+`Unknown[dispatch:untyped cross-package receiver]`, at a measured cost of 0 on three unchained corpora and
+1 source + 4 transitive callers on a chained scan. The remaining format rung now buys *precision* rather
+than *honesty*, which is a much less urgent kind of debt.
+
 ### What each engine gets RIGHT — the differences are the design lesson
 
 - **ts** recovers inheritance, factory-returned receivers (return types travel in the `.d.ts`, so rust's
