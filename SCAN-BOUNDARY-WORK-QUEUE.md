@@ -1139,10 +1139,53 @@ protect. *(All in flight 2026-07-26 evening.)*
       whose effects were never derived. **I converted a fail-closed crash into a cached, reproducible false
       all-clear.** The asymmetry that proves it: a round-1 parse failure `continue`s BEFORE the cache write
       and re-discloses every run.
-- [ ] java `Candor.java:3673` (`9ae68f7`, MINE) + `:2810` (`dd81bfa`) — single-queue BFS over `directSupers`
-      interleaves the superclass chain with interfaces by DEPTH, so a nearer `interface` default settles a
-      descriptor and suppresses the superclass body the JVM actually runs (JLS: **the class wins**). I added
-      per-overload shadowing to stop dropping inherited bodies and dropped a different one.
+- [x] **FIXED, candor-java `9f8e71c` — and the review named two sites; there were FOUR, one of them every
+      polymorphic dispatch candor resolves.** java `Candor.java:3673` (`9ae68f7`, MINE) + `:2810`
+      (`dd81bfa`) — single-queue BFS over `directSupers` interleaves the superclass chain with interfaces by
+      DEPTH, so a nearer `interface` default settles a descriptor and suppresses the superclass body the JVM
+      actually runs (JLS 15.12.2.5 / 8.4.8: **the class wins**, at any depth). I added per-overload shadowing
+      to stop dropping inherited bodies and dropped a different one. Both halves failed at once: the real
+      `Fs` dropped AND the interface's empty effects charged in its place.
+
+      **The instruction to reuse `Cha.nearestConcreteSuper` rather than write a third walk was right about
+      the shape and wrong about the helper.** That helper — which `chaTargets` and `monomorphicTarget` both
+      end in — walked `transSupers`, a **HashSet**, and returned the first `declaresConcrete` hit in HASH
+      order. It was not ordered wrongly; it was not ordered. `nearestDepFn` was the fourth. All four now
+      share ONE traversal (`Cha.resolutionOrder`), so this vein's fourth drifted copy of a walk was not
+      written. *A cross-site precedent tells you where a walk belongs, not that the walk is correct.*
+
+      **Most of the damage was CLASS-vs-CLASS, not class-vs-interface** — the narrow reading would have
+      fixed the ordering and left the unordered helper in place. Over 45 real jars the answer changed
+      **11 277** times: **11 193** where the new owner is a proper SUBTYPE of the old (a near override was
+      losing to a far base), and **84** the reported interface-default shape. Traced to bytecode both ways:
+      spring-core `ResourceDecoder.decode` `[]` → `['Log','Unknown']` (it resolved to `AbstractDecoder`'s
+      `throw new UnsupportedOperationException()` instead of the `AbstractDataBufferDecoder` body that
+      runs); guava `AbstractStreamingHasher.putLong` `['Clock','Log','Unknown']` → pure (charged through an
+      `AbstractHasher` chain a `final` override replaces — the fabrication mirror).
+
+      Nine chained pairs: consumer side 0 gains / 0 losses / identical Unknown counts — and per item 8 that
+      is a claim about the experiment until instrumented: `nearestConcreteSuper` differs 5–531 times per
+      pair while the dep-facing walks are entered 8–30k times and differ **zero**. The boundary defect is
+      real (fixtures) and rare on real library pairs. Full record: SOUNDNESS-LOG 2026-07-26.
+
+      **RESIDUAL, and it is the next rung here:** `ReportWriter.writeHierarchy` records a dep type's
+      supertypes as a sorted `TreeSet` with no superclass marker, so a chain lying ENTIRELY inside a
+      dependency stays depth-ordered. The consumer's own classes state their superclass and interfaces
+      separately, which is why the shape the defect was found in resolves exactly. Closing the rest = a
+      sidecar key whose value is an OBJECT (`Loader#loadDepHierarchy` already skips non-array values, so an
+      older consumer ignores it, and a sidecar without it keeps today's answer). A format rung with its own
+      compatibility surface — it wants its own measurement, so it did not ride.
+- [x] **FIXED, candor-java `c583da7`** — java `ReportWriter.java:499` — `mergeUnionInto`'s `unchanged` test
+      compared each widened `TreeSet`'s SIZE against the original LIST's size; those agree only while no
+      list holds a duplicate, so a genuine widening could land on the same count, read as "no change", and
+      drop the union — the entry then claiming a narrower effect set than the dispatch reaches, under the
+      exact hash a chained consumer keys on. The review could not confirm it and was right not to:
+      **established NOT reachable** (every list field of an ordinary entry is materialised from a sorted
+      `TreeSet` in `writeJson`, and `real` is always an ordinary entry). Fixed anyway — the size test was
+      right for a reason it did not state, leaning on an invariant three hundred lines away that a later
+      change would break silently and in the miss direction. Since no corpus can reach it, the UNIT test is
+      the evidence: it feeds the duplicate directly, asserts both directions, and restoring the size
+      comparison fails it and, across all 512, only it.
 - [ ] swift `CallCollector.swift:384` — a ternary receiver composes opacity with `a.mono || b.mono`, so a
       `some P` / `any P` ternary claims full monomorphization and skips the CHA for the ERASED arm. Needs `&&`.
 - [ ] swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
