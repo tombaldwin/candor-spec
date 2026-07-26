@@ -45,40 +45,65 @@ cases it did, and nothing looked for it. Two caveats learned the hard way:
 
 ## Queue
 
-### rust — 3 of 5 done
+### rust — 4 of 5 done (R5 is the only one left)
 - [x] implicit stringification via a dep's `Display::fmt` — `1623a07`
 - [x] drop glue via a dep's `Drop` — `a2fbe74`
 - [x] `interfaceUnion` emitted in `--deps` child scans — `50218e3`
-- [!] **R4 — imported-trait dispatch. ATTEMPTED, REVERTED, and it needs a DECISION not a patch.**
-      `use deplib::Handler; fn run(h: &dyn Handler)` reads pure while the effectful `MyH::go` impl is IN THE
-      SAME REPORT. Implementing local CHA over an imported trait's impls does fix it — the fixture at
-      `/tmp/rrev` then matches its control exactly — **but it contradicts a deliberate prior decision**, and
-      an existing test says so in as many words:
+- [x] **R4 — imported-trait dispatch — `1950a27`.** DECIDED as resolution 1 (provenance) and shipped, with
+      the test that said "external-trait local impl must not resolve (fabrication)" **unchanged and still
+      passing**: it uses a bare `Iterator`, which needs no `use`, so `expand` leaves it unqualified and the
+      provenance gate keeps it out. The hazard it protects is untouched.
 
-          tests.rs:1698  "external-trait local impl must not resolve (fabrication)"
+      **Resolution 1 as written is NOT enough, and only measuring showed that.** It needs THREE carve-outs,
+      each one a flood found on real code, each pinned by a verified-to-catch control:
+      1. **provenance** — a genuine dependency crate root. std/core/alloc out (the `Iterator` case), AND
+         `self`/`crate`/`super` out: a `use` binding keeps the text it was written with, so value-bag's
+         `pub use self::error::Error` made std's `Error` look dependency-qualified — **17 fresh Unknowns**.
+      2. **erasure** — the receiver must be spelled `dyn`. `serde::Serialize`/`Serializer` ARE dependency
+         traits, so provenance passes them; CHA-ing serde_json's five `impl Serializer` types onto its
+         GENERIC entry points put **32 fresh Unknowns** on serde_json (`to_string`, `to_vec`, `to_writer`).
+         A `dyn` receiver is erased and the local impls are its candidate witnesses; a `T: Trait` bound or
+         `impl Trait` param is monomorphized BY THE CALLER, so they are not. With this, serde_json is 0.
+      3. **nested-item scope** (a leak this rung exposed, not previously recorded) — a `fn`/`impl` inside a
+         body has its own signature but its calls are attributed to the enclosing unit, so its params
+         SHADOW the outer ones. value-bag's `internal_visit(v: &dyn Serialize)` declares a nested
+         `impl Serializer` whose `serialize_some<T: Serialize>(self, v: &T)` inherited the outer `v`'s
+         `dyn`-ness.
 
-      That decision is defensible and I did not flip the test to make my change pass. For a STD trait it is
-      plainly right: CHA-ing `Iterator` over a local `RowIter::next` charges every `.next()` in the crate
-      with that impl's effects. Measured on the widened version: **30 fresh `Unknown`s on serde_json** from
-      the >12-impl arm alone, before the resolving arm is even considered.
+      ADDITIVE and PRECISE-OR-NOTHING (the swift template): edges only, bounded at 12 impls, and
+      `unresolved` is NOT set on the wide/absent arms — the local impl set is a LOWER bound on the true one,
+      so a wide one stays the documented miss rather than flooding Unknown.
 
-      So R4 is a real tension between two rules the project holds simultaneously:
-      *never leave a provable reach silent* vs *never fabricate over an unbounded impl universe.*
-      The plausible resolutions, none free:
-      1. Split the trait's PROVENANCE — CHA local impls of a trait imported from a **project dependency**
-         (`deplib::Handler`) but never one from std/core/alloc. Narrower than the current blanket rule, and
-         still an over-approximation if a third crate implements the trait.
-      2. Require a provable receiver — only resolve when the `&dyn` value's construction site is local and
-         monomorphic (the same shape rust already uses for the monomorphic-receiver retry).
-      3. Accept it as a documented residual and disclose `Unknown` only where the impl set is small and
-         wholly local.
-      **Do not implement any of these without deciding which rule wins first.** Attempted in this session,
-      reverted clean, suite green.
+      A/B: 12 real crates zero gains/losses/entry-delta/Unknown-delta. Then the **whole local crates.io
+      registry (976 crates) swept with the rung instrumented**, to find where it is LIVE rather than assume:
+      6 crates, 35 firings, every one traced (rustls-webpki `&dyn pki_types::SignatureVerificationAlgorithm`
+      → Ring/AwsLcRs is the R4 shape exactly); A/B on all 6 clean. **Worth carrying: on that corpus the only
+      `dyn`-spelled external traits are `Write`, `Iterator` and `Error` — i.e. every firing the carve-outs
+      block is a real fabrication, and the carve-outs are the whole safety margin, not belt-and-braces.**
+      Known over-fire, bounded: there is no external analogue of the local arm's `trait_declares_method`
+      guard, so a blanket-trait method on a `dyn` receiver (hyper 0.14's `.into()` on a `&dyn Stream`) forms
+      an edge that dangles. Zero measured effect.
 - [ ] **R5 — return types in the report.** A receiver bound from a dep factory (`let c = deplib::build();
       c.fetch()`) is untyped, so every later method call drops. Needs a `returns` field in the report
-      format — spec-visible, so it wants a rung and four-way agreement. Largest item here.
-- [ ] **R6 — fully-qualified `&dyn deplib::Handler`** still reads pure (the imported form is fixed): the
-      consumer never forms the crate-qualified key.
+      format — spec-visible, so it wants a rung and four-way agreement. Largest item here, and now the last.
+- [x] **R6 — fully-qualified `&dyn deplib::Handler` — `7a5fc1d`.** The cause was one line of lossy indexing:
+      `bound_leaves` keeps only `segments.last()` (every downstream index is leaf-keyed), and with no `use`
+      to expand through the crate identity was simply GONE — `expand` returned a bare `Handler`, the
+      `contains("::")` test failed, and the site emitted nothing at all: no dep key, no CHA, no disclosure.
+      `sig_trait_quals` keeps the path the signature wrote; `crate`/`self`/`super` spellings are excluded
+      because `expand` STRIPS those roots and would hand back a dependency-looking path (carve-out 1 by a
+      second door). Gate exit 0 → 1.
+
+      A/B, the whole 976-crate registry: **one** effect change and zero losses — tracing 0.1.44
+      `__macro_support::__tracing_log` PURE → `['Log']`, traced to
+      `__tracing_log(logger: &'static dyn log::Log, …) { logger.log(…) }`. The key now formed is
+      `log::Log::log`, a rule the classifier already had and had never been handed. **855 new report entries
+      across 60 crates, all with EMPTY effect sets** — functions that were ABSENT (which in this format IS a
+      purity claim) and now carry `invisible: [<dep>]`. Unknown delta across all 976: zero. The same rung
+      makes candor's own `span_lint(cx: &impl rustc_lint::LintContext)` read Log.
+
+      Residual, asserted in the test so it cannot drift: the erasure carve-out means the generic-bound and
+      `impl Trait` spellings of an imported trait still do not CHA local impls.
 
 ### java — 4 mechanism families DONE (fixture 15 silent-pure → 0, four gates exit 0 → 1)
 - [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
