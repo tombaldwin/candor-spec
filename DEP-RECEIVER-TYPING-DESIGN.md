@@ -96,6 +96,25 @@ after the third conjunct — 0 changes on three unchained corpora, and on a chai
 transitive callers of it. Other engines should expect to find the same third conjunct rather than rediscover
 it: check where your own coverage ledger already speaks before adding a second voice.
 
+### What "could not form a key" means in an engine with no untyped receivers (java, `828ca18`)
+
+JVM bytecode always carries a static owner, so java has no untyped receiver to test for. The conjunct that
+replaces it is the **opcode**: `INVOKEINTERFACE` *proves* the owner is an interface, so the hash formed at
+the site names a declaration the JVM will not run — the key is unformed in exactly the sense that matters.
+`INVOKEVIRTUAL` is excluded, because a plain dependency class usually IS the body and a miss there is a
+genuine purity claim; the cost is that an abstract dependency CLASS receiver stays open, which is the
+sharpest thing half 2 would buy java. The other departure is a **fifth** conjunct: the chained report must
+demonstrably hold an effectful body with the same `name+desc` under another owner. Without it the hedge
+lands overwhelmingly on interfaces whose every implementation in the dependency is a pure accessor.
+
+The numbers are the argument for measuring rather than reasoning, and they reproduce this document's
+prediction on a second engine: unresolved-receiver-into-a-chained-dep alone is **5.4%** of all analyzed
+functions across nine chained JVM corpora (8.4% on logback-classic); + the opcode conjunct, 2.1%; + the
+signature evidence, **0.49%**. Note that the fifth conjunct is a signature join, which "the trap this must
+not walk into" below rejects — for RESOLUTION. Used purely as evidence to DISCLOSE, with nothing charged
+and no edge formed, it is the behaviour that section prescribes; a collision costs one conservative Unknown
+on a site that is genuinely unresolvable either way, and can never fabricate an effect.
+
 ## Half 2 — carry enough type surface to form the key
 
 Only now does the format matter. Three observations bound what it needs to carry.
@@ -157,7 +176,8 @@ correct behaviour is half 1 — disclose — not a widened match. **Never trade 
 ## Order of work
 
 1. **Half 1, per engine, independently.** Each engine's own schedule; no rung, no negotiation. Measure the
-   hedge count and check the trigger is the conjunction, not the disjunct.
+   hedge count and check the trigger is the conjunction, not the disjunct. Done: rust `5fde0d6`, java
+   `828ca18` (candor-java). Open: ts, swift.
 2. **Conformance part** pinning that an untyped cross-package receiver DISCLOSES rather than reads pure —
    verified-to-catch by reverting one engine, as PARTs 19 and 20 were.
 3. **Half 2** as a spec rung, once half 1 has removed the urgency and the type-identity question has been
