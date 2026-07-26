@@ -75,6 +75,13 @@ now scopes the headline claim because of it.
    COUNTS. **Instrument the preconditions** — how often does the trigger hold, and on what? — and read the
    ratio, not just the diff. A trigger that fires 239 times on shapes you did not intend is not "bounded
    as designed", and a bound that admits nothing on a real modular crate is usually a keying bug.
+   **Third instance, 2026-07-26, and this one was an ORDERING fact nobody would have guessed:** the arm
+   testing "what if the dependency hierarchy widened the subtype index" came back byte-identical with zero
+   cost — flattering, and wrong. `buildSubtypeIndex` runs BEFORE `loadCrossDeps` populates the dep
+   hierarchy, so the one-line widening cannot fire at all as a one-liner. With the load hoisted so the arm
+   is real, the same change costs **8 losses against 113 gains** — seven functions lose a disclosed
+   `Unknown` and one loses a concrete `Net`. **A zero-delta arm is a claim about the EXPERIMENT before it
+   is a claim about the change**: prove the mechanism fired before you report that it changed nothing.
 9. **A comment that states a justification is an assertion, not a proof — and it will be believed.** Three
    of the ten defects a code review found in this vein were cases where the correct principle was written
    in a comment and the code beneath it did the opposite: a leaf-key join four paragraphs under "the trap
