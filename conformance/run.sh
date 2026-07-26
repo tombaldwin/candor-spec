@@ -3634,8 +3634,90 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ====================================================================================================
+# PART 20 — IMPLICIT STRINGIFICATION ACROSS THE SCAN BOUNDARY, four-way                             [TIER 1]
+# ====================================================================================================
+# The sharpest instance of the scan-boundary vein (SOUNDNESS-VEIN-crossing-the-scan-boundary.md), and the
+# one with the most history: implicit stringification was closed INSIDE the scan in all four engines on
+# 2026-07-25, and was still fully live ACROSS it the same day. Reaching an effect through a dependency
+# type's `toString`/`Display::fmt`/`description` must not read sound-complete pure once that dependency's
+# report is chained — the dep report carries the witness under its own key, and the consumer must consult it.
+#
+# This is the DEPENDENCY half; PART 19 pins the initializer half of the same boundary. Each engine's syntax
+# differs (`"x" + e`, `format!("{}", e)`, `` `${e}` ``, `"\(e)"`) but the contract is one: with the dependency
+# chained, a consumer that stringifies an effectful dep value is NOT pure. Unchained, each engine is
+# unchanged — that is the honest state when nobody has scanned the dependency, not a regression.
+P20_OK=0
+# ---- java: a dep class whose toString() reads the environment; the app concatenates it.
+mkdir -p "$W/sb/java/dep" "$W/sb/java/app"
+printf 'package dep;\npublic class E { @Override public String toString() { return System.getenv("SB_CFG"); } }\n' > "$W/sb/java/dep/E.java"
+printf 'package app;\npublic class S { public static String show(dep.E e) { return "x" + e; } }\n' > "$W/sb/java/app/S.java"
+javac -d "$W/sb/jall" "$W/sb/java/dep/E.java" "$W/sb/java/app/S.java" 2>/dev/null
+mkdir -p "$W/sb/jdep" "$W/sb/japp/app" && cp -r "$W/sb/jall/dep" "$W/sb/jdep/" 2>/dev/null
+cp "$W/sb/jall/app/S.class" "$W/sb/japp/app/" 2>/dev/null
+java -jar "$JAR" "$W/sb/jdep" --json "$W/sb/jdep.json" >/dev/null 2>&1
+CANDOR_DEPS="$W/sb/jdep.json" java -jar "$JAR" "$W/sb/japp" --json "$W/sb/japp.json" >/dev/null 2>&1
+# ---- rust: a dep type whose Display::fmt reads the clock; the app formats it.
+SB_RS="/nonexistent"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$W/sb/rs/deplib/src" "$W/sb/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/sb/rs/deplib/Cargo.toml"
+  printf 'use std::fmt;\npub struct E;\nimpl fmt::Display for E {\n  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { let _ = std::time::SystemTime::now(); write!(f, "e") }\n}\n' > "$W/sb/rs/deplib/src/lib.rs"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib={path="../deplib"}\n' > "$W/sb/rs/app/Cargo.toml"
+  printf 'fn show(e: &deplib::E) -> String { format!("{}", e) }\nfn main() { println!("{}", show(&deplib::E)); }\n' > "$W/sb/rs/app/src/main.rs"
+  ( cd "$W/sb/rs/deplib" && "$SCAN" . >/dev/null 2>&1 )
+  cp "$W"/sb/rs/deplib/.candor/report.*.scan.json "$W/sb/rsdep.json" 2>/dev/null
+  ( cd "$W/sb/rs/app" && CANDOR_DEPS="$W/sb/rsdep.json" "$SCAN" . >/dev/null 2>&1 )
+  SB_RS=$(ls "$W"/sb/rs/app/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+# ---- swift: a dep type whose description reads the environment; the app interpolates it.
+SB_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/sb/sw/deplib/Sources/DepLib" "$W/sb/sw/app/Sources/App"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "DepLib", products: [.library(name: "DepLib", targets: ["DepLib"])], targets: [.target(name: "DepLib")])\n' > "$W/sb/sw/deplib/Package.swift"
+  printf 'import Foundation\npublic struct E: CustomStringConvertible {\n  public init() {}\n  public var description: String { ProcessInfo.processInfo.environment["SB_CFG"] ?? "" }\n}\n' > "$W/sb/sw/deplib/Sources/DepLib/E.swift"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(path: "../deplib")], targets: [.executableTarget(name: "App", dependencies: [.product(name: "DepLib", package: "deplib")])])\n' > "$W/sb/sw/app/Package.swift"
+  printf 'import DepLib\nfunc show(_ e: E) -> String { return "x \\(e)" }\nprint(show(E()))\n' > "$W/sb/sw/app/Sources/App/main.swift"
+  ( cd "$W/sb/sw/deplib" && "$SW_BIN" . >/dev/null 2>&1 )
+  cp "$W"/sb/sw/deplib/.candor/report.*.Swift.json "$W/sb/swdep.json" 2>/dev/null
+  ( cd "$W/sb/sw/app" && CANDOR_DEPS="$W/sb/swdep.json" "$SW_BIN" . >/dev/null 2>&1 )
+  SB_SW=$(ls "$W"/sb/sw/app/.candor/report.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
+fi
+python3 - "$W/sb/japp.json" "$SB_RS" "$SB_SW" <<'PYSB' || P20_OK=1
+import json, sys, os
+def effectful(path):
+    try: d = json.load(open(path))
+    except Exception: return None
+    for e in d.get("functions", []):
+        if set(e.get("inferred", [])) - {"Unknown"}: return True
+    return False
+print("\n[20] IMPLICIT STRINGIFICATION ACROSS THE SCAN BOUNDARY  (a chained dependency's toString/Display/description witness must reach its consumer)")
+engines = [("java", sys.argv[1])]
+if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2]))
+if len(sys.argv) > 3 and os.path.exists(sys.argv[3]): engines.append(("swift", sys.argv[3]))
+fails = 0
+for name, path in engines:
+    got = effectful(path)
+    if got is True:
+        print(f"  {name:6s} -> MATCH    (the chained dependency's stringification witness reaches the consumer)")
+    else:
+        fails += 1
+        why = "unreadable report" if got is None else "consumer reads PURE — the witness was dropped"
+        print(f"  {name:6s} -> DIVERGE  ({why})")
+print("  ts     -> not yet fixed: candor-ts's coercion targets are local-only and sit outside the")
+print("            disclosure channel; tracked in SCAN-BOUNDARY-WORK-QUEUE.md, add the row when it lands")
+sys.exit(1 if fails else 0)
+PYSB
+
+echo "PART 20 — implicit stringification across the scan boundary (SOUNDNESS-VEIN-crossing-the-scan-boundary.md)"
+if [ "$P20_OK" = 0 ]; then
+  echo "  -> MATCH — a chained dependency's stringification witness reaches its consumer in java + rust + swift"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary agree across the engines)" \
   || echo "conformance: FAILED"
 exit "$rc"
