@@ -236,7 +236,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       Residual, asserted in the test so it cannot drift: the erasure carve-out means the generic-bound and
       `impl Trait` spellings of an imported trait still do not CHA local impls.
 
-### java — 5 mechanism families DONE (fixture 15 silent-pure → 0; five gates exit 0 → 1 on the effect itself — the dep-interface row went `deny E Unknown[dispatch]` at half 1 and now flips on `deny Fs` too)
+### java — 6 mechanism families DONE, and the JVM half of the vein has NO open row (fixture 15 silent-pure → 0; six gates exit 0 → 1 on the effect itself — the dep-interface row went `deny E Unknown[dispatch]` at half 1 and now flips on `deny Fs` too, and the abstract dep CLASS flips on `deny Fs` outright)
 - [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
       `chaTargets`, and **an empty CHA emitted no Unknown, only a dropped edge**. New `nearestDepFn` — the
       cross-boundary analogue of `nearestConcreteSuper` — plus a shared `inheritDepFn` fold.
@@ -259,8 +259,12 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       but the OPCODE proves whether the key names the body: INVOKEINTERFACE proves the owner is an
       interface, so the hash we formed names a declaration the JVM will not run. INVOKEVIRTUAL is
       excluded (a plain dep class usually IS the body, so a miss there is a real purity claim), which is
-      why an abstract dep CLASS — jackson's `ObjectIdGenerator`, the case originally recorded here — is
-      **still open** and is the sharpest thing half 2's `typeSurface` would buy java.
+      why an abstract dep CLASS — jackson's `ObjectIdGenerator`, the case originally recorded here — was
+      left open here. **It is now CLOSED (`333cf10`, its own row below), and NOT by `typeSurface`:** the
+      producer knows something no consumer can read off a call site, namely `ACC_ABSTRACT` on the member,
+      and that flag answers the same question the opcode answers, one step earlier and with better
+      evidence. The claim that this was "the sharpest thing half 2's `typeSurface` would buy java" was
+      wrong — half 2 buys java nothing here.
 
       Five conjuncts, each one MEASURED not reasoned. "Unresolved receiver into a chained dep" alone fires
       on **5.4% of all analyzed functions** over nine chained JVM corpora (8.4% on logback-classic) —
@@ -380,9 +384,88 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       consumer side ever opened the sidecar. That is the `typeSurface.implements` information the
       abstract-dep-CLASS row, swift row 3 and the write/read residual were all blocked on — and for java it
       needed no format rung at all, only a consumer.
-      **STILL OPEN, and it is the reason the scope above matters:** the abstract-dep-CLASS row wants the
-      hierarchy in the SUBTYPE INDEX, which is exactly the use this commit refused. It needs its own
-      argument about what happens to the Unknowns that resolution would suppress, not a wider `if`.
+      **THE FOLLOW-ON IS SETTLED — and BOTH halves of "the abstract-dep-CLASS row wants the hierarchy in
+      the SUBTYPE INDEX" turned out to be wrong.** That sentence stood here as the one use `800f471`
+      refused, needing "its own argument about what happens to the Unknowns that resolution would
+      suppress". The argument was measured before a line of fix was written (item 8: a shadow subtype
+      index built from the sidecar, compared against the real one at every polymorphic dispatch site, over
+      seven chained real jar pairs / 68 539 sites):
+      - **It cannot close the row.** `buildSubtypeIndex` files PROJECT `ClassNode`s and `chaTargets` needs
+        one to test `declaresConcrete`, so a DEPENDENCY's implementer never enters the index however wide
+        the hierarchy gets. The two-tree fixture is exit 0 in that arm too. The row's impl is in the dep;
+        the index only ever holds the consumer's classes.
+      - **And it costs.** 737 sites go empty-CHA → non-empty; at report level 113 gains and **8 LOSSES** —
+        7 functions lose a disclosed `Unknown`, one loses a concrete `Net`. httpclient's
+        `IdleConnectionHandler.closeExpiredConnections` and three siblings become confident purity claims
+        on methods that close network connections, because the target set substituted for the disclosure
+        is not the true one (httpcore's own implementers are outside the scan). **The gate `800f471`'s
+        comment named is not the one that fired**: instrumented per site, the JDK-functional-SAM
+        `callback:` branch suppressed ZERO, as did the missing-project-impl branch — what suppressed was
+        half 1, whose conjunct 4 is the same "the project CHA is empty" test. The argument generalises and
+        the illustration did not; the property to protect is EVERY Unknown branch conditioned on an empty
+        target set, not the one that was easiest to picture.
+      - **The first arm said byte-identical, zero cost — the flattering way again (item 7), and the cause
+        is worth carrying.** As a literal one-liner inside `externalSupers` the widening is **INERT**:
+        `runScan` builds the subtype index BEFORE `loadCrossDeps` populates `depSupers`. So the hazard
+        `800f471` argued against could not fire as written, and a future reordering of `runScan` would arm
+        it silently. The numbers above are from the arm with the load hoisted. **A control that produces
+        no diff may be measuring nothing — check the mechanism is reachable before believing its zero.**
+      The refusal + the numbers now live in `Cha#depDirectSupers` (candor-java `cb8c1aa`), so nobody has
+      to re-derive them, and the surviving guard is named there: `CrossScanBoundaryTest`'s "`externalSupers`
+      on a sidecar type must still return empty" holds under either ordering.
+- [x] **dispatch through a dependency's ABSTRACT CLASS — DONE, candor-java `333cf10`, producer-side, and
+      the consumer changed not at all.** The last open JVM row. `Store s = Factory.build(); s.save()` where
+      `Store` is a dep's abstract class read SILENT-PURE (absent from `functions`, counted in ⟨0.21⟩
+      `analyzed`) — INVOKEVIRTUAL, so half 1 deliberately does not disclose, and the project CHA is empty
+      because the implementer is in the dependency. Gate `deny Fs` exit 0 → **1**, single-tree control exit
+      1 in BOTH arms.
+
+      **The discriminator is the ACCESS FLAG, and it is the producing side of the three-row rule.** Absence
+      under a key licenses a purity claim only if the key names something that COULD have had a body.
+      `ACC_ABSTRACT` on the member proves the JVM will never run the declaration `lib/Store.save` names, so
+      no report — of any version, from any engine — can ever answer that key. Half 1 reads the OPCODE at the
+      consumer; this reads the access flag at the producer, which is strictly better evidence. So the
+      `interfaceUnion` emitter admits abstract CLASSES and publishes their ABSTRACT members, the entry lands
+      under the key `crossDepJoin` already forms, and there is **no consumer change: no CHA, no subtype
+      index, no Unknown gate, no new resolution path.** The template ("emit the call shape the join already
+      understands") for the third time.
+
+      SCOPE, asserted by tests not by comments: a class publishes only its ABSTRACT members. A concrete
+      member's key names a body that exists and was analysed, so the report's answer under it — the entry,
+      or silence meaning pure — is already TRUE, and a union over its overrides could only widen a true
+      answer. Verified by mutation: removing the `ACC_ABSTRACT` member skip fails
+      `aConcreteMemberOfTheSameAbstractClassPublishesNoUnion` and only that; reverting the class admission
+      to interfaces-only fails the four abstract-arm tests. Existing bounds all apply unchanged (all-pure →
+      publish NOTHING; >`CHA_FANOUT_LIMIT` open hierarchy → `["Unknown"]`, never the smear and never
+      silence). **The pre-existing test that asserted the old scope was REWRITTEN, not deleted** — half its
+      premise ("an abstract dependency CLASS receiver is the documented residual") was this row, and the
+      half that was always a scope survives as `aCONCRETEClassMethodIsUntouched`.
+
+      **A comment claim the measurement falsified mid-flight, item 9 in its exact shape.** It read "an
+      abstract member has no body, so no real entry can claim its hash — the merge path is unreachable for
+      it." False: `writeJson`'s filter keeps a BODILESS entry when the method is framework-rooted or its
+      class declares a capability — **17 such entries across twelve real dep reports**, logback's
+      `AppenderBase.append` among them, an entry point carrying `inferred: []`. The merge is *right* there,
+      for the reason `48a5f18` gives: `[]` under a hash a consumer keys on IS a purity claim about the
+      dispatch and it was false. Verified widening-only across all 17.
+
+      Measured, seven chained pairs, both arms' jars kept by content hash and the final jar re-run to
+      reproduce its arm byte-for-byte (item 7b): flag OFF every dep AND consumer report **byte-identical**;
+      flag ON producer +59 entries over 7 383 (0.8%), all marked, 17 widened / 0 narrowed / 0 removed;
+      flag ON consumer **14 gains, 0 losses, Unknown 8 330 → 8 336 (UP, never down** — a dropping Unknown
+      count is exactly what the refused route does). Gains traced to bytecode, and the headline is the case
+      this queue recorded by name: jackson-databind's `WritableObjectId.generateId` does `INVOKEVIRTUAL
+      ObjectIdGenerator.generateId` on a field typed by jackson-annotations' abstract class, whose
+      `ObjectIdGenerators$UUIDGenerator.generateId` is `UUID.randomUUID()` — `Rand`, reaching
+      `BeanSerializer.serialize` and 7 more. The other 6 are logback appender/converter dispatch going
+      `[]` → `['Unknown']`, the disclosure direction.
+
+      **Residual, deliberately not taken here:** a CONCRETE dep method that is overridden effectfully still
+      answers only for its own body across the boundary, where in-scan the same site is charged the CHA
+      union. That is the `48a5f18` "the engine contradicts itself across the scan boundary" argument one
+      rung down — but unlike the abstract case the key IS answerable and the answer IS true, so it is a
+      narrower question than a purity claim, and its blast radius (every non-final method of every
+      non-final class) wants its own measurement.
 - [x] **`reentryTargets` fanned only DOWN the subtype index — FIXED, candor-java `9ae68f7`.** A SINGLE-TREE
       silent under-report, found by a smell rather than a report: making the chained arm walk a dependency's
       supers left the in-scan control strictly LESS complete than the cross-boundary case, which is the
