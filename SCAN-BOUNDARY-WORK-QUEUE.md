@@ -117,10 +117,14 @@ bound or an `impl Trait` param is monomorphized *by the caller*, so they are not
 not by reasoning.
 
 So: the precedent was good evidence that the shape was reachable, and no evidence at all about which guard
-made it safe. **Cite a precedent to justify attempting something; measure to find out what it costs.** And
-the reverse now needs checking too — swift's carve-out does not appear to distinguish erased from
-monomorphized receivers, so the engine that supplied the precedent may itself be fabricating. That is being
-probed; a precedent inherits the other engine's unexamined assumptions along with its result.
+made it safe. **Cite a precedent to justify attempting something; measure to find out what it costs.**
+
+**The reverse check came back POSITIVE, twice.** swift's carve-out did not distinguish erased from
+monomorphized receivers, and the engine that supplied the precedent WAS fabricating — `d62dd69` closed the
+`some P` parameter, and `02fb0ad` closed four more spellings that the parameter-typed check could not see
+(`[T]` under a `<T: P>` bound, `[some P]`, their `forEach` form, a `T`-typed field of a generic type, and
+`extension Array where Element: P`). A precedent inherits the other engine's unexamined assumptions along
+with its result — and the traffic goes BOTH ways: rust's measurement is what sent anyone to look at swift.
 
 ## Queue
 
@@ -536,12 +540,44 @@ and the only conformer, app has none:
 - [x] implicit stringification of a dep type, all three operand forms — `83ca73c` (verified independently:
       `describeTyped -> ['Env']` across the boundary, gate back to exit 1)
 - [x] dependency `deinit` glue — `41dc8de`
-- [x] dispatch over an IMPORTED protocol with LOCAL conformers — `eae2de2`. Needs no dep report: Swift
-      spells a conformance to an imported protocol in the same inheritance clause, so `subtypesOf` already
-      had it. **Note the carve-out that made it safe** — `enum Rank: String` puts `String` in the inheritance
-      clause, so an unguarded CHA sends every call on a String-typed value into raw-value enums' methods;
-      `RAW_VALUE_BASE_TYPES` closes it and a test pins it. *This is the swift analogue of the same trap rust
-      hit at R4: an imported-supertype CHA is only safe with an explicit carve-out.*
+- [x] dispatch over an IMPORTED protocol with LOCAL conformers — `eae2de2`, plus **TWO erasure fixes it
+      needed and shipped without**: `d62dd69` and `02fb0ad`. Needs no dep report: Swift spells a conformance
+      to an imported protocol in the same inheritance clause, so `subtypesOf` already had it.
+
+      **It took THREE carve-outs, and only one of them shipped with the rung.**
+      1. `RAW_VALUE_BASE_TYPES` (in `eae2de2`) — `enum Rank: String` puts `String` in the inheritance clause,
+         so an unguarded CHA sends every call on a String-typed value into raw-value enums' methods.
+      2. **ERASURE, the `some P` parameter (`d62dd69`)** — found by rust's R4 measurement pointing back here.
+         `typeName` collapses `some P` and `any P` to `P`, so the opaque spelling inherited the existential's
+         CHA. Note the mid-flight correction in `81a9dc3`: the first version enforced it by WITHHOLDING the
+         receiver's type, which took the §2 dep join with it and made an Fs-performing function read PURE —
+         one sin traded for the other. The gate belongs on the CHA arm alone.
+      3. **ERASURE, everything that is not a parameter's own type (`02fb0ad`)** — `isOpaqueParam(p.type)`
+         answers the question for `func f(_ s: some P)` and for nothing else. `[T]` under a `<T: P>` bound,
+         `[some P]`, the `forEach` closure form of either, a field typed as the enclosing type's generic
+         parameter, and `extension Array where Element: P` all resolve a receiver to the bound `P` too, and
+         all are monomorphized by the caller. Each was measured charging the effectful conformer's Env to a
+         function whose only call site passes the pure one. The bare `<T: P>(_ x: T)` parameter escaped by
+         ACCIDENT (`params` records the spelling `T`, which resolves to nothing) — which is exactly why the
+         container and field paths, which deliberately resolve to the bound for R28/R39, did not.
+         `mono` now travels with `rootOf`'s resolution instead of being re-derived at the call site, because
+         the same receiver spelling resolves through `vars`, a field, a field-walk or a subscript element and
+         only the answering branch knows which.
+
+      *This is the swift analogue of the same trap rust hit at R4: an imported-supertype CHA is only safe
+      with explicit carve-outs, and you find out how many by measuring, not by enumerating.*
+
+      **RAW_VALUE_BASE_TYPES is NOT subsumed by erasure** — checked by removing it with the erasure gate in
+      place, and `plainString(_ s: String)` reads Env via `Rank.lowercased`. They answer different questions:
+      erasure is about the receiver's SPELLING, the raw-value carve-out is about Swift's inheritance clause
+      being overloaded for a CONCRETE receiver that nobody monomorphizes.
+
+      A/B for `02fb0ad`, 11 real Swift targets / 10 609 entries (pollen, candor-swift, swift-syntax,
+      Alamofire, vapor, TCA, SQLite.swift, swift-argument-parser, console-kit, Files, swift-log): zero entry,
+      effect, Unknown and unknownWhy deltas, and ONE traced change — TCA's `TransactionPublisher.receive`,
+      whose `var upstream: Upstream` (`<Upstream: Publisher>`) was CHA'd over TCA's five local Publisher
+      conformers though its one construction site passes a Combine `AnyPublisher`. Instrumented, the gate
+      fires exactly once across all eleven: the trigger is real and this corpus barely exercises it.
 - [x] **factory-bound receiver — the HONESTY half is CLOSED (`47bb69a`).** `let c = build(); c.fetch()` no
       longer reads pure: it discloses `Unknown[dispatch:untyped cross-package receiver]`. The claim above
       that "there is no evidence `c` came from the dep at all" was **wrong** — the callee name is right
