@@ -100,6 +100,13 @@ now scopes the headline claim because of it.
    Landing it alone, with a mutant test in both directions, is what caught it (`5feba18`). **An additive
    change still needs the second-direction check of item 0 — ask what the new thing collides with, including
    the old copy of itself.**
+9c. **AN AUTOMATED FIXER WILL DELETE YOUR REASONING, AND THE DIFF LOOKS LIKE A CLEANUP.** `clippy --fix`
+   rewrote a `match` into `.map` and removed with it a comment recording a SOUNDNESS argument — why an
+   unpinnable local `fmt` is treated as pure rather than `Unknown`. The code was equivalent; the record of
+   why it is allowed to be that way was not, and nothing in the diff said so. Item 9 says a comment is an
+   assertion and will be believed; its converse is that a comment carrying the only written form of an
+   argument is load-bearing, and a mechanical rewrite has no way to know. Read a `--fix` diff for deletions
+   before you read it for changes.
 10. Commit each fix separately, substantive message, trailers:
    `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and the session `Claude-Session:` line.
    **Do not push without an explicit instruction.**
