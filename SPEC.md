@@ -290,6 +290,34 @@ workspace deps with `--workspace`/`--deps`. Gated/opt-in until a floor rung pins
 form of this miss was candor-ts-specific; the other engines already fall to a disclosed `Unknown` here. When the field is absent, coverage is derivable from the entries' `hash`
 prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
+**The factory-bound receiver — `typeSurface`** ⟨0.23⟩ (design: `DEP-RECEIVER-TYPING-DESIGN.md`; produced and
+consumed by candor-scan, optional for every engine). `let c = dep::build(); c.fetch()` types `c` from
+`build`'s RETURN type — and a pure `build` is **absent from the dependency's report entirely** (§2 rule 3),
+so no consumer can recover it from the entries. An engine MAY publish a top-level
+
+    "typeSurface": { "returns": { "<pkg>#<fn qual>": "<pkg>#<type qual>", … } }
+
+whose keys and values are **fully qualified in the producing package's own namespace — the same namespace
+the entry hashes use**, so a consumer forms `<pkg>#<type qual>::<method>` and asks the ordinary chained
+lookup. Qualification is not a naming nicety: a leaf-keyed surface makes `sync::Client` and `mock::Client`
+one string, and a PURE `mock_client()` then charges `sync::Client`'s effects to a caller that cannot reach
+them. Three rules, each from a defect that shipped and was reverted:
+
+- the producer publishes a **plain nominal** return only. A `Result<Conn,E>`/`Option<Conn>`/`Vec<Conn>`
+  return MUST NOT publish `Conn`: the binding holds the WRAPPER, and keying its `map`/`unwrap`/`is_ok`
+  against the payload charges effects nobody runs. Refusing is the safe direction;
+- **a miss falls back to the disclosure of the unformed key, never to silence** (the three-row rule — a
+  lookup that finds nothing is only a purity claim when the key names something that could have had a
+  body). This holds for a miss on `returns` AND for a miss on the entry lookup that follows a `returns`
+  hit, because a chained index legitimately WITHDRAWS keys it cannot disambiguate;
+- the join applies **every** surface the ordinary chained join applies (`hosts`/`cmds`/`paths`/`tables`/
+  `invisible`/`incomplete`), not just the effects — a join that carries the effect and drops `incomplete`
+  lets a benign literal in the consumer certify what the dependency declared uncertifiable.
+
+An empty surface omits the field, so a report with nothing to say is **byte-identical** to a pre-rung one
+and a 0.22 consumer is unaffected. `typeSurface.implements` was designed alongside `returns` and dropped:
+the `interfaceUnion` entry above already carries the implementer set it would have published.
+
 **Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§"Versioning
 policy" — an ecosystem-specific effect surface led by the motivated engine, e.g. the candor-swift
 `privacy/1` Apple-sensor cluster) MUST disclose the active extensions in the envelope as
@@ -1636,6 +1664,14 @@ declare it via the envelope's `spec`.
   where the implementer sits in the other tree. Its CONSUMER needed no change at all (it keys entries by
   `owner.name+desc`, exactly the key an INVOKEINTERFACE site forms, so a union entry lands where the join
   already looks); only the producer was missing, and it joined 2026-07-26.
+
+  The rung also carries the optional **`typeSurface`** object (§2, `DEP-RECEIVER-TYPING-DESIGN.md`) —
+  `returns: {"<pkg>#<fn qual>": "<pkg>#<type qual>"}`, both ends fully qualified — so a receiver bound from
+  a dependency FACTORY can be typed at all. A pure factory is absent from its own report, so its return
+  type is unrecoverable from the entries; without it the receiver stays untyped and every later method call
+  drops. Led by **candor-scan**, optional elsewhere; an empty surface omits the field, so a default report
+  is byte-identical and a 0.22 consumer is unaffected. The companion `implements` member was designed and
+  then dropped — `interfaceUnion` already publishes the implementer set it would have carried.
 
 - **0.22 (all code engines declare `0.22`; conformance-pinned)** — a **tier-2** rung: the **`verify` oracle**,
   candor's dynamic honesty check. `candor verify` runs the analyzed program and asserts, per executed function,
