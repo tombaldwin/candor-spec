@@ -1114,3 +1114,66 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       agent reported this as an UNPROVEN requirement rather than claiming the guard, which is the right
       call. Landing the rust-style third key would make the exactness testable — and until it is testable
       it is a hope, not a guard.
+
+## The 2026-07-26 adversarial review: 9 confirmed defects, ALL of them narrowings that went one step too far
+
+A workflow review (4 finder angles, an independent verifier per location, 42 agents) over the whole day's
+four-repo output. **Ten findings survived verification; nine distinct.** Every single one is the shape
+standing-bar item 0 names — a change that narrowed a sound over-approximation to kill a fabrication, and
+narrowed past a real reach. Two were mine, and both are in the fail-closed direction I had just claimed to
+protect. *(All in flight 2026-07-26 evening.)*
+
+**Cardinal sins (silent under-reports):**
+- [ ] rust `scan.rs:663` — the contained parser abort (`a593197`, MINE) writes `fninfos: []` into the
+      `--incremental` cache under the file's REAL content hash, so a warm run reuses it, skips the
+      `catch_unwind`, emits no `unanalyzed` and no `had_parse_failure`, and a gate goes GREEN over a file
+      whose effects were never derived. **I converted a fail-closed crash into a cached, reproducible false
+      all-clear.** The asymmetry that proves it: a round-1 parse failure `continue`s BEFORE the cache write
+      and re-discloses every run.
+- [ ] java `Candor.java:3673` (`9ae68f7`, MINE) + `:2810` (`dd81bfa`) — single-queue BFS over `directSupers`
+      interleaves the superclass chain with interfaces by DEPTH, so a nearer `interface` default settles a
+      descriptor and suppresses the superclass body the JVM actually runs (JLS: **the class wins**). I added
+      per-overload shadowing to stop dropping inherited bodies and dropped a different one.
+- [ ] swift `CallCollector.swift:384` — a ternary receiver composes opacity with `a.mono || b.mono`, so a
+      `some P` / `any P` ternary claims full monomorphization and skips the CHA for the ERASED arm. Needs `&&`.
+- [ ] swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
+      `patternNames` returns `[]` for optional/expression/enum-case patterns, so `for case let x? in` never
+      shadows and an enclosing `some P` parameter's flag stays attached to an unrelated erased binder.
+- [ ] rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
+      the nested signature's own bounds, so `fn inner<T: Doer>(d: T) { d.go() }` resolves to nothing. The
+      commit's fixture asserted only the FABRICATION direction; the second fixture was never written.
+- [ ] ts `scan.mjs:1631` — the module unit's wire key changed shape with **no engine-version bump**, and
+      §2.1 staleness keys on `candor.version`. A SAME-version consumer over a new report finds no key, is not
+      told it is stale, and reads the import as pure. The comment above `depInitCell` asserts this cannot
+      happen; the code does not implement that (item 9).
+
+**Fabrications:**
+- [ ] ts `scan.mjs:3884` — `typingsRoots()` returns null past a 128-file cap and the caller degrades it to
+      `[]`, so a large package loses the whole typings arm INCLUDING its role as the ambiguity evidence —
+      restoring `d7060ca`'s fabricated-Net / dropped-Fs / `deny Fs`-green defect for exactly the packages big
+      enough to hit the cap. **A truncated census must make the affected names REFUSE, never make them
+      confident.**
+- [ ] swift `Driver.swift:828` — the `typeSurface` consumer keys a BARE callee across every covered import
+      and checks only that the ENTRY lookup is unambiguous, never that the `returns` answer was. Two packages
+      exporting `build` → one silently wins, and the caller is charged the other's `Fs` and its path literal.
+      **The reverted rust attempt's defect 1, reappearing ACROSS packages instead of within one.**
+- [ ] ts `scan.mjs:4062` — the union is DROPPED where java MERGES (`48a5f18`), so a narrow real entry
+      replaces the dispatch union including its `['Unknown']` fan-out disclosure.
+
+**REFUTED and worth knowing:** the "fourth unpatched `respan_call_site` site" — the `macro_rules!` template
+path re-parses from a STRING, which registers a file on the current thread, so it was already safe. That is
+the second time that path has been wrongly accused today.
+
+### What the review says about the METHOD, which is worth more than the nine fixes
+
+1. **Nine for nine.** Not one confirmed finding was a fresh mechanism; every one was a guard added THAT DAY
+   that fired on the wrong thing or failed to fire. The fabrication/under-report boundary is not a place
+   where defects are *likely* — on this evidence it is where they *are*.
+2. **Authorship is no protection.** Two are mine, written while holding item 0 in mind, and both are in the
+   direction I had just argued I was protecting. The rust one is worse than the bug it fixed: a crash is
+   fail-closed, a cached empty result is not.
+3. **The same defect keeps recurring through a NEW DOOR.** The reverted rust leaf-key join came back as a
+   module-relative return type, and now again as a cross-package bare callee. Three doors, one defect.
+4. **A cap or a refusal must land on the PUBLISHING side, never on the EVIDENCE side.** ts's typings cap and
+   the union's drop-on-collision are the same error: refusing to gather evidence lets a confident wrong
+   answer through, where refusing to publish would have been safe.
