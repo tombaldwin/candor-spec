@@ -51,6 +51,38 @@ Every engine currently treats both as the first. That is the defect, and it is a
 is a resolution one. The distinction is available today, in every engine, with no format change: an engine
 always knows whether it formed a key.
 
+### CORRECTION — the binary above is wrong, and three engines found the same third case
+
+The table has two rows; there are three. Implementing half 1 in rust, java and ts produced three *different*
+triggers, and the reason is that "could-not-form-a-key" was the wrong generalisation:
+
+| | what happened | licenses a purity claim? |
+|---|---|---|
+| **keyed-and-missed** | the key was formed and names something that *could* have had a body | **yes** — the dep's report omits pure functions, so absence is its honest answer (§2 rule 3) |
+| **could-not-form-a-key** | the receiver was never typed, so no lookup happened | no — no question was asked |
+| **keyed-but-unanswerable** | the key WAS formed, but it names a **declaration that can have no body** — an interface method, an `abstract` member, a type-literal or property signature | no — absence under that key is *structurally guaranteed*, so it carries no information at all |
+
+The third row is the one that matters in practice, and it is where **java** and **ts** both landed while rust
+landed on the second:
+
+- **rust** has genuinely untyped receivers (`let c = deplib::build()` — a pure factory is absent from the
+  report, so no return type travels). Row 2.
+- **java** has no untyped receiver at all: bytecode always carries a static owner. Its conjunct is the
+  **opcode** — `INVOKEINTERFACE` *proves* the site names a declaration the JVM will never run, while
+  `INVOKEVIRTUAL` on a dep class usually names the body itself, so a miss there is a real purity claim. Row 3.
+- **ts** *refuted the canonical fixture*: return types travel in the `.d.ts`, so `build()` types `c`, the key
+  is formed and the join succeeds — `go` gets `Fs` precisely. Every genuinely-untyped variant (`any`, no
+  typings, untyped `require()`) *already* disclosed. What was silent was one level up: a receiver typed to an
+  **abstraction**. Row 3, reached from the opposite direction.
+
+**The unifying rule, and the one to implement:** *absence under a key licenses a purity claim only if the key
+names something that could have had a body.* Both other rows are the same failure — treating the absence of
+an answer as an answer.
+
+This is why the ts refutation was worth more than a ts fix would have been on its own. Being told the
+canonical shape does not reproduce is what forced the generalisation; had ts simply implemented row 2, all
+three engines would have shipped and the actual rule would still be unstated.
+
 ## Half 1 — disclose the unformed key (no format change, no four-way negotiation)
 
 **Rule.** When a call's receiver could not be typed, AND the receiver's value is bound (directly or
