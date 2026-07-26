@@ -2648,3 +2648,39 @@ evidence, and neither is a guard that has never fired.
 
 Fixes: java `5f29f08`, spec (this commit) — PART 18 java arm, verified to catch against the pre-fix jar:
 both java rows FAIL there and pass here.
+
+### 2026-07-26 (cont.) — review round 2: the repairs needed repairs
+
+A second review over the repairs from round 1 returned **10 confirmed defects**, and the four most severe were
+in the repair chain itself. Round 1 found 10; the audit of its fixes found 4 more; round 2 found 10 again.
+**Three rounds, and each round found defects in the previous round's fixes.**
+
+The rust chain is the clearest case, because the same defect survived three attempts in different clothes:
+
+| attempt | what it did | what it missed |
+|---|---|---|
+| last-wins map | picked one crate for a colliding trait leaf | FABRICATED the other crate's effects |
+| tombstone (`71c2495`) | dropped the colliding leaf for both | LOST the genuine reach — cardinal sin |
+| per-receiver (`0eca79c`) | resolved `&dyn` receivers per parameter | GENERIC and WHERE spellings still collided |
+| per-type-param (`eac96e7`) | attributed each bound to its own type param | — plus two scoping holes the previous fix opened |
+
+The through-line is not carelessness about any one case. It is that **each fix was written against the
+fixture that demonstrated the previous defect**, and that fixture contains only the shape already known to be
+broken. `only_alpha` calls `a.go()` and never `b.go()`; the `dyn` fixture has no generic spelling in it;
+neither has a nested item or a block shadow. Every fix passed, and every fix was partial in the direction its
+fixture could not see.
+
+**Comments asserted properties the code lacked — three times, independently.** "the trap this must not walk
+into" sat four paragraphs above a leaf-key join; "the parameter is gated to Runnable/Callable, so its reported
+surface is what the runtime invokes" (the gate constrains the TYPE, never which MEMBER runs); "collision
+inside a single parameter is impossible" (true of a parameter's own type, irrelevant to the shared map beneath
+it). Each read as reasoning and was an assertion, and each survived self-review *because* it answered the
+question the code should have been asked.
+
+**A rule that can VETO costs a reach; a rule that only WIDENS costs precision.** Replacing the ts callback
+position map with the callee's signature was strictly better information — and as a *replacement* it dropped
+`setTimeout`, whose DOM overload declares `TimerHandler = string | Function`, a type carrying no call
+signatures. Unioning the two sources keeps both blind spots harmless. That regression was caught by a test
+written months ago, which is the case for running the whole suite rather than the new case.
+
+Fixes: rust `eac96e7`, ts `4958a6d`, java + swift in progress. Round 1 and the audit are the two entries above.
