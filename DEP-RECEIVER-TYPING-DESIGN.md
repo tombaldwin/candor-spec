@@ -205,6 +205,41 @@ A new OPTIONAL top-level envelope block, sibling to `coverage`, not attached to 
   dispatch, which needs the dependency's hierarchy and nothing else.
 - Consumers that ignore it behave exactly as today, which is what makes it tier-1 additive.
 
+### ATTEMPTED AND REVERTED (2026-07-26) — read this before trying again
+
+A full producer+consumer prototype was built in rust (`58ddff0`, `b98957f`) and **reverted**. It worked on
+its fixture — the effect crossed the boundary and `deny Fs` went exit 0 → exit 1 — and a code review then
+confirmed **four** defects in it, two of them soundness. The fixture passing is not the bar.
+
+1. **It became the leaf-key join this document rejects.** Both ends collapsed the type to its bare leaf
+   (`{crate}#{leaf}`), so `sync::Client` and `mock::Client` in one dependency are indistinguishable. A pure
+   `mock_client()` factory published `deplib#Client`, and the consumer charged `sync::Client::send`'s `Net`
+   to a caller that cannot reach it. I wrote the warning below and then implemented the thing it warns
+   against, because "the type id" felt like a naming detail rather than the whole mechanism.
+2. **`returns` is the UNWRAPPED success type.** `record_return` applies `unwrap_result_option`, so
+   `fn connect() -> Result<Conn, E>` publishes `Conn`. The consumer's binding is a `Result`; method calls on
+   it were keyed against `Conn`. `c.map(…)` charges `Conn::map`'s effects (fabrication) and the far more
+   common `c.unwrap()` misses and — see 3 — reads pure.
+3. **It removed half 1's fail-closed floor.** On a `returns` hit followed by a `by_key` miss the branch
+   `continue`d, treating it as keyed-and-missed. But `by_key` deliberately DROPS ambiguous keys ("never
+   guess"), so the case where the dependency index *refuses to answer* was read as *the dependency claims
+   purity*. That is precisely where this document says half 1 must remain the floor, and the code did the
+   opposite.
+4. **It dropped `incomplete` and `dep_invisible`** that the main join propagates, so a literal `tables`
+   surface inherited across it read as complete.
+
+**Requirements for a second attempt**, all of them from the above rather than invented:
+- Type identity must be **fully qualified** — the module path is load-bearing, not cosmetic. If the id
+  cannot be made unambiguous, the rung is not ready.
+- The published return type must record **wrapper provenance** (`Result`/`Option`/etc.) or the consumer must
+  refuse to key through it.
+- A `by_key` miss after a `returns` hit must **fall back to half 1's disclosure**, never to silence, unless
+  the index can distinguish "no such entry" from "I dropped an ambiguous entry".
+- It must carry every surface the main join carries.
+- The producer's own emission must be measured on a MODULAR crate. An earlier bug here published module
+  names as types and was invisible on a flat fixture; the counts (`returns` size vs published size) are the
+  diagnostic, not the output.
+
 ### The trap this must not walk into
 
 A leaf-name join (`M#fetch` — match on the method name alone, ignore the receiver type) was already
