@@ -1,10 +1,10 @@
 # Workspace report chaining — cross-package interface dispatch (design)
 
-*Status: SHIPS on all three SOURCE engines — candor-scan (rust) + candor-ts + candor-swift (spec 0.23 line,
-gated behind `CANDOR_WORKSPACE_CHAIN`), and conformance **PART 18** pins the field + the cross-package
-resolution across all three (the ladder discipline, [[candor-versioning-ladder]]). candor-java is N/A
-(whole-classpath bytecode resolves cross-module dispatch natively). This document specs the `interfaceUnion`
-report field, the `--workspace` discovery flag, and the cross-package-interface-dispatch rule.*
+*Status: SHIPS on ALL FOUR engines — candor-scan (rust) + candor-ts + candor-swift, and since 2026-07-26
+candor-java (spec 0.23 line, gated behind `CANDOR_WORKSPACE_CHAIN`); conformance **PART 18** pins the field +
+the cross-package resolution four-way (the ladder discipline, [[candor-versioning-ladder]]). This document
+specs the `interfaceUnion` report field, the `--workspace` discovery flag, and the
+cross-package-interface-dispatch rule.*
 
 ## The problem
 
@@ -77,19 +77,25 @@ ugly `invisible:[/abs/path]`).
 
 ## Four-way status & rollout
 
-`interfaceUnion` now SHIPS on all **three** source engines (candor-scan + candor-ts + candor-swift), pinned
-by conformance PART 18; recorded as spec rung **0.23**. candor-java is N/A (whole-classpath bytecode).
+`interfaceUnion` now SHIPS on **all four** engines (candor-java + candor-scan + candor-ts + candor-swift),
+pinned by conformance PART 18; recorded as spec rung **0.23**. candor-java was recorded N/A here — "whole-
+classpath bytecode resolves cross-module dispatch natively" — which is true of an UNCHAINED whole-classpath
+scan and false of a CHAINED one, where the implementer is in the other tree. Its consumer needed no change:
+it keys entries by `owner.name+desc`, exactly the key an INVOKEINTERFACE site forms, so a union entry lands
+where the join already looks; only the PRODUCER was missing.
 
 | engine | chaining infra | `invisible` through chain | cross-pkg interface/protocol dispatch | discovery flag |
 |---|---|---|---|---|
 | **candor-ts** | ✓ (§2) | ✓ (added here) | WAS **silent-pure** → **FIXED** via `interfaceUnion` (gated) | ✓ `--workspace` |
 | **candor-swift** | ✓ (Deps.swift) | ✓ (already) | WAS **silent-pure** for an external-protocol-typed receiver (an interface method on a value whose protocol is imported from a chained package read PURE) → **FIXED** via protocol-CHA `interfaceUnion` (gated). NB a *project* type conforming to an *external* protocol is already handled soundly (`Driver.swift:454-475`: unmodeled → `Unknown`, Fluent `Model` → Db) — a different shape. | manual `CANDOR_DEPS` today |
 | **candor-rust** | ✓ `--deps` | ✓ | WAS **silent-pure** for a `&dyn ExternalTrait` call (its impls live in another crate, so in-crate CHA found nothing and dropped it) → **FIXED**: trait-CHA `interfaceUnion` producer entries + a consumer that emits a crate-qualified `Call` for an external-`use`-resolved trait so the chain resolves (unchained it now discloses `invisible:[crate]`, was pure). A/B on syn/serde_json/h2: +80 recoveries, 0 fabrication. | ✓ `--deps` (Cargo) |
-| **candor-java** | ✓ (§2) | confirm | **N/A** — the bytecode engine is typically given the whole classpath, so cross-module interface dispatch resolves natively (it sees every `invokeinterface` target's class) | classpath, not a flag |
+| **candor-java** | ✓ (§2) | ✓ | WAS recorded **N/A** ("the whole classpath resolves it natively") — true UNCHAINED, false at the boundary: split the trees and chain the dep report and `s.save()` on a dep-declared `Store` reads `Unknown[dispatch:…]` (half 1) rather than the effect, because the body is keyed `lib/FileStore.save` and the site keys `lib/Store.save`. → **FIXED** producer-side: interface-CHA `interfaceUnion` entries (gated). The CONSUMER needed no change — entries are keyed `owner.name+desc`, exactly the INVOKEINTERFACE key. A/B on twelve real jars: report byte-identical with the flag off; six chained library pairs, 65 effect gains, 0 effect losses. | classpath, or `--deps` |
 
 The empirical result on a 2-package fixture (interface/protocol/trait in a dep, effectful impl, consumer
 calling the method): **all three source engines** read the consumer call **PURE** when the dep is unchained,
-and all three now disclose the **precise chained effect** with `interfaceUnion` + the dep report chained. So
+and all three now disclose the **precise chained effect** with `interfaceUnion` + the dep report chained.
+candor-java's chained arm reached `Unknown[dispatch:…]` rather than pure (half 1 already covered it) and now
+reaches the precise effect too. So
 this was a genuine silent-pure hole in every source engine — each reached it through a different resolution
 path (ts keys the chain lookup on the bodyless interface method signature; swift on an unresolved
 external-protocol receiver; rust drops an external-`&dyn` dispatch because its impls are in another crate) —
@@ -98,13 +104,13 @@ repo-reading one engine's resolution path (e.g. swift's project-conforms-to-exte
 gap as precision-only; the 2-package empirical fixture is the honest oracle — and all three source engines
 read it pure.
 
-Rollout: DONE for all three source engines — `interfaceUnion` field + `--workspace`/`--deps` convention pinned
+Rollout: DONE for all four engines — `interfaceUnion` field + `--workspace`/`--deps` convention pinned
 here and in conformance PART 18 (candor-scan trait-union + cross-crate `&dyn` consumer resolution, candor-ts
-interface-union, candor-swift protocol-union), recorded as spec 0.23; java is N/A. The empirical test for any
+interface-union, candor-swift protocol-union, candor-java interface-CHA union), recorded as spec 0.23. The empirical test for any
 engine: a 2-package fixture — a consumer calling an interface/protocol/trait method whose declaration comes
 from a chained dep must resolve to the union entry's effect (not read pure). Remaining follow-ons: a
-`--workspace` ergonomics flag for candor-swift now exists (parses `.package(path:)`); the umbrella strips
-`--workspace` for the JVM engine (N/A). Open: publish the 0.23 line.
+`--workspace` ergonomics flag for candor-swift now exists (parses `.package(path:)`); candor-java has
+`--deps` rather than `--workspace`. Open: publish the 0.23 line.
 
 ## Measured value
 

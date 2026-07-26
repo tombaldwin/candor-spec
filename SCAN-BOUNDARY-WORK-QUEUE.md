@@ -356,18 +356,21 @@ and the only conformer, app has none:
 - [ ] **factory-bound receiver — the DETERMINATION half.** Still blocked on the format rung, and still
       correctly so. A leaf-key join (`M#fetch`) remains rejected: leaves like `write`/`run`/`send` would
       fabricate on unrelated receivers.
-- [ ] **swift row 3 — a parameter typed as a DEP-DECLARED PROTOCOL** (`func go(_ s: any Store)`). Forms the
-      key `DepLib#Store.save` and misses, because a protocol REQUIREMENT has no body and nothing is ever
-      hashed under it. Unlike row 2 this is NOT fixable locally: Swift spells a protocol-typed and a
-      class-typed parameter identically, so the engine cannot tell an unanswerable key from a legitimate
-      one. Java escapes this only because bytecode records the opcode. **This is the strongest argument for
-      `typeSurface.implements` in the whole queue** — it is not precision-as-nicety, it is the ability to
-      apply an honesty rule where the language withholds the evidence.
-- Residual: the dep-CONFORMER direction of the protocol case is recovered only under `--workspace` (child
-  scans emit the union entries); a plain `--deps` report carries no hierarchy. Pinned as a residual in the
-  test rather than invented.
+- [x] **swift row 3 — ALREADY SOLVED by `interfaceUnion`; my characterisation was wrong (2026-07-26).**
+      Recorded here as "NOT fixable locally" and "the strongest argument for `typeSurface.implements` in the
+      whole queue". Both false. Measured:
 
-### cross-cutting
+          dep scanned WITH CANDOR_WORKSPACE_CHAIN=1 emits, unprompted:
+              DepLib#Store.save ['Fs']  interfaceUnion: true
+          consumer:
+              go(_ s: any Store) { s.save() }   ->  ['Fs']        row 3, RESOLVED
+              goFactory() { let s = build(); … } ->  Unknown[…]   row 2, the genuine `returns` case
+
+      My earlier fixture scanned the dependency WITHOUT the flag, so I measured an engine that had not been
+      ASKED and concluded it could not answer. The same experiment on java gave the same result (its
+      consumer resolves a union entry with no code change), which is what removed `implements` from the
+      queue. *When an engine "cannot" do something, check whether the feature that would do it was switched
+      on.*
 - [~] **Coverage granularity — CHARACTERISED, split into three arms, one worth fixing.**
       Full write-up + fixtures + measured blast radius:
       [COVERAGE-GRANULARITY-FINDING.md](COVERAGE-GRANULARITY-FINDING.md). The one-line item above
