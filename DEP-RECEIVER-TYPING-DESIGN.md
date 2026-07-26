@@ -94,7 +94,28 @@ claim, and it is right about every call except the one no key was formed for.
 So the trigger is: **untyped receiver AND dep provenance AND the dep is chained.** Measured cost in rust
 after the third conjunct — 0 changes on three unchained corpora, and on a chained scan 1 new source plus 4
 transitive callers of it. Other engines should expect to find the same third conjunct rather than rediscover
-it: check where your own coverage ledger already speaks before adding a second voice.
+it: check where your own coverage ledger already speaks before adding a second voice. Confirmed in ts
+(0 changes on 10 unchained real targets) and in java (twelve unchained jars byte-identical).
+
+### What it means where the receiver is always typed (ts, `420e715`) — the fixture above REFUTES
+
+The fixture at the top of this document does not reproduce in candor-ts, and that is the finding rather
+than an obstacle to one. Return types travel in the `.d.ts`, so `build()` types `c` to `Client`, the key
+`depkit#Client.fetch` is formed, and the join succeeds. The receiver ts genuinely *cannot* type is `any`,
+which already read `callback:` Unknown. Both halves of the rust shape are absent.
+
+The rung still bites, one level up: a receiver typed to an **abstraction** — an interface method or
+property signature, an anonymous type-literal member, an `abstract` member. No *body* is hashed under that
+name in the dependency, whatever its implementations do, so `build(): Fetcher` against a report whose only
+body is `pkg#Client.fetch` produces a key that is formed and can never be answered — by that report or any
+other. Measured, unchained 0/10 targets changed; chained, 5 gains over ~1000 analyzed functions on five
+monorepo services (8/202 and 3/453 with producer-side `interfaceUnion` entries stripped), every one traced
+to a real implementor or to a member installed at runtime by `fastify.decorate(…)`.
+
+One layering note that generalises: ts's `interfaceUnion` emitter *declines* to emit when an interface name
+is declared twice in a package (never guess which one). That refusal is right, and before half 1 it left
+silence. **Half 1 is the fail-closed floor under every guard the resolution path is correct to refuse** —
+which is the same reason it does not become dead code when half 2 lands.
 
 ### What "could not form a key" means in an engine with no untyped receivers (java, `828ca18`)
 
@@ -177,9 +198,10 @@ correct behaviour is half 1 — disclose — not a widened match. **Never trade 
 
 1. **Half 1, per engine, independently.** Each engine's own schedule; no rung, no negotiation. Measure the
    hedge count and check the trigger is the conjunction, not the disjunct. Done: rust `5fde0d6`, java
-   `828ca18` (candor-java). Open: ts, swift.
+   `828ca18` (candor-java), ts `420e715` (candor-ts). Open: swift.
 2. **Conformance part** pinning that an untyped cross-package receiver DISCLOSES rather than reads pure —
-   verified-to-catch by reverting one engine, as PARTs 19 and 20 were.
+   verified-to-catch by reverting one engine, as PARTs 19 and 20 were. **Done, PART 21**, three arms live
+   (java, rust, ts), each verified to catch against its own pre-fix engine.
 3. **Half 2** as a spec rung, once half 1 has removed the urgency and the type-identity question has been
    settled against a real four-way implementation rather than in the abstract.
 
