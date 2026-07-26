@@ -3761,28 +3761,28 @@ P21_OK=0
 #      report entirely — there is no return type to travel, and `c` is never typed.
 P21_RS="/nonexistent"
 if [ -x "$SCAN" ]; then
-  mkdir -p "$W/uk/rs/deplib/src" "$W/uk/rs/app/src"
-  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/uk/rs/deplib/Cargo.toml"
-  printf 'pub struct Client;\nimpl Client {\n  pub fn fetch(&self) -> String { std::fs::read_to_string("/etc/x").unwrap_or_default() }\n}\npub fn build() -> Client { Client }\n' > "$W/uk/rs/deplib/src/lib.rs"
-  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib={path="../deplib"}\n' > "$W/uk/rs/app/Cargo.toml"
-  printf 'pub fn go() -> String { let c = deplib::build(); c.fetch() }\n' > "$W/uk/rs/app/src/lib.rs"
-  ( cd "$W/uk/rs/deplib" && "$SCAN" . >/dev/null 2>&1 )
-  cp "$W"/uk/rs/deplib/.candor/report.*.scan.json "$W/uk/rsdep.json" 2>/dev/null
-  ( cd "$W/uk/rs/app" && CANDOR_DEPS="$W/uk/rsdep.json" "$SCAN" . >/dev/null 2>&1 )
-  P21_RS=$(ls "$W"/uk/rs/app/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
+  mkdir -p "$W/ukr/rs/deplib/src" "$W/ukr/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/ukr/rs/deplib/Cargo.toml"
+  printf 'pub struct Client;\nimpl Client {\n  pub fn fetch(&self) -> String { std::fs::read_to_string("/etc/x").unwrap_or_default() }\n}\npub fn build() -> Client { Client }\n' > "$W/ukr/rs/deplib/src/lib.rs"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib={path="../deplib"}\n' > "$W/ukr/rs/app/Cargo.toml"
+  printf 'pub fn go() -> String { let c = deplib::build(); c.fetch() }\n' > "$W/ukr/rs/app/src/lib.rs"
+  ( cd "$W/ukr/rs/deplib" && "$SCAN" . >/dev/null 2>&1 )
+  cp "$W"/ukr/rs/deplib/.candor/report.*.scan.json "$W/ukr/rsdep.json" 2>/dev/null
+  ( cd "$W/ukr/rs/app" && CANDOR_DEPS="$W/ukr/rsdep.json" "$SCAN" . >/dev/null 2>&1 )
+  P21_RS=$(ls "$W"/ukr/rs/app/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
 fi
 # ---- java: dispatch on a DEP-DECLARED INTERFACE whose impl lives in the dep. The site names the
 #      interface (a declaration the JVM never runs); the body is keyed under the impl's owner.
-mkdir -p "$W/uk/java/lib" "$W/uk/java/app"
-printf 'package lib;\npublic interface Store { void save(String s); }\n' > "$W/uk/java/lib/Store.java"
-printf 'package lib;\nimport java.io.*;\npublic class FileStore implements Store {\n  public void save(String s) { try (FileWriter w = new FileWriter("/tmp/x")) { w.write(s); } catch (Exception e) {} }\n}\n' > "$W/uk/java/lib/FileStore.java"
-printf 'package lib;\npublic class Factory { public static Store build() { return new FileStore(); } }\n' > "$W/uk/java/lib/Factory.java"
-printf 'package app;\npublic class Go { public void run() { lib.Store s = lib.Factory.build(); s.save("hello"); } }\n' > "$W/uk/java/app/Go.java"
-javac -d "$W/uk/jall" "$W/uk/java/lib"/*.java "$W/uk/java/app/Go.java" 2>/dev/null
-mkdir -p "$W/uk/jlib" "$W/uk/japp/app" && cp -r "$W/uk/jall/lib" "$W/uk/jlib/" 2>/dev/null
-cp "$W/uk/jall/app/Go.class" "$W/uk/japp/app/" 2>/dev/null
-java -jar "$JAR" "$W/uk/jlib" --json "$W/uk/jlib.json" >/dev/null 2>&1
-CANDOR_DEPS="$W/uk/jlib.json" java -jar "$JAR" "$W/uk/japp" --json "$W/uk/japp.json" >/dev/null 2>&1
+mkdir -p "$W/ukr/java/lib" "$W/ukr/java/app"
+printf 'package lib;\npublic interface Store { void save(String s); }\n' > "$W/ukr/java/lib/Store.java"
+printf 'package lib;\nimport java.io.*;\npublic class FileStore implements Store {\n  public void save(String s) { try (FileWriter w = new FileWriter("/tmp/x")) { w.write(s); } catch (Exception e) {} }\n}\n' > "$W/ukr/java/lib/FileStore.java"
+printf 'package lib;\npublic class Factory { public static Store build() { return new FileStore(); } }\n' > "$W/ukr/java/lib/Factory.java"
+printf 'package app;\npublic class Go { public void run() { lib.Store s = lib.Factory.build(); s.save("hello"); } }\n' > "$W/ukr/java/app/Go.java"
+javac -d "$W/ukr/jall" "$W/ukr/java/lib"/*.java "$W/ukr/java/app/Go.java" 2>/dev/null
+mkdir -p "$W/ukr/jlib" "$W/ukr/japp/app" && cp -r "$W/ukr/jall/lib" "$W/ukr/jlib/" 2>/dev/null
+cp "$W/ukr/jall/app/Go.class" "$W/ukr/japp/app/" 2>/dev/null
+java -jar "$JAR" "$W/ukr/jlib" --json "$W/ukr/jlib.json" >/dev/null 2>&1
+CANDOR_DEPS="$W/ukr/jlib.json" java -jar "$JAR" "$W/ukr/japp" --json "$W/ukr/japp.json" >/dev/null 2>&1
 # ---- ts: the PUBLISHED shape — dist JS + `.d.ts`. TypeScript reaches this case by a different road than
 #      rust: a receiver it genuinely cannot type is `any`, which already reads `callback:` Unknown, because
 #      return types travel in the typings. Its unformed key is the receiver typed to an ABSTRACTION the
@@ -3790,20 +3790,20 @@ CANDOR_DEPS="$W/uk/jlib.json" java -jar "$JAR" "$W/uk/japp" --json "$W/uk/japp.j
 #      hashed under the implementing class the consumer never sees.
 TS_UK="/nonexistent"
 if [ -d "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
-  mkdir -p "$W/uk/ts/deplib/src" "$W/uk/ts/app/src" "$W/uk/ts/app/node_modules/deplib/dist"
-  printf '{"name":"deplib","version":"0.0.0"}\n' > "$W/uk/ts/deplib/package.json"
-  printf 'import * as fs from "node:fs";\nexport interface Store { save(s: string): void; }\nexport class FileStore implements Store {\n  save(s: string): void { fs.writeFileSync("/tmp/x", s); }\n}\nexport function build(): Store { return new FileStore(); }\n' > "$W/uk/ts/deplib/src/index.ts"
-  printf '{"name":"app","version":"0.0.0"}\n' > "$W/uk/ts/app/package.json"
-  printf 'import { build } from "deplib";\nexport function go(): void { const s = build(); s.save("hello"); }\n' > "$W/uk/ts/app/src/index.ts"
-  printf '{"name":"deplib","version":"0.0.0","types":"dist/index.d.ts","main":"dist/index.js"}\n' > "$W/uk/ts/app/node_modules/deplib/package.json"
-  printf 'export interface Store { save(s: string): void; }\nexport declare function build(): Store;\n' > "$W/uk/ts/app/node_modules/deplib/dist/index.d.ts"
-  printf 'exports.build = function () { return {}; };\n' > "$W/uk/ts/app/node_modules/deplib/dist/index.js"
-  ( cd "$TS_DIR" && node scan.mjs "$W/uk/ts/deplib" >/dev/null 2>&1 )
-  cp "$W/uk/ts/deplib/.candor/report.json" "$W/uk/tsdep.json" 2>/dev/null
-  ( cd "$TS_DIR" && CANDOR_DEPS="$W/uk/tsdep.json" node scan.mjs "$W/uk/ts/app" >/dev/null 2>&1 )
-  TS_UK="$W/uk/ts/app/.candor/report.json"
+  mkdir -p "$W/ukr/ts/deplib/src" "$W/ukr/ts/app/src" "$W/ukr/ts/app/node_modules/deplib/dist"
+  printf '{"name":"deplib","version":"0.0.0"}\n' > "$W/ukr/ts/deplib/package.json"
+  printf 'import * as fs from "node:fs";\nexport interface Store { save(s: string): void; }\nexport class FileStore implements Store {\n  save(s: string): void { fs.writeFileSync("/tmp/x", s); }\n}\nexport function build(): Store { return new FileStore(); }\n' > "$W/ukr/ts/deplib/src/index.ts"
+  printf '{"name":"app","version":"0.0.0"}\n' > "$W/ukr/ts/app/package.json"
+  printf 'import { build } from "deplib";\nexport function go(): void { const s = build(); s.save("hello"); }\n' > "$W/ukr/ts/app/src/index.ts"
+  printf '{"name":"deplib","version":"0.0.0","types":"dist/index.d.ts","main":"dist/index.js"}\n' > "$W/ukr/ts/app/node_modules/deplib/package.json"
+  printf 'export interface Store { save(s: string): void; }\nexport declare function build(): Store;\n' > "$W/ukr/ts/app/node_modules/deplib/dist/index.d.ts"
+  printf 'exports.build = function () { return {}; };\n' > "$W/ukr/ts/app/node_modules/deplib/dist/index.js"
+  ( cd "$TS_DIR" && node scan.mjs "$W/ukr/ts/deplib" >/dev/null 2>&1 )
+  cp "$W/ukr/ts/deplib/.candor/report.json" "$W/ukr/tsdep.json" 2>/dev/null
+  ( cd "$TS_DIR" && CANDOR_DEPS="$W/ukr/tsdep.json" node scan.mjs "$W/ukr/ts/app" >/dev/null 2>&1 )
+  TS_UK="$W/ukr/ts/app/.candor/report.json"
 fi
-python3 - "$W/uk/japp.json" "$P21_RS" "$TS_UK" <<'PYUK' || P21_OK=1
+python3 - "$W/ukr/japp.json" "$P21_RS" "$TS_UK" "$([ -x "$SCAN" ] && echo 1 || echo 0)" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" <<'PYUK' || P21_OK=1
 import json, sys, os
 def verdict(path, fn):
     """(disclosed, detail). A fn ABSENT from `functions` is the defect: under ⟨0.21⟩ it is still
@@ -3818,9 +3818,21 @@ def verdict(path, fn):
     return False, "ABSENT from the report — a confident purity claim"
 print("\n[21] COULD-NOT-FORM-A-KEY MUST DISCLOSE  (a receiver the engine never typed must not read pure)")
 engines = [("java", sys.argv[1], "app.Go.run")]
-if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2], "go"))
-if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "src.index.go"))
 fails = 0
+# An engine whose binary is absent is legitimately skipped; an engine whose binary is PRESENT but whose
+# report never appeared is a FAILURE, not a skip. Distinguishing the two is the whole point — a run that
+# quietly checks three engines instead of four reads exactly like a run that checked four and agreed.
+# (This bit immediately: renaming the fixture root left one path stale, rust's report went missing, and
+# the row printed java/ts/swift with no mention that rust had dropped out.)
+for name, argi, fn, present in (("rust", 2, "go", sys.argv[4] == "1"),
+                                ("ts", 3, "src.index.go", sys.argv[5] == "1")):
+    path = sys.argv[argi]
+    if os.path.exists(path):
+        engines.append((name, path, fn))
+    elif present:
+        fails += 1
+        print(f"  {name:6s} -> FAIL     (engine PRESENT but its PART 21 report was never produced at "
+              f"{path or '<unset>'} — a missing arm is not a passing arm)")
 for name, path, fn in engines:
     ok, why = verdict(path, fn)
     if ok:
