@@ -3803,7 +3803,21 @@ if [ -d "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   ( cd "$TS_DIR" && CANDOR_DEPS="$W/ukr/tsdep.json" node scan.mjs "$W/ukr/ts/app" >/dev/null 2>&1 )
   TS_UK="$W/ukr/ts/app/.candor/report.json"
 fi
-python3 - "$W/ukr/japp.json" "$P21_RS" "$TS_UK" "$([ -x "$SCAN" ] && echo 1 || echo 0)" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" <<'PYUK' || P21_OK=1
+# ---- swift: a receiver bound from a dep FACTORY. The factory is pure, so it is absent from the dep's
+#      report and no return type travels — the binding is never typed and no key is ever formed.
+SW_UK="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/ukr/sw/deplib/Sources/DepLib" "$W/ukr/sw/app/Sources/App"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "DepLib", products: [.library(name: "DepLib", targets: ["DepLib"])], targets: [.target(name: "DepLib")])\n' > "$W/ukr/sw/deplib/Package.swift"
+  printf 'import Foundation\npublic protocol Store { func save(_ s: String) }\npublic final class FileStore: Store {\n  public init() {}\n  public func save(_ s: String) { try? s.write(toFile: "/tmp/x", atomically: true, encoding: .utf8) }\n}\npublic func build() -> Store { return FileStore() }\n' > "$W/ukr/sw/deplib/Sources/DepLib/Store.swift"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(path: "../deplib")], targets: [.executableTarget(name: "App", dependencies: [.product(name: "DepLib", package: "deplib")])])\n' > "$W/ukr/sw/app/Package.swift"
+  printf 'import DepLib\nfunc goFactory() { let s = build(); s.save("hello") }\ngoFactory()\n' > "$W/ukr/sw/app/Sources/App/main.swift"
+  ( cd "$W/ukr/sw/deplib" && "$SW_BIN" . >/dev/null 2>&1 )
+  cp "$W"/ukr/sw/deplib/.candor/report.*.Swift.json "$W/ukr/swdep.json" 2>/dev/null
+  ( cd "$W/ukr/sw/app" && CANDOR_DEPS="$W/ukr/swdep.json" "$SW_BIN" . >/dev/null 2>&1 )
+  SW_UK=$(ls "$W"/ukr/sw/app/.candor/report.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
+fi
+python3 - "$W/ukr/japp.json" "$P21_RS" "$TS_UK" "$([ -x "$SCAN" ] && echo 1 || echo 0)" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" "$SW_UK" "$([ -n "$SW_PRESENT" ] && echo 1 || echo 0)" <<'PYUK' || P21_OK=1
 import json, sys, os
 def verdict(path, fn):
     """(disclosed, detail). A fn ABSENT from `functions` is the defect: under ⟨0.21⟩ it is still
@@ -3825,7 +3839,8 @@ fails = 0
 # (This bit immediately: renaming the fixture root left one path stale, rust's report went missing, and
 # the row printed java/ts/swift with no mention that rust had dropped out.)
 for name, argi, fn, present in (("rust", 2, "go", sys.argv[4] == "1"),
-                                ("ts", 3, "src.index.go", sys.argv[5] == "1")):
+                                ("ts", 3, "src.index.go", sys.argv[5] == "1"),
+                                ("swift", 6, "goFactory", sys.argv[7] == "1")):
     path = sys.argv[argi]
     if os.path.exists(path):
         engines.append((name, path, fn))
@@ -3840,13 +3855,12 @@ for name, path, fn in engines:
     else:
         fails += 1
         print(f"  {name:6s} -> DIVERGE  ({why})")
-print("  swift -> not yet implemented; half 1 is per-engine and needs no rung, so it joins by landing it")
 sys.exit(1 if fails else 0)
 PYUK
 
 echo "PART 21 — could-not-form-a-key discloses (DEP-RECEIVER-TYPING-DESIGN.md half 1)"
 if [ "$P21_OK" = 0 ]; then
-  echo "  -> MATCH — an untyped cross-package receiver discloses instead of reading pure in java + rust + ts"
+  echo "  -> MATCH — an untyped cross-package receiver discloses instead of reading pure in all four engines"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
