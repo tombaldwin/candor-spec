@@ -77,6 +77,15 @@ now scopes the headline claim because of it.
    the real clearing guard fires on a CONTENT change, and does. **A false defect costs the same review time
    as a real one and burns credibility with whoever fixed it.** The check is cheap: name the thing your
    arms actually differ in, and confirm it is the thing you think you are varying.
+7e. **CHECK THAT THE THING READING YOUR OUTPUT CAN NAME WHAT IT READ.** A mutation round reported the
+   WRONG tests failing, in a pattern that looked exactly like a real inversion, and two rounds went into
+   theorising about the engine before the CLI contradicted the harness. Cause: the results parser matched
+   `<testcase name="X" …>(.*?)</testcase>` against JUnit XML — and a PASSING testcase is SELF-CLOSING, so
+   the regex ran from one test's name to a LATER failing test's close tag and attributed the failure to the
+   wrong test. Item 7 says delete the output before you measure a control; its sibling is that **a parser
+   which silently mis-attributes is worse than one that errors, because its output is plausible.** Prefer
+   the tool's own reporting to a regex over its artifacts, and when a mutation result surprises you,
+   confirm it from a second channel before theorising about the engine.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
