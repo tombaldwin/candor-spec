@@ -54,6 +54,14 @@ now scopes the headline claim because of it.
    disk, and reading it back silently reports the wrong arm's result. This has now bitten three times in this
    vein — twice via a stale `*-all.jar` picked by `ls … | head -1`, once via a pre-fix ts worktree with no
    `node_modules`. Every time, the fabricated datapoint pointed the *flattering* way.
+7b. **KEEP BOTH ARMS' BINARIES, not just their outputs — a measurement you cannot re-run is not a
+   measurement.** The dep-hierarchy A/B reported httpclient BYTE-IDENTICAL on its first pass. Three later
+   runs — two of them of a *different* variant of the same change — all report it DIFFERS, deterministically,
+   with seven traceable Net gains. The first result was wrong and the cause is now unrecoverable, because
+   the post-arm jar had been rebuilt over by the time the contradiction surfaced. Deleting the OUTPUT before
+   a control (item 7) is not enough: name each arm's binary by its content hash, keep it for the life of the
+   measurement, and when two runs disagree re-run BOTH from their preserved binaries before believing
+   either. Note which way the bad datapoint pointed — again the flattering way (a real recovery, hidden).
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -331,20 +339,40 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
         either way, so no fixture and no corpus can tell them apart — the direction is pinned by a unit
         test on the predicate itself, verified to catch (allowlist restored → that test and only that test
         fails, all 33 others green).
-      - **RESIDUAL, refuted with evidence rather than deferred:** the receiver-driven form (`w.write("x")`)
+      - **RESIDUAL — CLOSED by `800f471`, the way its own test instructed.** The receiver-driven form (`w.write("x")`)
         fails only on `isJavaIoStreamType`, which needs the DEPENDENCY's supertypes. Relaxing it was
         measured on 11 split-and-chained libraries: 161 sites over 31 dep types, only 3 of the 31 are
         java.io streams — the rest (`PacketLineOut.writeString`, `RebaseState.readFile`,
         `ObjectWriter.writeValueAsString`) are already resolved by the exact-hash join. ~90% wrong-receiver
         fabrication, so the gate stays shut. Pinned as a test that says: *if this passes, the hierarchy
         arrived — delete the residual, don't relax the gate.*
-- [ ] **CONSUME `<report>.hierarchy.json` — the dep hierarchy java ALREADY WRITES to disk.** Found while
-      closing the row above. `ReportWriter.writeHierarchy` emits every project class's direct supers +
-      interfaces beside every scan; `Loader.loadCrossDeps` reads only the report JSON, so **nothing on the
-      consumer side ever opens the sidecar**. That is precisely the `typeSurface.implements` information the
-      abstract-dep-CLASS row, swift row 3 and the write/read residual are all blocked on — and for java it
-      needs no format rung at all, only a consumer. It changes dispatch resolution globally, so it wants its
-      own A/B and its own commit.
+- [x] **CONSUME `<report>.hierarchy.json` — DONE, `800f471`, and it closed the write/read residual with
+      it.** Traced on real code: httpclient's `LoggingManagedHttpClientConnection.getSocketInputStream`
+      went `[] → ['Net']` because `nearestDepFn` stopped at the first DEPENDENCY class — it could not see
+      that class's own super, so the declaring body one hop further up (httpcore's
+      `BHttpConnectionBase.getSocketInputStream`, `Net` in the chained report) was never reached. Seven
+      functions recover Net; four had it DECLARED already, so `overdeclared` shrinks to match.
+      - **The one-line version is unsound and that is the whole lesson.** Reading the sidecar inside
+        `Cha.externalSupers` gets everything downstream for free — and `externalSupers` feeds
+        `buildSubtypeIndex`, so a project `P extends DepBase` where `DepBase implements Runnable` newly
+        lands in `subtypeIndex[Runnable]`, an `r.run()` site finds a non-empty CHA, and the JDK-SAM gate
+        that raises the honest `callback:` Unknown fires ONLY on an empty target set. Disclosed Unknown →
+        confident purity claim, manufactured by a change whose argument was that it only adds knowledge.
+        Scoped to the two dep-facing walks instead, with a test asserting the SCOPE (`externalSupers` on a
+        sidecar type must still return empty) rather than a comment claiming it.
+      - Measured: 5 chained pairs, 7 gains, 0 losses, entry counts identical, **Unknown counts unchanged on
+        every pair** — the scoping is what that last column proves. `CANDOR_DEPHIER_DEBUG` instruments both
+        halves (18–276 types loaded per pair; 44 and 54 consultations, every hit a correct fact).
+      - Not version-gated, deliberately: the sidecar carries no effect claim, only a route, and the entry it
+        routes to is still version-gated — so a stale hierarchy reaches a stale entry and yields Unknown.
+      As originally filed: `ReportWriter.writeHierarchy` emits every project class's direct supers +
+      interfaces beside every scan; `Loader.loadCrossDeps` read only the report JSON, so nothing on the
+      consumer side ever opened the sidecar. That is the `typeSurface.implements` information the
+      abstract-dep-CLASS row, swift row 3 and the write/read residual were all blocked on — and for java it
+      needed no format rung at all, only a consumer.
+      **STILL OPEN, and it is the reason the scope above matters:** the abstract-dep-CLASS row wants the
+      hierarchy in the SUBTYPE INDEX, which is exactly the use this commit refused. It needs its own
+      argument about what happens to the Unknowns that resolution would suppress, not a wider `if`.
 - [ ] **`reentryTargets` fans only DOWN the subtype index** (pre-existing, unrelated to the boundary): in a
       single tree, `new Formatter(half)` where `Half extends Sink` inherits `append(CharSequence)` misses
       the inherited body. The chained arm is now strictly MORE complete than the in-scan control for that
