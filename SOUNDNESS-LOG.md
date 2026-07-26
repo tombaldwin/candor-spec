@@ -2600,3 +2600,51 @@ gap; it revealed it. Expect an apparent regression when you stop guessing, and e
 treating it as one.
 
 Fixes: rust `0eca79c` + `fee73fe`, java `020fb62`, ts `c08063a`.
+
+### 2026-07-26 — java joins PART 18: the `interfaceUnion` PRODUCER, and the `implements` rung comes off the queue
+
+candor-java was the one engine marked **N/A** for conformance PART 18, on the recorded grounds that
+"whole-classpath bytecode resolves cross-module dispatch natively". That is true of an UNCHAINED
+whole-classpath scan and **false of a chained one**, where the implementer sits in the other tree — the same
+"ask separately what an engine does at the BOUNDARY" lesson the initializer-edge vein taught. Split the two
+packages, chain the dep report, and `void run(lib.Store s) { s.save(…) }` reads `Unknown[dispatch:…]` (half
+1's disclosure) rather than the `Fs` its single-tree control gives.
+
+**What was missing was only a PRODUCER.** The consumer was already correct and needed no change: candor-java
+keys report entries by `owner.name+desc`, which is exactly the key `crossDepJoin` forms for an
+INVOKEINTERFACE site, so a union entry lands where the join already looks. This retires the proposed
+`typeSurface.implements` field entirely — the union publishes the implementer set the consumer's question
+needs, so the hierarchy encoding is redundant (DEP-RECEIVER-TYPING-DESIGN.md). `returns` remains the one
+genuinely new field, wanted by rust and swift only.
+
+Emission is gated on `CANDOR_WORKSPACE_CHAIN` (the flag rust and swift already read), per interface method,
+effects = the union over `Cha.chaTargets` — the same CHA universe in-scan dispatch uses, so a union can only
+name bodies the scan analysed. Gate exit 1 (single-tree control) → 0 (split + chained) → **1** again.
+
+**Measured.** Flag OFF: twelve real jars byte-identical to the pre-change engine, byte for byte. Flag ON:
+entries +0.9%–14.8%, every addition an `interfaceUnion`, ordinary entries untouched. The empty-union skip is
+the dominant filter rather than a rubber stamp — jackson-databind: 198 candidate interface methods, 161 pure
+across every implementer, 36 emitted. Six chained library pairs, 21 922 analyzed functions: **65 effect
+gains, 0 effect losses**; 7 half-1 `Unknown`s resolved to a precise effect; 10 functions newly disclosing
+`Unknown` (httpcore's `Cancellable.cancel` implementers are themselves unresolved, so the union says so
+instead of letting httpclient's `abort()` claim a complete set). Gains traced to okio `RealBufferedSink`/
+`RealBufferedSource` (okhttp's `ResponseBody.byteStream`, every `WebSocketWriter.write*`) and httpcore
+`DefaultBHttpClientConnection.flush` → `Net` reaching httpclient's three connection adapters.
+
+**A guard written, measured and REMOVED — standing-bar item 0 in its exact shape, caught before shipping.**
+"Emit only for an interface with at least one local subtype" read like a bound on `chaTargets`'
+owner-inherits-a-default fallback. It changed **not one entry** across the twelve jars, and the single shape
+where it did fire — an interface re-abstracting a method whose only body is a super-interface `default` — is
+a genuinely runnable body that an EXTERNAL implementer inherits and cannot see for itself, a dep supertype
+not being on candor's classpath. It was an under-report wearing a bound's clothes; `chaTargets` finding
+nothing is what actually delivers "nothing implements it, so nothing is published".
+
+**And two guards that DID survive were only shown load-bearing after their first fixture failed to exercise
+them.** Every guard was mutated out and the suite re-run: two mutations changed nothing, which is not
+evidence that the guards are unnecessary but evidence that the fixtures were. The static/private filter
+needs a PURE `static` interface method beside an implementer declaring the same `name+desc` as an INSTANCE
+method — otherwise the static call site is charged a body it never runs. A test that has never failed is not
+evidence, and neither is a guard that has never fired.
+
+Fixes: java `5f29f08`, spec (this commit) — PART 18 java arm, verified to catch against the pre-fix jar:
+both java rows FAIL there and pass here.

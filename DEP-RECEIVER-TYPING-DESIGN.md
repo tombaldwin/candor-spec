@@ -246,19 +246,22 @@ The sketch above bundles `returns` and `implements` into one block, which reads 
 what each engine actually cannot do locally, they are **two independent rungs with different constituencies**,
 and one of them has a constituency of zero for its motivating case:
 
-| engine | needs `returns`? | needs `implements`? | why |
+The table below is the ORIGINAL reading, kept because the corrections underneath it are the finding. Read the
+`implements` column as **struck through**: it is redundant in every row, and both cells that carried it were
+wrong for the same reason — the engine was measured with the `interfaceUnion` producer switched OFF.
+
+| engine | needs `returns`? | ~~needs `implements`?~~ | why |
 |---|---|---|---|
 | rust | **yes** | no | a pure factory is absent from the report, so no return type travels (R5) |
-| swift | **yes** | **yes** | same factory case (row 2); AND row 3 — its syntax spells a protocol-typed and a class-typed parameter identically, so it cannot even tell an unanswerable key from a legitimate one |
-| java | no | **yes** | bytecode always carries a static owner, so return types are never the problem; the dep-interface case needs the dependency's HIERARCHY |
-| ts | **no** | (only for `dist`-shipped packages) | return types already travel in `.d.ts` — ts REFUTED the factory probe outright |
+| swift | **yes** | ~~yes~~ → **no** | the factory case (row 2) is real and is `returns`. Row 3 was recorded as needing the hierarchy — measured 2026-07-26 with the dep scanned under `CANDOR_WORKSPACE_CHAIN`, `go(_ s: any Store)` resolves to `['Fs']` through the union entry, unprompted. The row-3 fixture had scanned the dependency without the flag. |
+| java | no | ~~yes~~ → **no** | bytecode always carries a static owner, so return types are never the problem; and the dep-interface case needs the implementer SET, not the hierarchy — the union publishes exactly that, under the key an INVOKEINTERFACE site already forms |
+| ts | **no** | no (a `dist`-shipped package is a producer-side residual, not a field) | return types already travel in `.d.ts` — ts REFUTED the factory probe outright |
 
 Two consequences worth acting on:
 
-1. **Ship them separately.** `returns` serves rust+swift; `implements` serves java+swift. Bundling means the
-   rung cannot land until both are agreed four ways, and the two have different hard parts — `returns` needs
-   qualified type identity and wrapper provenance, `implements` needs a hierarchy encoding. Nothing about
-   `interfaceUnion`'s precedent requires them to arrive together.
+1. **Ship them separately** — which is what made the second consequence findable at all. `returns` served
+   rust+swift and `implements` served java+swift, and bundling would have meant the rung could not land until
+   both were agreed four ways. Splitting them put `implements` on its own, where one experiment could kill it.
 2. **`implements` IS REDUNDANT — measured 2026-07-26, and the rung comes off the queue.** The experiment
    was one hand-edited dep report. candor-java's consumer, with NO code change:
 
@@ -271,13 +274,34 @@ Two consequences worth acting on:
    `INVOKEINTERFACE` site — so a union entry lands where the join already looks. No hierarchy encoding, no
    new field, no consumer work.
 
-   **What is actually missing is a PRODUCER.** candor-java is marked N/A for conformance PART 18 on the
-   grounds that "whole-classpath bytecode resolves cross-module dispatch natively". That is true of an
-   unchained whole-classpath scan and false of a chained one, where the dependency is not on the classpath —
-   the same "ask separately what an engine does at the BOUNDARY" lesson the initializer-edge vein taught.
-   So the remaining work is: **make candor-java EMIT `interfaceUnion` entries under `CANDOR_WORKSPACE_CHAIN`,
-   and drop its PART 18 N/A**. An existing, already-specified rung gains a fourth participant; nothing new
-   is designed.
+   **What was actually missing is a PRODUCER — now SHIPPED (2026-07-26).** candor-java was marked N/A for
+   conformance PART 18 on the grounds that "whole-classpath bytecode resolves cross-module dispatch
+   natively". That is true of an unchained whole-classpath scan and false of a chained one, where the
+   dependency is not on the classpath — the same "ask separately what an engine does at the BOUNDARY" lesson
+   the initializer-edge vein taught. candor-java now emits the union entries under `CANDOR_WORKSPACE_CHAIN`
+   and PART 18 runs **four-way**; nothing new was designed and the consumer was untouched.
+
+   Measured, and the numbers are the argument for the rung rather than for the field:
+   - flag OFF, twelve real jars: reports **byte-identical** to the pre-change engine, byte for byte.
+   - flag ON, the same twelve: **+0.9% to +14.8% entries**, all `interfaceUnion`, ordinary entries untouched.
+     The dominant filter is the empty-union skip (jackson-databind: 198 candidate interface methods, 161
+     pure across every implementer, 36 emitted) — the rung publishes the effectful minority, not a mirror
+     of the type surface.
+   - six chained library pairs, 21 922 analyzed functions: **65 effect gains, 0 effect losses**, 7 half-1
+     `Unknown`s resolved to a precise effect, 10 functions newly disclosing `Unknown` (traced: httpcore's
+     `Cancellable.cancel` implementers are themselves unresolved, so the union publishes that honestly and
+     httpclient's `abort()` stops claiming a complete set).
+   - traced gains: okio `BufferedSink.flush`/`BufferedSource.inputStream` → `RealBufferedSink`/
+     `RealBufferedSource` (okhttp's `ResponseBody.byteStream` and every `WebSocketWriter.write*`);
+     httpcore `HttpClientConnection.flush` → `DefaultBHttpClientConnection` (`Net`) reaching httpclient's
+     three connection adapters.
+
+   One guard was written and then REMOVED after measuring, which is the part worth carrying: "emit only for
+   an interface with at least one local subtype" changed **not one entry** across the twelve jars, and the
+   single shape where it did fire — an interface re-abstracting a method whose only body is a
+   super-interface `default` — is a genuinely runnable body an external implementer inherits. The guard was
+   an under-report wearing a bound's clothes. `chaTargets` returning nothing is what actually delivers
+   "nothing implements it, so nothing is published".
 
    This also resolves **swift row 3** and the java dep-interface item without `implements`: both need the
    dependency's implementer set, and that is what the union publishes. **Swift needs no work at all** —
@@ -302,10 +326,11 @@ correct behaviour is half 1 — disclose — not a widened match. **Never trade 
 - **Generic returns.** `fn build<T>() -> Wrapper<T>` — is the id `deplib#Wrapper`, and is that precise enough
   to be useful, or precise enough to be wrong? Unresolved; a first implementation should emit nothing here
   and let half 1 cover it.
-- **Whether `implements` duplicates `interfaceUnion`.** They overlap. `interfaceUnion` publishes the *effect
-  union*; `implements` publishes the *hierarchy*. If the union is always sufficient for the consumer's
-  question, `implements` is redundant and should be dropped — java's dep-interface case is the one to test
-  that against, since java is N/A for PART 18 and so has never exercised the union path.
+- ~~**Whether `implements` duplicates `interfaceUnion`.**~~ **SETTLED 2026-07-26 — it does, and `implements`
+  is dropped.** `interfaceUnion` publishes the *effect union*; `implements` publishes the *hierarchy*. java's
+  dep-interface case was the test, and once candor-java emitted the union entries it resolves precisely with
+  no hierarchy encoding and no consumer change. `returns` remains the one genuinely new field, wanted by rust
+  and swift only.
 
 ## Order of work
 

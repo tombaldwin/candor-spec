@@ -18,8 +18,11 @@ The **cross-package interface-dispatch** rung — the optional `interfaceUnion` 
 `pkg#Iface.method` union over a package's local implementers) + the `--workspace`/`--deps` auto-discovery
 convention, so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to the impl's
 effect instead of reading pure. Gated behind `CANDOR_WORKSPACE_CHAIN` (a default report is byte-identical),
-three-way conformance-pinned (PART 18: candor-scan + candor-ts + candor-swift; java N/A via whole-classpath
-bytecode). See **SPEC.md §2** + **WORKSPACE-CHAINING-DESIGN.md**.
+**four-way** conformance-pinned (PART 18: candor-java + candor-scan + candor-ts + candor-swift). See
+**SPEC.md §2** + **WORKSPACE-CHAINING-DESIGN.md**. candor-java was recorded N/A here at first ("whole-classpath
+bytecode resolves cross-module dispatch natively") — true of an UNCHAINED scan and false at the boundary; its
+consumer needed no change (it keys entries by `owner.name+desc`, which is the INVOKEINTERFACE key), only the
+producer, which landed 2026-07-26.
 
 The 0.23 floor also carries two soundness-increasing, report-shape-neutral additions (contract unchanged):
 the **synchronous-callback-invoker** rung — an opaque callback handed to a sync higher-order invoker

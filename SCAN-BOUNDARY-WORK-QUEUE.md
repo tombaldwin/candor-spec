@@ -177,7 +177,7 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       Residual, asserted in the test so it cannot drift: the erasure carve-out means the generic-bound and
       `impl Trait` spellings of an imported trait still do not CHA local impls.
 
-### java — 5 mechanism families DONE (fixture 15 silent-pure → 0; four gates exit 0 → 1 on the effect itself, the fifth on `deny E Unknown[dispatch]` since half 1 discloses rather than resolves)
+### java — 5 mechanism families DONE (fixture 15 silent-pure → 0; five gates exit 0 → 1 on the effect itself — the dep-interface row went `deny E Unknown[dispatch]` at half 1 and now flips on `deny Fs` too)
 - [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
       `chaTargets`, and **an empty CHA emitted no Unknown, only a dropped edge**. New `nearestDepFn` — the
       cross-boundary analogue of `nearestConcreteSuper` — plus a shared `inheritDepFn` fold.
@@ -218,6 +218,40 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       COLLISION (`HttpRequest.getPath` matched `URIBuilder.getPath`); those sites ARE genuinely
       unresolvable, so the disclosure is true about candor's state — only the evidence that prioritised it
       was coincidental. **Unchained control: twelve jars BYTE-IDENTICAL before and after** (conjunct 3).
+- [x] **dep-interface-typed dispatch to a dep impl — HALF 2 DONE, and it needed NO format rung.** The
+      `implements` field this row was blocked on is REDUNDANT: java keys report entries by
+      `owner.name+desc`, which is exactly the key its consumer forms for an INVOKEINTERFACE site, so the
+      already-specified `interfaceUnion` entries land where the join already looks. **The consumer was never
+      the problem — only the PRODUCER was missing**, and candor-java's PART 18 N/A ("whole-classpath bytecode
+      resolves cross-module dispatch natively") was true of an UNCHAINED scan and false at the boundary — the
+      "ask separately what an engine does at the BOUNDARY" lesson again. candor-java now emits interface-CHA
+      union entries under `CANDOR_WORKSPACE_CHAIN`, and **PART 18 is four-way** (verified to catch: against
+      the pre-fix jar both java rows FAIL). `void run(lib.Store s) { s.save(…) }` goes
+      `Unknown[dispatch:lib.Store.save]` → `['Fs']`.
+
+      Measured. Flag OFF: twelve real jars **byte-identical** to the pre-change engine. Flag ON: entries
+      +0.9%–14.8%, every added entry an `interfaceUnion`, ordinary entries untouched. The empty-union skip is
+      the dominant filter, not a rubber stamp — jackson-databind: 198 candidate interface methods, 161 pure
+      across every implementer, 36 emitted. Six chained library pairs, 21 922 analyzed functions: **65 effect
+      gains, 0 effect losses**, 7 half-1 Unknowns resolved to a precise effect, 10 functions newly disclosing
+      Unknown (httpcore's `Cancellable.cancel` implementers are themselves unresolved, so the union says so
+      rather than letting httpclient's `abort()` claim a complete set). Gains traced: okio `BufferedSink`/
+      `BufferedSource` → `RealBufferedSink`/`RealBufferedSource` (okhttp's `ResponseBody.byteStream`, every
+      `WebSocketWriter.write*`), httpcore `HttpClientConnection.flush` → `DefaultBHttpClientConnection`
+      (`Net`) reaching httpclient's three connection adapters.
+
+      **A guard written, measured and REMOVED before shipping — item 0 in its exact shape.** "Emit only for
+      an interface with at least one local subtype" read like a bound on `chaTargets`' owner-inherits-a-
+      default fallback. It changed **not one entry** across twelve jars, and the one shape where it did fire
+      — an interface re-abstracting a method whose only body is a super-interface `default` — is a genuinely
+      runnable body that an EXTERNAL implementer inherits and cannot see for itself (a dep supertype is not
+      on candor's classpath). It was an under-report wearing a bound's clothes; `chaTargets` finding nothing
+      is what actually delivers "nothing implements it, so nothing is published". Two guards that DID survive
+      were only shown load-bearing after their first fixture failed to exercise them — the static/private
+      filter needs a PURE `static` interface method beside an implementer declaring the same `name+desc` as
+      an INSTANCE method, or the static call site is charged a body it never runs. Every guard was then
+      verified by mutating it out and confirming a named test fails; a test that has never failed is not
+      evidence.
 - [ ] by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — resolve over any descriptor, so
       there is no single hash to join on.
 
