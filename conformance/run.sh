@@ -3683,7 +3683,21 @@ if [ -n "$SW_PRESENT" ]; then
   ( cd "$W/sb/sw/app" && CANDOR_DEPS="$W/sb/swdep.json" "$SW_BIN" . >/dev/null 2>&1 )
   SB_SW=$(ls "$W"/sb/sw/app/.candor/report.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
 fi
-python3 - "$W/sb/japp.json" "$SB_RS" "$SB_SW" <<'PYSB' || P20_OK=1
+# ---- ts: a dep class whose toString() reads the environment; the app template-interpolates it.
+SB_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$W/sb/ts/deplib/src" "$W/sb/ts/app/src" "$W/sb/ts/app/node_modules"
+  printf '{"name":"deplib","version":"0.0.0","main":"src/index.ts"}\n' > "$W/sb/ts/deplib/package.json"
+  printf 'export class E {\n  toString(): string { return process.env.SB_CFG ?? ""; }\n}\n' > "$W/sb/ts/deplib/src/index.ts"
+  printf '{"name":"app","version":"0.0.0","dependencies":{"deplib":"file:../deplib"}}\n' > "$W/sb/ts/app/package.json"
+  printf 'import { E } from "deplib";\nexport function show(e: E): string { return `x ${e}`; }\n' > "$W/sb/ts/app/src/index.ts"
+  ln -sfn "$W/sb/ts/deplib" "$W/sb/ts/app/node_modules/deplib"
+  ( cd "$TS_DIR" && node scan.mjs "$W/sb/ts/deplib" >/dev/null 2>&1 )
+  cp "$W/sb/ts/deplib/.candor/report.json" "$W/sb/tsdep.json" 2>/dev/null
+  ( cd "$TS_DIR" && CANDOR_DEPS="$W/sb/tsdep.json" node scan.mjs "$W/sb/ts/app" >/dev/null 2>&1 )
+  SB_TS="$W/sb/ts/app/.candor/report.json"
+fi
+python3 - "$W/sb/japp.json" "$SB_RS" "$SB_SW" "$SB_TS" <<'PYSB' || P20_OK=1
 import json, sys, os
 def effectful(path):
     try: d = json.load(open(path))
@@ -3695,6 +3709,7 @@ print("\n[20] IMPLICIT STRINGIFICATION ACROSS THE SCAN BOUNDARY  (a chained depe
 engines = [("java", sys.argv[1])]
 if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2]))
 if len(sys.argv) > 3 and os.path.exists(sys.argv[3]): engines.append(("swift", sys.argv[3]))
+if len(sys.argv) > 4 and os.path.exists(sys.argv[4]): engines.append(("ts", sys.argv[4]))
 fails = 0
 for name, path in engines:
     got = effectful(path)
@@ -3704,14 +3719,12 @@ for name, path in engines:
         fails += 1
         why = "unreadable report" if got is None else "consumer reads PURE — the witness was dropped"
         print(f"  {name:6s} -> DIVERGE  ({why})")
-print("  ts     -> not yet fixed: candor-ts's coercion targets are local-only and sit outside the")
-print("            disclosure channel; tracked in SCAN-BOUNDARY-WORK-QUEUE.md, add the row when it lands")
 sys.exit(1 if fails else 0)
 PYSB
 
 echo "PART 20 — implicit stringification across the scan boundary (SOUNDNESS-VEIN-crossing-the-scan-boundary.md)"
 if [ "$P20_OK" = 0 ]; then
-  echo "  -> MATCH — a chained dependency's stringification witness reaches its consumer in java + rust + swift"
+  echo "  -> MATCH — a chained dependency's stringification witness reaches its consumer in all four engines"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
