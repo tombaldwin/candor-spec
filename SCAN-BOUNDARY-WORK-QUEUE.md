@@ -749,3 +749,22 @@ each is actionable.
       `cargo clippy --all-targets` over the whole workspace cannot go green today. Every recent commit
       reports "clippy clean on the four library crates" because of it; that qualifier should stop being
       necessary.
+
+## Residuals surfaced by the 2026-07-26 agent round (recorded so they do not live only in a transcript)
+
+- [ ] **ts's `interfaceUnion` has NO CHA fan-out bound.** candor-java added one (`429c7b2`) after a
+      217-subtype smear: past a threshold a union stops being information, and java's answer was to drop to
+      a DISCLOSED Unknown rather than emit the smear. The same hazard is live in ts. Measure the
+      distribution before implementing — and note the bound must not silently drop the union and leave
+      nothing, which would be the cardinal sin wearing a precision fix. *(in flight)*
+- [ ] **ts's union reads method SIGNATURES only**, so an interface member declared as a property with a
+      function type (`@cucumber/cucumber`'s `IDefinition.getInvocationParameters`) is never unioned.
+      Pre-existing, and shared with the in-scan arm. *(in flight)*
+- [ ] **rust dictionary values and `fieldArrayElem` do not apply generic-bound resolution**, so they are
+      inert — **correct by accident** (item 0b). If anyone adds bound resolution there for the reason R28/R39
+      needed it, the erasure gate is needed at the same time. Swift recorded the same shape in its own code
+      comments. *(in flight)*
+- [ ] **`@aws-sdk/client-sns` reads WEAKER in its CJS build than its ESM one** — the ESM units name the
+      packages they reach through `invisible`, the CJS units report the same reach as `Unknown`. The
+      disclosure survives, so this is precision, not honesty; but a consumer's answer should not depend on
+      which build of the same package it happens to load.
