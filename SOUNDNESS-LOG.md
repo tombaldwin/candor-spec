@@ -2808,3 +2808,107 @@ plus `let mut value: u32 = …; value.as_()`, which was ABSENT and so a purity c
 unannotated rebind, a factory return bound into a local — are pinned as a test WITH the finding that
 makes them residuals: each one's `dyn` control is silent too, so they are POSITION-level gaps rather
 than this rung's "never asks". Fix: candor-rust `a80bb15`.
+
+### 2026-07-26 — java: four supertype walks resolved by DEPTH; the JVM resolves the CLASS first
+
+One defect, four sites, and one of them was the ordinary virtual-dispatch path. JLS 15.12.2.5 /
+8.4.8: a concrete method inherited from a SUPERCLASS beats an interface `default` at ANY depth. Four
+walks in candor-java each polled ONE queue seeded from a list that flattened "superclass" and
+"interfaces" together, so the traversal interleaved the two BY DEPTH:
+
+    class Root { public void write(byte[] b) { /* writes a file */ } }
+    class Mid extends Root {}
+    interface Trace { default void write(byte[] b) {} }        // pure
+    class Half extends Mid implements Trace {}
+
+Depth 1 is {Mid, Trace}; `Trace` settles the descriptor; `Root.write` at depth 2 is skipped as
+already decided. The JVM runs `Root.write`. **Both halves of the honesty invariant failed at once** —
+the real `Fs` was dropped (the cardinal sin) and Trace's empty effects were charged in its place.
+
+**The review named two sites; there were three, and the third was the worst.** `reentryTargets`
+(in-scan, `9ae68f7`) and `nearestDepFnsNamed` (the chained-boundary sibling, `dd81bfa`) were the
+known pair. `Cha.nearestConcreteSuper` — which `chaTargets` and `monomorphicTarget` both end in, i.e.
+every polymorphic dispatch candor resolves — walked `transSupers`, a **HashSet**, and returned the
+first `declaresConcrete` hit in HASH order, with no notion of the class chain at all. It was not
+"ordered wrongly"; it was not ordered. `nearestDepFn` had the same queue shape. All four now share
+ONE traversal (`Cha.resolutionOrder`), which is the point: this vein has now produced three separate
+cases of duplicated join/walk logic drifting apart (rust three copies, java two, swift three), and a
+fourth was not written.
+
+**The instruction "reuse `nearestConcreteSuper` rather than writing a third walk" was right about the
+shape and wrong about the helper** — the thing to reuse was broken, and only checking it showed that.
+A cross-site precedent tells you where a walk belongs, not that the walk is correct.
+
+**A zero-delta consumer arm, and what made it a result rather than an absence.** Nine chained jar
+pairs, each arm generating its own dep reports with its own jar, both jars kept by content hash:
+consumer side **0 gains, 0 losses**, entry and Unknown counts identical. Per standing-bar item 8 that
+is a claim about the experiment first, so the preconditions were instrumented: `nearestConcreteSuper`
+is entered 5k–27k times per consumer and its ANSWER differs 5–531 times per pair (277 distinct sites
+in jackson-databind alone), while the dep-facing walks are entered 8–30k times and differ **zero**
+times on these pairs. So the boundary defect is real — the fixtures prove it — and rare on real
+library pairs, which is a precise statement where "no change" would have been an empty one.
+
+**Sampling five families was not enough, and the mechanical check replaced it.** A wider sweep of 45
+standalone jars moved 203 entries: 80 gains and **119 losses**, including concrete effects
+disappearing — exactly the direction this queue says to distrust. The claim that both directions are
+CORRECTIONS was then checked rather than sampled: over those jars the answer changed **11 277**
+times, and in **11 193** the new owner is a proper SUBTYPE of the old, so the new declaration shadows
+it and the old named a body the JVM cannot dispatch to. All **84** remaining cases have an INTERFACE
+as the old owner and a superclass-chain CLASS as the new one — the headline defect, where the JLS
+says the class wins — and all 27 distinct replaced owners were confirmed to carry `ACC_INTERFACE`.
+Every difference moves the answer to the one the JVM resolves.
+
+Traced to bytecode, both directions:
+- **spring-core** `ResourceDecoder.decode` `[]` → `['Log','Unknown']`. It resolved to
+  `AbstractDecoder.decodeToMono`, whose entire body is `throw new UnsupportedOperationException()`,
+  while the body that runs is `AbstractDataBufferDecoder`'s. A purity claim on a method that drains a
+  data-buffer stream.
+- **guava** `AbstractStreamingHasher.putLong` `['Clock','Log','Unknown']` → pure. It was charged
+  through `AbstractHasher.putLong` → `putByte` → `MacHasher.update` → `Preconditions.<clinit>`, a
+  chain a `final` override replaces. The fabrication mirror, removed.
+- **netty** `ReadOnlyUnsafeDirectByteBuf` resolved `getByte` to the far `AbstractByteBuf.getByte`
+  (whose abstract `_getByte` fans out past `CHA_FANOUT_LIMIT` → Unknown) rather than the near
+  `ReadOnlyByteBufferBuf.getByte`. **caffeine** (68 entries) and **jackson-databind**
+  (`BeanDeserializer` → `BeanDeserializerBase`, not `StdDeserializer`) are the same shape.
+
+Worth carrying: **most of the damage was CLASS-vs-CLASS, not class-vs-interface.** The reported
+defect was the interface `default` shadowing a superclass body; the HashSet made a *near override*
+lose to a *far base* far more often (11 193 vs 84). The narrower story would have fixed the ordering
+and left the unordered helper in place.
+
+Both fixtures, second written first: the case that must NOW resolve (superclass body wins, in-scan +
+across the boundary + ordinary dispatch) and the case that must STILL resolve (a genuine interface
+`default` with no competing class declaration is still charged — "the class wins" is not implemented
+by dropping interfaces). Three guards, three mutants, each with the named failing test recorded;
+`9ae68f7`'s per-OVERLOAD shadowing invariant untouched and still asserted in both directions.
+
+**A measurement trap, and it was in my own instrument.** The first mutation round reported the wrong
+tests failing, in a pattern that looked like a real inversion, because the results parser matched
+`<testcase name="X" …>(.*?)</testcase>` — and a PASSING JUnit testcase is self-closing, so the regex
+ran from the first testcase's name to a *later* failing one's `</testcase>` and attributed every
+failure to the wrong name. Two rounds were spent theorising about the engine before the CLI
+contradicted the harness. *Item 7's "delete the output before you measure" has a sibling: check that
+the thing reading your output can name what it read.*
+
+RESIDUAL, named in `Cha#resolutionOrder`: `ReportWriter.writeHierarchy` records a dep type's
+supertypes as a sorted `TreeSet` with no superclass marker, so a chain lying ENTIRELY inside a
+dependency stays depth-ordered. The consumer's own classes state their superclass and interfaces
+separately, so the shape the defect was found in resolves exactly. Closing the rest means a sidecar
+key whose value is an OBJECT (`Loader#loadDepHierarchy` skips non-array values, so an older consumer
+ignores it) — a format rung with its own compatibility surface, so it does not ride here.
+
+Also fixed in the same pass, from the same review and marked "could not confirm":
+`ReportWriter.mergeUnionInto`'s `unchanged` test compared each widened `TreeSet`'s SIZE against the
+original LIST's size, which agree only while no list holds a duplicate — a genuine widening could
+land on the same count, read as "no change", and drop the union, leaving the entry claiming a
+narrower effect set than the dispatch reaches under the exact hash a chained consumer keys on.
+**Established NOT reachable** (every list field of an ordinary entry is materialised from a sorted
+`TreeSet` in `writeJson`, and `real` is always an ordinary entry), and fixed anyway: the size test
+was right for a reason it did not state, and the invariant it leans on lives three hundred lines
+away. Because no corpus can reach it, the unit test IS the evidence — it feeds the duplicate directly
+and asserts both directions (a real widening survives; a union that adds nothing still returns the
+SAME entry). Verified to catch: restoring the size comparison fails that test and, across all 512,
+only that test.
+
+Fix: candor-java `9f8e71c` (walks) + `c583da7` (merge). 512 tests, `check`, 392-case smoke and
+four-way conformance all green. Unpushed.
