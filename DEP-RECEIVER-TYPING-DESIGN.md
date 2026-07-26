@@ -310,6 +310,44 @@ Two consequences worth acting on:
    scanned without that flag: an engine that had not been asked, mistaken for one that could not answer. `returns` is unaffected and remains
    the one genuinely new field, wanted by rust and swift only.
 
+### BLOCKING PREREQUISITE, found by designing rather than coding (2026-07-26)
+
+Requirement 1 says type identity must be **fully qualified**. Checked against the consumer's actual index,
+that is not currently expressible:
+
+    crates/candor-scan/src/deps.rs — by_key holds exactly two key shapes per entry
+        "{krate}#{leaf}"      e.g.  deplib#fetch
+        "{krate}#{tail2}"     e.g.  deplib#Client::fetch
+
+There is **no full-qualified key**. So a consumer cannot look up `deplib#sync::Client::fetch` even if the
+producer published that exact string — the index has never held it. This is *why* the first attempt
+collapsed to a leaf: not carelessness, but the only key shape the lookup could answer. Publishing a
+qualified id against a tail2 index would simply miss every time, which is the silent direction.
+
+**So the rung has a prerequisite, and it is additive and independent:**
+
+0. **The dep index must carry the FULL qual as a third key** — `"{krate}#{qual}"`. Purely additive: existing
+   leaf/tail2 lookups are untouched, and a full qual is unique within a crate by construction, so it cannot
+   go ambiguous the way a shared leaf does. This is worth landing and testing ON ITS OWN, before any
+   `typeSurface` work, because it is useful independently (any join that knows a precise target can then ask
+   for it exactly instead of settling for tail2) and because bundling it would hide its own regressions
+   inside a bigger change.
+
+Only then does the rest become implementable:
+
+1. producer publishes `returns: { "cr#<full fn qual>": "cr#<full type path>" }`;
+2. consumer forms `cr#<full type path>::<method>` and looks up the **exact** key;
+3. a miss falls back to half 1's disclosure — never to silence, because a miss on an exact key still cannot
+   distinguish "no such method" from "the index withdrew an ambiguous entry";
+4. the join applies **every** surface, via the one shared application path rather than a second copy of it.
+   candor-java shipped this rung's sibling with `crossDepJoin` duplicating `inheritDepFn` line for line, and
+   the copies drifted until a reason-scoped gate was inert on the ordinary call path (`6ab26e4`). Rust
+   should be checked for the same duplication BEFORE adding a third consumer of a DepFn.
+
+**The order matters more than the content.** Every defect in attempt 1 was design content discovered while
+coding. Prerequisite 0 is the same class of discovery, found this time by reading the index before writing
+the emitter — which cost one grep instead of a revert.
+
 ### The trap this must not walk into
 
 A leaf-name join (`M#fetch` — match on the method name alone, ignore the receiver type) was already
