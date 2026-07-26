@@ -631,6 +631,58 @@ Residual, still open:
 
   **Do not re-attempt the `localInterfaceDecls` widening; it is measured inert** — the blocker was never
   which interface declarations are admitted.
+
+  **SHIPPED as candor-ts `5057026`, then INDEPENDENTLY VERIFIED — and the verification found two defects in
+  it plus two more the rung exposed, all four now closed.** The A/B was not re-run and agreed with; the
+  attack was the other direction, per item 0. Every fix carries a two-tree fixture, a single-tree control,
+  and each guard mutated out with the named failing test recorded.
+  - **FABRICATION, and a regression the rung introduced — candor-ts `0185649`.** The ambiguity counter read
+    only the `.` typings, but the union hash is `pkg#Iface.member`, a package plus a BARE name, so every
+    interface of that name in the package maps to it however it is exported. A `subkit` with an effectful
+    `Store` on `.` and an unrelated PURE `Store` on `./sub` published the first as the answer for both, and
+    a consumer of `subkit/sub` FAILED `deny Fs`; the pre-`5057026` engine disclosed
+    `Unknown[dispatch:subkit.Store.save]` and exited 0. The census now covers `types`/`typings`, every
+    `.d.ts` in the `exports` tree and `typesVersions` (which names files without their extension — 8 of 343
+    corpus packages declare one, 7 with a star, so the star is expanded from disk). **ONE program over all
+    the roots**, because a barrel `export * from './sub'` must give back the same declaration NODE from both
+    entry points or every package shipping a barrel is refused. A truncated expansion refuses the typings
+    arm outright: half a census re-opens the fabrication.
+  - **A CONFIDENT WRONG ANSWER, older than the rung — candor-ts `d7060ca`.** "The in-scan arm wins a name
+    collision" dropped the typings arm on the NAME, throwing away the only evidence the engine had that the
+    name means two things. An internal `interface Store` (implementer does Net) beside the public one the
+    typings pair to an effectful `FileStore` published `mixkit#Store.save -> ['Net'] unresolved:false`: a
+    fabricated Net, a dropped Fs, no disclosure. The rule is now REDUNDANCY — drop the typings arm only when
+    every class it names is already in the in-scan set — so the shadow case survives and a collision that
+    brings new information makes the name ambiguous and refuses both. Instrumented: 27 typings arms across
+    the corpus, **21 collide and all 21 are redundant**, so @ukri-tfs/common's seven entries survive by the
+    rule rather than by exemption.
+  - **NO FAN-OUT BOUND — candor-ts `fc8d297`, the ts sibling of java `429c7b2`.** The emitter unioned every
+    implementer while the in-scan dispatch site bounds at 12, so the producer published what its own
+    dispatch refuses to resolve: rxjs `Operator` has 70 implementers, 16 reaching Net, and rxjs's own
+    `Observable.subscribe` reads `Unknown[dispatch:…Operator.call]` while the report offered a consumer
+    `rxjs#Operator.call -> ['Net','Unknown']`. Now ONE named `CHA_FANOUT_LIMIT` read by both sites (java left
+    two literals and that is how they drifted), publishing `['Unknown']` + reason past the bound — never
+    silence. Measured across 353 targets the tail is thin but real: 43 of 44 arms have ≤5 implementers and
+    the 44th has 70, so **the argument is the self-contradiction, not the distribution**. No
+    `isClosedHierarchy` analogue exists in TS (no `sealed`).
+  - **PROPERTY-SPELLED INTERFACE MEMBERS — candor-ts `d9b8c34`**, the residual `5057026` recorded, closed in
+    BOTH arms. `run: (x) => void` is a PropertySignature over a FunctionTypeNode and the checker resolves a
+    call to the TYPE NODE, which has no name and no owner — so three sites that key on a declaration's name
+    formed no key at all. @ukri-tfs/email's whole `SendStrategy` is spelled this way (four implementers, zero
+    method signatures). One `memberSigOf` hop, called from all four sites; only a FunctionTypeNode qualifies.
+    Chained pair measured end to end: `@ukri-tfs/email#EmailService.send` `['Unknown']` → `['Net']
+    invisible:['@aws-sdk/client-ses']`, reaching `invite-service#EmailServiceProxy.send`, 0 losses. It also
+    repairs 139 disclosure strings that named the PROPERTY as the owner type (`dispatch:<mod>.<prop>.member`).
+  - **Two carried findings, both open.** (1) The ts dep-join copies `inferred` and `invisible` only, so a
+    chained dep's Unknown loses its REASON CLASS at the consumer and falls back to `unresolved` — the ts
+    sibling of candor-java `6ab26e4`. (2) 65 malformed `….member` disclosure reasons remain, all the
+    function-type-under-a-TYPE-ALIAS shape, which needs its own answer about what the owner should be.
+  - **Worth carrying methodologically:** the ambiguity guard's SILENCE is honest in ts specifically, because
+    half 1 discloses an absent interface key at the consumer — mutating the fan-out bound's Unknown to a
+    `continue` still leaves the consumer disclosing. That is a property of the layer beneath, not of the
+    emitter, and it is why the producer-side tests are the ones that catch it. Also: scratch copies of the
+    engine left in the scanned repo showed up as four "new entries" in the self-scan A/B — a measurement
+    apparatus inside the target.
 - **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
   registers local interface declarations only, so `use(f: DepIface) { f.go() }` never reaches the local
   `class Mine implements DepIface` — the ts sibling of swift's `eae2de2` (dispatch over an IMPORTED protocol
