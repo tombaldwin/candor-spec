@@ -373,10 +373,17 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       **STILL OPEN, and it is the reason the scope above matters:** the abstract-dep-CLASS row wants the
       hierarchy in the SUBTYPE INDEX, which is exactly the use this commit refused. It needs its own
       argument about what happens to the Unknowns that resolution would suppress, not a wider `if`.
-- [ ] **`reentryTargets` fans only DOWN the subtype index** (pre-existing, unrelated to the boundary): in a
-      single tree, `new Formatter(half)` where `Half extends Sink` inherits `append(CharSequence)` misses
-      the inherited body. The chained arm is now strictly MORE complete than the in-scan control for that
-      shape, which is the wrong way round.
+- [x] **`reentryTargets` fanned only DOWN the subtype index — FIXED, candor-java `9ae68f7`.** A SINGLE-TREE
+      silent under-report, found by a smell rather than a report: making the chained arm walk a dependency's
+      supers left the in-scan control strictly LESS complete than the cross-boundary case, which is the
+      wrong way round and meant the in-scan gap had been there all along. `new Formatter(half)` where `Half`
+      overrides `append(char)` and inherits the effectful `append(CharSequence)` reported `[]`. Now walks
+      each subtype's own chain with per-OVERLOAD shadowing — the same rule the cross-boundary
+      `nearestDepFnsNamed` uses; per NAME would drop the inherited overload, no shadowing would charge a
+      replaced body, and the fixture asserts both directions. One real gain on the corpus, traced to
+      bytecode: jgit's `PackWriter.writeChecksum` went from a purity claim to the effect set the same
+      report already gave `CancellableDigestOutputStream.write(byte[],int,int)` — which is exactly what
+      `out.write(packcsum)` runs, since `PackOutputStream` declares no `write` of its own.
 
 **A fabrication caught mid-flight, worth carrying:** the first version imported dep entries whose whole
 content is `Unknown`, which turned **12 fully-resolved jackson-databind functions Unknown** from one method
