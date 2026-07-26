@@ -170,6 +170,14 @@ are deliberately not patched around: a leaf-key join (`M#fetch`) was considered 
 like `write`/`run`/`send` would fabricate on unrelated receivers. Trading the cardinal sin for its mirror is
 not progress.
 
+**STATUS 2026-07-26.** The DISCLOSURE half is closed in all four engines and pinned by conformance PART 21.
+The DETERMINATION half (`typeSurface`) was built end-to-end in rust, flipped its gate, and was **reverted**
+after a code review confirmed four defects in it — including the leaf-key join this vein's design doc
+explicitly rejects, and the removal of the disclosure half's fail-closed floor. Requirements for a second
+attempt are recorded in [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md). That review found
+**ten** confirmed defects across the day's boundary work, all now fixed; the round is written up in
+[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
+
 **But only their DETERMINATION half needs the format.** See
 [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md). The engines conflate two things: a lookup
 that was *made and missed* (a genuine purity claim — dep reports omit pure functions, §2 rule 3) and one
