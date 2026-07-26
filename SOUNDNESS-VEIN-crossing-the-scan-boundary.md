@@ -51,9 +51,9 @@ a general limitation:
 | implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `1623a07` — was silent-pure |
 | `Drop` glue — a dependency type whose `Drop` writes a file | **FIXED** `a2fbe74` — was silent-pure |
 | `&dyn Trait` where the trait is **imported** (`use deplib::Handler`) | **FIXED** `50218e3` — `--deps` now sets `CANDOR_WORKSPACE_CHAIN` on its child scans |
-| `&dyn deplib::Handler` (fully qualified) and field-typed `Vec<Box<dyn …>>` | **still silent** — the consumer never forms the crate-qualified key |
+| `&dyn deplib::Handler` (fully qualified) | **FIXED** `7a5fc1d` — `bound_leaves` kept only the leaf, so with no `use` to expand through the crate identity was gone and the site emitted nothing at all |
 | a value bound from a dependency's factory (`let c = deplib::build(); c.fetch()`) | silent-pure — **no return-type information travels in the report**, so the receiver is untyped and every later method call drops |
-| dispatch over an **imported** trait whose impls are all local | silent-pure — `trait_decls` is built only from local `ItemTrait` nodes, so CHA never fires |
+| dispatch over an **imported** trait whose impls are all local | **FIXED** `1950a27` — was silent-pure (`trait_decls` is local-only, so CHA never fired). Needs THREE carve-outs, each a measured flood: dependency provenance (incl. rejecting `self`/`crate`/`super` re-exports — 17 Unknowns on value-bag), `dyn` ERASURE (a caller-monomorphized `T: Trait` bound is not the crate's business — 32 Unknowns on serde_json), and nested-item scope |
 
 ## Root causes, ranked by leverage
 
@@ -75,7 +75,13 @@ now `cr::<drop>::Type`, consumed only by the join, exactly as the lazy-static ma
    it recovers is the **imported-trait** form, which is the idiomatic one. A fully-qualified
    `&dyn deplib::Handler` still reads pure because the consumer never forms the crate-qualified key — that
    residual is real and open.
-4. **`trait_decls` is local-only.**
+4. **`trait_decls` is local-only** — **FIXED (`1950a27`)**, and the fix's real content is the carve-outs,
+   not the CHA. Provenance alone (the queue's resolution 1 as written) is NOT safe: `serde::Serialize` is a
+   dependency trait, so it passes, and CHA-ing serde_json's own `impl Serializer` types onto its generic
+   entry points floods. The rule that works is *dependency provenance AND `dyn` erasure*: a `dyn` receiver
+   is type-erased and the crate's impls are its candidate witnesses; a `T: Trait` bound is monomorphized by
+   the CALLER, so they are not. Measured over the whole local registry (976 crates), the only `dyn`-spelled
+   external traits are `Write`/`Iterator`/`Error` — every firing the carve-outs block is a real fabrication.
 5. **Coverage is crate-granular**, so one *resolved* call into a crate clears its blind flag for **every**
    call shape into that crate. This does not cause the misses above, but it removes the `invisible` /
    `coverage.uncovered` caveat that would otherwise have been incidentally attached — so the report goes from
@@ -151,7 +157,7 @@ whole package, so **8 of the 13 are strictly less honest chained than unchained*
 | **java** | **4 mechanism families FIXED** (`bdf272c` stringification + equals/hashCode reentry, `a5b0a41` inherited/default from a dep supertype, `b891d5f` callback/HOF hand-off) — fixture 15 silent-pure → 0 | 1 → **1** on all four |
 | **swift** | **6 of 7 gate-flipping mechanisms FIXED** (`83ca73c`, `41dc8de`, `eae2de2`) | 1 → **1** on six; factory-bound receiver still 1 → 0 |
 | **ts** | **all 4 confirmed mechanisms FIXED** (`6fb2560` symlink shape, `625e8fd` coercion, `965ac82` `new DepClass()`, `75ec3f6` by-reference HOF) | `deny Fs` 0 → **1**, matching the one-project control |
-| **rust** | **3 of 5 FIXED** (`1623a07` and follow-ons) | 1 → **1** on three; R4/R5 open |
+| **rust** | **4 of 5 FIXED** (`1623a07` and follow-ons, then `1950a27` R4 + `7a5fc1d` R6) | 1 → **1** on four; R5 (return types) the only one open |
 
 **Implicit stringification was silent across the boundary in all four, and is now fixed and independently
 verified in all four** — pinned by conformance **PART 20**, which is verified-to-catch on each engine's row
