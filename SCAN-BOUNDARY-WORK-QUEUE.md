@@ -24,7 +24,11 @@ now scopes the headline claim because of it.
    doc). Reduce every mechanism story to a fixture before acting on it.
 6. **Honest beats silent.** If a mechanism cannot be resolved soundly, making it disclose `Unknown` is a
    valid and valuable fix.
-7. Commit each fix separately, substantive message, trailers:
+7. **Delete the output before you measure a control.** A crashed or stale run leaves the previous report on
+   disk, and reading it back silently reports the wrong arm's result. This has now bitten three times in this
+   vein — twice via a stale `*-all.jar` picked by `ls … | head -1`, once via a pre-fix ts worktree with no
+   `node_modules`. Every time, the fabricated datapoint pointed the *flattering* way.
+8. Commit each fix separately, substantive message, trailers:
    `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and the session `Claude-Session:` line.
    **Do not push without an explicit instruction.**
 
@@ -103,13 +107,39 @@ across six pairs, all Unknown-only, **never a real effect**.
 silently treated as stale); and `build/libs` can hold MORE THAN ONE `-all.jar`, so a glob picks the stale one
 — that cost two false negatives here before it was spotted. The stale 0.23.0 artifact has been removed.
 
-### ts — agent in flight
-Priority: coercion (local-only AND outside the disclosure channel) → the monorepo symlink shape (a symlinked
-workspace dep produces **no disclosure at all** because the blind branch is guarded on `/node_modules/`) →
-by-reference HOF handoff → `new DepBoot()` never consulting `crossDeps`.
-Also open: the `--dep-inits` precision cost — all of a package's module units share one hash, so importing
-charges the union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s
-`example/dns.js`). Narrow to the resolved entry.
+### ts — all 4 confirmed mechanisms DONE
+- [x] the monorepo symlink shape — a symlinked workspace dep produced **no disclosure at all** because the
+      blind branch was guarded on `/node_modules/` — `6fb2560`
+- [x] implicit coercion into a dep's `toString`/`valueOf`/`toJSON` — `625e8fd`
+- [x] `new DepClass()` never consulting the chained dep report — `965ac82`
+- [x] a dep function passed BY REFERENCE to an invoking HOF — `75ec3f6`
+
+All four follow the rust template: no new resolution path — each routes its declaration through the decision
+procedure the CallExpression path already runs (chained report → §5.1 manifest → κ ledger), factored into one
+`chargeExternalDecl`. Gate on the two-package fixture, `deny Fs`, identical source: one project **exit 1** →
+split+chained **exit 0** → now **exit 1**, matching the one-project control on all three mechanisms.
+
+A/B, 13 real targets unchained: 0 effect gains, 0 losses, 166 invisible gains, 0 invisible losses. Chained
+over 4 ukri-tfs services: 7 effect gains, 0 losses — every one tracing to
+`@ukri-tfs/common#ServiceHostNamesFromAwsServiceDiscovery.constructor -> ['Clock','Env']` reaching
+`createServiceHostNamesForDsApi`, which went from absent-from-the-report (a purity claim) to `['Clock','Env']`.
+
+The coercion arm's anti-flood property was measured under load rather than assumed: the arm is entered a few
+hundred times on the corpus and contributes nothing every time, because every resolution lands on the ES lib
+or `@types/node` (`Buffer.toString`), both excluded by design.
+
+**Verified independently before PART 20's ts row was added**, on a fixture outside the harness: pre-fix
+candor-ts writes `0 effectful functions` for the consumer, post-fix `src.index.show -> ['Env']`. *The first
+attempt at that control was worthless* — the pre-fix worktree had no `node_modules`, so the scan crashed and
+left the POST-fix report on disk to be read back as if it were the pre-fix result. **Delete the output before
+you measure a control** (now item 8 of the standing bar).
+
+Residual, still open:
+- The `--dep-inits` precision cost — all of a package's module units share one hash, so importing charges the
+  union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s `example/dns.js`). Narrow
+  to the resolved entry.
+- **Interface-union needs source.** A published package ships `dist` JS + `.d.ts`, so the `implements` clause
+  lives only in the typings and the child scan emits no union entry.
 
 ### swift — 6 of 7 gate-flipping mechanisms DONE
 - [x] implicit stringification of a dep type, all three operand forms — `83ca73c` (verified independently:
@@ -134,8 +164,9 @@ charges the union of every file's top level (`proper-lockfile` picked up `Net` f
 - [ ] **Coverage granularity.** Package/crate-granular coverage means one *resolved* call clears the blind
       marker for every call shape into that dependency, so chaining removes a hedge that would otherwise
       have flagged these. Present in all four engines. Does not cause the misses; makes them confident.
-- [ ] **Conformance PART 20** pinning the boundary contract four-way, once ≥2 engines have their
-      stringification case fixed. Model it on PART 19 and **verify it CATCHES** by mutating one engine.
+- [x] **Conformance PART 20** pinning the boundary contract four-way — `3bd69ec` (java/rust/swift) then
+      `08b796a` (ts joins). Verified-to-catch on each engine's row by unchaining that engine's consumer:
+      the row goes DIVERGE and the suite FAILED while the others still match.
 - [ ] **PAPER1 §6.1b / PAPER2 §4.6b** are written against the current state — update the counts as
       mechanisms close, and re-scope if the claim can be restored.
 

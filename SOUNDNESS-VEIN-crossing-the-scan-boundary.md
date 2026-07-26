@@ -141,14 +141,20 @@ whole package, so **8 of the 13 are strictly less honest chained than unchained*
 | engine | silent-pure shapes | gate |
 |---|---|---|
 | **java** | **4 mechanism families FIXED** (`bdf272c` stringification + equals/hashCode reentry, `a5b0a41` inherited/default from a dep supertype, `b891d5f` callback/HOF hand-off) — fixture 15 silent-pure → 0 | 1 → **1** on all four |
-| **swift** | **7 of 13** | `deny Env Unknown` 1 → 0 on seven mechanisms |
-| **ts** | 5 mechanism families | `deny Fs` 1 → 0 |
-| **rust** | 5 families | `deny Clock` 1 → 0 |
+| **swift** | **6 of 7 gate-flipping mechanisms FIXED** (`83ca73c`, `41dc8de`, `eae2de2`) | 1 → **1** on six; factory-bound receiver still 1 → 0 |
+| **ts** | **all 4 confirmed mechanisms FIXED** (`6fb2560` symlink shape, `625e8fd` coercion, `965ac82` `new DepClass()`, `75ec3f6` by-reference HOF) | `deny Fs` 0 → **1**, matching the one-project control |
+| **rust** | **3 of 5 FIXED** (`1623a07` and follow-ons) | 1 → **1** on three; R4/R5 open |
 
-**Implicit stringification was silent across the boundary in all four; rust (`1623a07`) and swift
-(`83ca73c`) are now fixed and independently verified.** — the vein closed four-way on the
-morning of the same day. In every engine the dependency's report holds the right answer under the right key
-and nothing looks for it.
+**Implicit stringification was silent across the boundary in all four, and is now fixed and independently
+verified in all four** — pinned by conformance **PART 20**, which is verified-to-catch on each engine's row
+by unchaining that engine's consumer. In every engine the dependency's report already held the right answer
+under the right key and nothing looked for it; **not one of the landed fixes needed a report-format change**.
+
+What remains open is the small set that genuinely *does* need one — rust R5, swift's factory-bound receiver,
+and dep-interface dispatch all need return types or a dependency hierarchy to travel in the report. Those
+are deliberately not patched around: a leaf-key join (`M#fetch`) was considered and rejected because leaves
+like `write`/`run`/`send` would fabricate on unrelated receivers. Trading the cardinal sin for its mirror is
+not progress.
 
 ### What each engine gets RIGHT — the differences are the design lesson
 
@@ -165,11 +171,13 @@ tractable rather than fundamental.
 
 ### Two engine-specific findings worth their own entries
 
-- **ts, monorepo shape:** a symlinked workspace dependency produces **no disclosure at all** — no
-  `invisible`, no ledger, no advisory — because the blind branch is guarded on `/node_modules\//` while the
-  module name resolves through a different path. The published-package shape discloses correctly for the
-  same code. So in a monorepo every cross-package mechanism is silent-pure until someone remembers
-  `--workspace`.
+- **ts, monorepo shape** (FIXED, `6fb2560`): a symlinked workspace dependency produced **no disclosure at
+  all** — no `invisible`, no ledger, no advisory — because the blind branch was guarded on `/node_modules\//`
+  while the module name resolves through a different path. The published-package shape disclosed correctly
+  for the same code. So in a monorepo every cross-package mechanism was silent-pure until someone remembered
+  `--workspace`. This was the worst of the four ts findings and the one fixed first: the other three drop an
+  effect, this one dropped the *disclosure that an effect might have been dropped*. Unchained, the three
+  monorepo targets now disclose `invisible: ["<sibling>"]` on 166 functions that previously claimed nothing.
 - **ts, interface union needs source:** a published package ships `dist` JS + `.d.ts`, and the `implements`
   clause lives only in the typings, so the child scan emits no union entry. The mechanism is recovered for a
   monorepo sibling and silent for a real npm dependency.
