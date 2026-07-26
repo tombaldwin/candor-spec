@@ -62,6 +62,12 @@ now scopes the headline claim because of it.
    a control (item 7) is not enough: name each arm's binary by its content hash, keep it for the life of the
    measurement, and when two runs disagree re-run BOTH from their preserved binaries before believing
    either. Note which way the bad datapoint pointed — again the flattering way (a real recovery, hidden).
+7c. **TWO WAYS I RAN THE WRONG BINARY IN ONE HOUR, both silent, both mine.** (a) `cargo build … | head -3`
+   SIGPIPEs the build: cargo dies, the *old* binary stays on disk, and every "verification" after it tested
+   code that was never compiled. Four consecutive results came from a binary 70 minutes stale. Never pipe a
+   BUILD through `head`; check the artifact's mtime, not the command's exit. (b) `git checkout <file>` to
+   undo a one-line MUTANT reverted the whole file — including forty lines of uncommitted work in it. Copy
+   the file aside and restore from the copy; `git checkout` cannot tell your mutant from your work.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -702,12 +708,23 @@ each is actionable.
 
 ## Found in passing while landing the typeSurface rung (2026-07-26) — not boundary defects
 
-- [ ] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2`**, and the panic aborts the
-      whole `--deps` run rather than the one crate. `proc-macro2`'s `Span::join`: *"Invalid span with no
-      related FileInfo"*. Pre-existing and unrelated to any boundary work — it cost the typeSurface pass a
-      workaround. Two things to fix, and the second matters more than the first: the parse itself, and
-      **the blast radius** — one unparsable dependency taking down the tree means a chained consumer
-      silently proceeds with FEWER dep reports than it asked for, which is the κ ledger's business.
+- [~] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2`.** `proc-macro2`'s
+      `Span::join`: *"Invalid span with no related FileInfo"*. Two things to fix, and the queue was right
+      that the second matters more.
+      - **BLAST RADIUS — FIXED, candor-rust `a593197`.** Contained per FILE and DISCLOSED through the
+        ⟨0.21⟩ `unanalyzed` array, which also sets `had_parse_failure`, so a configured gate refuses to go
+        green over the hole (`deny Fs` → exit 2, "policy NOT enforced"). getrandom now yields a real report
+        naming `src/backends/use_file.rs` as unanalyzed, instead of no report at all. The fault is INJECTED
+        for the test (`CANDOR_PANIC_ON_FILE`) because the real trigger needs a whole crate's parse state —
+        the file scanned ALONE does not panic — and a containment nobody can fire is a containment nobody
+        has checked. Both directions asserted: the surviving file keeps its effects, and the lost file is
+        NAMED (absence from `functions` is a purity claim, so a dropped file with no disclosure is the
+        cardinal sin wearing a crash).
+      - **THE PARSE DEFECT ITSELF IS STILL OPEN**, and the first diagnosis was WRONG in a way worth keeping:
+        synthesized `Group::new` spans in the `macro_rules!` template path are call-site spans with no
+        FileInfo, which is a real hazard and is NOT this bug — implemented, tested, refuted, reverted rather
+        than kept as an unexplained edit. The panic survives with that path removed, and the file does not
+        reproduce in isolation, so it depends on accumulated cross-file parse state.
 - [ ] **`build.rs` fails clippy `collapsible_if` on clippy 0.1.96**, present at HEAD, so
       `cargo clippy --all-targets` over the whole workspace cannot go green today. Every recent commit
       reports "clippy clean on the four library crates" because of it; that qualifier should stop being
