@@ -135,7 +135,7 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       Residual, asserted in the test so it cannot drift: the erasure carve-out means the generic-bound and
       `impl Trait` spellings of an imported trait still do not CHA local impls.
 
-### java — 4 mechanism families DONE (fixture 15 silent-pure → 0, four gates exit 0 → 1)
+### java — 5 mechanism families DONE (fixture 15 silent-pure → 0; four gates exit 0 → 1 on the effect itself, the fifth on `deny E Unknown[dispatch]` since half 1 discloses rather than resolves)
 - [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
       `chaTargets`, and **an empty CHA emitted no Unknown, only a dropped edge**. New `nearestDepFn` — the
       cross-boundary analogue of `nearestConcreteSuper` — plus a shared `inheritDepFn` fold.
@@ -146,9 +146,36 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
 - [x] callback / HOF hand-off — `b891d5f`. Method refs join on the handle's exact owner+name+desc; a
       constructed functional takes the type's reported surface, gated on the PARAMETER being a functional
       interface.
-- [ ] **dep-interface-typed dispatch to a dep impl** — needs the dependency's own HIERARCHY, which the report
-      format does not carry. Live residual, measured (jackson `WritableObjectId.generateId` loses `Rand`
-      through `ObjectIdGenerator`). Same family as rust R5 / swift factory-receiver: a format extension.
+- [x] **dep-interface-typed dispatch to a dep impl — HALF 1 DONE, `828ca18`** (java is the second engine to
+      take [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md) half 1, after rust `5fde0d6`).
+      Resolution still needs the dependency's HIERARCHY — that stays half 2 — but the DISCLOSURE needed no
+      format change: `Store s = Factory.build(); s.save()` was ABSENT from `functions` while counted in
+      ⟨0.21⟩ `analyzed`, i.e. a positive purity claim, and now reads `['Unknown']` /
+      `unknownWhy: ['dispatch:lib.Store.save']`. Gate `deny Fs Unknown[dispatch]` exit 0 → 1.
+
+      **The java shape of "could-not-form-a-key" is INVOKEINTERFACE**, and that is the conjunct rust does
+      not have an analogue for. Java always has a static owner, so there is no untyped receiver as such —
+      but the OPCODE proves whether the key names the body: INVOKEINTERFACE proves the owner is an
+      interface, so the hash we formed names a declaration the JVM will not run. INVOKEVIRTUAL is
+      excluded (a plain dep class usually IS the body, so a miss there is a real purity claim), which is
+      why an abstract dep CLASS — jackson's `ObjectIdGenerator`, the case originally recorded here — is
+      **still open** and is the sharpest thing half 2's `typeSurface` would buy java.
+
+      Five conjuncts, each one MEASURED not reasoned. "Unresolved receiver into a chained dep" alone fires
+      on **5.4% of all analyzed functions** over nine chained JVM corpora (8.4% on logback-classic) —
+      the COVERAGE-GRANULARITY flood, reproduced on the JVM. Adding INVOKEINTERFACE → 2.1%; adding "the
+      chained report holds an EFFECTFUL body with this exact name+desc under another owner" → **0.49%**.
+      The last is a signature join used ONLY as evidence to disclose, never to resolve — the behaviour the
+      design doc prescribes when the type surface is absent.
+
+      A/B nine chained library pairs, 32175 analyzed functions: **0 effect losses, 0 non-Unknown gains**,
+      122 functions gain Unknown, entry count +25. All 68 distinct disclosed targets traced; ~95% of the
+      355 sites justified by a genuine implementor (okio `BufferedSink`/`BufferedSource` → `RealBufferedSink`
+      /`RealBufferedSource` — okhttp's `HeadersReader.readLine`, `RequestBody.writeTo` and
+      `ResponseBody.byteStream` were absent from the report entirely). The other ~5% fired on a signature
+      COLLISION (`HttpRequest.getPath` matched `URIBuilder.getPath`); those sites ARE genuinely
+      unresolvable, so the disclosure is true about candor's state — only the evidence that prioritised it
+      was coincidental. **Unchained control: twelve jars BYTE-IDENTICAL before and after** (conjunct 3).
 - [ ] by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — resolve over any descriptor, so
       there is no single hash to join on.
 
