@@ -287,9 +287,25 @@ left the POST-fix report on disk to be read back as if it were the pre-fix resul
 you measure a control** (now item 8 of the standing bar).
 
 Residual, still open:
-- The `--dep-inits` precision cost — all of a package's module units share one hash, so importing charges the
-  union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s `example/dns.js`). Narrow
-  to the resolved entry.
+  union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s `example/dns.js`).
+
+  **Analysed 2026-07-26 — and "narrow to the resolved entry" is the WRONG fix as stated.** The union is baked
+  into the KEY, not the scan scope: the child scan emits every module unit under the single hash
+  `<pkg>#<module>`, and the consumer looks up exactly that (`crossDeps.get(\`${pkg}#<module>\`)`).
+
+  Two tempting narrowings, both wrong:
+  - *Scan only the entry file.* Under-reports: the entry's transitively-required modules genuinely DO run on
+    import, and their top-level effects are real. This is the miss direction.
+  - *Exclude `example/`, `test/`, `benchmark/`.* A denylist of directory names is a guess about reachability,
+    not a proof of it — and those files are in `node_modules` precisely because they were published.
+
+  The correct fix is **per-file module unit keys** in the child report (`<pkg>#<relpath>.<module>`), with the
+  consumer looking up the package's ENTRY module (`main`/`exports`). That is sound without any reachability
+  guess, because the entry unit's `inferred` ALREADY includes its transitive imports — the in-scan
+  module-import edge computes exactly that closure. An unreachable `example/dns.js` then simply has its own
+  key that nobody looks up.
+
+  Cost: it is a wire-visible change to how module units are named, so it wants the same care as a rung.
 - **Interface-union needs source.** A published package ships `dist` JS + `.d.ts`, so the `implements` clause
   lives only in the typings and the child scan emits no union entry. Half 1 now discloses over this rather
   than reading pure, so it is a PRECISION residual, not a soundness one.
