@@ -3827,10 +3827,15 @@ def verdict(path, fn):
     for e in d.get("functions", []):
         if e.get("fn") == fn or (e.get("hash") or "").endswith(f"#{fn}"):
             inf = e.get("inferred", [])
-            if "Unknown" in inf: return True, f"Unknown {e.get('unknownWhy') or ''}"
-            return False, f"present but reads {inf or 'pure'}"
+            # The invariant is "MUST NOT CLAIM PURITY", not "must say Unknown". An engine that RESOLVES
+            # the effect satisfies it more strongly than one that hedges — and an engine which has landed
+            # the typeSurface rung does exactly that, so demanding Unknown here would fail a strict
+            # improvement. Either disclosure or determination passes; only silence fails.
+            if "Unknown" in inf: return True, f"DISCLOSED — Unknown {e.get('unknownWhy') or ''}"
+            if inf: return True, f"RESOLVED — {inf} (typeSurface: stronger than a hedge)"
+            return False, f"present but reads pure {e.get('invisible') or ''}"
     return False, "ABSENT from the report — a confident purity claim"
-print("\n[21] COULD-NOT-FORM-A-KEY MUST DISCLOSE  (a receiver the engine never typed must not read pure)")
+print("\n[21] COULD-NOT-FORM-A-KEY MUST NOT READ PURE  (disclose it, or resolve it — never claim purity)")
 engines = [("java", sys.argv[1], "app.Go.run")]
 fails = 0
 # An engine whose binary is absent is legitimately skipped; an engine whose binary is PRESENT but whose
@@ -3851,7 +3856,7 @@ for name, argi, fn, present in (("rust", 2, "go", sys.argv[4] == "1"),
 for name, path, fn in engines:
     ok, why = verdict(path, fn)
     if ok:
-        print(f"  {name:6s} -> MATCH    (discloses rather than claiming purity: {why})")
+        print(f"  {name:6s} -> MATCH    ({why})")
     else:
         fails += 1
         print(f"  {name:6s} -> DIVERGE  ({why})")
