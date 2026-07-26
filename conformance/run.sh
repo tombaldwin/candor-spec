@@ -26,6 +26,19 @@ CANDOR="${CANDOR:-$HERE/../../candor-rust}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
 
+# A CHECKER CRASH MUST NOT MASQUERADE AS AN ENGINE DISAGREEMENT.
+#
+# Every differential case here runs `python3 - … <<'PY' || rc=1`. That sets rc on a real divergence AND on
+# a checker that merely died — a report truncated because a release rebuild was in flight, a missing file,
+# a typo in the checker itself. Both exit 1; only the first prints a DIVERGE line. So the run ended
+# "conformance: FAILED" with no named divergence anywhere in it, which reads as "the engines disagree and
+# the suite will not say how". That happened once during the R4 work and cost a real investigation before
+# three clean re-runs made it look like flakiness.
+#
+# It is the suite's own version of the defect it exists to catch: a verdict whose evidence is absent.
+# Tee stderr so the summary can tell the two apart and say which it was.
+exec 2> >(tee "$W/harness-stderr.log" >&2)
+
 # --- locate / build the engines ----------------------------------------------------------------------
 SCAN="${CANDOR_SCAN_BIN:-}"
 QUERY="${CANDOR_QUERY_BIN:-}"
@@ -3733,4 +3746,23 @@ echo
 [ "$rc" -eq 0 ] \
   && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary agree across the engines)" \
   || echo "conformance: FAILED"
+
+# If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
+# stderr; a genuine divergence does not. Without this the two are indistinguishable in the summary, and an
+# infrastructure error gets investigated as an engine disagreement (or, worse, re-run until it passes).
+if [ "$rc" -ne 0 ]; then
+  sync 2>/dev/null || true
+  if grep -q "^Traceback (most recent call last)" "$W/harness-stderr.log" 2>/dev/null; then
+    echo
+    echo "conformance: THE HARNESS ITSELF ERRORED — this is NOT an engine disagreement."
+    echo "  A checker raised rather than reporting a divergence, so the FAILED above is not evidence"
+    echo "  about the engines. Do NOT re-run until it passes; fix the cause. Most likely: a report file"
+    echo "  was read while a rebuild was rewriting it, or a checker references a file that was not"
+    echo "  produced. The exception:"
+    # The exception line is the LAST line of a traceback block and is the only part that says what
+    # actually went wrong — the intermediate frames are usually inside json/ or the stdlib.
+    grep -E "^[A-Za-z_][A-Za-z_.]*(Error|Exception|Interrupt)\b" "$W/harness-stderr.log" 2>/dev/null \
+      | head -1 | sed 's/^/    /'
+  fi
+fi
 exit "$rc"
