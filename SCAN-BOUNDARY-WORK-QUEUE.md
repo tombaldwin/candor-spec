@@ -43,6 +43,26 @@ cases it did, and nothing looked for it. Two caveats learned the hard way:
 - **Bound it at consumption**: join it and `continue`, so it can never reach local resolution or the
   classifier.
 
+## A cross-engine precedent tells you an approach CAN work. It does not specify the guard.
+
+R4 is the case study, and the mistake was mine. R4 sat blocked as *"a decision, not a patch"*; I unblocked it
+by citing swift's `eae2de2`, which had shipped the same idea safely behind one carve-out, and I decided for
+**resolution 1 (provenance)** on that basis. Measured, resolution 1 *as I specified it* produced **32 fresh
+Unknowns on serde_json** — worse than the 30 that had caused the original revert. `serde::Serialize` genuinely
+IS a dependency trait, so provenance waves it through.
+
+The discriminator that actually works is **erasure**, which was in neither the queue nor the precedent: a
+`dyn` receiver is type-erased, so the crate's local impls really are its candidate witnesses; a `T: Trait`
+bound or an `impl Trait` param is monomorphized *by the caller*, so they are not. Two further carve-outs
+(`self`/`crate`/`super` roots, nested-item scoping) were each found the same way — by a flood on real code,
+not by reasoning.
+
+So: the precedent was good evidence that the shape was reachable, and no evidence at all about which guard
+made it safe. **Cite a precedent to justify attempting something; measure to find out what it costs.** And
+the reverse now needs checking too — swift's carve-out does not appear to distinguish erased from
+monomorphized receivers, so the engine that supplied the precedent may itself be fabricating. That is being
+probed; a precedent inherits the other engine's unexamined assumptions along with its result.
+
 ## Queue
 
 ### rust — 4 of 5 done (R5 is the only one left)
