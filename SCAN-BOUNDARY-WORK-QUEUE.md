@@ -252,6 +252,25 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       an INSTANCE method, or the static call site is charged a body it never runs. Every guard was then
       verified by mutating it out and confirming a named test fails; a test that has never failed is not
       evidence.
+
+      **AMENDED after a code review (2026-07-26).** The emitter as first written carried three defects, all
+      now fixed, and two of them were exactly the failure modes this queue's standing bar predicts:
+      - an effectful `default` method's REAL entry SUPPRESSED the union (`if (!claimed.add(hash)) continue`),
+        so every overriding implementer's effects were dropped from the only hash a chained consumer can key
+        on — a silent under-report. Now MERGED into the claiming entry, which correctly stays UNMARKED (it is
+        a real analysed unit counted in `analyzed`; marking it would make a consumer subtract it twice).
+        Measured: `deny Net` two-tree exit 0 → 1, single-tree control exit 1 in both arms. On real code
+        okhttp's `Interceptor.intercept` went `[]` → `[Clock,Fs,Log,Net,Unknown]`. — `48a5f18`
+      - it unioned every implementer with NO fan-out bound, so an open hierarchy re-exported the smear the
+        in-scan `CHA_FANOUT_LIMIT` exists to prevent (kafka `Message`, 217 subtypes). Now bounded, and a
+        broad interface publishes `["Unknown"]` rather than silence — twelve pure implementers do not make
+        the thirteenth pure, and §2 rule 3 makes an absent entry a purity claim. — `429c7b2`
+      - the union's `netClass` merged hosts across implementers, letting one literal telemetry host certify
+        another implementer's runtime-computed endpoint. Now classified PER IMPLEMENTER. Real but latent:
+        across 52 jars, 1089 union entries carry a netClass and **not one** was certified. — `90af98f`
+
+      So the earlier claim in this row that the union used "the CHA universe in-scan dispatch uses" was NOT
+      true as written — the bound was missing. It is true now.
 - [ ] by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — resolve over any descriptor, so
       there is no single hash to join on.
 
