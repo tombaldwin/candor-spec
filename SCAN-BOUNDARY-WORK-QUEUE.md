@@ -68,6 +68,15 @@ now scopes the headline claim because of it.
    BUILD through `head`; check the artifact's mtime, not the command's exit. (b) `git checkout <file>` to
    undo a one-line MUTANT reverted the whole file — including forty lines of uncommitted work in it. Copy
    the file aside and restore from the copy; `git checkout` cannot tell your mutant from your work.
+7d. **BEFORE YOU REPORT A DEFECT, ASK WHETHER YOUR TEST METHOD PRODUCED IT.** Twice in one day I built a
+   measurement that showed a fix was broken, and twice the measurement was the broken thing. (a) I pointed
+   `--deps` at a hand-built old-format report while `--dep-inits` was on — which RE-SCANS the packages on
+   disk and chains its own fresh reports, so the report I wrote never participated; I read the fix working
+   as a compatibility regression. (b) I removed a fault injected by an ENV VAR and expected a cached abort
+   to clear — but the env var is deliberately outside the cache key, so replay was the designed behaviour;
+   the real clearing guard fires on a CONTENT change, and does. **A false defect costs the same review time
+   as a real one and burns credibility with whoever fixed it.** The check is cheap: name the thing your
+   arms actually differ in, and confirm it is the thing you think you are varying.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -1124,7 +1133,7 @@ narrowed past a real reach. Two were mine, and both are in the fail-closed direc
 protect. *(All in flight 2026-07-26 evening.)*
 
 **Cardinal sins (silent under-reports):**
-- [ ] rust `scan.rs:663` — the contained parser abort (`a593197`, MINE) writes `fninfos: []` into the
+- [x] **FIXED `39bbc8b`** — rust `scan.rs:663` — the contained parser abort (`a593197`, MINE) writes `fninfos: []` into the
       `--incremental` cache under the file's REAL content hash, so a warm run reuses it, skips the
       `catch_unwind`, emits no `unanalyzed` and no `had_parse_failure`, and a gate goes GREEN over a file
       whose effects were never derived. **I converted a fail-closed crash into a cached, reproducible false
@@ -1139,7 +1148,7 @@ protect. *(All in flight 2026-07-26 evening.)*
 - [ ] swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
       `patternNames` returns `[]` for optional/expression/enum-case patterns, so `for case let x? in` never
       shadows and an enclosing `some P` parameter's flag stays attached to an unrelated erased binder.
-- [ ] rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
+- [x] **FIXED `9196c89`** — rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
       the nested signature's own bounds, so `fn inner<T: Doer>(d: T) { d.go() }` resolves to nothing. The
       commit's fixture asserted only the FABRICATION direction; the second fixture was never written.
 - [ ] ts `scan.mjs:1631` — the module unit's wire key changed shape with **no engine-version bump**, and
@@ -1177,3 +1186,28 @@ the second time that path has been wrongly accused today.
 4. **A cap or a refusal must land on the PUBLISHING side, never on the EVIDENCE side.** ts's typings cap and
    the union's drop-on-collision are the same error: refusing to gather evidence lets a confident wrong
    answer through, where refusing to publish would have been safe.
+
+### rust's two review defects — CLOSED, and the fix corrected the finding's own shape
+
+`39bbc8b` persists the abort IN the cache entry (`FileCache::aborted`, schema rev8) and replays it, rather
+than refusing to cache. The argument that decided it: **replaying assumes exactly what reusing the FnInfos
+already assumes** — same content hash AND same decl index ⇒ same walk ⇒ same outcome — so it is gated on
+both, and a decl-index move sends the file back through the walk. Verified by me in both directions: with
+content and decl index unchanged the abort REPLAYS (gate stays exit 2); the moment the walk re-runs clean
+the abort CLEARS (`unanalyzed: []`, entries 1→2, gate back to a real exit 1). The clearing guard is the
+MIRROR SIN and needed its own fixture — *a cached abort that outlives a clean re-walk is a gate that can
+never go green.*
+
+`9196c89` — **the review's finding was right about the cause and wrong about the shape, and probing before
+patching is what showed it.** A nested `fn inner<T: Doer>(d: T) { d.go() }` is NOT fixed by the bound map:
+its `dyn` control (`fn inner(d: &dyn Doer)`) is equally silent, because a nested item's PARAMETERS are
+never typed at all — a position-level gap, now pinned as a residual with both controls. What the blanked
+map actually bites is the `let` ANNOTATION inside the nested item. Three rows fixed (nested fn, nested impl
+block, nested impl method); re-installing `dyn_sig_traits`/`trait_quals` was REFUSED, because the only
+position they could bind to is the untyped-parameter one that does not resolve anyway.
+
+**And the agent caught item 9 in its own work:** its "REPLACE, not merge" comment was an assertion nothing
+checked — the merge mutant passed the entire suite. Pinning it needed a deliberately NON-COMPILING fixture,
+because rustc's E0401 makes the two indistinguishable on anything that compiles, and candor-scan analyses
+crates without building them. That is a genuinely new corner of item 9: *a guard can be untestable on valid
+input and still matter, because this analyser does not require its input to be valid.*
