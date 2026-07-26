@@ -2566,3 +2566,37 @@ doc, each derived from a confirmed defect rather than imagined.
 
 Half 1 is untouched and remains the floor in all four engines. Fixes: rust `71c2495`, java `ba8c0c5`,
 ts `8ee89f5`, swift `81a9dc3`; revert `eb12d3e`.
+
+### 2026-07-26 (cont.) — auditing the review's own repairs: four defects in five fixes
+
+The code-review round above produced five fixes. Each was then re-checked in the OTHER direction — the
+discipline the round itself had just added to the standing bar — and **four of the five were wrong**, two of
+them cardinal sins:
+
+| fix | other-direction result |
+|---|---|
+| rust `trait_quals` tombstone | **cardinal sin** — a colliding leaf was dropped for BOTH crates, so `b.go()`'s genuine `Net` vanished. Pre-fix last-wins had it right by accident. |
+| java hand-off SAM filter | an **allowlist of method names**, already missing `getAsInt`/`getAsLong`/`getAsDouble`/`getAsBoolean` — an `IntSupplier` implementation's effects would have been dropped |
+| ts callback-position guard | **cardinal sin** — `then(onFulfilled, onRejected)` invokes its SECOND argument, and moving the dep charge below a blanket arg-0 guard lost it |
+| swift erasure split | clean — verified, a shadowing local resolves via `vars` and never reaches the CHA arm |
+| rust provenance scoping | clean — and it exposed a pre-existing gap: trait-typed LOCALS never recorded their own crate |
+
+**The mechanism, which did not vary.** Each fix narrowed a sound over-approximation to kill a fabrication,
+and narrowed past the real reaches. The fixture that demonstrates the fabrication is *structurally incapable*
+of demonstrating the loss — it contains only the pure receiver (`only_alpha` calls `a.go()` and never
+`b.go()`), only the uninvoked argument (`forEach(cb, thisArg)` and never `then(ok, err)`), only the one call.
+Passing it is evidence about one direction and silence about the other.
+
+**Two corollaries.** Narrow with a **denylist** of proven-safe cases, never an allowlist of permitted ones —
+the java fix reached for the forbidden shape *while fixing an over-charge*, and had already forgotten four
+entries. And prefer **disambiguating** to **dropping**: tombstoning a colliding key is safe against
+fabrication and silently costs every genuine use; the information to separate the cases existed one level
+down (per-receiver rather than per-leaf).
+
+**A guess that is right for the wrong reason hides the gap underneath it.** rust's leaf map was last-wins,
+which by accident stored the crate a shadowing local needed — so "trait-typed locals never record their own
+qualification", a whole missing feature, looked like working code. Removing the guess did not create that
+gap; it revealed it. Expect an apparent regression when you stop guessing, and establish which it is before
+treating it as one.
+
+Fixes: rust `0eca79c` + `fee73fe`, java `020fb62`, ts `c08063a`.
