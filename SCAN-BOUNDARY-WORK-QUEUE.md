@@ -86,6 +86,12 @@ now scopes the headline claim because of it.
    which silently mis-attributes is worse than one that errors, because its output is plausible.** Prefer
    the tool's own reporting to a regex over its artifacts, and when a mutation result surprises you,
    confirm it from a second channel before theorising about the engine.
+8b. **INSTRUMENTING AN ANALYSER CHANGES WHAT IT ANALYSES — including itself.** A probe added to swift's
+   hot receiver-resolution path read an env var, and candor's own self-scan then charged Env+Fs to 26 of
+   its OWN functions. The probe was correct and its finding was correct; shipping it would have written
+   the measurement into the product's report. Instrument freely, but treat the probe as an ARM to be
+   removed, and never leave one in a path the engine walks over itself. (Cf. item 7: this is the same
+   family as reading a stale artifact — the tool and the thing measured are the same object.)
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
