@@ -9,6 +9,10 @@ now scopes the headline claim because of it.
 
 ## THE STANDING BAR — applies to every item, no exceptions
 
+0. **A fix that trades one sin for the other is not a fix.** Both directions happened in this vein, in the
+   same commit family: closing swift's `some P` fabrication by withholding the receiver's TYPE took the
+   dependency join with it and made an Fs-performing function read PURE. Check the OTHER direction after
+   every soundness fix — the fixture that proves you closed the miss will not notice you opened its mirror.
 1. **The cardinal sin is a SILENT UNDER-REPORT.** Never trade it for its mirror. A fix that FABRICATES an
    effect on a genuinely pure function is worse than the miss it closes. If an A/B shows gains you cannot
    trace to a real reach, **revert**. Three swift fixes were reverted this way before a fourth landed clean;
@@ -28,7 +32,23 @@ now scopes the headline claim because of it.
    disk, and reading it back silently reports the wrong arm's result. This has now bitten three times in this
    vein — twice via a stale `*-all.jar` picked by `ls … | head -1`, once via a pre-fix ts worktree with no
    `node_modules`. Every time, the fabricated datapoint pointed the *flattering* way.
-8. Commit each fix separately, substantive message, trailers:
+8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
+   CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
+   the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
+   `min()` and the engine's own local functions. Both were invisible in the output and obvious in the
+   COUNTS. **Instrument the preconditions** — how often does the trigger hold, and on what? — and read the
+   ratio, not just the diff. A trigger that fires 239 times on shapes you did not intend is not "bounded
+   as designed", and a bound that admits nothing on a real modular crate is usually a keying bug.
+9. **A comment that states a justification is an assertion, not a proof — and it will be believed.** Three
+   of the ten defects a code review found in this vein were cases where the correct principle was written
+   in a comment and the code beneath it did the opposite: a leaf-key join four paragraphs under "the trap
+   this must not walk into"; "the parameter is gated to Runnable/Callable, so its reported surface is what
+   the runtime invokes" (the gate constrains the TYPE, never which MEMBER runs); "cleared on any rebind by
+   the clearBinding path below" where that path cleared four other maps and not this one. Each was
+   confident, specific and wrong, and each survived self-review *because* the comment answered the question
+   the code should have been asked. **Reduce the comment's claim to a fixture, or write it as an open
+   question.**
+10. Commit each fix separately, substantive message, trailers:
    `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and the session `Claude-Session:` line.
    **Do not push without an explicit instruction.**
 
