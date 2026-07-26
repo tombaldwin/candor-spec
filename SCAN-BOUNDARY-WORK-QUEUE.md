@@ -154,7 +154,32 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       Known over-fire, bounded: there is no external analogue of the local arm's `trait_declares_method`
       guard, so a blanket-trait method on a `dyn` receiver (hyper 0.14's `.into()` on a `&dyn Stream`) forms
       an edge that dangles. Zero measured effect.
-- [ ] **R5 — the untyped cross-package receiver. NOW HAS A DESIGN:
+- [x] **R5 — CLOSED, both halves. Half 2 landed on the SECOND attempt — `a1e53e7`.** The canonical fixture
+      goes exit 0 → **exit 1**, matching a single-tree control that is exit 1 in both arms, so it is a
+      boundary defect and not a limit. Every one of attempt 1's four reverted defects is now a requirement
+      with a mutation that was run and confirmed to fail: fully-qualified type identity on both ends;
+      wrapper returns refused outright (`-> Result<Conn,E>` must not publish `Conn` — the binding holds the
+      Result); a miss on `returns` OR on the entry lookup after a `returns` hit falls back to half 1's
+      disclosure; every surface applied through the ONE `apply_dep_fn` from `7cb5748`.
+      - **Item 0 fired for real, mid-implementation.** The first producer used suffix matching, and the
+        MODULAR second fixture reproduced defect 1 through a new door: a bare `-> Client` inside `mod mock`
+        is module-relative, `expand` leaves it bare, so it published `deplib#mock::client → deplib#sync::Client`.
+        The flat fixture was structurally incapable of noticing. `bound_return_type` now resolves a bare
+        name against its DECLARING module, matching is exact, and `super::` is refused (`expand` strips the
+        root without walking up, which would root the path in the wrong module).
+      - **Counts, not output** (item 8): 430 of 850 registry dep reports carry a surface, 9108 returns
+        published; all 850 byte-equal to the pre-change engine once the block is removed. Consumer arm of
+        408 crates / 41686 entries changed **nothing** and was entered 408 times (2 hits, 406 misses) — the
+        rung is exercised there and simply has nothing to say. The one real recovery is on application code:
+        `aws_config::defaults(v) -> ConfigLoader` then `.load()`, 2 functions gain `Log` and 45 gain
+        `invisible: [aws_credential_types, aws_runtime]`, a blind-crate disclosure ebman could not make for
+        itself.
+      - Spec side: the field is now documented in SPEC §2 + the 0.23 changelog (`8394af0`). PART 21's rust
+        row reads `RESOLVED — ['Fs']`, an arm the checker already accepted, so conformance needed no edit.
+
+      Original framing, kept because it is what half 2 addressed:
+
+      **R5 — the untyped cross-package receiver. DESIGN:
       [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md).** The key finding is that it SPLITS,
       and the first half needs no format change: an engine always knows whether it FORMED A KEY, and
       `keyed-and-missed` (a genuine purity claim under §2 rule 3) vs `could-not-form-a-key` (no question was
@@ -603,3 +628,16 @@ each is actionable.
       `netClass: ["known-telemetry"]`. Each hostless idiom alone yields `unknown-host` via the empty-hosts
       branch, but that branch is per-function, so a literal sibling masks it. Same shape as the union defect
       `90af98f` fixed, one layer beneath it — and the union fix does not reach it.
+
+## Found in passing while landing the typeSurface rung (2026-07-26) — not boundary defects
+
+- [ ] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2`**, and the panic aborts the
+      whole `--deps` run rather than the one crate. `proc-macro2`'s `Span::join`: *"Invalid span with no
+      related FileInfo"*. Pre-existing and unrelated to any boundary work — it cost the typeSurface pass a
+      workaround. Two things to fix, and the second matters more than the first: the parse itself, and
+      **the blast radius** — one unparsable dependency taking down the tree means a chained consumer
+      silently proceeds with FEWER dep reports than it asked for, which is the κ ledger's business.
+- [ ] **`build.rs` fails clippy `collapsible_if` on clippy 0.1.96**, present at HEAD, so
+      `cargo clippy --all-targets` over the whole workspace cannot go green today. Every recent commit
+      reports "clippy clean on the four library crates" because of it; that qualifier should stop being
+      necessary.
