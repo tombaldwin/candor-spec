@@ -9,10 +9,32 @@ now scopes the headline claim because of it.
 
 ## THE STANDING BAR — applies to every item, no exceptions
 
-0. **A fix that trades one sin for the other is not a fix.** Both directions happened in this vein, in the
-   same commit family: closing swift's `some P` fabrication by withholding the receiver's TYPE took the
-   dependency join with it and made an Fs-performing function read PURE. Check the OTHER direction after
-   every soundness fix — the fixture that proves you closed the miss will not notice you opened its mirror.
+0. **A FABRICATION FIX IS WHERE UNDER-REPORTS GET INTRODUCED. Measured: four defects in five fixes.**
+   After a code review found ten defects in one day's boundary work, every one of the five fixes written in
+   response was re-checked in the OTHER direction. Four were wrong, two of them cardinal sins:
+
+   | fix | what the other-direction check found |
+   |---|---|
+   | rust `trait_quals` tombstone | dropped a genuine cross-crate reach — **cardinal sin** |
+   | java hand-off filter | an ALLOWLIST of SAM names, four already missing |
+   | ts callback-position guard | dropped `then`'s second callback — **cardinal sin** |
+   | swift erasure split | clean |
+   | rust provenance scoping | clean; exposed a pre-existing gap underneath |
+
+   The shape is always the same: you narrow an over-approximation to kill a fabrication, and narrow past the
+   real reaches. **The fixture that proves you closed the fabrication is structurally incapable of noticing
+   the reach you closed with it** — it contains only the pure receiver, only the uninvoked argument, only the
+   one call. Write the second fixture before you believe the first.
+   - Narrow with a **denylist** of proven-safe cases, never an allowlist of permitted ones (the java fix
+     reached for an allowlist while fixing an over-charge, and had already forgotten four entries).
+   - Prefer **disambiguating** to **dropping**. Tombstoning a colliding key is safe against fabrication and
+     silently costs every genuine use of it; the information to tell the cases apart usually exists one
+     level down (there, per-receiver instead of per-leaf).
+0b. **A guess that is right for the wrong reason hides the gap underneath it.** rust's leaf map was
+   last-wins, which — by accident — stored the crate a shadowing local needed, so a whole missing feature
+   (locals never recorded their own qualification) looked like working code. Removing the guess did not
+   create that gap, it revealed it. Expect a "regression" when you stop guessing, and check whether it is
+   one before treating it as one.
 1. **The cardinal sin is a SILENT UNDER-REPORT.** Never trade it for its mirror. A fix that FABRICATES an
    effect on a genuinely pure function is worse than the miss it closes. If an A/B shows gains you cannot
    trace to a real reach, **revert**. Three swift fixes were reverted this way before a fourth landed clean;
