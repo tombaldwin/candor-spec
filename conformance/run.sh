@@ -3742,9 +3742,106 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 21 — COULD-NOT-FORM-A-KEY MUST DISCLOSE, NOT READ PURE                             [TIER 1]
+#
+# DEP-RECEIVER-TYPING-DESIGN.md, half 1. A chained lookup coming back empty means two different things:
+#   keyed-and-missed     the key WAS formed, the dep's report has no entry -> a genuine purity claim,
+#                        because dep reports omit pure functions (SPEC §2 rule 3). Silence is correct.
+#   could-not-form-a-key the receiver was never typed, so NO lookup happened -> licenses nothing.
+# Every engine used to treat both as the first, which makes the caller a CONFIDENT purity claim about a
+# function that performs I/O — and under the ⟨0.21⟩ manifest the fn is still counted in `analyzed`, so its
+# absence reads as a positive claim rather than a gap.
+#
+# This pins the DISCLOSURE, not the effect: the consumer must carry `Unknown` (any `unknownWhy` reason).
+# Recovering the effect itself needs the format rung (half 2) and is deliberately NOT asserted here.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+P21_OK=0
+# ---- rust: a receiver bound from a dep FACTORY. The factory is pure, so it is absent from the dep's
+#      report entirely — there is no return type to travel, and `c` is never typed.
+P21_RS="/nonexistent"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$W/uk/rs/deplib/src" "$W/uk/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/uk/rs/deplib/Cargo.toml"
+  printf 'pub struct Client;\nimpl Client {\n  pub fn fetch(&self) -> String { std::fs::read_to_string("/etc/x").unwrap_or_default() }\n}\npub fn build() -> Client { Client }\n' > "$W/uk/rs/deplib/src/lib.rs"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib={path="../deplib"}\n' > "$W/uk/rs/app/Cargo.toml"
+  printf 'pub fn go() -> String { let c = deplib::build(); c.fetch() }\n' > "$W/uk/rs/app/src/lib.rs"
+  ( cd "$W/uk/rs/deplib" && "$SCAN" . >/dev/null 2>&1 )
+  cp "$W"/uk/rs/deplib/.candor/report.*.scan.json "$W/uk/rsdep.json" 2>/dev/null
+  ( cd "$W/uk/rs/app" && CANDOR_DEPS="$W/uk/rsdep.json" "$SCAN" . >/dev/null 2>&1 )
+  P21_RS=$(ls "$W"/uk/rs/app/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+# ---- java: dispatch on a DEP-DECLARED INTERFACE whose impl lives in the dep. The site names the
+#      interface (a declaration the JVM never runs); the body is keyed under the impl's owner.
+mkdir -p "$W/uk/java/lib" "$W/uk/java/app"
+printf 'package lib;\npublic interface Store { void save(String s); }\n' > "$W/uk/java/lib/Store.java"
+printf 'package lib;\nimport java.io.*;\npublic class FileStore implements Store {\n  public void save(String s) { try (FileWriter w = new FileWriter("/tmp/x")) { w.write(s); } catch (Exception e) {} }\n}\n' > "$W/uk/java/lib/FileStore.java"
+printf 'package lib;\npublic class Factory { public static Store build() { return new FileStore(); } }\n' > "$W/uk/java/lib/Factory.java"
+printf 'package app;\npublic class Go { public void run() { lib.Store s = lib.Factory.build(); s.save("hello"); } }\n' > "$W/uk/java/app/Go.java"
+javac -d "$W/uk/jall" "$W/uk/java/lib"/*.java "$W/uk/java/app/Go.java" 2>/dev/null
+mkdir -p "$W/uk/jlib" "$W/uk/japp/app" && cp -r "$W/uk/jall/lib" "$W/uk/jlib/" 2>/dev/null
+cp "$W/uk/jall/app/Go.class" "$W/uk/japp/app/" 2>/dev/null
+java -jar "$JAR" "$W/uk/jlib" --json "$W/uk/jlib.json" >/dev/null 2>&1
+CANDOR_DEPS="$W/uk/jlib.json" java -jar "$JAR" "$W/uk/japp" --json "$W/uk/japp.json" >/dev/null 2>&1
+# ---- ts: the PUBLISHED shape — dist JS + `.d.ts`. TypeScript reaches this case by a different road than
+#      rust: a receiver it genuinely cannot type is `any`, which already reads `callback:` Unknown, because
+#      return types travel in the typings. Its unformed key is the receiver typed to an ABSTRACTION the
+#      dependency's report has no vocabulary for — the factory returns the INTERFACE, and the only body is
+#      hashed under the implementing class the consumer never sees.
+TS_UK="/nonexistent"
+if [ -d "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$W/uk/ts/deplib/src" "$W/uk/ts/app/src" "$W/uk/ts/app/node_modules/deplib/dist"
+  printf '{"name":"deplib","version":"0.0.0"}\n' > "$W/uk/ts/deplib/package.json"
+  printf 'import * as fs from "node:fs";\nexport interface Store { save(s: string): void; }\nexport class FileStore implements Store {\n  save(s: string): void { fs.writeFileSync("/tmp/x", s); }\n}\nexport function build(): Store { return new FileStore(); }\n' > "$W/uk/ts/deplib/src/index.ts"
+  printf '{"name":"app","version":"0.0.0"}\n' > "$W/uk/ts/app/package.json"
+  printf 'import { build } from "deplib";\nexport function go(): void { const s = build(); s.save("hello"); }\n' > "$W/uk/ts/app/src/index.ts"
+  printf '{"name":"deplib","version":"0.0.0","types":"dist/index.d.ts","main":"dist/index.js"}\n' > "$W/uk/ts/app/node_modules/deplib/package.json"
+  printf 'export interface Store { save(s: string): void; }\nexport declare function build(): Store;\n' > "$W/uk/ts/app/node_modules/deplib/dist/index.d.ts"
+  printf 'exports.build = function () { return {}; };\n' > "$W/uk/ts/app/node_modules/deplib/dist/index.js"
+  ( cd "$TS_DIR" && node scan.mjs "$W/uk/ts/deplib" >/dev/null 2>&1 )
+  cp "$W/uk/ts/deplib/.candor/report.json" "$W/uk/tsdep.json" 2>/dev/null
+  ( cd "$TS_DIR" && CANDOR_DEPS="$W/uk/tsdep.json" node scan.mjs "$W/uk/ts/app" >/dev/null 2>&1 )
+  TS_UK="$W/uk/ts/app/.candor/report.json"
+fi
+python3 - "$W/uk/japp.json" "$P21_RS" "$TS_UK" <<'PYUK' || P21_OK=1
+import json, sys, os
+def verdict(path, fn):
+    """(disclosed, detail). A fn ABSENT from `functions` is the defect: under ⟨0.21⟩ it is still
+    counted in `analyzed`, so absence is a purity CLAIM, not a gap."""
+    try: d = json.load(open(path))
+    except Exception: return None, "unreadable report"
+    for e in d.get("functions", []):
+        if e.get("fn") == fn or (e.get("hash") or "").endswith(f"#{fn}"):
+            inf = e.get("inferred", [])
+            if "Unknown" in inf: return True, f"Unknown {e.get('unknownWhy') or ''}"
+            return False, f"present but reads {inf or 'pure'}"
+    return False, "ABSENT from the report — a confident purity claim"
+print("\n[21] COULD-NOT-FORM-A-KEY MUST DISCLOSE  (a receiver the engine never typed must not read pure)")
+engines = [("java", sys.argv[1], "app.Go.run")]
+if os.path.exists(sys.argv[2]): engines.append(("rust", sys.argv[2], "go"))
+if os.path.exists(sys.argv[3]): engines.append(("ts", sys.argv[3], "src.index.go"))
+fails = 0
+for name, path, fn in engines:
+    ok, why = verdict(path, fn)
+    if ok:
+        print(f"  {name:6s} -> MATCH    (discloses rather than claiming purity: {why})")
+    else:
+        fails += 1
+        print(f"  {name:6s} -> DIVERGE  ({why})")
+print("  swift -> not yet implemented; half 1 is per-engine and needs no rung, so it joins by landing it")
+sys.exit(1 if fails else 0)
+PYUK
+
+echo "PART 21 — could-not-form-a-key discloses (DEP-RECEIVER-TYPING-DESIGN.md half 1)"
+if [ "$P21_OK" = 0 ]; then
+  echo "  -> MATCH — an untyped cross-package receiver discloses instead of reading pure in java + rust + ts"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses agree across the engines)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
