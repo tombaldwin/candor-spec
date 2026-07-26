@@ -384,6 +384,11 @@ Pinned by `CoverageEnvelopeTest.aClassifiedCallMustNotClearTheHedgeOnAnUnrelated
 **verified to catch**: against pre-fix source it fails on arm B with *"app.A.nm must be IN the report"* while
 arm A passes.
 
-**Still open:** the rust half (`dep_classified`, same two deletion sites) — deferred only because a
-concurrent agent was editing that repo. Arms B and C stand as recommended: not per-call-site, and a
+**Rust half landed too** — candor-rust `9a4f471`, same shape, same two corrections (drop the dynamic set
+from the filter; count floored calls only), plus a third site java did not have: the dep-report-join also
+marked the crate classified, which is redundant with the `deps_idx.crates` arm that already covers it.
+A/B pgman / ebman / candor-rust: **0 / 0 / 0** — structural, not luck, since the only `classify()`-matched
+non-calibrated crates are `pnet_*`. The fixture is what shows the fix fires; the corpora show it costs
+nothing. Test verified to catch (*"`list_ifaces` must be in the report"*), and the failing dump prints
+`"count": 2` right beside the missing entry — the manifest argument, self-evidencing. Arms B and C stand as recommended: not per-call-site, and a
 keyed-and-missed vs could-not-form-a-key distinction respectively.
