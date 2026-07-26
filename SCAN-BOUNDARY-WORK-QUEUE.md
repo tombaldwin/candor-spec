@@ -161,9 +161,41 @@ Residual, still open:
   test rather than invented.
 
 ### cross-cutting
-- [ ] **Coverage granularity.** Package/crate-granular coverage means one *resolved* call clears the blind
-      marker for every call shape into that dependency, so chaining removes a hedge that would otherwise
-      have flagged these. Present in all four engines. Does not cause the misses; makes them confident.
+- [~] **Coverage granularity — CHARACTERISED, split into three arms, one worth fixing.**
+      Full write-up + fixtures + measured blast radius:
+      [COVERAGE-GRANULARITY-FINDING.md](COVERAGE-GRANULARITY-FINDING.md). The one-line item above
+      conflated three mechanisms:
+      - **A, dynamic** (`dep_classified` rust `scan.rs:836/1061/1252`; `kappaClassified` java
+        `Candor.java:714/1719`): ONE *classified* call marks the whole package covered, deleting the
+        `invisible` hedge from every other floored call into it — including packages the source
+        deliberately left ledgered (`Rules.java:666`: "an unmodeled member … discloses `invisible` — the
+        honest floor"). **A real defect, rust + java only.** Fixtures: rust `pnet_datalink`
+        (`interfaces()` floors, `channel()` → Net), java `org.apache.commons.io`
+        (`FilenameUtils.getName` floors, `FileUtils.readFileToString` → Fs). In both, the untouched
+        function goes from `invisible:[pkg]` to **absent-from-report with `analyzed` counting it** — i.e.
+        ⟨0.21⟩ *provably pure*, a positive claim. **FIX:** delete `dep_classified` / `kappaClassified` from
+        the ledger filter; the reviewed prefix/crate list and §2 chaining remain the only coverage claims.
+        Cost measured: java **422 methods / 18 692 (2.3%)** on warroot, **0** on petclinic; rust **0** on
+        pgman/ebman/candor-rust (the mechanism can only fire on `pnet_datalink`/`pnet_transport` — every
+        other crate name `classify()` matches is already in `CALIBRATED_*`). Wants a PART 4c sibling:
+        adding a classified call into P must not remove `invisible:[P]` from an unrelated function.
+      - **B, curated** (the reviewed name lists): four-way, and **SPEC §7 item 14 exempts it by name.**
+        Making it per-call-site adds a hedge to **8.0% (pgman) / 14.2% (ebman) / 15.3% (warroot) /
+        24.6% (petclinic)** of all analyzed functions — tokio handles, aws_sdk builders, chrono
+        arithmetic, Struts beans. **Not adoptable.** swift already tried and reverted exactly this
+        (`Driver.swift:732`, "rampant false uncertainty", sweep [33]/[36]). The right pattern for the
+        sharp cases is java's structural Spring floor (`Candor.java:1724`), one library family at a time.
+      - **C, chained** (`deps_idx.crates` / `depCoveredPkgs` / `coveredPkgs`): four-way and **SPEC §2
+        chaining rule 3 mandates it.** The R5 fixture reproduces the confidence loss (control
+        `go -> ['Env']`; unchained `go -> [] invisible:['deplib']`; chained `go` absent, no coverage
+        field) but the fix is not granularity — it is distinguishing **keyed-and-missed** (a real purity
+        claim; stay silent) from **could-not-form-a-key** (`c.fetch()` on an untyped receiver; should
+        hedge). Today the `scan.rs:1033` guard means an unkeyable call never enters the join arm at all,
+        so the two are indistinguishable at the ledger. Folds into R5/R6/factory-receiver.
+      - ts and swift **refute** arm A outright: `kappaKnows` (`scan-core.mjs:234`) and
+        `PLATFORM_MODULES`/`KAPPA_MODULES` (`main.swift:526`) are pure functions of the package NAME, and
+        `depCoveredPkgs`/`coveredPkgs` are populated at report-LOAD time. No call site can move a package
+        from uncovered to covered. Fixtures in the write-up show both arms identical.
 - [x] **Conformance PART 20** pinning the boundary contract four-way — `3bd69ec` (java/rust/swift) then
       `08b796a` (ts joins). Verified-to-catch on each engine's row by unchaining that engine's consumer:
       the row goes DIVERGE and the suite FAILED while the others still match.
