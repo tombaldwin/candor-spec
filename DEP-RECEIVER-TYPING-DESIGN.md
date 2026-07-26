@@ -259,12 +259,29 @@ Two consequences worth acting on:
    rung cannot land until both are agreed four ways, and the two have different hard parts — `returns` needs
    qualified type identity and wrapper provenance, `implements` needs a hierarchy encoding. Nothing about
    `interfaceUnion`'s precedent requires them to arrive together.
-2. **`implements` may be redundant with `interfaceUnion` and that is testable.** `interfaceUnion` publishes
-   the *effect union* over a package's local implementers; `implements` publishes the *hierarchy*. If the
-   union always answers the consumer's question, `implements` buys nothing. **java is the experiment**: it is
-   N/A for PART 18 and so has never exercised the union path, which is exactly why the question is still
-   open. Run that before designing a hierarchy encoding — a rung that turns out to be redundant is the
-   cheapest possible outcome and the one nobody checks for.
+2. **`implements` IS REDUNDANT — measured 2026-07-26, and the rung comes off the queue.** The experiment
+   was one hand-edited dep report. candor-java's consumer, with NO code change:
+
+       natural dep report (lib/FileStore.save only)
+         app.Go.run  ->  Unknown[dispatch:lib.Store.save]      (half 1's disclosure)
+       + one `interfaceUnion`-shaped entry, hash lib/Store.save(Ljava/lang/String;)V
+         app.Go.run  ->  ['Fs']                                 RESOLVED
+
+   Java keys its report entries by `owner.name+desc`, which is *exactly* the key its consumer forms for an
+   `INVOKEINTERFACE` site — so a union entry lands where the join already looks. No hierarchy encoding, no
+   new field, no consumer work.
+
+   **What is actually missing is a PRODUCER.** candor-java is marked N/A for conformance PART 18 on the
+   grounds that "whole-classpath bytecode resolves cross-module dispatch natively". That is true of an
+   unchained whole-classpath scan and false of a chained one, where the dependency is not on the classpath —
+   the same "ask separately what an engine does at the BOUNDARY" lesson the initializer-edge vein taught.
+   So the remaining work is: **make candor-java EMIT `interfaceUnion` entries under `CANDOR_WORKSPACE_CHAIN`,
+   and drop its PART 18 N/A**. An existing, already-specified rung gains a fourth participant; nothing new
+   is designed.
+
+   This also resolves **swift row 3** and the java dep-interface item without `implements`: both need the
+   dependency's implementer set, and that is what the union publishes. `returns` is unaffected and remains
+   the one genuinely new field, wanted by rust and swift only.
 
 ### The trap this must not walk into
 
