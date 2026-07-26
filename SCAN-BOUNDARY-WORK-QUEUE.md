@@ -697,16 +697,103 @@ Residual, still open:
     Chained pair measured end to end: `@ukri-tfs/email#EmailService.send` `['Unknown']` → `['Net']
     invisible:['@aws-sdk/client-ses']`, reaching `invite-service#EmailServiceProxy.send`, 0 losses. It also
     repairs 139 disclosure strings that named the PROPERTY as the owner type (`dispatch:<mod>.<prop>.member`).
-  - **Two carried findings, both open.** (1) The ts dep-join copies `inferred` and `invisible` only, so a
-    chained dep's Unknown loses its REASON CLASS at the consumer and falls back to `unresolved` — the ts
-    sibling of candor-java `6ab26e4`. (2) 65 malformed `….member` disclosure reasons remain, all the
-    function-type-under-a-TYPE-ALIAS shape, which needs its own answer about what the owner should be.
+  - **Two carried findings. (1) is DONE, candor-ts `4dad22d`; (2) is DIAGNOSED and the question it was filed
+    under is the wrong question.**
+    1. ~~The ts dep-join copies `inferred` and `invisible` only, so a chained dep's Unknown loses its REASON
+       CLASS at the consumer and falls back to `unresolved`~~ — **CLOSED**, and the root cause was the same
+       one candor-java `6ab26e4` found: DUPLICATION. The CallExpression arm and the desugared-declaration
+       arm each spelled the apply-a-dep-entry copy out, they had already drifted, and the reason class was
+       added to neither; there is one `applyDepHit` now. A report failing the §2.1 check keeps the BARE
+       Unknown — its reasons are assertions from a build we do not trust — and that is asserted, not
+       assumed. Measured, 4 chained @ukri-tfs services: 0 effect gains, 0 losses, entry counts identical,
+       **606 functions gain a real reason class** where they read `unresolved`; producer reports
+       byte-identical. Gate both ways: `deny Net Unknown[reflect]` exit 0 → 1, `Unknown[native]` stays 0.
+    2. **The malformed `….member` reasons are NOT "all the function-type-under-a-TYPE-ALIAS shape", and
+       "what should the owner be" has no answer because there is no owner.** Measured on a fixture, three
+       producing shapes, and in two of them the owner is not a type at all:
+       - `type Handler = (x) => void` → `dispatch:<mod>.Handler.member` (the filed shape — owner is a type,
+         member is the literal string `member`);
+       - `makeFn()("a")` where the RETURN is an inline function type → `dispatch:<mod>.makeFn.member`,
+         naming a **function** as the owner type;
+       - `const slot: (x) => void` → `dispatch:<mod>.slot.member`, naming a **variable**.
+
+       And on the ukri-tfs corpus the dominant form is neither: **31 of 68 are `dispatch:type.member`**,
+       both halves fallen back. So the string violates SPEC §4's NORMATIVE `dispatch:<owner-type>.<member>`
+       in the OWNER as often as in the member, and the dispatch-frontier consumer
+       (`possibleViaUnknownDispatch`), which parses that payload against the hierarchy, can never match it.
+
+       The settled diagnosis: in every one of these the callee is a function VALUE with no owner type and
+       no member, which SPEC §4 assigns to **`callback:`** ("an unresolved higher-order / owner-less
+       invocation… whose target and owner type are not both known", best-effort spelling) and explicitly
+       withholds from `dispatch:`. The engine already gets this right where there is no name to grab —
+       `f: (x) => void` emits `callback:param#0` and nothing else — and the alias shape emits **both**, the
+       correct `callback:` and the malformed `dispatch:`, for the same site. So this is a
+       RECLASSIFICATION, not a better owner string.
+
+       **Deliberately NOT landed with the rest of this pass, for two reasons.** It NARROWS a gate: 68
+       reasons over 64 functions, and for **16 of those functions it is the only reason**, so their class
+       moves `dispatch` → `indirect` and a `deny E Unknown[dispatch]` rule stops firing where it fires
+       today. And `unknownWhy` vocabulary is TIER 1 and four-way, so ts should not move a shape's class
+       unilaterally — ask rust/java/swift what they emit for an owner-less function value first. A
+       strictly-widening interim (ADD the `callback:` reason, keep the malformed `dispatch:` one) is
+       available and loses no gate, but leaves the malformed string in the report and was not taken.
   - **Worth carrying methodologically:** the ambiguity guard's SILENCE is honest in ts specifically, because
     half 1 discloses an absent interface key at the consumer — mutating the fan-out bound's Unknown to a
     `continue` still leaves the consumer disclosing. That is a property of the layer beneath, not of the
     emitter, and it is why the producer-side tests are the ones that catch it. Also: scratch copies of the
     engine left in the scanned repo showed up as four "new entries" in the self-scan A/B — a measurement
     apparatus inside the target.
+- **A SECOND adversarial review of the ts boundary work found three more, all now closed (2026-07-26/27),
+  and the pattern is that each one was a REFUSAL AIMED AT THE WRONG SIDE.**
+  - **`db64b1e`'s wire-key change was invisible to §2.1 — candor-ts `651c9f9`.** Module unit hashes moved
+    from `<pkg>#<module>` to `<pkg>#<relpath>.<module>` without a `package.json` bump, so both builds called
+    themselves `candor-ts-0.23.1`. The comment claimed "an OLD consumer over a NEW report treats the whole
+    report as stale and downgrades it to Unknown"; measured with the pre-change build as the consumer, that
+    is **false**, and the bump alone does not fix it: **staleness rewrites the CONTENT of the keys a report
+    carries and can never conjure a key it lacks**, so a lookup that misses, misses whatever the version
+    says. The importer read ABSENT (a ⟨0.21⟩ purity claim) with `deny Fs` at exit 0, single-tree control
+    exit 1 in both arms. Nothing a NEW report can CARRY helps either — the old consumer is frozen and reads
+    one discriminator — so the durable rule is the forward one: **an untrusted report grants no COVERAGE**,
+    since §2 rule 3 turns its silence into a purity claim on the authority of a report we just refused to
+    trust. Now a key it fails to answer falls back to the κ ledger's `invisible` hedge and an import backed
+    only by it discloses Unknown. Real code: one dep report marked as another build gives invite-service 76
+    new hedges and 10 functions that were absent entirely, 0 effect losses. **Standing rule now in
+    candor-ts AGENTS.md: a report-KEY change bumps the build id in the same commit — necessary, and not
+    sufficient.**
+  - **A truncated typings census refused the EVIDENCE — candor-ts `90655d9`.** `typingsRoots` gives up past
+    128 `.d.ts` and dropped the typings arm when it did. The evidence is the only thing that can say a name
+    means two things, so `ifaceNameCounts` read 1 instead of 2, the never-guess guard did not fire, and the
+    package published its INTERNAL `Store` (Net) as the answer for the PUBLIC one (Fs) — `d7060ca`'s
+    fabrication restored for exactly the packages big enough to hit the cap, and `d7060ca`'s own test could
+    not see it (its fixture has no in-scan arm, so "publishes nothing" could not distinguish a dropped arm
+    from a refused publication). The refusal moved to the PUBLISHING side, routed through the never-guess
+    guard already there: **two declarations of a name, and a census that cannot prove there is only one,
+    are the same evidential position.** Bite measured across 8 real `node_modules` trees: 3 packages in
+    3213 (rxjs, @angular/common), costing 7 union entries, every one a bare `['Unknown']`.
+  - **A real entry claiming a union's hash suppressed the union — candor-ts `67d092d`, the ts sibling of
+    java `48a5f18`.** TS reaches the collision by a BARE NAME (`pkg#Store.save`), so any `class Store`
+    claims the key an interface-typed consumer forms — by declaration merging or by two unrelated
+    declarations across files. In-scan `['Fs','Net']` and `deny Net` exit 1; split and chained the consumer
+    read an unrelated class's `['Env']`, exit 0, plus a fabricated `deny Env` catch. **It is NOT
+    `mergeUnionInto`, and measuring the literal port is what said so:** java merges into the interface's own
+    `default` METHOD, whose in-scan site already carries the CHA union; TS interfaces have no bodies, so the
+    claimant is always a CLASS body, and java's merge ported literally charges an env-reading class with
+    `['Env','Fs','Net']` and fires the producer's own `deny Net` on it — the hazard java's comment names one
+    field along, at `overdeclared`. The union goes in its own marked entry under the shared hash and SPEC
+    §2's documented duplicate-hash UNION rule joins it: same answer, no analysed unit rewritten. **A
+    precedent tells you the OUTCOME to reach, not the mechanism to reach it with** — the sibling of the R4
+    lesson, one rung along.
+  - **Found while measuring, closed with them — candor-ts `e66f29e`:** a union entry that INHERITED Unknown
+    from an implementer published `inferred: ['Unknown']` with `unresolved` absent, i.e. false. `unresolved`
+    was set on the `broad` arm only. A TIER-1 trust marker failing OPEN, live on all seven of rxjs's unions.
+  - **Two zero-delta A/Bs in this pass were claims about the EXPERIMENT** (item 8), and each needed a
+    different answer. The §2.1 arms are byte-identical because no run there HAS a version mismatch — so the
+    mechanism was armed on real code instead (one report re-marked). The union-hash arms are byte-identical
+    because the trigger never fires: instrumented over **270 producer-scanned packages, a union hash is
+    claimed zero times**, which makes the corpus the fabrication CONTROL and the fixtures the evidence — the
+    posture java's `dd81bfa` landed under. **A third arm measured nothing at all and looked clean:** five
+    `--workspace` targets that chained "0 workspace dep report(s)", byte-identical for a reason with nothing
+    to do with the change. Check the chain actually chained before reading its diff.
 - **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
   registers local interface declarations only, so `use(f: DepIface) { f.go() }` never reaches the local
   `class Mine implements DepIface` — the ts sibling of swift's `eae2de2` (dispatch over an IMPORTED protocol
