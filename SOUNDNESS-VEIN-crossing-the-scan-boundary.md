@@ -126,7 +126,8 @@ Three JVM root causes, distinct from rust's:
    and its consumer certifies clean. The dependency explicitly said *"I don't know"* and the consumer
    published a clean bill.
 
-**The information is already present in 12 of the 13.** The dep report carries the exact hashes
+**Confirmed by the repair: the information really was already present.** Every fix reads the entry the dep
+report already carried; none needed a format change. **The information is already present in 12 of the 13.** The dep report carries the exact hashes
 (`lib/Entry.toString…`, `lib/DepUtil.write…`, `lib/DepConsumer.accept…`, `lib/DepKey.equals…`); nothing looks
 for them. Only dep-interface-typed dispatch needs something the report format does not carry (the dep's own
 hierarchy).
@@ -139,7 +140,7 @@ whole package, so **8 of the 13 are strictly less honest chained than unchained*
 
 | engine | silent-pure shapes | gate |
 |---|---|---|
-| **java** | **13 of 13** probed | `deny Env` 1 → 0 |
+| **java** | **4 mechanism families FIXED** (`bdf272c` stringification + equals/hashCode reentry, `a5b0a41` inherited/default from a dep supertype, `b891d5f` callback/HOF hand-off) — fixture 15 silent-pure → 0 | 1 → **1** on all four |
 | **swift** | **7 of 13** | `deny Env Unknown` 1 → 0 on seven mechanisms |
 | **ts** | 5 mechanism families | `deny Fs` 1 → 0 |
 | **rust** | 5 families | `deny Clock` 1 → 0 |

@@ -76,12 +76,32 @@ cases it did, and nothing looked for it. Two caveats learned the hard way:
 - [ ] **R6 — fully-qualified `&dyn deplib::Handler`** still reads pure (the imported form is fixed): the
       consumer never forms the crate-qualified key.
 
-### java — 13 of 13 shapes were silent; agent in flight
-Priority order: implicit stringification → inherited/default methods from a dep supertype → equals/hashCode
-reentry → callback/HOF and method refs. Root causes: CHA is project-only **and an empty CHA emits no
-Unknown**; `this.load()` on a dep supertype compiles with the PROJECT class as owner so the join is never
-reached; the opaque-handoff Unknown is gated off for exactly the cases HOF surfaces miss.
-**Note:** dep reports are VERSION-GATED — generate with the same jar you test with or it is silently stale.
+### java — 4 mechanism families DONE (fixture 15 silent-pure → 0, four gates exit 0 → 1)
+- [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
+      `chaTargets`, and **an empty CHA emitted no Unknown, only a dropped edge**. New `nearestDepFn` — the
+      cross-boundary analogue of `nearestConcreteSuper` — plus a shared `inheritDepFn` fold.
+      *Independently verified here:* `app.S.show -> ['Env']`, gate exit 1.
+- [x] inherited / default methods from a dep supertype — `a5b0a41`. `this.load()` compiles to invokevirtual
+      with the PROJECT class as owner, so the join was never reached; the subclass's own ClassNode names its
+      dep parent, so the chain is walkable from this side.
+- [x] callback / HOF hand-off — `b891d5f`. Method refs join on the handle's exact owner+name+desc; a
+      constructed functional takes the type's reported surface, gated on the PARAMETER being a functional
+      interface.
+- [ ] **dep-interface-typed dispatch to a dep impl** — needs the dependency's own HIERARCHY, which the report
+      format does not carry. Live residual, measured (jackson `WritableObjectId.generateId` loses `Rand`
+      through `ObjectIdGenerator`). Same family as rust R5 / swift factory-receiver: a format extension.
+- [ ] by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — resolve over any descriptor, so
+      there is no single hash to join on.
+
+**A fabrication caught mid-flight, worth carrying:** the first version imported dep entries whose whole
+content is `Unknown`, which turned **12 fully-resolved jackson-databind functions Unknown** from one method
+`ObjectIdGenerator`/`ResolvedType.isReferenceType()`. Guard: skip a bare-`Unknown` dep entry when the
+project CHA resolves the same signature. Measured with the guard removed — suppresses exactly 14 functions
+across six pairs, all Unknown-only, **never a real effect**.
+
+**Two operational traps:** dep reports are VERSION-GATED (generate with the same jar you test with or it is
+silently treated as stale); and `build/libs` can hold MORE THAN ONE `-all.jar`, so a glob picks the stale one
+— that cost two false negatives here before it was spotted. The stale 0.23.0 artifact has been removed.
 
 ### ts — agent in flight
 Priority: coercion (local-only AND outside the disclosure channel) → the monorepo symlink shape (a symlinked
