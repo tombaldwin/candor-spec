@@ -1051,7 +1051,14 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       nested `impl Serializer` INHERITED the outer `&dyn`-ness and gained a fabrication; here the nested
       item inherits the outer opacity and loses a real reach. The nested signature's own opacity is
       re-applied so the mirror does not open.
-- [ ] **The erasure gate does not reach the LOCAL-protocol dispatch arm at all** — measured, not fixed.
+- [~] **The erasure gate does not reach the LOCAL-protocol dispatch arm — REFUSED WITH NUMBERS, candor-swift
+      `020add4`.** Both treatments priced: SUPPRESS costs 5 losses and 7 entries REMOVED (TCA's `_$willModify`
+      goes from a disclosed `Unknown` to ABSENT) — disqualified, because the imported arm is safe only by being
+      additive and here it deletes a disclosure. DISCLOSE costs 9 concrete effects → hedge. **The argument that
+      settles it:** for an IMPORTED protocol the in-scan conformers are an arbitrary subset of the candidates;
+      for a LOCAL one they BOUND them (TCA's `ScopedCore<Base: Core>` — all 8 in-scan conformers are legal
+      instantiations and they compose), so the union IS the candidate set. That argument now lives in the code,
+      replacing the citation of a note nobody wrote. ORIGINAL:
       `d62dd69`/`02fb0ad` gate the arm at `Driver.swift`'s imported-supertype CHA, which requires
       `!localTypes.contains(owner)`. A LOCALLY-declared protocol dispatches through a different path
       (`protoTyped`/`localProtocols` → `subtypesOf`), which never consults `opaqueRecv`. Measured on a
@@ -1155,15 +1162,26 @@ result stands: its A/B, its five monomorphized rows and its three erased control
 
 ## Residuals surfaced by the 2026-07-26 agent round (recorded so they do not live only in a transcript)
 
-- [ ] **ts's `interfaceUnion` has NO CHA fan-out bound.** candor-java added one (`429c7b2`) after a
+- [x] **ts's `interfaceUnion` CHA fan-out bound — DONE, candor-ts `fc8d297`.** Measured first: the fat tail
+      is NOT the argument (44 arms over 353 targets; one with 70). The decisive finding was that rxjs's OWN
+      `Observable.subscribe` reads `Unknown[dispatch:…Operator.call]` — the in-scan site declining the 70-way
+      fan-out — while the report it wrote handed a chained consumer the smear. **candor published what candor
+      refuses to resolve.** Past the bound: `['Unknown']` + `unresolved` + reason, never silence. ORIGINAL: candor-java added one (`429c7b2`) after a
       217-subtype smear: past a threshold a union stops being information, and java's answer was to drop to
       a DISCLOSED Unknown rather than emit the smear. The same hazard is live in ts. Measure the
       distribution before implementing — and note the bound must not silently drop the union and leave
       nothing, which would be the cardinal sin wearing a precision fix. *(in flight)*
-- [ ] **ts's union reads method SIGNATURES only**, so an interface member declared as a property with a
+- [x] **ts's union reads method SIGNATURES only — DONE, candor-ts `d9b8c34`.** A `run: (x) => void` member is
+      a FunctionTypeNode with no name and no owner, so three sites keying on a declaration's name formed no
+      key at all. Chained end to end: `@ukri-tfs/email#EmailService.send` `['Unknown']` →
+      `['Net'] invisible:['@aws-sdk/client-ses']`. Also repaired 139 disclosure strings that named the
+      PROPERTY as the owner type. ORIGINAL: so an interface member declared as a property with a
       function type (`@cucumber/cucumber`'s `IDefinition.getInvocationParameters`) is never unioned.
       Pre-existing, and shared with the in-scan arm. *(in flight)*
-- [ ] **rust dictionary values and `fieldArrayElem` do not apply generic-bound resolution**, so they are
+- [x] **rust dictionary values / `fieldArrayElem` — ANSWERED, candor-rust `a80bb15`, and the premise was
+      wrong.** Probed with a `dyn` control per row: the container and field positions ALREADY thread the bound
+      map and all resolve. The real gap was the local `let` ANNOTATION, and a parameter-position defect was
+      hiding underneath it (a tuple destructure wrote both type maps and `vars` won). ORIGINAL: so they are
       inert — **correct by accident** (item 0b). If anyone adds bound resolution there for the reason R28/R39
       needed it, the erasure gate is needed at the same time. Swift recorded the same shape in its own code
       comments. *(in flight)*
@@ -1407,30 +1425,30 @@ protect. *(All in flight 2026-07-26 evening.)*
       change would break silently and in the miss direction. Since no corpus can reach it, the UNIT test is
       the evidence: it feeds the duplicate directly, asserts both directions, and restoring the size
       comparison fails it and, across all 512, only it.
-- [ ] swift `CallCollector.swift:384` — a ternary receiver composes opacity with `a.mono || b.mono`, so a
+- [x] **FIXED `663752a`** — swift `CallCollector.swift:384` — a ternary receiver composes opacity with `a.mono || b.mono`, so a
       `some P` / `any P` ternary claims full monomorphization and skips the CHA for the ERASED arm. Needs `&&`.
-- [ ] swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
+- [x] **FIXED `42093b6`** — swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
       `patternNames` returns `[]` for optional/expression/enum-case patterns, so `for case let x? in` never
       shadows and an enclosing `some P` parameter's flag stays attached to an unrelated erased binder.
 - [x] **FIXED `9196c89`** — rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
       the nested signature's own bounds, so `fn inner<T: Doer>(d: T) { d.go() }` resolves to nothing. The
       commit's fixture asserted only the FABRICATION direction; the second fixture was never written.
-- [ ] ts `scan.mjs:1631` — the module unit's wire key changed shape with **no engine-version bump**, and
+- [x] **FIXED `651c9f9` (and the brief was wrong — see below)** — ts `scan.mjs:1631` — the module unit's wire key changed shape with **no engine-version bump**, and
       §2.1 staleness keys on `candor.version`. A SAME-version consumer over a new report finds no key, is not
       told it is stale, and reads the import as pure. The comment above `depInitCell` asserts this cannot
       happen; the code does not implement that (item 9).
 
 **Fabrications:**
-- [ ] ts `scan.mjs:3884` — `typingsRoots()` returns null past a 128-file cap and the caller degrades it to
+- [x] **FIXED `90655d9`** — ts `scan.mjs:3884` — `typingsRoots()` returns null past a 128-file cap and the caller degrades it to
       `[]`, so a large package loses the whole typings arm INCLUDING its role as the ambiguity evidence —
       restoring `d7060ca`'s fabricated-Net / dropped-Fs / `deny Fs`-green defect for exactly the packages big
       enough to hit the cap. **A truncated census must make the affected names REFUSE, never make them
       confident.**
-- [ ] swift `Driver.swift:828` — the `typeSurface` consumer keys a BARE callee across every covered import
+- [x] **FIXED `6aa4635`** — swift `Driver.swift:828` — the `typeSurface` consumer keys a BARE callee across every covered import
       and checks only that the ENTRY lookup is unambiguous, never that the `returns` answer was. Two packages
       exporting `build` → one silently wins, and the caller is charged the other's `Fs` and its path literal.
       **The reverted rust attempt's defect 1, reappearing ACROSS packages instead of within one.**
-- [ ] ts `scan.mjs:4062` — the union is DROPPED where java MERGES (`48a5f18`), so a narrow real entry
+- [x] **FIXED `67d092d` (NOT by porting java — see below)** — ts `scan.mjs:4062` — the union is DROPPED where java MERGES (`48a5f18`), so a narrow real entry
       replaces the dispatch union including its `['Unknown']` fan-out disclosure.
 
 **REFUTED and worth knowing:** the "fourth unpatched `respan_call_site` site" — the `macro_rules!` template
@@ -1498,3 +1516,21 @@ Two resolutions, and the choice is Tom's because it is a release-shape decision:
 
 Nothing is published, so this blocks a release and nothing else. **Do not resolve it by reverting the ts
 bump:** that would re-disarm §2.1 on the very engine whose wire key moved.
+
+### All nine review defects are closed — and four of the nine briefs were wrong about the fix
+
+Worth recording, because the pattern is now consistent enough to plan around: **the review located every
+defect correctly and mis-stated the remedy in four of nine.** In each case probing before patching is what
+separated them.
+
+| defect | what the brief said | what measurement said |
+|---|---|---|
+| java BFS | two sites | **four** — and the unnamed one, `Cha.nearestConcreteSuper`, walked a `HashSet`: not ordered wrongly, **not ordered**. 11,193 of 11,277 changed answers were class-vs-class, not the reported interface shape |
+| rust nested bounds | a nested `fn`'s parameter | the parameter is never typed at all (its `dyn` control is equally silent) — the map bites the `let` ANNOTATION |
+| ts wire key | bump the version | **no version can close it** — §2.1 rewrites the CONTENT of keys a report carries and can never conjure a key it lacks. The fixable half was elsewhere: an untrusted report still granted COVERAGE, so every key it lacked read pure |
+| ts union drop | port java's `mergeUnionInto` | java merges into an interface's own `default` BODY; TS interfaces have no bodies, so the literal port charges a class its own union and fires the producer's `deny Net` on it |
+
+The two that were right as stated (swift's ternary `||`, swift's pattern binders) are the two smallest.
+**A verified finding is a verified SYMPTOM.** The verifier's job is to prove the failure is reachable; it is
+not to design the repair, and a brief that hands over the reviewer's proposed remedy as if it were settled
+will get it built.
