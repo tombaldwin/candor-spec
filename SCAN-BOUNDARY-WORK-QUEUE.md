@@ -340,9 +340,24 @@ Residual, still open:
   key that nobody looks up.
 
   Cost: it is a wire-visible change to how module units are named, so it wants the same care as a rung.
-- **Interface-union needs source.** A published package ships `dist` JS + `.d.ts`, so the `implements` clause
-  lives only in the typings and the child scan emits no union entry. Half 1 now discloses over this rather
-  than reading pure, so it is a PRECISION residual, not a soundness one.
+- **Interface-union needs source — DIAGNOSED 2026-07-26, and the obvious fix is the wrong one.** A published
+  package ships `dist` JS + `.d.ts`. Measured: scanning it with `CANDOR_WORKSPACE_CHAIN=1 --allow-js` emits
+  `depkit#FileStore.save ['Fs']` and NO union entry.
+
+  **The blocker is not that the interface declaration is filtered out.** I assumed it was — `.d.ts` files are
+  deliberately excluded from the scanned set (they have no bodies, so scanning them would mint empty units),
+  so `localInterfaceDecls`' `projectFiles` check rejects an interface declared only in typings. I widened
+  that check to accept `.d.ts` interfaces belonging to the scanned package, measured, and it changed
+  **nothing**. Reverted.
+
+  The real blocker is one level up: the emitter walks the CLASS's `heritageClauses`, and the scanned source
+  is `dist/index.js`, where `class FileStore { save(s) {…} }` has no `implements` clause at all — grep says
+  0 in the `.js`, 1 in the `.d.ts`. There is no heritage clause to walk, so no interface is ever consulted.
+
+  A fix must reach the class's OTHER declaration (the `.d.ts` one) through its symbol, and whether the
+  checker merges a CommonJS `exports.FileStore = FileStore` with a `declare class` in the sibling typings is
+  the open question — establish that before writing anything. **Do not re-attempt the `localInterfaceDecls`
+  widening; it is measured inert.**
 - **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
   registers local interface declarations only, so `use(f: DepIface) { f.go() }` never reaches the local
   `class Mine implements DepIface` — the ts sibling of swift's `eae2de2` (dispatch over an IMPORTED protocol
