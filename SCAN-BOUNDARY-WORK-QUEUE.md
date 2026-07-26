@@ -531,7 +531,12 @@ each is actionable.
       Fix shape: sort the supertype candidates before picking, or emit all of them. Cheap. The reason it has
       survived is that nobody diffs a report against ITSELF, only against another version.
 
-- [ ] **A chained dep's Unknown loses its REASON CLASS, so `deny Unknown[reflect]` cannot bite across a scan
+- [x] **REASON CLASS ACROSS THE BOUNDARY — FIXED (candor-java `6ab26e4`).** `DepFn` now carries
+      `unknownWhy`, and the real cause was DUPLICATION: `crossDepJoin` reproduced `inheritDepFn` line for
+      line instead of calling it, so the ⟨0.19⟩ class reached the task/HOF hand-off sites and not the
+      ORDINARY call. Deleting the copy was the fix. Measured: `deny Net Unknown[reflect]` exit 0 → 1 on a
+      consumer, while `deny Net Unknown[native]` stays 0 so the scoping still discriminates.
+      ORIGINAL REPORT: A chained dep's Unknown loses its REASON CLASS, so `deny Unknown[reflect]` cannot bite across a scan
       boundary.** `DepFn` carries no `unknownWhy`, so an inherited Unknown classifies as `unresolved` with no
       class. The reason-scoped gate — a shipped ⟨0.19⟩ rung — is therefore silently inert at the boundary,
       which is exactly where a consumer most needs it. Additive fix: teach `DepFn` to carry `unknownWhy`.
