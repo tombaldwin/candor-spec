@@ -480,6 +480,26 @@ Residual, still open:
   key that nobody looks up.
 
   Cost: it is a wire-visible change to how module units are named, so it wants the same care as a rung.
+
+  **DONE — candor-ts `db64b1e`, and the wire-compatibility half is the part that needed the care.** Keys are
+  now `<pkg>#<relpath>.<module>` and the consumer looks up the module its SPECIFIER names. A new consumer
+  meeting an OLD report (bare `<pkg>#<module>`) honours the old key and returns the old union answer —
+  silence there would have turned a precision fix into the very under-report this vein exists to close, and
+  the bare tail is a structural discriminator rather than a version guess. Measured: 8 targets, unchained
+  byte-identical; chained 0 gains, 0 losses, 84 narrowed, **0 `Unknown` removed** and nothing went from
+  disclosing something to disclosing nothing. The 13 concrete effects removed were each traced to a file no
+  import runs (`react/umd/react.development.js`, next's polyfills, angular's schematics codemods).
+
+  **VERIFIED INDEPENDENTLY** (four fixtures of my own, not the agent's): per-file keys are emitted; the
+  load-bearing premise holds — the entry unit's `inferred` really does carry a transitively-imported file's
+  `Fs`; the consumer charges that `Fs` and NOT the unimported sibling's `Net`; and an old-shape report with
+  two colliding units returns `['Fs','Net']`, the union, unchanged.
+
+  **A measurement trap found while verifying, worth carrying:** `--dep-inits` RE-SCANS the packages on disk
+  and chains its own fresh reports, so pointing `--deps` at a hand-built report while `--dep-inits` is on
+  measures the fresh scan, not the report you wrote. It made a correct fix look like a compatibility
+  regression for two rounds. To exercise the compatibility path, remove the package from disk so the
+  rescan has nothing to contribute.
 - **Interface-union needs source — DIAGNOSED 2026-07-26, and the obvious fix is the wrong one.** A published
   package ships `dist` JS + `.d.ts`. Measured: scanning it with `CANDOR_WORKSPACE_CHAIN=1 --allow-js` emits
   `depkit#FileStore.save ['Fs']` and NO union entry.
