@@ -348,3 +348,42 @@ For the queue's own record, three things in the one-sentence item are wrong or m
    caveated in the vein doc's own correction section ("the disclosure was never covering the miss; it
    merely happened to be present"). Worth keeping that caveat attached: arm C's hedge is incidental, so
    "would otherwise have flagged" overstates it. The hedge names the *package*, never the *mechanism*.
+
+## UPDATE 2026-07-26 — arm A FIXED in java, and the blast-radius number was wrong
+
+Landed as candor-java `5a76adf`, exactly as recommended (the `kappaClassified` deletion), plus a second
+correction the recommendation did not name: `kappaSeen` counted CLASSIFIED calls too, so the tally beside a
+package overstated what was invisible (the arm-B fixture read *"2 calls"* when one of them was on the
+record). It now counts floored calls only, and a package whose every call is classified never enters the
+ledger at all — the number has to mean the same thing as the name beside it.
+
+**The decisive argument turned out to be in the project's own words**, not in the blast radius.
+`Rules.java:652`: *"org.hibernate broadly stays LEDGERED — its unclassified surface is not vouched for."*
+Bare `org.hibernate` is deliberately absent from `KAPPA_COVERED_PREFIXES` — but because candor classifies the
+Session/Criteria terminals, the filter cancelled precisely the ledger entry the curated list withholds on
+purpose. The comment and the behaviour disagreed, and the behaviour was wrong. That settles adoptability
+without needing to argue about the percentage: it is the disclosure the engine already says it intends.
+
+**The blast-radius number was 8.1%, not 2.3%.** Measured on the real change (pre/post jars built in separate
+worktrees, each verified to reproduce its own arm before use) rather than an instrumented copy:
+
+| corpus | new hedges | of analyzed |
+|---|---|---|
+| spring-petclinic | 0 | 0.0% (118) |
+| uflexi / warroot | 1516 | **8.1%** (18692) |
+
+`org.hibernate` 1455, `com.google.maps` 251, `org.hibernate.query` 122. Effect-set changes **0**, entry
+losses **0**. Strictly disclose-more, as predicted. *(warroot and uflexi produced byte-identical reports —
+they are the same corpus, so this is two corpora, not three.)*
+
+The gap between 2.3% and 8.1% is worth keeping: an instrumented throwaway copy is a good way to decide
+whether to try something and a bad way to report what it costs. The estimate was close enough to be useful
+and far enough off to have been wrong in a commit message.
+
+Pinned by `CoverageEnvelopeTest.aClassifiedCallMustNotClearTheHedgeOnAnUnrelatedCallIntoTheSamePackage`,
+**verified to catch**: against pre-fix source it fails on arm B with *"app.A.nm must be IN the report"* while
+arm A passes.
+
+**Still open:** the rust half (`dep_classified`, same two deletion sites) — deferred only because a
+concurrent agent was editing that repo. Arms B and C stand as recommended: not per-call-site, and a
+keyed-and-missed vs could-not-form-a-key distinction respectively.
