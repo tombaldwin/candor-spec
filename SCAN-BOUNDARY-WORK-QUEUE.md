@@ -1475,3 +1475,26 @@ checked — the merge mutant passed the entire suite. Pinning it needed a delibe
 because rustc's E0401 makes the two indistinguishable on anything that compiles, and candor-scan analyses
 crates without building them. That is a genuinely new corner of item 9: *a guard can be untestable on valid
 input and still matter, because this analyser does not require its input to be valid.*
+
+## PRE-RELEASE BLOCKER opened 2026-07-26 — the build-id lockstep vs §2.1
+
+candor-ts is at build **0.23.2**; the rest of the family is at **0.23.1**. `candor/bin/release-preflight.sh`
+check [4] demands all self-declared build versions agree and now FAILS:
+
+    ✘ build versions DISAGREE (a hand-maintained constant lagged the release): 0.23.1 0.23.2
+
+**Both sides are right, which is why this needs a decision rather than a patch.** §2.1's staleness gate keys
+on the per-engine BUILD id, so an engine that changes a wire key MUST bump it or every protection that gate
+arms stays disarmed — that is why candor-ts `651c9f9` bumped. Check [4] exists to catch the opposite failure,
+a hand-maintained constant that LAGGED a release, and its message assumes that is the only way the versions
+can differ. Under [[candor-three-axis-versioning]] the build id is explicitly per-engine, so lockstep is a
+release convention, not a contract.
+
+Two resolutions, and the choice is Tom's because it is a release-shape decision:
+- **release the family together**, bumping all four to 0.23.2 — preserves the convention, costs nothing
+  technically, and is what the ladder has done to date;
+- **relax check [4]** to compare each build id against the REQUESTED release version rather than demanding
+  mutual equality — which is what the check's `WANT_VER` arm already does one line below.
+
+Nothing is published, so this blocks a release and nothing else. **Do not resolve it by reverting the ts
+bump:** that would re-disarm §2.1 on the very engine whose wire key moved.
