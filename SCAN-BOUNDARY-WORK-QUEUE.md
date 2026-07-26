@@ -1110,16 +1110,135 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       local are all still silent — and so is each one's `dyn` control, so they are POSITION-level gaps
       rather than this rung's "never asks for the bound". The test fails if one starts resolving.
 
+## Closed by the swift round (2026-07-26 night) — three confirmed defects, and the design question behind them
+
+An adversarial code review found three more. Two were the SAME failure the gate had already produced
+four times, which is why the third patch was refused and the mechanism was fixed instead. All three
+landed with two-direction fixtures, every guard mutated out and the failing test named, an A/B over 14
+real Swift targets / 12 004 entries (0 gains, 0 losses, Unknown unchanged) and four-way conformance.
+
+- [x] **A ternary's opacity was composed with `||` — candor-swift `663752a`, CARDINAL SIN.** `rootOf`
+      types `cond ? a : b` from the arms' shared root; `mono` is what licenses SUPPRESSING the
+      local-conformer CHA, so one monomorphized arm certified an ERASED sibling.
+      `f(_ m: some Speaker, _ e: any Speaker, _ c: Bool) { (c ? m : e).speak() }` was ABSENT from
+      `functions` — a ⟨0.21⟩ purity claim about a body that performs Env whenever `c` is false. Opacity
+      licenses suppression, so it composes by CONJUNCTION. Three rows, because each alone is satisfiable
+      by a wrong fix (mixed must dispatch; erased/erased must dispatch; mono/mono must stay suppressed).
+      **Instrumented, the join fires 12 times across the whole corpus and every firing is
+      ERASED/ERASED** — so `&&` and `||` are indistinguishable there and the corpus is the fabrication
+      CONTROL, the fixtures are the evidence. The probe was NOT shipped: an env read inside `rootOf`
+      charged Env+Fs to 26 of candor's own functions in its self-scan.
+- [x] **`patternNames` listed three of the seven pattern kinds — candor-swift `42093b6`, CARDINAL SIN
+      plus its mirror, and this is where the SET-OF-NAME-FLAGS DESIGN QUESTION got answered.**
+      `for case let x?`, `for case .some(let x)`, `for case let x as T` and `for var x` never reached
+      `shadowName`, so the enclosing signature's `monoNames`/`depBoundLocals` stayed on the loop's own
+      unrelated binding: silent-pure in one direction, and a false
+      `Unknown[dispatch:untyped cross-package receiver]` for a purely LOCAL value in the other (which
+      flips `deny E Unknown[dispatch]` to exit 1 on clean code). Both reproduced before anything changed.
+
+      **Is the name-flag side table itself the defect? Partly, and the useful answer is more specific
+      than the question.** Of the six defects this gate has produced, exactly one (`71de627`) was a
+      SAVE-LIST omission; two (`83cd607`, this one) are missing ENUMERATIONS — of scope forms and of
+      binder forms; the rest are not scoping at all. Attaching opacity to the BINDING resolved at the
+      point of use does not remove the enumerations, and it requires `vars` to become lexically scoped —
+      which it deliberately is not (function-wide with clear-on-rebind, because a stale type is
+      dangerous inward and merely lossy outward). Fusing the flags into `vars` WITHOUT that would make
+      the flags leak outward the way types do, i.e. `71de627` permanently. So the full structural fix is
+      a rewrite of the collector's binding model with its own A/B, not a safety refactor — **filed, with
+      that cost, rather than attempted here.**
+
+      What WAS done instead is the part that is structural at acceptable risk: the binder enumeration is
+      replaced by a property of the PARSE TREE — a walk for every `IdentifierPatternSyntax` in the
+      pattern subtree — verified exact in BOTH directions against SwiftParser rather than assumed (every
+      bound name reaches one, including `let x?` through
+      `valueBinding > expressionPattern > optionalChainingExpr > patternExpr`; and no non-binding
+      pattern produces one — `for case konst in`, `case E.one(3)`, `case 1...2` parse to
+      `declReferenceExpr`/literals, `_` is a `wildcardPattern`). Plus a catch-all
+      `visit(IdentifierPatternSyntax)` that CLEARS any binder no specific visitor claimed, which
+      **inverts the failure mode**: an unenumerated form now defaults to dropping a stale binding
+      instead of keeping one. The MARKING carries the risk, not the clearing — removing the
+      `OptionalBindingCondition` mark fails two OTHER suites, because the catch-all would wipe a genuine
+      `if let` binding.
+
+      **Scoping alone would have been a fix that changed nothing**, and only measuring showed it: these
+      binders were never TYPED either, so a cleared flag left the same silent-pure answer by another
+      route (both `…NoShadow` controls fail before the change). The two forms whose type needs no
+      inference are now typed — `let x as T` and `let x?`; `.some(let x)` is REFUSED through that door,
+      because a local enum with a case named `some` parses identically and the element type would be
+      the enum rather than the payload.
+      **And typing it made `vars`' documented outward leak bite** (standing bar item 0, mid-flight):
+      `let c = depBuild(); for case let c? in xs {…}; c.speak()` typed the loop's `c` from the sequence,
+      that type survived the loop, and the factory-bound receiver below stopped reaching half 1's
+      marker — a disclosed gap turned into a silent purity claim by a fix aimed at the opposite defect.
+      A loop binder's type is now restored at the loop's end, which closes the same leak for the plain
+      `for x in xs` binder that always had it. **Measured live: 258 restores across 13 targets actually
+      change a binding, with zero output delta.**
+      Two more binder forms found by INSTRUMENTING rather than by reading the grammar: `for var x in xs`
+      (a `valueBindingPattern` wrapping the identifier — the loop variable was never typed at all, 5
+      corpus sites with an element type in hand), and `catch let e as MyError`, which matched a
+      `DeclReferenceExpr` where the parser puts a `patternExpr > identifierPattern` and so never fired.
+- [x] **`typeSurface.returns` gated the ENTRY lookup and never the ANSWER — candor-swift `6aa4635`,
+      FABRICATION.** `depCallee` is a bare name (an idiomatic Swift call into a dependency carries no
+      module), so every covered import of the file is asked the same fn key. Alpha publishing
+      `build -> Alpha#Client` (whose `fetch` is Fs with `/etc/secrets` in `paths`) and Beta publishing
+      `build -> Beta#Stub` (whose `fetch` is pure, so absent) made `surfaced` hold two types while `hits`
+      held one — and the caller was charged Alpha's effect AND its path literal, with `unresolved` left
+      false so nothing disclosed it. **rust's reverted defect 1 — a leaf-keyed collapse of two distinct
+      types — reappearing ACROSS packages instead of within one.** §2 rule 1 is enforced within a report
+      by `returnsAmbiguous` and nothing enforced it across the file's imports, where no single report can
+      see the collision. Refusing falls back to half 1's disclosure.
+      The SECOND fixture is what rules out the guard everyone reaches for: with BOTH packages imported
+      and covered and only ONE answering `openAlpha`, the row must still resolve — a guard keyed on "the
+      file imports more than one covered package" passes the colliding row and silently kills every real
+      recovery in a multi-dependency file.
+      Measured: unchained A/B byte-equal (the arm needs `CANDOR_DEPS` to be entered at all), so **three
+      REAL chained consumers were built by resolving their SwiftPM dependencies and scanning each
+      checkout** (candor-swift ← swift-syntax; console-kit ← 6; TCA ← 17): 964 consumer entries, 0 gains,
+      0 losses, arm entered 4 times, every one a `returns` miss and 0 AMBIGUOUS. The trigger is real and
+      no measured target exercises it.
+
 ## Opened by the swift round (2026-07-26 evening) — three real, one of them a live fabrication
 
-- [ ] **The erasure gate never reaches the LOCAL-PROTOCOL dispatch arm, and a comment justified that by
-      citing a note that does not exist.** The gate requires `!localTypes.contains(owner)`, so `some P`,
-      `<T: P>`, `[some P]` and generic-field receivers over a *locally declared* protocol all still charge
-      every local conformer — the fabrication `d62dd69`/`02fb0ad` closed, wide open through the commoner
-      door. Measured, not argued. Filed rather than patched because that arm is what R28/R39 run on and it
-      needs its own A/B. **The comment cited a justification in the vein doc that was never written** —
-      standing-bar item 9 with no code beneath it at all, which is worse: the reader has no way to tell an
-      argument from a citation of one.
+*(the first is now CLOSED — see the section above.)*
+
+- [x] **The erasure gate never reaches the LOCAL-PROTOCOL dispatch arm — MEASURED, and the answer is
+      REFUSE TO GATE IT. The phantom citation is replaced by the argument (candor-swift `DeclCollector`).**
+      The gate requires `!localTypes.contains(owner)`, so `some P`, `<T: P>`, `[some P]` and generic-field
+      receivers over a *locally declared* protocol all charge every local conformer. Reproduced on a
+      one-package fixture: five monomorphized forms all read `['Env']` from the effectful conformer while
+      the only call sites pass the pure one, and the caller inherits it.
+
+      **But the two cases are not the same question, and that is why the gate must not simply widen.**
+      For an IMPORTED protocol the conformers in scope are an ARBITRARY SUBSET of the candidate set — the
+      caller is in another module and may supply a type this scan has never seen, so unioning our few
+      conformers is neither the true set nor a bound on it. For a LOCAL protocol they BOUND the
+      instantiations, and where they do not (open hierarchy, unresolvable witness) `protoDispatches`
+      already falls to a disclosed `Unknown` rather than to a partial union. The union is the sound
+      over-approximation of a generic function, not a fabrication.
+
+      Both candidate treatments measured, 14 real Swift targets / 12 004 entries; the trigger is 17
+      monomorphized local-protocol dispatch sites (swift-syntax 4, Alamofire 4, TCA 7, SQLite.swift 1,
+      console-kit 1) — small, real, and every one traced.
+      - **Suppress the arm** (what the imported side does): **5 effect losses and 7 entries REMOVED**,
+        and among them TCA's `_$willModify` goes from a disclosed `Unknown[dispatch:…]` to ABSENT. A
+        purity claim manufactured by a fabrication fix — standing-bar item 0, disqualified outright. The
+        reason the same treatment is safe on the imported side is that the arm there is ADDITIVE (it
+        emits edges and never an Unknown), so suppressing returns to the pre-rung baseline; here it
+        deletes a disclosure.
+      - **Disclose `Unknown` instead:** nothing goes silent (Unknown 10 539 → 10 540, entry count
+        unchanged) but **9 concrete effects degrade to a hedge**. The row that decides it is TCA's
+        `final class ScopedCore<Base: Core>: Core { func send() { base.send() } }` — `Base` is bounded by
+        `Core`, all 8 in-scan conformers are legal instantiations and they compose, so the union IS the
+        candidate set and replacing it with `Unknown` trades a correct answer for a hedge.
+
+      Residual, stated rather than hidden: candor does not specialize at call sites, so a generic function
+      whose only instantiation in THIS program is pure still carries the union. That is general to
+      caller-agnostic per-function analysis, not specific to protocols, and it is a true statement about
+      what a public generic function can be asked to do.
+
+      **The comment cited a justification in the vein doc that was never written** — standing-bar item 9
+      with no code beneath it at all, which is worse than a wrong comment: the reader has no way to tell
+      an argument from a citation of one. It now carries the argument and the numbers inline.
 - [ ] **All 20 of swift's half-1 disclosure triggers on a real corpus are FALSE.** Instrumenting the
       `typeSurface` consumer showed every one firing on `closureParamNames`, `sortedPlaces`,
       `withAnimation` — local methods and computed properties — because `localFreeFns` covers free
