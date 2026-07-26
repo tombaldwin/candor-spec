@@ -78,6 +78,24 @@ and trace a sample to a genuine unformed key. If the count is large, the trigger
 "untyped receiver" rather than as the conjunction — that is the predicted failure mode, so check it
 specifically rather than accepting the number.
 
+### A THIRD conjunct, found by measuring — the dep must be CHAINED
+
+Implemented first in rust (`5fde0d6`), and the two-conjunct version above is **not** what shipped. It fired
+on `let finds = candor_classify::best_finds(); finds.first()` — a std `Vec` method on a dep-returned value.
+Genuinely an unformed key, and genuinely not worth a disclosure, because for an **unchained** crate the κ
+ledger *already* discloses `invisible: [cr]`. The reader is warned; a second disclosure is pure false
+uncertainty.
+
+It is exactly when the crate **is** chained that the ledger correctly falls silent — the crate is covered
+under §2 rule 3 — and the silence becomes the confident purity claim this rung exists to prevent. That is
+also why the fixture reads `coverage: null`: the absence of a hedge is not an oversight, it is the covered
+claim, and it is right about every call except the one no key was formed for.
+
+So the trigger is: **untyped receiver AND dep provenance AND the dep is chained.** Measured cost in rust
+after the third conjunct — 0 changes on three unchained corpora, and on a chained scan 1 new source plus 4
+transitive callers of it. Other engines should expect to find the same third conjunct rather than rediscover
+it: check where your own coverage ledger already speaks before adding a second voice.
+
 ## Half 2 — carry enough type surface to form the key
 
 Only now does the format matter. Three observations bound what it needs to carry.
