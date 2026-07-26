@@ -2516,3 +2516,53 @@ global identity was unique per module ([SOUNDNESS-VEIN-global-unit-identity.md](
 26 after excluding same-named instance properties, and then **all 26 traced and found genuine**. *When the
 fabrication count stops shrinking, trace the remainder before calling it fabrication — I nearly discarded a
 correct fix twice.*
+
+### 2026-07-26 — the boundary rung, and what a code review found in a day's verified work
+
+The scan-boundary vein's disclosure half ("half 1" of
+[DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md)) shipped **four-way** and is pinned by
+conformance PART 21, verified-to-catch per engine row. Four engines, four different triggers, one rule:
+*absence under a key licenses a purity claim only if the key names something that could have had a body.*
+rust and swift key on an untyped receiver from a dependency factory; java on the **opcode**, since bytecode
+always carries a static owner and `INVOKEINTERFACE` proves the site names a declaration the JVM will never
+run; ts on a receiver typed to an **abstraction**, having refuted the factory probe outright because its
+return types travel in `.d.ts`.
+
+Then a workflow code review over the same day's commits returned **ten confirmed defects** — two cardinal
+sins, six fabrications, two disclosure gaps — in work that had already passed per-fix A/B on real corpora,
+per-fix regression tests verified-to-catch, each engine's own suite, and four-way conformance. Every one of
+those gates did its job; none of them was positioned to see these.
+
+**The pattern in the severe ones, and the reason this entry exists.** In three separate cases the correct
+principle was written in a comment and the code beneath it did the opposite:
+
+- rust `typeSurface` **became the leaf-key join the design doc rejects**, four paragraphs under a heading
+  reading "the trap this must not walk into". Type identity read as a naming detail; it was the mechanism.
+- java's hand-off comment argued "the parameter is gated to Runnable/Callable, so the constructed type is a
+  task type and its reported surface is what the runtime invokes." The gate constrains which TYPE is handed
+  off and says nothing about which MEMBER runs. `executor.submit(new lib.ReportJob())` inherited an
+  unrelated `exportCsv()`'s Fs and `upload()`'s Net.
+- swift's `depBoundLocals` comment said "cleared on any rebind by the clearBinding path below"; that path
+  cleared four other maps and not this one.
+
+A comment that states a justification reads like reasoning and is only an assertion. These three were each
+*confident, specific, and wrong*, and each survived review-by-author precisely because the comment answered
+the question the code should have been asked.
+
+**The two I found myself came from counts, not diffs.** Both had clean A/Bs. `typeSurface` was near-inert on
+real code — the producer took the owning type as the segment after `#`, which is the MODULE on any modular
+crate — and the tell was pgman showing 356 factory returns against 16 non-pure types with ZERO intersection.
+Swift's half-1 provenance conjunct was not checking provenance at all — instrumented, its top hits were
+`max()`, `min()`, `abs()` and the engine's own local functions — and its A/B was 0/0 because the corpora
+were unchained and conjunct 3 correctly suppressed everything. *An A/B diff shows what changed; it cannot
+show that a mechanism never fires, or fires on the wrong thing and is masked downstream. Count how often the
+preconditions hold.*
+
+**`typeSurface` was REVERTED, not patched.** Two of its four defects were design errors — the leaf-key join,
+and removing half 1's fail-closed floor exactly where `by_key` deliberately refuses to answer an ambiguous
+key. Patching those means designing qualified type identity and distinguishing "no entry" from "I dropped an
+entry", which is the rung's actual design work. Requirements for a second attempt are recorded in the design
+doc, each derived from a confirmed defect rather than imagined.
+
+Half 1 is untouched and remains the floor in all four engines. Fixes: rust `71c2495`, java `ba8c0c5`,
+ts `8ee89f5`, swift `81a9dc3`; revert `eb12d3e`.
