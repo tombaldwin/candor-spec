@@ -327,11 +327,26 @@ qualified id against a tail2 index would simply miss every time, which is the si
 **So the rung has a prerequisite, and it is additive and independent:**
 
 0. **The dep index must carry the FULL qual as a third key** — `"{krate}#{qual}"`. Purely additive: existing
-   leaf/tail2 lookups are untouched, and a full qual is unique within a crate by construction, so it cannot
-   go ambiguous the way a shared leaf does. This is worth landing and testing ON ITS OWN, before any
+   leaf/tail2 lookups are untouched. This is worth landing and testing ON ITS OWN, before any
    `typeSurface` work, because it is useful independently (any join that knows a precise target can then ask
    for it exactly instead of settling for tail2) and because bundling it would hide its own regressions
    inside a bigger change.
+
+   **LANDED — candor-rust `5feba18`, and it corrected two of this note's own claims.**
+
+   - *"Purely additive"* is only true **with a dedup**, and that is the whole safety argument. For a 1- or
+     2-segment qual the full qual **IS** the leaf or tail2 string, so an undeduped third push self-collides
+     and the never-guess rule REMOVES a key that worked before — a silent under-report manufactured by an
+     additive change. The additive claim was verified in both directions (against a mutant with the dedup
+     deleted, `deplib#Root::only` disappears) and by measurement: keys present before and absent after = 0
+     across 90k dep entries in three chained trees. A ≥3-segment full qual can never collide with another
+     entry's leaf (1 segment) or tail2 (2 segments), so no pre-existing key is at risk.
+   - *"A full qual is unique within a crate by construction"* is **false, measured.** pgman: 1865 of 17861
+     new keys go ambiguous, full-qual against full-qual. Traced to byte-identical DUPLICATE entries for one
+     function (anyhow `error::Error::as_ref`, same loc, same effects) that the scanner emits once per
+     cfg-gated impl. Pre-existing — the leaf/tail2 keys for those functions were already dropped by the same
+     duplicates. So requirement 3 below is not belt-and-braces: an exact-key miss genuinely cannot
+     distinguish "no such method" from "the index withdrew an entry", and must fall back to disclosure.
 
 Only then does the rest become implementable:
 
@@ -343,6 +358,15 @@ Only then does the rest become implementable:
    candor-java shipped this rung's sibling with `crossDepJoin` duplicating `inheritDepFn` line for line, and
    the copies drifted until a reason-scoped gate was inert on the ordinary call path (`6ab26e4`). Rust
    should be checked for the same duplication BEFORE adding a third consumer of a DepFn.
+
+   **AUDIT DONE — candor-rust `7cb5748`, and rust had THREE copies which had drifted the same way.** In the
+   DISCLOSURE surfaces this time: the cross-crate drop-glue join carried effects + paths only; the dep-lazy
+   join carried no `invisible` and no `incomplete`. A join that carries the effect and drops the
+   `incomplete` beside it lets a benign literal in the CONSUMER certify a surface the dependency already
+   declared uncertifiable — the masking evasion, reintroduced one join site over. All three now call
+   `apply_dep_fn`. **The A/B was 0 deltas on all three corpora** — none of them exercises the drop or lazy
+   site, so no corpus diff could ever have shown this (standing-bar item 8); the fixture, one distinct value
+   per surface per site, is the evidence.
 
 **The order matters more than the content.** Every defect in attempt 1 was design content discovered while
 coding. Prerequisite 0 is the same class of discovery, found this time by reading the index before writing

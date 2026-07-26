@@ -70,6 +70,15 @@ now scopes the headline claim because of it.
    confident, specific and wrong, and each survived self-review *because* the comment answered the question
    the code should have been asked. **Reduce the comment's claim to a fixture, or write it as an open
    question.**
+9b. **"Additive" is a claim about the OTHER entries, and it does not cover the entry colliding with itself.**
+   Adding a third key shape to the rust dep index (`{krate}#{full qual}`) is additive against every *other*
+   entry — a ≥3-segment qual cannot collide with anyone's 1-segment leaf or 2-segment tail2. But for a 1- or
+   2-segment qual the "new" key IS the string already pushed, and the index's never-guess rule drops a key
+   two entries share. Without a dedup the entry collides with ITSELF and the key that worked before is
+   REMOVED: a silent under-report manufactured by a change whose whole argument was that it removed nothing.
+   Landing it alone, with a mutant test in both directions, is what caught it (`5feba18`). **An additive
+   change still needs the second-direction check of item 0 — ask what the new thing collides with, including
+   the old copy of itself.**
 10. Commit each fix separately, substantive message, trailers:
    `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` and the session `Claude-Session:` line.
    **Do not push without an explicit instruction.**
@@ -158,6 +167,13 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       **return types in the report.** A receiver bound from a dep factory (`let c = deplib::build();
       c.fetch()`) is untyped, so every later method call drops. Needs a `returns` field in the report
       format — spec-visible, so it wants a rung and four-way agreement. Largest item here, and now the last.
+
+      **Both PREREQUISITES for attempt 2 are landed, each on its own, each measured (2026-07-26):**
+      prerequisite 0, the full-qual third index key — `5feba18`, and it falsified this doc's claim that a
+      full qual is unique within a crate (pgman: 1865 of 17861 collide, on duplicate cfg-gated entries), so
+      requirement 3's fall-back-to-disclosure is load-bearing rather than belt-and-braces; and requirement
+      4's duplication audit — `7cb5748`, which found rust carrying THREE drifted copies of the dep-apply
+      path, exactly candor-java's `6ab26e4` shape. The rung itself is what remains.
 - [x] **R6 — fully-qualified `&dyn deplib::Handler` — `7a5fc1d`.** The cause was one line of lossy indexing:
       `bound_leaves` keeps only `segments.last()` (every downstream index is leaf-keyed), and with no `use`
       to expand through the crate identity was simply GONE — `expand` returned a bare `Handler`, the
