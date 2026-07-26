@@ -80,6 +80,14 @@ now `cr::<drop>::Type`, consumed only by the join, exactly as the lazy-static ma
    call shape into that crate. This does not cause the misses above, but it removes the `invisible` /
    `coverage.uncovered` caveat that would otherwise have been incidentally attached — so the report goes from
    *quietly wrong with a warning* to *quietly wrong and confident*.
+   **Characterised 2026-07-26 — see [COVERAGE-GRANULARITY-FINDING.md](COVERAGE-GRANULARITY-FINDING.md).**
+   Three mechanisms were collapsed into that one sentence. Only the *dynamic* one (a single **classified**
+   call marking the whole package covered) is a defect, and it is **rust + java only** — ts and swift
+   decide coverage from a name list and a loaded-report set that no call site can move, refuted by fixture.
+   The curated arm is spec-exempt (§7 item 14) and making it per-call-site costs a hedge on **8–25% of
+   every analyzed function** on real code; the chained arm is spec-mandated (§2 rule 3) and its residual is
+   a join defect (keyed-and-missed vs could-not-form-a-key), not a granularity one. The dynamic fix costs
+   **2.3%** of methods on the worst JVM corpus and **0%** on three Rust ones.
 
 ## A correction to how this was first written up
 
