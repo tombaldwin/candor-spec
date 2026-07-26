@@ -289,11 +289,22 @@ and the only conformer, app has none:
       clause, so an unguarded CHA sends every call on a String-typed value into raw-value enums' methods;
       `RAW_VALUE_BASE_TYPES` closes it and a test pins it. *This is the swift analogue of the same trap rust
       hit at R4: an imported-supertype CHA is only safe with an explicit carve-out.*
-- [ ] **factory-bound receiver** — the one gate still flipping 1 → 0. `let c = build(); c.fetch()`: `c` is
-      untyped because no return types travel, AND the dep's `build` is pure so it is not even in the report —
-      there is no evidence `c` came from the dep at all. Blocked on the same report-format extension as
-      rust's R5. A leaf-key join (`M#fetch`) was considered and rejected: leaves like `write`/`run`/`send`
-      would fabricate on unrelated receivers.
+- [x] **factory-bound receiver — the HONESTY half is CLOSED (`47bb69a`).** `let c = build(); c.fetch()` no
+      longer reads pure: it discloses `Unknown[dispatch:untyped cross-package receiver]`. The claim above
+      that "there is no evidence `c` came from the dep at all" was **wrong** — the callee name is right
+      there, and `returns` failing to hold it is itself the evidence that it came from outside the target.
+      Note what this does and does not move: `deny E Unknown[dispatch]` now flips, `deny Fs` does NOT. Half 1
+      converts the cardinal sin into a disclosed gap; it does not recover the effect.
+- [ ] **factory-bound receiver — the DETERMINATION half.** Still blocked on the format rung, and still
+      correctly so. A leaf-key join (`M#fetch`) remains rejected: leaves like `write`/`run`/`send` would
+      fabricate on unrelated receivers.
+- [ ] **swift row 3 — a parameter typed as a DEP-DECLARED PROTOCOL** (`func go(_ s: any Store)`). Forms the
+      key `DepLib#Store.save` and misses, because a protocol REQUIREMENT has no body and nothing is ever
+      hashed under it. Unlike row 2 this is NOT fixable locally: Swift spells a protocol-typed and a
+      class-typed parameter identically, so the engine cannot tell an unanswerable key from a legitimate
+      one. Java escapes this only because bytecode records the opcode. **This is the strongest argument for
+      `typeSurface.implements` in the whole queue** — it is not precision-as-nicety, it is the ability to
+      apply an honesty rule where the language withholds the evidence.
 - Residual: the dep-CONFORMER direction of the protocol case is recovered only under `--workspace` (child
   scans emit the union entries); a plain `--deps` report carries no hierarchy. Pinned as a residual in the
   test rather than invented.
@@ -337,8 +348,10 @@ and the only conformer, app has none:
 - [x] **Conformance PART 20** pinning the boundary contract four-way — `3bd69ec` (java/rust/swift) then
       `08b796a` (ts joins). Verified-to-catch on each engine's row by unchaining that engine's consumer:
       the row goes DIVERGE and the suite FAILED while the others still match.
-- [ ] **PAPER1 §6.1b / PAPER2 §4.6b** are written against the current state — update the counts as
-      mechanisms close, and re-scope if the claim can be restored.
+- [x] **PAPER1 §6.1b / PAPER2 §4.6b** updated through the four-way half-1 close. §6.1b now carries the
+      three-row rule and swift's row 3 as the argument for the format rung; §4.6b carries the methodology
+      claim that *disagreement* between implementations is where the generalisation lives. The headline
+      claim stays SCOPED to a single analysed artifact — deliberately; see the reasoning in §6.1b.
 
 ## Done-ness
 
