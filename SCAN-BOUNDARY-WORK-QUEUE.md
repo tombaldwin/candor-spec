@@ -851,11 +851,29 @@ each is actionable.
         has checked. Both directions asserted: the surviving file keeps its effects, and the lost file is
         NAMED (absence from `functions` is a purity claim, so a dropped file with no disclosure is the
         cardinal sin wearing a crash).
-      - **THE PARSE DEFECT ITSELF IS STILL OPEN**, and the first diagnosis was WRONG in a way worth keeping:
-        synthesized `Group::new` spans in the `macro_rules!` template path are call-site spans with no
-        FileInfo, which is a real hazard and is NOT this bug — implemented, tested, refuted, reverted rather
-        than kept as an unexplained edit. The panic survives with that path removed, and the file does not
-        reproduce in isolation, so it depends on accumulated cross-file parse state.
+      - **THE PARSE DEFECT ITSELF — CLOSED, candor-rust `4f7b704`, and my diagnosis was not merely wrong,
+        it was INVERTED.** I wrote here that "synthesized `Group::new` spans are call-site spans with no
+        FileInfo". `Span::call_site()` is `(0,0)` — the DUMMY FILE every thread's source map is seeded
+        with, i.e. the one span that is always resolvable, and it is now the FIX (`respan_call_site`, at
+        all four sites that re-parse moved tokens). The `macro_rules!` template path was already safe for a
+        second reason — it re-parses from a STRING, which registers a file on the current thread — which is
+        exactly why removing it changed nothing and should have told me the theory was wrong.
+
+        The real cause is a SPAN CROSSING A THREAD. proc-macro2's fallback span is a pair of byte offsets
+        into a THREAD-LOCAL source map; candor parses files on rayon workers and walks them on the collector
+        thread. The code half-knew this — `fn_locs` runs inside the parse closure precisely because line/col
+        only resolves there — but the `SendFile` contract was written as though candor were the only span
+        reader. **syn's own parser reads spans too:** `parse_negative_lit` JOINS the `-` punct's span with
+        the literal's, so a `-1` anywhere in a macro body is the whole trigger. getrandom spells it
+        `debug_assert!({ match ret { 0 => true, -1 => …, _ => false } })`.
+
+        It DOES reduce to a fixture, contrary to what I concluded: parse on one thread, walk on a second
+        FRESH thread whose map holds only the dummy file. My "it needs whole-crate parse state" was a
+        description of the rayon pool, not of the defect. Measured over 976 registry crates: panics 3 → 0
+        (0.4.3 was crashing too), 21 gains, 0 losses. And the count that matters more than the crash —
+        instrumented over 121 crates, **72.4% of 88,927 macro re-parses were handed a stream the walking
+        thread cannot resolve**. The panic is the loud tail; the quiet form silently resolves a span against
+        an unrelated file.
 - [x] **`build.rs` fails clippy `collapsible_if` — CLOSED, candor-rust `0d63ead`, and the qualifier is
       gone.** The cause of the qualifier was never a preference: stable clippy cannot compile the
       `rustc_private` dylint lib at all, so the `-p` list was the only thing that could work, and
