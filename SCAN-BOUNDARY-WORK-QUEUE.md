@@ -103,7 +103,17 @@ probed; a precedent inherits the other engine's unexamined assumptions along wit
       Known over-fire, bounded: there is no external analogue of the local arm's `trait_declares_method`
       guard, so a blanket-trait method on a `dyn` receiver (hyper 0.14's `.into()` on a `&dyn Stream`) forms
       an edge that dangles. Zero measured effect.
-- [ ] **R5 — return types in the report.** A receiver bound from a dep factory (`let c = deplib::build();
+- [ ] **R5 — the untyped cross-package receiver. NOW HAS A DESIGN:
+      [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md).** The key finding is that it SPLITS,
+      and the first half needs no format change: an engine always knows whether it FORMED A KEY, and
+      `keyed-and-missed` (a genuine purity claim under §2 rule 3) vs `could-not-form-a-key` (no question was
+      asked; silence licenses nothing) is a distinction available today. Half 1 = disclose the unformed key,
+      triggered on the CONJUNCTION *untyped receiver AND provenance in a chained package* — not on untyped
+      receivers generally, which would be the 8-25% false-uncertainty flood the coverage finding measured.
+      Do half 1 per engine on its own schedule; it stops the report lying while the rung is negotiated, and
+      it survives half 2 as the fail-closed floor for receivers half 2 still cannot type.
+      Original framing kept below, since it is what half 2 addresses:
+      **return types in the report.** A receiver bound from a dep factory (`let c = deplib::build();
       c.fetch()`) is untyped, so every later method call drops. Needs a `returns` field in the report
       format — spec-visible, so it wants a rung and four-way agreement. Largest item here, and now the last.
 - [x] **R6 — fully-qualified `&dyn deplib::Handler` — `7a5fc1d`.** The cause was one line of lossy indexing:
