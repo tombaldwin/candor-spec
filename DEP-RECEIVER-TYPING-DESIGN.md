@@ -240,6 +240,32 @@ confirmed **four** defects in it, two of them soundness. The fixture passing is 
   names as types and was invisible on a flat fixture; the counts (`returns` size vs published size) are the
   diagnostic, not the output.
 
+### Which engine needs WHICH field — settle this before implementing again
+
+The sketch above bundles `returns` and `implements` into one block, which reads as one rung. Checked against
+what each engine actually cannot do locally, they are **two independent rungs with different constituencies**,
+and one of them has a constituency of zero for its motivating case:
+
+| engine | needs `returns`? | needs `implements`? | why |
+|---|---|---|---|
+| rust | **yes** | no | a pure factory is absent from the report, so no return type travels (R5) |
+| swift | **yes** | **yes** | same factory case (row 2); AND row 3 — its syntax spells a protocol-typed and a class-typed parameter identically, so it cannot even tell an unanswerable key from a legitimate one |
+| java | no | **yes** | bytecode always carries a static owner, so return types are never the problem; the dep-interface case needs the dependency's HIERARCHY |
+| ts | **no** | (only for `dist`-shipped packages) | return types already travel in `.d.ts` — ts REFUTED the factory probe outright |
+
+Two consequences worth acting on:
+
+1. **Ship them separately.** `returns` serves rust+swift; `implements` serves java+swift. Bundling means the
+   rung cannot land until both are agreed four ways, and the two have different hard parts — `returns` needs
+   qualified type identity and wrapper provenance, `implements` needs a hierarchy encoding. Nothing about
+   `interfaceUnion`'s precedent requires them to arrive together.
+2. **`implements` may be redundant with `interfaceUnion` and that is testable.** `interfaceUnion` publishes
+   the *effect union* over a package's local implementers; `implements` publishes the *hierarchy*. If the
+   union always answers the consumer's question, `implements` buys nothing. **java is the experiment**: it is
+   N/A for PART 18 and so has never exercised the union path, which is exactly why the question is still
+   open. Run that before designing a hierarchy encoding — a rung that turns out to be redundant is the
+   cheapest possible outcome and the one nobody checks for.
+
 ### The trap this must not walk into
 
 A leaf-name join (`M#fetch` — match on the method name alone, ignore the receiver type) was already
