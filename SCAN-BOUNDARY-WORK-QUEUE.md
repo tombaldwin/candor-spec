@@ -354,10 +354,26 @@ Residual, still open:
   is `dist/index.js`, where `class FileStore { save(s) {…} }` has no `implements` clause at all — grep says
   0 in the `.js`, 1 in the `.d.ts`. There is no heritage clause to walk, so no interface is ever consulted.
 
-  A fix must reach the class's OTHER declaration (the `.d.ts` one) through its symbol, and whether the
-  checker merges a CommonJS `exports.FileStore = FileStore` with a `declare class` in the sibling typings is
-  the open question — establish that before writing anything. **Do not re-attempt the `localInterfaceDecls`
-  widening; it is measured inert.**
+  **The symbol path is CLOSED and the module path is OPEN — both measured with the TypeScript API directly.**
+  The checker does NOT merge a CommonJS `exports.FileStore = FileStore` with the sibling `declare class`:
+  the `.js` class symbol has exactly ONE declaration, its own, with zero heritage clauses. So no
+  symbol-walk reaches the `implements`.
+
+  But the typings MODULE's exports do:
+
+      checker.getExportsOfModule(<dist/index.d.ts symbol>)
+        export build      kind=FunctionDeclaration
+        export Store      kind=InterfaceDeclaration
+        export FileStore  kind=ClassDeclaration   heritage= implements:Store
+
+  So the mechanism is: resolve the package's own typings module, walk its exports, and for each exported
+  class carrying an `implements` clause register it under that interface — pairing the typings declaration
+  to the scanned `dist` class **by exported name within the same package**. That pairing is authoritative
+  rather than a guess: `exports.FileStore` and `declare class FileStore` are the same public symbol by
+  construction of the package. Cross-package name matching would NOT be, and must not be attempted.
+
+  **Do not re-attempt the `localInterfaceDecls` widening; it is measured inert** — the blocker was never
+  which interface declarations are admitted.
 - **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
   registers local interface declarations only, so `use(f: DepIface) { f.go() }` never reaches the local
   `class Mine implements DepIface` — the ts sibling of swift's `eae2de2` (dispatch over an IMPORTED protocol
