@@ -189,14 +189,42 @@ across six pairs, all Unknown-only, **never a real effect**.
 silently treated as stale); and `build/libs` can hold MORE THAN ONE `-all.jar`, so a glob picks the stale one
 — that cost two false negatives here before it was spotted. The stale 0.23.0 artifact has been removed.
 
-### ts — all 4 confirmed mechanisms DONE
+### ts — all 5 confirmed mechanisms DONE
 - [x] the monorepo symlink shape — a symlinked workspace dep produced **no disclosure at all** because the
       blind branch was guarded on `/node_modules/` — `6fb2560`
 - [x] implicit coercion into a dep's `toString`/`valueOf`/`toJSON` — `625e8fd`
 - [x] `new DepClass()` never consulting the chained dep report — `965ac82`
 - [x] a dep function passed BY REFERENCE to an invoking HOF — `75ec3f6`
+- [x] **the UNANSWERABLE KEY** ([DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md) half 1).
+      Conformance PART 21 now runs ts beside java and rust.
 
-All four follow the rust template: no new resolution path — each routes its declaration through the decision
+      **The design note's canonical fixture REFUTES for ts** — worth recording rather than papering over.
+      Return types travel in the `.d.ts`, so `const c = build(); c.fetch()` types `c` to `Client`, forms
+      `depkit#Client.fetch`, and joins precisely. A receiver ts genuinely cannot type is `any`, which
+      already read `callback:` Unknown. Neither half of the rust shape survives here.
+
+      What IS silent is a receiver typed to an **abstraction** — an interface method or property
+      signature, an anonymous type-literal member, an `abstract` member. `build(): Fetcher` over a `.d.ts`
+      whose only body is hashed `pkg#Client.fetch`: the key is formed and can never be answered, by any
+      report, whatever the implementations do. The same evidential position as rust's unformed key,
+      reached from the other side — ts knows a type the dependency has no vocabulary for, where rust knows
+      a provenance and no type. Silent on the desugared path too (`[1].forEach(job.run)`).
+
+      Third conjunct confirmed independently on ts: unchained, the κ ledger already emits
+      `invisible: [pkg]` for every one of these; chained it correctly falls silent, and that silence is
+      the confident purity claim. A/B unchained over 10 real targets: **0 gains, 0 losses, entry counts
+      identical**. Chained `--workspace` over 5 ukri-tfs services: **5 gains, 0 losses** over ~1000
+      analyzed functions; with producer-side union entries stripped (the plain `CANDOR_DEPS` shape) 8/202
+      and 3/453. Every gain traced to a real implementor — `OutboundChannel.publishRaw` (publishes to
+      SNS), `CoreLogger.info` (`Clock`), `ServiceHostNames.getUrl` (`Env`) — or to a member installed at
+      runtime by `fastify.decorate('getServices', …)`, which nothing could resolve.
+
+      **The union and this arm are layered, not redundant.** `OutboundChannel` is declared TWICE in
+      `@ukri-tfs/message-handling`, so the `interfaceUnion` emitter's never-guess ambiguity guard declines
+      to emit — correctly — and before this arm that declining left silence. Half 1 is the fail-closed
+      floor under every guard the resolution path is right to refuse.
+
+The first four follow the rust template: no new resolution path — each routes its declaration through the decision
 procedure the CallExpression path already runs (chained report → §5.1 manifest → κ ledger), factored into one
 `chargeExternalDecl`. Gate on the two-package fixture, `deny Fs`, identical source: one project **exit 1** →
 split+chained **exit 0** → now **exit 1**, matching the one-project control on all three mechanisms.
@@ -221,7 +249,14 @@ Residual, still open:
   union of every file's top level (`proper-lockfile` picked up `Net` from `retry`'s `example/dns.js`). Narrow
   to the resolved entry.
 - **Interface-union needs source.** A published package ships `dist` JS + `.d.ts`, so the `implements` clause
-  lives only in the typings and the child scan emits no union entry.
+  lives only in the typings and the child scan emits no union entry. Half 1 now discloses over this rather
+  than reading pure, so it is a PRECISION residual, not a soundness one.
+- **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
+  registers local interface declarations only, so `use(f: DepIface) { f.go() }` never reaches the local
+  `class Mine implements DepIface` — the ts sibling of swift's `eae2de2` (dispatch over an IMPORTED protocol
+  with LOCAL conformers). Found while measuring half 1, and half 1 now DISCLOSES it (`Unknown`) rather than
+  reading pure, so it is no longer a silent under-report; resolving it precisely is the open item. Note
+  swift's carve-out before copying it — a widened match here is the leaf-name trap the design note rejects.
 
 ### swift — 6 of 7 gate-flipping mechanisms DONE
 - [x] implicit stringification of a dep type, all three operand forms — `83ca73c` (verified independently:
