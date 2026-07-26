@@ -1039,3 +1039,26 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       INDEX access (`t.0.go()`), an unannotated rebind (`let v = xs`), and a factory return bound into a
       local are all still silent — and so is each one's `dyn` control, so they are POSITION-level gaps
       rather than this rung's "never asks for the bound". The test fails if one starts resolving.
+
+## Opened by the swift round (2026-07-26 evening) — three real, one of them a live fabrication
+
+- [ ] **The erasure gate never reaches the LOCAL-PROTOCOL dispatch arm, and a comment justified that by
+      citing a note that does not exist.** The gate requires `!localTypes.contains(owner)`, so `some P`,
+      `<T: P>`, `[some P]` and generic-field receivers over a *locally declared* protocol all still charge
+      every local conformer — the fabrication `d62dd69`/`02fb0ad` closed, wide open through the commoner
+      door. Measured, not argued. Filed rather than patched because that arm is what R28/R39 run on and it
+      needs its own A/B. **The comment cited a justification in the vein doc that was never written** —
+      standing-bar item 9 with no code beneath it at all, which is worse: the reader has no way to tell an
+      argument from a citation of one.
+- [ ] **All 20 of swift's half-1 disclosure triggers on a real corpus are FALSE.** Instrumenting the
+      `typeSurface` consumer showed every one firing on `closureParamNames`, `sortedPlaces`,
+      `withAnimation` — local methods and computed properties — because `localFreeFns` covers free
+      functions only. This is over-disclosure, not the cardinal sin, so it is noise rather than a lie; but
+      a hedge that is wrong 20 times out of 20 teaches a consumer to ignore the channel, and rust measured
+      the same conjunct firing on `max()`/`min()` before narrowing it.
+- [ ] **swift has no full-qualification key in its dep index — rust's PREREQUISITE 0, unfixed.** The
+      `typeSurface` consumer's exact type-path match therefore cannot be shown to matter: relaxing it to a
+      suffix match fails no test, because with no full-qual key a wrong answer can only ever MISS. The
+      agent reported this as an UNPROVEN requirement rather than claiming the guard, which is the right
+      call. Landing the rust-style third key would make the exactness testable — and until it is testable
+      it is a hope, not a guard.
