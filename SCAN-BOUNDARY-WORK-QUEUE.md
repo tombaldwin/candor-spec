@@ -509,7 +509,14 @@ mechanism in the table, PART 20 is green and verified-to-catch, and PAPER1 §6.1
 Each surfaced by an agent working a different task, and each is recorded here rather than in a log because
 each is actionable.
 
-- [ ] **THE REPORT IS NOT DETERMINISTIC, and this degrades the method itself.** Four identical runs of the
+- [x] **THE REPORT IS NOT DETERMINISTIC — FIXED (candor-swift `23eafc2`).** `supertypesOf` is a
+      `[String: Set<String>]` and Swift seeds Set hashing per process, so `.first(where:)` picked a different
+      supertype per run. After: five runs on pollen give ONE report hash, byte-identical. Swept — every other
+      `.first` in the driver is guarded by `count == 1` (deterministic by construction), and rust/ts/java were
+      each checked directly and are already stable. The test asserts the PROPERTY (alphabetically-first wins),
+      because two scans in one test process share a hash seed and a double-scan could pass while the defect
+      was live; against the pre-fix build that property test fails 5 runs in 6.
+      ORIGINAL REPORT: Four identical runs of the
       *unmodified* candor-swift binary on pollen disagree on `unknownWhy` for **14 functions** —
       `dispatch:CodingKey.self` vs `dispatch:String.self`, `dispatch:NSObject.results` vs
       `dispatch:MKLocalSearchCompleterDelegate.results`: an unordered pick among a class's several
@@ -529,7 +536,13 @@ each is actionable.
       class. The reason-scoped gate — a shipped ⟨0.19⟩ rung — is therefore silently inert at the boundary,
       which is exactly where a consumer most needs it. Additive fix: teach `DepFn` to carry `unknownWhy`.
 
-- [ ] **netClass fails open one level down, in the ORDINARY path** (not the union). A function combining
+- [x] **netClass fails open in the ORDINARY path — FIXED (candor-java `e24edd9`).** The marker is now
+      derived from what a Net call YIELDED rather than from a list of owners, so it fails closed for idioms
+      nobody enumerated; restricted to calls taking arguments, because a zero-arg call (`socket.close()`)
+      carries no destination and is evidence of neither completeness nor incompleteness — an existing masking
+      test caught that over-fire. Both directions pinned. Honest measurement: no jar among 60 sampled has a
+      CERTIFIED netClass entry at all, so the corpus cannot price this; the fixture is the evidence.
+      ORIGINAL REPORT: A function combining
       `new URL("https://sentry.io/x").openStream()` with `HttpClient.send(request, …)` reports
       `netClass: ["known-telemetry"]`. Each hostless idiom alone yields `unknown-host` via the empty-hosts
       branch, but that branch is per-function, so a literal sibling masks it. Same shape as the union defect
