@@ -3486,9 +3486,15 @@ fi
 # PART 18 — CROSS-PACKAGE INTERFACE DISPATCH (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md).            [TIER 2]
 # A consumer calling an interface/protocol method on a value whose type is imported from a CHAINED dep MUST
 # resolve to the implementation's effect (via the producer's synthetic `interfaceUnion` union entry), never
-# read pure. Pins the two engines that ship the rung (candor-ts + candor-swift); rust is a follow-on, java is
-# N/A (whole-classpath bytecode sees the impl). Producer scans the dep with CANDOR_WORKSPACE_CHAIN=1; the
-# consumer chains that report. Runs per shipping engine when present.
+# read pure. FOUR-WAY since 2026-07-26. Producer scans the dep with CANDOR_WORKSPACE_CHAIN=1; the consumer
+# chains that report. Runs per shipping engine when present.
+#
+# java was N/A here until 2026-07-26, on the grounds that "whole-classpath bytecode resolves cross-module
+# dispatch natively". That is true of an UNCHAINED whole-classpath scan and FALSE of a chained one, where the
+# implementer is in the other tree — the same "ask separately what an engine does at the BOUNDARY" lesson the
+# initializer-edge vein (PART 19) taught. Its consumer needed no change at all: candor-java keys entries by
+# `owner.name+desc`, exactly the key it forms for an INVOKEINTERFACE site, so a union entry lands where the
+# join already looks. Only the PRODUCER was missing (candor-spec DEP-RECEIVER-TYPING-DESIGN.md).
 # ====================================================================================================
 P18="$W/p18"; mkdir -p "$P18"; P18_OK=0
 p18fail() { echo "     FAIL $1"; P18_OK=1; }
@@ -3509,6 +3515,28 @@ python3 -c 'import json,sys
 r=json.load(open(sys.argv[1]))
 sys.exit(0 if any(f.get("interfaceUnion") and f["hash"].endswith("#OutboundChannel::publish") for f in r["functions"]) else 1)' "$P18/rs/deps/dep.json" \
     || p18fail "candor-scan: dep emitted no interfaceUnion entry for OutboundChannel::publish"
+
+# --- candor-java: dep exports an interface + impl doing Fs; app calls s.save() on a Store-typed param ----
+# The two trees are compiled together (the app must see `lib.Store` to compile) and then SPLIT, so the app
+# scan sees only its own class — the boundary the rung is about.
+mkdir -p "$P18/java/src/lib" "$P18/java/src/app"
+printf 'package lib;\npublic interface Store { void save(String s); }\n' > "$P18/java/src/lib/Store.java"
+printf 'package lib;\nimport java.io.*;\npublic class FileStore implements Store {\n  public void save(String s) { try { new FileWriter("/tmp/x").write(s); } catch (IOException e) {} }\n}\n' > "$P18/java/src/lib/FileStore.java"
+printf 'package app;\nimport lib.Store;\npublic class Go { public void run(Store s) { s.save("hello"); } }\n' > "$P18/java/src/app/Go.java"
+javac -d "$P18/java/all" "$P18/java/src/lib/Store.java" "$P18/java/src/lib/FileStore.java" "$P18/java/src/app/Go.java" 2>/dev/null
+mkdir -p "$P18/java/jdep" "$P18/java/japp/app" && cp -r "$P18/java/all/lib" "$P18/java/jdep/" 2>/dev/null
+cp "$P18/java/all/app/Go.class" "$P18/java/japp/app/" 2>/dev/null
+rm -f "$P18/j_dep.json" "$P18/j_app.json"      # standing-bar item 7: never read back a stale arm
+CANDOR_WORKSPACE_CHAIN=1 java -jar "$JAR" "$P18/java/jdep" --json "$P18/j_dep.json" >/dev/null 2>&1
+CANDOR_DEPS="$P18/j_dep.json" java -jar "$JAR" "$P18/java/japp" --json "$P18/j_app.json" >/dev/null 2>&1
+python3 -c 'import json,sys
+r=json.load(open(sys.argv[1])); u=[f for f in r["functions"] if f["fn"].endswith("Go.run")]
+sys.exit(0 if u and "Fs" in (u[0].get("inferred") or []) else 1)' "$P18/j_app.json" \
+    || p18fail "candor-java: Go.run did not inherit Fs across the chained interface (Unknown or pure)"
+python3 -c 'import json,sys
+r=json.load(open(sys.argv[1]))
+sys.exit(0 if any(f.get("interfaceUnion") and f["hash"] == "lib/Store.save(Ljava/lang/String;)V" for f in r["functions"]) else 1)' "$P18/j_dep.json" \
+    || p18fail "candor-java: dep emitted no interfaceUnion entry for lib/Store.save"
 
 if [ -n "$TS_OK" ]; then
   mkdir -p "$P18/ts/dep" "$P18/ts/app/node_modules"
@@ -3549,7 +3577,7 @@ fi
 
 echo "PART 18 — cross-package interface dispatch (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md)"
 if [ "$P18_OK" = 0 ]; then
-  echo "  -> MATCH — candor-scan + candor-ts + candor-swift all resolve a chained interface/protocol/trait method to the impl's effect (never pure); the union entry is emitted producer-side"
+  echo "  -> MATCH — candor-java + candor-scan + candor-ts + candor-swift all resolve a chained interface/protocol/trait method to the impl's effect (never pure); the union entry is emitted producer-side"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi

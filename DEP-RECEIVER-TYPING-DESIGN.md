@@ -280,7 +280,10 @@ Two consequences worth acting on:
    is designed.
 
    This also resolves **swift row 3** and the java dep-interface item without `implements`: both need the
-   dependency's implementer set, and that is what the union publishes. `returns` is unaffected and remains
+   dependency's implementer set, and that is what the union publishes. **Swift needs no work at all** —
+   measured, it already EMITS the union entry under `CANDOR_WORKSPACE_CHAIN=1` and its consumer resolves
+   row 3 to the real effect. The earlier "row 3 is not fixable locally" finding was measured on a dependency
+   scanned without that flag: an engine that had not been asked, mistaken for one that could not answer. `returns` is unaffected and remains
    the one genuinely new field, wanted by rust and swift only.
 
 ### The trap this must not walk into

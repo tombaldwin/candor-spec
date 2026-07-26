@@ -26,9 +26,8 @@ rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
 `CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
 the impl's effect instead of reading pure — plus the `--workspace`/`--deps` auto-discovery convention.
-Three-way conformance-pinned (PART 18: candor-scan + candor-ts + candor-swift; java is N/A — whole-classpath
-bytecode resolves cross-module dispatch natively). Because it is gated, a default report is byte-identical and
-a 0.22 consumer is unaffected. **0.22 is a tier-2 rung — the
+Four-way conformance-pinned (PART 18: candor-java + candor-scan + candor-ts + candor-swift). Because it is
+gated, a default report is byte-identical and a 0.22 consumer is unaffected. **0.22 is a tier-2 rung — the
 `verify` oracle**: candor's dynamic honesty check — `observed(f) ⊆ inferred(f) ∪ {Unknown}` per executed function —
 shipped per-engine as `candor verify` with mechanism-independent capture arms and a fail-closed exit-2 verdict
 when runtime attribution is incomplete; per-engine, not conformance-differential. The report and verdict schema
@@ -1622,17 +1621,21 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.23 (all code engines declare `0.23`; conformance-pinned three-way)** — a **tier-1 additive** rung: the
+- **0.23 (all code engines declare `0.23`; conformance-pinned four-way)** — a **tier-1 additive** rung: the
   **cross-package interface-dispatch** rung (§2, `WORKSPACE-CHAINING-DESIGN.md`). Adds the optional
   **`interfaceUnion`** report entry — a synthetic `pkg#Iface.method` union over a package's local implementers
   (interfaces/protocols/traits) — emitted **gated** behind `CANDOR_WORKSPACE_CHAIN`, so a CHAINED consumer's
   cross-package interface/protocol/trait dispatch resolves to the implementation's effect instead of reading
   silent-pure; plus the **`--workspace`/`--deps`** auto-discovery convention (scan a monorepo's local deps into
-  `.candor/deps/` and chain them, transitively to a fixpoint). Conformance **PART 18** pins it three-way
-  (candor-scan + candor-ts + candor-swift; java is N/A — whole-classpath bytecode resolves cross-module
-  dispatch natively). Because emission is gated, a **default report is byte-identical** — a 0.22 consumer reads
-  a 0.23 report unaffected. The empirical finding: the silent-pure cross-package dispatch hole existed in every
-  source engine, each via a different resolution path.
+  `.candor/deps/` and chain them, transitively to a fixpoint). Conformance **PART 18** pins it **four-way**
+  (candor-java + candor-scan + candor-ts + candor-swift). Because emission is gated, a **default report is
+  byte-identical** — a 0.22 consumer reads a 0.23 report unaffected. The empirical finding: the silent-pure
+  cross-package dispatch hole existed in every source engine, each via a different resolution path.
+  candor-java was recorded N/A here at first, on the grounds that "whole-classpath bytecode resolves
+  cross-module dispatch natively" — true of an UNCHAINED whole-classpath scan and false of a chained one,
+  where the implementer sits in the other tree. Its CONSUMER needed no change at all (it keys entries by
+  `owner.name+desc`, exactly the key an INVOKEINTERFACE site forms, so a union entry lands where the join
+  already looks); only the producer was missing, and it joined 2026-07-26.
 
 - **0.22 (all code engines declare `0.22`; conformance-pinned)** — a **tier-2** rung: the **`verify` oracle**,
   candor's dynamic honesty check. `candor verify` runs the analyzed program and asserts, per executed function,
