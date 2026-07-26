@@ -2684,3 +2684,56 @@ signatures. Unioning the two sources keeps both blind spots harmless. That regre
 written months ago, which is the case for running the whole suite rather than the new case.
 
 Fixes: rust `eac96e7`, ts `4958a6d`, java + swift in progress. Round 1 and the audit are the two entries above.
+
+### 2026-07-26 — the erasure gate, and the fifth case of a fix scoped to its own fixture
+
+The entry above names the through-line for round 2: *each fix was written against the fixture that
+demonstrated the previous defect, and every fix was partial in the direction its fixture could not
+see*. Here is the fifth independent instance, and this one arrived with a cross-engine escort.
+
+candor-rust's R4 measured that gating an imported-trait CHA on PROVENANCE alone put **32 fresh
+Unknowns on serde_json**, and that the discriminator that works is **erasure**: a `dyn` receiver is
+type-erased, so the crate's impls really are its candidate witnesses; a `T: Trait` bound or an
+`impl Trait` parameter is monomorphized *by the caller*, so they are not. R4 had cited swift's
+`eae2de2` as precedent for the shape, so the queue asked the reverse question — is the engine that
+supplied the precedent fabricating too?
+
+**Yes, and it took two fixes, not one.**
+
+`d62dd69` closed the `some P` PARAMETER — the spelling rust's finding literally names — by keying
+the gate on `isOpaqueParam(p.type)`. That check can only ever answer for a parameter's own type.
+`02fb0ad` then found four more doors to the same CHA, each resolving a receiver to the bound `P`
+and each monomorphized by the caller: `[T]` under a `<T: P>` bound, `[some P]`, the `forEach`
+closure form of either, a field typed as the enclosing type's generic parameter, and
+`extension Array where Element: P`. Every one was measured charging the effectful conformer's Env
+to a function whose only call site passes the pure conformer.
+
+Three things worth keeping:
+
+- **The one spelling that was already safe was safe by ACCIDENT, and that is what hid the rest.**
+  `<T: P>(_ x: T)` never fabricated because `params` records the spelling `T`, which resolves to
+  nothing — so the `some P`/`<T: P>` pair looked closed. The container and field paths resolve to
+  the bound *deliberately*, because R28/R39 need them to, and that is exactly why they leaked.
+  A case that passes for a reason you have not checked is not evidence about its siblings.
+- **A gate on a TYPE and a gate on a RECEIVER are different gates.** The same receiver spelling
+  resolves through `vars`, an implicit-self field, a field walk or a subscript element, and only
+  the branch that answered knows which. The flag now travels with `rootOf`'s resolution.
+- **The mid-flight trade, from `81a9dc3`, is the standing-bar item 1 case in miniature.** The first
+  erasure fix enforced the distinction by withholding the receiver's TYPE. `vars` is seeded from
+  the parameter types, so that removed typed resolution for the classifier AND for the SPEC §2 dep
+  join, and an Fs-performing function read PURE. A fabrication was closed by opening a cardinal
+  sin, inside the fix for the cardinal sin's mirror.
+
+And a carve-out that survives the round: `RAW_VALUE_BASE_TYPES` is **not** subsumed by erasure,
+measured by removing it with the erasure gate in place — `plainString(_ s: String)` reads Env via
+`enum Rank: String`. Erasure is a question about the receiver's spelling; the raw-value carve-out is
+about Swift's inheritance clause being overloaded for a concrete receiver nobody monomorphizes.
+
+A/B for `02fb0ad`: 11 real Swift targets, 10 609 report entries; zero entry, effect, Unknown and
+unknownWhy deltas, and one traced change (TCA's `TransactionPublisher.receive`, whose
+`var upstream: Upstream` was CHA'd over five local `Publisher` conformers although its single
+construction site passes a Combine `AnyPublisher`). Instrumented, the gate fires exactly once
+across all eleven targets — the trigger is real and this corpus barely exercises it, which is the
+honest reading of a clean A/B rather than a claim that the fix is free.
+
+Fixes: swift `d62dd69`, `81a9dc3`, `af9dbf8`, `02fb0ad`; rust `1950a27`, `7a5fc1d`.
