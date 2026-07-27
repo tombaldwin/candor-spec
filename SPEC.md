@@ -1020,6 +1020,28 @@ FAIL-OPEN if approximated instead:
   transitive class fixpoint is uncomputable, so every scoped filter tolerates while only bare `Unknown`
   fires.
 
+⟨0.24⟩ **REFUSE ONLY WHEN THE ABSENT DATUM COULD CHANGE THE ANSWER — the refusal is MINIMAL, not coarse,
+and monotone denial is what makes that safe.** A class-scoped `deny` is not unanswerable merely because
+`calls` is missing. The class set only ever GROWS as more evidence arrives (§6.2: a reason is
+*contributed*, never retracted), and `Reject` is upward-closed in it (Lemma 2). So:
+
+- if the classes determinable from the entry ALONE already intersect the filter, **the rule FIRES** —
+  whatever the missing `calls` would have added could only have added more matches, so the absent datum
+  cannot change the verdict. Answer it.
+- only if it does NOT yet fire, and the missing datum could still make it fire, is the question genuinely
+  unanswerable. **Refuse that.**
+
+Measured on candor-swift: `gate --report` refused the ⟨0.24⟩ CONTRIBUTES counterexample — a function whose
+DIRECT `Unknown` carries no reason, gated `deny E Unknown[unresolved]`. That refusal is **over-broad**: a
+reasonless direct `Unknown` contributes `unresolved` from the entry alone, with no transitive step, so the
+rule fires and the answer is certain. Exit 2 there is not wrong in the fail-closed sense — it is a *worse*
+answer than the correct one, and a verb whose value is being a pure function of its input should not
+decline questions it can answer.
+
+This is the first place in this document where the monotone-denial property is used to *do* something
+rather than to be preserved. A gate that knows its predicate is upward-closed can distinguish "I cannot
+tell" from "more information could not change this", and only the first is a refusal.
+
 The refusal's **granularity differs by cause, and that is deliberate**: whole-policy for `forbid`/`allow`
 (enforcing the answerable half and exiting 0 would be gateless-green), and per-(rule, function) for the
 scoped case, so a scoped rule whose own matches carry their evidence still evaluates. The message MUST name
