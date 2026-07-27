@@ -1,0 +1,95 @@
+{
+  "_": [
+    "P3 TRUST MONOTONICITY — the ratchet (conformance PART 26, gen_trust_monotonicity.py).",
+    "",
+    "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an effect should",
+    "be: the engine's own `trusted` and `unchained` arms remain the only oracles. Each entry says only",
+    "'this (engine, degraded-arm, shape) is known-broken today, and here is how to reproduce it without the",
+    "generator'.",
+    "",
+    "IT RATCHETS BOTH WAYS. An unwaived failure fails the suite; a waiver whose cells now all pass ALSO",
+    "fails it, so deleting the entry is part of the fix. `split: \"*\"` waives every shape for an",
+    "(engine, arm) pair — a trust defect is a property of the JOIN, not of the call shape — and the failing",
+    "shape list prints on every run so a shrinking defect stays visible.",
+    "",
+    "Every entry was found by the generator and then RE-DERIVED from a hand-written two-package fixture",
+    "with HAND-WRITTEN dep reports, so no waiver rests on the generator being right."
+  ],
+  "known": [
+    {
+      "engine": "rust",
+      "arm": "empty_zero",
+      "split": "*",
+      "why": "a chained report that lists no functions and says `analyzed.count: 0` (\"I judged nothing\") is read as full coverage: the consumer's caller drops out of `functions` entirely, which under <0.21> is a POSITIVE PURITY CLAIM, and no coverage advisory is emitted. Strictly more confident than the SAME scan with no dep report at all, which discloses `invisible:[deplib]` + `coverage.uncovered`. 64/64 live cells ABSENT.",
+      "repro": [
+        "deplib/src/lib.rs:  pub fn read_cfg() { let _ = std::fs::read(\"/tmp/x\"); }",
+        "app/src/lib.rs:     use deplib::read_cfg;  pub fn entry() { read_cfg(); }",
+        "HAND-WRITTEN dep reports, version matching the running engine (`scan-0.23.1`):",
+        "  good.json   {\"analyzed\":{\"count\":1},\"functions\":[{\"fn\":\"deplib::read_cfg\",\"hash\":\"deplib#read_cfg\",\"inferred\":[\"Fs\"]}]}",
+        "  empty0.json {\"analyzed\":{\"count\":0},\"functions\":[]}",
+        "  (unset)      -> entry []  invisible=['deplib']  coverage.uncovered=[deplib]   hedged",
+        "  good.json    -> entry ['Fs']                                                  correct",
+        "  empty0.json  -> entry ABSENT, no coverage field at all                        SILENT",
+        "`--policy 'deny Fs'`: exit 1 with good.json, exit 0 with empty0.json.",
+        "The wire CAN express the difference and the engine is not reading it: candor-scan on a `pub use`-only",
+        "facade crate emits `analyzed.count: 0`, and on an all-pure two-function crate emits `count: 2`. The",
+        "harness's CONTROL SEPARATION line reports INDISTINGUISHABLE for this engine, which is the diagnosis.",
+        "Live corpus shape: futures@0.3.32's chained report contains zero functions."
+      ]
+    },
+    {
+      "engine": "java",
+      "arm": "empty_zero",
+      "split": "*",
+      "why": "identical to rust's: an `analyzed.count: 0` report with no functions is read as covered-and-pure, the caller leaves `functions`, and no advisory is emitted. 72/80 live cells ABSENT.",
+      "repro": [
+        "dep/Dep.java: public static void readCfg() { Files.readAllBytes(Path.of(\"/tmp/x\")); }",
+        "app/App.java: public static void entry() { dep.Dep.readCfg(); }",
+        "HAND-WRITTEN dep reports, `candor.version` matching the running jar, hash `dep/Dep.readCfg()V`:",
+        "  (unset)      -> entry []  invisible=['dep']  coverage.uncovered=[dep]   hedged",
+        "  good.json    -> entry ['Fs']                                            correct",
+        "  empty0.json  -> entry ABSENT, no coverage field                         SILENT",
+        "`--policy 'deny Fs'`: exit 1 with good.json, exit 0 with empty0.json."
+      ]
+    },
+    {
+      "engine": "ts",
+      "arm": "empty_zero",
+      "split": "*",
+      "why": "same shape as rust and java: an `analyzed.count: 0` report buys full coverage and the caller becomes a silent purity claim. 56/56 live cells ABSENT. CONTROL SEPARATION: INDISTINGUISHABLE.",
+      "repro": ["as the rust entry, with deplib/src/index.ts + app/src/index.ts and CANDOR_DEPS pointing at the hand-written reports."]
+    },
+    {
+      "engine": "swift",
+      "arm": "empty_zero",
+      "split": "*",
+      "why": "same shape, 64/72 live cells ABSENT (8 cells hedge for an unrelated reason and are not part of the defect). CONTROL SEPARATION: INDISTINGUISHABLE.",
+      "repro": ["as the rust entry, with a DepLib target and an App target importing it."]
+    },
+    {
+      "engine": "rust",
+      "arm": "stale_beside",
+      "split": "*",
+      "why": "a version-mismatched COPY of a report sitting beside the trusted original erases the trusted original: the key is withdrawn, the effect is gone and the package is re-declared uncovered. The trusted report is still in the dep directory and still says `Fs`. 64/72 live cells ERASED. This is ENTRY-COLLISION-DECISION.md's withdraw rule again, now triggered by a report the engine has explicitly REFUSED to trust.",
+      "repro": [
+        "the rust fixture above, with stale.json = good.json and `candor.version` changed to `NOT-THIS-BUILD`:",
+        "  good.json                  -> entry ['Fs']",
+        "  'good.json stale.json'     -> entry []  invisible=['deplib']   ERASED",
+        "`--policy 'deny Fs'`: exit 1 -> exit 0."
+      ]
+    },
+    {
+      "engine": "java",
+      "arm": "stale_beside",
+      "split": "*",
+      "why": "the §2.1 downgrade turns the stale copy's entries into exactly `{Unknown}`, which is non-empty and so sails through the last-non-empty-wins guard and OVERWRITES the trusted report's `Fs`. 72/72 live cells ERASED. Already recorded in ENTRY-COLLISION-DECISION.md as a measured `deny Fs` exit 1 -> exit 0; P3 is where it becomes a standing gate.",
+      "repro": [
+        "the java fixture above, with stale.json = good.json and `candor.version` changed to `NOT-THIS-BUILD`:",
+        "  good.json               -> entry ['Fs']",
+        "  'good.json stale.json'  -> entry ['Unknown']    the Fs is gone",
+        "`--policy 'deny Fs'`: exit 1 -> exit 0. Disclosed (so `deny Unknown` still bites), which is why it",
+        "is ERASED and not CARDINAL — but a report the engine refused to trust erased a fact from one it did."
+      ]
+    }
+  ]
+}

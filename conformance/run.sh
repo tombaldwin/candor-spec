@@ -4279,9 +4279,74 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 26 — P3, TRUST MONOTONICITY: A REPORT YOU DO NOT TRUST MAY ONLY ADD HEDGES             [TIER 1]
+#
+# The third self-differential, and the one with two reference arms. Each degraded dep report must sit
+# between them:
+#     unchained (CANDOR_DEPS unset) <= degraded <= trusted (the report as produced)
+# Its KNOWLEDGE may not exceed the trusted arm — a report you distrust cannot teach you something the real
+# one did not — and its DISCLOSURE may not fall below the unchained arm — a report you refuse to use
+# cannot silence a blind spot you would otherwise have declared. That second bound is the COVERAGE DOOR,
+# which was in all four engines: reject a dep report for a version mismatch, register the package as
+# covered anyway, and every function it does not mention becomes a confident purity claim.
+#
+# THE DIRECTION IS PER ARM, and one arm runs the opposite way. For a REPLACE arm (version mismatch,
+# missing version, a non-empty <0.21> `unanalyzed`, an unparseable file) the degraded report stands
+# INSTEAD of the good one, so losing effects is correct as long as the loss is disclosed. For the BESIDE
+# arm (a distrusted copy sitting ALONGSIDE the trusted report — the ordinary accumulating dep directory)
+# the trusted report is still there, so a hedge does NOT license dropping what it says. Judging BESIDE by
+# the REPLACE rule would report nothing about candor-java's measured `deny Fs` exit 1 -> exit 0; judging
+# REPLACE by the BESIDE rule would fail all four engines for the correct §2.1 downgrade.
+#
+# BOTH DISCLOSURE CHANNELS COUNT — measured, not assumed. Handed an unparseable report, candor-rust and
+# candor-ts drop the effects and record the package in `invisible` + `coverage.uncovered`, byte-identical
+# to their answer with no dep report at all, which is the CORRECT trust semantics. A property counting
+# only `Unknown` as disclosure would have filed that as a cardinal loss on two engines. candor-java and
+# candor-swift instead REFUSE the run (exit 2), which is also fine and is reported as REFUSED.
+#
+# WHAT IT FOUND ON HEAD, and the FOUR-WAY one is new:
+#   * ALL FOUR ENGINES read a chained report that lists no functions and declares `analyzed.count: 0`
+#     ("I judged nothing") as full coverage: the caller drops out of `functions` — a <0.21> purity claim —
+#     with no advisory anywhere, which is strictly MORE confident than the same scan with no report at
+#     all. `deny Fs` goes exit 1 -> exit 0. The live shape is futures@0.3.32, whose chained report
+#     contains zero functions. The wire CAN express the difference (candor-scan emits count 0 for a
+#     `pub use`-only facade crate and count 2 for an all-pure two-function crate) and no engine reads it —
+#     which the harness proves rather than asserts, with a NEGATIVE CONTROL arm that differs from the
+#     failing one by that single integer and legitimately never fails (§2 chaining rule 3: an all-pure
+#     dependency's empty report is a claim, not a blind spot). CONTROL SEPARATION prints
+#     INDISTINGUISHABLE for all four; when someone fixes the door the two arms MUST diverge.
+#   * candor-rust and candor-java let a DISTRUSTED copy beside the trusted report erase what the trusted
+#     report says (rust withdraws the key and re-declares the package uncovered; java's §2.1 downgrade
+#     writes `{Unknown}` straight over the `Fs`). ts unions and swift prefers the trusted level: both clean.
+# Every one re-derived from a hand-written two-package fixture with HAND-WRITTEN dep reports.
+#
+# FLOORS, as PART 25: a per-(engine, arm) vacuity floor where REFUSED is the one benign way to have no
+# live cells; a reference arm that produces nothing fails the engine outright (the oracle is missing); an
+# arm producing no report while exiting 0 is the harness broken and says so; and the same both-ways
+# ratchet in `trust-monotonicity-baseline.json`.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_trust_monotonicity.py" ] || { echo "FAIL: gen_trust_monotonicity.py is missing"; exit 2; }
+[ -f "$HERE/trust-monotonicity-baseline.json" ] || { echo "FAIL: trust-monotonicity-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P26_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_trust_monotonicity.py" --baseline "$HERE/trust-monotonicity-baseline.json"
+) || P26_OK=1
+
+echo "PART 26 — trust monotonicity: a distrusted dep report may only ADD hedges (SCAN-BOUNDARY-WORK-QUEUE.md §3, P3)"
+if [ "$P26_OK" = 0 ]; then
+  echo "  -> MATCH — every degraded dep report stayed between the unchained and trusted arms, outside the ratchet"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
