@@ -387,6 +387,14 @@ input** (the `fn_returned_dyn` pair). That is a four-way divergence on a decided
 class of thing PARTs 18–22 exist to catch — and each of them fixes one spelling, so none could.
 
 ### 3b — THE GATE-A-REPORT VERB · parallel per engine, unblocks P4
+**SPECCED ⟨0.24⟩ `3dd2e39` as `gate --report <locator> --policy <file>`; java DISPATCHED as reference.**
+Shape: exit codes and verdict identical to `scan --policy`, only the source of `S`/`D` differs. The
+load-bearing half is a **MUST NOT** — no re-deriving, widening or re-classifying; an ABSENT entry stays
+absent and is not back-filled from a sidecar or a chained dep. The verb's whole value is being a pure
+function of (report, policy), and this codebase's loader is built to ENRICH reports, so the brief requires
+proving the path does not.
+**Today's evidence supports this entry's own hypothesis**: the ⟨0.24⟩ §6.2 defect was a contract-vs-model
+divergence every engine implemented faithfully, and no end-to-end test could have localised it.
 - [ ] **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only via
       `scan --policy` (which computes `S` from source, putting the classifier back in the loop) and
       `whatif` (which reports only violations the hypothetical INTRODUCES — verified: a report with
@@ -477,10 +485,29 @@ the only verdict-changing one — do not bundle them.
         1 → 387. `direct`/`calls` are now non-defaulted on the entry type so a construction site cannot
         silently rebuild the direct-only reading. **No format rung needed** — both fields were already on
         every entry, just unread.
-      - [→] **rust DISPATCHED** — and the sweep is TWO verbs, not one: `blindspots --class` shares the
-        filter (`containment.rs:79`), as does java's (`Query.java:1869-1876`). ts/java pending on repo
-        availability. Each briefed to measure `--class dynamic` (an alias naming every genuine class, so it
-        must exclude nothing) against unfiltered, and to STOP if the counts already match.
+      - [x] **rust FIXED `5df4af1` — reproduced in `unverified`, and WORSE than swift.** All 8 target ×
+        policy rows converge exactly after; unfiltered → `--class dynamic` before: **54→26 (−52%)**,
+        **7→1 (−86%)**, **94→23 (−76%)**, **43→21 (−51%)**. Fault 1 (direct-only read) was the bulk —
+        101/124 ebman `Unknown` entries, 37/60 pgman, 6/7 candor-scan holes carry no direct reason.
+      - [x] **`blindspots` CLEAN — my two-verb brief was WRONG and the correction reached the agent in
+        time.** Measure-only, 5 targets: 0→0, 1→1, 23→23, 23→23, 26→26. And `sources` provably cannot hold
+        a reasonless entry in rust — the code skips `unknown_why.is_empty()` before the filter runs, AND
+        **zero of 17,306 entries across 173 dep reports** carry a direct `Unknown` with no reason. Applying
+        swift's fix here would have been a regression: it would pull in exactly the inherited units the
+        verb is DEFINED to exclude. *One verb's definition is the other verb's bug.*
+      - **THE ROOT CAUSE, and it is the durable part** (now SPEC §6.2 `15041de`): **rust's GATE was never
+        party to this defect.** It already resolved transitively and already treated an absent class set as
+        `unresolved`. The divergence was purely consumer-side, in the one query that reads a **report**
+        rather than the scan's in-memory graph — carrying an **open-coded second copy** of the
+        classification. *Two implementations of one rule inside one engine, one correct, drifting silently
+        because nothing compared them.* Fix was structural: `propagate_str` + `reason_class_matches` hoisted
+        into `candor-classify`, so gate and disclosure share one fixpoint and one match rule.
+      - **An honest zero, flagged by the agent so nobody misreads it:** rust's post-fix `--class unresolved`
+        selects **0**, not swift's 6-of-387 — because no rust report contains a reasonless direct `Unknown`
+        at all (17,306 entries, zero). Fault 1's contribution is a genuine fail-closed net whose only
+        demonstrated firing is the fixture. **A 0 that means "the net never had to catch anything", not
+        "the fix did not land".**
+      - [→] ts/java pending.
 - [ ] **Residual, deliberately left (swift, and check it four-way when the sweep lands):** `UnverifiedHole`
       still prints the report's DIRECT `unknownWhy`, so a hole surfaced by `--class dispatch` *through
       inheritance* is listed with an empty `unknownWhy` — the filter matched on a class the output does not
