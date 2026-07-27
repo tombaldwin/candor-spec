@@ -728,9 +728,25 @@ inserts its extra letters *between* the ASCII ones, leaving pure-ASCII relative 
 `C`-versus-`tr_TR` experiment on ASCII keys returns "no difference" and licenses the conclusion "latent, not
 observed", which is false. Use `et_EE` or `da_DK`.
 
-Note this is **stricter than, and separate from, the collation rule** for a single joined field: that one
-says *which* order among the well-defined ones, this one says the order must not depend on the environment
-at all. An implementation can satisfy the first and violate the second, and one did.
+Note this is **separate from, and orthogonal to, the collation rule** for a single joined field. They are
+different obligations and it is worth being exact about which binds where, because the clause as first
+written could be read two ways:
+
+- **This rule (locale-independence) binds EVERY ordering**, in every report and every query output. It is
+  satisfied by any environment-independent comparator — including UTF-16 code-unit order, which is what a
+  bare `Array.sort` or `String.compareTo` gives. Deterministic is the whole requirement.
+- **Code-point order is required ONLY where a field's collation is pinned** (§3.1's `viaDispatchOn`). It is
+  the stricter obligation and it is deliberately narrow, because the cost of a cross-engine byte difference
+  is only felt where something is compared across engines — and `analyzed.digest`, the field most likely to
+  invite that, is defined as *within-engine*-comparable precisely so it is not.
+
+Read the other way — code-point mandatory everywhere — this clause would make a bare `.sort()` in any
+UTF-16 language non-conformant on every array in the report, which is a sweeping obligation the per-field
+mandate in §3.1 shows was not intended. Measured on the engine where this was found: seven sites were
+locale-sensitive and were fixed; roughly seventy more use UTF-16 order, of which about ten write report
+bytes from user-derived strings. **Those ten are conformant** — deterministic, environment-independent, and
+comparable within their producer. An implementation can satisfy the collation rule and violate this one, and
+one did; the converse is fine.
 
 ⟨0.23⟩ **EVERY VALUE IN THIS FILE IS AN ARRAY OF STRINGS, and that is a constraint on WRITERS.** A
 producer MUST NOT write a value of any other type, and MUST NOT write a metadata key as the file's *only*
@@ -1040,6 +1056,27 @@ are `Db` with no egress, whereas an `Llm` call always is a provider request — 
 `Net` and `Db` does not). §1's claim that "`Llm` refines `Net` **the way `Db` does**" is the sentence at
 fault. The residual underneath is real and narrower: a *networked* DB call is egress a `deny Net` gate
 misses, which is a classifier question and not a gate-semantics one.
+
+⟨0.24⟩ **Three surfaces this document NAMED and never DEFINED.** Each is cited elsewhere as though it were
+specified — one of them as "the canonical oracle" for a question this section answers — and an implementer
+could not have built any of them from what was written. This is the condition that produced the `--class`
+divergence (named, load-bearing, undefined, four implementations), so they are defined here rather than
+left to convention.
+
+- **`blindspots --stats`** ⟨0.20⟩ — the §4 **reason-class distribution** over the same `sources` set
+  `blindspots` reports: a count per class, using §6.2's projection, plus `totalUnknown`. It answers "what
+  KIND of blind spot dominates" before an author drills in with `--class`. Its output contract lived only
+  in the conformance suite.
+- **`reports <prefix>`** — enumerates the report files a prefix locator resolves to, and nothing else. It
+  is the **canonical answer to "what counts as a report"**, which is why §2.2's sidecar-reservation rule
+  cites it, and why its listing sidecars was recorded there as a defect rather than a cosmetic one. It MUST
+  apply exactly the §2.2 exclusion — an engine whose `reports` output disagrees with what its own queries
+  load has two answers to one question.
+- **The `encountered-*` sidecar family** — engine-local artefacts recording what a scan saw, reserved in
+  §2.2 alongside `callgraph`/`hierarchy`/`calibrated`/`layerreach`/`locs`/`gate`. They carry no interchange
+  contract: no consumer may depend on their shape or presence. They are named here **only** so the reserved
+  set is complete, because that set's whole job is to be exhaustive — an unlisted suffix falls back into
+  the report candidate set.
 
 `callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the
 *unresolved-dispatch frontier*. The plain `callers` set (`transitive`) is a **confirmed** lower bound: a
@@ -1782,7 +1819,8 @@ intersect the filter. Until now this document named the flag and never said what
 consumer-side rule with a measurable failure mode reached four implementations unexamined. Three
 requirements:
 
-0. **It applies to `unverified`, NOT to `blindspots` — the same filter, opposite correct behaviour.**
+0. **REQUIREMENT (1) BELOW — transitive resolution — applies to `unverified` and NOT to `blindspots`.**
+   Both verbs keep the flag; what differs is what the class set is resolved over.
    `blindspots` is the **source** view (§3.1) and *excludes* a unit whose `Unknown` is purely inherited, so
    every entry it filters carries a direct reason by construction and the direct-only read is CORRECT
    there. Resolving transitively would pull in exactly the units that verb is defined to exclude, turning a
@@ -1802,6 +1840,16 @@ requirements:
    not on its reason set being absent. Absence is also what an *inherited* `Unknown` looks like, and
    contributing `unresolved` to one whose `Unknown` is correctly classified at the callee is the mirror
    fabrication. A fix that trades one for the other is not a fix.
+
+⟨0.24⟩ **THE FLAG'S VALUE GRAMMAR**, which was never stated and is therefore where the next divergence
+would have gone. `--class <c>[,<c>…]` takes ONE comma-separated list; it is **not repeatable** (a second
+occurrence is a usage error, not a union). Accepted tokens are the six classes, plus the two aliases `*`
+and `dynamic` — the latter being what the diagnostic below uses, so it must be accepted. An
+**UNRECOGNISED** token is a **usage error: exit 2**, naming the token and listing the accepted set. It is
+NOT the policy-side drop-with-warning behaviour, and the difference is the point: on the policy side a
+dropped token leaves a *wider* rule standing, whereas here it leaves a *narrower* filter — so `--class
+dyanmic` would silently answer a question the user did not ask, with a smaller number, which is the
+fail-open this whole clause exists to close. A query flag that cannot be honoured is refused.
 
 The diagnostic is cheap and every implementation should carry it as a test, **but it must be stated
 precisely, because the obvious phrasing is false.** `--class dynamic` is an alias for every *genuine* class
