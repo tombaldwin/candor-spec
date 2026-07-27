@@ -14,6 +14,17 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## 0.23 — current floor (cross-package interface dispatch)
 
+⟨0.23, added 2026-07-27⟩ **The type-hierarchy sidecar has one extension point, and honouring it is a
+REQUIREMENT on READERS**: any entry whose value is not an ARRAY is engine-private metadata about the map,
+not a type, and MUST be skipped. Stated as a reader requirement because the failure it prevents is silent —
+candor-java's own second reader called `getAsJsonArray()` unconditionally, threw, swallowed it into "no
+sidecar" and discarded the whole hierarchy with no diagnostic. The first such key is candor-java's
+`"@superclass"` (type → the one supertype that is its superclass): without it a consumer walking a
+*dependency's* own chain cannot apply "the class wins at any depth" (JLS 15.12.2.5 / 8.4.8), and an
+interface `default` shadows the superclass body the runtime actually executes. Its PRESENCE licenses the
+split; a sidecar without it MUST keep the reader's previous order rather than guess. Additive and
+version-gate-free in both directions. See **SPEC.md §2.2**.
+
 The **cross-package interface-dispatch** rung — the optional `interfaceUnion` report entry (a synthetic
 `pkg#Iface.method` union over a package's local implementers) + the `--workspace`/`--deps` auto-discovery
 convention, so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to the impl's

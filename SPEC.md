@@ -632,6 +632,22 @@ storing the candidate edges bounded-CHA deliberately dropped. That precise subty
 simple-name match without it). It carries no provenance of its own and is read with its report. A language
 with no class/protocol dispatch (the Rust scanner) has nothing to populate it and MAY omit it entirely.
 
+⟨0.23⟩ **A reader MUST SKIP any entry whose value is not an ARRAY**, and that is the sidecar's only
+extension point: a key whose value is an object or a scalar is engine-private metadata about the map, not a
+type. This is a requirement on readers rather than a new field, because the failure it prevents is silent —
+candor-java added the sibling key below and its own *second* reader, which called `getAsJsonArray()`
+unconditionally, threw and swallowed the exception into "no sidecar", discarding the **whole** hierarchy and
+degrading the frontier with no diagnostic. Its full suite was green through that.
+
+The one such key defined so far is candor-java's `"@superclass"` — an object mapping a type to the one
+supertype that is its **superclass**, the fact a sorted list of supertypes throws away. JVM and Swift method
+resolution put the whole class chain ahead of any interface/protocol at any depth (JLS 15.12.2.5 / 8.4.8),
+so a consumer walking a *dependency's* chain cannot apply that rule without it. Its **presence** is what
+says the kinds are known; a sidecar without it MUST keep whatever order the reader used before, never a
+guess — reading an unmarked list as all-interfaces puts a real superclass below an interface, which is the
+silent under-report the ordering exists to prevent. An engine whose language has no such rule needs neither
+the key nor the marker.
+
 ## 3. Modes
 
 An implementation SHOULD support:
