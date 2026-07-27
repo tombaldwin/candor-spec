@@ -1604,6 +1604,38 @@ The projection is **conservative**: a raw reason matching no listed prefix maps 
 function whose `Unknown` carries no recorded reason **CONTRIBUTES** `unresolved` to its class set — so a
 narrowed filter never *silently* tolerates a hole it failed to classify.
 
+⟨0.24⟩ **The `--class` FILTER — normative, because it had no semantics here and three engines wrote three.**
+`blindspots --class` and `unverified --class` (§3.1 ⟨0.20⟩) select the entries whose reason classes
+intersect the filter. Until now this document named the flag and never said what it selects, which is how a
+consumer-side rule with a measurable failure mode reached four implementations unexamined. Three
+requirements:
+
+1. **It MUST resolve the class set TRANSITIVELY, over the same reach the gate uses.** `unknownWhy` is
+   **direct-only by design** (§4: a reason names a site in the function's *own* body), so a function whose
+   `Unknown` is purely *inherited* carries no reason of its own. A filter matching against the direct field
+   is reading a field that answers a different question. Measured: **44%** of `Unknown`-bearing entries on
+   one corpus and **67%** on another carry no direct reason at all.
+2. **It MUST fail CLOSED.** An entry the filter cannot classify is KEPT, never dropped. The failure it
+   replaces read "no matching reason ⇒ exclude", so an unclassifiable hole was excluded by *every* filter,
+   including one naming its own class.
+3. **The contribution in (2) MUST be gated on the function having a DIRECT `Unknown` it did not name** —
+   not on its reason set being absent. Absence is also what an *inherited* `Unknown` looks like, and
+   contributing `unresolved` to one whose `Unknown` is correctly classified at the callee is the mirror
+   fabrication. A fix that trades one for the other is not a fix.
+
+The diagnostic is cheap and every implementation should carry it as a test: `--class dynamic` is an alias
+naming every genuine class, so **it must exclude nothing** — a filtered count below the unfiltered one is
+the defect, and the gap is its size. Measured on the engine where this was found, before repair: 387 → 230
+(−41%) on a corpus target and 51 → 16 (−69%) on the engine's own sources; after, both converge exactly
+across all eight target × policy rows. The *discrimination* control matters equally and is the one a blanket
+"keep everything" would fail: after repair, `--class unresolved` selects **6 of 387** and `--class native`
+selects **0**.
+
+Why this is a soundness clause and not a precision one: `unverified` exists to name the holes a `pure` /
+`deny E` layer PASSES without proving anything — the tool whose whole job is "this gate is green but not
+provably so". A filter that fails open makes it under-report the holes it was built to surface, and
+under-report *more* the more the user narrows.
+
 ⟨0.24⟩ **IMPLEMENT IT AT THE SOURCE, NOT AT THE JOIN — one engine already did, and that is the shape to
 copy.** The rule above is written as a property of the class set, but the right place to satisfy it is where
 the `Unknown` is *created*: an engine that cannot account for an `Unknown` records a reason for it there and
