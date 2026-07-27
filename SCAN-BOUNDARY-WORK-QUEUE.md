@@ -2641,7 +2641,7 @@ Now `invisible: ['signal_hook_registry']` plus a ledger row. ARMED across all 85
 - **Refused swift's `subtract(coveredPkgs)`**: rust drops a key two entries disagree under, so complete-wins
   makes it read confidently pure — `63bbe87`'s argument, same shape.
 
-- [ ] **ts and swift FAIL OPEN on a MALFORMED `unanalyzed` manifest** (present but not an array). java fails
+- [x] **CLOSED FOUR-WAY — ts `26a89fc`, swift `6de5169` (mine).** ts and swift failed OPEN on a MALFORMED `unanalyzed` manifest (present but not an array). java fails
       closed and rust adopted java's reading. A report carrying `"unanalyzed": "oops"` is therefore read as
       COMPLETE and its silence buys full coverage — the door `21277eb` closed for the well-formed case,
       reopened by a malformed one. Relayed to the live ts agent; **swift remains.**
@@ -2671,3 +2671,39 @@ PANICS on 57 of 60, so the failure mode is loud by nature. **Two instrument erro
 rather than shipped, both pointing the flattering way**: a first oracle whose 2,523 "wrong lines" were all
 doc comments, and a first differential whose "0 differing" compared two arms that had both panicked to
 empty files.
+
+### ts's three rows — and the last fail-open closed four-way
+
+**The by-reference HOF arm (`1960979`) was a BOUNDARY defect, not the precision gap it was filed as.** The
+single-tree control came back `['Fs','Unknown']` with `deny Fs` exit 1 in BOTH arms: the LOCAL half of the
+same argument list was charged all along (the local edge arm sits ABOVE the guard, the dep charge below),
+so **one call, one position, one argument got two answers depending only on which tree the referent lived
+in.** Filing it as precision was generous to it.
+- **It answered the question I asked, with a measurement rather than an opinion:** the three-valued
+  treatment ALONE does not separate a genuine callback from a fold's seed — `reduce(xs, cb, depWrite)`
+  declares `seed: any`, exactly as silent as a real `fn: any`, and that mutant fails 5 named tests. The
+  separator is a SECOND question the same signature answers: the name map describes the METHOD form, so
+  when parameter 0 is positively a collection the receiver has moved into argument 0 and the map is wrong
+  by exactly one place.
+- **Two guards were written, measured, and REMOVED** — one failed nothing AND was actively wrong on
+  `groupBy(xs: any[], key: string)`; the other was provably unreachable. Removing a guard you cannot
+  justify is as much the job as adding one.
+- Numbers worth keeping: the predicate's first version **fired 68 times on ukri-tfs and was wrong all 68**
+  (TypeORM's `EntityTarget<T>` is a union with a `string` arm, and `string` carries `[Symbol.iterator]` —
+  hence `every`, not `some`). And `checker.isArrayLikeType(any)` is TRUE, which without an exclusion pulls
+  the receiver slot into the map and silences the `thisArg` denylist landed one commit earlier.
+
+**The uncleared caches (`95d0b8b`) reproduced in the CARDINAL-SIN direction**, with a lever that is an
+ordinary published shape: the walk excludes `*.d.ts` AND `*.min.js`, so a typings+minified package exits 2
+while still resolving for its consumer — **5 real packages in the corpus exit 2 for this reason**. Run 2
+served `useHot = ABSENT` for a body calling `fs.appendFileSync`, `coverage.uncovered` null, stderr silent.
+An earlier arm carried `unknownWhy: ['callback:x.trim']` — **a reason class naming a deleted body.** Fixed
+via DERIVED ownership (a file candor would have overwritten on success is the file it removes on failure),
+so hand-placed reports survive and still chain. **The stderr assertion caught a defect in the fix itself**
+— the sweep removed the right file and named the wrong directory, with report and exit code green.
+
+**The aws-sdk row keeps its REFUTED status with the cause corrected:** the CJS build does not INLINE the
+tslib helpers — `__awaiter`/`__generator` appear in 9 ES files and **0** CJS files, and the CJS twin uses
+native `async`/`await`. It is a downlevel-TARGET difference, not an inlining one, and 41 of the 56 imports
+are `__extends` rather than the named helpers. A refutation whose stated cause is wrong is half a
+refutation.
