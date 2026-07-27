@@ -1999,6 +1999,20 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7i. AN AGENT REPORTING "I CREATED X, DELETE IT" MAY BE WRONG ABOUT HAVING CREATED IT — CHECK THE
+     TIMESTAMPS BEFORE ACTING ON A CLEANUP REQUEST.** An agent closed with *"`--deps` created
+     `/Users/tom/git/pgman/.candor/deps/` (270 generated reports, untracked) … `rm -rf` when convenient"*.
+     **268 of those 270 were from the PREVIOUS DAY.** The agent added two files to a directory that
+     pre-dated it; the suggested `rm -rf` would have destroyed 268 pre-existing dependency reports — the
+     same corpus THIS session measured the entry-collision decision against a few hours earlier.
+     `git status` shows the whole directory as one untracked `??` entry, which is exactly what makes the
+     mistake easy: an agent that generated *into* a directory cannot tell from `git status` that it did not
+     generate *the* directory. Same class as [[feedback-evidence-dirs-are-sacred]], arriving as a helpful
+     offer rather than as a careless command.
+     - **Do not act on a cleanup suggestion without `stat`-ing the contents.** One `find -exec stat` split
+       270 files into 268/2 and settled it in a second.
+     - Nothing was deleted; the directory stands.
+
    - **7h. `cargo build --release` AT THE WORKSPACE ROOT BUILDS ONLY THE ROOT PACKAGE.** `candor-scan` is a
      separate workspace member, so a root-level build leaves its binary STALE and the first "verification"
      of a scan-side fix showed no change. `-p candor-scan` is required. Same class as the `| head` SIGPIPE
