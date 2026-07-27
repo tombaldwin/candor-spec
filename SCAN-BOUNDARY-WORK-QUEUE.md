@@ -96,8 +96,22 @@ and probably the dot-free detail fix.
           previously unpinned (only the DOTTED form was asserted), verified by mutation, and the gate arms
           measured (`deny Unknown[dispatch]` exit 1 / `deny Unknown[indirect]` exit 0 — the control showing
           the rejected `callback:` ruling would have flipped it).
-        - [→] java + ts still in flight; both sent row 3 (it can occur in a dotted-qual engine and my
-          original brief did not name it).
+        - [x] **java FIXED (2 commits)** — had BOTH defects, in both arms, and the measurement beat the
+          prediction on the second. Pre-fix, three arms:
+          | hierarchy sidecar | frontier BEFORE |
+          |---|---|
+          | ABSENT | dot-free MISSING |
+          | POPULATED | dot-free AND the row-3 collider MISSING |
+          | `{}` | **`[]` — EVERYTHING missing, including the dotted entries** |
+          The `{}` arm is **worse than the dot-free drop it was filed behind**: honouring an empty sidecar
+          took out the entries that were working. Fixed to `hier != null && !hier.isEmpty()`, matching rust
+          and ts. The agent agreed over-listing is right rather than implementing it under instruction —
+          the brief invited it to argue back.
+          Also: **my guess in the brief was wrong** ("JVM quals are dotted so this may be a non-issue").
+          Row 3 fires on dotted quals precisely because the detail collides with the SIMPLE METHOD name,
+          not the qual; row 2 fires whenever a report carries a dot-free unit name (`main`). Both measured.
+          Mutation-checked both directions; 550 tests green.
+        - [→] ts still in flight.
 
       ORIGINAL FILING of symptom 3 — the dot-free detail: rust and swift emit
         `dispatch:untyped cross-package receiver`: canonical kind, malformed normative detail (§4 makes
