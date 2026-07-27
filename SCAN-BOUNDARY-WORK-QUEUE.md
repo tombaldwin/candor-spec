@@ -645,10 +645,34 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       is served from the PREVIOUS run's file while the code comment claims it "is skipped".
       ABSENT-BY-ACCIDENT: the incompleteness fix (`21277eb`) removed the sharpest edge, but nothing prevents
       the shape returning.
-- [ ] **rust — the QUIET half of the span-crossing-a-thread defect is unmeasured.** `4f7b704` closed the
+- [x] **rust — the QUIET half of the span-crossing-a-thread defect is unmeasured.** `4f7b704` closed the
       loud tail (the panic; 60 unseen crates now clean). The quiet form resolves a span against the WRONG
       file instead of aborting, and the precondition was measured at **72.4% of 88,927 macro re-parses**.
       No known wrong output — and no measurement either.
+      **CONFINED — candor-rust `fc71bc9`. Row closed with evidence rather than a fix.**
+      - **Structural, by enumeration of every span read and what its result feeds:** `fn_locs` is the ONLY
+        one whose result is PUBLISHED (`loc`), and it runs INSIDE the parse closure on the worker that owns
+        the map; the four moved-token re-parses are re-stamped to `call_site()` = `(0,0)`, the dummy file
+        every thread's map is seeded with; `macro_template_blocks` re-parses from a STRING (registers a
+        file on the current thread); the six `parse_nested_meta` sites read spans only for errors, all
+        discarded with `let _ =`, and a cfg verdict is a function of paths and literals, not spans.
+      - **The oracle**: open the file each `loc` names and require it to exist, be long enough, and declare
+        that function. **24 008 of 24 008** non-synthetic locs over 200 crates.io crates pass. CALIBRATED
+        before believed — permuting each loc onto a different file of its own crate makes it flag **20 001
+        of 23 657 (84.5%)**, 5 507 as short-file. Its first run reported 2 523 wrong lines that were all
+        DOC COMMENTS (the item span starts there); that was the instrument, not the engine.
+      - 200 crates × four rayon thread counts (**800 scans**) byte-identical: no published field varies
+        with how much each worker parsed, which is the quiet form's whole precondition.
+      - **The seeded control settles the shape of the risk**: `fn_locs` moved out of the parse closure
+        PANICS on 57 of 60 crates (the 3 survivors are single-file). An output-bearing span read on the
+        wrong thread is loud by nature — there is no silent-wrong-loc regime behind the panics.
+      - **A near-miss worth keeping**: the first differential compared the SEEDED binary at t=1 vs t=16 and
+        reported "0 differing" — because both arms had panicked to EMPTY files. A diff over two equally
+        absent outputs is not a measurement, and it pointed the flattering way (item 7d).
+      - Pinned by `every_published_loc_names_the_source_that_declares_it`, a hermetic 24-module fixture
+        running the same oracle; the seeded mutant fails it. Honest limit stated on the test: on a
+        single-core machine rayon may run every parse on the calling thread, and the property then holds
+        trivially — the test loses its power there, not its correctness.
 
 ### Release-shape, needs Tom
 - [ ] **candor-ts is at build 0.23.2, the family at 0.23.1.** Legitimate — its module-unit wire key moved
