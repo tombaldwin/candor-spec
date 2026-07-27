@@ -52,7 +52,31 @@ and probably the dot-free detail fix.
         was measured and rejected — 8710 of 19607 rust entries, and `deny E Unknown[dispatch]` would go
         58/200 crates → 0/200. It also names something the other kinds cannot: no owner was ever formed,
         and no function value is involved.
-      - [ ] **SYMPTOM 3 STILL OPEN — the dot-free detail.** rust and swift emit
+      - [x] **SYMPTOM 3 CLOSED — and the vocabulary question was the SMALL half.** Measuring before
+        editing (as this entry demanded) found the real defect one layer down, in the CONSUMER. A report
+        carrying `dispatch:untyped cross-package receiver` is **silently dropped** from
+        `possibleViaUnknownDispatch` — in BOTH the hierarchy and no-hierarchy arms, with no diagnostic —
+        because the dot-free detail makes `simple_method`/`declaring_type` return the whole string and
+        `by_method.get(m)` cannot hit. A consumer reads that omission as "no function may reach the target
+        through an unresolved dispatch", about a call the engine explicitly charged `Unknown`.
+        - **The rule generalises past the symptom** (SPEC §3.1 ⟨0.24⟩, `ec75631`): when frontier condition
+          (3) cannot be EVALUATED, the entry is disclosed with the raw detail, never dropped. The spec
+          already took this direction one rung up — no §2.2 sidecar → over-list by simple name. Dot-free is
+          that case one rung down (no owner AND no member) and takes the same answer.
+        - Both candidate fixes REJECTED on the measurement, as predicted: `callback:` is false (no function
+          value) and silently NARROWS every field `deny E Unknown[dispatch]` gate by moving the §6.2 class
+          to `indirect`; emitting nothing is the cardinal sin. §4 blesses the dot-free form instead — the
+          KIND is what gates read so the kind stays true; the DETAIL is where the engine says how much it
+          knows, and "nothing" must be sayable. **Zero engine emit changes required.**
+        - Also caught a STALE spec claim in the same paragraph: §3.1 said "the Rust scanner emits no
+          `dispatch:`" and returns `[]` by language model, not as a gap. It emits `dispatch:` for every
+          dispatch reason in a 1062-report census. **The spec was reading a silent drop as a language
+          property** — which is how the drop survived.
+        - [→] Four per-engine consumer fixes DISPATCHED in parallel (rust/java/ts/swift). Each briefed to
+          MEASURE before changing, to detect the case STRUCTURALLY (a hardcoded string match is an
+          allowlist = the same defect), and to carry a CONTROL proving the fix is not a blanket.
+
+      ORIGINAL FILING of symptom 3 — the dot-free detail: rust and swift emit
         `dispatch:untyped cross-package receiver`: canonical kind, malformed normative detail (§4 makes
         `<owner>.<member>` the one conformance-compared part). Two candidate fixes and they differ in
         class: emit `callback:` (which §4's own dividing line implies for an untyped receiver, but moves
@@ -85,8 +109,37 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`, which recommends
       ts's union and is **deliberately unmade**. Note the doc's own history: this rule has been described
       three times and been wrong twice.
-- [ ] **`hasHier` gates on EMPTINESS (rust, ts) vs ABSENCE (java).** java takes the precise path over an
-      empty map, which NARROWS the disclosure. Three engines, two answers.
+- [x] **RULED (SPEC §3.1 ⟨0.24⟩, `ec75631`) — empty, absent and unparseable are ONE input: over-list.**
+      `hasHier` gates on EMPTINESS (rust `!hier.is_empty()`, ts `Object.keys(...).length > 0`) vs ABSENCE
+      (java `hier == null`). Three engines, two answers — and java's is the unsafe one: a sidecar that
+      parses to `{}` is non-null, so java HONOURS it, `isSubtypeOf` fails for every type, condition (3)
+      fails for every dotted dispatch source at once, and the frontier collapses to EMPTY. A consumer reads
+      an empty frontier as "nothing may reach the target through an unresolved dispatch".
+      The ruling: `{}` is not the claim "no type has a supertype" — far more often it is "the pass found
+      nothing, was not run, or wrote a stub", and the difference is **not recoverable from the file**. So
+      all three mean *the subtype test is unanswerable*, which is the same trigger as symptom 3's dot-free
+      detail: disclose, do not drop. This item and §1 symptom 3 turned out to be one rule, which is why
+      they landed in one commit.
+      **Sent to the java engine to MEASURE** — I read java statically and have not run it, and the brief
+      says so, plus invites it to argue back if an empty sidecar is a meaningful claim after all.
+
+- [ ] **NEW, opened by the ⟨0.24⟩ ruling — unanswerability in the §2.2 sidecar is PER-TYPE, and the
+      ruling only handles it PER-FILE.** Absent/empty/unparseable sidecars now correctly over-list. But
+      once a sidecar IS present and non-empty, condition (3) runs `isSubtypeOf(t, owner)` per reaching type
+      `t`, and a type with **no entry in the map** is treated as having no supertypes — a positive claim.
+      Absence there is genuinely ambiguous: a type with no supertypes legitimately has no entry, and so
+      does a type the hierarchy pass never indexed (an out-of-scan reacher is the obvious case). The
+      sidecar has no way to say *"I did not analyse this type"*, so the consumer cannot tell the two apart
+      and silently resolves the ambiguity in the direction that DROPS.
+      ts's `7bbf73c` is the near-miss that makes this concrete: it fixed `{"@superclass":{}}` collapsing
+      the frontier by DROPPING uninterpretable keys — which is right for a wholly-uninterpretable file
+      (`{}` → over-list), but a **partially** interpretable one stays non-empty and takes the precise path
+      over a hierarchy that cannot answer for the dropped types.
+      **This is the three-row rule applied to the sidecar, and unlike symptom 3 it probably DOES need a
+      format rung** — the sidecar would need the `analyzed`/`unanalyzed` treatment that reports got at spec
+      0.21 ([[candor-completeness-manifest]]). Do not patch around it with a leaf-key guess.
+      MEASURE FIRST, and not while the four frontier agents are live — running a shared rust binary during
+      someone else's edits is standing-bar item 7f, which produced a phantom finding once already.
 
 ### 3 — CLOSE THE STRUCTURAL GAP WITH SELF-DIFFERENTIAL PROPERTIES · the highest-yield row here
 
