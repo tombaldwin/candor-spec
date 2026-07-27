@@ -7,6 +7,70 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
+## CARRIED FORWARD — the vein's own rows are all closed; these are what it uncovered
+
+**The vein has ZERO open rows.** Every mechanism family that made a `deny` gate pass code it should fail is
+closed four-way and pinned by conformance PARTs 18–22. What follows is not the vein: it is the set of things
+found *while* closing it that were deliberately deferred with a reason. They were buried in prose in the
+sections below, which is the failure this document exists to prevent — **a residual recorded only in a
+narrative is a residual nobody will find.** Hoisted here 2026-07-27.
+
+Each was refused or deferred with a measurement, not left undone. None is a known silent under-report.
+
+### Needs its own measurement before anyone touches it
+- [ ] **java — a CONCRETE dep method overridden effectfully** answers only for its own body across the
+      boundary. Unlike the abstract case the key IS answerable and the answer IS true, so this is a
+      narrower question than a purity claim — but the blast radius is every non-final method of every
+      non-final class, so it wants its own A/B before a line is written.
+- [ ] **swift — the erasure gate does not reach the LOCAL-protocol dispatch arm.** REFUSED with both
+      treatments priced (`020add4`): suppress costs 5 losses and 7 entries REMOVED; disclose costs 9
+      concrete effects → hedge. The deciding argument is recorded in the code — for an IMPORTED protocol
+      the in-scan conformers are an arbitrary subset of the candidates, for a LOCAL one they BOUND them.
+      Re-open only with an A/B, since this arm is what R28/R39 and the whole element-dispatch family run on.
+- [ ] **java — the dep-sidecar hierarchy half.** `writeHierarchy` writes a sorted `TreeSet` with no
+      superclass marker, so a chain lying ENTIRELY inside a dependency stays depth-ordered. Closing it is a
+      sidecar-FORMAT rung with its own compatibility surface; the compatible encoding is worked out in
+      `Cha#resolutionOrder` and was deliberately not ridden on `9f8e71c`.
+
+### Unblocked, deliberately unlanded — each narrows a gate
+- [ ] **ts — the malformed `dispatch:type.member` reclassification.** The blocker is RESOLVED: all four
+      engines were RUN on owner-less function values (rust `callback:unresolved call`, java
+      `callback:…Function.apply`, swift `callback:fn` — all class `indirect`), SPEC §4's dividing line is
+      explicit, and PART 10 already asserts every `dispatch:` carries `owner.member`. **candor-ts is the
+      outlier and the change moves it toward both the family and the spec, needing no spec change.** Not
+      landed because it narrows a gate (16 functions move `dispatch`→`indirect`) and wants its own A/B plus
+      a second-direction fixture. Note `826571c` makes the malformed string travel across the boundary, so
+      the blast radius is wider than the 68 measured.
+- [ ] **rust — `ambiguous:same-name local defs` is outside the closed §4 vocabulary**, emitted **757 times
+      across 253 crates**. PART 10 misses it because the harness's fixtures never produce that kind.
+      Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
+      `deny Unknown[dispatch]`. Wants its own measurement and probably the spec's MIGRATION mechanism.
+
+### Precision gaps, disclosed and not silent
+- [ ] **swift — dep reports name SwiftPM PACKAGES while imports name MODULES** (`swift-case-paths` vs
+      `CasePaths`), so on those targets nothing is covered in EITHER arm. Found by instrumenting why a fix
+      showed no delta rather than assuming it was inert. Pre-existing and separate from the vein.
+- [ ] **swift — a nested-type factory does not resolve IN-SCAN either**, so that row has no single-tree
+      control and the chained arm is now strictly BETTER than the unsplit one — candor-java `9ae68f7`'s
+      smell, one repo over. Documented on the test rather than asserted, because pinning it would encode
+      the gap as a requirement.
+- [ ] **swift — `returnsIdx` is bare-name keyed package-wide**, a pre-existing residual doing one conjunct
+      earlier what `7a4f977` fixed. Pinned as a test asserting TODAY's behaviour with instructions to flip it.
+- [ ] **ts — `.candor/dep-inits/` and `.candor/deps/` are never cleared**, so a package whose rescan throws
+      is served from the PREVIOUS run's file while the code comment claims it "is skipped".
+      ABSENT-BY-ACCIDENT: the incompleteness fix (`21277eb`) removed the sharpest edge, but nothing prevents
+      the shape returning.
+- [ ] **rust — the QUIET half of the span-crossing-a-thread defect is unmeasured.** `4f7b704` closed the
+      loud tail (the panic; 60 unseen crates now clean). The quiet form resolves a span against the WRONG
+      file instead of aborting, and the precondition was measured at **72.4% of 88,927 macro re-parses**.
+      No known wrong output — and no measurement either.
+
+### Release-shape, needs Tom
+- [ ] **candor-ts is at build 0.23.2, the family at 0.23.1.** Legitimate — its module-unit wire key moved
+      and §2.1's staleness gate keys on the per-engine build id. `release-preflight` check [4] was relaxed
+      to report rather than fail (`candor` `b5e2cb0`), and its `WANT_VER` arm still catches a genuine lag
+      exactly. The release set is a decision, not a defect.
+
 ## THE STANDING BAR — applies to every item, no exceptions
 
 0. **A FABRICATION FIX IS WHERE UNDER-REPORTS GET INTRODUCED. Measured: four defects in five fixes.**
