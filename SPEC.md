@@ -2265,7 +2265,8 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.24 (all code engines declare `0.24`; conformance-pinned four-way)** — a **tier-1** rung, and the
+- **0.24 (all code engines declare `0.24`; conformance-pinned — with ONE clause pinned 2-of-4, stated
+  below)** — a **tier-1** rung, and the
   first one whose primary change can **turn a currently-green gate RED**. Read the verdict note below
   before adopting.
 
@@ -2274,6 +2275,16 @@ declare it via the envelope's `spec`.
   five-kind vocabulary, with a fabricated-kind negative control), and **PART 23** (the model). PART 27's
   fixtures are hand-written reports, so the classifier is out of the loop and a divergence there is a
   CONSUMER defect — which is where every defect this rung fixed actually lived.
+
+  **`gate --report` IS IMPLEMENTED IN TWO ENGINES OF FOUR — java and swift — and this entry said
+  "conformance-pinned four-way" without saying so.** That was an overstatement and it is corrected here
+  rather than left for a reader to discover: PART 27 prints `NOSURF` for rust and ts, which does not fail
+  the run, so the suite is green while a clause §3.1 calls a MUST is pinned 2-of-4. It is disclosed the way
+  swift's absent `callers` verb is disclosed, because the two situations are not alike — swift ships no
+  `callers` **by design**, whereas rust and ts simply have not landed this verb yet, and §3.4's own floor
+  definition ("the highest version *every* engine implements") makes the unqualified claim false under the
+  MUST reading. The verb is queued for both; when it lands this paragraph goes away rather than being
+  softened.
 
   Three self-differential properties landed alongside it and are not part of the contract but are how it
   was checked: **PART 24** split-invariance, **PART 25** chain idempotence, **PART 26** trust monotonicity.
