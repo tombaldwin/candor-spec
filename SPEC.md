@@ -674,6 +674,26 @@ storing the candidate edges bounded-CHA deliberately dropped. That precise subty
 simple-name match without it). It carries no provenance of its own and is read with its report. A language
 with no class/protocol dispatch (the Rust scanner) has nothing to populate it and MAY omit it entirely.
 
+⟨0.24⟩ **EVERY ORDERING — in a report and in a query output — MUST be locale-INDEPENDENT.** Sort by
+Unicode code point (equivalently UTF-8 byte order). A **locale-sensitive** comparator is forbidden:
+JavaScript's `String.prototype.localeCompare` and `Intl.Collator`, ICU collation, `strcoll`, and anything
+else that consults an ambient locale. Such a comparator makes the SAME input produce a DIFFERENT byte
+sequence on a different machine, or on the same machine under a different environment.
+
+This clause is written because the whole document already depends on it without saying so. Every
+compatibility argument here is phrased as *"a default report is **byte-identical**"* — a claim that is not
+even checkable if two runs of one version can disagree. The deterministic effects-fingerprint rests on the
+same assumption. It was an unstated premise of a dozen normative claims, which is the same condition that
+produced the §2.2 sidecar convention and the `--class` filter: load-bearing, relied upon, unwritten.
+
+Measured: one engine used `localeCompare` at **eight** sites, one of them ordering the coverage ledger
+*inside the emitted report* rather than in a query output — so report bytes, not just presentation. The
+reference engine sorts the corresponding query output by byte order, so the two already disagreed.
+
+Note this is **stricter than, and separate from, the collation rule** for a single joined field: that one
+says *which* order among the well-defined ones, this one says the order must not depend on the environment
+at all. An implementation can satisfy the first and violate the second, and one did.
+
 ⟨0.23⟩ **EVERY VALUE IN THIS FILE IS AN ARRAY OF STRINGS, and that is a constraint on WRITERS.** A
 producer MUST NOT write a value of any other type, and MUST NOT write a metadata key as the file's *only*
 key. Metadata about the map goes under a key beginning `@`, the reserved namespace; readers SHOULD ignore
