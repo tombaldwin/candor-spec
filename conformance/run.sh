@@ -4371,9 +4371,79 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 27 — THE ⟨0.24⟩ RUNG'S BEHAVIOUR                                                      [TIER 1]
+#
+# WHY IT EXISTS. A whole rung of normative requirements shipped with NOTHING behind it: `grep -c` over
+# this file returned ZERO for `CONTRIBUTES`, `viaDispatchOn`, `dot-free`, `--class dynamic` and locale.
+# SPEC §3.1 says the suite "WILL pin the frontier output including the dot-free arm — it does not yet",
+# in the future tense, precisely because the sentence before it had claimed a pin that did not exist. A
+# floor bump to 0.24 is gated on this PART existing AND on it having been seen to fail.
+#
+# SEVEN ROWS, and the engine coverage differs per row because the ⟨0.24⟩ SURFACES differ per engine:
+#   R1 §6.2 CONTRIBUTES         4-way on `unverified --class` + 2-way on `gate --report`
+#   R2 §3.1 viaDispatchOn       3-way (rust/java/ts) — swift ships no `callers` verb, by design
+#   R3 §3.1 the dot-free arm    3-way
+#   R4 §3.1 the sidecar triple  3-way
+#   R5 §6.2 --class            4-way — `dynamic`, the discrimination control, and the value grammar
+#   R6 §3.1 gate --report       2-way (java/swift) — rust and ts have not landed the verb
+#   R7 §2   locale-independence 4-way
+# A surface an engine does not implement prints NOSURF with the reason, never a silent skip: the whole
+# failure mode this PART addresses is a document overstating its own coverage.
+#
+# THE ORACLE IS THE SPEC, not another engine — the difference from PARTs 24–26. Those are
+# self-differentials because their property relates two runs of one engine. Here every clause names a
+# required ANSWER, and the ⟨0.24⟩ review's own finding was a defect "every engine implemented
+# faithfully", which four-way agreement cannot see. R7 is the exception and IS a self-differential: its
+# oracle is the same engine's output under a different `LC_ALL`.
+#
+# WHAT IT FOUND ON HEAD. candor-java's `unverified --class` has not landed the §6.2 repair the other
+# three carry: it matches the DIRECT `unknownWhy`, so `--class unresolved` selects NOTHING where rust,
+# ts and swift select three functions, and `--class dynamic` selects 2 of 7. Waived in
+# `rung024-baseline.json` with a hand repro. java's GATE half is clean, which is §6.2's own diagnosis:
+# the divergence is consumer-side, in an open-coded second copy of a rule the gate already had right.
+# SEPARATELY, and FOUR-WAY: nobody implements ⟨0.24⟩'s `--class` VALUE GRAMMAR. An unrecognised token
+# (`--class dyanmic`) and a repeated `--class` are both specified as usage errors — exit 2 — because a
+# filter that cannot be honoured leaves a NARROWER answer, not a wider one, so a typo silently answers a
+# question the user did not ask with a smaller number. All four engines exit 0. That is not a divergence
+# but a shared gap, so it carries the suite's only `engine: "*"` waiver.
+#
+# VERIFIED TO CATCH, per row, against a real reverted fix or a deliberate mutation in an ISOLATED
+# WORKTREE — never in an engine tree, since a mutation on a shared binary is a destructive write to
+# another agent's measurement. R1/R5: candor-ts `cbbb05c` reverted -> ts fails exactly as java does.
+# R2: the sort deleted from ts's join -> `untyped cross-package receiver,write,run`. R3: ts's dot-free
+# short-circuit deleted -> all three shapes vanish from both arms. R4: java's `hasHier` emptiness test
+# deleted -> the `{}` arm loses entries the absent arm keeps, the measured pre-fix collapse. R6: four
+# java mutations, one per cell. R7: candor-ts `6502b56` reverted -> the κ-ledger tiebreak reorders under
+# `et_EE` and the frontier's entry order flips. Every catch was engine-local: the others stayed green.
+#
+# FLOORS. A row with no live cell FAILS; a run with no live cell FAILS; a fixture whose PRECONDITION
+# collapsed is VACUOUS, which is failing. A CLI that produced no stdout is ERROR and says
+# "HARNESS/ENGINE INVOCATION — not a statement about candor" — without that guard a zero-byte jar
+# printed "the frontier came back empty", which reads as a finding about candor. An engine installed but
+# not responding fails the run rather than reading as absent.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_rung024.py" ] || { echo "FAIL: gen_rung024.py is missing"; exit 2; }
+[ -f "$HERE/rung024-baseline.json" ] || { echo "FAIL: rung024-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P27_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_rung024.py" --baseline "$HERE/rung024-baseline.json"
+) || P27_OK=1
+
+echo "PART 27 — the ⟨0.24⟩ rung's behaviour (SPEC §2 locale, §3.1 frontier + gate --report, §6.2 CONTRIBUTES + --class)"
+if [ "$P27_OK" = 0 ]; then
+  echo "  -> MATCH — every ⟨0.24⟩ clause the engines implement answers as the spec states it, outside the ratchet"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
