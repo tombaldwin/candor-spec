@@ -221,7 +221,7 @@ is for calls into a logging/tracing *framework*, whose presence is an architectu
 engines agree on this; an implementation that does classify console output MUST use a
 language-specific effect name, not `Log`.
 
-**`Llm`** ⟨0.13⟩ refines `Net` the way `Db` does: a call whose SINK is a machine-learning model
+**`Llm`** ⟨0.13⟩ refines `Net`: a call whose SINK is a machine-learning model
 provider (a chat/completion/embedding/moderation request) is `Llm`, not bare `Net` — the question
 "which functions in this code (or in a dependency) talk to a model provider" is a distinct
 supply-chain surface (whatever reaches the prompt leaves the process; the response is an
@@ -617,6 +617,27 @@ needs *before* introducing an effect. The sidecar is OPTIONAL, but an implementa
 `callers` / `whatif` / `rewire` tools (§3.1–3.2) MUST emit it: those cannot answer the pre-edit question
 from the report alone (a pure X is absent from the report). It carries no provenance of its own and is read
 together with its report.
+
+⟨0.24⟩ **`Llm` REFINES `Net`; `Db` DOES NOT — and this sentence used to say they did so alike.** It read
+"`Llm` refines `Net` **the way `Db` does**". They are not the same relation, and the difference is the test
+for what "refines" may mean here: **an effect refines a base channel only when EVERY occurrence of it is an
+occurrence of that channel.** A model-provider call is an outbound request in every instance — which is why
+the engines **co-emit `Llm` and `Net`**. An embedded, file-backed or in-process store is a `Db` effect with
+**no egress at all** — which is why the engines emit **`Db` alone**. The two encodings were already
+opposite; only this sentence claimed otherwise.
+
+It was not a wording problem. PAPER3's Definition 2 took the sentence at its word and carried `Db ⊑ₑ Net`,
+Definition 4 fires `deny e` on any refinement of `e`, and a differential of the JVM engine against the
+executable model produced **100 disagreements over 1792 rows — every one that family**, model REJECT and
+engine pass. The engines were right; the theory has been corrected to match, not the reverse. Widening the
+gate instead would have been the fabrication mirror: `deny Net` firing on `{Db}` charges every
+embedded-database user with network egress they do not have.
+
+**The residual is real and is a CLASSIFIER question, not a gate one.** A *networked* database call is
+genuine egress that `deny Net` does not see. `Db` and `Net` **overlap without either refining the other**,
+which a relation over effect *names* cannot express — closing it means extending the destination
+classification the gate already carries for `Net` (§6.2's `netClass`) to `Db`, so a networked store is
+distinguishable from an embedded one at the call site. Filed, not attempted here.
 
 ⟨0.24⟩ **`callgraph` and `hierarchy` are RESERVED trailing segments, and a report-locator glob MUST
 exclude them at the GLOB — not diagnose them at the parse.** Sidecar names are per-engine (this section

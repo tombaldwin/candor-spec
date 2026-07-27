@@ -34,8 +34,23 @@ from itertools import combinations, chain
 # ---------------------------------------------------------------------------------------------
 # Definition 1 (capability effects) and the refinement preorder ⊑ₑ.
 #
-# `Db ⊑ₑ Net` and `Llm ⊑ₑ Net` are the spec's documented refinements (SPEC §1: "Llm refines Net the
-# way Db does"). PAPER3 Definition 4 uses exactly this: "`deny Net` fires on a determined `{Db}`".
+# ⟨2026-07-27⟩ **`Llm ⊑ₑ Net` ONLY. `Db ⋢ₑ Net`, and that is a correction, not an omission.**
+# PAPER3 Definition 2 carried both, on SPEC §1's sentence "Llm refines Net the way Db does". They are not
+# the same relation. An effect refines a base channel only when EVERY occurrence of it is an occurrence of
+# that channel: a model-provider call is an outbound request in every instance (and the engines co-emit
+# both), whereas an embedded, file-backed or in-process store is a `Db` effect with NO egress at all (and
+# the engines emit `Db` alone).
+#
+# It was extensional, not cosmetic. With `Db ⊑ₑ Net` here, a differential of the JVM engine against this
+# file produced 100 disagreements over 1792 rows (256 signatures x 7 verbs) — every one that family, model
+# REJECT and engine pass. The engines were right. Correcting the preorder rather than widening the verb
+# also avoids the fabrication mirror: firing `deny Net` on `{Db}` charges every embedded-database user with
+# network egress they do not have.
+#
+# NOT repaired by this: a NETWORKED database call is real egress a `deny Net` gate does not see. That is a
+# classification question (can an analyzer tell a networked store from an embedded one at a call site), not
+# a defect in this algebra. `Db` and `Net` OVERLAP without either refining the other, which a preorder on
+# effect NAMES cannot express.
 # `Unknown` is NOT an effect in the model — it is the NAME of the `D ≠ ∅` posture (Definition 6), and
 # treating it as a member of `E` is one of the ways an implementation drifts out of the model.
 # SPEC §1's effect vocabulary IN FULL. `Ipc` and `Clipboard` were missing until a review caught it —
@@ -43,7 +58,7 @@ from itertools import combinations, chain
 # report carrying `Clipboard` would have tripped `Sig`'s assert on the first differential run against an
 # engine. `Unknown` is deliberately NOT here — it is not an effect (Def 6); it is carried by `D ≠ ∅`.
 E = ("Clipboard", "Clock", "Db", "Env", "Exec", "Fs", "Ipc", "Llm", "Log", "Net", "Rand")
-_REFINES = {("Db", "Net"), ("Llm", "Net")}
+_REFINES = {("Llm", "Net")}
 
 
 def refines(a: str, b: str) -> bool:
@@ -330,14 +345,21 @@ def selftest() -> int:
         rc |= 1 if ce else 0
 
     # Definition 4's worked example, which pins the refinement preorder rather than assuming it.
-    assert deny("Net")(Sig({"Db"})), "Definition 4: `deny Net` must fire on a determined {Db}"
+    # Definition 4's worked example, AMENDED 2026-07-27 with Definition 2. It used to read
+    # `deny Net` must fire on {Db}` — the assertion that produced 100 model-vs-engine disagreements over
+    # 1792 rows, every one that family. `Db` is not a refinement of `Net` (an embedded store has no egress);
+    # `Llm` is (a provider call is an outbound request in every instance).
+    assert deny("Net")(Sig({"Llm"})), "Definition 4: `deny Net` must fire on a determined {Llm}"
+    assert not deny("Net")(Sig({"Db"})), \
+        "Definition 2 (amended): `Db` does NOT refine `Net` — an embedded store has no egress"
     assert not deny("Db")(Sig({"Net"})), "refinement is directional: `deny Db` must NOT fire on {Net}"
+    assert deny("Db")(Sig({"Db"})), "and plain membership still fires"
     # Definition 30's second sentence, which is the one implementations get wrong.
     assert not deny("Net")(Sig((), {"dispatch"})), \
         "Definition 30: a non-empty D must NOT fire a bare `deny e`"
     assert deny_unknown("Net")(Sig((), {"dispatch"})), \
         "Definition 31: bare `deny e Unknown` is C = R, so any reason fires it"
-    print("  OK    Definitions 4, 30, 31 worked examples")
+    print("  OK    Definitions 2, 4, 30, 31 worked examples (incl. `Db` NOT refining `Net`)")
 
     ce = monotonicity_counterexample()
     if not ce:
