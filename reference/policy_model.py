@@ -167,22 +167,107 @@ def full_lattice():
     return _lattice(E, R)
 
 
+def psi_with_absence_default(C, sig):
+    """THE OLD RULE. If the reason-class set is EMPTY, default it to `unresolved`.
+
+    Keyed on ABSENCE, and absence is not upward-closed: acquiring a second, classifiable reason
+    REMOVES the default. Kept here as an executable exhibit, not as a definition.
+    """
+    if not sig.D:
+        return "unresolved" in C
+    return bool(sig.D & frozenset(C))
+
+
+def contribute_unresolved(sig, reasonless: bool):
+    """THE ⟨0.24⟩ REPAIR, and modelling it correctly is the whole point of this function.
+
+    The repair is NOT a different consumer predicate. It is a PRODUCER-side rule: an engine that has an
+    `Unknown` it cannot account for puts `unresolved` INTO `D`. The consumer predicate is then plain ψ
+    (Def 36) with no special case at all — which is why the spec says the repair "returns the system to
+    the model rather than amending it", and why its soundness follows from `deny_unknown`'s existing
+    upward-closure rather than needing a new proof.
+
+    Modelling this needs a bit the `(S, D)` pair does not carry. `D` is a SET of classes, so it cannot
+    distinguish "one Unknown, reasoned `dispatch`" from "two Unknowns, one reasoned `dispatch` and one
+    reasonless" — both are `D = {dispatch}`. That distinction is exactly what the ⟨0.24⟩ change turns
+    on, so it is passed in explicitly as `reasonless` rather than inferred from `D` being empty.
+    Inferring it from emptiness is the OLD RULE wearing new clothes, and an earlier draft of this file
+    did precisely that: it produced a green check that verified a strictly weaker property than the one
+    the spec change makes, because with `D` empty the two rules coincide.
+
+    AND THERE IS A SHARPER POINT UNDERNEATH, found by writing that draft and watching it fail. Def 6
+    makes `D` the CARRIER of the Unknown: `D = ∅` *means* sound-complete, and `Sig` asserts
+    `Unknown ∉ S` for exactly that reason. So a **reasonless Unknown is not representable in this model
+    at all** — the report says "this function has an `Unknown`" and the only signature available to
+    describe it, `(S, ∅)`, is the model's way of saying it has none.
+
+    That is the real defect, and monotonicity was its symptom. The spec was carrying a rule about a
+    state its own formal model says cannot exist, so no consumer-side predicate could have been written
+    that handled it correctly — the old rule was not badly written, it was answering an ill-formed
+    question. ⟨0.24⟩ is the PRODUCER-side repair that makes the state unreachable: an engine with an
+    `Unknown` it cannot account for records `unresolved`, so `D ≠ ∅` whenever an `Unknown` is present,
+    and the well-formedness condition (W) holds by construction. Monotone denial then follows from
+    `deny_unknown`'s existing upward-closure with no new proof.
+    """
+    return Sig(sig.S, frozenset(sig.D | {"unresolved"}) if reasonless else sig.D)
+
+
 def monotonicity_counterexample():
     """THE 2026-07-27 DEFECT, as a property failure rather than a gate exit code.
 
-    The engines' rule was: if the reason-class set is EMPTY, default it to `unresolved`. Written as a
-    predicate that is what `psi_with_absence_default` below does — and it is not upward-closed,
-    because acquiring a reason REMOVES the default. The measured symptom was that adding a call to a
-    function took `deny Unknown[unresolved]` from exit 1 to exit 0.
-    """
-    def psi_with_absence_default(C, sig):
-        if not sig.D:                      # the rule that is not in the model
-            return "unresolved" in C
-        return bool(sig.D & frozenset(C))
+    NOT an implementation defect, which is how it was first filed and how the first version of this
+    docstring described it. The absence-keyed rule was IN THE SPECIFICATION (§6.2, "a function whose
+    `Unknown` carries no recorded reason is TREATED AS `unresolved`"), with the sound intention that a
+    narrowed filter never silently tolerates a hole it could not classify. Every engine was conforming.
+    The divergence was between the MODEL and the CONTRACT — which is why four independent
+    implementations agreeing with each other could never have surfaced it, and why this file exists.
 
+    The measured symptom was that adding a call to a function took `deny Unknown[unresolved]` from
+    exit 1 to exit 0: a signature that is strictly WORSE-KNOWN passed where a better-known one failed.
+    """
     bad = lambda sig: phi("Net", sig) or psi_with_absence_default({"unresolved"}, sig)
     pts = _lattice(("Fs",), ("dispatch", "unresolved"))
     return check_upward_closed(bad, pts)
+
+
+def repair_reproduces_the_counterexample_correctly():
+    """THE OTHER HALF: on the three signatures that broke, the repair gives the RIGHT verdicts.
+
+    Showing the old rule broken does not show the new one sound, and the full-lattice check alone is
+    not enough either — plain ψ is ALREADY proven upward-closed by `selftest`, so re-running it on the
+    repair would be a tautology dressed as evidence. What actually needs checking is that the repair
+    assigns the right verdict to the three concrete rows, INCLUDING the one that used to pass.
+
+    Rows, all under `deny Unknown[unresolved]`. `Sig(S, D)` — `Unknown` is carried by `D`, never by `S`.
+      1. one reasonless dep          -> D = {}          + reasonless -> {unresolved}          -> REJECT
+      2. one correctly-reasoned dep  -> D = {dispatch}              -> {dispatch}             -> pass
+      3. BOTH (strictly worse-known) -> D = {dispatch}  + reasonless -> {dispatch,unresolved} -> REJECT
+
+    Row 3 is the defect: strictly worse-known than row 1, and it PASSED. Rows 2 and 3 have the SAME `D`,
+    which is why the `reasonless` bit cannot be inferred from it and why no rewriting of the old rule
+    could have separated them. Row 1 is the ill-formed one: without the contribution its signature is
+    `(∅, ∅)`, which Def 6 reads as sound-complete — the model's way of saying the function has no
+    `Unknown` at all, about a function whose report says it does.
+    """
+    v = deny_unknown("Net", {"unresolved"})
+    rows = [("reasonless only",        Sig((), ()),           True,  True),
+            ("reasoned only",          Sig((), ("dispatch",)), False, False),
+            ("both (worse-known)",     Sig((), ("dispatch",)), True,  True)]
+    out = []
+    for name, sig, reasonless, want_reject in rows:
+        got = v(contribute_unresolved(sig, reasonless))
+        out.append((name, got, want_reject))
+    return out
+
+
+def repair_is_upward_closed():
+    """And the repair is upward-closed over the FULL lattice — every point of L, not the slice.
+
+    This holds for free (the repair only ever ENLARGES `D`, and `deny_unknown` is monotone in `D`), so
+    it is a regression guard rather than the load-bearing check. It would catch a future repair that
+    tried to *remove* a class from `D` under some condition.
+    """
+    return check_upward_closed(deny_unknown("Net", {"unresolved"}), full_lattice())
 
 
 def selftest() -> int:
@@ -221,7 +306,27 @@ def selftest() -> int:
     else:
         x, y = ce[0]
         print(f"  OK    the absence-default rule is NOT upward-closed: Reject{x} but not Reject{y}")
-        print("        ^ the 2026-07-27 engine defect, as a lattice property rather than an exit code")
+        print("        ^ the 2026-07-27 SPEC defect (§6.2, not the engines — they were conforming),")
+        print("          as a lattice property rather than an exit code")
+    rows = repair_reproduces_the_counterexample_correctly()
+    bad = [(n, g, w) for n, g, w in rows if g != w]
+    for n, g, w in rows:
+        print(f"  {'OK  ' if g == w else 'FAIL'}  ⟨0.24⟩ repair, {n:22} -> "
+              f"{'REJECT' if g else 'pass'} (want {'REJECT' if w else 'pass'})")
+    if bad:
+        rc = 1
+    else:
+        print("        ^ row 3 is the defect: same D as row 2, strictly worse-known than row 1, and it")
+        print("          USED TO PASS. The `reasonless` bit cannot be inferred from D — rows 2 and 3")
+        print("          share D={dispatch} — which is why no rewriting of the old rule could fix it.")
+        print("          Deeper: without the contribution, row 1 is (∅,∅), which Def 6 reads as")
+        print("          SOUND-COMPLETE. A reasonless Unknown is not representable in this model at")
+        print("          all, so the old rule was answering an ill-formed question. ⟨0.24⟩ is the")
+        print("          producer-side repair that makes the state unreachable and (W) hold.")
+    if repair_is_upward_closed():
+        print("  FAIL  the repair broke upward-closure"); rc = 1
+    else:
+        print("  OK    plain ψ over the enlarged D is upward-closed (regression guard, holds for free)")
     return rc
 
 
