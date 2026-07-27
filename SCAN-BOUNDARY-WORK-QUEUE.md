@@ -547,7 +547,38 @@ with four concrete instances rather than an argument.
       squarely in the 8–25% false-uncertainty band `COVERAGE-GRANULARITY-FINDING.md` measured. Shipped at
       **PARITY** rather than narrowing, correctly: a denylist on one spelling only recreates the exact
       defect class this row exists to close.
-      - [ ] **OPEN — is the THIRD CONJUNCT reaching the new arm?** PART 21's guard is *untyped receiver AND
+      - [x] **ANSWERED, and 95/550 IS REAL — the disclosures are honest.** The third conjunct IS applied:
+            it lives on the SHARED consumption path, and the fix was emission-side only, so both spellings
+            emit the same marker shape and pass the identical gate. **Instrumented at the marker, before the
+            gate**, rather than inferred:
+            | | markers | CHAINED | UNCHAINED (suppressed) |
+            |---|---|---|---|
+            | ebman alone | 53 → **141** | 32 → 73 | 21 → **68** |
+            | whole dep-tree walk | 53 → **22,131** | 32 → 73 | 21 → **22,058** |
+            **The conjunct suppresses 99.7% of the new arm's markers**, and exactly its remit: `std` (52),
+            `String` (7), local modules — not one a real dependency. Of the 95 gains: **0** have no chained
+            marker, **0** are backed only by an unchained one. `chrono` and `serde_yml` are chained with
+            substantial reports (191 and 337 fns). **None is the false-uncertainty shape.**
+      - [ ] **NEW LEAD, and it is better than a denylist — `6f2210c`'s rule, one index over.** Chasing WHY
+            the chained markers miss: of ebman's 73, 10 resolve, 6 miss on a module-qualification mismatch,
+            and **57 are genuinely absent from the published surface — of which 37 are chrono's `Utc::now`
+            alone, and its absence is a SPURIOUS COLLISION.** chrono declares `pub fn now() -> DateTime<Utc>`
+            **twice**, under mutually exclusive `#[cfg]`s (native / wasm32). The scan walks both arms by
+            design, the return index sees two same-named defs, and its never-guess rule drops the entry —
+            **even though both candidates name the SAME return type. There is nothing to guess between.**
+            The report already carries `offset::utc::Utc::now ['Clock']`; only the return type was withheld.
+            **This is the ENTRY-COLLISION union decision (`b47c9ab`) applied to the RETURN index instead of
+            the entry index** — same principle: *when the colliding candidates AGREE, the collision is not a
+            reason to withhold.* Worth naming as a general rule, because it has now arisen twice in two
+            different indexes on the same day.
+            Recovers **>half** of ebman's chained untyped markers, **additively**, by **DETERMINATION rather
+            than SUPPRESSION** (the ⟨0.24⟩ ordering), and **on both spellings at once** — so it cannot
+            disturb the parity just accepted. Producer-side; needs its own A/B.
+      - [ ] **Caveat worth a look, and it is P3's shape:** `futures@0.3.32`'s chained report is **EMPTY
+            (0 fns)** and accounts for 2 of the newly-direct fns. **An empty chained report reads as
+            "covered, no effects"**, so the κ ledger stays silent and the disclosure is the only voice.
+            That is trust-monotonicity territory — an empty report licensing purity claims for everything
+            in the package. Flagged to P3. PART 21's guard is *untyped receiver AND
             dep provenance AND **the dep is CHAINED***. The third exists precisely for the shape topping the
             list (`chrono::Utc::now().signed_duration_since(..)` ×16 — a std combinator on a dep-returned
             value), because for an UNCHAINED dep the κ ledger ALREADY says `invisible: [pkg]` and a second
