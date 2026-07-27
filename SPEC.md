@@ -905,6 +905,31 @@ inherited (no `unknownWhy` of its own) is NOT a source and is excluded; `totalUn
 total count of units carrying `Unknown` — the surface these sources explain. The point is to turn a
 high-`Unknown` report from "the analysis failed" into a short, ranked worklist of real blind spots.
 
+⟨0.24⟩ **`gate --report <locator> --policy <file>` — apply a policy to an EXISTING report, with no scan.**
+Every other route into the gate recomputes the effect set from source (`scan --policy`), or reports only
+what a hypothetical *introduces* (`whatif`: a report already carrying `Net` under `deny Net` returns
+`ok: true`, by design). So the gate has never been reachable as a **function of a given signature**. Exit
+codes and verdict shape are exactly `scan --policy`'s; the only difference is where `S` and `D` come from.
+
+Two things this buys, and the second is why it is a MUST rather than a convenience.
+
+*It is the supply-chain verb.* Gating a dependency's published report is the operation an adopter actually
+wants and could not previously express without re-analysing code they do not have.
+
+*It makes the code-implements-spec direction testable at all.* The gate was previously exercised only
+end-to-end, through the classifier — so a defect in the **gate** and a defect in the **classifier** were
+indistinguishable from any test, and no test could isolate either. That is not a hypothesis about how
+defects hide here: the ⟨0.24⟩ §6.2 divergence was a *contract-versus-model* defect that every engine
+implemented faithfully and no end-to-end test could have localised. With this verb, conformance can feed
+each engine a signature the reference model has already judged and compare verdicts directly — extending
+the model check from "the model is internally monotone" to "each ENGINE agrees with the model".
+
+An engine MUST NOT re-derive, widen, or re-classify anything while serving this verb: it reads `S` and `D`
+from the report as given and applies §6's matching. In particular a report entry that is **absent** is
+absent — the ⟨0.21⟩ purity claim — and MUST NOT be back-filled from a callgraph sidecar or a chained dep.
+The verb's whole value is that it is a pure function of the report and the policy, and an engine that
+improves the input has destroyed that.
+
 `callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the
 *unresolved-dispatch frontier*. The plain `callers` set (`transitive`) is a **confirmed** lower bound: a
 function that reaches `<fn>` only through a call the engine charged `Unknown` with an unresolved
