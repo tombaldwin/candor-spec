@@ -1604,6 +1604,31 @@ The projection is **conservative**: a raw reason matching no listed prefix maps 
 function whose `Unknown` carries no recorded reason **CONTRIBUTES** `unresolved` to its class set — so a
 narrowed filter never *silently* tolerates a hole it failed to classify.
 
+⟨0.24⟩ **IMPLEMENT IT AT THE SOURCE, NOT AT THE JOIN — one engine already did, and that is the shape to
+copy.** The rule above is written as a property of the class set, but the right place to satisfy it is where
+the `Unknown` is *created*: an engine that cannot account for an `Unknown` records a reason for it there and
+then, so the class set is never assembled from nothing. candor-swift does exactly this — it synthesizes a
+`dep:<hash>` reason per dependency ENTRY, precisely when the dependency classified nothing, and a
+`dep-stale:<pkg>` for a distrusted producer; both project here to `unresolved`. Because that happens per
+entry rather than per function, a caller of both a reasonless dep and a reasoned one accumulates
+`{unresolved, dispatch}` naturally, with no join-time special case at all.
+
+Measured consequence: candor-swift's empty-set default is **unreachable** — instrumented over two real
+targets, **0 fires across 487 `Unknown`-bearing functions**, confirmed by an offline recomputation of the
+class fixpoint. Implementing the join-side rule there would have been a no-op.
+
+This is the same conclusion the formal model reaches from the other end (`reference/policy_model.py`): a
+reasonless `Unknown` is **not representable** in the `(S, D)` lattice at all, because Def 6 makes `D` the
+carrier of the `Unknown` — so the state must be made *unreachable* rather than *handled*. An engine that
+patches the join is treating a symptom; an engine that attaches a reason at the source has made the
+ill-formed signature impossible to construct. Note that swift arrived here independently, before the model
+was written, which is the strongest evidence available that it is the right shape rather than a convenient
+one.
+
+The failure mode to avoid is the naive form: contributing `unresolved` whenever an `Unknown` is present,
+without asking whether it is already accounted for. Measured on the same corpus that yields 0 legitimate
+fires, that would mark **435 functions** — the flood, and it would make the `[class]` filter useless.
+
 ⟨0.24⟩ **`ambiguous:` is a §4 kind, and was projected here before it was one.** This table has always
 mapped `ambiguous:*` to `dispatch`, so a CONSUMER meeting the token classified it correctly — while §4's
 kind list omitted it, making the PRODUCER that emits it non-conforming. One section blessed what the other
