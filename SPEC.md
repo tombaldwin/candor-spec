@@ -1045,17 +1045,34 @@ one of those lands, **the ⟨0.21⟩ purity claim is trustworthy within one prod
 trust boundary** — which is precisely where the supply-chain verb is used. An engine SHOULD say so rather
 than let a consumer infer otherwise from a green verdict.
 
-⟨0.24⟩ **A KNOWN, PINNED MODEL-VERSUS-CONTRACT RESIDUAL.** Differentially checking the reference engine
-against `reference/policy_model.py` over 1792 rows (256 signatures × 7 verbs) leaves **100 disagreements,
-all one family**: a signature containing `Db` under `deny Net`, where the model applies Def 4's preorder
-(`Db ⊑ₑ Net`) and every engine intersects. Direction is uniform — model REJECT, engine pass. §6.2's
-normative `deny` grammar has no refinement clause, so **this is model-versus-contract and not an engine
-defect**, and it is pinned in both directions rather than patched: making `deny Net` fire on `Db` would
-silently tighten every policy in the family, and `Db` is not always network (SQLite and embedded stores
-are `Db` with no egress, whereas an `Llm` call always is a provider request — which is why `Llm` co-emits
-`Net` and `Db` does not). §1's claim that "`Llm` refines `Net` **the way `Db` does**" is the sentence at
-fault. The residual underneath is real and narrower: a *networked* DB call is egress a `deny Net` gate
-misses, which is a classifier question and not a gate-semantics one.
+⟨0.24⟩ **THE MODEL-VERSUS-CONTRACT RESIDUAL IS RESOLVED — and it MOVED before it closed, which is the part
+to remember.** The first engine to run this differential found **100 disagreements, all one family**: a
+signature containing `Db` under `deny Net`, model REJECT and engine pass, because Def 2 carried
+`Db ⊑ₑ Net`. That was the *theory's* fault — an embedded store has no egress — and correcting the preorder
+took it to zero.
+
+**The second engine then found 100 disagreements again, in a NEW family**: `Llm ∈ S` with `Net ∉ S`, the
+surviving refinement pair. Same shape, same direction, same count. **And this paragraph still named `Db`** —
+stale in the one place an auditor would check, hours after the fix that made it so. That is the third
+instance in one day of a corrected assertion outliving its correction in a second location, and the first
+where the stale copy was written the same day as the fix.
+
+The `Llm` family is **not a defect in either layer: it is UNREACHABLE.** Every engine co-emits `Llm` and
+`Net` at a model-provider call site — which is the very fact that makes the refinement hold — so
+`Llm ∈ S ∧ Net ∉ S` describes **32 768 of the lattice's 131 072 points and none of them can be produced.**
+Restricted to reachable signatures the differential is **0 of 1280**, and the reference model now checks it
+directly: *refinement ≡ plain membership over all 98 304 reachable signatures.*
+
+**The standing rule for anyone running this differential: a model quantifying over all of `L` will fire
+CORRECTLY on points that do not exist.** Reachability is a precondition of the comparison, not a detail of
+it. `reference/policy_model.py` exposes `is_reachable()` and `reachable_lattice()`; use them. Worth naming
+what that condition is — it is the shape PAPER1's **(W)** was reaching for and mis-stated. (W) was written
+`Unknown ∈ S ⇒ D ≠ ∅`, whose antecedent is unsatisfiable, so it constrained nothing; the same shape over the
+refinement preorder is satisfiable and constrains a quarter of the lattice. That is the whole difference
+between a well-formedness condition and a sentence.
+
+The residual that IS real is narrower and is a classifier question rather than a gate one: a **networked**
+DB call is egress a `deny Net` gate does not see. `Db` and `Net` overlap without either refining the other.
 
 ⟨0.24⟩ **Three surfaces this document NAMED and never DEFINED.** Each is cited elsewhere as though it were
 specified — one of them as "the canonical oracle" for a question this section answers — and an implementer
