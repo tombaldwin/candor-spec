@@ -360,6 +360,33 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       landed because it narrows a gate (16 functions move `dispatch`→`indirect`) and wants its own A/B plus
       a second-direction fixture. Note `826571c` makes the malformed string travel across the boundary, so
       the blast radius is wider than the 68 measured.
+      **LANDED candor-ts `5ba301c`, with both the A/B and the second-direction fixture — and the blast
+      radius really was wider: 1,234 malformed emissions over a 15-repo corpus, 695 functions leaving
+      class `dispatch`.**
+      - **What the malformed strings were, instrumented rather than guessed**: every one of the 1,234
+        came from the interface-CHA arm and none from the other three emission sites. Two shapes, both
+        function VALUES — a named type whose content is a CALL SIGNATURE (`interface UnaryFunction { (x:
+        T): R }`, `type PatchFn = …`: owner, no member; the corpus names read as function types because
+        they are — `ErrorCallback`, `SendCallback`, `MessageHandler`, `PatchFn`), and a member of an
+        ANONYMOUS type literal (member, no owner; 251 had neither). The `callback:` detail is
+        best-effort, so the nameable half is KEPT — `callback:src.a.UnaryFunction`, `callback:run` —
+        rather than thrown away along with the classification.
+      - **A/B, 14 scannable targets, both arms hashed.** Effect sets identical on every function of
+        every target, entry counts identical: this changes a string, not an analysis. Class movement is
+        MONOTONE — 695 leave `dispatch`, 573 enter `indirect`, 0 gain `dispatch`, 0 lose `indirect`.
+        `deny Unknown` unmoved everywhere; `deny Unknown[indirect]` was already firing everywhere it now
+        additionally covers. Nothing goes silent.
+      - **The narrowing, with its number:** `deny Unknown[dispatch]` flips exit 1 → 0 on four of the
+        fourteen (conf, got, ky, p-queue). In each, EVERY `dispatch:` reason in the report was malformed
+        — 6/6, 56/56, 18/18, 10/10 — so the rule was firing entirely on the classification this change
+        says is wrong. On the other ten it is unmoved.
+      - **Both directions fixtured**, and mutating the rule out is what proves it: always-dispatch fails
+        4 named tests, always-callback fails 15 — including every pre-existing `dispatch:` assertion in
+        the suite, which is the real second-direction evidence.
+      - **For the rust row below this is a precedent, not a guard** (cf. "a cross-engine precedent tells
+        you an approach CAN work"). What made it safe here is that the reclassified strings named
+        NOTHING, so no `deny Unknown[dispatch]` could have been relying on a real owner.
+        `ambiguous:same-name local defs` DOES name something, so that row still needs its own answer.
 - [ ] **rust — `ambiguous:same-name local defs` is outside the closed §4 vocabulary**, emitted **757 times
       across 253 crates**. PART 10 misses it because the harness's fixtures never produce that kind.
       Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
