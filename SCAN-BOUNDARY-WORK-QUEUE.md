@@ -492,7 +492,42 @@ with four concrete instances rather than an argument.
 input** (the `fn_returned_dyn` pair). That is a four-way divergence on a decided contract, which is the
 class of thing PARTs 18–22 exist to catch — and each of them fixes one spelling, so none could.
 
-### 3b — THE GATE-A-REPORT VERB · parallel per engine, unblocks P4
+### 3b — THE GATE-A-REPORT VERB · **BUILT in java as reference**; rust/ts/swift to copy the shape
+**candor-java SHIPPED it, and it produced more normative content than the clause I wrote — three
+requirements found by MEASUREMENT, not design** (SPEC §3.1 ⟨0.24⟩ `a96da88`).
+`candor gate --report <locator> --policy <file> [--json] [--gate-json <file>]` — a QUERY verb, inheriting
+§3.3.1's grammar unchanged, no positionals, exit codes exactly `scan --policy`'s. **`--json` ≡
+`--gate-json -`**, which CONTRADICTS my brief ("support `--json` exactly as the scanning path does") and the
+agent was right: on a scan `--json <file>` writes the REPORT, and there is no report here — a second
+meaning would be the one place a consumer could tell the routes apart.
+- **The MUST NOT is PROVEN, not asserted**: the absent entry sat beside THREE baits — a callgraph sidecar
+  edging it to a `Net` unit, a chained dep report giving it `Net`, and a `.candor/config` `deps` key in the
+  one directory the verb does open a config from. Verdict clean; positive control exit 1; **verified by
+  mutation** (back-filling makes both halves fail). All 21 tests mutation-checked.
+- **EQUIVALENCE IS BYTE-LEVEL**: 25 rows, two corpora, every `--gate-json` document byte-equal between
+  routes — `analyzed.count`, `reasonClass`, `netClass`, coverage advisory included.
+- **ANSWERABILITY — three refusals, each FAIL-OPEN if approximated.** `forbid` (a `calls` field that is
+  effect-relevant-only cannot see a crossing into a pure unit) and `allow` (the AS-EFF-008 marker does not
+  ride the wire) — **the engine's first cut RECONSTRUCTED `allow` for `Net` from `netClass ∋ unknown-host`
+  and the equivalence test refuted it in one run**, because that token also names a merely *unrecognised*
+  host. Plus a LIVE fail-open found by the correspondence review and measured here:
+  `deny Net[unknown-host]` over a `Net` entry with no `netClass` → **exit 0** where bare `deny Net` → 1.
+  Refusal granularity differs by cause: whole-policy for `forbid`/`allow` (enforcing the answerable half is
+  gateless-green), per-(rule, function) for the scoped case.
+- **THE MANIFEST DOES NOT TRAVEL — worse than PAPER3 Def 24 says.** `count − |functions|` is just the pure
+  count (970 − 390 = 580), so a dropped unit is **arithmetically identical to a pure one**; the `digest` is
+  over the analyzed QUAL SET of which a consumer holds only the effectful subset, so it **cannot be
+  recomputed across a boundary at all**; and `count < |functions|` is legitimately reachable because
+  ⟨0.23⟩ `interfaceUnion` entries are appended. Closing it needs the per-unit analyzed NAME SET — which
+  exists, as the §2.2 callgraph node set, but lives in a **sidecar this verb refuses by construction**.
+- **100 model disagreements over 1792 rows, ALL one family** — `Db` under `deny Net`. The engine reached
+  **the same ruling I had recorded independently**: model-vs-contract, not an engine defect, pinned both
+  ways rather than patched. `pure` went from 15 disagreements to **0/256** once the model was corrected.
+- [ ] rust/ts/swift: copy the shape. Then extend PART 23 from "the model is monotone" to "each ENGINE
+      agrees with the model" — but NOT naively: Defs 33/34/35 still describe verbs that do not exist, so
+      those rows would manufacture divergences out of the theory (§2b).
+
+ORIGINAL FILING — the gate-a-report verb, parallel per engine, unblocks P4
 **SPECCED ⟨0.24⟩ `3dd2e39` as `gate --report <locator> --policy <file>`; java DISPATCHED as reference.**
 Shape: exit codes and verdict identical to `scan --policy`, only the source of `S`/`D` differs. The
 load-bearing half is a **MUST NOT** — no re-deriving, widening or re-classifying; an ABSENT entry stays
@@ -1765,6 +1800,16 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7g. A TEST CAN BE INERT BECAUSE OF STATIC INITIALISATION ORDER, and it will look green.** The java
+     engine found a bug in its own new code — in `--json` mode a trailer line went to stdout and corrupted
+     the verdict — **and its unit test passed against it.** `Candor.diagOut` is a `static` initialised to
+     `System.out` at CLASS LOAD, so swapping `System.out` in the test left the stray write going to the
+     real console, where the assertion could not see it. Caught only by piping the REAL CLI into a JSON
+     parser. The engine's own note: *"the 'verify every new test can fail' rule is what surfaced that the
+     test was inert."* Two rules follow — for any output-capture test, check whether the stream under test
+     was captured into a static before your fixture swapped it; and for a verb whose contract is machine
+     output, the acceptance test runs the shipped binary and PARSES the output, never a unit-level capture.
+
      - A test-count change you did not cause is the cheapest available collision detector. Nothing else
        reported this — the tree looked fine, both agents' work was correct, and the only signal was 53→55.
    - **RECURRENCE 3, same day, DIFFERENT resource: the shared SCRATCHPAD.** The java agent reported that
