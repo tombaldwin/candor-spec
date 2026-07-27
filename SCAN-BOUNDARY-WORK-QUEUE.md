@@ -1094,7 +1094,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       is item 9 exactly. It is recorded here now. Closing it is NOT a wider `if`: the local-protocol arm
       is what R28/R39 and the whole element-dispatch family run on, so suppressing it needs its own A/B
       and its own second-direction fixture.
-- [ ] **Half 1's provenance conjunct fires on LOCAL methods and computed properties** — measured while
+- [x] **FIXED, candor-swift `7a4f977` — 289 bindings to 123, candor-swift's own 23 to 2.** Half 1's provenance conjunct fired on LOCAL methods and computed properties — measured while
       instrumenting the typeSurface consumer, which is the only reason it was visible. `localFreeFns`
       removes the local leak for FREE functions only; a bare call to a METHOD or a computed property of
       the enclosing type still looks like a dependency factory. All 20 half-1 triggers across five chained
@@ -1216,7 +1216,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       body and its absence is TRUE of the CJS body. The 87-vs-1 `unknownWhy` gap has the same cause: the
       downlevel state machine adds `_a.sent`/`.apply` shapes the inlined form does not have. **Two
       different bodies, two correct answers.** ORIGINAL FILING:
-- [ ] ~~**`@aws-sdk/client-sns` reads WEAKER in its CJS build than its ESM one**~~ — the ESM units name the
+  ~~**`@aws-sdk/client-sns` reads WEAKER in its CJS build than its ESM one**~~ — the ESM units name the
       packages they reach through `invisible`, the CJS units report the same reach as `Unknown`. The
       disclosure survives, so this is precision, not honesty; but a consumer's answer should not depend on
       which build of the same package it happens to load.
@@ -1381,7 +1381,7 @@ real Swift targets / 12 004 entries (0 gains, 0 losses, Unknown unchanged) and f
       **The comment cited a justification in the vein doc that was never written** — standing-bar item 9
       with no code beneath it at all, which is worse than a wrong comment: the reader has no way to tell
       an argument from a citation of one. It now carries the argument and the numbers inline.
-- [ ] **All 20 of swift's half-1 disclosure triggers on a real corpus are FALSE.** Instrumenting the
+- [x] **FIXED `7a4f977` (same defect as the row above — the two filings were one item).** All 20 of swift's half-1 disclosure triggers on a real corpus were FALSE. Instrumenting the
       `typeSurface` consumer showed every one firing on `closureParamNames`, `sortedPlaces`,
       `withAnimation` — local methods and computed properties — because `localFreeFns` covers free
       functions only. This is over-disclosure, not the cardinal sin, so it is noise rather than a lie; but
