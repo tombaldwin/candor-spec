@@ -1742,3 +1742,31 @@ normative and explicit, and PART 10 already asserts every `dispatch:` carries `o
 is the outlier; the reclassification moves it toward the family AND the spec, and needs no spec change.**
 Correctly not landed — it narrows a gate and wants its own A/B. New datum: `826571c` makes the malformed
 string travel across the boundary, so its blast radius is wider than the 68 measured.
+
+### Phase-4 corpus round on UNSEEN code (2026-07-27) — the invariant holds at scale
+
+Run after the sweep, on code none of these engines had been pointed at during the vein's work, to test the
+two things the sweep just changed: that the getrandom-class parse containment holds across breadth, and
+that the trust-marker invariant the sweep asserted is actually true on real output rather than on fixtures.
+
+| engine | targets | entries | carrying `Unknown` | marker violations |
+|---|---|---|---|---|
+| rust  | 60 registry crates (excluding every crate named in this vein) | 18,485 | 420 | **0** |
+| java  | 40 `~/.m2` jars (excluding every pair used in this session) | 22,270 | 13,644 | **0** |
+| ts    | 4 real dependency-bearing projects | 207 | 121 | **0** |
+| | | **40,962** | **14,185** | **0** |
+
+The invariant tested is the one candor-ts asserted fail-closed in its writer (`95dc3bc`) and rust
+asserted at its apply site: **an entry carrying `Unknown` must carry the marker that says so** — a
+non-empty `unresolved`/`unknownWhy`. 14,185 opportunities to fail, zero failures, on code the assertion was
+never written against.
+
+Also: **60 rust crates, zero parse aborts.** The `respan_call_site` fix (`4f7b704`) had been verified on
+the three getrandom versions that crashed; this is the breadth check it did not have. Note what this does
+NOT show — the quiet form of that defect (a span resolving against the WRONG file rather than panicking)
+is invisible here, and the 72.4% precondition rate measured at the time says it is common. The loud tail is
+closed; the quiet body is disclosed and unmeasured.
+
+Three ts targets returned **exit 2 with "no TypeScript sources"** — correct fail-closed behaviour on a
+project whose sources are elsewhere, not a defect, and worth stating because a run that silently produced
+an empty report there would be the exact false all-clear this vein exists to prevent.
