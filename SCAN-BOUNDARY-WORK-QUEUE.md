@@ -272,7 +272,28 @@ same day. FIXED already: `pure` (§6.2 + the model), §4's four-kinds + two stal
 "NOT YET RULED", `netClass`'s rung tag, "the ten effects", the falsified `--class dynamic` diagnostic, the
 overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missing `Ipc`/`Clipboard`.
 
-- [ ] **OPEN, and the biggest: `deny Net` does not fire on a `{Db}` function, and §1 claims it should.**
+- [x] **FIXED (`2b4c9a1`) — and the fix was one SENTENCE, three places.** §1 said "`Llm` refines `Net`
+      **the way `Db` does**". The test for what "refines" may mean: **every occurrence of the refining
+      effect must be an occurrence of the base channel.** An `Llm` call is an outbound request in every
+      instance (engines **co-emit** `Llm`+`Net`); an embedded/file-backed/in-process store has **no egress
+      at all** (engines emit `Db` **alone**). The encodings were already opposite; only the sentence
+      claimed otherwise.
+      **The sentence had PROPAGATED into the theory** — PAPER3 Def 2 took it at its word and carried
+      `Db ⊑ₑ Net`, Def 4 fires `deny e` on any refinement, the model transcribed both faithfully, and the
+      JVM differential produced **100 disagreements over 1792 rows, every one that family**. Corrected in
+      all three: SPEC §1, PAPER3 Defs 2 and 4, and `policy_model.py` (whose worked example ASSERTED the
+      wrong direction — `assert deny("Net")(Sig({"Db"}))` — and now asserts both, with `Db` as an explicit
+      negative). **100 → 0 without touching a single engine.**
+      **The reviewer's proposed fix was the wrong one and this is why**: widening `deny` to be
+      refinement-closed is the FABRICATION MIRROR — it charges every embedded-database user with network
+      egress they do not have. Correcting the preorder costs nothing and the engines were right all along.
+      - [ ] **RESIDUAL, filed as a CLASSIFIER question not a gate one:** a **networked** DB call is genuine
+            egress `deny Net` does not see. `Db` and `Net` **overlap without either refining the other**,
+            which a relation over effect NAMES cannot express. Closing it means extending the destination
+            classification the gate already carries for `Net` (`netClass`) to `Db`, so a networked store is
+            distinguishable from an embedded one at the call site. Measure first: how often is the
+            driver/DSN resolvable at the call site, four-way.
+      ORIGINAL FILING — `deny Net` does not fire on a `{Db}` function, and §1 claims it should.**
       Model Def 4/30 is refinement-closed (`Reject ⇔ ∃e′∈S. e′ ⊑ₑ e`, so `deny Net` fires on `{Db}` — the
       model's own pinned worked example). SPEC §4.0 says plain membership (`e ∈ S`). Engines implement
       membership. **VERIFIED MYSELF**: §1 line 224 says *"`Llm` refines `Net` **the way `Db` does**"*;
