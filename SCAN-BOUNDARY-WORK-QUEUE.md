@@ -1207,7 +1207,16 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       inert — **correct by accident** (item 0b). If anyone adds bound resolution there for the reason R28/R39
       needed it, the erasure gate is needed at the same time. Swift recorded the same shape in its own code
       comments. *(in flight)*
-- [ ] **`@aws-sdk/client-sns` reads WEAKER in its CJS build than its ESM one** — the ESM units name the
+- [x] **`@aws-sdk/client-sns` CJS-vs-ESM — REFUTED AS FILED, item closed.** The original finding was an
+      artifact of its own method: `dist/cjs` and `dist/es` were scanned as SEPARATE roots with no
+      `node_modules`, comparing DIFFERENT functions. Redone as one scan of the package root with
+      resolution: 309 same-named units in both builds, `invisible` present in ESM only on 76 and in CJS
+      only on **0** — and the cause is not candor. The ESM build IMPORTS `__awaiter`/`__generator` from
+      `tslib` (56 files) and the CJS build INLINES them (5), so `invisible:['tslib']` is TRUE of the ESM
+      body and its absence is TRUE of the CJS body. The 87-vs-1 `unknownWhy` gap has the same cause: the
+      downlevel state machine adds `_a.sent`/`.apply` shapes the inlined form does not have. **Two
+      different bodies, two correct answers.** ORIGINAL FILING:
+- [ ] ~~**`@aws-sdk/client-sns` reads WEAKER in its CJS build than its ESM one**~~ — the ESM units name the
       packages they reach through `invisible`, the CJS units report the same reach as `Unknown`. The
       disclosure survives, so this is precision, not honesty; but a consumer's answer should not depend on
       which build of the same package it happens to load.
@@ -1685,3 +1694,51 @@ because its rows used `-> Int` methods a pre-existing conjunct already excluded,
 never reached — *a test that cannot reach the code it names is not a test*. And standing-bar item 7c(b)
 claimed its second victim: `git checkout <file>` to undo a one-line mutant reverted uncommitted work, and
 three measurements ran against a half-applied change.
+
+### ts's five-shape sweep — 2 PRESENT (both SIBLINGS of its own already-fixed defects), 3 absent
+
+ts is the engine that FOUND shapes 1 and 4, so its job was the harder question: is the fix complete, and
+does the shape have other doors here? Both answers were no, and finding that is the case for sweeping an
+engine against its own defect rather than ticking it.
+
+- **1. PRESENT — a NEW door, `21277eb`.** A report that declares ITSELF incomplete (non-empty ⟨0.21⟩
+  `unanalyzed`) still registered full coverage. A dep with one unparseable file scans to **exit 0** with a
+  report that still names its package; the consumer's call to a declaration that file held went from
+  `invisible:['deplib']` unchained to **absent from the report** — and the single-tree control is **exit 2**.
+  **Chaining an incomplete report was strictly WORSE than not chaining it.** Treatment deliberately differs
+  from staleness: entries are kept (they were derived from source it DID read), only the silence hedges.
+  Item 0 fired: withholding coverage silently replaced half 1's unanswerable-key `Unknown` with the κ
+  hedge, taking `deny Fs Unknown[dispatch]` from exit 1 to 0 — both voices now speak.
+- **2. ABSENT, with a real structural argument.** Java's defect was a `HashSet` with no order at all; JS
+  Maps/Sets are insertion-ordered, so the live question is whether insertion order is MEANINGFUL — and at
+  every decision point it either is (TypeScript's source-ordered `members`/`declarations`), or is sorted
+  before `[0]`, or is unioned, or the never-guess counter drops BOTH candidates.
+- **3. ABSENT for the memos.** `depEntryCache`/`pkgNameCache` are pure functions of key + a filesystem that
+  does not change mid-run; the program/checker is built once, after all cross-dep state is final.
+  **ABSENT-BY-ACCIDENT, filed:** `.candor/dep-inits/` and `.candor/deps/` are never cleared, so a package
+  whose rescan throws is served from the PREVIOUS run's file while the code comment claims it "is skipped".
+- **4. PRESENT — a NEW sibling, `acbd79b`.** `netClass`. `hosts` is a lower bound and `unknown-host` is the
+  producer's published judgment that it IS one — and the join copied the literals but not the judgment. A
+  dep entry reading `['known-telemetry','unknown-host']` arrived as `['known-telemetry']`, and
+  **`deny Net[unknown-host]` went exit 1 → exit 0** against a control that is exit 1 in both arms. The
+  invariant is now ASSERTED fail-closed in the writer (`95dc3bc`): `Unknown ⇒ unresolved`,
+  `direct Unknown ⇒ non-empty unknownWhy`. It fires nowhere on 42 reports / 22,978 entries, and is
+  verified to catch (a mutated producer exits 2 and writes nothing).
+- **5. ABSENT, structurally.** Every module-level mutable map keys on node/symbol identity or on a
+  MODULE-QUALIFIED name, so two same-named functions in two files cannot collide — confirmed with a
+  two-file fixture rather than asserted.
+
+**The relay landed: ts HAD java's second-hop gap (`826571c`).** `deny Unknown[reflect]` exit 1 single-tree
+→ exit 0 chained, at one hop AND two. Two process notes from it worth keeping: **the agent's first gate
+measurement was wrong and its own negative control caught it** (`deny Net Unknown[reflect]` reads as "Net
+OR Unknown[reflect]" and fired in every arm), and item 0 fired again — restricting the recovery to entries
+with no reason of their own under-carried, and the original fixture could not notice.
+
+**The malformed-reason blocker is RESOLVED, and the way it was resolved is the point.** The queue said ts
+must not move a shape's class unilaterally and should ask the other three. The agent asked *by running all
+four engines* on owner-less function values: rust `callback:unresolved call`, java
+`callback:…Function.apply`, swift `callback:fn` — all class `indirect`. SPEC §4's dividing line is
+normative and explicit, and PART 10 already asserts every `dispatch:` carries `owner.member`. **candor-ts
+is the outlier; the reclassification moves it toward the family AND the spec, and needs no spec change.**
+Correctly not landed — it narrows a gate and wants its own A/B. New datum: `826571c` makes the malformed
+string travel across the boundary, so its blast radius is wider than the 68 measured.
