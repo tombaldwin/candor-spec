@@ -349,6 +349,17 @@ Each was refused or deferred with a measurement, not left undone. None is a know
    row conflated them, and the fix is not to argue about which was meant but to state both — a guard that
    cannot be detected needs a test, a guard that costs nothing needs deleting, and they are not the same
    remedy.
+9d. **A SOUNDNESS ASSERTION CAN FORCE A SOUNDNESS DEFECT.** rust's §4 writer carries a `debug_assert`
+   demanding that any `Unknown` name one of the four §4 kinds. **No kind projects to `unresolved`** — so
+   when a chained dep declared `Unknown` with NO reason, the assertion left no legal way to say "no
+   reason", and the fix was to INVENT one (`callback:…`), which classifies `indirect` and made rust the
+   four-way outlier on every `Unknown[class]` gate. The assertion was too broad: §4's own definition of a
+   source ("its own body has the unresolvable call") exempts a chained CONSUMER, which is not a source.
+   **An invariant that cannot express a legitimate state will be satisfied by fabricating an illegitimate
+   one — and that reads as compliance.** Any engine with an equivalent assertion has the same trap.
+   Corollary found with it: **`callback:` is NOT the residual bucket** several comments in this codebase
+   call it. §4 defines it as an unresolved HIGHER-ORDER invocation; the residual class is reached by the
+   ABSENCE of a reason, not by a token standing in for one.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -2036,3 +2047,19 @@ closed; the quiet body is disclosed and unmeasured.
 Three ts targets returned **exit 2 with "no TypeScript sources"** — correct fail-closed behaviour on a
 project whose sources are elsewhere, not a defect, and worth stating because a run that silently produced
 an empty report there would be the exact false all-clear this vein exists to prevent.
+
+### Verified independently (not taken on report)
+
+- **rust's fresh-vs-stale REFUSAL is correct.** I built the two-report fixture myself: with a FRESH and a
+  STALE report for one package chained, rust's consumer reads `go []` **with `invisible: ['deplib']` and
+  `coverage.uncovered: [deplib]`** — unresolved but HEDGED, which is the honest answer. Aligning to the
+  other three engines' fresh-wins would grant coverage while the never-guess rule still drops the colliding
+  key, converting that hedge into a confident purity claim over an `Exec` the FRESH report names. java and
+  ts can afford fresh-wins because their entry-level conflict KEEPS an answer (java last-wins, ts merges
+  into a Set); rust's drops. **The divergence is real and rust is the correct arm** — so this closes as a
+  refusal, and the two-direction fixture asserts the PREMISE (that the key really is withdrawn) so the
+  argument re-opens if that ever changes rather than silently outliving itself.
+- **Two findings the agents produced that outrank their own fixes**, both about tests rather than code:
+  java's every-dep-fixture-used-`()V` (no reference type, hence no descriptor slash — the suite agreed on
+  an accident), and rust's old `warm2` arm, which was **the assertion pinning the latch** it was meant to
+  guard. That is standing-bar item 7g's third occurrence: a test can hold a defect in place.
