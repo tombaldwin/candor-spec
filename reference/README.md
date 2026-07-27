@@ -13,7 +13,7 @@ had reached a signature the model does not admit and coped with a rule that is n
 ## What it verifies today, and how completely
 
 `python3 reference/policy_model.py` checks **Lemma 2 over the entire lattice** for the real vocabulary —
-2⁹ × 2⁶ = 32 768 signatures — in about two seconds.
+2¹¹ × 2⁶ = 131 072 signatures — in a few seconds.
 
 It is complete, not a sample, because upward-closure is checked against **covers** (immediate
 successors) rather than all ordered pairs. If `Reject` survives every single-element step it survives
@@ -35,24 +35,44 @@ Nothing here touches the **analysis** — no effects are computed and no report 
 empirical, and the runtime oracle is its instrument. This is `Reject` alone: small, pure, total, finite.
 
 The natural next step is a differential — *does each engine's gate agree with the model on a given
-`(S, D)`?* — and it is **blocked on a testability gap worth recording:**
+`(S, D)`?* — and this file recorded it as **blocked**, because no engine exposed a way to gate a GIVEN
+signature: the gate was reachable only through `scan --policy` (which recomputes `S` from source, so the
+classifier is back in the loop) and `whatif` (which reports only what a hypothetical *introduces*, so a
+pre-existing violation reads green).
 
-> **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only through
-> `scan --policy` (which computes `S` from source, so the classifier is back in the loop and the test
-> is no longer about the gate) and through `whatif` (which reports only violations the hypothetical
-> *introduces*, so a pre-existing violation reads green). There is no `candor-query gate <report>
-> <policy>`.
+**UNBLOCKED, 2026-07-27.** SPEC §3.1 ⟨0.24⟩ specifies `gate --report <locator> --policy <file>` and
+candor-java has shipped it. The first differential ran 1792 rows (256 signatures × 7 verbs).
 
-That gap is plausibly *why* the model and the engines could drift this far: the gate is only ever
-exercised end-to-end, so no test could isolate it. Two ways forward, neither yet taken:
+**And it immediately found the failure mode this file is most exposed to: the THEORY being wrong.** Two of
+its four disagreeing verbs were the model's fault, not the engine's.
 
-1. **Add a gate-a-report verb** to each engine. Smallest, and it makes the gate independently testable
-   for the first time — but it is a CLI surface change in four engines.
-2. **Inject via the chain**: a synthetic *dependency* report carrying the chosen `(S, D)` and a
-   consumer that calls it, so the signature is inherited rather than computed. Needs no engine change
-   and works today — it is how the 2026-07-27 collision defects were measured — but it exercises the
-   join as well as the gate, so a divergence needs a second step to localise.
+- `pure` disagreed on 15 of 256 signatures — every one `S = ∅, D ≠ ∅`. PAPER3's Definition 32 rejected any
+  disclosure; the contract, the conformance suite and all four engines pass it. **0 of 256 after the
+  definition was amended.**
+- `deny Net` disagreed on 100 rows, all one family: a signature containing `Db`. Definition 2 carried
+  `Db ⊑ₑ Net` on the strength of one sentence in SPEC §1 ("`Llm` refines `Net` the way `Db` does"). It does
+  not — an embedded store has no egress — and correcting the preorder took 100 to 0 **without touching an
+  engine**.
 
-Until one of those lands, this file verifies the **spec-implements-theory** direction only. The
-**code-implements-spec** direction remains what it has always been: the differential conformance suite,
-which compares engines to each other.
+That is the standing hazard for anything built on this file, and it is worth stating plainly: **a theory
+that is wrong in the STRICT direction produces a review finding shaped exactly like a real defect in the
+code.** Nothing goes red, no monotonicity breaks, and the differential reports conforming engines as
+violating. Before treating any disagreement as an engine defect, check which side the contract and the
+conformance suite are on.
+
+**Do not add rows for `forbid`, `allow`, `deny E[dest…]` or the `unknown-ratchet`.** A review established
+that Definitions 33–35 describe verbs the deployment does not have (`forbid` is a call-graph rule with no
+effect predicate; `allow` is a fail-closed literal-surface certification; the shipped ratchet grandfathers
+a function already disclosed at baseline, so Definition 35 rejects where every engine passes). Proposition 5
+has been rescoped to the `L`-carried verbs. Those rows would manufacture divergences out of the theory
+rather than find them in the code.
+
+Two obligations the differential itself carries, both learned the same day: keep the model's `E` in step
+with SPEC §1's vocabulary (it was missing `Ipc` and `Clipboard`, which would have crashed on the first
+report carrying either — conformance PART 23 now checks this), and derive the lattice-size floor rather
+than hardcoding it.
+
+The alternative route stays available and needs no engine: **inject via the chain** — a synthetic
+*dependency* report carrying the chosen `(S, D)` and a consumer that calls it, so the signature is
+inherited rather than computed. It is how the 2026-07-27 collision defects were measured, but it exercises
+the join as well as the gate, so a divergence needs a second step to localise.
