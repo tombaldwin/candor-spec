@@ -49,12 +49,12 @@ up, so they are written here first and worked second.
         nothing and cannot show it gains anything. The `.bind`-into-HOF idiom has been all but replaced
         by arrow functions in modern TS; it survives in class-style code, which is where the reviewer's
         shape and the fixture live.
-- [ ] **rust `deps.rs:220` + ~~java~~ + ~~swift~~ — only candor-ts withholds coverage from a dep report that
+- [x] **~~rust~~ + ~~java~~ + ~~swift~~ — only candor-ts withholds coverage from a dep report that
       declares ITSELF incomplete** (non-empty ⟨0.21⟩ `unanalyzed`). The other three gate coverage on
       STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
       shape 1's second door — the one ts found in its own sweep (`21277eb`) — unswept in three engines.
       **The sweep found the door and did not carry it across, which is the exact thing the sweep exists
-      to do.** **JAVA DONE — candor-java `d1d3045`. SWIFT DONE — candor-swift `74cd8f1`. Rust remains.**
+      to do.** **JAVA `d1d3045`. SWIFT `74cd8f1`. RUST `dbab8be` — THE VEIN IS NOW CLOSED FOUR-WAY.**
       - Entries KEPT (they came from source the dep really did read), coverage withheld, stderr says why.
         Absent or explicitly EMPTY `unanalyzed` = complete; anything else, malformed included, fails
         closed. ts's item-0 trade — the ledger hedge REPLACING half 1's `Unknown[dispatch]`, its
@@ -89,6 +89,38 @@ up, so they are written here first and worked second.
         is the ordinary shape once `--workspace` prepends its scanned dir to a configured `CANDOR_DEPS`.
         §2 rule 1 forbids PICKING between candidates; there is nothing to pick when they are equal.
         Worth checking in rust and java: the fixture that finds it is "chain the same package twice".
+        (rust had it too and closed it independently, `6f2210c`; java is clean — last-wins keeps an answer.)
+      - **RUST (`dbab8be`), and this is the one engine where the corpus is EVIDENCE rather than a
+        fabrication control.** java measured 0 of 11 real dep reports declaring `unanalyzed` and swift 0
+        of 34 packages; rust measures **4 of 855** (0.47%, two distinct crates) and **1 of 200** crates.io
+        crates scanned cold. The live case is as sharp as the shape gets: **`signal-hook-registry` 1.4.8's
+        entire `src/lib.rs` fails to parse**, so its report carries two functions and an `unanalyzed`
+        manifest naming the library itself — and chained, `signal-hook`'s `PendingSignals::add_signal`,
+        whose body is `unsafe { signal_hook_registry::register_sigaction(signal, action) }` (installing a
+        signal handler), read as a confident purity claim about that crate. Post: `invisible:
+        ['signal_hook_registry']` + a coverage-ledger row. **Whoever repeats a "0 real reports" control in
+        another engine: rust's 0.47% says the shape exists in the wild, so a 0 there is a claim about
+        that ecosystem's parsers, not about the door.**
+      - **The anchor count is a PER-ENGINE fact and rust's is 1.** Four registration sites (envelope
+        `package`, plural `packages[]`, filename fallback, entry `hash` prefix) all funnel through one
+        `cover` closure, and coverage is CONSUMED at exactly one place — so one conjunct is the whole
+        gate, unlike java's two. ts's item-0 trade cannot happen here for swift's reason: rust's half-1
+        gate reads the CHAINED set (`deps_idx.crates`), which an incomplete report is still in — asserted
+        as a fourth arm on the half-1 fixture, and the mutant that gates it on coverage fails that row.
+      - **rust does NOT adopt swift's `incompletePkgs.subtract(coveredPkgs)`**, for the same rust-specific
+        reason `63bbe87` refused to align fresh-vs-stale: rust's index DROPS a key two dep entries
+        disagree under, so complete-wins makes the withdrawn key read confidently PURE. Pinned with flip
+        instructions; the mutant that implements complete-wins fails exactly that fixture.
+      - **Eight guards, eight mutants**, and one of them deleted a guard rather than proving it: the
+        `!stale &&` conjunct on the incompleteness flag failed NOTHING, because `cover`'s `else if`
+        already decides the precedence. Item 8c — a guard that costs nothing needs deleting.
+      - A/B, three chained projects, both binaries by content hash: **0 gains, 0 losses, 0 entry delta, 0
+        Unknown delta**, dep trees byte-identical — and per item 8 the precondition was instrumented
+        rather than assumed: the mechanism DOES fire (2 crates lose coverage on pgman and ebman) but the
+        κ ledger only asks about a crate the TARGET calls into with a first-segment-qualified path, and
+        none of the three does. ARMED (all 855 dep reports made incomplete, envelope only): +123 entries
+        and +278 functions gaining `invisible` across the three, with 0 effect gains, 0 losses, Unknown
+        delta 0. 200 crates.io crates scanned UNCHAINED in both arms are byte-identical.
 
 ### Fabrication / data loss
 - [x] **swift `CallCollector.swift:813` — `fnValueAlias` is a name-keyed RESOLUTION table no clear path
@@ -455,10 +487,59 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         you an approach CAN work"). What made it safe here is that the reclassified strings named
         NOTHING, so no `deny Unknown[dispatch]` could have been relying on a real owner.
         `ambiguous:same-name local defs` DOES name something, so that row still needs its own answer.
-- [ ] **rust — `ambiguous:same-name local defs` is outside the closed §4 vocabulary**, emitted **757 times
+- [x] **rust — `ambiguous:same-name local defs` is outside the closed §4 vocabulary**, emitted **757 times
       across 253 crates**. PART 10 misses it because the harness's fixtures never produce that kind.
       Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
       `deny Unknown[dispatch]`. Wants its own measurement and probably the spec's MIGRATION mechanism.
+      **REFUSED, with the counterfactual measured — candor-rust `4817b71`; PART 10 repaired,
+      candor-spec `90ad1f6`.**
+      - **What it IS in §4 terms: none of the four kinds can express it.** NOT `dispatch:` — that kind
+        needs a resolvable owner type and its detail is NORMATIVE `<owner>.<member>`; a BARE FREE call has
+        no owner, so the detail cannot be formed and PART 10 rejects a dot-free `dispatch:`. It is also
+        not dispatch at all: exactly one function runs and rustc resolves it statically, so what failed is
+        the ANALYSER's name resolution, not the program's. NOT `callback:` — an unresolved HIGHER-ORDER
+        invocation over a function VALUE, and not the residual bucket (item 9d). Not `native:`/`reflect:`.
+        **SPEC §6.2's reason-class table already NAMES `ambiguous*` and rules its class `dispatch`**, so
+        the spec blesses the prefix in one section and omits it from the closed set in another.
+        Reconciling that is a SPEC rung, not an engine edit.
+      - **The number that refuses the rename.** One line in `ReasonClass::classify` moves `ambiguous*` to
+        `indirect`; both binaries kept by content hash. `deny E Unknown[dispatch]` then goes from firing
+        on **58 of 200 crates.io crates to 0 of 200**, and exit 1 → exit 0 on pgman, ebman and
+        candor-rust. **That is a deletion, not a narrowing** — every OTHER `dispatch:` this engine emits
+        is `dispatch:untyped cross-package receiver`, 20 in a 1062-report census, all needing a chained
+        dependency to exist at all. ts's `5ba301c` was safe because its reclassified strings named
+        NOTHING; the precedent says the shape CAN work, not that this one is safe.
+      - **The weight, so nobody re-opens it as a corner case:** censused over 1062 reports (200 crates.io
+        crates + 855 dep reports + 3 projects), `ambiguous:` is **8710 of 19607** `unknownWhy` entries
+        across 220 packages — `callback:` 9421, `native:` 1456, `dispatch:` 20. The filed 757/253 was a
+        large undercount. The shape is cfg-gated alternative definitions (rustix 1989, syn 1851), which a
+        syntactic scan cannot resolve because it does not evaluate `cfg`.
+      - **PART 10's blindness was the real defect and is now closed.** The row read only the SHARED
+        fixture, so it pinned the vocabulary OF THE SHARED FIXTURE. It now also scans a purpose-built
+        crate that produces the kind, tolerates-and-WARNS it beside java's `task-handoff`/`indy` (with
+        the header spelling out that java's are remnants and rust's is an inexpressible state), and
+        carries its own vacuity floor: if the fixture stops producing the kind the row DIVERGES rather
+        than passing quietly. Two mutants, two named failures.
+
+### NEW, found while measuring that refusal — both filed with numbers, neither fixed
+- [ ] **rust AND swift — every `dispatch:` they emit at the half-1 site is `dispatch:untyped
+      cross-package receiver`: the CANONICAL kind with a MALFORMED normative detail.** §4 makes
+      `<owner>.<member>` the one conformance-compared detail and PART 10 DIVERGES on a dot-free one; it
+      does not fire only because PART 10's fixture never chains a dependency (PART 21, which does, prints
+      the string in both engines' rows). Worse, §4's own dividing line says an **untyped receiver is
+      `callback:`** — so the kind is wrong too. 20 emissions in a 1062-report rust census.
+      **Not fixed here for two reasons**: swift emits the identical string, so this wants a four-way
+      ruling like `63bbe87`, not a unilateral edit; and landing it alone would turn the shared suite red
+      the moment PART 10 gets a chaining fixture. Note the cost is not obviously zero — moving it to
+      `callback:` takes the class Dispatch→Indirect, and in rust `deny Unknown[dispatch]` would then rest
+      entirely on `ambiguous:`.
+- [ ] **rust — the `ambiguous:` arm's candidate set includes METHODS, which a bare free call can never
+      resolve to.** Instrumented over the 200-crate breadth: **156 of 930 emissions have ≤1 free-fn
+      candidate and 48 have NONE**. The clearest is `drop`: a bare `drop(x)` is the PRELUDE fn, charged
+      `Unknown` 36 times because the crate happens to have ≥2 `Drop::drop` impls. Over-DISCLOSURE, not
+      the cardinal sin — but it is ~17% of this engine's co-dominant kind, and it is what makes
+      `deny Unknown[dispatch]` fire on 29% of crates.io. Narrowing the candidate set to free-fn defs is
+      exactly the shape item 0 warns about, so it wants its own A/B in both directions.
 
 ### Precision gaps, disclosed and not silent
 - [ ] **ts — the BY-REFERENCE HOF arm has the `.bind` arm's hole, but DISCLOSED.** Found while fixing
