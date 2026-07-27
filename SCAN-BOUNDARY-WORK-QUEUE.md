@@ -426,6 +426,71 @@ up, so they are written here first and worked second.
       candor-java. Legitimate (java's build id is GENERATED from the git hash, so it cannot lag) but unsaid.
       Fixed `f6cc184`: the row now prints, naming itself out of scope.
 
+## OPEN — the THIRD review (2026-07-27 evening): 10 confirmed, 1 fixed, 9 in flight
+
+Third review of this work in one day. **9, then 10, then 10 — and in all three, EVERY confirmed defect was
+a guard written during the wave under review.** Not one has been a fresh mechanism. That is now a measured
+property of this work rather than an impression, and it is the argument for reviewing each wave rather than
+trusting a green suite: all thirty had clean A/Bs and passing suites.
+
+### CLOSED — mine, and it invalidated a recommendation I had just written
+- [x] **`ENTRY-COLLISION-DECISION.md` — my claim about java's `!isEmpty()` guard was FALSE.** I wrote that
+      it makes java "unsound only in choosing between two effectful claims — a precision loss, never a
+      purity claim". **`{Unknown}` is non-empty.** The §2.1 staleness downgrade produces exactly that, so a
+      STALE report's Unknown overwrites a TRUSTED report's concrete effects. Verified in BOTH file orders:
+      trusted `Fs` + stale report → consumer reads `['Unknown']`, and **`deny Fs` goes exit 1 → exit 0**.
+      Corrected in `a7a6147`, with the wrong paragraph left visible: **this rule has now been described
+      three times and been wrong twice** (plain last-wins → last-non-empty-wins → last-non-empty-wins-except-
+      Unknown-counts). A rule nobody can state correctly on three attempts is not one a policy gate should
+      depend on, which strengthens the union recommendation rather than weakening it.
+
+### Cardinal sins and gate flips — in flight
+- [ ] **ts `scan.mjs:504`** — `--workspace` deletes a stale cached dep report AFTER the fixpoint rounds and
+      never re-runs them, so a sibling that scanned successfully has ALREADY chained the report being
+      deleted and its own cache keeps that answer. The stale content survives inside a downstream report
+      after the file it came from is gone. swift's equivalent fix does a second `runRounds()` for exactly
+      this reason (`43a0eaa`).
+- [ ] **swift `main.swift:468`** — `sweepStale` deletes a HEALTHY sibling's freshly-written report: it skips
+      deps that succeeded, not files THIS RUN produced. Two path deps deriving one report name, one fails,
+      the other's output is deleted — and deleted AGAIN after the retry rewrites it. Second round of this
+      class after `b4f6cbc` deleted user-placed reports.
+- [ ] **swift `Deps.swift:424`** — `incompletePkgs.subtract(coveredPkgs)` restores FULL coverage as soon as
+      any report claims the package complete, cancelling a second report's hedge over a region it could not
+      read. Complete-wins is the reading rust REFUSED twice (`63bbe87`, `dbab8be`): **two reports covering
+      one package do not cover the same SOURCE.**
+- [ ] **rust `deps.rs:135`** — the reasonless-Unknown class reaches only a `debug_assert`, never
+      `reason_class_direct`. §6.2's `unresolved` fallback is per-FUNCTION and fires only on an absent or
+      empty class set, so **any other reason on the same function swallows it** — precisely where a gate
+      needs it.
+
+### The wire-format break, both halves from one java commit
+- [ ] **THE THIRD READER — candor-rust `candor-query::load_hierarchy`** deserializes the sidecar as a strict
+      `BTreeMap<String, Vec<String>>`, so java `bb8459a`'s new `"@superclass"` OBJECT makes the WHOLE file
+      fail to parse and be silently discarded. **That is the identical failure the same commit fixed in the
+      SECOND reader** (`Query.loadHierarchy` threw, swallowed it, and dropped the whole hierarchy with 540
+      tests green). Introduced by the fix for it, in another language.
+- [ ] **`@superclass` is written UNCONDITIONALLY**, so an empty sidecar becomes `{"@superclass":{}}` and
+      candor-ts's `callersFrontier` — which gates on `Object.keys(hierarchy).length > 0` — flips from its
+      safe over-listing fallback to the precise path over an EMPTY hierarchy. A metadata key silently
+      narrows another engine's frontier.
+      **Worth deciding with it:** SPEC §2.2 states the non-array skip as a requirement on READERS, which
+      obliges every deployed reader to have been updated — which is exactly what did not happen, twice. A
+      WRITER-side constraint would have made both defects impossible.
+
+### Partial ports and a comment that lies
+- [ ] **swift `Deps.swift:212`** — the identical-entry exemption (rust `6f2210c`) was added only to the
+      TRUSTED arm; two IDENTICAL entries from two STALE reports still withdraw the key, losing the §2.1
+      `Unknown` downgrade the stale arm exists to produce.
+- [ ] **swift `main.swift:447`** — `ownedReportFile` parses the manifest name anchored AFTER `Package(`;
+      the WRITER at `:304` is UNANCHORED and takes the FIRST `name:` in the file. The comment claims "the
+      same three sources the writer uses, in the same order". It is not, and the sweep can therefore
+      compute a different name than the writer did.
+- [ ] **swift `CallCollector.swift:1465`** — the TYPED enum-payload binder calls `shadowName` only, missing
+      `protoTyped`/`arrayElem`/`opaqueElem`/`dictElem`/`tupleElem`, so a payload shadowing a protocol-typed
+      parameter still dispatches over the protocol's conformers. **`NameKeyedStateTests` cannot see it** —
+      it derives the map SET and checks classifications, not whether each BINDER SITE honours them. Its
+      author named that limit; this is the limit biting.
+
 ## CARRIED FORWARD — the vein's own rows are all closed; these are what it uncovered
 
 **The vein has ZERO open rows.** Every mechanism family that made a `deny` gate pass code it should fail is
