@@ -114,6 +114,17 @@ now scopes the headline claim because of it.
    stderr and those two legs read the report and the exit code. A green suite is evidence about the
    channels that suite reads. Enumerate them — report content, exit code, stderr, sidecars — and know
    which leg covers which, because a defect will sit in the channel nobody's assertions look at.
+8c. **"UNTESTABLE" AND "NOT LOAD-BEARING" ARE DIFFERENT CLAIMS, AND A GUARD CAN BE ONE WITHOUT THE
+   OTHER.** This queue filed swift's `typeSurface` exact-match guard as UNPROVEN, on the grounds that
+   relaxing it to a suffix match failed no test. The engineer who landed the missing index key then
+   measured the counterfactual instead of assuming it: with the third key mutated back OUT and the suffix
+   mutant left IN, the CONSUMER rows go green again — a wrong answer simply misses, harmlessly — and only
+   a producer-side assertion nobody had written still fails. So the guard was always OBSERVABLE in
+   principle; what the key changed is that a wrong answer now **LANDS** instead of missing. Two distinct
+   properties: *can this guard's absence be detected* and *does this guard's absence cost anything*. The
+   row conflated them, and the fix is not to argue about which was meant but to state both — a guard that
+   cannot be detected needs a test, a guard that costs nothing needs deleting, and they are not the same
+   remedy.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
