@@ -220,7 +220,18 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       real (the frontier differential has one engine produce and another consume), so the short-list
       consumer claims the other's sidecar as a report. Reserved set now enumerated in §2.2, denylist
       required, direct-file locator explicitly exempt.
-      - [→] java's list widened to the family set — DISPATCHED with 4a.
+      - [x] **java `c406119` — and java HAS the "refused outright" consequence, in its own form.** Measured:
+        one report plus two foreign sidecars → a FALSE ambiguity disclosure (`matches 3 reports`), then it
+        **picks the sidecar** (`gate` sorts before `jvm`; the resolver takes the lexicographically first
+        hit) and refuses every query about a file the user never named. After: exit 0, silent, answered from
+        the real report. The other two consequences were checked and do NOT apply — java reads provenance
+        from the *resolved* report rather than the first by sorted path, and has no `reports` verb.
+        One denylist in `Loader.isSidecarName`, all seven spec segments, read by **both** globs *and* the
+        `CANDOR_DEPS` walk — routed through one reader rather than a second list that happens to agree.
+        Controls both ways: old two-suffix list → 3 of 4 tests red; over-wide "reserved word anywhere" → the
+        `hierarchy`-named-package control red.
+        **Also found the comment-as-assertion defect again**: a doc comment claimed the discriminator was
+        **segment count**, which the code never implemented. Corrected.
       ORIGINAL FILING — a FALSE DISCLOSURE on every `callers` call that has a hierarchy sidecar (found by
       the rust agent in passing, and independently by me while measuring the frontier). The report-locator
       glob picks up `<prefix>.<pkg>.hierarchy.json` as a candidate REPORT and prints
@@ -414,8 +425,28 @@ the only verdict-changing one — do not bundle them.
             model was written.**
             Calibration number for the other engines: the naive form (contribute whenever `Unknown` is
             present) marks **435** on the corpus where the legitimate count is **0**.
-      - [→] java DISPATCHED (with swift's result, so it measures reachability before changing anything).
-            rust/ts pending.
+      - [x] **java FIXED `82bf4d4` — REPRODUCED, unlike swift, and the difference is instructive.** Java
+            records an `unknownWhy` beside every `Unknown` it raises itself (**all 13 `dir.add(UNKNOWN)`
+            sites checked**), so the only route to a reasonless one is the **dependency boundary** — a §2.1
+            distrusted report whose effects were downgraded wholesale, or an entry neither its own tags nor
+            its published `calls` chain accounts for. That is the route swift had already closed with
+            `dep-stale:` and java had not. Fixed **at the source, per dependency ENTRY** (swift's shape):
+            `dep:<hash>` / `dep-stale:<pkg>` recorded at load, both projecting to `unresolved`, and it
+            **rides in the report** so the class travels to whoever chains it. Join-side default kept only
+            as a fail-closed backstop, commented as one.
+            | dep reports | class sets changed | `[unresolved]` flips |
+            |---|---|---|
+            | **trusted** | 0/141, 0/211 | **0** |
+            | **stale** | 130/145, 311/311 | **52**, **2** |
+            **36% of one target — a large break, and it is entirely conditional on reports the build cannot
+            verify.** Trusted reports: nothing moves.
+            **THE CONTROL FAILURE IS THE DURABLE PART, and the agent caught it in its own work.** Its first
+            fixture *could not distinguish the fix from the flood* — under a stale report NOTHING is
+            accounted for, so the naive form passed every assertion. The real control is a **FRESH** dep
+            whose `Unknown` IS explained (once via its own tag, once via a `calls` edge). Measured: the
+            naive form flips **96/141 and 211/211** with fresh reports where the correct rule flips **0**.
+            Java's analogue of swift's 435-vs-0. **A fixture that cannot show that gap is not a control.**
+      - [→] rust/ts pending.
 - [ ] **NEW — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
       4a.** The tool whose entire job is to name the holes a green gate does not prove — and its filter
       **under-reports the more the user narrows**. Two causes, both needed:
