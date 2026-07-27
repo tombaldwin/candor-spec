@@ -393,6 +393,19 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       `deny Unknown[dispatch]`. Wants its own measurement and probably the spec's MIGRATION mechanism.
 
 ### Precision gaps, disclosed and not silent
+- [ ] **ts — the BY-REFERENCE HOF arm has the `.bind` arm's hole, but DISCLOSED.** Found while fixing
+      `b66b69a` and deliberately not fixed with it. That arm keeps the positive `!hofInvokesArg(…)`
+      early return, so a DEP function passed BY REFERENCE at a position a loosely typed dep HOF does not
+      declare loses its concrete effect. Reduced to a fixture rather than asserted — `forEach(xs: any[],
+      fn: any)` against a well-typed `some(xs, fn: (x) => boolean)`, same argument, same position:
+      `depRefLoosePos1 -> ['Unknown'] (callback:fn, callback:param#1)` vs
+      `depRefTypedPos1 -> ['Fs','Unknown']`.
+      **A precision loss, not the cardinal sin** — the Unknown and its reason are still published, so
+      `deny Unknown` and `deny Fs Unknown` still bite where a bare `deny Fs` no longer would. That is
+      why it did not ride the `.bind` fix: `.bind(…)` IS a function by construction, so widening that
+      arm was free, while this one takes a BARE IDENTIFIER and the callability guard does not save it (a
+      seed object typed `any` passes `argIsCallable` — the `path.reduce(fn, obj)` shape guard (1) exists
+      for). Widening it is a fabrication risk with no measurement behind it; it wants its own A/B.
 - [ ] **swift — dep reports name SwiftPM PACKAGES while imports name MODULES** (`swift-case-paths` vs
       `CasePaths`), so on those targets nothing is covered in EITHER arm. Found by instrumenting why a fix
       showed no delta rather than assuming it was inert. Pre-existing and separate from the vein.
