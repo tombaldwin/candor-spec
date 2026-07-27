@@ -1924,6 +1924,21 @@ Measured consequence: candor-swift's empty-set default is **unreachable** — in
 targets, **0 fires across 487 `Unknown`-bearing functions**, confirmed by an offline recomputation of the
 class fixpoint. Implementing the join-side rule there would have been a no-op.
 
+**THE STRONGEST FORM IS TO MAKE THE STATE UNWRITABLE, NOT MERELY UNREACHED — and one engine already does.**
+candor-ts is at the source twice over: its emitter writes `unknownWhy: ["unresolved"]` on any direct
+`Unknown` it could not name, *and* a trust-marker self-check **REFUSES TO WRITE THE REPORT AT ALL** (exit 2,
+"direct carries `Unknown` but `unknownWhy` is empty") if one ever escaped. Measured the same way: **0 fires
+across 1872 `Unknown`-bearing functions** over five arms including trusted and stale chained dependencies.
+Established by mutation rather than inspection — deleting the fallback turns the stale-dependency arm into
+exit 2 with no report, which is the self-check firing.
+
+That is the ideal an implementation should aim at. A join-side default is a *coping* mechanism; a
+source-side contribution makes the state *unreached*; a producer-side self-check makes it **unwritable**,
+so the ill-formed signature cannot leave the engine even if a future edit reopens the path. Recall why this
+matters: the state is not merely undesirable, it is **not representable in the formal model at all** (the
+reason set is the carrier of the `Unknown`), so an engine that can emit it is emitting something the theory
+has no image for.
+
 This is the same conclusion the formal model reaches from the other end (`reference/policy_model.py`): a
 reasonless `Unknown` is **not representable** in the `(S, D)` lattice at all, because Def 6 makes `D` the
 carrier of the `Unknown` — so the state must be made *unreachable* rather than *handled*. An engine that
