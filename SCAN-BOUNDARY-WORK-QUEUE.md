@@ -35,8 +35,33 @@ alone for now (§6, with the measured argument for waiting).
 thing when read together. It is the critical path: it blocks the `ambiguous:` rename, any engine renaming,
 and probably the dot-free detail fix.
 
-- [ ] **Settle §4's reason vocabulary: its MEMBERSHIP, its normative DETAIL, and its relation to §6.2's
-      class table.** The four symptoms:
+- [x] **SYMPTOMS 1 AND 2 SETTLED (spec ⟨0.24⟩) — and the diagnosis was wrong in a way that matters.**
+      **The absence-keyed rule was IN THE SPEC**, not invented by the engines: §6.2 said *"a function whose
+      `Unknown` carries no recorded reason is treated as `unresolved`"*. Every engine was conforming. The
+      divergence was MODEL vs CONTRACT, not contract vs implementation — a materially different failure,
+      and one four agreeing implementations could never surface. PAPER1's (W) passage is corrected.
+      - **Symptom 2 — fixed by one word: `CONTRIBUTES`.** A reasonless `Unknown` now ADDS `unresolved` to
+        the class set instead of defaulting when the set is empty. Both properties then hold at once:
+        fail-closed on an unclassifiable hole (what the clause was for) and monotone (what Lemma 2 needs).
+        That the fix is one word is not evidence the defect was small — it is evidence a spec can sit one
+        word from contradicting a theorem it implements, with nothing in a four-way differential able to
+        notice.
+      - **Symptom 1 — `ambiguous:` is now a §4 kind.** §6.2 had projected `ambiguous:*` to `dispatch` all
+        along, so CONSUMERS classified it correctly while the PRODUCER emitting it was non-conforming; the
+        asymmetry survived because a consumer never complains about a token it can classify. Removing it
+        was measured and rejected — 8710 of 19607 rust entries, and `deny E Unknown[dispatch]` would go
+        58/200 crates → 0/200. It also names something the other kinds cannot: no owner was ever formed,
+        and no function value is involved.
+      - [ ] **SYMPTOM 3 STILL OPEN — the dot-free detail.** rust and swift emit
+        `dispatch:untyped cross-package receiver`: canonical kind, malformed normative detail (§4 makes
+        `<owner>.<member>` the one conformance-compared part). Two candidate fixes and they differ in
+        class: emit `callback:` (which §4's own dividing line implies for an untyped receiver, but moves
+        the class `dispatch`→`indirect` and NARROWS gates), or bless a detail-free form for the case where
+        no owner exists. **Wants the measurement before the edit** — how many functions change class under
+        each. Do not take this one by argument.
+
+      ORIGINAL FILING — settle §4's reason vocabulary: its MEMBERSHIP, its normative DETAIL, and its
+      relation to §6.2's class table. The four symptoms:
       1. **§6.2's class table (line 1433) lists `ambiguous*` under `dispatch`; §4's kind vocabulary omits
          it.** The spec blesses an emission in one section and excludes it in another.
       2. **No kind can express "Unknown, and one of them has no reason."** §4 has none, §6.2's rule is

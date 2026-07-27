@@ -394,7 +394,10 @@ Each entry:
                                          // `dispatch:<type>.<method>` (a project abstraction with no
                                          // visible impl), or `callback:<what>` (a call through a
                                          // function-typed value — a closure/fn-pointer parameter or
-                                         // field whose target isn't statically known). Lets a consumer
+                                         // field whose target isn't statically known), or ⟨0.24⟩
+                                         // `ambiguous:<what>` (the analyser's own NAME RESOLUTION was
+                                         // ambiguous — two same-named local definitions, so no owner
+                                         // could be formed at all). Lets a consumer
                                          // tell irreducible opacity (reflection, native) from the
                                          // IMPROVABLE kind (`dispatch:`/`callback:` — a missing impl or
                                          // an unresolved higher-order target, often resolved by widening
@@ -1454,15 +1457,43 @@ without reading any engine's raw reason strings:
 | class | raw `unknownWhy` prefixes it projects |
 |---|---|
 | `reflect` | reflection / metaprogramming (`reflect:*`, `dynamicMemberLookup`) |
-| `dispatch` | unresolved virtual/dynamic dispatch, invokedynamic, same-name ambiguity (`dispatch:*`, `indy*`, `ambiguous*`) |
+| `dispatch` | unresolved virtual/dynamic dispatch, invokedynamic, same-name ambiguity (`dispatch:*`, `indy*`, `ambiguous:*`) |
 | `indirect` | callback / closure / function-value / async-continuation indirection (`callback:*`, `closure*`, `task-handoff*`) |
 | `native` | FFI / native boundary (`native:*`) |
 | `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |
 | `setup` | the analysis is not wired up — fixable, not a real hole (`missing-config`, `no-tsconfig`, no-`node_modules`) |
 
 The projection is **conservative**: a raw reason matching no listed prefix maps to `unresolved`, and a
-function whose `Unknown` carries no recorded reason is treated as `unresolved` — so a narrowed filter never
-*silently* tolerates a hole it failed to classify. The reason class **propagates transitively** along the
+function whose `Unknown` carries no recorded reason **CONTRIBUTES** `unresolved` to its class set — so a
+narrowed filter never *silently* tolerates a hole it failed to classify.
+
+⟨0.24⟩ **`ambiguous:` is a §4 kind, and was projected here before it was one.** This table has always
+mapped `ambiguous:*` to `dispatch`, so a CONSUMER meeting the token classified it correctly — while §4's
+kind list omitted it, making the PRODUCER that emits it non-conforming. One section blessed what the other
+excluded, and the asymmetry survived because a consumer never complains about a token it can classify.
+
+It is now a fifth kind in §4. The alternative — stop emitting it — was measured and rejected: on candor-rust
+it is **8710 of 19607** `Unknown`-bearing entries, and reclassifying it to `indirect` takes
+`deny E Unknown[dispatch]` from **58 of 200 crates to 0 of 200**. That is not a narrowing, it is a deletion
+of the verb on that engine. `ambiguous:` also names something the other four kinds genuinely do not: not an
+unresolved DISPATCH (no owner type was ever formed) and not a `callback:` (no function value is involved) —
+the analyser's own name resolution was ambiguous. A vocabulary that cannot say that forces an engine to
+either lie or fall silent.
+
+⟨0.24⟩ **`CONTRIBUTES`, not "is treated as" — and the difference is a proved property.** This clause used to
+read *"a function whose `Unknown` carries no recorded reason is **treated as** `unresolved`"*, i.e. the class
+defaulted to `unresolved` when the class set was **empty**. That is keyed on ABSENCE, and absence is not
+upward-closed: acquiring a reason *removed* the default. The result was a measured counterexample to the
+monotone-denial lemma's corollary — a function calling one reasonless dependency was REJECTED by
+`deny Unknown[unresolved]`, a function calling one reasoned dependency was correctly not, and a function
+calling **both** was **not rejected**. Adding a call turned a red verdict green, which is precisely the
+"silent relaxation" the lemma exists to forbid.
+
+The engines were conforming when this happened; the defect was here. Under the contribution reading both
+properties hold at once: an unclassifiable hole still matches `Unknown[unresolved]` (fail-closed, which is
+what the clause was for), and a class set can only ever GROW as more is learned (monotone, which is what the
+lemma needs). A conforming implementation must therefore ADD `unresolved` to the class set of any function
+carrying an `Unknown` with no reason, rather than consulting emptiness. The reason class **propagates transitively** along the
 call graph exactly as the `Unknown` effect does: a function that inherits `Unknown` from a callee is scoped
 by that callee's reason class (the `unknownWhy` a report emits stays per-function/direct; the *gate*
 resolves the transitive class). Filter forms:
