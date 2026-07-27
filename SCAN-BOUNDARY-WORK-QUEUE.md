@@ -803,7 +803,34 @@ the only verdict-changing one — do not bundle them.
       remedy, `path` traces the origin), but incoherent to read. Putting the RESOLVED class set on the wire
       is a **format rung**, and it was left alone deliberately given the standing result that none of this
       vein's fixes has needed one.
-- [ ] **4b. `ambiguous:` as a fifth §4 kind.** Vocabulary-only; no verdict change (§6.2 already projected
+- [x] **4b JAVA DONE (`91930f2`) — and the audit produced the SHAPE, which is worth more than the fix.**
+      **Every engine holds the kind vocabulary TWICE**: a prefix/STRING classifier feeding §6.2's class
+      table, and a TYPED/structural one (enum/union/match). They are authored from different sources — the
+      class table from a cross-engine audit of what engines EMIT, the typed vocabulary from §4's list — so
+      when §4 goes stale **the string half stays right and the typed half does not.** *"The bug lives in the
+      disagreement between the two, and the string half being right is exactly what hides it."*
+      In java: `ReasonClass.classify(String)` mapped `ambiguous`→`DISPATCH` **since a 2026-07-16 audit**,
+      while `UnknownReason.Kind` lacked the kind entirely — so the token was a FOREIGN prefix, `kind()` was
+      null, and the typed path classified it `unresolved` where §6.2 says `dispatch`. **One token, two
+      answers, one engine, silent.** Two code comments had recorded the divergence as *intended* rather than
+      fixing it — the comment-as-assertion class, again.
+      **java emits NO `ambiguous:`** (a JVM invoke carries owner+name+descriptor, so bytecode resolution is
+      never ambiguous) **but it RELAYS them**: `depTransitiveWhy` parses a chained dep's tags into java's own
+      report, so a rust `ambiguous:` appears in java's output. **A consumer needs kinds it never emits** —
+      now stated in §4 (`57eaf6f`).
+      **The frontier point is a checkable prediction**: java's frontier keys off the TYPED `DISPATCH`, so it
+      excludes `ambiguous:` for free; an engine keying off the CLASS would admit entries with no owner to
+      resolve against. Sent to rust with 8710 entries at stake.
+      Control: `banana:whatever` unchanged, asserted at model level AND end-to-end. **Four mutations, each
+      caught** — including catch-all→`DISPATCH` (the blanket), which failed BOTH controls. No verdict change.
+      - [→] **rust DISPATCHED** with both predictions + 4a. ts/swift after.
+      - [ ] **conformance PART 10** (held by the P2/P3 agent) must move from *tolerating* `ambiguous` as a
+            warning to pinning it canonical: accepted with no warning; detail **best-effort, NOT**
+            conformance-compared; `dep:`/`dep-stale:` registered; migration tolerance narrowed to
+            `task-handoff:`/`indy:` only; **and the negative control that makes the other four mean
+            anything** — a fabricated kind must still warn, else PART 10 cannot distinguish "pins five
+            kinds" from "stopped checking".
+      ORIGINAL FILING — 4b. `ambiguous:` as a fifth §4 kind. Vocabulary-only; no verdict change (§6.2 already projected
       `ambiguous:*` → `dispatch`, which is why the producer was non-conforming while consumers were fine).
       Mostly a conformance/vocabulary-check update per engine — check each engine's `unknownWhy` kind
       validator, not just its emitter.
