@@ -649,6 +649,16 @@ def main():
         if a.startswith("--only"):
             v = a.split("=", 1)[1] if "=" in a else args[args.index(a) + 1]
             only = set(v.split(","))
+    if only:
+        # A misspelled --only must be a USAGE error, never a silently-empty run: an empty run hits the
+        # vacuity floor and reports "every single-tree arm read pure", which is a true statement about
+        # zero cells and a completely misleading one about the engines.
+        unknown = sorted(only - {sp["id"] for sp in SPLITS})
+        if unknown:
+            print(f"usage error: --only names no such split shape: {', '.join(unknown)}\n"
+                  f"  available: {', '.join(sp['id'] for sp in SPLITS)}\n"
+                  f"  (`direct` exists in gen_differential.py but has no dep half, so it is not split here)")
+            sys.exit(2)
     cells = build_cells(only)
     by_split = {}
     for c in cells:
@@ -730,8 +740,9 @@ def main():
         # VACUITY FLOOR. A run in which the single-tree arm never attributes an effect is not a passing
         # run, it is a run that tested nothing -- and it looks exactly like a passing one.
         if live == 0:
-            print(f"  FAIL (vacuity floor): engine '{e}' produced ZERO live cells -- every single-tree arm "
-                  f"read pure, so nothing was demanded of the chained arm.")
+            why = ("no cells were generated at all" if not cells else
+                   "every single-tree arm read the entry pure, so nothing was demanded of the chained arm")
+            print(f"  FAIL (vacuity floor): engine '{e}' produced ZERO live cells -- {why}.")
             rc = 2
 
     print("\nDEP-HALF COVERAGE  (does the dependency's OWN report carry the witness? a dep report with no "
