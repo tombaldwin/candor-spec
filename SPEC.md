@@ -1613,10 +1613,17 @@ all — so the token parsed to a null kind and classified as `unresolved` on the
 string path, in one engine, silently. Two code comments had recorded the divergence as intended behaviour
 rather than fixing it.
 
-An implementer amending this section MUST update both halves and SHOULD add a test that a **fabricated**
+An implementer amending this section MUST update both halves and **MUST** add a test that a **fabricated**
 off-vocabulary kind (`banana:whatever`) still behaves as §2 forward-compatibility requires — round-tripped
 verbatim, classified through the conservative catch-all. Without that control, "added a kind" and "stopped
 checking the kind set" are the same diff.
+
+**MUST, not SHOULD — because a mutation exists that ONLY that control catches.** Measured: an engine whose
+prefix test is rewritten from *is the kind in the SET* to *does the token have the `kind:detail` SHAPE*
+(`contains(":")`) passes **every** assertion about every real kind — they all have the shape — and is caught
+solely by the fabricated one. Of four mutations run against one engine, the fabricated kind was load-bearing
+in three, and the sole detector in that one. A control that is only exercised by inputs the implementation
+already handles is not a control.
 
 **A consumer may need a kind it never emits.** An engine that chains dependency reports relays their
 `unknownWhy` tags into its own report keyed by the calling function, so a kind produced only by another
@@ -1628,6 +1635,17 @@ represent it.
 owner type. `ambiguous:` projects to class `dispatch` (§6.2) but has **no owner**, so an engine whose
 frontier selects sources by *class* will admit entries there is nothing to resolve against, while one that
 selects by *kind* excludes them for free.
+
+⟨0.24⟩ **OPEN — two off-vocabulary kinds an engine emits today, and one of them answers a DIFFERENT
+QUESTION from the five.** Recorded rather than reconciled, because reconciling either changes report bytes.
+`dynamicMemberLookup:` is the mild case — off-vocabulary as a §4 *kind*, but §6.2's projection table does
+register it, which is the same producer/consumer asymmetry `ambiguous:` sat in until this rung.
+**`contentsOf:indeterminate-url-scheme` is the sharp one: registered NOWHERE** — not among the five, not in
+§6.2's table, not as a migration kind. It reaches `unresolved` through the conservative catch-all, which is
+defensible, but its meaning is *"the call resolved; its effect CATEGORY is unprovable"* — which is not what
+any of the five say. All five answer *"the body could not be resolved."* A vocabulary whose members answer
+one question should not silently acquire a member answering another; either it earns a kind with its own
+projection, or its meaning belongs in a different field.
 
 ⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** —
 §6.2 holds them up as the correct shape (a reason attached where the `Unknown` is created, per dependency
