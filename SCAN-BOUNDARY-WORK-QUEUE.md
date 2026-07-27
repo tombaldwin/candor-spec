@@ -106,9 +106,32 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
 
 - [ ] **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
       (and a stale `{Unknown}` therefore erases a trusted effect — measured, `deny Fs` exit 1 → 0), ts
-      UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`, which recommends
-      ts's union and is **deliberately unmade**. Note the doc's own history: this rule has been described
-      three times and been wrong twice.
+      UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`.
+      **DECIDED 2026-07-27 (`b47c9ab`) — adopt ts's union.** The gating measurement (item 1, "what a union
+      does to rust's corpus") is done, read-only over the real `.candor/deps` trees of candor-rust/pgman/
+      ebman. It cost SEVEN effect-items across all three corpora and buys back 123 purity claims + 24
+      `deny Fs` flips. It also **moved the argument**, which is what waiting for it was worth:
+      - The doc's own objection — "two entries under one key may be two DIFFERENT functions that merely
+        collide, so unioning fabricates" — **describes nothing in the corpus.** Every measured disagreement
+        is one function at two VERSIONS of one crate (thiserror-impl 1.x/2.x, rustix 0.38/1.1, http 0.2/1.4,
+        hyper 0.14/1.9), both legitimately in the tree. For a version pair the union is not a hedge, it is
+        the correct answer: both bodies are in the build and the package-scoped key cannot say which one a
+        caller resolves to.
+      - Named live cardinal sin: `hyper#client::conn::http1::Builder::handshake` = `['Log']` @0.14.32 vs
+        `[]` @1.9.0 → rust withdraws → consumer reads it ABSENT = pure, on one of the most-depended-upon
+        crates there is.
+      - **Withdrawing costs more than the effect** — a finding the doc had not considered. The key carries
+        the κ ledger and the call edges too, and both disagree far MORE often than `inferred` (`invisible`
+        30/37/273, `calls` 57/120/326). Rust discards all of it at once.
+      - Item 2 (surfaces) recorded as **UNDER-POWERED, not answered** — my first pass produced a flattering
+        zero by comparing absent keys to absent keys. Real sample is 0-9 keys.
+      - [ ] **IMPLEMENT four-way**, behind the decision: rust stops withdrawing, java stops last-non-empty,
+            swift's trust-level-first rule reconciled with the union (doc item 4, still open), ts unchanged
+            as the reference. Plus a conformance PART verified-to-catch per engine, with a row that FAILS
+            for an engine that withdraws or picks. Do NOT start while the four frontier agents hold the
+            repos.
+      Note the doc's own history: this rule has been described three times and been wrong twice — which is
+      itself part of the argument for a rule that discards nothing.
 - [x] **RULED (SPEC §3.1 ⟨0.24⟩, `ec75631`) — empty, absent and unparseable are ONE input: over-list.**
       `hasHier` gates on EMPTINESS (rust `!hier.is_empty()`, ts `Object.keys(...).length > 0`) vs ABSENCE
       (java `hier == null`). Three engines, two answers — and java's is the unsafe one: a sidecar that
