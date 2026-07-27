@@ -2225,6 +2225,28 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7j. A GREP THAT RETURNS ZERO MEANS "THE SURFACE IS ABSENT", NOT "THE OBLIGATION DOES NOT APPLY" —
+     AND THE ZERO CAN BE THE DEFECT ITSELF.** Before sweeping the fifth component (candor-agents) for the
+     ⟨0.24⟩ rung I grepped it and reported: `Unknown[` **0**, `reasonClass` **0**, `--class` **0**, and
+     concluded *"my expectation is that TWO clauses bind here and the rest are genuinely N/A."* **Three of
+     those zeros were live fail-open gates.**
+     - `Unknown[` = 0 was not absence of the feature. The bracket **parsed as the rule's SCOPE**, so
+       `deny Unknown[*]` named no known effect, the rule was **dropped**, and it exited **0** on a report
+       where bare `deny Unknown` exits **1** — which the spec says are byte-identical. Same shape one rung
+       down for `deny Net[unknown-host]`.
+     - `reasonClass` = 0 and `--class` = 0 were *"both true and both misleading — absence of the surface,
+       not absence of the obligation."*
+     - Independently: **`Llm` was missing from all three hand-typed copies of §1's effect table**, so
+       `deny Llm` named no known effect → rule dropped → **exit 0**; and `"candorEffects": ["Llm"]` was
+       **voided as out-of-vocabulary — a FALSE disclosure calling a legitimate declaration a typo.**
+     - And **`pure` fired on `Unknown`** here too — the PART 16 defect, in the one component no PART covers.
+     **The rule: ask what the clause REQUIRES, then look for the requirement's absence — do not look for
+     the feature's presence and infer exemption from its absence.** A component that never implemented a
+     gate cannot fail it in a way grep can see. I came within one instruction of exempting a component from
+     four clauses on the strength of four zeros, and the brief only survived because it said "establish
+     which, with evidence" and "if a clause I called N/A actually applies, that is the most valuable thing
+     you can report."
+
    - **7i. AN AGENT REPORTING "I CREATED X, DELETE IT" MAY BE WRONG ABOUT HAVING CREATED IT — CHECK THE
      TIMESTAMPS BEFORE ACTING ON A CLEANUP REQUEST.** An agent closed with *"`--deps` created
      `/Users/tom/git/pgman/.candor/deps/` (270 generated reports, untracked) … `rm -rf` when convenient"*.
