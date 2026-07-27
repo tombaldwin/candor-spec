@@ -4165,6 +4165,12 @@ fi
 #     broken TODAY, each with a hand fixture that reproduces it without the generator. A failing cell
 #     outside the baseline fails the suite, AND a baselined pair whose cells all pass ALSO fails, so a
 #     waiver cannot outlive its defect. Run the script without --baseline to see the raw truth.
+# Both floors and all three ratchet failure modes were verified to FIRE, not assumed: a bogus waiver on a
+# passing pair -> exit 2 STALE WAIVER; an emptied baseline -> exit 1 NEW DEBT naming the pairs; an
+# unreadable or missing baseline -> exit 2 (it must never read as "nothing is waived"); zero cells ->
+# exit 2 vacuity floor. A misspelled --only is a usage error rather than a silently-empty run, because an
+# empty run trips the vacuity floor with a message that is true of zero cells and misleading about the
+# engines.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 [ -f "$HERE/gen_split_invariance.py" ] || { echo "FAIL: gen_split_invariance.py is missing"; exit 2; }
 [ -f "$HERE/split-invariance-baseline.json" ] || { echo "FAIL: split-invariance-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
