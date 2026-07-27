@@ -742,7 +742,18 @@ the only verdict-changing one — do not bundle them.
             whose `Unknown` IS explained (once via its own tag, once via a `calls` edge). Measured: the
             naive form flips **96/141 and 211/211** with fresh reports where the correct rule flips **0**.
             Java's analogue of swift's 435-vs-0. **A fixture that cannot show that gap is not a control.**
-      - [→] rust/ts pending.
+      - [x] **ts: NO-OP, and its guarantee is the STRONGEST of the four (`d64c032`, test-only).**
+            Reachability **0 over 1872** `Unknown`-bearing functions, five arms including trusted AND stale
+            chained deps. **candor-ts is at the source TWICE**: the emitter writes
+            `unknownWhy: ["unresolved"]` on any unnamed direct `Unknown`, AND a trust-marker self-check
+            **REFUSES TO WRITE THE REPORT AT ALL** (exit 2) if one escaped. *"The state is not merely
+            unwritten, it is unwritable."* Established by MUTATION — deleting the fallback turns the
+            stale-dep arm into exit 2 with no report. Now the stated ideal in SPEC §6.2 (`7aa0ebc`): a
+            join-side default COPES, a source-side contribution makes it UNREACHED, a producer-side
+            self-check makes it UNWRITABLE.
+            **So 4a is: java the ONLY engine where it was reachable** — via the dependency boundary, the one
+            route swift and ts had already closed. Three of four were already right at the source.
+      - [→] rust pending.
 - [ ] **NEW — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
       4a.** The tool whose entire job is to name the holes a green gate does not prove — and its filter
       **under-reports the more the user narrows**. Two causes, both needed:
@@ -795,7 +806,21 @@ the only verdict-changing one — do not bundle them.
         at all (17,306 entries, zero). Fault 1's contribution is a genuine fail-closed net whose only
         demonstrated firing is the fixture. **A 0 that means "the net never had to catch anything", not
         "the fix did not land".**
-      - [→] ts/java pending.
+      - [x] **ts FIXED `cbbb05c` — the WORST of the family.** Six rows, three real targets × two policies,
+        all converging exactly: candor-ts's own **207→173 (−16%)**, execa **268→158 (−41%)**, got
+        **64→21 (−67%)**. Underlying gap: **24%** of `Unknown`-bearing entries on ts's own sources and
+        **57–58%** on execa/got carry no direct reason.
+        Structural repair as specified — the gate already resolved transitively, the second copy was
+        consumer-side; `resolveReasonClasses`/`reasonClassesMatch` now live in `policy.mjs` and BOTH call
+        them, with `dynamic` resolved from the same exported vocabulary the policy parser uses. **One
+        fixpoint, one match rule, one vocabulary.**
+        **`blindspots` measured and LEFT ALONE** — 237/190/55 sources, `--class dynamic` already excluded
+        nothing on all three. **Third independent confirmation that my two-verb brief was wrong** and the
+        correction was right.
+        **The agent caught its own mirror fabrication**, third to do so today: its first attempt treated an
+        absent `direct` key as direct and over-fired on an inherited-but-classified caller — *"exactly the
+        mirror fabrication req 3 warns about; measuring caught it."*
+      - [→] java pending.
 - [ ] **Residual, deliberately left (swift, and check it four-way when the sweep lands):** `UnverifiedHole`
       still prints the report's DIRECT `unknownWhy`, so a hole surfaced by `--class dispatch` *through
       inheritance* is listed with an empty `unknownWhy` — the filter matched on a class the output does not
