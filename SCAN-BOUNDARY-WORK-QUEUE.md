@@ -2847,3 +2847,41 @@ tslib helpers — `__awaiter`/`__generator` appear in 9 ES files and **0** CJS f
 native `async`/`await`. It is a downlevel-TARGET difference, not an inlining one, and 41 of the 56 imports
 are `__extends` rather than the named helpers. A refutation whose stated cause is wrong is half a
 refutation.
+
+### Verified independently, rust's round (2026-07-27 evening)
+
+**The gate defect is a MONOTONICITY failure**, which is a sharper statement than the review's. Reproduced
+by me post-fix, bracketed by both single-call controls — that bracketing is what makes it monotonicity
+rather than a missing case:
+
+| consumer body | `deny Unknown[unresolved]` |
+|---|---|
+| the REASONLESS dep fn only | exit 1 — the §6.2 absence fallback answers |
+| the REASONED dep fn only | exit 0 — correctly `dispatch`, not `unresolved` |
+| **BOTH** | **was exit 0, now exit 1** |
+
+**Adding a call removed a class.** The pre-existing fixture could not see it — its consumer calls ONE dep
+function, so the class set was empty and the fallback answered — **and it still passes under the mutant.**
+
+**MY CHECK 1 WAS RIGHT, and it was a SECOND CARDINAL SIN in my own `6f2210c`.** Derived `PartialEq`
+compares `Vec`s element-wise and order-sensitively, so the exemption decided "the same claim restated" by
+**SERIALISATION** rather than by the claim: two reports making an identical claim with a differently-ordered
+`hosts` vector were still withdrawn → absent entry → purity claim. Fixed in the TYPE (all eight `DepFn`
+fields are `BTreeSet`s), on the argument that `apply_dep_fn` folds every field into a set anyway — so
+set-equality is not a relaxation of never-guess but its exact statement.
+- The corpus is a **fabrication control, not evidence**: 0 set-equal-but-not-vec-equal across 72,490
+  collisions, because §2.1 admits only same-version reports and this writer emits from `BTreeSet`s — *and
+  that is a crate version, not a build id.*
+- **ARMED** (every report re-chained with array order reversed): pre-fix pgman **loses 7 entries**,
+  `persist_draft_to` and `persist_history_to` vanishing with `['Clock','Fs']`; ebman 47 changed. Post-fix
+  identical to unarmed.
+
+**MY CHECK 2 — true in substance, one word wrong.** The three set writes do appear exactly once each inside
+`cover` and are consumed at one place, but *"read nowhere else in the engine"* is FALSE: `load_dep_reports`
+reads both again for its two stderr disclosures. The argument is now a test that DERIVES writes and
+consumers from the source instead of asserting them.
+
+- [ ] **FILED, all four engines — a report cannot say "Unknown, and one of them has no reason" beside a
+      reason it does have.** §4 has no kind for it (which is why the invented one was removed), and §6.2's
+      rule is per-function and keyed on ABSENCE, so it does not compose. A second-hop consumer re-derives
+      `dispatch` alone. This is a §4/§6.2 rung, not an engine fix.
