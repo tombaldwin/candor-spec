@@ -477,6 +477,36 @@ Each was refused or deferred with a measurement, not left undone. None is a know
 - [ ] **swift — dep reports name SwiftPM PACKAGES while imports name MODULES** (`swift-case-paths` vs
       `CasePaths`), so on those targets nothing is covered in EITHER arm. Found by instrumenting why a fix
       showed no delta rather than assuming it was inert. Pre-existing and separate from the vein.
+      - **REPRODUCED WITH ITS CONTROL, 2026-07-27, and it is total rather than partial.** Two packages: a
+        dep whose manifest is `name: "swift-dep-kit"` with one target `DepKit` exporting an `Fs` method,
+        and an app that does `import DepKit` and calls it. **Chained and unchained are BYTE-IDENTICAL** —
+        `useDep` reads `invisible: ['DepKit']`, coverage reports `uncovered: [DepKit]`, and the dep's `Fs`
+        never arrives. Rename the manifest to `name: "DepKit"`, change nothing else, and the same chained
+        run gives `useDep -> ['Fs']` with the coverage gap closed. So on any package whose SwiftPM name
+        differs from its module name — the majority of the ecosystem's `swift-*` repos — `CANDOR_DEPS`
+        and `--workspace` are **inert**, not merely lossy.
+      - **THE CAUSE IS ONE NAME IN TWO ROLES.** `main.swift:302` sets `pkgName` from the manifest's first
+        `name:` (the PACKAGE), and that name is both the envelope `package` and the prefix of every
+        entry's `hash` (`<pkg>#<qual>`), which is what `Deps.load` keys the index on. Every consumer-side
+        lookup is `deps.lookup("\(m)#…")` for `m` in `fileImports[file]` — an **import**, i.e. a MODULE.
+        The two halves have never been the same string unless the package happens to be single-module.
+      - **THE OBVIOUS HALF-FIX IS A CARDINAL SIN, and it is worth writing down because it is one line.**
+        `Deps.load` already reads a plural `packages: [...]` (the JVM envelope shape) and registers every
+        entry of it as COVERED. Emitting `packages: [pkgName] + internalModules` would make
+        `isChained("DepKit")` true — and the entry keys would still be `swift-dep-kit#…`, so every lookup
+        would still miss. The consumer would then have **coverage without entries**: the `invisible`
+        disclosure withdrawn and nothing put in its place, i.e. silence read as purity. The coverage half
+        cannot land without the key half.
+      - **SO THE FIX IS THE KEY HALF: the first component of the join key must be the name a consumer
+        WRITES IN `import`.** For Swift that is the module, not the SwiftPM package — the same way java's
+        is the JVM package and ts's is the npm package name you import. `Driver.analyze` already derives
+        the module set exactly (`internalModules`: `Sources/<Target>/` subdirectories plus the manifest's
+        `.target/.executableTarget/.macro` names, deliberately NOT `.product` — a distinction the κ ledger
+        already paid for), and each entry's own `loc` names the file it came from, so the per-entry module
+        is derivable without a new index. **Not attempted here**: it moves the report's primary join key,
+        so it is baseline-invalidating, needs the four-way conformance chaining parts re-run (their
+        fixtures use package == module and would not notice), and wants its own A/B — the honest scope is
+        its own session, not a tail-end of this one.
 - [ ] **swift — a nested-type factory does not resolve IN-SCAN either**, so that row has no single-tree
       control and the chained arm is now strictly BETTER than the unsplit one — candor-java `9ae68f7`'s
       smell, one repo over. Documented on the test rather than asserted, because pinning it would encode
