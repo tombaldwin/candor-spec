@@ -267,6 +267,36 @@ def contribute_unresolved(sig, reasonless: bool):
     return Sig(sig.S, frozenset(sig.D | {"unresolved"}) if reasonless else sig.D)
 
 
+# ---------------------------------------------------------------------------------------------
+# REACHABILITY. `L` contains signatures no engine can produce, and a differential must know which.
+
+# `Llm ⊑ₑ Net` (Definition 2) and every engine CO-EMITS both at an LLM call site — a model-provider
+# request IS an outbound request, and that is the very fact that makes the refinement hold. So
+# `Llm ∈ S ∧ Net ∉ S` describes 32768 of the lattice's 131072 points and NONE of them is reachable.
+CO_EMIT = {"Llm": "Net"}
+
+
+def is_reachable(sig) -> bool:
+    """Well-formedness on REACHABLE signatures: a refinement never appears without its base channel.
+
+    THIS IS THE CONDITION PAPER1's (W) WAS REACHING FOR AND MIS-STATED. (W) was written
+    `Unknown ∈ S ⇒ D ≠ ∅`, whose antecedent is unsatisfiable because `Unknown ∉ E` — so it constrained
+    nothing. The same *shape* stated over the refinement preorder is satisfiable and constrains a
+    quarter of the lattice, which is the difference between a well-formedness condition and a sentence.
+
+    WHY IT MATTERS OPERATIONALLY: without it an engine differential reports 100 disagreements on
+    `deny Net` over `{Llm}`-without-`Net`, every one on a signature the engine cannot emit — the model
+    firing correctly on a point that does not exist. Measured on candor-swift: 100 of 1280 rows, and
+    ZERO once restricted here.
+    """
+    return all(base in sig.S for refined, base in CO_EMIT.items() if refined in sig.S)
+
+
+def reachable_lattice():
+    """`full_lattice()` minus the signatures co-emission forbids — the domain a DIFFERENTIAL may use."""
+    return [x for x in full_lattice() if is_reachable(x)]
+
+
 def monotonicity_counterexample():
     """THE 2026-07-27 DEFECT, as a property failure rather than a gate exit code.
 
@@ -370,6 +400,22 @@ def selftest() -> int:
         print(f"  OK    the absence-default rule is NOT upward-closed: Reject{x} but not Reject{y}")
         print("        ^ the 2026-07-27 SPEC defect (§6.2, not the engines — they were conforming),")
         print("          as a lattice property rather than an exit code")
+    # The refinement clause and the contract's plain membership must AGREE over reachable signatures.
+    # Where they disagree, the disagreement must be confined to unreachable ones — otherwise the contract
+    # and the model differ on something an engine can actually produce, which is a real finding.
+    reach = reachable_lattice()
+    refine_v, member_v = deny("Net"), (lambda sg: "Net" in sg.S)
+    split = [x for x in reach if refine_v(x) != member_v(x)]
+    if split:
+        print(f"  FAIL  refinement vs membership disagree on {len(split)} REACHABLE signatures, e.g. {split[0]}")
+        rc = 1
+    else:
+        print(f"  OK    refinement ≡ plain membership over all {len(reach)} REACHABLE signatures")
+        print(f"        ^ they differ on {len(full_lattice()) - len(reach)} UNREACHABLE ones (`Llm` without")
+        print("          `Net`); a differential that does not exclude those reports 100 phantom failures")
+    if [x for x in full_lattice() if not is_reachable(x) and refine_v(x) == member_v(x)]:
+        pass  # unreachable points may agree or not; only the reachable ones are load-bearing
+
     rows = repair_reproduces_the_counterexample_correctly()
     bad = [(n, g, w) for n, g, w in rows if g != w]
     for n, g, w in rows:
