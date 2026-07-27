@@ -686,9 +686,24 @@ even checkable if two runs of one version can disagree. The deterministic effect
 same assumption. It was an unstated premise of a dozen normative claims, which is the same condition that
 produced the §2.2 sidecar convention and the `--class` filter: load-bearing, relied upon, unwritten.
 
-Measured: one engine used `localeCompare` at **eight** sites, one of them ordering the coverage ledger
+Measured: one engine used `localeCompare` at **seven** call sites, one of them ordering the coverage ledger
 *inside the emitted report* rather than in a query output — so report bytes, not just presentation. The
 reference engine sorts the corresponding query output by byte order, so the two already disagreed.
+
+**ASCII DOES NOT PROTECT YOU HERE, and that is what makes this clause separate from the collation one.**
+The collation rule can be reasoned about as "our identifiers are ASCII, so UTF-16 and code-point order
+agree" — true, and it is why that rule's risk is latent. **Locale collation reorders pure ASCII.** Observed,
+same build, same unchanged tree, differing only in the environment: under `LC_ALL=C` the ledger reads
+`[tpad, zpad]` and under `LC_ALL=et_EE.UTF-8` it reads `[zpad, tpad]` — Estonian collates `z` between `s`
+and `t`. Two different report md5s. Danish breaks a second all-ASCII pair (`aa` sorts as `å`, so `aardvark`
+follows `z`). The keys in that ledger are lowercase npm package names: **exactly the case the "ASCII is
+unaffected" argument declares safe.**
+
+A CONTROL FOR THIS MUST BE CHOSEN AGAINST A LOCALE THAT ACTUALLY REORDERS ASCII. Turkish is the intuitive
+choice — the dotless-i is the famous case-folding break — and it **does not discriminate here**: Turkish
+inserts its extra letters *between* the ASCII ones, leaving pure-ASCII relative order unchanged. A
+`C`-versus-`tr_TR` experiment on ASCII keys returns "no difference" and licenses the conclusion "latent, not
+observed", which is false. Use `et_EE` or `da_DK`.
 
 Note this is **stricter than, and separate from, the collation rule** for a single joined field: that one
 says *which* order among the well-defined ones, this one says the order must not depend on the environment
