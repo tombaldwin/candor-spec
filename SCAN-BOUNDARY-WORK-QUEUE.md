@@ -264,6 +264,62 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       Fix has two halves: separate PRODUCER from CONSUMER in the arm labels so a shared consumer cannot read
       as independent agreement, and add rust's producer arm. Belongs with §3 (P1 holds `conformance/`).
 
+### 2b — WHAT THREE FABLE REVIEWS OF THE THEORY + SPEC FOUND (2026-07-27) · mostly fixed, three open
+
+Three independent reviewers (theory-internal, theory↔spec correspondence, spec-internal). **Two of them
+independently found the same top finding**, and eleven of one reviewer's fifteen touched text written that
+same day. FIXED already: `pure` (§6.2 + the model), §4's four-kinds + two stale rust claims, §2.2's
+"NOT YET RULED", `netClass`'s rung tag, "the ten effects", the falsified `--class dynamic` diagnostic, the
+overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missing `Ipc`/`Clipboard`.
+
+- [ ] **OPEN, and the biggest: `deny Net` does not fire on a `{Db}` function, and §1 claims it should.**
+      Model Def 4/30 is refinement-closed (`Reject ⇔ ∃e′∈S. e′ ⊑ₑ e`, so `deny Net` fires on `{Db}` — the
+      model's own pinned worked example). SPEC §4.0 says plain membership (`e ∈ S`). Engines implement
+      membership. **VERIFIED MYSELF**: §1 line 224 says *"`Llm` refines `Net` **the way `Db` does**"*;
+      candor-classify emits `Llm`+`Net` together (*"a model dispatch IS network I/O"*, `lib.rs:1549`) and
+      emits `Db` **alone** (five `Some("Db")` sites, no `Net`). The two refinements §1 calls identical are
+      encoded oppositely.
+      **BUT THE REVIEWER'S FIX IS WRONG, AND THE ASYMMETRY IS PROBABLY CORRECT.** It proposed making `deny`
+      refinement-closed so `deny Net` catches `Db`. That over-fires: **`Db` is not always network.** SQLite,
+      embedded H2, an in-memory store — all `Db`, no egress. `Llm` genuinely *is* always a network call to a
+      provider, which is why co-emitting `Net` there is right. So `Llm ⊑ Net` holds and `Db ⊑ Net` **does
+      not**; they are different relations and **§1's sentence is the defect**, not the gate.
+      What remains real underneath: a **networked** DB call (JDBC/sqlx over TCP) is genuine egress that a
+      `deny Net` gate will miss. That is a CLASSIFIER precision question — can an engine distinguish
+      postgres-over-TCP from SQLite at a call site? — not a gate-semantics one, and answering it by widening
+      `deny` would charge every SQLite user with network egress. **MEASURE BEFORE EDITING**: how often can
+      the driver/DSN be resolved at the call site, four-way. Then either co-emit `Net` where it IS network
+      (byte-changing rung) or state the residual in §1 honestly. Do NOT take this one by argument — that
+      instruction paid for itself twice today.
+- [ ] **OPEN: the ⟨0.21⟩ manifest is exactly the `{count, digest}` form PAPER3 Def 24 says CANNOT discharge
+      (A0).** Def 24/Remark 2: discharging it needs **function granularity**; `{count, digest}` "cannot
+      disambiguate dropped from pure". §4.0 nonetheless claims the manifest "is what lets a consumer tell
+      `(∅,∅)` from a function never placed in the lattice at all" — which for a *bare envelope* is the claim
+      Remark 2 denies (the per-unit route is the §2.2 sidecar, which is OPTIONAL). **This lands directly on
+      `gate --report`**, which leans on "absent is absent" with no manifest obligation stated: a dependency
+      report that silently dropped a function gates GREEN, in the supply-chain verb. Either require the
+      function-granularity set wherever absent⇒pure is consumed across a TRUST BOUNDARY, or weaken §4.0's
+      sentence to the count-level claim it actually supports.
+- [ ] **OPEN: PAPER3's Defs 33/34/35 do not describe the shipped verbs, so Prop 5's "full shipped policy
+      language" is not discharged.** Found by BOTH theory reviewers. `forbid` is modelled as an effect
+      predicate `φₑ`; the shipped `forbid A -> B` (AS-EFF-009) is a **call-graph dependency rule** that
+      fires on a *pure* call and carries an empty effect set. `allow` is modelled as a scope exception "not
+      a rejection predicate"; the shipped `allow` (AS-EFF-008) is a **fail-closed literal allowlist** that
+      IS rejection-capable and reads `hosts`/`paths`/`cmds`/`tables` — **outside the carrier `L` entirely**.
+      `unknown-ratchet` is modelled as `D ⊄ D_b`; the shipped one **grandfathers** a function already
+      `Unknown` at baseline even when it acquires new classes (executed counterexample: `D_b={dispatch}`,
+      `D={dispatch,reflect}` → model REJECT, engine passes). Also unmodelled: `deny Net[dest…]`, the
+      marketed security gate. **Consequence: the planned engine-vs-model differential will falsely flag
+      engines on the ratchet row and cannot exercise `forbid`/`allow`/`Net[dest]` at all.** Paper work.
+- [ ] Lower priority, all real: a **fourth escape** §8 does not catalogue (within-`D` reason-class
+      reclassification is `⊑`-incomparable, H-invisible, flips a scoped gate red→green — and §6.2 names the
+      hazard itself); `deny <NewEffect>` on an older engine is **silently dropped** = gateless-green,
+      fail-OPEN, the shape the unreadable-policy clause refuses with exit 2; `gate --report`'s four
+      under-definitions (no changelog entry, `--report` required-or-discovered, behaviour over an
+      `unanalyzed` report, provenance posture); the locale clause's two readings (code-point everywhere vs
+      environment-independence only); `--class`'s value grammar and unrecognised-token behaviour;
+      `blindspots --stats` / the `reports` verb / `encountered-*` are **named and never defined**.
+
 ### 3 — CLOSE THE STRUCTURAL GAP WITH SELF-DIFFERENTIAL PROPERTIES · the highest-yield row here
 
 **The gap.** Conformance asks *"do the engines agree?"* All four share one spec, one set of design docs
