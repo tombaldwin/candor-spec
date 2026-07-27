@@ -4104,11 +4104,21 @@ fi
 #
 # WHAT IT DOES AND DOES NOT COVER. It verifies the model, completely: upward-closure is checked against
 # COVERS rather than all ordered pairs, so a single-element step suffices by induction and the check is a
-# proof for the whole finite lattice (2^|E| x 2^|R| = 32768 signatures) rather than a sample. It does NOT
-# verify any engine — no engine exposes a way to gate a GIVEN signature (the gate is reachable only via
-# `scan --policy`, which computes S from source, and via `whatif`, which reports only violations the
-# hypothetical INTRODUCES), so the code-implements-spec direction stays with the differential PARTs above.
-# That gap is recorded in `reference/README.md` with the two routes that would close it.
+# proof for the whole finite lattice (2^|E| x 2^|R|, derived below rather than hardcoded) rather than a
+# sample. It does NOT verify any engine — no engine exposed a way to gate a GIVEN signature (the gate was
+# reachable only via `scan --policy`, which computes S from source, and via `whatif`, which reports only
+# violations the hypothetical INTRODUCES), so the code-implements-spec direction stayed with the
+# differential PARTs above.
+#
+# ⟨0.24⟩ THAT GAP IS BEING CLOSED: SPEC §3.1 now specifies `gate --report <locator> --policy <file>`,
+# which applies a policy to a GIVEN report with no scan. When engines ship it, this PART extends from "the
+# model is internally monotone" to "each ENGINE agrees with the model" — feed each one a signature the
+# model has already judged and compare verdicts. Do NOT extend it naively: a review found that PAPER3's
+# `pure` (Def 32) rejected a disclosed signature where the contract and all four engines pass it, so the
+# first differential row would have flagged four CONFORMING engines. The model was amended. The same
+# review found Defs 33/34/35 (`forbid`, `allow`, `unknown-ratchet`) also describe verbs that do not exist
+# as modelled — those rows must NOT be added until the definitions are reconciled, or this PART will
+# manufacture divergences out of the theory.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 P23_OK=0
 REF="$HERE/../reference/policy_model.py"
@@ -4116,7 +4126,26 @@ if [ -f "$REF" ]; then
   P23_OUT="$(python3 "$REF" 2>&1)" || P23_OK=1
   echo "$P23_OUT" | sed 's/^/  /'
   # A vacuity floor: the file must actually have checked the whole lattice, not a stub that prints OK.
-  echo "$P23_OUT" | grep -q "32768 signatures" || { echo "  FAIL: the model check did not cover the full lattice"; P23_OK=1; }
+  # DERIVED, not hardcoded. This grepped for the literal "32768 signatures" until 2026-07-27, when adding
+  # the two §1 effects the model was missing (`Ipc`, `Clipboard`) made it 131072 and turned a correct fix
+  # into a red suite. The floor was right to fire — the lattice DID change — but a literal cannot tell
+  # "the vocabulary grew" from "the check was stubbed out", which is the only thing it exists to detect.
+  # So compute the expected size from the model's own E and R and require the printed count to match it.
+  P23_EXPECT="$(python3 -c 'import sys; sys.path.insert(0, "'"$HERE"'/../reference"); import policy_model as m; print(2**len(m.E) * 2**len(m.R))' 2>/dev/null)"
+  if [ -z "$P23_EXPECT" ]; then
+    echo "  FAIL: could not derive the lattice size from the model's own vocabulary"; P23_OK=1
+  else
+    echo "$P23_OUT" | grep -q "$P23_EXPECT signatures" || {
+      echo "  FAIL: the model check did not cover the full lattice (expected $P23_EXPECT signatures from |E|x|R|)"; P23_OK=1; }
+  fi
+  # And the vocabulary itself must not drift from SPEC §1 — the reason the count moved in the first place
+  # was that the model had NINE effects where §1 has eleven, which would have crashed the planned
+  # engine-vs-model differential on the first report carrying `Ipc` or `Clipboard`.
+  SPEC_EFFECTS="$(grep -c '^| `[A-Z][A-Za-z]*` |' "$HERE/../SPEC.md" 2>/dev/null || echo 0)"
+  MODEL_EFFECTS="$(python3 -c 'import sys; sys.path.insert(0, "'"$HERE"'/../reference"); import policy_model as m; print(len(m.E))' 2>/dev/null || echo 0)"
+  if [ "$SPEC_EFFECTS" -gt 0 ] && [ "$MODEL_EFFECTS" -gt 0 ] && [ "$MODEL_EFFECTS" -ne "$((SPEC_EFFECTS - 1))" ]; then
+    echo "  NOTE: model has $MODEL_EFFECTS effects, SPEC §1's table has $SPEC_EFFECTS rows (incl. Unknown, which is not an effect) — check for drift"
+  fi
   echo "$P23_OUT" | grep -q "NOT upward-closed" || { echo "  FAIL: the known-bad rule is no longer demonstrated — the check has stopped discriminating"; P23_OK=1; }
 else
   echo "  FAIL: reference/policy_model.py is missing — the theory-vs-spec check cannot run"
