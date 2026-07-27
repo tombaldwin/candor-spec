@@ -2206,7 +2206,10 @@ RS
 echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
 python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" <<'PY' || rc=1
 import json, os, sys
-CANON = {"reflect", "native", "dispatch", "callback"}
+# ⟨0.24⟩ FIVE canonical kinds. `ambiguous` was promoted from TOLERATED: §6.2 had always classed it
+# `dispatch`, so consumers were right while producers emitting it were non-conforming, and reclassifying it
+# to `indirect` was measured to take `deny E Unknown[dispatch]` from 58 of 200 crates to 0 of 200.
+CANON = {"reflect", "native", "dispatch", "callback", "ambiguous"}
 # Known migration kinds (SPEC §4 ⟨0.7⟩): an engine MAY still emit these while it reconciles its reasons
 # onto the canonical four (MODEL.md tracks candor-java's task-handoff/indy). They WARN — visible, not
 # silently allowed — but do NOT fail the suite, so a not-yet-reconciled engine is surfaced without being
@@ -2225,7 +2228,12 @@ CANON = {"reflect", "native", "dispatch", "callback"}
 # 58 of 200 crates.io crates today and on 0 of 200 if `ambiguous:` is reclassified `indirect`, because
 # every other `dispatch:` rust emits requires a chained dependency. Tolerated + WARNED until that rung.
 MIGRATION = {"task-handoff", "indy"}
-TOLERATED = {"ambiguous"}   # off-vocabulary in §4, but named and classed by §6.2 — see above
+# ⟨0.24⟩ REGISTERED, not tolerated and not migration: §6.2 holds these up as the CORRECT shape (a reason
+# attached where the `Unknown` is created, per dependency ENTRY), so they must not sit in a bucket whose
+# meaning is "being reconciled away". They project to `unresolved`.
+REGISTERED = {"dep", "dep-stale"}
+TOLERATED = set()   # ⟨0.24⟩ emptied — `ambiguous` is canonical, `dep*` registered. Kept so a future
+                    # genuinely-transitional kind has a home that is neither canon nor a hard divergence.
 labels = ["rust", "java", "ts", "swift", "rust(vocab)"]
 fails = 0; warns = 0; seen = {}; total = 0
 for label, path in zip(labels, sys.argv[1:6]):
@@ -2241,22 +2249,41 @@ for label, path in zip(labels, sys.argv[1:6]):
             total += 1
             kind = w.split(":", 1)[0]
             seen.setdefault(label, set()).add(kind)
-            if kind in MIGRATION:
+            if kind in REGISTERED:
+                pass    # accepted silently: named by §4, classed by §6.2
+            elif kind in MIGRATION:
                 print(f"  WARN    [{label}] migration unknownWhy kind (not yet reconciled, SPEC §4): {w!r}  (fn {f.get('fn')})"); warns += 1
             elif kind in TOLERATED:
                 print(f"  WARN    [{label}] off-§4-vocabulary kind named+classed by SPEC §6.2: {w!r}  (fn {f.get('fn')})"); warns += 1
             elif kind not in CANON:
                 print(f"  DIVERGE [{label}] non-canonical unknownWhy kind: {w!r}  (fn {f.get('fn')})"); fails += 1
             elif kind == "dispatch":
+                # ⟨0.24⟩ A DOT-FREE DETAIL IS THE RESERVED "no owner could be formed" FORM — free text,
+                # explicitly NOT conformance-compared. This check used to DIVERGE on it, which would hard-fail
+                # the reference Rust engine on its DOMINANT dispatch reason
+                # (`dispatch:untyped cross-package receiver`) the moment §4 ⟨0.24⟩ was implemented. The
+                # dotted form is still normative WHERE AN OWNER WAS FORMED, so the shape is only checked
+                # when a dot is present.
                 detail = w.split(":", 1)[1] if ":" in w else ""
-                if "." not in detail:
-                    print(f"  DIVERGE [{label}] dispatch: must be owner.member: {w!r}  (fn {f.get('fn')})"); fails += 1
+                if "." in detail and (detail.startswith(".") or detail.endswith(".")):
+                    print(f"  DIVERGE [{label}] dotted dispatch: detail must be owner.member: {w!r}  (fn {f.get('fn')})"); fails += 1
 for label in labels:
     if label in seen:
         print(f"  {label}: kinds = {sorted(seen[label])}")
 # THE PURPOSE-BUILT INPUT MUST HAVE PRODUCED THE KIND IT EXISTS FOR. Without this the row degrades
 # silently the moment the fixture stops triggering (a resolution improvement, a parser change), and a
 # vocabulary check nobody notices went quiet is exactly how `ambiguous:` stayed invisible for a release.
+#
+# ⟨0.24⟩ THE NEGATIVE CONTROL, and it is what makes the five rows above mean anything. Without it this PART
+# cannot distinguish "pins five kinds" from "stopped checking the kind set" — the same diff. A fabricated
+# off-vocabulary kind must still DIVERGE.
+_probe = {"functions": [{"fn": "probe.f", "inferred": ["Unknown"], "unknownWhy": ["banana:whatever"]}]}
+_pk = _probe["functions"][0]["unknownWhy"][0].split(":", 1)[0]
+if _pk in CANON or _pk in REGISTERED or _pk in MIGRATION or _pk in TOLERATED:
+    print("  DIVERGE [self-check] the fabricated control kind is in an accepted bucket — this PART has "
+          "stopped discriminating"); fails += 1
+else:
+    print("  self-check: a fabricated kind (`banana:`) is still non-canonical — the vocabulary check discriminates")
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
           "this row's coverage of the off-vocabulary kind is vacuous, not passing"); fails += 1
