@@ -72,9 +72,32 @@ and probably the dot-free detail fix.
           `dispatch:`" and returns `[]` by language model, not as a gap. It emits `dispatch:` for every
           dispatch reason in a 1062-report census. **The spec was reading a silent drop as a language
           property** — which is how the drop survived.
-        - [→] Four per-engine consumer fixes DISPATCHED in parallel (rust/java/ts/swift). Each briefed to
-          MEASURE before changing, to detect the case STRUCTURALLY (a hardcoded string match is an
-          allowlist = the same defect), and to carry a CONTROL proving the fix is not a blanket.
+        - [x] **rust FIXED `a11adf1`** — and the brief UNDERSTATED it: **three** defective shapes, not
+          one. The agent measured all three on the pre-fix binary rather than taking my one.
+          | dot-free detail | no-hier | with-hier |
+          |---|---|---|
+          | a phrase (`untyped cross-package receiver`) | dropped | dropped |
+          | equal to a reacher's WHOLE qual | **MATCHED** | **MATCHED** |
+          | equal to a dotted reacher's SIMPLE METHOD name | **MATCHED** | dropped |
+          Row 2 is a genuine false positive: the split helpers fall back to the whole string AND are applied
+          to both sides, so the override test degenerates into **string equality between a reason detail and
+          a function name** — and the hierarchy arm passed it **only by reflexivity** over a string that is
+          not a type name, never consulting the sidecar. Row 3 is arm-dependence: the same detail disclosed
+          or dropped on nothing but whether a sidecar exists. Fix short-circuits **before** the split.
+          Negative control run on the tests themselves (branch disabled → 5 tests fail).
+          **Row 2's nuance is the durable part**: that entry belonged in the output under ⟨0.24⟩ anyway, so
+          the pre-fix behaviour was **right for the wrong reason** — the configuration that hides a gap
+          instead of showing one ([[feedback-fabrication-fixes-cause-misses]]).
+        - [x] **swift `5f9e75e` — MY BRIEF'S PREMISE WAS WRONG, and the agent measured instead of
+          complying.** candor-swift implements **no `callers` verb at all** (`--include-unknown` → exit 2);
+          it is a PRODUCER that writes the §2.2 sidecar *for* the other engines' consumers. The frontier is
+          a **three**-surface query (rust/java/ts). SPEC corrected `7fb5356`. In-scope work done instead:
+          the producer half pinned — `reasonClass("dispatch:untyped cross-package receiver") == "dispatch"`,
+          previously unpinned (only the DOTTED form was asserted), verified by mutation, and the gate arms
+          measured (`deny Unknown[dispatch]` exit 1 / `deny Unknown[indirect]` exit 0 — the control showing
+          the rejected `callback:` ruling would have flipped it).
+        - [→] java + ts still in flight; both sent row 3 (it can occur in a dotted-qual engine and my
+          original brief did not name it).
 
       ORIGINAL FILING of symptom 3 — the dot-free detail: rust and swift emit
         `dispatch:untyped cross-package receiver`: canonical kind, malformed normative detail (§4 makes
@@ -163,6 +186,19 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       0.21 ([[candor-completeness-manifest]]). Do not patch around it with a leaf-key guess.
       MEASURE FIRST, and not while the four frontier agents are live — running a shared rust binary during
       someone else's edits is standing-bar item 7f, which produced a phantom finding once already.
+
+- [ ] **NEW — a FALSE DISCLOSURE on every `callers` call that has a hierarchy sidecar** (found by the rust
+      agent in passing, and independently by me while measuring the frontier). The report-locator glob picks
+      up `<prefix>.<pkg>.hierarchy.json` as a candidate REPORT and prints
+      `candor: report ….hierarchy.json failed to parse — its functions are OMITTED from this query (corrupt
+      or mid-write); re-run the scan`. The sidecar is not corrupt and nothing is omitted — the message is
+      simply false, and it tells the user to re-run a scan that is fine.
+      This is the class [[candor-scan-guards]] already names once (`net-partner` reported as an ignored
+      unknown config key **while being honoured**): **a false disclosure is worse than a missing one**,
+      because it spends the user's trust in the disclosure channel on noise. It fires on every `callers`
+      call with a sidecar present, including inside the existing frontier tests. Sweep the locator glob in
+      all engines — the sidecar suffixes (`.callgraph.json`, `.hierarchy.json`) should be excluded at the
+      glob, not diagnosed at the parse.
 
 ### 3 — CLOSE THE STRUCTURAL GAP WITH SELF-DIFFERENTIAL PROPERTIES · the highest-yield row here
 
