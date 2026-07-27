@@ -925,12 +925,39 @@ the only verdict-changing one — do not bundle them.
 - [x] **4c. The §3.1 frontier rung** — dot-free disclosed, empty sidecar ≡ absent, mixed source pinned,
       collation named. **rust `a11adf1`, java (3 commits), swift `5f9e75e` (producer half — no `callers`
       verb), ts in flight.** Three-surface, not four.
-- [ ] **4d. A conformance PART for the whole rung**, once 4a/4b land. Must be verified-to-catch per engine:
+- [→] **4d DISPATCHED as PART 27 — and the audit that preceded it IS the finding.** `grep -c` over
+      `run.sh` returns **0** for `CONTRIBUTES`, `viaDispatchOn`, `dot-free`, `--class dynamic` and locale:
+      **a whole rung of normative requirements shipped today with no differential behind any of its
+      behaviour.** Seven rows briefed, each verified-to-catch, scoped to the engines that actually have the
+      surface (`gate --report` is java+swift only; the frontier is a THREE-surface query).
+      ORIGINAL — 4d. A conformance PART for the whole rung, once 4a/4b land. Must be verified-to-catch per engine:
       the three-row counterexample as a row that FAILS for an engine still keyed on absence, and the
       cross-engine `viaDispatchOn` LITERAL (`"run,untyped cross-package receiver,write"` and `"run"`) —
       the existing frontier differential only substring-checks that field and cannot catch an ordering or
       dedup divergence.
-- [ ] **4e. Bump the floor to 0.24** once 4a-4d are green four-way. The rung is OPEN in SPEC but marked IN
+- [ ] **4e. Bump the floor to 0.24** — SITES LOCATED, so it is mechanical once 4d is green. Do NOT bump
+      before then: the rung is tier-1 and VERDICT-CHANGING, so it needs the full pre-publish checklist and
+      not a quiet edit.
+      **The five strings** (one per engine plus the floor declaration the drift gate reads):
+      | what | where |
+      |---|---|
+      | floor | `candor-spec/SPEC.md:20` — `**Version 0.23** — all code engines declare 0.23` |
+      | rust | `crates/candor-report/src/lib.rs:226` — `pub const SPEC_VERSION: &str = "0.23";` |
+      | java | `src/main/java/io/poly/candor/Candor.java:68` — `static final String SPEC_VERSION = "0.23";` |
+      | ts | `scan.mjs:45` — `const SPEC_VERSION = "0.23";` |
+      | swift | `Sources/candor-swift/main.swift:36` — `let specVersion = "0.23"` |
+      **Then, in order** ([[candor-pre-publish-checklist]]): `candor/bin/release-preflight.sh` — its check
+      **[2] is literally "no leftover prior-floor spec strings — the bump-miss signature"**, which is
+      exactly the failure mode a five-site bump has; then four-way conformance; then per-engine CI
+      (clippy/smoke/integration — the checks a local `test` skips); then a corpus test on a real repo; then
+      re-review.
+      **Also rewrite the ⟨0.24⟩ rung entry** in SPEC's version list — it says "IN PROGRESS — engines
+      landing; NOT yet conformance-pinned, and no engine declares it yet", and all three stop being true at
+      the bump.
+      **The adoption note rides with it**: first rung whose primary change can turn a green gate red —
+      measured **0** verdict flips on TRUSTED dep reports, **52 of 145 (36%)** on STALE ones, reachable only
+      through reports the build cannot verify.
+      ORIGINAL — 4e. Bump the floor to 0.24 once 4a-4d are green four-way. The rung is OPEN in SPEC but marked IN
       PROGRESS and no engine declares it. Per [[candor-versioning-ladder]] the tier decides the trigger;
       this is **tier-1** and verdict-changing, so it needs the full pre-publish checklist, not a quiet bump.
 
