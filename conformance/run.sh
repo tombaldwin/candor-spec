@@ -4130,9 +4130,63 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 24 — P1, SPLIT-INVARIANCE: EACH ENGINE AGAINST ITSELF                                [TIER 1]
+#
+# PARTs 18-22 are five hand-written instances of ONE property:
+#     scan(A u B)  ==  scan(B) chained with report(A),   modulo disclosure
+# and they are five of the 44+ instances this vein produced. A human wrote each one and chose each shape
+# — and five fixtures written during the wave could not reach the code they named, because the shape was
+# wrong. PART 24 replaces the choosing: `gen_split_invariance.py` renders an EFFECT x SPLIT-SHAPE matrix
+# (8 effects x 10 shapes = 80 cells) in all four languages, scans each cell BOTH as one tree and as two
+# chained packages, and asserts that each engine agrees with ITSELF across the split.
+#
+# WHY A SELF-DIFFERENTIAL AND NOT ANOTHER CROSS-ENGINE ONE. Every other PART here asks "do the engines
+# agree", which is the weakest signal available: four engines share one spec and one author's mental
+# model, so a wrong model reads as agreement (the coverage door and the malformed manifest were both
+# four-way). An engine cannot share a wrong model with ITSELF across two renderings of one program, so
+# this row needs no reference implementation, no second opinion and no expected-value table — the
+# engine's own single-tree answer is the oracle for its chained answer.
+#
+# THE ASSERTION IS DIRECTIONAL, and PART 21's ruling is why. An effect that becomes `Unknown` across the
+# split is a DISCLOSED precision loss and is counted, not failed; an effect that disappears with NO
+# disclosure — or a function that goes ABSENT, which under <0.21> is a purity CLAIM — fails. Equality
+# would fail the cases the family has already decided are correct.
+#
+# VERIFIED TO CATCH, on two engines, by reverting a shipped boundary fix in an ISOLATED git worktree with
+# its own build dir (never the shared binaries — standing bar 7f):
+#   candor-ts   625e8fd reverted -> the 8 `implicit_conv` cells go ABSENT, ts only, its other 72 unchanged
+#   candor-rust 1623a07 reverted -> the 8 `implicit_conv` cells go ABSENT, rust only, ts/swift unchanged
+#
+# TWO FLOORS, because a property that quietly tests nothing looks exactly like one that passes:
+#   * VACUITY — the row FAILS if any engine's live (non-vacuous) cell count is zero. Currently 80/80 live
+#     on all four; the counts print every run.
+#   * THE RATCHET — `split-invariance-baseline.json` waives the (engine, split) pairs that are known-
+#     broken TODAY, each with a hand fixture that reproduces it without the generator. A failing cell
+#     outside the baseline fails the suite, AND a baselined pair whose cells all pass ALSO fails, so a
+#     waiver cannot outlive its defect. Run the script without --baseline to see the raw truth.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_split_invariance.py" ] || { echo "FAIL: gen_split_invariance.py is missing"; exit 2; }
+[ -f "$HERE/split-invariance-baseline.json" ] || { echo "FAIL: split-invariance-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P24_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_split_invariance.py" --baseline "$HERE/split-invariance-baseline.json"
+) || P24_OK=1
+
+echo "PART 24 — split-invariance: each engine against ITSELF (SCAN-BOUNDARY-WORK-QUEUE.md §3, P1)"
+if [ "$P24_OK" = 0 ]; then
+  echo "  -> MATCH — one tree and split+chained agree, per engine, on every live cell outside the ratchet"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on

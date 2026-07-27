@@ -1,0 +1,76 @@
+{
+  "_": [
+    "RATCHET BASELINE for conformance PART 24 / gen_split_invariance.py (P1, SPLIT-INVARIANCE).",
+    "",
+    "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an engine",
+    "should say — the engine's own single-tree arm is the only oracle, and that is the whole point of a",
+    "self-differential. Each entry only says: this (engine, split-shape) pair is known-broken, here is",
+    "why, and here is a hand fixture that reproduces it without the generator.",
+    "",
+    "IT RATCHETS BOTH WAYS. A failing cell that is NOT listed here fails the suite. An entry listed here",
+    "whose cells ALL pass also fails the suite, so a waiver cannot outlive its defect and start masking",
+    "the defect's return. Delete an entry the moment its engine is fixed.",
+    "",
+    "Granularity is (engine, split) because the defect is a property of the SHAPE: all eight effects of a",
+    "shape fail together. Every entry below was found by this property on 2026-07-27, the first time it",
+    "ran, and every one was then re-derived from a hand-written two-package fixture (below) so that no",
+    "entry rests on the generator being right."
+  ],
+  "known": [
+    {
+      "engine": "rust",
+      "split": "lazy_init",
+      "why": "a chained dep's lazy static is charged to its reader ONLY through a path-qualified read (`deplib::C`); under the idiomatic `use deplib::C;` the same read is silent-pure. 8/8 cells ABSENT.",
+      "repro": [
+        "deplib/src/lib.rs:  pub static C: LazyLock<String> = LazyLock::new(|| std::env::var(\"IE_CFG\").unwrap_or_default());",
+        "app/src/lib.rs:     use deplib::C;",
+        "                    pub fn qualified() { println!(\"{}\", deplib::C.len()); }   // -> ['Env']  correct",
+        "                    pub fn imported()  { println!(\"{}\", C.len()); }            // -> ABSENT   silent",
+        "the dep report carries `<lazy>::C ['Env']` in both arms; the deref vs method-call spelling makes no",
+        "difference, the `use` does. conformance PART 19's rust fixture uses the qualified spelling, which is",
+        "why it has never seen this."
+      ]
+    },
+    {
+      "engine": "rust",
+      "split": "fn_returned_dyn",
+      "why": "a chained dep FACTORY call with NO intermediate binding — `deplib::get().run()` — matches no cross-package receiver-typing branch and reads silent-pure. The BOUND form correctly discloses `Unknown[dispatch:untyped cross-package receiver]`, so this is a hole in a shipped guard, not an un-attempted precision gap. 8/8 cells ABSENT.",
+      "repro": [
+        "deplib:  pub fn build() -> Client;   pub fn get_dyn() -> Box<dyn Task>;",
+        "app:     let c = deplib::build(); c.fetch();   // -> ['Fs']     resolved (typeSurface)",
+        "         deplib::build().fetch();              // -> ABSENT     silent",
+        "         let t = deplib::get_dyn(); t.run();   // -> ['Unknown'] disclosed",
+        "         deplib::get_dyn().run();              // -> ABSENT     silent",
+        "conformance PART 21's rust fixture binds the factory result, which is why it has never seen this.",
+        "PART 21's own ruling — a key that could not be formed MUST NOT read pure — is what this violates."
+      ]
+    },
+    {
+      "engine": "swift",
+      "split": "lazy_init",
+      "why": "a chained dep type's PROPERTY ACCESSOR read is silent-pure even though the dep report carries the accessor under exactly the key the consumer would need. Not lazy-specific: a plain computed `var` behaves identically. 8/8 cells ABSENT.",
+      "repro": [
+        "DepLib:  public struct L { public lazy var v: Int = { …Fs…; return 1 }() }",
+        "         public struct C { public var w: Int { …Env…; return 2 } }",
+        "         public let depCfg = ProcessInfo.processInfo.environment[\"IE_CFG\"] ?? \"\"",
+        "app:     func globalRead()      { print(depCfg.count) }        // -> ['Env']  correct (PART 19)",
+        "         func lazyAcc(_ l: inout L)  -> Int { return l.v }      // -> ABSENT   silent",
+        "         func computedAcc(_ c: C)    -> Int { return c.w }      // -> ABSENT   silent",
+        "the dep report carries `L.v ['Fs'] accessor` and `C.w ['Env'] accessor`. PART 19's swift fixture",
+        "reads a module-level global, which IS modelled — so the accessor form has never been asked."
+      ]
+    },
+    {
+      "engine": "swift",
+      "split": "fn_returned_dyn",
+      "why": "the same unbound-factory shape as rust: `getDyn().run()` and `build().fetch()` read silent-pure, while `let t = getDyn(); t.run()` discloses `Unknown[dispatch:untyped cross-package receiver]` and `let c = build(); c.fetch()` resolves. 8/8 cells ABSENT.",
+      "repro": [
+        "DepLib:  public func getDyn() -> any Task ;  public func build() -> Cl",
+        "app:     let c = build(); _ = c.fetch()   // -> ['Fs']      resolved",
+        "         _ = build().fetch()              // -> ABSENT      silent",
+        "         let t = getDyn(); t.run()        // -> ['Unknown'] disclosed",
+        "         getDyn().run()                   // -> ABSENT      silent"
+      ]
+    }
+  ]
+}
