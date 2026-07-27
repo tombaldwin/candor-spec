@@ -922,7 +922,25 @@ the only verdict-changing one — do not bundle them.
             assertion about EVERY real kind — they all have the shape — and is caught **solely by the
             fabricated kind**. Load-bearing in 3 of 4 mutations, sole detector in one. *A control only
             exercised by inputs the implementation already handles is not a control.*
-      - [→] ts pending.
+      - [x] **ts: ONE representation, rust-shaped, NO production change** (`cb53c9d`). Enumerated every
+            construction site and every read — no enum, union, kind `Set`, kind-keyed `switch` or validator
+            anywhere. Frontier is **KIND-keyed** (`startsWith("dispatch:")`); mutating it to be class-keyed
+            admits `m.Ambig.go` with `viaDispatchOn: "two same-named local definitions"` in BOTH arms — an
+            entry with nothing to resolve overrides against.
+            **AGENTS.md WAS a second copy after all — of the VOCABULARY, not the class table** — and it had
+            drifted: it named `call:jwt.sign` as a live `unknownWhy` origin, a kind ts has not emitted since
+            the `callback:param#i` form landed. **A phantom kind in the doc an agent reads.** Rewritten to
+            the closed five, and the doc drift gate — which pinned only spec-generation strings — was
+            **extended to the kind vocabulary**, both halves verified red.
+            **Caveat worth knowing for cross-engine work:** ts's chain trusts a dep report only when
+            `d.candor.version === "candor-ts-<pkgver>"`, so a literally-foreign candor-rust report takes the
+            **stale** path and downgrades to bare `Unknown` — sound, not fabrication, but it means **the
+            chain is NOT the route a rust `ambiguous:` takes into ts.** The route that matters is the QUERY
+            VERBS, which read any report `--report` is pointed at. Both now covered.
+      **4b IS COMPLETE FOUR-WAY. java was the ONLY engine with the defect** — the only one holding the
+      vocabulary twice. Same pattern as 4a, where java was also the only engine where the defect was
+      reachable. Three of four were already right, twice over, and the sweep's value was establishing that
+      rather than changing it.
       - [ ] **NEW, opened by swift: two OFF-VOCABULARY kinds in the field.** `dynamicMemberLookup:` is mild
             (absent from §4, registered in §6.2's table — the same asymmetry `ambiguous:` sat in).
             **`contentsOf:indeterminate-url-scheme` is registered NOWHERE** and **answers a different
