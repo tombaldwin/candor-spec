@@ -1689,6 +1689,17 @@ Why this is a soundness clause and not a precision one: `unverified` exists to n
 provably so". A filter that fails open makes it under-report the holes it was built to surface, and
 under-report *more* the more the user narrows.
 
+**THE GATE AND THE DISCLOSURE MUST APPLY THE SAME RULE, AND SHOULD SHARE THE SAME CODE.** In the engine
+where this was traced to a root cause, the gate had *never* been party to the defect — it already resolved
+transitively and already treated an absent class set as `unresolved`. The divergence was entirely
+consumer-side, in the one query that reads a **report** rather than the scan's in-memory graph, and which
+carried an **open-coded second copy** of the classification. Two implementations of one rule inside one
+engine, one of them correct, drifting silently because nothing compared them. A disclosure that contradicts
+the gate beside it is worse than either being wrong alone: it tells the user their gate is green *and*
+under-reports why they should not believe it. The repair there was structural — hoist the fixpoint and the
+match rule into shared code so the two cannot drift — and that is the shape to prefer over patching the
+consumer.
+
 ⟨0.24⟩ **IMPLEMENT IT AT THE SOURCE, NOT AT THE JOIN — one engine already did, and that is the shape to
 copy.** The rule above is written as a property of the class set, but the right place to satisfy it is where
 the `Unknown` is *created*: an engine that cannot account for an `Unknown` records a reason for it there and
