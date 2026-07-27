@@ -16,20 +16,30 @@ versions. SPEC §2.1 covers the *staleness* downgrade and says nothing about two
 | engine | rule | verdict |
 |---|---|---|
 | **rust** | WITHDRAW the key (never-guess) | consumer goes **ABSENT** ⇒ a ⟨0.21⟩ purity claim. **Unsound.** |
-| **java** | `if (!de.effects.isEmpty()) put(h, de)` — last **non-empty** wins | keeps an answer; order-dependent |
+| **java** | `if (!de.effects.isEmpty()) put(h, de)` — last **non-empty** wins | keeps an answer; order-dependent — **and a stale `{Unknown}` erases a trusted effect (measured, both orders): `deny Fs` exit 1 → 0** |
 | **ts** | merge into a Set — **union** | sound over-approximation, order-independent |
 | **swift** | trust level decides first, then withdraw within a level | `ca5feb0`; hedged, not silent |
 
-**java's rule is not what the review reported.** "Last-wins" is right only between two *effectful* claims;
-the `!isEmpty()` guard means **a pure claim can never erase an effectful one**, which is the direction that
-matters. So java is unsound only in *choosing* between two non-empty claims — a precision loss, never a
-purity claim. That guard looks accidental and is load-bearing; it should be commented as such.
+**java's rule is not what the review reported** — and my first reading of it, below, was ALSO wrong. The
+`!isEmpty()` guard means a *pure* claim (`[]`) can never erase an effectful one, and I concluded from that
+that java "is unsound only in choosing between two non-empty claims — a precision loss, never a purity
+claim". **That conclusion is false, and a later review caught it. `{Unknown}` IS NON-EMPTY.**
+
+The §2.1 staleness downgrade turns a stale report's entries into exactly `{Unknown}`, which sails through
+the guard and overwrites a trusted report's concrete effects. **Measured, both file orders:** a trusted
+report carrying `Fs` plus a stale report for the same package gives the consumer `['Unknown']` — the `Fs`
+is gone. `deny Fs` goes **exit 1 → exit 0**.
+
+It is not a purity claim (the `Unknown` is disclosed, so `deny Unknown` still bites), which is why it is not
+the cardinal sin. But it is a gate-level defect on the commonest policy shape, and **a report the engine
+has explicitly refused to trust gets to erase a fact from a report it does trust.** The guard is real and
+it is load-bearing against a `[]` claim; it is not the safety property I said it was.
 
 **But java's choice is arbitrary in a way worth seeing.** Measured: the same two reports give the consumer
 `['Net']` as `a-Exec.json` + `z-Net.json`, and `['Exec']` as `z-Exec.json` + `a-Net.json`. **The effect
 depends on the filename.** Rename a file, change the answer.
 
-**rust is the only unsound one**, and it is unsound in the worst direction: the consumer disappears from
+**rust is the only one producing a purity claim** (java's defect above is a gate flip, not silence), and it is unsound in the worst direction: the consumer disappears from
 `functions` entirely, which under the completeness manifest is a positive claim of purity. Filed separately
 with its own measurements.
 
@@ -70,3 +80,17 @@ cost.
 A conformance PART pinning it four-way, with the fixture that already exists in three engines: two reports,
 one key, different effects, and the consumer must carry both — verified to catch per engine, and a row that
 FAILS for an engine that withdraws or picks.
+
+
+## Correction, 2026-07-27 — and it strengthens the recommendation
+
+The paragraph above marked as my error is worth keeping visible rather than editing away, because it is the
+second time in this note's short life that a claim about java's collision rule has been wrong: the review
+before it reported plain "last-wins", I corrected that to "last non-empty wins" and over-read the guard as a
+safety property, and a third review found the `{Unknown}` path through it. **The rule has now been described
+three times and been wrong twice.** That is itself an argument for the union: a rule nobody can state
+correctly on three attempts is not a rule a policy gate should depend on.
+
+It also removes java from the "safe, merely imprecise" column. Every non-union engine now has a measured
+gate-level failure — rust's is a purity claim, java's is a `deny Fs` flip — and the union has neither,
+because it never discards a claim it was given.
