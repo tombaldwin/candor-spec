@@ -202,9 +202,28 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       MEASURE FIRST, and not while the four frontier agents are live — running a shared rust binary during
       someone else's edits is standing-bar item 7f, which produced a phantom finding once already.
 
-- [ ] **NEW — a FALSE DISCLOSURE on every `callers` call that has a hierarchy sidecar** (found by the rust
-      agent in passing, and independently by me while measuring the frontier). The report-locator glob picks
-      up `<prefix>.<pkg>.hierarchy.json` as a candidate REPORT and prints
+- [x] **CLOSED `94de3b0` + SPEC §2.2 ⟨0.24⟩ `5652ce6` — and it was not cosmetic, and it needed no sweep.**
+      Filed as a spurious warning; measured as **three real losses**, each against a sidecar-removed control:
+      - **an effect-free crate was REFUSED OUTRIGHT** — the bogus parse failure set the `hard_fail` bit that
+        distinguishes "no effects" from "every report was corrupt", so a well-formed `functions: []` report
+        beside a sidecar exited **2** and answered nothing;
+      - **provenance emptied** — the build-version reader takes the first report by sorted path and the
+        sidecar sorts first, so `baseline_version`/`engine_version` came back `""`, which **silences the
+        §2.1 producing-build mismatch disclosure**. A false disclosure suppressing a true one.
+      - `reports <prefix>` — the canonical "what counts as a report" oracle — listed the sidecars as reports.
+      **MY SWEEP ASSUMPTION WAS WRONG, and the measurement inverted it.** I briefed this as spec-level and
+      expected four engines to share it. Three already exclude these by NAME; only rust discriminated by
+      SEGMENT COUNT, which is why only rust had the hole. No sweep.
+      **But the spec gap is sharper than the bug**: nothing said prefix discovery must exclude the §2.2
+      sidecars. Three engines did it by convention, the fourth did not, and nothing said it was wrong — and
+      the three by-name lists **disagree** (ts carves out six suffixes, java two). Cross-engine reading is
+      real (the frontier differential has one engine produce and another consume), so the short-list
+      consumer claims the other's sidecar as a report. Reserved set now enumerated in §2.2, denylist
+      required, direct-file locator explicitly exempt.
+      - [→] java's list widened to the family set — DISPATCHED with 4a.
+      ORIGINAL FILING — a FALSE DISCLOSURE on every `callers` call that has a hierarchy sidecar (found by
+      the rust agent in passing, and independently by me while measuring the frontier). The report-locator
+      glob picks up `<prefix>.<pkg>.hierarchy.json` as a candidate REPORT and prints
       `candor: report ….hierarchy.json failed to parse — its functions are OMITTED from this query (corrupt
       or mid-write); re-run the scan`. The sidecar is not corrupt and nothing is omitted — the message is
       simply false, and it tells the user to re-run a scan that is fine.
