@@ -7,7 +7,7 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
-## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 7 resolved, 3 live — all three now swift/rust)
+## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 9 resolved, 1 live — rust incompleteness)
 
 A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
 defects. Every one is again a guard written during that wave** — the same base rate as the previous
@@ -49,12 +49,12 @@ up, so they are written here first and worked second.
         nothing and cannot show it gains anything. The `.bind`-into-HOF idiom has been all but replaced
         by arrow functions in modern TS; it survives in class-style code, which is where the reviewer's
         shape and the fixture live.
-- [ ] **rust `deps.rs:220` + ~~java~~ + swift — only candor-ts withholds coverage from a dep report that
+- [ ] **rust `deps.rs:220` + ~~java~~ + ~~swift~~ — only candor-ts withholds coverage from a dep report that
       declares ITSELF incomplete** (non-empty ⟨0.21⟩ `unanalyzed`). The other three gate coverage on
       STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
       shape 1's second door — the one ts found in its own sweep (`21277eb`) — unswept in three engines.
       **The sweep found the door and did not carry it across, which is the exact thing the sweep exists
-      to do.** **JAVA DONE — candor-java `d1d3045`; rust and swift remain.**
+      to do.** **JAVA DONE — candor-java `d1d3045`. SWIFT DONE — candor-swift `74cd8f1`. Rust remains.**
       - Entries KEPT (they came from source the dep really did read), coverage withheld, stderr says why.
         Absent or explicitly EMPTY `unanalyzed` = complete; anything else, malformed included, fails
         closed. ts's item-0 trade — the ledger hedge REPLACING half 1's `Unknown[dispatch]`, its
@@ -73,17 +73,150 @@ up, so they are written here first and worked second.
         Armed (every dep report made to declare itself incomplete, envelope only, `functions`
         byte-identical): 4147 functions gain `invisible`, 662 entries appear, **0 effect gains, 0 losses,
         Unknown delta 0 on every pair** — the additive shape, with half 1 still speaking.
+      - **SWIFT (`74cd8f1`).** Same treatment, and java's two warnings both applied. (1) The anchors:
+        swift registers coverage in THREE places — the envelope `package`, the plural `packages`, and
+        each entry's hash prefix — so the registration went through one `register(pkg)` closure rather
+        than being gated at one of them. (2) Absent `unanalyzed` = complete, for the same reason (the
+        writer omits the key when the manifest is empty). ts's item-0 trade CANNOT happen here either,
+        but for a different reason than java's: swift's half-1 gate reads `isChained`, so adding
+        `incompletePkgs` to that predicate is what preserves it — and the mutant that omits it fails
+        exactly the half-1 row, so it is an assertion rather than an argument. Six guards, six mutants,
+        each failing its named test and only it. Corpus: 0 of 34 real Swift packages produce a report
+        declaring an `unanalyzed` unit; A/B byte-identical.
+      - **A SECOND DEFECT FELL OUT OF THE FIXTURE, in the index rather than the coverage set:** two
+        reports carrying an IDENTICAL entry for the same key were WITHDRAWING it as ambiguous. The
+        canonical-path dedup catches the same FILE twice and not the same report under two names, which
+        is the ordinary shape once `--workspace` prepends its scanned dir to a configured `CANDOR_DEPS`.
+        §2 rule 1 forbids PICKING between candidates; there is nothing to pick when they are equal.
+        Worth checking in rust and java: the fixture that finds it is "chain the same package twice".
 
 ### Fabrication / data loss
-- [ ] **swift `CallCollector.swift:813` — `fnValueAlias` is a name-keyed RESOLUTION table no clear path
+- [x] **swift `CallCollector.swift:813` — `fnValueAlias` is a name-keyed RESOLUTION table no clear path
       touches.** The catch-all binder clears vars/protoTyped/arrayElem/opaqueElem/dictElem/tupleElem/
       monoNames/depBoundLocals/localConstStrings — but not this one — and `leaveShadowScope` does not
       save/restore it, so a free-fn alias for a name answers for every later or inner binding of that name.
       **The SEVENTH map in this mechanism**, after six defects across three days. Also at `:2036`, `:954`.
-- [ ] **swift `main.swift:425` — `--workspace`'s new `sweepStale()` deletes every `*.json` in
+      **FIXED candor-swift `c2c85e3`**, and the DERIVATION landed with it (`97c6b12`, below).
+      - Reproduced with the rename control: `func f(_ jobs: [() -> Void]) { let g = eff; for g in jobs
+        { g() } }` reads `['Fs']` and the identical body binding `h` is ABSENT. The inner-shadow form
+        (`if c { let g = { }; g() }`) is the same defect through a door `clearBinding` does not reach at
+        all — a `let` that DOES type never goes near it — which is why the clear lives in `shadowName`.
+      - **The widest of the five**: the other four are TYPE indexes, so leaking one charges whatever some
+        type's member happens to do; this one names a FUNCTION and charges its whole transitive set.
+      - **Why the previous audit cleared it is the durable part.** It wrote "an aliased fn value called
+        after a shadowing loop still resolves" — the LOSS direction. The FABRICATION direction was never
+        run. **A rename control run in one direction is half a control.**
+      - Three guards, three mutants. The third is the ordering carve-out `protoTyped` needs one map over:
+        `let g = g` resolves THROUGH the binding it replaces, and the re-aliasing branch cannot restore
+        it because its RHS is a shadowed local rather than a `localFreeFns` name.
+      - A/B 34 real Swift packages: 0/0/0. Per item 8 that is the control, not the evidence —
+        instrumented, the rung is established **once** in the whole corpus (console-kit
+        `let rpp = linux_readpassphrase`) and the fix's trigger fires **zero** times. The probe was an
+        ARM and was removed before the commit (item 8b: an env read in the collector writes Env into
+        candor's own self-scan).
+- [x] **swift `main.swift:425` — `--workspace`'s new `sweepStale()` deletes every `*.json` in
       `<root>/.candor/deps` that this run's own path-dep scans did not produce**, including reports the
       USER placed there for non-path dependencies. Unrecoverable, and not an analysis defect at all. Also
-      at `:439`.
+      at `:439`. **FIXED candor-swift `b4f6cbc`.**
+      - The sweep STAYS (it exists for `43a0eaa`'s measured reason); what changed is that a file this run
+        did not write is never a deletion candidate. **Ownership is DERIVED from `Package.swift`, not
+        marked** — a manifest sidecar would answer only for caches written after the change, leaving the
+        first post-change run over an existing cache in exactly the state `43a0eaa` fixed. The candidates
+        are the discovered path deps; a FAILED dep's file is found by the package name an earlier round
+        recorded, else its own manifest `name:`, else the directory basename — the writer's own three
+        sources in the writer's own order. Everything else is named on stderr and left alone.
+      - Residual, disclosed: a report for a package that USED to be a path dep and no longer is lingers.
+        Information kept rather than destroyed.
+      - The manifest-name row uses a dep whose DIRECTORY is `libdep-src` while its package is `Dep0`,
+        because with the two equal the basename fallback answers correctly too and the branch under test
+        could be deleted with the row still green — item 8c's shape, avoided by construction.
+      - **The release build caught what the debug build and 328 tests could not**: a nested func closing
+        over a top-level `var` a sibling closure writes is a Swift-6 `sending` diagnostic under
+        whole-module optimization ONLY. The first "verified" arm was a binary the failed build had left
+        on disk — item 7c, in a new spelling: `swift build -c release` failing does not remove
+        `.build/release/`.
+
+### NEW, from the same swift pass — the EIGHTH and NINTH maps, REFUSED with numbers
+- [ ] **swift `boundLocals` (and `catchBindings` with it) — the same mechanism, in the map neither audit
+      classified, because it is not a FACT.** Every other row in this family is a name-keyed fact (a type,
+      an opacity, a provenance, a literal, an alias) outliving its binding. `boundLocals` is the other
+      half: an EXISTENCE claim — "this name names a local" — and both audits were looking for facts.
+      **Three forms REPRODUCED with rename controls, all fabrications:**
+
+      | form | reads | rename control |
+      |---|---|---|
+      | `if case let token? = o { print(token) }` inside a type with an effectful computed `token` | `['Env']` | ABSENT |
+      | `catch let token { print(token) }`, same type | `['Env']` | ABSENT |
+      | `if case let boot? = o { print(boot) }` beside an effectful top-level `let boot` | `['Env']` | ABSENT |
+
+      It is written by **2 of the ~7 binder forms** (a `let`/`var` identifier and a tuple destructure),
+      so a loop, closure, `case let` or `catch` binder registers no shadow at all; a `for` binder happens
+      to be safe only by ACCIDENT of usually landing a type in `vars`, which the bare-read arm tests
+      instead. `catchBindings` is entangled with it: that map is function-wide too, and its shadow guard
+      is a `!boundLocals.contains` PROXY that stops working the instant every binder writes `boundLocals`
+      (a catch binder would shadow itself).
+
+      **THE OBVIOUS FIX WAS WRITTEN, MEASURED AND REVERTED.** Write it in `shadowName` (the one path every
+      binder takes), save it in `ShadowSave` (function-wide it would silence the enclosing type's real
+      property read for the rest of the body — the two directions genuinely oppose here), defer it past a
+      self-referential initializer (`let boot = boot` reads the GLOBAL), and add `boundLocals` to the
+      bare-read arm's shadow test. All five fixture rows go the right way and both second-direction rows
+      are RECOVERIES. Then the corpus:
+
+      | arm | vs. baseline |
+      |---|---|
+      | everything | **1 gain, 405 losses, −93 entries** |
+      | minus the bare-read arm's shadow test | 1 gain, 292 losses, −77 entries |
+      | the bare-read arm's shadow test ALONE | 0 gains, **173 losses**, −8 entries |
+      | `shadowName` write + scope + deferral, no bare-read change | 1 gain, **305 losses**, −77 entries |
+
+      Two sub-cases traced, and they point OPPOSITE ways, which is the whole reason this is filed rather
+      than shipped. (a) The bare-read arm's 173 are largely FABRICATIONS being removed: swift keys global
+      units by BARE NAME, so pollen's `PollenForecastCache.fetchOrLoad` — which holds a local
+      `let task = Task<…>{…}` — was charged `Exec` from a top-level `let task = Process()` in a different
+      target's `CapturePollen.swift`, and the same for `outPath`. That is the open
+      [global-unit-identity vein](SOUNDNESS-VEIN-global-unit-identity.md), reached through the shadow
+      discipline. (b) The other 305 include units DISAPPEARING and disclosed `Unknown`s and `invisible`s
+      vanishing, reduced to a 12-line repro (vapor's `AbortError.swift`: `DecodingError.reason` and
+      `.description` both vanish) that was NOT explained inside the session's budget.
+
+      **Refused under item 1: 305 report changes I cannot trace is not shippable, in either direction.**
+      A loss you cannot explain is not a fabrication you have removed. Both maps are filed in
+      `NameKeyedStateTests.disposition` as `.knownDefect` with these numbers attached, so the next audit
+      inherits them instead of the surprise — and the classification test makes walking past them again
+      a deliberate act rather than an oversight.
+
+      **Whoever picks this up: start from the 12-line vapor repro, not from the corpus.** The two
+      sub-cases must be separated before either is shipped; they are different defects that happen to
+      share a map.
+
+### The remedy for the whole family — DONE
+- [x] **swift — the set of maps a rebind must invalidate is now DERIVED, not listed** (candor-swift
+      `97c6b12`). `42093b6` removed the enumeration of binder FORMS and left the enumeration of MAPS
+      standing, which is where defects six and seven came from. `NameKeyedStateTests` parses
+      `CallCollector.swift` with SwiftParser, enumerates the class's stored properties from the parse
+      tree, and requires each to be classified — cleared (and whether scoped), a deliberately-kept HEDGE,
+      a program-wide index, or not per-binding. Adding a map without the decision fails a test;
+      classifying one as cleared without writing the clear fails another; classifying one as scoped
+      without BOTH saving and restoring fails a third (`opaqueElem` shipped with exactly that half).
+      Three mutants, three named failures, and the stale-entry direction caught a real one unprompted on
+      its first run.
+      - **The honest limit, stated in the file**: the SET is derived, the JUDGEMENT is authored. Whether a
+        `[String: X]` is keyed by a binding name or a type name is a fact about meaning, not syntax, and
+        the hedging sets must NOT be cleared — so the value is in forcing the decision to be written once
+        per property, with its argument, not in making it automatic.
+      - Reflection was unavailable (`CallCollector` is in the executable target, which a test target
+        cannot import), so it is a source-level test — with its own controls, since an extraction that
+        silently finds nothing would pass every row vacuously.
+      - **The "rewrite the binding model" option was RE-PRICED with the seventh instance in hand and the
+        verdict STANDS.** Fusing the flags into `vars` still requires `vars` to become lexically scoped,
+        which it deliberately is not (function-wide with clear-on-rebind: a stale TYPE is dangerous
+        inward and merely lossy outward), and doing it without that scoping makes every flag leak outward
+        the way types do. What changed is the GROUNDS: the reason to keep deferring it was "the residual
+        is a new map added later without being added here, which is a review question" — and this pass
+        proved a review question is not enough, twice. It is now a TEST question, which is the thing the
+        rewrite was wanted for. Re-open the rewrite only if a defect appears that the classification
+        cannot express.
 
 ### Cross-engine divergence — `Unknown[class]` gates now fire differently per engine
 - [x] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
