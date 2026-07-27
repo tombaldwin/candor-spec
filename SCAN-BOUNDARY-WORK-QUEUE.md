@@ -106,6 +106,14 @@ now scopes the headline claim because of it.
    - The orchestrator owns this: fanning out per-repo work is safe, but per-repo agents that all run ONE
      shared differential harness are not isolated, and saying "one agent per repo, no file conflicts" is
      true of the source and false of the build outputs.
+7g. **A TEST CAN PIN THE BUG. Ask what CHANNEL each suite can see.** java's `test/smoke.sh` asserted a
+   coverage row containing a *permanently stale* version string — it had encoded shape 1 (a distrusted
+   report still granting coverage) as a REQUIREMENT, so fixing the defect broke the suite that was
+   supposed to protect it. Worse: `gradle test check` and the four-way conformance suite were green
+   through all five preceding commits and **neither could see it**, because the assertion lives in
+   stderr and those two legs read the report and the exit code. A green suite is evidence about the
+   channels that suite reads. Enumerate them — report content, exit code, stderr, sidecars — and know
+   which leg covers which, because a defect will sit in the channel nobody's assertions look at.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -1589,3 +1597,40 @@ The sweep hypothesis (a shape found in one engine belongs swept in all four) pai
 §4 vocabulary — **757 times across 253 crates**, and PART 10 misses it because the harness's own fixtures
 never produce that kind. Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
 `deny Unknown[dispatch]`. Wants its own measurement and probably the spec's migration mechanism.
+
+### java's five-shape sweep — 2 PRESENT, 2 absent-by-accident closed, 1 structurally absent
+
+- **1. An untrusted report still grants coverage — PRESENT, `7e41327`.** The same defect rust had, in the
+  same place: `loadCrossDeps` registered `depCoveredPkgs` from a report whose effects it had just
+  downgraded. The three-arm fixture is the sharp bit — **the STALE arm was byte-for-byte the FRESH arm, and
+  `app.S.go` vanished from `functions` entirely**, with the arms differing only in the build id. Measured
+  over 7 chained `~/.m2` pairs: httpclient +629 entries, +633 `invisible`, 13 packages back in the
+  envelope, 0 effect losses. **Item 0 fired for real:** the one-set fix cost 2 disclosed Unknowns on
+  logback-classic with no `invisible` to replace them, because `ch.qos.logback` is a κ-curated prefix — so
+  `depCoveredPkgs` (trust-gated) and `depChainedPkgs` (ungated) are now separate sets, both directions
+  mutation-verified.
+- **2. An unordered walk — NO soundness instance; one WITNESS instance fixed `54350bf`.** Every
+  effect-owner selection is a monotone set-union or an existential boolean, hence order-invariant. The one
+  that could differ is `Policy.reachesScope`, which picked the AS-EFF-009 `via` witness by DFS over a
+  HashSet-seeded stack — and `--gate-json` PUBLISHES that witness. Now nearest-first: verdicts identical on
+  5 real jars, and for all 452 jgit violations the new witness is **107 strictly nearer, 0 farther**. The
+  agent explicitly declined to call this a soundness defect, which is right.
+- **3. A disclosure lost to a memo — no live hazard; one ABSENT-BY-ACCIDENT closed `2b606ee`.** All 14
+  memos traced. `depDeclaresSigElsewhere` latched `built` unconditionally — safe only via a property of its
+  CALLER, while both its siblings guard directly.
+- **4. A trust marker failing open — PRESENT, `2f7479a`, AND IT IS A HOP FURTHER OUT THAN THE BRIEF SAID.**
+  `unresolved` does not fail open; the REASON CLASS does, one hop past `6ab26e4`: a dep unit whose Unknown
+  was itself INHERITED publishes no `unknownWhy`, so in A→B→C the reason never reaches A.
+  `deny Net Unknown[reflect]` went exit 1 single-tree → **exit 0 chained**, while bare `deny Net Unknown`
+  fired throughout — only the class-targeted middle read green, and that middle is how the ratchet is
+  adopted. No format rung needed; `calls` already held the chain.
+  **RELAYED and MEASURED against rust: rust is CLEAN on the second hop** — a three-package fixture
+  (C originates `callback:unresolved call`, B chains C, A chains only B) carries the reason all the way to
+  A. So java's "rust/ts/swift very likely have the same gap" is FALSE for rust. ts and swift are testing it.
+- **5. A flag outliving its scope — ABSENT, structurally.** `MethodScan` never escapes its loop iteration;
+  every context mutation is an owner-qualified insert into a whole-scan accumulator. 12 real jar pairs,
+  12/12 byte-identical under a reentrancy selftest.
+
+**Two found off-brief, both real:** `--parallel` ignored every target's `.candor/config` while its own
+documentation promised byte-identity (`4ddbd3c`), and `test/smoke.sh` had pinned shape 1 as a REQUIREMENT
+(`640630b`) — see standing-bar item 7g.
