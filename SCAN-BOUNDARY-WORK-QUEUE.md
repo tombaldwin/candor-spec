@@ -7,7 +7,7 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
-## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 6 resolved, 4 live — all four now swift/ts)
+## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 7 resolved, 3 live — all three now swift/rust)
 
 A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
 defects. Every one is again a guard written during that wave** — the same base rate as the previous
@@ -19,10 +19,36 @@ the "a residual recorded only in a narrative is a residual nobody will find" fai
 up, so they are written here first and worked second.
 
 ### Silent under-reports — do these first
-- [ ] **ts `scan.mjs:2631` — the `.bind` arm's new `hofInvokesArg` position gate returns early**, so a
+- [x] **ts `scan.mjs:2631` — the `.bind` arm's new `hofInvokesArg` position gate returns early**, so a
       static/free-form HOF whose callee signature cannot be resolved now DROPS a `.bind`-wrapped dependency
       callback it previously charged. Measured as a `deny Fs` flip from exit 1 to **exit 0**. A guard added
       this wave, narrowing past a real reach — standing-bar item 0, for the third wave running.
+      **FIXED candor-ts `b66b69a`.** Reproduced at gate level first (`deny Fs src.api`: two trees exit
+      1 → 0, single-tree control exit 0 in BOTH arms, which is what makes it a boundary defect).
+      `hofInvokesArg` is a POSITIVE test whose return value cannot distinguish "invoked" from "no
+      evidence"; the arm now asks for the OPPOSITE evidence — drop only when the name map excludes the
+      position AND the signature positively declares a non-callback. The hard part is that `any` cannot
+      be that evidence: `forEach(cb, thisArg?: any)` and a loose library's `fn: any` are the same type
+      with opposite meanings, so `calleeParamIsCallable` went THREE-VALUED (`null` = no information) and
+      the receiver slot is recognised by parameter NAME (`thisArg`) — a denylist whose failure mode is
+      an over-charge on a contrived shape, never a reach. `hofInvokesArg` tests `=== true`, so the
+      by-reference arm is untouched by construction.
+      - **The wave's own no-fabrication test COULD NOT FAIL, and that is why the regression shipped.**
+        It asserted `!includes("Fs")` on a DEP ref in the thisArg slot — but that arm's only possible
+        output is an Unknown disclosure, so the shape it was written for (`['Unknown']` before the guard,
+        pure after) was invisible to it. Mutating the guard out left the suite **766/0**. Now five
+        mutants produce five named failures; a bound LOCAL writer sits in the slot so a fabrication
+        shows up as the concrete Fs. Standing-bar item 8c, in the sharpest form yet: the guard was
+        *undetectable*, and nobody checked.
+      - **A/B: 22 real targets, ~13,000 analyzed functions, ZERO of everything** (gains, losses,
+        Unknown delta, entry delta) — and per item 8 that is a claim about the corpus first, so the
+        precondition was instrumented: exactly **3** `.bind` arguments reach the non-local HOF arm in
+        the whole corpus (apollo-client ×3), all at position 0, all agreeing old-gate vs new. The
+        differing branch fires **zero** times. The change is a strict widening by case analysis on the
+        four return values, so losses are impossible by construction — the corpus can show it costs
+        nothing and cannot show it gains anything. The `.bind`-into-HOF idiom has been all but replaced
+        by arrow functions in modern TS; it survives in class-style code, which is where the reviewer's
+        shape and the fixture live.
 - [ ] **rust `deps.rs:220` + ~~java~~ + swift — only candor-ts withholds coverage from a dep report that
       declares ITSELF incomplete** (non-empty ⟨0.21⟩ `unanalyzed`). The other three gate coverage on
       STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
@@ -254,6 +280,14 @@ Each was refused or deferred with a measurement, not left undone. None is a know
    - Prefer **disambiguating** to **dropping**. Tombstoning a colliding key is safe against fabrication and
      silently costs every genuine use of it; the information to tell the cases apart usually exists one
      level down (there, per-receiver instead of per-leaf).
+   - **THIRD INSTANCE, 2026-07-27, and the sharpening is worse than the rule.** The `.bind` gate
+     (candor-ts `4958a6d` → fixed `b66b69a`) shipped with a FIRST fixture that could not fail either. It
+     asserted `!includes("Fs")` on a *dependency* ref in the receiver slot — an arm whose only possible
+     output is an `Unknown` disclosure — so the over-charge it was written for (`['Unknown']` before the
+     guard, pure after) was invisible to its own assertion, and mutating the guard out left the suite
+     766/0. So the rule is not only "the first fixture cannot see the reach you closed": **check that the
+     first fixture can see the fabrication.** Mutate the guard out and name the failing test *before*
+     writing the second fixture — if nothing fails, you have not yet tested anything at all.
 0b. **A guess that is right for the wrong reason hides the gap underneath it.** rust's leaf map was
    last-wins, which — by accident — stored the crate a shadowing local needed, so a whole missing feature
    (locals never recorded their own qualification) looked like working code. Removing the guess did not
