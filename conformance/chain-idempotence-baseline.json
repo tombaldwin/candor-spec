@@ -1,0 +1,53 @@
+{
+  "_": [
+    "P2 CHAIN IDEMPOTENCE — the ratchet (conformance PART 25, gen_chain_idempotence.py).",
+    "",
+    "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an engine",
+    "SHOULD say — the arm that chains the report ONCE is still the only oracle for the arm that chains it",
+    "twice. Each entry says only 'this (engine, duplication-arm, shape) is known-broken today, and here is",
+    "how to reproduce it without the generator'. If you find yourself adding an effect name to this file,",
+    "stop: you are turning a self-differential back into the hand-written fixture suite it replaces.",
+    "",
+    "IT RATCHETS BOTH WAYS. A failing cell not covered here fails the suite; a waiver whose cells now all",
+    "pass ALSO fails the suite, so deleting the entry is part of the fix. `split: \"*\"` waives every shape",
+    "for that (engine, arm) — this defect is a property of the JOIN and not of the call shape — and the",
+    "failing shape list is printed on every run, so a shrinking defect stays visible.",
+    "",
+    "Every entry below was found by the generator and then RE-DERIVED from a hand-written two-package",
+    "fixture with a hand-written dep report, so no waiver rests on the generator being right."
+  ],
+  "known": [
+    {
+      "engine": "rust",
+      "arm": "same_path",
+      "split": "*",
+      "why": "the SAME report path listed twice on CANDOR_DEPS withdraws every colliding key, so an inherited effect is dropped and the package is re-declared UNCOVERED. 64/72 live cells LOST, 8 more DISC (Unknown -> pure+invisible). `deny Fs` goes exit 1 -> exit 0.",
+      "repro": [
+        "deplib/src/lib.rs:  pub fn read_cfg() { let _ = std::fs::read(\"/tmp/x\"); }",
+        "app/src/lib.rs:     use deplib::read_cfg;  pub fn entry() { read_cfg(); }",
+        "scan deplib -> report carries `read_cfg ['Fs']`; then scan app with:",
+        "  CANDOR_DEPS=dep.json                 -> entry ['Fs']                       correct",
+        "  CANDOR_DEPS='dep.json dep.json'      -> entry []  invisible=['deplib']     WITHDRAWN",
+        "  CANDOR_DEPS='dep-a.json dep-b.json'  -> entry []  invisible=['deplib']     (byte-identical copies)",
+        "and the report-level ledger gains coverage.uncovered=[{name:deplib,calls:1}] — a blind spot claimed",
+        "over a package whose report was supplied TWICE. `--policy 'deny Fs'`: exit 1 with one copy, exit 0",
+        "with two. This is ENTRY-COLLISION-DECISION.md's withdraw-the-key rule firing on entries that do not",
+        "disagree about anything, which is the case that needs no rule at all."
+      ]
+    },
+    {
+      "engine": "rust",
+      "arm": "two_files",
+      "split": "*",
+      "why": "same defect via two byte-identical files under different names — the shape of candor-rust 6f2210c. Kept as its own waiver because a fix that dedupes on the PATH would clear `same_path` and leave this one failing, and the ratchet should say so rather than go green.",
+      "repro": ["see the `same_path` entry: `cp dep.json dep-b.json` and pass both."]
+    },
+    {
+      "engine": "rust",
+      "arm": "reserialised",
+      "split": "*",
+      "why": "same defect with the second copy re-serialised (sorted keys, different indent) — byte-DIFFERENT, semantically identical. This is the real-world duplicate: the same package scanned twice, not a `cp`. Kept separate because a fix that dedupes on the file's BYTES or hash would clear the other two arms and leave this one failing, which is the one that matters.",
+      "repro": ["see the `same_path` entry, with `python3 -c 'import json,sys;json.dump(json.load(open(a)),open(b,\"w\"),sort_keys=True,indent=1)'` for the second copy."]
+    }
+  ]
+}

@@ -4219,9 +4219,69 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 25 — P2, CHAIN IDEMPOTENCE: CHAINING A REPORT TWICE == CHAINING IT ONCE               [TIER 1]
+#
+# P1 varies how the PROGRAM is partitioned and holds the chain fixed. P2 holds one two-package rendering
+# fixed and varies what the consumer is HANDED: the same dependency report once, then twice. Same
+# self-differential construction and same reason — four engines sharing one spec and one author's mental
+# model agree just as readily when the model is wrong, so the arm that chains once is the oracle for the
+# arm that chains twice, and there is no expected-value table anywhere in it.
+#
+# NOT A HYPOTHETICAL. Two reports covering one package in one dep directory is measured at 7/167 dep
+# reports in candor-rust, 9/259 in pgman, 30/378 in ebman (ENTRY-COLLISION-DECISION.md) — a dep dir that
+# accumulates, `--workspace` prepending its own directory, a package scanned twice. And it has bitten:
+# candor-rust 6f2210c, where two byte-identical reports made a consumer VANISH from `functions`, which
+# under <0.21> is a positive purity CLAIM and not a gap.
+#
+# THE RELATION IS EQUALITY, and that is the difference from PART 24. P1 must stay directional because a
+# chained arm may legitimately disclose MORE than a single-tree one. Here both arms are the same program,
+# the same boundary, the same engine and the same report, so there is nothing either arm can legitimately
+# see less of — equality covers the DISCLOSURE too (a duplicate arm that newly calls the package
+# `uncovered` is claiming a blind spot it does not have). Justified by measurement rather than taste:
+# java, ts and swift are exactly equal on all three duplication spellings, 216/216 live cells.
+#
+# THREE SPELLINGS, and the third is the one that matters: the same path twice; two byte-identical files;
+# and two files whose BYTES differ (sorted keys, different indent) but whose content is identical. An
+# engine that dedupes by hashing the file passes the first two and is not idempotent at all — the real
+# duplicate in a dep directory is the same package scanned twice, not a `cp`. That is P1's own lesson
+# (every hand-written fixture had picked ONE spelling) applied before it could bite.
+#
+# WHAT IT FOUND ON HEAD: candor-rust drops the inherited effect on ALL THREE spellings — 64/72 live cells
+# LOST plus 8 DISC — and re-declares the package uncovered, taking `deny Fs` from exit 1 to exit 0. The
+# other three engines are clean. Baselined with a hand-written two-package repro, so no waiver rests on
+# the generator being right.
+#
+# TWO FLOORS, because a property that quietly tests nothing looks exactly like one that passes:
+#   * VACUITY — the row FAILS if any (engine, arm) has zero live cells without the engine having REFUSED
+#     the input. Live counts print every run (rust 72, java 72, ts 56, swift 72 of 80).
+#   * THE RATCHET — `chain-idempotence-baseline.json` waives the known-broken pairs. A failing cell
+#     outside it fails the suite, AND a baselined pair whose cells all pass ALSO fails, so a waiver cannot
+#     outlive its defect. Run the script without --baseline to see the raw truth.
+# An arm that produces no report while exiting ZERO is reported as the harness being broken, never as a
+# fail-closed refusal — a mis-invocation must not read as good engine behaviour.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_chain_idempotence.py" ] || { echo "FAIL: gen_chain_idempotence.py is missing"; exit 2; }
+[ -f "$HERE/chain-idempotence-baseline.json" ] || { echo "FAIL: chain-idempotence-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P25_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_chain_idempotence.py" --baseline "$HERE/chain-idempotence-baseline.json"
+) || P25_OK=1
+
+echo "PART 25 — chain idempotence: one copy of a dep report == two (SCAN-BOUNDARY-WORK-QUEUE.md §3, P2)"
+if [ "$P25_OK" = 0 ]; then
+  echo "  -> MATCH — chaining a report twice answers exactly as chaining it once, outside the ratchet"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
