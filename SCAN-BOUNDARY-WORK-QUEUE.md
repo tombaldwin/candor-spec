@@ -7,6 +7,66 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
+## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 2 fixed, 8 live)
+
+A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
+defects. Every one is again a guard written during that wave** — the same base rate as the previous
+review's nine-for-nine, and the reason that review was commissioned at all. Two were mine and are closed;
+the eight below are live. None is recorded anywhere else — they arrived in a task notification, which is
+the "a residual recorded only in a narrative is a residual nobody will find" failure repeating one level
+up, so they are written here first and worked second.
+
+### Silent under-reports — do these first
+- [ ] **ts `scan.mjs:2631` — the `.bind` arm's new `hofInvokesArg` position gate returns early**, so a
+      static/free-form HOF whose callee signature cannot be resolved now DROPS a `.bind`-wrapped dependency
+      callback it previously charged. Measured as a `deny Fs` flip from exit 1 to **exit 0**. A guard added
+      this wave, narrowing past a real reach — standing-bar item 0, for the third wave running.
+- [ ] **rust `deps.rs:220` + java + swift — only candor-ts withholds coverage from a dep report that
+      declares ITSELF incomplete** (non-empty ⟨0.21⟩ `unanalyzed`). The other three gate coverage on
+      STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
+      shape 1's second door — the one ts found in its own sweep (`21277eb`) — unswept in three engines.
+      **The sweep found the door and did not carry it across, which is the exact thing the sweep exists
+      to do.**
+
+### Fabrication / data loss
+- [ ] **swift `CallCollector.swift:813` — `fnValueAlias` is a name-keyed RESOLUTION table no clear path
+      touches.** The catch-all binder clears vars/protoTyped/arrayElem/opaqueElem/dictElem/tupleElem/
+      monoNames/depBoundLocals/localConstStrings — but not this one — and `leaveShadowScope` does not
+      save/restore it, so a free-fn alias for a name answers for every later or inner binding of that name.
+      **The SEVENTH map in this mechanism**, after six defects across three days. Also at `:2036`, `:954`.
+- [ ] **swift `main.swift:425` — `--workspace`'s new `sweepStale()` deletes every `*.json` in
+      `<root>/.candor/deps` that this run's own path-dep scans did not produce**, including reports the
+      USER placed there for non-path dependencies. Unrecoverable, and not an analysis defect at all. Also
+      at `:439`.
+
+### Cross-engine divergence — `Unknown[class]` gates now fire differently per engine
+- [ ] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
+      which for java's own hash form lands inside the method DESCRIPTOR, so entry-level coverage registers
+      a garbage package name.
+- [ ] **rust `deps.rs:307` — a stale report's `Unknown` now arrives tagged `callback:…`**, classifying as
+      `indirect`, where the other three leave it `unresolved`. Rust is the four-way outlier, and the class
+      the stale Unknown used to carry has been replaced by a fabricated one. This is the fail-closed
+      fallback rust's own sweep agent wrote. Also java `ReasonClass.java:77`.
+- [ ] **rust `deps.rs:377` — a package chained BOTH fresh and stale resolves as untrusted**; java, ts and
+      swift all resolve the same input the other way (fresh wins). Four engines, two answers, same input.
+
+### The one I would look at hardest
+- [ ] **rust `scan.rs:622` — the cached parser-abort replay is gated on content hash + decl-index hash,
+      but the abort is NOT a function of those two.** `4f7b704` established that the abort depends on how
+      much each rayon worker happened to parse, so a ONE-OFF abort is latched into the cache and replayed
+      forever. This is the fix for MY cache-poisoning defect, and it may have replaced one latch with
+      another — the direction is different (a spurious `unanalyzed` + a gate that will not go green, rather
+      than a false all-clear) but the shape is identical. Also `:618`.
+
+### Closed already — both mine
+- [x] **conformance PART 22 could not regress two of the four defects its own header cites** — `unknownWhy`
+      was neither compared nor producible by the fixture. Fixed `81e919e`; verified to catch via a java
+      mutant (`java -> DIVERGE (surface dropped by the join: unknownWhy[...])`). Rust could not demonstrate
+      it because its own fail-closed writer assertion aborts the run first — a stronger guarantee than the row.
+- [x] **`release-preflight` check [4] silently covered four of five components** — no `grabver` row for
+      candor-java. Legitimate (java's build id is GENERATED from the git hash, so it cannot lag) but unsaid.
+      Fixed `f6cc184`: the row now prints, naming itself out of scope.
+
 ## CARRIED FORWARD — the vein's own rows are all closed; these are what it uncovered
 
 **The vein has ZERO open rows.** Every mechanism family that made a `deny` gate pass code it should fail is
