@@ -656,6 +656,17 @@ with four concrete instances rather than an argument.
 input** (the `fn_returned_dyn` pair). That is a four-way divergence on a decided contract, which is the
 class of thing PARTs 18–22 exist to catch — and each of them fixes one spelling, so none could.
 
+- [ ] **OPERATIONAL, new today: the full suite now exceeds 50 MINUTES.** A `timeout 3000` run reached
+      **PART 25 of 27** and was killed — PARTs 24–27 all landed today and are the heaviest (P3 alone is 80
+      cells × 7 degraded arms × 4 engines, each arm a real scan). PARTs 1–25 were green in that run;
+      26/27 had to be run directly via their generators.
+      Two consequences to decide, not urgent but real: **CI wall-clock** (a suite people cannot run is a
+      suite that stops being run — which is the same failure mode as a permanently-red row, and the reason
+      the property PARTs are ratcheted rather than red), and whether the property PARTs should be **a
+      separate tier or leg** from the differential PARTs so a fast pre-commit path still exists. Note the
+      generators are individually runnable with `--baseline`, so the mechanism for splitting already
+      exists.
+
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
 - [ ] **FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
