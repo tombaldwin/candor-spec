@@ -14,13 +14,20 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## 0.23 — current floor (cross-package interface dispatch)
 
-⟨0.23, added 2026-07-27⟩ **The type-hierarchy sidecar has one extension point, and honouring it is a
-REQUIREMENT on READERS**: any entry whose value is not an ARRAY is engine-private metadata about the map,
-not a type, and MUST be skipped. Stated as a reader requirement because the failure it prevents is silent —
-candor-java's own second reader called `getAsJsonArray()` unconditionally, threw, swallowed it into "no
-sidecar" and discarded the whole hierarchy with no diagnostic. The first such key is candor-java's
-`"@superclass"` (type → the one supertype that is its superclass): without it a consumer walking a
-*dependency's* own chain cannot apply "the class wins at any depth" (JLS 15.12.2.5 / 8.4.8), and an
+⟨0.23, added 2026-07-27, restated the same day⟩ **The type-hierarchy sidecar's extension point is a
+constraint on WRITERS: every value in the file is an ARRAY of strings, metadata goes under a key beginning
+`@`, and a metadata key is never the file's only key.** It was first written as a requirement on READERS —
+"skip any entry whose value is not an array" — and that framing is the mistake the rung now records: it
+obliges every already-deployed reader to have been updated, which is exactly what did not happen, twice
+over, for the one key it was written for. candor-java's own *second* reader threw on the object value and
+discarded the whole hierarchy (539 tests green through it); its *third*, candor-rust's
+`candor-query::load_hierarchy`, deserializes the file as `BTreeMap<String, Vec<String>>` in one typed call
+and cannot skip anything at all — **0 of 18 sidecars parsed there** on a real chained JVM corpus. And
+writing the key unconditionally turned `{}` into `{"@superclass":{}}`, which flipped candor-ts's and
+candor-rust's non-empty gate off the safe over-listing frontier fallback. Both failures are impossible
+under the writer-side rule and neither was prevented by the reader-side one. The first such key is
+candor-java's `"@superclass"`, now a **flat array** `[type, superclass, …]`: without it a consumer walking
+a *dependency's* own chain cannot apply "the class wins at any depth" (JLS 15.12.2.5 / 8.4.8), and an
 interface `default` shadows the superclass body the runtime actually executes. Its PRESENCE licenses the
 split; a sidecar without it MUST keep the reader's previous order rather than guess. Additive and
 version-gate-free in both directions. See **SPEC.md §2.2**.
