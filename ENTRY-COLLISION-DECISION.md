@@ -177,3 +177,38 @@ effect, and the largest union anywhere is 3 effects, so the noise is bounded and
    Three of those fields are usually absent from these reports and `tables` never appears at all, so it was
    comparing absent keys to absent keys. This is standing-bar item 7d ("an empty dep report gives a
    meaningless ABSENT") recurring in a new place, and it is why the vacuity check above exists.
+
+
+## The rule generalises, and it arose a second time the same day — in a different index
+
+This note decided one collision: two dependency reports carrying one key with different answers. Hours
+later the same shape appeared in the **return-type index**, and the resolution is the same sentence.
+
+Chasing why a chained dependency's methods were failing to resolve, the Rust engine found that **37 of the
+57 genuinely-unresolvable markers on one corpus were a single function** — `chrono`'s `Utc::now`. Its report
+carries the effect (`offset::utc::Utc::now ['Clock']`); only its *return type* was withheld. The cause is a
+collision that is not one: `chrono` declares `pub fn now() -> DateTime<Utc>` **twice**, under mutually
+exclusive `#[cfg]`s (native and wasm32). The scan walks both arms by design, the return index sees two
+same-named definitions, and the never-guess rule drops the entry — **even though both candidates name the
+same return type.**
+
+> **When the colliding candidates AGREE, the collision is not a reason to withhold.**
+
+The never-guess rule exists to prevent *picking* between two different answers. It was never meant to
+suppress a case where there is nothing to pick between. Applied here it costs nothing and recovers over half
+of that corpus's unresolvable chained markers — **by determination rather than suppression**, which is the
+⟨0.24⟩ ordering, and on every call spelling at once, so it cannot reintroduce the spelling asymmetry that
+was closed the same day.
+
+Two things this says beyond the immediate fix:
+
+**The rule belongs to the never-guess principle, not to either index.** It has now appeared in the entry
+index (this note) and the return index (above). Any index in the family that drops an ambiguous key should
+be asked the same question: *does it check whether the candidates disagree, or only whether there is more
+than one?* The second is the cheaper check and it is what both sites implemented.
+
+**A withheld answer is a silent one.** Neither site logged anything. The entry-index case surfaced as a
+consumer vanishing from `functions` — a purity claim. The return-index case surfaced as a corpus-wide
+disclosure that looked like imprecision and was really one crate's `#[cfg]` pair. In both, the engine knew
+the answer and declined to say it, and nothing in the output distinguished *"I could not determine this"*
+from *"I determined it twice identically and threw it away."*
