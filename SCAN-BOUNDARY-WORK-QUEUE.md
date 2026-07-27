@@ -25,6 +25,11 @@ Reordered because the shape of the work changed. When this document started it w
 under-reports; **none of what is open now is one.** It is decisions, priced refusals, and disclosed
 precision — which wants a different order, and makes two of the old groupings actively misleading.
 
+**The order in one line:** settle §4's vocabulary (§1, serial) · rule on the two other spec silences
+(§2, concurrent) · **close the structural gap with self-differential properties (§3, highest yield)** ·
+add the gate-a-report verb (§3b, unblocks P4) · implement §1 four-way (§4, parallel) · leave precision
+alone for now (§6, with the measured argument for waiting).
+
 ### 1 — THE §4 VOCABULARY RUNG · serial, first, cannot be parallelised
 **One decision with four symptoms**, filed separately across three review rounds and only visible as one
 thing when read together. It is the critical path: it blocks the `ambiguous:` rename, any engine renaming,
@@ -58,7 +63,52 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
 - [ ] **`hasHier` gates on EMPTINESS (rust, ts) vs ABSENCE (java).** java takes the precise path over an
       empty map, which NARROWS the disclosure. Three engines, two answers.
 
-### 3 — THE VERIFICATION BLOCKER · parallel per engine, high leverage
+### 3 — CLOSE THE STRUCTURAL GAP WITH SELF-DIFFERENTIAL PROPERTIES · the highest-yield row here
+
+**The gap.** Conformance asks *"do the engines agree?"* All four share one spec, one set of design docs
+and one author's mental model, so when that model is wrong all four implement the same wrong thing and
+the suite reports OK. It has done exactly that twice — the coverage door and the malformed manifest were
+both four-way. PAPER2 already names this (Knight & Leveson; *"engine agreement is the weakest signal"*);
+what has been missing is a second oracle for the CONTRACT layer.
+
+**Two findings that make this cheap.**
+
+1. **The whole scan-boundary vein is ONE property, hand-instantiated 44+ times.** Every "two-tree fixture
+   with its single-tree control" — 44 mentions of `single-tree control` across 13 files, 56
+   chained-vs-unchained assertions — is an instance of *`scan(A ∪ B)` ≡ `scan(B)` chained with
+   `report(A)`, modulo disclosure*. A human wrote each one and chose each shape, and **five fixtures this
+   week could not reach the code they named** because the shape was wrong.
+2. **`conformance/gen_differential.py` already exists** — an EFFECT × INDIRECTION matrix rendered
+   semantically-equivalently in all four languages, built to "extend in ONE place". It has precisely the
+   two limitations that ARE the gap: it generates SINGLE-TREE programs, and it asserts CROSS-ENGINE
+   agreement.
+
+**The move: change the axis, not the machinery.** Add a SPLIT dimension to that matrix (render each case
+both as one tree and as two chained packages), and change the assertion from *"the engines agree"* to
+**"each engine agrees with ITSELF across the split."**
+
+That second half is the point. **A self-differential is immune to common-mode by construction.** Four
+engines can share a wrong model of the spec; an engine cannot share a wrong model with ITSELF across two
+renderings of the same program. The engine's own single-tree answer is the oracle for its chained answer —
+no reference implementation, no second opinion, no spec interpretation in the loop.
+
+- [ ] **P1 — SPLIT-INVARIANCE.** One tree ≡ split + chained, modulo disclosure. Do this FIRST: largest
+      yield, needs no engine change, and it replaces 44 hand-written fixtures with a property. Would have
+      caught the entire vein, including the "13 of 13 JVM mechanisms silent" finding.
+- [ ] **P2 — CHAIN IDEMPOTENCE.** Chaining a report twice ≡ chaining it once. Would have caught the
+      identical-entry withdrawal (`6f2210c`) — two byte-identical reports made a consumer vanish from
+      `functions`.
+- [ ] **P3 — TRUST MONOTONICITY.** An untrusted or incomplete report can only REDUCE what a consumer
+      claims, never increase it. Would have caught the coverage door in all four engines, and java's
+      stale-`{Unknown}`-erasing-a-trusted-effect (`deny Fs` exit 1 → 0).
+- [ ] **P4 — SIGNATURE MONOTONICITY.** Adding a call cannot remove an effect or a reason class. Would have
+      caught the Lemma 2 violation. **Blocked on the gate-a-report verb below** for the class half.
+
+**What this will NOT catch, and it is the right thing to leave out:** the classifier. If candor does not
+know `Foo.bar()` performs `Net`, single-tree and chained agree on the same wrong answer and no property
+here fires. That is the runtime oracle's job, the instrument exists, and it is calibrated.
+
+### 3b — THE GATE-A-REPORT VERB · parallel per engine, unblocks P4
 - [ ] **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only via
       `scan --policy` (which computes `S` from source, putting the classifier back in the loop) and
       `whatif` (which reports only violations the hypothetical INTRODUCES — verified: a report with
