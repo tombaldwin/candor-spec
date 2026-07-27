@@ -352,7 +352,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       `Cha#resolutionOrder` and was deliberately not ridden on `9f8e71c`.
 
 ### Unblocked, deliberately unlanded — each narrows a gate
-- [ ] **ts — the malformed `dispatch:type.member` reclassification.** The blocker is RESOLVED: all four
+- [x] **LANDED, candor-ts `5ba301c`** — 1,234 malformed emissions over 15 repos, all from the interface-CHA arm; effect sets and entry counts identical, 695 functions leave `dispatch` / 573 enter `indirect`, monotone. **The narrowing is named, not buried: `deny Unknown[dispatch]` flips exit 1 → 0 on 4 of 14 targets — and in each of those EVERY dispatch reason in the report was malformed (6/6, 56/56, 18/18, 10/10).** ORIGINAL: the malformed `dispatch:type.member` reclassification. The blocker is RESOLVED: all four
       engines were RUN on owner-less function values (rust `callback:unresolved call`, java
       `callback:…Function.apply`, swift `callback:fn` — all class `indirect`), SPEC §4's dividing line is
       explicit, and PART 10 already asserts every `dispatch:` carries `owner.member`. **candor-ts is the
