@@ -616,6 +616,45 @@ needs *before* introducing an effect. The sidecar is OPTIONAL, but an implementa
 from the report alone (a pure X is absent from the report). It carries no provenance of its own and is read
 together with its report.
 
+⟨0.24⟩ **`callgraph` and `hierarchy` are RESERVED trailing segments, and a report-locator glob MUST
+exclude them at the GLOB — not diagnose them at the parse.** Sidecar names are per-engine (this section
+lets each engine pair a sidecar to its own report stem), so a discriminator based on SEGMENT COUNT alone
+excludes an engine's own 3-segment sidecars and not a 2-segment one from another producer. Measured on the
+reference implementation: `<prefix>.<pkg>.hierarchy.json` landed exactly on the `<crate>.<type>` report
+shape, so **two globs in one binary disagreed about one file** — the sidecar loader read it as a sidecar
+while the report locator claimed it as a report, then reported its own mistake as the user's data loss
+("failed to parse — its functions are OMITTED; re-run the scan", about a file that was neither).
+
+That is a FALSE DISCLOSURE, and it was not cosmetic. Three measured consequences, each against a
+sidecar-removed control: an **effect-free crate was REFUSED** (the bogus parse failure set the hard-fail
+bit that distinguishes "no effects" from "every report was corrupt", so a well-formed `functions: []`
+report beside a sidecar exited 2 and answered nothing); **provenance was lost** (the build-version reader
+takes the first report by sorted path, and the sidecar sorts first, emptying `baseline_version` /
+`engine_version` — which in turn **silences the §2.1 producing-build mismatch disclosure**, a false
+disclosure suppressing a true one); and the `reports` verb, the canonical "what counts as a report" oracle,
+listed sidecars as reports.
+
+The exclusion MUST be a **denylist** — carve out the reserved segments, keep accepting everything else.
+The inversion (accept only known `<type>` values) is an ALLOWLIST, and any report whose type segment an
+implementer failed to anticipate becomes silently invisible to every query: a false all-clear. A denylist
+can only be *incomplete*, and incompleteness here is **loud** — an unregistered suffix falls back into the
+candidate set and prints a disclosure on every query. Noise, never a swallowed report. A crate legitimately
+*named* `hierarchy` must still resolve: it sits in the `<crate>` position, not the reserved one.
+
+**The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`,
+and the `encountered-*` family. It is stated here because **the engines were already drifting on it** and
+nothing said they should not: three of the four excluded these by name and one discriminated by segment
+count, but the by-name lists disagreed — one engine carved out six suffixes, another two. Cross-engine
+reading is not hypothetical (the conformance frontier differential has one engine produce and another
+consume), so a consumer with the shorter list will claim another engine's sidecar as a report. This
+paragraph exists because the convention was real, correct, undocumented, and unevenly implemented — which
+is the state in which a rule is most likely to be quietly lost.
+
+**Not covered, deliberately:** the §3.3.1 **direct-file** locator. `--report path/to/x.hierarchy.json`
+loads that file whatever its internal dot-segments, so one engine can query another's report by path;
+refusing it there would break that. The rule above is about *prefix discovery*, where the engine chose the
+file and is therefore accountable for the choice.
+
 ⟨0.7⟩ **The type-hierarchy sidecar.** Alongside the report, an engine whose language has class/interface/
 protocol dispatch SHOULD also emit a **type-hierarchy sidecar** — a separate `<stem>.hierarchy.json`
 (the Rust/JVM impls append `.hierarchy.json` to the report stem; candor-swift uses
