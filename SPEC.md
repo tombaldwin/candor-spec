@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.23** — all code engines declare `0.23`; the floor is conformance-pinned. How versions
+**Version 0.24** — all code engines declare `0.24`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -260,7 +260,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.23" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.24" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -2265,9 +2265,20 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.24 (IN PROGRESS — engines landing; NOT yet conformance-pinned, and no engine declares it yet)** — a
-  **tier-1** rung, and the first one whose primary change can **turn a currently-green gate RED**. Read the
-  verdict note below before adopting.
+- **0.24 (all code engines declare `0.24`; conformance-pinned four-way)** — a **tier-1** rung, and the
+  first one whose primary change can **turn a currently-green gate RED**. Read the verdict note below
+  before adopting.
+
+  Pinned by conformance **PART 27** (the rung's behaviour — CONTRIBUTES, the `viaDispatchOn` literal, the
+  dot-free frontier arm, the sidecar triple, `--class`, `gate --report`, locale), **PART 10** (the
+  five-kind vocabulary, with a fabricated-kind negative control), and **PART 23** (the model). PART 27's
+  fixtures are hand-written reports, so the classifier is out of the loop and a divergence there is a
+  CONSUMER defect — which is where every defect this rung fixed actually lived.
+
+  Three self-differential properties landed alongside it and are not part of the contract but are how it
+  was checked: **PART 24** split-invariance, **PART 25** chain idempotence, **PART 26** trust monotonicity.
+  Each compares an engine with ITSELF across two configurations, so common-mode failure — four engines
+  implementing one wrong idea — is excluded by construction rather than by argument.
 
   **Primary: §6.2's reason-class projection CONTRIBUTES `unresolved` rather than defaulting to it.** The old
   rule keyed on ABSENCE — "a function whose `Unknown` carries no recorded reason *is treated as*
