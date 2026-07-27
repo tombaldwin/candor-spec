@@ -859,9 +859,40 @@ member `OWNER.M` it travels through. The subtype check (vs a bare simple-name ma
 positives: an unrelated same-named dispatch is not listed unless its owner actually sits above a reaching
 override. This is a **disclosed lower-bound expansion, never an assertion**: it says "this *may* reach
 `<fn>` through a dispatch I could not resolve," and reports only the frontier dispatch-source functions (the
-smaller, more informative set), not their transitive cones. An engine whose language has no class/protocol
-dispatch (the Rust scanner emits no `dispatch:`) returns `possibleViaUnknownDispatch: []` consistently (N/A
-by language model, not a gap). The cross-impl suite pins the frontier output across the dispatching engines.
+smaller, more informative set), not their transitive cones.
+
+⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
+unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
+unresolved dispatch where the engine could not form an owner type at all. Condition (3) asks whether a
+confirmed reacher overrides `OWNER.M`; with no `OWNER` and no `M` there is nothing to test. Such an entry
+MUST therefore be **disclosed** with `viaDispatchOn` set to the raw detail verbatim, and MUST NOT be
+dropped. Dropping it is absence under a key that could have carried an answer: a consumer reads an omission
+from `possibleViaUnknownDispatch` as "no function may reach the target through an unresolved dispatch," and
+that is exactly the claim the engine is not entitled to make.
+
+This is the same direction the **no-hierarchy fallback already takes** one rung up: with no §2.2 sidecar,
+condition (3)'s subtype test is unanswerable, and the specified behaviour is to over-list by simple name
+rather than to drop. A dot-free detail is that situation one rung further down — no owner *and* no member —
+and takes the same answer. The frontier over-lists by construction and asserts nothing, so the cost of a
+spurious entry is precision; the cost of a dropped one is a false all-clear on the query.
+
+Measured on the reference implementation before this clause: a report carrying
+`dispatch:untyped cross-package receiver` produced a frontier containing only the dotted entry, in **both**
+the hierarchy and fallback arms. The dot-free source appeared nowhere in the output and no diagnostic named
+it. Note also that the parenthetical this clause replaces was **stale**: the Rust scanner *does* emit
+`dispatch:`, and did so for every dispatch reason in a 1062-report census — so "returns `[]` consistently,
+N/A by language model" was reading a silent drop as a language property.
+
+⟨0.24⟩ **An EMPTY §2.2 hierarchy sidecar and an ABSENT one are the SAME INPUT to this query, and both
+take the over-listing fallback.** An engine MUST NOT read a sidecar that parses to `{}` as the positive
+claim "no type has a supertype" and score condition (3) as *failed* on that basis — that would collapse the
+frontier to empty across every dotted dispatch source at once, and a consumer reads an empty frontier as
+"no function may reach the target through an unresolved dispatch". An empty sidecar is far more often "the
+hierarchy pass found nothing, was not run, or wrote a stub" than a claim about the type graph, and the
+distinction is not recoverable from the file. Absent, empty, and unparseable therefore all mean *the
+subtype test is unanswerable*, which by the rule above means over-list, not drop.
+
+The cross-impl suite pins the frontier output across all four engines, including the dot-free arm.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
@@ -1217,6 +1248,16 @@ four, chosen to be language-neutral over *why a call's body could not be resolve
 | `native:` | a boundary to code the engine cannot analyse — native methods, FFI/`extern`, intrinsics | best-effort |
 | `dispatch:` | an unresolved **virtual / interface / protocol** dispatch with a **resolvable owner type + member** — static target known, concrete body not (no impl, bounded-CHA over many impls, dynamic receiver of known type) | **`<owner-type>.<member>`** (dotted) — NORMATIVE |
 | `callback:` | an unresolved **higher-order / owner-less** invocation — a function/closure *value* (param, field, bound, computed, opaque-iterable) whose target and owner type are not both known | best-effort |
+
+⟨0.24⟩ **The dotted detail is normative WHEN an owner was formed; a DOT-FREE detail is the reserved form
+for "no owner could be formed at all".** It is free text naming the cause (`untyped cross-package receiver`)
+and is NOT conformance-compared — but it remains a `dispatch:`, and consumers MUST handle it (§3.1). The
+alternative rulings were both measured and rejected. Reclassifying to `callback:` is what §4's own dividing
+line reads like — no resolvable owner — but it is false (no function value is involved) and it moves the
+reason's §6.2 class from `dispatch` to `indirect`, silently **narrowing** every `deny E Unknown[dispatch]`
+gate in the field. Refusing to emit anything is the cardinal sin outright. The kind is the part gates read,
+so the kind is the part that must stay true; the detail is where the engine says how much it knows, and
+"nothing" is a thing it must be able to say.
 
 The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists:
 `dispatch:` is reserved for unresolved member dispatch where the engine knows the owner type and member
