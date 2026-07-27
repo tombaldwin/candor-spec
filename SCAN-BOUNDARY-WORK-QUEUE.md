@@ -1634,3 +1634,54 @@ never produce that kind. Renaming is not free: `callback:` moves the class Dispa
 **Two found off-brief, both real:** `--parallel` ignored every target's `.candor/config` while its own
 documentation promised byte-identity (`4ddbd3c`), and `test/smoke.sh` had pinned shape 1 as a REQUIREMENT
 (`640630b`) — see standing-bar item 7g.
+
+### swift's five-shape sweep — 4 of 5 PRESENT, the richest of the four
+
+- **1. An untrusted report still grants coverage — PRESENT, `308ad15`. THE VEIN IS NOW 4/4.** ts found it,
+  and rust, java and swift all had it. Swift's reproduction is the clearest statement of the defect:
+  a call into a dep API the report lacks reads `invisible: ['RatesDep']` unchained, and goes **absent from
+  `functions`** the moment a STALE report is chained — the κ ledger and the verdict's `coverage` field fall
+  silent with it. The fix is a SPLIT, not a drop (chained-but-not-covered); gating the join on coverage
+  instead — the obvious one-liner — fails FOUR named tests, three of them the stale-downgrade rows.
+  Live: console-kit's 6 dep reports restamped → +29 `invisible`, **18 functions back from absent**, 0 losses.
+  Instrumented rather than assumed where it showed nothing: TCA/candor-swift dep reports name SwiftPM
+  PACKAGES (`swift-case-paths`) while imports name MODULES (`CasePaths`), so nothing is covered in either
+  arm — **a separate pre-existing gap, reported not fixed.**
+- **2. An unordered walk — PRESENT in a different guise, `196e125`.** Java's "picks in hash order" form is
+  absent (sorted since `23eafc2`). What is present is `23eafc2`'s SIBLING in the code written after it:
+  five runs of ONE binary over Alamofire under `CANDOR_WORKSPACE_CHAIN` produced **five report hashes**
+  carrying the same 879 union entries in five orders — on the cross-package PUBLISHING path.
+- **3. A disclosure lost to a cache — PRESENT, `43a0eaa`.** No incremental cache, but `--workspace`'s
+  `.candor/deps` IS a disk cache: a child scan that FAILED was silently skipped and the previous run's
+  report stood in. Warm vs cold on identical source: `useDep` absent from `functions` vs
+  `invisible: ['DepLib']`. Sweeping alone was insufficient — children share the cache, so the fixpoint
+  re-runs once after sweeping.
+- **4. A trust marker failing open — ABSENT for `unresolved` (0 failures over 12,004 entries, 10,539 with
+  `Unknown`); PRESENT one layer over, `eb0250e`** — and at HOP 1, not hop 2 as java predicted. Building the
+  three-package chain to check the relay exposed a SECOND defect underneath: **`reasonClass` tested
+  `dynamicMemberLookup` for EQUALITY while the engine emits `kind:detail`, so `Unknown[reflect]` was
+  unsatisfiable even single-tree.** A dead parallel `unresolvedSet` (written 7×, read 0×) was
+  absent-by-accident and removed (`c5929e3`).
+  - **CROSS-ENGINE CONSEQUENCE, verified and fixed by me in java (`d9b07b0`).** The same equality test is
+    in candor-java `ReasonClass.java:70` and candor-ts `policy.mjs:20`. Swift emits
+    `dynamicMemberLookup:<root>.<prop>` and never the bare token, so neither could ever match a real one.
+    REFLECT and UNRESOLVED are both in the `dynamic` set, so a bare `deny Unknown` fires either way — what
+    silently dies is `deny Unknown[reflect]`, the form the ratchet is adopted in. **candor-ts is still
+    OPEN** (its repo had an agent working in it); the fix is `startsWith`, monotone, with both the
+    `kind:detail` and bare rows pinned.
+- **5. A flag outliving its scope — the catch-all inversion VERIFIED with a working negative control; two
+  uncovered maps still leaking, fixed `c77038f`.** `protoTyped` and `localConstStrings` were covered by
+  neither `clearBinding` nor `shadowName`, both FABRICATING, each isolated by a rename control. The obvious
+  placement cost Alamofire's `URLRequest.init` its disclosure. The filed binding-model rewrite was
+  re-priced: **verdict stands** — the catch-all removed the binder-form enumeration; this is a different one.
+
+**Job 2:** half-1 false triggers fixed (`7a4f977`) — 289 bindings → **123**, candor-swift's own 23 → 2, with
+a PRE-EXISTING residual found doing the same thing one conjunct earlier (`returnsIdx` is bare-name keyed
+package-wide), pinned as a test asserting today's behaviour with instructions to flip it. The
+full-qualification dep-index key (rust's prerequisite 0) was **not attempted** and remains open.
+
+**Two method traps, both the agent's own and both worth carrying:** a test suite **passed three mutants**
+because its rows used `-> Int` methods a pre-existing conjunct already excluded, so the new guards were
+never reached — *a test that cannot reach the code it names is not a test*. And standing-bar item 7c(b)
+claimed its second victim: `git checkout <file>` to undo a one-line mutant reverted uncommitted work, and
+three measurements ran against a half-applied change.
