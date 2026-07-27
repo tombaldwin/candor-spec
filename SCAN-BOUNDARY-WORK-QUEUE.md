@@ -448,12 +448,36 @@ with four concrete instances rather than an argument.
       `deplib::get_dyn().run()` → **absent**. A hole in a SHIPPED guard, not an un-attempted precision
       gap — and it violates PART 21's own ruling that an unformable key must not read pure. PART 21's
       rust fixture binds the factory result.
-- [ ] **swift — a chained dep type's PROPERTY ACCESSOR read is silent-pure.** The dep report carries
+- [x] **FIXED candor-swift `e02bff7` — and the A/B was DECISIVE, not confirmatory.** Both reproduced
+      exactly as filed, plus **a THIRD spelling the filing did not name**: `static var` (`SC.s`), alongside
+      `lazy var` and plain computed `var`. Fixed with no report-format change — the brief's "the witness is
+      already under the key" sentence held for both.
+      **The A/B caught an over-fire the fixture could not**, which is the standing result restated: A/B on
+      real code is BOTH the fabrication gate AND the value estimator. `xs.map(String.init)` is a member
+      access with member `init`, and swift-syntax publishes `SwiftSyntax#String.init` for its own extension
+      — so the join charged that to callers of the **stdlib** initializer. Excluded `.init`/`.self`/
+      `.Type`/`.Protocol` as a class. The agent also added `CANDOR_DEPMEMBER_DEBUG=1` because *the diff
+      showed which functions moved and never which KEY moved them* — which is exactly why the over-fire was
+      invisible. That instrument is the durable part.
+      A/B: unchained 8 real targets, **3082 entries, 0 changed** (inert without a dep report, by
+      construction). Chained candor-swift ← swift-syntax: **+35 functions, all `Unknown`-only, 0 new real
+      effects, 0 losses**; all 99 join hits are SwiftSyntax node accessors whose own dep entries are
+      `Unknown`, **0 hits on any Foundation/stdlib type**.
+      **`unboundPure` gains `Unknown` and that is CORRECT** — measured against the BOUND spelling first: a
+      dep factory whose product is pure has no report entry, the key MISSes, and it falls to PART 21's
+      disclosure. `boundPure` already did this on HEAD. Matching it is the invariant; anything else
+      re-creates the divergence.
+      Baseline entries deleted (`bda00a5`); cells flipped `A`→`.` (lazy_init, exact) and `A`→`h`
+      (fn_returned_dyn — **now identical to java and ts, so the four-way divergence is CLOSED**). Ratchet
+      verified in the other direction: with the entries restored it reports FAIL (STALE WAIVER), exit 2.
+      ORIGINAL FILING — swift, a chained dep type's PROPERTY ACCESSOR read is silent-pure.** The dep report carries
       `L.v ['Fs'] accessor` and `C.w ['Env'] accessor`; the consumer's `l.v` / `c.w` are absent. **Not
       lazy-specific — a plain computed `var` behaves identically**, which makes this much wider than the
       cell that found it. PART 19's swift fixture reads a module-level GLOBAL, which IS modelled, so the
       accessor form had never been asked.
-- [ ] **swift — the same unbound-factory shape as rust**, with the same asymmetry: `let t = getDyn();
+- [x] **FIXED with the above (`e02bff7`)** — the two spellings now share one guard by construction
+      (`CallCollector.depFactoryCallee(_:)`), rather than the inline binding-only check.
+      ORIGINAL FILING — swift, the same unbound-factory shape as rust**, with the same asymmetry: `let t = getDyn();
       t.run()` discloses and `let c = build(); c.fetch()` resolves, while `getDyn().run()` and
       `build().fetch()` are both absent.
 - [ ] **rust, single-tree, no boundary — a lazy-static read through a MODULE PATH is not charged.**
