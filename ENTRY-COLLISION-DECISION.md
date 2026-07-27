@@ -1,8 +1,10 @@
 # Two chained reports, one key, different answers — what should an engine do?
 
-**Status: a decision the spec does not make, measured across all four engines 2026-07-27. Nothing changed
-in any engine on the strength of this note; it exists so the change is made once, deliberately, rather than
-four times by accident.**
+**Status: DECIDED 2026-07-27 — adopt the union. The gating measurement (item 1 below, "what a union does
+to rust's corpus") is done and is at the foot of this note. It changed the reasoning as well as confirming
+the recommendation: the objection this note treated as the real cost does not describe anything in the
+corpus, and the cost of withdrawing is larger than "effects". No engine has changed yet; the four-way
+implementation is queued behind this decision so it is made once rather than four times by accident.**
 
 ## Why it is live
 
@@ -94,3 +96,84 @@ correctly on three attempts is not a rule a policy gate should depend on.
 It also removes java from the "safe, merely imprecise" column. Every non-union engine now has a measured
 gate-level failure — rust's is a purity claim, java's is a `deny Fs` flip — and the union has neither,
 because it never discards a claim it was given.
+
+
+## The gating measurement, 2026-07-27 — read-only over three real dep corpora
+
+Item 1 said "what a union does to rust's corpus is unmeasured — do it before landing". Done, offline over
+the actual `.candor/deps` trees of candor-rust (173 reports), pgman (268) and ebman (409), with no engine
+built or run. Two false starts are recorded at the end because both produced flattering zeros.
+
+| | candor-rust | pgman | ebman |
+|---|---|---|---|
+| distinct keys | 16 355 | 21 787 | 42 402 |
+| colliding keys | 705 (4.3%) | 1 960 (9.0%) | 4 782 (11.3%) |
+| …disagreeing on `inferred` | **2** | **8** | **113** |
+| rust WITHDRAWS ⇒ absent ⇒ purity claim | 2 | 8 | 113 |
+| java order-dependent (rename a file, change the effect) | 0 | 0 | 32 |
+| java stale-`{Unknown}` erases a trusted effect | 0 | 0 | 24 |
+| **items a UNION adds beyond the best single entry** | **0** | **0** | **7** |
+
+**The union's total cost across all three corpora is 7 effect-items.** It closes 123 purity claims and 24
+`deny`-flips to buy them.
+
+### The finding that changes the reasoning: every disagreement is a VERSION PAIR
+
+This note's stated objection to the union was that "two entries under one key may be two **different
+functions** that merely collide, and unioning then charges one's effects to the other — a fabrication."
+**Not one measured disagreement is that.** Every single one is the same function in two versions of the
+same crate, both legitimately in the tree because cargo permits semver-major duplicates:
+
+```
+thiserror_impl#valid::Enum::validate       ['Unknown'] @1.0.69   vs  [] @2.0.18
+rustix#backend::libc::time::…::timerfd_create   [] @0.38.44  vs  ['Unknown'] @1.1.4
+http#uri::authority::Authority::from_static ['Unknown'] @0.2.12  vs  [] @1.4.0
+hyper#client::conn::http1::Builder::handshake   ['Log'] @0.14.32 vs  [] @1.9.0
+hyper#client::conn::http2::Builder::handshake   ['Log','Unknown'] @0.14.32 vs ['Clock'] @1.9.0
+```
+
+That last-but-one line is a live cardinal sin on one of the most-depended-upon crates in the ecosystem:
+hyper 0.14's `Builder::handshake` logs, hyper 1.9's does not, both are in the tree, and rust's withdrawal
+makes the consumer read the key as **absent — a positive claim of purity under ⟨0.21⟩**.
+
+For a version pair the union is not a hedge, it is the *correct* answer. Both bodies are in the build; which
+one a given caller resolves to is a fact the package-scoped key cannot express; so the runtime may execute
+either and their union is simply what the key means. The fabrication objection survives only for a genuine
+leaf collision between unrelated functions — and this corpus contains none of those to trade against.
+
+### The second finding: withdrawing costs more than the effect
+
+This note framed the choice as being about effects. It is about the whole entry. Disagreements by field:
+
+| field | candor-rust | pgman | ebman | union adds (all three) |
+|---|---|---|---|---|
+| `inferred` | 2 | 8 | 113 | 7 items |
+| `invisible` (the κ ledger) | 30 | 37 | 273 | 185 items |
+| `calls` (graph edges) | 57 | 120 | 326 | 350 items |
+| `direct` | 3 | 21 | 86 | **0** |
+| `unknownWhy` | 5 | 27 | 36 | **0** |
+
+Rust withdraws the KEY, so it withdraws all of these at once: the coverage disclosure the κ ledger exists to
+carry, and the call edges the graph queries walk. `direct` and `unknownWhy` union at **zero** cost in every
+corpus — one side is always a subset of the other, so the union is just "the one that said something".
+
+### What is still NOT settled — item 2 is UNDER-POWERED, not answered
+
+Item 2 asked whether the union should extend to the literal surfaces. This corpus **cannot answer it**, and
+saying so matters more than the tidy zero I first wrote down. Non-empty surfaces among *colliding* keys:
+`paths` 0/1/2, `hosts` 0/0/2, `cmds` 2/0/0, `netClass` 0/0/9. Where they exist they agree, but a sample of
+0–9 is not evidence. The same reasoning that settles effects applies (both versions are in the build, so
+union), but it is an argument here, not a measurement — and this note's own history says which of those to
+trust.
+
+Items 3 and 4 stand. Item 3 is answered in passing: 31 of ebman's 113 unions mix `Unknown` with a concrete
+effect, and the largest union anywhere is 3 effects, so the noise is bounded and small.
+
+### Two false starts, kept because both produced flattering zeros
+
+1. The first loader read `<deps>/*.json`. Reports actually live one directory per crate (`<deps>/<crate>@<ver>/report.<pkg>.scan.json`), so it loaded **0 reports** and reported 0 collisions across all three
+   corpora — a clean bill of health from an empty measurement.
+2. The first surface pass keyed on `hosts`/`paths`/`cmds`/`tables` and found **0 disagreements everywhere**.
+   Three of those fields are usually absent from these reports and `tables` never appears at all, so it was
+   comparing absent keys to absent keys. This is standing-bar item 7d ("an empty dep report gives a
+   meaningless ABSENT") recurring in a new place, and it is why the vacuity check above exists.
