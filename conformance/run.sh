@@ -2180,18 +2180,55 @@ echo
 # the kinds its language model produces (Rust: no `dispatch:`), so per-engine kind sets may differ — only
 # the vocabulary + the dispatch shape are pinned, not which kinds appear.
 echo
+# THE SHARED FIXTURE CANNOT PRODUCE EVERY KIND AN ENGINE EMITS, AND THIS ROW WAS VACUOUS FOR ONE OF THEM.
+# candor-scan's dominant `unknownWhy` kind on real code is `ambiguous:` (8710 of 19607 entries over a
+# 1062-report census — more than `callback:`), and PART 10 never saw a single one, because the differential
+# fixture has no bare call naming two same-name local defs. A vocabulary check that only reads the shared
+# fixture pins the vocabulary of the shared fixture. So PART 10 also scans a tiny per-engine crate BUILT TO
+# PRODUCE the kind, and asserts it actually appeared — a row that could not fail is not a check (item 8c).
+mkdir -p "$W/vocab/src"
+cat > "$W/vocab/Cargo.toml" <<'TOML'
+[package]
+name = "vocab"
+version = "0.1.0"
+TOML
+# The real-world shape, reduced: cfg-gated alternative definitions of one free function. Rust's own name
+# resolution picks by cfg; a syntactic scan cannot evaluate cfg, so the callee is genuinely ambiguous and
+# the engine discloses rather than picking (which would fabricate one arm's effects onto the other).
+cat > "$W/vocab/src/lib.rs" <<'RS'
+#[cfg(unix)]
+pub fn helper() { std::fs::read("/etc/a").ok(); }
+#[cfg(windows)]
+pub fn helper() { println!("pure"); }
+pub fn go() { helper(); }
+RS
+"$SCAN" "$W/vocab" --json > "$W/vocab.json" 2>/dev/null || true
 echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
-python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" <<'PY' || rc=1
+python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" <<'PY' || rc=1
 import json, os, sys
 CANON = {"reflect", "native", "dispatch", "callback"}
 # Known migration kinds (SPEC §4 ⟨0.7⟩): an engine MAY still emit these while it reconciles its reasons
 # onto the canonical four (MODEL.md tracks candor-java's task-handoff/indy). They WARN — visible, not
 # silently allowed — but do NOT fail the suite, so a not-yet-reconciled engine is surfaced without being
 # falsely red. Any OTHER off-vocabulary kind is a hard DIVERGE (the old `dispatch-broad:`/`call:`/… drift).
+#
+# `ambiguous:` IS IN THE SAME TOLERATED BUCKET, BUT FOR THE OPPOSITE REASON, AND THE DIFFERENCE IS WORTH
+# WRITING DOWN. java's two are remnants awaiting reconciliation onto the canonical four. rust's names a
+# state NONE of the four can express: a BARE FREE call whose leaf has two-or-more local definitions (the
+# cfg-gated-alternatives shape above). It is not `dispatch:` — there is no owner type, so the NORMATIVE
+# `owner.member` detail cannot be formed, and nothing virtual happens (exactly one function runs; it is the
+# ANALYSER's name resolution that failed, not the program's). It is not `callback:` either — that kind is an
+# unresolved HIGHER-ORDER invocation over a function VALUE, and it is not the residual bucket (the residual
+# is reached by the ABSENCE of a reason). SPEC §6.2's reason-class table already anticipated this and names
+# `ambiguous*` explicitly, ruling its class `dispatch`; §4's closed kind set has not caught up. Reconciling
+# it is a SPEC rung, not an engine edit, and it is not free: measured, `deny E Unknown[dispatch]` fires on
+# 58 of 200 crates.io crates today and on 0 of 200 if `ambiguous:` is reclassified `indirect`, because
+# every other `dispatch:` rust emits requires a chained dependency. Tolerated + WARNED until that rung.
 MIGRATION = {"task-handoff", "indy"}
-labels = ["rust", "java", "ts", "swift"]
+TOLERATED = {"ambiguous"}   # off-vocabulary in §4, but named and classed by §6.2 — see above
+labels = ["rust", "java", "ts", "swift", "rust(vocab)"]
 fails = 0; warns = 0; seen = {}; total = 0
-for label, path in zip(labels, sys.argv[1:5]):
+for label, path in zip(labels, sys.argv[1:6]):
     if not path or not os.path.exists(path):
         continue
     try:
@@ -2206,6 +2243,8 @@ for label, path in zip(labels, sys.argv[1:5]):
             seen.setdefault(label, set()).add(kind)
             if kind in MIGRATION:
                 print(f"  WARN    [{label}] migration unknownWhy kind (not yet reconciled, SPEC §4): {w!r}  (fn {f.get('fn')})"); warns += 1
+            elif kind in TOLERATED:
+                print(f"  WARN    [{label}] off-§4-vocabulary kind named+classed by SPEC §6.2: {w!r}  (fn {f.get('fn')})"); warns += 1
             elif kind not in CANON:
                 print(f"  DIVERGE [{label}] non-canonical unknownWhy kind: {w!r}  (fn {f.get('fn')})"); fails += 1
             elif kind == "dispatch":
@@ -2215,8 +2254,14 @@ for label, path in zip(labels, sys.argv[1:5]):
 for label in labels:
     if label in seen:
         print(f"  {label}: kinds = {sorted(seen[label])}")
+# THE PURPOSE-BUILT INPUT MUST HAVE PRODUCED THE KIND IT EXISTS FOR. Without this the row degrades
+# silently the moment the fixture stops triggering (a resolution improvement, a parser change), and a
+# vocabulary check nobody notices went quiet is exactly how `ambiguous:` stayed invisible for a release.
+if "ambiguous" not in seen.get("rust(vocab)", set()):
+    print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
+          "this row's coverage of the off-vocabulary kind is vacuous, not passing"); fails += 1
 suffix = "OK" if fails == 0 else f"{fails} violation(s)"
-if warns: suffix += f", {warns} migration warning(s)"
+if warns: suffix += f", {warns} tolerated off-vocabulary warning(s)"
 print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + suffix)
 sys.exit(1 if fails else 0)
 PY
