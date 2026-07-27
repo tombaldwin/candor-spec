@@ -1582,7 +1582,37 @@ in every report — only that any kind it *does* see is one of the **five** (and
 formed an owner carries `owner.member`; see the dot-free reserved form above). Finally, an engine **MAY** emit an additional, off-vocabulary kind **during a migration**
 (candor-java has historically emitted `task-handoff:` and `indy:`; reconciling them onto the four is a
 tracked, byte-changing task — MODEL.md): such a kind round-trips and a consumer tolerates it under §2
-forward-compatibility. ⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** —
+forward-compatibility. ⟨0.24⟩ **AN ENGINE HOLDS THIS VOCABULARY TWICE, AND THE HALVES DRIFT.** Every implementation surveyed has
+**two** representations of a `kind`: a **prefix/string classifier** feeding §6.2's class table, and a
+**typed/structural** one (an enum, a union, a constructor set, a match). They are authored from different
+places — the class table from a cross-engine audit of what engines actually emit, the typed vocabulary from
+this section's list — so when this section goes stale, **the string half stays right and the typed half does
+not.**
+
+That asymmetry is not a curiosity, it is a *concealment mechanism*: the string half being correct is exactly
+what stops anyone noticing. Measured on the reference JVM engine, whose string classifier had mapped
+`ambiguous` → `dispatch` since a 2026-07-16 audit while its typed `Kind` enum did not contain the kind at
+all — so the token parsed to a null kind and classified as `unresolved` on the typed path, `dispatch` on the
+string path, in one engine, silently. Two code comments had recorded the divergence as intended behaviour
+rather than fixing it.
+
+An implementer amending this section MUST update both halves and SHOULD add a test that a **fabricated**
+off-vocabulary kind (`banana:whatever`) still behaves as §2 forward-compatibility requires — round-tripped
+verbatim, classified through the conservative catch-all. Without that control, "added a kind" and "stopped
+checking the kind set" are the same diff.
+
+**A consumer may need a kind it never emits.** An engine that chains dependency reports relays their
+`unknownWhy` tags into its own report keyed by the calling function, so a kind produced only by another
+engine's language model can appear in this engine's output. The JVM engine emits no `ambiguous:` — a JVM
+invoke carries owner, name and descriptor, so bytecode name resolution is never ambiguous — and must still
+represent it.
+
+**A dispatch FRONTIER must key off the kind, not the class.** §3.1's frontier resolves overrides against an
+owner type. `ambiguous:` projects to class `dispatch` (§6.2) but has **no owner**, so an engine whose
+frontier selects sources by *class* will admit entries there is nothing to resolve against, while one that
+selects by *kind* excludes them for free.
+
+⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** —
 §6.2 holds them up as the correct shape (a reason attached where the `Unknown` is created, per dependency
 ENTRY), so they must not sit in a clause about kinds being reconciled away. They project to `unresolved`.
 The conformance check pins the canonical kinds and the `dispatch:` shape, and
