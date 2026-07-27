@@ -1603,6 +1603,24 @@ Each was refused or deferred with a measurement, not left undone. None is a know
        give the second a worktree.
      - A test-count change you did not cause is the cheapest available collision detector. Nothing else
        reported this — the tree looked fine, both agents' work was correct, and the only signal was 53→55.
+   - **RECURRENCE 3, same day, DIFFERENT resource: the shared SCRATCHPAD.** The java agent reported that
+     *"another agent was writing into the shared session scratchpad and overwrote my first measurement's
+     inputs mid-run"*. It moved to a private subdirectory and re-ran everything from scratch, so no
+     reported number came from the clobbered run — but it caught that itself, and nothing in my briefs
+     told it to. **Separately, the same hour, candor-java's `build/libs` was wiped for ~35 minutes by a
+     concurrent `./gradlew clean`, mid-way through P1's four-way run.** P1 correctly refused to rebuild in
+     someone else's tree (this very item) and re-ran once the jar returned.
+     **THREE COLLISIONS IN ONE SESSION, on three different shared resources — the repo, the scratchpad, and
+     another repo's build outputs — none of which the "one agent per repo" framing covers.** The honest
+     statement of the rule:
+     - **Every agent gets a PRIVATE scratchpad subdirectory**, named for its task. The session scratchpad
+       is shared by default and that default is wrong for concurrent fan-out.
+     - **`clean` targets are cross-repo hazards.** A build that wipes artefacts another agent's harness
+       consumes is a destructive write outside its own repo, even though every file it touched was its own.
+     - The detector in all three cases was an agent noticing an anomaly in its OWN numbers — a test count,
+       a missing input, a stale jar. **Brief agents to treat an unexplained change in their own measurement
+       as a collision hypothesis first**, not as a finding about candor. Every one of them did; that was
+       their judgment, not my instruction, and it is now the instruction.
    - **AND OF candor-spec ITSELF, which is worse: `git add -A` there COMMITS ANOTHER AGENT'S IN-FLIGHT
      EDIT under your message.** 2026-07-27: the SPEC §2.2 + CHANGELOG halves of the java hierarchy-sidecar
      rung (`bb8459a`) were written into the working tree and swept, minutes later, into `272e423` — a
