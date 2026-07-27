@@ -3898,9 +3898,145 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 22 — A CHAINED DEP JOIN CARRIES THE WHOLE SURFACE, NOT JUST THE EFFECT          [TIER 1]
+#
+# Four engines, four independent instances of ONE defect, all found within a day of each other:
+#   candor-rust   THREE apply sites; drop-glue carried effects+paths only, dep-lazy carried no
+#                 `invisible`/`incomplete`                                              (7cb5748)
+#   candor-java   TWO copies; `crossDepJoin` reproduced `inheritDepFn` line for line and drifted until
+#                 the ⟨0.19⟩ reason class reached the hand-off path and NOT the ordinary call path,
+#                 leaving a shipped, conformance-pinned gate silently inert            (6ab26e4)
+#   candor-swift  THREE copies; the chained-global site dropped tables/invisible/incomplete (84a71ea)
+#   candor-ts     TWO drifted copies; a chained dep's Unknown lost its REASON CLASS      (4dad22d)
+# Each engine folded its copies into one apply site. Nothing pins that they stay folded, and the
+# failure mode is silent in every direction that matters: the EFFECT still travels, so a corpus A/B
+# shows nothing, while the literal surface that a policy matches on, or the disclosure that qualifies
+# the verdict, quietly does not. A join that carries `Fs` and drops `paths` lets `allow Fs /tmp/**`
+# pass on a dependency that reads /etc/shadow.
+#
+# THE ASSERTION IS RELATIVE, and deliberately so: for each surface, whatever the DEPENDENCY's own
+# report carries, the consumer's entry must contain. It is NOT "every engine extracts the same
+# literals" — swift does not lift a `Process.launchPath` string into `cmds`, and that is a producer
+# precision question, not this contract. Keying the assertion off each engine's own dep report makes
+# the part test the JOIN in every engine while asserting nothing about extraction, so a producer gap
+# cannot make this row fail and cannot make it vacuous either: the row reports what it compared.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+P22_OK=0
+mkdir -p "$W/dsurf"
+# ---- rust
+P22_RS_DEP="/nonexistent"; P22_RS_APP="/nonexistent"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$W/dsurf/rs/deplib/src" "$W/dsurf/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/dsurf/rs/deplib/Cargo.toml"
+  printf 'pub fn work() {\n  let _ = std::fs::read_to_string("/surface/path");\n  let _ = std::process::Command::new("surfacecmd").status();\n}\n' > "$W/dsurf/rs/deplib/src/lib.rs"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib="1"\n' > "$W/dsurf/rs/app/Cargo.toml"
+  printf 'pub fn go() { deplib::work(); }\n' > "$W/dsurf/rs/app/src/lib.rs"
+  ( cd "$W/dsurf/rs/deplib" && "$SCAN" . --json > "$W/dsurf/rsdep.json" 2>/dev/null )
+  ( cd "$W/dsurf/rs/app" && CANDOR_DEPS="$W/dsurf/rsdep.json" "$SCAN" . --json > "$W/dsurf/rsapp.json" 2>/dev/null )
+  P22_RS_DEP="$W/dsurf/rsdep.json"; P22_RS_APP="$W/dsurf/rsapp.json"
+fi
+# ---- java
+P22_J_DEP="/nonexistent"; P22_J_APP="/nonexistent"
+if [ -n "$JAR" ] && [ -f "$JAR" ]; then
+  mkdir -p "$W/dsurf/j"
+  printf 'package lib;\nimport java.io.*;\npublic class Work { public static void work() throws Exception {\n  new FileReader("/surface/path").close();\n  Runtime.getRuntime().exec("surfacecmd");\n} }\n' > "$W/dsurf/j/Work.java"
+  javac -d "$W/dsurf/j/libc" "$W/dsurf/j/Work.java" 2>/dev/null
+  java -jar "$JAR" "$W/dsurf/j/libc" --json "$W/dsurf/jdep.json" >/dev/null 2>&1
+  printf 'package app;\npublic class Go { public void run() throws Exception { lib.Work.work(); } }\n' > "$W/dsurf/j/Go.java"
+  javac -cp "$W/dsurf/j/libc" -d "$W/dsurf/j/appc" "$W/dsurf/j/Go.java" 2>/dev/null
+  CANDOR_DEPS="$W/dsurf/jdep.json" java -jar "$JAR" "$W/dsurf/j/appc" --json "$W/dsurf/japp.json" >/dev/null 2>&1
+  P22_J_DEP="$W/dsurf/jdep.json"; P22_J_APP="$W/dsurf/japp.json"
+fi
+# ---- ts
+P22_T_DEP="/nonexistent"; P22_T_APP="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$W/dsurf/ts/deplib/src" "$W/dsurf/ts/app/src" "$W/dsurf/ts/app/node_modules/deplib"
+  printf '{"name":"deplib","version":"1.0.0","main":"src/index.ts"}\n' > "$W/dsurf/ts/deplib/package.json"
+  printf 'import * as fs from "node:fs";\nimport { execSync } from "node:child_process";\nexport function work(): void {\n  fs.readFileSync("/surface/path");\n  execSync("surfacecmd");\n}\n' > "$W/dsurf/ts/deplib/src/index.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$W/dsurf/ts/deplib" --json > "$W/dsurf/tsdep.json" 2>/dev/null )
+  cp -r "$W/dsurf/ts/deplib/." "$W/dsurf/ts/app/node_modules/deplib/" 2>/dev/null
+  printf '{"name":"app","version":"0.0.0","dependencies":{"deplib":"1.0.0"}}\n' > "$W/dsurf/ts/app/package.json"
+  printf 'import { work } from "deplib";\nexport function go(): void { work(); }\n' > "$W/dsurf/ts/app/src/index.ts"
+  ( cd "$TS_DIR" && CANDOR_DEPS="$W/dsurf/tsdep.json" node scan.mjs "$W/dsurf/ts/app" --json > "$W/dsurf/tsapp.json" 2>/dev/null )
+  P22_T_DEP="$W/dsurf/tsdep.json"; P22_T_APP="$W/dsurf/tsapp.json"
+fi
+# ---- swift
+P22_S_DEP="/nonexistent"; P22_S_APP="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$W/dsurf/sw/dep/Sources/DepLib" "$W/dsurf/sw/app/Sources/App"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "DepLib", products: [.library(name: "DepLib", targets: ["DepLib"])], targets: [.target(name: "DepLib")])\n' > "$W/dsurf/sw/dep/Package.swift"
+  printf 'import Foundation\npublic func work() {\n  _ = try? String(contentsOfFile: "/surface/path", encoding: .utf8)\n  let p = Process(); p.launchPath = "/bin/surfacecmd"; try? p.run()\n}\n' > "$W/dsurf/sw/dep/Sources/DepLib/Work.swift"
+  ( cd "$W/dsurf/sw/dep" && "$SW_BIN" . --json > "$W/dsurf/swdep.json" 2>/dev/null )
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(path: "../dep")], targets: [.executableTarget(name: "App", dependencies: [.product(name: "DepLib", package: "dep")])])\n' > "$W/dsurf/sw/app/Package.swift"
+  printf 'import DepLib\nfunc go() { work() }\ngo()\n' > "$W/dsurf/sw/app/Sources/App/main.swift"
+  ( cd "$W/dsurf/sw/app" && CANDOR_DEPS="$W/dsurf/swdep.json" "$SW_BIN" . --json > "$W/dsurf/swapp.json" 2>/dev/null )
+  P22_S_DEP="$W/dsurf/swdep.json"; P22_S_APP="$W/dsurf/swapp.json"
+fi
+python3 - "$P22_RS_DEP" "$P22_RS_APP" "$([ -x "$SCAN" ] && echo 1 || echo 0)" \
+           "$P22_J_DEP" "$P22_J_APP" "$([ -n "$JAR" ] && [ -f "$JAR" ] && echo 1 || echo 0)" \
+           "$P22_T_DEP" "$P22_T_APP" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" \
+           "$P22_S_DEP" "$P22_S_APP" "$([ -n "$SW_PRESENT" ] && echo 1 || echo 0)" <<'PYDS' || P22_OK=1
+import json, sys, os
+SURFACES = ("hosts", "cmds", "paths", "tables")
+def entry(path, pred):
+    try: d = json.load(open(path))
+    except Exception: return None
+    for e in d.get("functions", []):
+        if pred(e): return e
+    return None
+def check(name, dep_path, app_path, dep_fn, app_fn):
+    """Consumer's surfaces must CONTAIN the dep's. Asserted per surface the dep actually carries, so a
+       producer that does not extract a literal makes this vacuous for that surface, never failing."""
+    de = entry(dep_path, dep_fn)
+    if de is None: return False, "the dependency's own entry is missing — fixture did not produce it"
+    ae = entry(app_path, app_fn)
+    if ae is None: return False, "consumer ABSENT from the report — a purity claim over a chained call"
+    deff = set(de.get("inferred", [])) - {"Unknown"}
+    aeff = set(ae.get("inferred", []))
+    lost = deff - aeff
+    if lost: return False, f"effects dropped by the join: {sorted(lost)}"
+    compared, dropped = [], []
+    for k in SURFACES:
+        dv = set(de.get(k) or [])
+        if not dv: continue                      # the dep carries none — nothing to assert
+        compared.append(k)
+        missing = dv - set(ae.get(k) or [])
+        if missing: dropped.append(f"{k}{sorted(missing)}")
+    if dropped: return False, "surface dropped by the join: " + ", ".join(dropped)
+    if not compared: return True, f"effects {sorted(deff)} travel (no literal surface in the dep to compare)"
+    return True, f"effects {sorted(deff)} + {'/'.join(compared)} all travel"
+print("\n[22] A CHAINED DEP JOIN CARRIES THE WHOLE SURFACE  (the effect AND the literals it was found with)")
+rows = [("rust", 1, 2, 3, lambda e: e.get("fn") == "work",       lambda e: e.get("fn") == "go"),
+        ("java", 4, 5, 6, lambda e: "Work.work" in (e.get("fn") or ""), lambda e: "Go.run" in (e.get("fn") or "")),
+        ("ts",   7, 8, 9, lambda e: (e.get("fn") or "").endswith("work"), lambda e: (e.get("fn") or "").endswith("go")),
+        ("swift",10,11,12, lambda e: e.get("fn") == "work",      lambda e: e.get("fn") == "go")]
+fails = 0
+for name, di, ai, pi, dfn, afn in rows:
+    dep, app, present = sys.argv[di], sys.argv[ai], sys.argv[pi] == "1"
+    if not (os.path.exists(dep) and os.path.exists(app)):
+        # A missing arm is NOT a passing arm (the lesson PART 21 records): an absent binary is a skip,
+        # a PRESENT binary whose report never appeared is a failure.
+        if present:
+            fails += 1
+            print(f"  {name:6s} -> FAIL     (engine PRESENT but its PART 22 reports were never produced)")
+        continue
+    ok, why = check(name, dep, app, dfn, afn)
+    print(f"  {name:6s} -> {'MATCH   ' if ok else 'DIVERGE '} ({why})")
+    if not ok: fails += 1
+sys.exit(1 if fails else 0)
+PYDS
+
+echo "PART 22 — a chained dep join carries the whole surface (SOUNDNESS-VEIN-crossing-the-scan-boundary.md)"
+if [ "$P22_OK" = 0 ]; then
+  echo "  -> MATCH — the literals a dependency was charged with travel with its effects in all four engines"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
