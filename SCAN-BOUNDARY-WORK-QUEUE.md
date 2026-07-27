@@ -517,7 +517,45 @@ works" from further down this file, and it means none of these should need a rep
 fixture picked ONE spelling.** This is finding (1) at the top of §3 — a human chose each shape — landing
 with four concrete instances rather than an argument.
 
-- [ ] **rust — a chained dep's lazy static is charged only through a PATH-QUALIFIED read.**
+- [x] **ALL THREE FIXED — candor-rust `ca27ecc`, waivers retired `e995c51`, `known` now EMPTY four-way.**
+      No report-format change on any of them — *"emit the call shape the join already understands"*, third
+      time running.
+      **THE `5447eba` VERDICT IS *YES*, AND FAR WIDER THAN THE FILING.** Measured three ways on one fixture
+      (`use crate::ROOT_CFG;` from a submodule — the ORDINARY shape, not the filing's inline `mod m`):
+      | | same module | 4 cross-module spellings |
+      |---|---|---|
+      | before `5447eba` | `Fs` | **`Fs`** |
+      | at HEAD | `Fs` | **PURE** |
+      | after | `Fs` | `Fs` |
+      `5447eba` made the WRITER module-qualified while the READER still built `<lazy>::<its own module>::
+      NAME`. **A fabrication fix that introduced a cardinal sin** — and at HEAD *any* crate-root lazy static
+      read from *any* submodule read pure. The identity property it bought is preserved.
+      [[feedback-fabrication-fixes-cause-misses]] landing again, established by measurement rather than
+      asserted.
+      **THE AGENT CAUGHT A LIVE FABRICATION IT INTRODUCED ITSELF**: its first cut charged `deplib::C`'s
+      `Env` to `let C = "aa"; C.len()`, because the five typed side-tables answering "is this shadowed?"
+      only hold bindings **whose type resolved** — harmless while only a qualified path could force, live
+      the instant the bare spelling was added. Its own mirror control found it.
+      **MY CONTROL WAS WRONG, for the second time today.** I specified *"an unbound call to a factory the
+      dep report shows as PURE must stay pure"*. That contradicts the ⟨0.24⟩ ruling — a `by_key` miss cannot
+      distinguish "no such method" from "I withdrew an ambiguous entry", so the BOUND form discloses there
+      too, and making the unbound form stay pure would have made it **diverge** from the bound form,
+      recreating the defect. Rewritten as **equality with the bound form**, which is what the property
+      itself asserts.
+      **A/B: 0 concrete effects gained, 0 losses, four targets.** But **95 of 550 ebman functions newly
+      carry `Unknown`** (direct `dispatch:untyped cross-package receiver` 18→52, ≈2.9× the bound arm) —
+      squarely in the 8–25% false-uncertainty band `COVERAGE-GRANULARITY-FINDING.md` measured. Shipped at
+      **PARITY** rather than narrowing, correctly: a denylist on one spelling only recreates the exact
+      defect class this row exists to close.
+      - [ ] **OPEN — is the THIRD CONJUNCT reaching the new arm?** PART 21's guard is *untyped receiver AND
+            dep provenance AND **the dep is CHAINED***. The third exists precisely for the shape topping the
+            list (`chrono::Utc::now().signed_duration_since(..)` ×16 — a std combinator on a dep-returned
+            value), because for an UNCHAINED dep the κ ledger ALREADY says `invisible: [pkg]` and a second
+            hedge is pure false uncertainty. The naive two-conjunct form measured **5.4%** on the JVM; with
+            the third, **0** unchained / 0.4–0.5% chained. **Asked the engine to split the 95 by
+            chained-vs-unchained.** If a meaningful share are unchained the conjunct must extend to the new
+            arm — **on both spellings**, preserving the parity argument.
+      ORIGINAL FILING — rust, a chained dep's lazy static is charged only through a PATH-QUALIFIED read.**
       `deplib::C.len()` → `['Env']`; `use deplib::C; C.len()` → **absent**. Deref vs method call makes no
       difference; the `use` does. PART 19's rust fixture uses the qualified spelling.
 - [ ] **rust — a chained dep FACTORY call with NO intermediate binding reads silent-pure.**
@@ -1878,6 +1916,12 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7h. `cargo build --release` AT THE WORKSPACE ROOT BUILDS ONLY THE ROOT PACKAGE.** `candor-scan` is a
+     separate workspace member, so a root-level build leaves its binary STALE and the first "verification"
+     of a scan-side fix showed no change. `-p candor-scan` is required. Same class as the `| head` SIGPIPE
+     trap (7c): a build command that silently does less than you asked, producing a measurement of the old
+     code that looks like a measurement of the new.
+
    - **7g. A TEST CAN BE INERT BECAUSE OF STATIC INITIALISATION ORDER, and it will look green.** The java
      engine found a bug in its own new code — in `--json` mode a trailer line went to stdout and corrupted
      the verdict — **and its unit test passed against it.** `Candor.diagOut` is a `static` initialised to
