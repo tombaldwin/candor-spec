@@ -288,7 +288,37 @@ here fires. That is the runtime oracle's job, the instrument exists, and it is c
       the model", which is the code-implements-spec direction and is currently unverifiable.
       Was recorded ONLY in `reference/README.md` until now — the recorded-in-a-narrative failure, again.
 
-### 4 — IMPLEMENT (1) FOUR-WAY · blocked on (1), then fully parallel
+### 4 — IMPLEMENT (1) FOUR-WAY · UNBLOCKED (§1 settled); fully parallel, one agent per repo
+
+§1 produced THREE separable implementation items, not one. They have different blast radii and the first is
+the only verdict-changing one — do not bundle them.
+
+- [ ] **4a. §6.2 CONTRIBUTES — the only one that can turn a GREEN GATE RED.** A reasonless `Unknown` ADDS
+      `unresolved` to the class set instead of defaulting when the set is empty. Matches a strict superset,
+      so `deny E Unknown[<class>]` can go exit 0 → exit 1 on unchanged code, and re-baselining does not fix
+      it. **Each engine must reproduce the three-row counterexample BEFORE changing anything** (reasonless
+      dep → rejected; reasoned dep → passes; **BOTH → passes**, the strictly-worse-known case passing where
+      the weaker one is rejected). And each must carry the control that separates this from "contribute
+      `unresolved` unconditionally": a function whose reasons are ALL classifiable and none `unresolved`
+      must still NOT match `deny E Unknown[unresolved]`. Without it the fix is indistinguishable from one
+      that floods every narrowed gate and makes `[class]` useless.
+      **Blast radius must be MEASURED per engine on real code and reported as a number.**
+      - [→] swift DISPATCHED. rust/java/ts pending (repos held by the frontier agents).
+- [ ] **4b. `ambiguous:` as a fifth §4 kind.** Vocabulary-only; no verdict change (§6.2 already projected
+      `ambiguous:*` → `dispatch`, which is why the producer was non-conforming while consumers were fine).
+      Mostly a conformance/vocabulary-check update per engine — check each engine's `unknownWhy` kind
+      validator, not just its emitter.
+- [x] **4c. The §3.1 frontier rung** — dot-free disclosed, empty sidecar ≡ absent, mixed source pinned,
+      collation named. **rust `a11adf1`, java (3 commits), swift `5f9e75e` (producer half — no `callers`
+      verb), ts in flight.** Three-surface, not four.
+- [ ] **4d. A conformance PART for the whole rung**, once 4a/4b land. Must be verified-to-catch per engine:
+      the three-row counterexample as a row that FAILS for an engine still keyed on absence, and the
+      cross-engine `viaDispatchOn` LITERAL (`"run,untyped cross-package receiver,write"` and `"run"`) —
+      the existing frontier differential only substring-checks that field and cannot catch an ordering or
+      dedup divergence.
+- [ ] **4e. Bump the floor to 0.24** once 4a-4d are green four-way. The rung is OPEN in SPEC but marked IN
+      PROGRESS and no engine declares it. Per [[candor-versioning-ladder]] the tier decides the trigger;
+      this is **tier-1** and verdict-changing, so it needs the full pre-publish checklist, not a quiet bump.
 
 ### 5 — DECIDED, NOT OPEN · re-open only with new evidence
 These were refused WITH MEASUREMENTS and the arguments live in the code. They are listed so nobody
@@ -299,7 +329,10 @@ re-litigates them, not as work.
 - **java's concrete-dep override** — 12 of 22 changed functions are `super` calls that can never dispatch
   to an override. It is the wrong KEY, not a missing bound.
 - **rust's withdrawn-key disclosure** — built and verified in five directions, costs 15–20% of functions
-  newly carrying `Unknown`. May be dissolved entirely by the collision decision in (2).
+  newly carrying `Unknown`. **DISSOLVED 2026-07-27 by the collision decision in (2)** (`b47c9ab`): the union
+  withdraws nothing, so there is no withdrawn key left to disclose. The same defect closed at a fraction of
+  the cost — 7 effect-items across three corpora against 15–20% of all functions. Recorded because the
+  cheap fix only became visible once the expensive one had been built and measured.
 
 ### 6 — PRECISION GAPS · parallel, and I recommend NOT doing them yet
 Seven rows, **none a silent under-report**: swift package-vs-module chaining inertness, swift
