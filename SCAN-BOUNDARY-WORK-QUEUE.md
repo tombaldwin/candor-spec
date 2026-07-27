@@ -300,8 +300,39 @@ overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missi
       report that silently dropped a function gates GREEN, in the supply-chain verb. Either require the
       function-granularity set wherever absent⇒pure is consumed across a TRUST BOUNDARY, or weaken §4.0's
       sentence to the count-level claim it actually supports.
-- [ ] **OPEN: PAPER3's Defs 33/34/35 do not describe the shipped verbs, so Prop 5's "full shipped policy
-      language" is not discharged.** Found by BOTH theory reviewers. `forbid` is modelled as an effect
+- [x] **DONE — the PAPER side of the reviews is now acted on** (papers are local, never committed):
+      - **PAPER1's (W) rewritten.** It was written as `Unknown ∈ S ⇒ D ≠ ∅`, whose antecedent is
+        unsatisfiable (`Unknown ∉ E`), so it was **vacuous** — and it produced a visible contradiction two
+        paragraphs apart ("the lemma NEEDS (W)" vs "the lemma is UNDAMAGED"). The condition is real but
+        lives on the **representation map**, not on signatures: the offending state is not expressible in
+        the lattice at all. The wrong version is kept visible rather than replaced.
+      - **PAPER1's "no new proof" softened** to what is true: no new proof about `Reject`, one one-line
+        obligation about the PRODUCER (the composite *code-change → signature → verdict* has two arrows;
+        Lemma 2 covers the second).
+      - **PAPER3 Def 32 (`pure`) amended** to `Reject ⇔ S ≠ ∅`, with the divergence recorded: 15
+        disagreements over 256 signatures before, **0 after**.
+      - **PAPER3 Defs 33/34/35 rewritten** to the shipped verbs — `forbid` is a call-graph dependency rule
+        (no effect predicate, fires on a PURE call), `allow` is a **fail-closed literal-surface
+        certification** and is rejection-capable, and the ratchet **grandfathers** (executed counterexample:
+        `D_b={dispatch}`, `D={dispatch,reflect}` → Def 35 rejects, every engine passes).
+      - **Prop 5 RETRACTED and rescoped.** It claimed coverage of "the full shipped policy language" and
+        discharged three verbs in three lines — proving things about verbs that do not exist. Now scoped to
+        the `L`-carried verbs, with the four uncovered ones and what is genuinely unproved about each
+        listed.
+      - **ESCAPE 4 ADDED** (§8 said "three escapes"; there are four): **within-`D` reason-class
+        reclassification** is `⊑`-incomparable, H-invisible, and relaxes a scoped gate. Not hypothetical —
+        the contract itself records refiling `dispatch:`→`callback:` taking a deployed gate from 58/200
+        packages to **0/200**. The projection layer from raw reasons to classes **has no counterpart object
+        in the model at all**, which is why an algebraic reading missed it and a measurement did not.
+        Propagated through both papers.
+      - **Def 6's `r` quantified**; **Def 30's refinement divergence recorded** (the `Db`-under-`deny Net`
+        family) with the ruling that `Llm ⊑ₑ Net` holds and `Db ⊑ₑ Net` does not, so Def 2 treats one
+        relation as two.
+      - **The model now states what it does NOT transcribe** and warns that adding rows for `forbid`,
+        `allow`, `deny E[dest…]` or the ratchet would **manufacture divergences out of the theory** — which
+        is what the `pure` row would have done before the amendment.
+      ORIGINAL FILING — PAPER3's Defs 33/34/35 do not describe the shipped verbs, so Prop 5's "full shipped
+      policy language" is not discharged.** Found by BOTH theory reviewers. `forbid` is modelled as an effect
       predicate `φₑ`; the shipped `forbid A -> B` (AS-EFF-009) is a **call-graph dependency rule** that
       fires on a *pure* call and carries an empty effect set. `allow` is modelled as a scope exception "not
       a rejection predicate"; the shipped `allow` (AS-EFF-008) is a **fail-closed literal allowlist** that
