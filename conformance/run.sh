@@ -3929,9 +3929,9 @@ P22_RS_DEP="/nonexistent"; P22_RS_APP="/nonexistent"
 if [ -x "$SCAN" ]; then
   mkdir -p "$W/dsurf/rs/deplib/src" "$W/dsurf/rs/app/src"
   printf '[package]\nname="deplib"\nversion="0.0.0"\nedition="2021"\n' > "$W/dsurf/rs/deplib/Cargo.toml"
-  printf 'pub fn work() {\n  let _ = std::fs::read_to_string("/surface/path");\n  let _ = std::process::Command::new("surfacecmd").status();\n}\n' > "$W/dsurf/rs/deplib/src/lib.rs"
+  printf 'pub trait Sink { fn emit(&self); }\npub fn work(s: &dyn Sink) {\n  let _ = std::fs::read_to_string("/surface/path");\n  let _ = std::process::Command::new("surfacecmd").status();\n  s.emit();\n}\n' > "$W/dsurf/rs/deplib/src/lib.rs"
   printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib="1"\n' > "$W/dsurf/rs/app/Cargo.toml"
-  printf 'pub fn go() { deplib::work(); }\n' > "$W/dsurf/rs/app/src/lib.rs"
+  printf 'pub fn go(s: &dyn deplib::Sink) { deplib::work(s); }\n' > "$W/dsurf/rs/app/src/lib.rs"
   ( cd "$W/dsurf/rs/deplib" && "$SCAN" . --json > "$W/dsurf/rsdep.json" 2>/dev/null )
   ( cd "$W/dsurf/rs/app" && CANDOR_DEPS="$W/dsurf/rsdep.json" "$SCAN" . --json > "$W/dsurf/rsapp.json" 2>/dev/null )
   P22_RS_DEP="$W/dsurf/rsdep.json"; P22_RS_APP="$W/dsurf/rsapp.json"
@@ -3940,10 +3940,11 @@ fi
 P22_J_DEP="/nonexistent"; P22_J_APP="/nonexistent"
 if [ -n "$JAR" ] && [ -f "$JAR" ]; then
   mkdir -p "$W/dsurf/j"
-  printf 'package lib;\nimport java.io.*;\npublic class Work { public static void work() throws Exception {\n  new FileReader("/surface/path").close();\n  Runtime.getRuntime().exec("surfacecmd");\n} }\n' > "$W/dsurf/j/Work.java"
-  javac -d "$W/dsurf/j/libc" "$W/dsurf/j/Work.java" 2>/dev/null
+  printf 'package lib;\nimport java.io.*;\npublic interface Sink { void emit(); }\n' > "$W/dsurf/j/Sink.java"
+  printf 'package lib;\nimport java.io.*;\npublic class Work { public static void work(Sink s) throws Exception {\n  new FileReader("/surface/path").close();\n  Runtime.getRuntime().exec("surfacecmd");\n  s.emit();\n} }\n' > "$W/dsurf/j/Work.java"
+  javac -d "$W/dsurf/j/libc" "$W/dsurf/j/Sink.java" "$W/dsurf/j/Work.java" 2>/dev/null
   java -jar "$JAR" "$W/dsurf/j/libc" --json "$W/dsurf/jdep.json" >/dev/null 2>&1
-  printf 'package app;\npublic class Go { public void run() throws Exception { lib.Work.work(); } }\n' > "$W/dsurf/j/Go.java"
+  printf 'package app;\npublic class Go { public void run(lib.Sink s) throws Exception { lib.Work.work(s); } }\n' > "$W/dsurf/j/Go.java"
   javac -cp "$W/dsurf/j/libc" -d "$W/dsurf/j/appc" "$W/dsurf/j/Go.java" 2>/dev/null
   CANDOR_DEPS="$W/dsurf/jdep.json" java -jar "$JAR" "$W/dsurf/j/appc" --json "$W/dsurf/japp.json" >/dev/null 2>&1
   P22_J_DEP="$W/dsurf/jdep.json"; P22_J_APP="$W/dsurf/japp.json"
@@ -3953,11 +3954,11 @@ P22_T_DEP="/nonexistent"; P22_T_APP="/nonexistent"
 if [ -n "$TS_PRESENT" ]; then
   mkdir -p "$W/dsurf/ts/deplib/src" "$W/dsurf/ts/app/src" "$W/dsurf/ts/app/node_modules/deplib"
   printf '{"name":"deplib","version":"1.0.0","main":"src/index.ts"}\n' > "$W/dsurf/ts/deplib/package.json"
-  printf 'import * as fs from "node:fs";\nimport { execSync } from "node:child_process";\nexport function work(): void {\n  fs.readFileSync("/surface/path");\n  execSync("surfacecmd");\n}\n' > "$W/dsurf/ts/deplib/src/index.ts"
+  printf 'import * as fs from "node:fs";\nimport { execSync } from "node:child_process";\nexport interface Sink { emit(): void }\nexport function work(s: Sink): void {\n  fs.readFileSync("/surface/path");\n  execSync("surfacecmd");\n  s.emit();\n}\n' > "$W/dsurf/ts/deplib/src/index.ts"
   ( cd "$TS_DIR" && node scan.mjs "$W/dsurf/ts/deplib" --json > "$W/dsurf/tsdep.json" 2>/dev/null )
   cp -r "$W/dsurf/ts/deplib/." "$W/dsurf/ts/app/node_modules/deplib/" 2>/dev/null
   printf '{"name":"app","version":"0.0.0","dependencies":{"deplib":"1.0.0"}}\n' > "$W/dsurf/ts/app/package.json"
-  printf 'import { work } from "deplib";\nexport function go(): void { work(); }\n' > "$W/dsurf/ts/app/src/index.ts"
+  printf 'import { work, Sink } from "deplib";\nexport function go(s: Sink): void { work(s); }\n' > "$W/dsurf/ts/app/src/index.ts"
   ( cd "$TS_DIR" && CANDOR_DEPS="$W/dsurf/tsdep.json" node scan.mjs "$W/dsurf/ts/app" --json > "$W/dsurf/tsapp.json" 2>/dev/null )
   P22_T_DEP="$W/dsurf/tsdep.json"; P22_T_APP="$W/dsurf/tsapp.json"
 fi
@@ -3966,10 +3967,10 @@ P22_S_DEP="/nonexistent"; P22_S_APP="/nonexistent"
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$W/dsurf/sw/dep/Sources/DepLib" "$W/dsurf/sw/app/Sources/App"
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "DepLib", products: [.library(name: "DepLib", targets: ["DepLib"])], targets: [.target(name: "DepLib")])\n' > "$W/dsurf/sw/dep/Package.swift"
-  printf 'import Foundation\npublic func work() {\n  _ = try? String(contentsOfFile: "/surface/path", encoding: .utf8)\n  let p = Process(); p.launchPath = "/bin/surfacecmd"; try? p.run()\n}\n' > "$W/dsurf/sw/dep/Sources/DepLib/Work.swift"
+  printf 'import Foundation\npublic protocol Sink { func emit() }\npublic func work(_ s: any Sink) {\n  _ = try? String(contentsOfFile: "/surface/path", encoding: .utf8)\n  let p = Process(); p.launchPath = "/bin/surfacecmd"; try? p.run()\n  s.emit()\n}\n' > "$W/dsurf/sw/dep/Sources/DepLib/Work.swift"
   ( cd "$W/dsurf/sw/dep" && "$SW_BIN" . --json > "$W/dsurf/swdep.json" 2>/dev/null )
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", dependencies: [.package(path: "../dep")], targets: [.executableTarget(name: "App", dependencies: [.product(name: "DepLib", package: "dep")])])\n' > "$W/dsurf/sw/app/Package.swift"
-  printf 'import DepLib\nfunc go() { work() }\ngo()\n' > "$W/dsurf/sw/app/Sources/App/main.swift"
+  printf 'import DepLib\nfunc go(_ s: any Sink) { work(s) }\n' > "$W/dsurf/sw/app/Sources/App/main.swift"
   ( cd "$W/dsurf/sw/app" && CANDOR_DEPS="$W/dsurf/swdep.json" "$SW_BIN" . --json > "$W/dsurf/swapp.json" 2>/dev/null )
   P22_S_DEP="$W/dsurf/swdep.json"; P22_S_APP="$W/dsurf/swapp.json"
 fi
@@ -3978,7 +3979,13 @@ python3 - "$P22_RS_DEP" "$P22_RS_APP" "$([ -x "$SCAN" ] && echo 1 || echo 0)" \
            "$P22_T_DEP" "$P22_T_APP" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" \
            "$P22_S_DEP" "$P22_S_APP" "$([ -n "$SW_PRESENT" ] && echo 1 || echo 0)" <<'PYDS' || P22_OK=1
 import json, sys, os
-SURFACES = ("hosts", "cmds", "paths", "tables")
+# `unknownWhy` is IN this list, and its absence was a defect in this part's first version: the header above
+# cites FOUR motivating commits and TWO of them (java 6ab26e4, ts 4dad22d) are a chained dep's `Unknown`
+# losing its ⟨0.19⟩ REASON CLASS — which a part comparing only the literal surfaces cannot regress. A
+# conformance row that cannot catch the defect it names as its motivation is the "comment asserts what the
+# code does not do" pattern with a test around it. The dep fixture below now also carries an unresolvable
+# dispatch so the reason class actually exists to compare.
+SURFACES = ("hosts", "cmds", "paths", "tables", "unknownWhy")
 def entry(path, pred):
     try: d = json.load(open(path))
     except Exception: return None
