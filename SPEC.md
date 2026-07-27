@@ -632,21 +632,45 @@ storing the candidate edges bounded-CHA deliberately dropped. That precise subty
 simple-name match without it). It carries no provenance of its own and is read with its report. A language
 with no class/protocol dispatch (the Rust scanner) has nothing to populate it and MAY omit it entirely.
 
-⟨0.23⟩ **A reader MUST SKIP any entry whose value is not an ARRAY**, and that is the sidecar's only
-extension point: a key whose value is an object or a scalar is engine-private metadata about the map, not a
-type. This is a requirement on readers rather than a new field, because the failure it prevents is silent —
-candor-java added the sibling key below and its own *second* reader, which called `getAsJsonArray()`
-unconditionally, threw and swallowed the exception into "no sidecar", discarding the **whole** hierarchy and
-degrading the frontier with no diagnostic. Its full suite was green through that.
+⟨0.23⟩ **EVERY VALUE IN THIS FILE IS AN ARRAY OF STRINGS, and that is a constraint on WRITERS.** A
+producer MUST NOT write a value of any other type, and MUST NOT write a metadata key as the file's *only*
+key. Metadata about the map goes under a key beginning `@`, the reserved namespace; readers SHOULD ignore
+`@` keys, and MUST tolerate — skip, not abort on — any value that is not an array.
 
-The one such key defined so far is candor-java's `"@superclass"` — an object mapping a type to the one
-supertype that is its **superclass**, the fact a sorted list of supertypes throws away. JVM and Swift method
-resolution put the whole class chain ahead of any interface/protocol at any depth (JLS 15.12.2.5 / 8.4.8),
-so a consumer walking a *dependency's* chain cannot apply that rule without it. Its **presence** is what
-says the kinds are known; a sidecar without it MUST keep whatever order the reader used before, never a
-guess — reading an unmarked list as all-interfaces puts a real superclass below an interface, which is the
+*This was first written the other way round, as a requirement on readers, and that is the mistake the rule
+now records.* A reader requirement obliges every already-deployed reader to have been updated, which is
+precisely what did not happen — **twice, for one key**. candor-java added `"@superclass"` with an object
+value on the argument that "a reader skips any non-array value": true of one of its own readers, false of
+the second (`getAsJsonArray()` threw, its own `catch` swallowed it into "no sidecar", and the **whole**
+hierarchy was discarded with no diagnostic — 539 tests green through it), and false of the **third**, in
+another language, which nobody had looked for. candor-rust's `candor-query::load_hierarchy` deserializes
+the file as `BTreeMap<String, Vec<String>>` in one typed call and drops it entirely when that fails; a
+strictly typed reader has no per-entry loop and *cannot* skip anything. Measured on 7 real chained JVM
+targets: **0 of 18 sidecars parsed there** while the object value was being written. Separately, writing
+the key unconditionally turned an empty `{}` into `{"@superclass":{}}`, and two consumers take the precise
+frontier iff the map is non-empty (candor-ts `Object.keys(h).length > 0`, candor-rust `!hier.is_empty()`) —
+so a key carrying nothing withdrew a disclosure in a different engine. Both failures are impossible under
+the writer-side rule and neither was prevented by the reader-side one.
+
+The one metadata key defined so far is candor-java's `"@superclass"` — a **flat array** `[type,
+superclass, type, superclass, …]`, type-sorted, naming for each type the one supertype that is its
+**superclass**, the fact a sorted list of supertypes throws away. JVM and Swift method resolution put the
+whole class chain ahead of any interface/protocol at any depth (JLS 15.12.2.5 / 8.4.8), so a consumer
+walking a *dependency's* chain cannot apply that rule without it. Flat rather than delimited because a JVM
+binary name may legally contain almost any character. Its **presence** is what says the kinds are known —
+including when it carries no pair, which is the positive fact "no type here has a superclass" — so it is
+written whenever the sidecar names any type at all, and omitted only when the sidecar is empty, where a
+consumer reads it zero times. A sidecar without it MUST keep whatever order the reader used before, never a
+guess: reading an unmarked list as all-interfaces puts a real superclass below an interface, which is the
 silent under-report the ordering exists to prevent. An engine whose language has no such rule needs neither
 the key nor the marker.
+
+NOT YET RULED: what an **empty** sidecar licenses. candor-ts and candor-rust gate the precise frontier on
+the map being non-empty and fall back to the simple-name match; candor-java gates on the file being absent
+and takes the precise path over an empty map, which narrows the disclosure. Three engines, two answers,
+same input. The divergence predates this rung — it is why the unconditional metadata key was able to move
+a gate at all — and is recorded in `SCAN-BOUNDARY-WORK-QUEUE.md` pending a four-way ruling rather than a
+unilateral edit.
 
 ## 3. Modes
 
