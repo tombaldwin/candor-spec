@@ -16,34 +16,5 @@
     "ran, and every one was then re-derived from a hand-written two-package fixture (below) so that no",
     "entry rests on the generator being right."
   ],
-  "known": [
-    {
-      "engine": "rust",
-      "split": "lazy_init",
-      "why": "a chained dep's lazy static is charged to its reader ONLY through a path-qualified read (`deplib::C`); under the idiomatic `use deplib::C;` the same read is silent-pure. 8/8 cells ABSENT.",
-      "repro": [
-        "deplib/src/lib.rs:  pub static C: LazyLock<String> = LazyLock::new(|| std::env::var(\"IE_CFG\").unwrap_or_default());",
-        "app/src/lib.rs:     use deplib::C;",
-        "                    pub fn qualified() { println!(\"{}\", deplib::C.len()); }   // -> ['Env']  correct",
-        "                    pub fn imported()  { println!(\"{}\", C.len()); }            // -> ABSENT   silent",
-        "the dep report carries `<lazy>::C ['Env']` in both arms; the deref vs method-call spelling makes no",
-        "difference, the `use` does. conformance PART 19's rust fixture uses the qualified spelling, which is",
-        "why it has never seen this."
-      ]
-    },
-    {
-      "engine": "rust",
-      "split": "fn_returned_dyn",
-      "why": "a chained dep FACTORY call with NO intermediate binding — `deplib::get().run()` — matches no cross-package receiver-typing branch and reads silent-pure. The BOUND form correctly discloses `Unknown[dispatch:untyped cross-package receiver]`, so this is a hole in a shipped guard, not an un-attempted precision gap. 8/8 cells ABSENT.",
-      "repro": [
-        "deplib:  pub fn build() -> Client;   pub fn get_dyn() -> Box<dyn Task>;",
-        "app:     let c = deplib::build(); c.fetch();   // -> ['Fs']     resolved (typeSurface)",
-        "         deplib::build().fetch();              // -> ABSENT     silent",
-        "         let t = deplib::get_dyn(); t.run();   // -> ['Unknown'] disclosed",
-        "         deplib::get_dyn().run();              // -> ABSENT     silent",
-        "conformance PART 21's rust fixture binds the factory result, which is why it has never seen this.",
-        "PART 21's own ruling — a key that could not be formed MUST NOT read pure — is what this violates."
-      ]
-    }
-  ]
+  "known": []
 }
