@@ -437,19 +437,66 @@ narrative is a residual nobody will find.** Hoisted here 2026-07-27.
 Each was refused or deferred with a measurement, not left undone. None is a known silent under-report.
 
 ### Needs its own measurement before anyone touches it
-- [ ] **java — a CONCRETE dep method overridden effectfully** answers only for its own body across the
-      boundary. Unlike the abstract case the key IS answerable and the answer IS true, so this is a
-      narrower question than a purity claim — but the blast radius is every non-final method of every
-      non-final class, so it wants its own A/B before a line is written.
+- [x] **java — a CONCRETE dep method overridden effectfully — MEASURED, and the obvious fix REFUSED with
+      the numbers (candor-java `61cfcc4`).** It answers only for its own body across the boundary, where
+      in-scan the same site is charged the CHA union. The row is real: over 11 real dep jars, 12 242
+      concrete overridable members, 861 (7.0%) with any override inside the dependency, **76** whose
+      override carries an effect the base does not — 35 of them under a key with NO entry, i.e. a live
+      purity claim (`AbstractResource.getFile()` `[]` vs `[Fs,Log,Unknown]` over 7 implementers,
+      `AppenderBase.start()` `[]` vs `[Clock,Fs,Net,Unknown]` over 8).
+      - **The problem is the KEY, not a missing bound, and that is the transferable part.** Publishing the
+        union under the base's own key answers for every site that forms it — and `super.m()` forms exactly
+        the same key, while INVOKESPECIAL by JVM semantics runs the base body and can never dispatch to an
+        override. Consumer A/B, 7 chained real jar pairs / 10 914 analysed functions: 22 functions change,
+        0 losses, and **12 are charged through a direct `invokespecial`** (`ResponseEntityProxy.getContent`
+        → `HttpEntityWrapper.getContent`, `WithLayoutListAppender.start` → `AppenderBase.start`, four
+        logback converters through a project superclass), with 6 more transitive callers of those.
+      - **Why the ABSTRACT arm was free of this is structural, not quantitative**: an abstract member's key
+        is unanswerable AND unreachable by `super` — you cannot `super`-call an abstract method — so no
+        INVOKESPECIAL can land on it. Both properties fail for a concrete member. **Any engine tempted to
+        widen its own abstract-arm equivalent should ask what its `super` spelling does to the same key.**
+      - **The correct shape was PRICED rather than asserted**: the same union under a key only a virtual
+        site can form (`owner.<dispatch>name+desc`, joined on INVOKEVIRTUAL/INVOKEINTERFACE) changes **4**
+        functions on the same pairs, 0 losses — spring's `DefaultListableBeanFactory.getPriority` `[]` →
+        `[Fs,Log,Unknown]` through `OrderComparator.getPriority`, which `AnnotationAwareOrderComparator`
+        really does override (the row's one traced real reach), its caller, and a `BasicFuture.get` pair
+        that is the same over-approximation the in-scan CHA already makes. That needs a NEW resolution path
+        in the consumer (`333cf10` needed none) plus a synthetic entry shape no other engine produces or
+        consumes — a **four-way question**, for 4 functions in 10 914. Left open on those terms.
+      - Pinned by two SEPARATE tests: the row with flip instructions against a single-tree control that IS
+        charged the union, and `aSuperCallToAConcreteDepMethodIsNeverChargedItsOverrides`, which must never
+        be made to pass by closing the row. Separate because inside the first it would sit behind the
+        flipping assertion and could never be observed (item 8c). Both fail under the naive mutant.
 - [ ] **swift — the erasure gate does not reach the LOCAL-protocol dispatch arm.** REFUSED with both
       treatments priced (`020add4`): suppress costs 5 losses and 7 entries REMOVED; disclose costs 9
       concrete effects → hedge. The deciding argument is recorded in the code — for an IMPORTED protocol
       the in-scan conformers are an arbitrary subset of the candidates, for a LOCAL one they BOUND them.
       Re-open only with an A/B, since this arm is what R28/R39 and the whole element-dispatch family run on.
-- [ ] **java — the dep-sidecar hierarchy half.** `writeHierarchy` writes a sorted `TreeSet` with no
-      superclass marker, so a chain lying ENTIRELY inside a dependency stays depth-ordered. Closing it is a
-      sidecar-FORMAT rung with its own compatibility surface; the compatible encoding is worked out in
-      `Cha#resolutionOrder` and was deliberately not ridden on `9f8e71c`.
+- [x] **java — the dep-sidecar hierarchy half — DONE, candor-java `bb8459a`, and it found a defect in its
+      own compatibility argument.** `writeHierarchy` wrote a sorted `TreeSet` with no superclass marker, so
+      a chain lying ENTIRELY inside a dependency stayed depth-ordered and `9f8e71c`'s JLS rule could not be
+      applied to it. It now also writes `"@superclass"`, a sibling key whose value is an OBJECT; its
+      PRESENCE licenses the split, ABSENCE keeps exactly the depth-ordered answer that shipped, and neither
+      side needs a version gate. Fixture: the whole chain in `lib` (`Half9 extends Mid9 implements Trace9`,
+      `Mid9 extends Root9`) goes `['Env']` → `['Fs']` chained, against a single-tree control that is `Fs`
+      in both arms. `9f8e71c`'s own fixtures put the branching class in the APP, where a project ClassNode
+      states the split — **ask separately what an engine does when every link is in the dependency.**
+      - **THE SECOND FIXTURE COULD NOT FAIL AT FIRST, and mutating it is what showed that.** The competing
+        interface used `System.out.println`, which produces no report entry at all, so the "unmarked list
+        read as ALL INTERFACES" mutant changed nothing. With an `Exec` body instead it fails, named.
+        Item 8c, caught before the commit rather than by the next review.
+      - **The compatibility argument was true of ONE reader and untrue of the other.** `Query.loadHierarchy`
+        called `getAsJsonArray()` unconditionally — it THROWS on an object, its own `catch { return null; }`
+        swallowed it, and the WHOLE hierarchy was discarded, dropping the `callers --include-unknown`
+        frontier to a bare simple-name match. 539 tests were green through it. **SPEC §2.2 now states the
+        skip as a requirement on READERS**, because the failure it prevents is silent. candor-ts's
+        `loadHierarchy` already normalises non-arrays; rust/swift do not read a java sidecar. Worth a
+        30-second check in any engine that reads a sidecar it did not write.
+      - Measured, 7 chained real jar pairs: **125 of 2 702 dependency-hierarchy resolution orders change**
+        (4.6%; logback 65, httpclient 23, httpclient5 21, spring-beans 16), 2 214 dep types load a known
+        split, and the report delta is **0 gains / 0 losses / identical entry and Unknown counts**, all 10
+        dep reports byte-identical apart from their build id. The fixture is the evidence; per item 8 the
+        clean corpus is the fabrication control, and the precondition was instrumented to say so.
 
 ### Unblocked, deliberately unlanded — each narrows a gate
 - [x] **LANDED, candor-ts `5ba301c`** — 1,234 malformed emissions over 15 repos, all from the interface-CHA arm; effect sets and entry counts identical, 695 functions leave `dispatch` / 573 enter `indirect`, monotone. **The narrowing is named, not buried: `deny Unknown[dispatch]` flips exit 1 → 0 on 4 of 14 targets — and in each of those EVERY dispatch reason in the report was malformed (6/6, 56/56, 18/18, 10/10).** ORIGINAL: the malformed `dispatch:type.member` reclassification. The blocker is RESOLVED: all four
@@ -716,6 +763,14 @@ Each was refused or deferred with a measurement, not left undone. None is a know
    - The orchestrator owns this: fanning out per-repo work is safe, but per-repo agents that all run ONE
      shared differential harness are not isolated, and saying "one agent per repo, no file conflicts" is
      true of the source and false of the build outputs.
+   - **AND OF candor-spec ITSELF, which is worse: `git add -A` there COMMITS ANOTHER AGENT'S IN-FLIGHT
+     EDIT under your message.** 2026-07-27: the SPEC §2.2 + CHANGELOG halves of the java hierarchy-sidecar
+     rung (`bb8459a`) were written into the working tree and swept, minutes later, into `272e423` — a
+     commit about swift's `boundLocals` that says nothing about them. Nothing was lost and nothing
+     conflicted, so no tool complained; the record is simply wrong, and the next person looking for why
+     the sidecar grew an extension point will not find it in `git log`. In a repo more than one agent is
+     editing, `git add <paths>` — never `-A` — and check `git status` for files you did not touch before
+     committing. The queue and SPEC are the two files every agent writes to.
 7g. **A TEST CAN PIN THE BUG. Ask what CHANNEL each suite can see.** java's `test/smoke.sh` asserted a
    coverage row containing a *permanently stale* version string — it had encoded shape 1 (a distrusted
    report still granting coverage) as a REQUIREMENT, so fixing the defect broke the suite that was
