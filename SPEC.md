@@ -950,6 +950,76 @@ absent — the ⟨0.21⟩ purity claim — and MUST NOT be back-filled from a ca
 The verb's whole value is that it is a pure function of the report and the policy, and an engine that
 improves the input has destroyed that.
 
+**SHAPE** (reference implementation, candor-java): `gate --report <locator> --policy <file> [--json]
+[--gate-json <file>]`. It is a **query verb**, not a scan flag, so it inherits §3.3.1's grammar unchanged —
+the same locator rules and discovery fallback, the same `CANDOR_POLICY` fallback, the same exit-2 on an
+unreadable policy, and **no positionals**. Exit codes are `scan --policy`'s exactly: 0 / 1 / 2. **`--json`
+is `--gate-json -`**, deliberately: on a scan `--json <file>` writes the *report*, and there is no report
+to write here, so the verb's machine output is the verdict. A second meaning for `--json` would be the one
+place a consumer could tell the two routes apart.
+
+**EQUIVALENCE IS THE ACCEPTANCE TEST, AND IT IS BYTE-LEVEL.** For any report a scan produced,
+`gate --report <it> --policy P` MUST produce a `--gate-json` document **byte-equal** to `scan --policy P`'s
+— `analyzed.count`, `reasonClass`, `netClass` and the coverage advisory included. Measured on the reference
+engine over 25 rows and two corpora (a 970-function report against 13 policies, up to 113 violations, plus
+a fixture making the scoped arms non-vacuous). Anything less than byte-equality lets the two routes drift
+into two gates.
+
+⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never
+evaluated.** Reaching equivalence required exactly three refusals, each found by measurement and each
+FAIL-OPEN if approximated instead:
+
+- **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into
+  a wholly pure unit is invisible in the report. Unanswerable.
+- **`allow <E> …`** — the AS-EFF-008 literal allowlist. Its surface-completeness marker does not ride the
+  wire. The reference engine's first attempt *reconstructed* it for `Net` from `netClass ∋ unknown-host`;
+  the equivalence test refuted that in one run, because the same token also names a merely **unrecognised**
+  host, so it flagged two functions the scan passes.
+- **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a
+  live fail-open rather than a theoretical one: `deny Net[unknown-host]` over a `Net`-bearing entry with no
+  `netClass` matched against an empty set and returned **exit 0**, where the bare `deny Net` returns 1 —
+  *an absent optional field silently un-scoping a fail-closed security gate*. Same shape for
+  `deny Unknown[dispatch]` over an entry whose `Unknown` is inherited and whose `calls` is absent: the
+  transitive class fixpoint is uncomputable, so every scoped filter tolerates while only bare `Unknown`
+  fires.
+
+The refusal's **granularity differs by cause, and that is deliberate**: whole-policy for `forbid`/`allow`
+(enforcing the answerable half and exiting 0 would be gateless-green), and per-(rule, function) for the
+scoped case, so a scoped rule whose own matches carry their evidence still evaluates. The message MUST name
+the offending rule kind — and for the scoped case the exact `deny` line and function — and MUST carry the
+remedy (gate at scan time). Refusing costs nothing on a self-produced report: `netClass` is emitted for
+every `Net`-bearing entry and is floored at `unknown-host`, and an inherited `Unknown` always has its callee
+in `calls` (that callee carries `Unknown`, so it is effectful).
+
+⟨0.24⟩ **THE MANIFEST DOES NOT TRAVEL, AND THIS VERB IS WHERE THAT BITES.** The verb leans on *absent is
+absent*. PAPER3 Def 24 already says a `{count, digest}` manifest cannot discharge that — it cannot separate
+*dropped* from *pure* — and measurement on the reference engine found the situation is worse than the
+definition states, in three ways. `count − |functions|` is simply the pure count (970 − 390 = 580 on a real
+report), so a dropped unit is *arithmetically identical* to a pure one. The `digest` is over the sorted
+**analyzed qual set**, of which a consumer holds only the effectful subset — so it **cannot recompute it**;
+it is a same-producer re-scan check, not a cross-boundary one. And `count < |functions|` is not a usable
+corruption signal either, because ⟨0.23⟩ `interfaceUnion` entries are appended to `functions` keyed by a
+bodyless declaration that is not a node, making the inequality legitimately reachable.
+
+What would close it is the **per-unit analyzed NAME SET**. That set exists today — it is exactly the §2.2
+callgraph node set — but it lives in a **sidecar**, which this verb refuses by construction. So the rung is
+either an envelope-level list of analyzed units or making the sidecar part of the addressed artifact. Until
+one of those lands, **the ⟨0.21⟩ purity claim is trustworthy within one producer and unverifiable across a
+trust boundary** — which is precisely where the supply-chain verb is used. An engine SHOULD say so rather
+than let a consumer infer otherwise from a green verdict.
+
+⟨0.24⟩ **A KNOWN, PINNED MODEL-VERSUS-CONTRACT RESIDUAL.** Differentially checking the reference engine
+against `reference/policy_model.py` over 1792 rows (256 signatures × 7 verbs) leaves **100 disagreements,
+all one family**: a signature containing `Db` under `deny Net`, where the model applies Def 4's preorder
+(`Db ⊑ₑ Net`) and every engine intersects. Direction is uniform — model REJECT, engine pass. §6.2's
+normative `deny` grammar has no refinement clause, so **this is model-versus-contract and not an engine
+defect**, and it is pinned in both directions rather than patched: making `deny Net` fire on `Db` would
+silently tighten every policy in the family, and `Db` is not always network (SQLite and embedded stores
+are `Db` with no egress, whereas an `Llm` call always is a provider request — which is why `Llm` co-emits
+`Net` and `Db` does not). §1's claim that "`Llm` refines `Net` **the way `Db` does**" is the sentence at
+fault. The residual underneath is real and narrower: a *networked* DB call is egress a `deny Net` gate
+misses, which is a classifier question and not a gate-semantics one.
+
 `callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the
 *unresolved-dispatch frontier*. The plain `callers` set (`transitive`) is a **confirmed** lower bound: a
 function that reaches `<fn>` only through a call the engine charged `Unknown` with an unresolved
@@ -2081,6 +2151,15 @@ declare it via the envelope's `spec`.
   comma-joined union) and names the **collation** (Unicode code point ≡ UTF-8 byte order; UTF-16-natural
   comparators must compare explicitly). This half is a **three**-surface query — the Swift engine ships no
   `callers` verb, being the producer that writes the sidecar *for* the other engines.
+
+  **Also: §3.1 `gate --report <locator> --policy <file>`** — apply a policy to an EXISTING report with no
+  scan. Closes the reason this rung's own defect was hard to localise: the gate had never been reachable as
+  a function of a GIVEN signature, so a defect in the gate and a defect in the classifier were
+  indistinguishable from any test. It is also the supply-chain verb. It carries a MUST NOT (no re-deriving,
+  no back-filling an absent entry from a sidecar or chained dep), a byte-level equivalence obligation
+  against `scan --policy`, and an **answerability** rule: `forbid`, `allow`, and a class-scoped `deny`
+  whose scoping datum is an absent optional field MUST be refused with exit 2, never evaluated — all three
+  measured as fail-open otherwise, the third as a live `deny Net[unknown-host]` → exit 0.
 
   Two corrections to this document ride the rung, both recorded because of how they survived. §3.1 asserted
   *"the Rust scanner emits no `dispatch:`"* and therefore returns an empty frontier "by language model, not
