@@ -1610,6 +1610,14 @@ intersect the filter. Until now this document named the flag and never said what
 consumer-side rule with a measurable failure mode reached four implementations unexamined. Three
 requirements:
 
+0. **It applies to `unverified`, NOT to `blindspots` — the same filter, opposite correct behaviour.**
+   `blindspots` is the **source** view (§3.1) and *excludes* a unit whose `Unknown` is purely inherited, so
+   every entry it filters carries a direct reason by construction and the direct-only read is CORRECT
+   there. Resolving transitively would pull in exactly the units that verb is defined to exclude, turning a
+   ranked worklist of root causes into a list of everything downstream of them. `unverified` is the
+   opposite: an inherited hole is still a hole the gate did not prove. **A shared code path is not a shared
+   defect**, and this pair is the counterexample — one verb's definition is the other verb's bug.
+
 1. **It MUST resolve the class set TRANSITIVELY, over the same reach the gate uses.** `unknownWhy` is
    **direct-only by design** (§4: a reason names a site in the function's *own* body), so a function whose
    `Unknown` is purely *inherited* carries no reason of its own. A filter matching against the direct field
