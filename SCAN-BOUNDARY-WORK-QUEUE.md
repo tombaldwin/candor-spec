@@ -994,7 +994,34 @@ the only verdict-changing one — do not bundle them.
         test; filter-keeps-everything → both regression controls and **neither** refusal test. The repeat
         test asserts two phrases PRESENT and two ABSENT, which is what stops it passing for the wrong
         reason — the exact trap a swift test fell into earlier today.
-      - **[→] java + ts in flight.** The floor bump is blocked on ts alone.
+      - [x] **java `735204c` (grammar) + `03b833b` (`unverified --class`) — LAST engine, and it changed
+        the GATE, which the diagnosis had said it would not.** The structural repair landed as briefed:
+        `Policy.reasonClassesOf` + `reasonClassMatches` are now the single definition, called by BOTH the
+        gate's `Unknown[c…]` scoping and `unverified --class`. Measured on PART 27's own 7-entry fixture:
+        `--class dynamic` **2 → 7**, `unresolved` **0 → 3**, `dispatch` **1 → 3**. `blindspots`
+        **byte-identical** before and after on both fixtures — a fourth independent confirmation.
+        **BUT: §6.2 requirement (3) CANNOT be satisfied at the join** — *"a set already unioned over callees
+        can't say which member was unaccounted-for"* — so the contribution had to land **per-entry**, in the
+        shared seam, which moved the gate too. Consequence on a foreign report whose entry has
+        `direct: ["Unknown"]` and no `unknownWhy`: `deny Unknown[unresolved]` **2 → 1** (fires) and
+        `deny Unknown[native]` **2 → 0** (tolerates), **both now matching what `scan --policy` already did
+        over the same signature.** So *"the old refusal had become a scan-vs-report DIVERGENCE rather than a
+        protection"* — java reached the over-broad-refusal conclusion independently, and it is the same one
+        specced at `05158db` from swift's evidence. Control retained for the genuinely underivable case.
+        **Two of its own gate fixtures were the comment-that-lies defect** (fifth today): they read
+        `// INHERITED, no calls` while the helper wrote `direct: ["Unknown"]`, so they were asserting the
+        CONTRIBUTES case, not the inherited one.
+- [ ] **NEW, pre-existing, and a SILENT UNDER-REPORT IN THE SOURCE VIEW — found by java while routing
+      AROUND it.** `UnknownReason.parse` returns null for a **colon-free** tag, so `ReportJson.parseEntries`
+      **silently drops** `missing-config` from `Effector.unknownWhy()`. Consequence: **`blindspots` never
+      lists a setup-only source at all** — 2 sources where there are 3 on the setup fixture, and
+      `blindspots --class setup` returns nothing. **The UNFILTERED list is already wrong**, so this is
+      independent of `--class` and older than this rung. `unverified --class` is immune only because java
+      routed it through the RAW strings via `readEnvelope` — a choice made for a different reason that
+      happened to dodge it.
+      Note the shape: a parser that models `kind:detail` **drops a token that has no detail**, and the
+      §6.2 projection table registers exactly such tokens (`missing-config`, `no-tsconfig` → class `setup`).
+      **Check the other three for a colon-required parse.**
       - **AN AGENT DETECTED A COLLISION INSTEAD OF FILING A FINDING, unprompted** — standing bar 7f
         working as intended. PART 27's java cell **passed against an uncommitted jar**: candor-java HEAD is
         still the commit the waiver records as FAILING, but its tree is dirty and the jar was rebuilt at
