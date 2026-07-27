@@ -915,7 +915,19 @@ matched against reacher names by exactly the equality above.
 condition (3) and dot-free ones that cannot be evaluated. It gets **one** entry, whose `viaDispatchOn` is
 the **sorted, deduplicated, comma-joined** union of the dispatched members (`M`, for each dotted reason
 that passed) and the raw details (for each dot-free one). Sorted and deduplicated so two engines cannot
-disagree on a field neither of them re-parses; `viaDispatchOn` is a disclosure string, and candor never
+disagree on a field neither of them re-parses.
+
+**"Sorted" means by UNICODE CODE POINT**, equivalently by UTF-8 byte order — the two orders coincide, and
+naming both is deliberate because the natural implementation differs per language. Rust's `BTreeSet<&str>`
+gives it for free. Java's `String.compareTo` and JavaScript's default `Array.sort` both order by **UTF-16
+code unit**, which agrees with code-point order on ASCII and *disagrees above the BMP*: a supplementary
+character sorts before `U+E000..U+FFFF` under UTF-16 because it is stored as a surrogate pair. Every detail
+any engine emits today is ASCII, so nothing diverges yet — but all four analysed languages permit non-ASCII
+identifiers, and `<owner>.<member>` is built from user identifiers, so this is reachable rather than
+theoretical. An engine whose natural comparator is UTF-16 MUST compare by code point explicitly.
+
+This is a small thing pinned at length on purpose: an unspecified collation on a field no consumer parses
+is invisible until a conformance row is written years later and fails for a reason nobody can reconstruct; `viaDispatchOn` is a disclosure string, and candor never
 parses an owner back out of it. A detail containing a comma would be ambiguous to a consumer that splits on
 one, and that is accepted deliberately rather than escaped: no engine emits one, and the alternatives are a
 new sub-grammar in a pinned field, or truncating the detail — which re-opens the drop this clause exists to
