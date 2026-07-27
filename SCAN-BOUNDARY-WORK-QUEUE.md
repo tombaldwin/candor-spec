@@ -2257,3 +2257,45 @@ an empty report there would be the exact false all-clear this vein exists to pre
   java's every-dep-fixture-used-`()V` (no reference type, hence no descriptor slash — the suite agreed on
   an accident), and rust's old `warm2` arm, which was **the assertion pinning the latch** it was meant to
   guard. That is standing-bar item 7g's third occurrence: a test can hold a defect in place.
+
+## OPEN — found by verifying the review round (2026-07-27, me, not an agent)
+
+Chasing candor-swift's handover ("two reports carrying an IDENTICAL entry withdrew the key as ambiguous —
+rust and java should check it") turned up a confirmed cardinal sin in rust, a clean negative in java, and
+one deeper defect underneath both that is NOT fixed.
+
+**CLOSED, candor-rust `6f2210c`** — two IDENTICAL entries under one key were withdrawn. Measured both ways
+on one fixture: one report chained gives `go = ['Exec']`; the SAME report chained twice gives **ABSENT, no
+`invisible`, no coverage hedge**. java is CLEAN (last-wins keeps an answer) — verified directly, not
+assumed. A/B free: pgman 0/0/0, ebman +2 entries recovered from absence.
+
+- [ ] **A WITHDRAWN KEY READS AS SILENCE AT THE ORDINARY CALL JOIN — and `a1e53e7` says it must not.**
+      Two TRUSTED reports that DISAGREE about one function leave the consumer ABSENT from `functions` with
+      no `invisible` and no coverage hedge: a confident purity claim assembled out of the index's refusal to
+      answer. This is the three-row rule (PART 21) one level down — at the INDEX rather than at the receiver
+      — and `a1e53e7`'s own commit message states the requirement verbatim: *"a miss on an exact key still
+      cannot distinguish 'no such method' from 'the index withdrew an entry', so it must fall back to
+      disclosure, never to silence."* The `typeSurface` consumer implements it; the ordinary call join does
+      not, because the withdrawn-key set is local to `load_dep_reports` and never reaches a consumer.
+      **Standing-bar item 9 — a comment stating a justification the code does not implement — in a commit
+      message rather than a comment.**
+      I BUILT the fix (expose `withdrawn` on `DepIndex`, disclose `Unknown[dispatch:withdrawn ambiguous
+      dependency key]` on a miss against it) and verified all five directions. **Not landed**, because it
+      costs 30 of pgman's 200 functions and 108 of ebman's 544 newly carrying `Unknown` — 15-20%, the same
+      order as the false-uncertainty flood the coverage-granularity finding measured. That is a design
+      decision, and I am not making it unreviewed at the end of a long session in exactly the class of
+      change two consecutive reviews have found defects in.
+      **The disagreements are REAL and one of them is alarming**: `backtrace#fmt` has one entry claiming
+      `["Env","Unknown"]` and another claiming PURE. Silence there matches the wrong one. Measured
+      distribution of collisions: pgman 2041 withdrawals, 1536 effect-agreeing / 505 effect-disagreeing;
+      ebman 3276, 2255 / 1021.
+- [ ] **The effect-agreeing majority could be merged instead of withdrawn.** 1536/2041 and 2255/3276
+      collisions are entries whose effect sets are IDENTICAL and whose literal surfaces merely differ;
+      unioning the surfaces is the sound over-approximation. Measured cost: 24/200 and 108/544 functions
+      newly carry `Unknown` — because the entries recovered are ones the DEPENDENCY could not resolve, so
+      this is disclosure the consumer was previously denied rather than noise. Filed with the numbers.
+- [ ] **THE FOUR ENGINES DO THREE DIFFERENT THINGS ON AN ENTRY COLLISION** and nothing pins it:
+      rust WITHDRAWS, java takes LAST-WINS (it picks — which the never-guess rule forbids elsewhere), ts
+      MERGES INTO A SET (unions effects). Whatever the right answer is, three answers cannot all be it, and
+      a `deny` gate gives different verdicts per engine on the same two reports. Wants a conformance part
+      once the decision above is made.
