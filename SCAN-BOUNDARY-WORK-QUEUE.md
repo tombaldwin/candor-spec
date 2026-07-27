@@ -447,10 +447,25 @@ no reference implementation, no second opinion, no spec interpretation in the lo
       it reads `['Fs']`, single tree, no boundary involved. Filed at §3c as a separate finding because it
       is a plain single-tree under-report, and P1 correctly does NOT fail on it (the property is
       directional and this weakens the oracle rather than the chained arm).
-- [ ] **P2 — CHAIN IDEMPOTENCE.** Chaining a report twice ≡ chaining it once. Would have caught the
+- [x] **P2 — BUILT, conformance PART 25.** 80 cells × **3 duplication arms** (byte-identical, renamed,
+      re-serialised — an engine deduping on file bytes would pass two of them). Relation = **EQUALITY
+      including disclosure**, justified with numbers: java/ts/swift are exactly equal on **216/216** live
+      cells, so unlike P1 there is no legitimate asymmetry to permit.
+      **FINDING: candor-rust is not chain-idempotent, on all three spellings.** Chaining a byte-identical
+      report twice WITHDRAWS the key — effect gone, package re-declared `uncovered`, `deny Fs` **exit 1 →
+      exit 0**. That is the ENTRY-COLLISION union decision's own defect, now gated.
+      ORIGINAL — P2, chain idempotence. Would have caught the
       identical-entry withdrawal (`6f2210c`) — two byte-identical reports made a consumer vanish from
       `functions`.
-- [ ] **P3 — TRUST MONOTONICITY.** An untrusted or incomplete report can only REDUCE what a consumer
+- [x] **P3 — BUILT, conformance PART 26.** 80 cells × **7 degraded arms** against two reference arms.
+      Relation = a **SANDWICH**, `unchained ≤ degraded ≤ trusted`, with direction stated per arm — and the
+      BESIDE arm **inverts**, which had to be discovered: judging BESIDE by the REPLACE rule reports nothing
+      about java's erasure, judging REPLACE by the BESIDE rule fails all four for the *correct* §2.1
+      downgrade. Both κ and `Unknown` count as disclosure (measured — counting only `Unknown` would have
+      filed a false cardinal loss on rust and ts).
+      **rust + java let a distrusted copy BESIDE the trusted report erase it** (rust withdraws, java's §2.1
+      downgrade writes `{Unknown}` over the `Fs`); ts unions and swift ranks trust first, both clean.
+      ORIGINAL — P3, trust monotonicity. An untrusted or incomplete report can only REDUCE what a consumer
       claims, never increase it. Would have caught the coverage door in all four engines, and java's
       stale-`{Unknown}`-erasing-a-trusted-effect (`deny Fs` exit 1 → 0).
 - [ ] **P4 — SIGNATURE MONOTONICITY.** Adding a call cannot remove an effect or a reason class. Would have
@@ -589,7 +604,8 @@ with four concrete instances rather than an argument.
       ORIGINAL FILING — rust, a chained dep's lazy static is charged only through a PATH-QUALIFIED read.**
       `deplib::C.len()` → `['Env']`; `use deplib::C; C.len()` → **absent**. Deref vs method call makes no
       difference; the `use` does. PART 19's rust fixture uses the qualified spelling.
-- [ ] **rust — a chained dep FACTORY call with NO intermediate binding reads silent-pure.**
+- [x] **ALL THREE rust §3c FIXED `ca27ecc`** (see the block above for the `5447eba` verdict).
+      ORIGINAL — rust, a chained dep FACTORY call with NO intermediate binding reads silent-pure.**
       `let c = deplib::build(); c.fetch()` → `['Fs']` (resolved); `deplib::build().fetch()` → **absent**.
       `let t = deplib::get_dyn(); t.run()` → `['Unknown'] dispatch:untyped cross-package receiver`;
       `deplib::get_dyn().run()` → **absent**. A hole in a SHIPPED guard, not an un-attempted precision
@@ -627,7 +643,8 @@ with four concrete instances rather than an argument.
       ORIGINAL FILING — swift, the same unbound-factory shape as rust**, with the same asymmetry: `let t = getDyn();
       t.run()` discloses and `let c = build(); c.fetch()` resolves, while `getDyn().run()` and
       `build().fetch()` are both absent.
-- [ ] **rust, single-tree, no boundary — a lazy-static read through a MODULE PATH is not charged.**
+- [x] **FIXED with the above.**
+      ORIGINAL — rust, single-tree, a lazy-static read through a MODULE PATH is not charged.**
       `mod m { pub static INNER: LazyLock<u8> = …Fs…; pub fn inside() { let _ = *INNER; } }` charges
       `m::inside` correctly; `fn outside() { let _ = *m::INNER; }` reads **pure**. The unit is emitted as
       `<lazy>::m::INNER ['Fs']`, so the writer knows; the reader-side edge does not make the hop. Worth
@@ -638,6 +655,33 @@ with four concrete instances rather than an argument.
 **Two of these put rust and swift SILENT where java and ts both disclose `Unknown` on byte-identical
 input** (the `fn_returned_dyn` pair). That is a four-way divergence on a decided contract, which is the
 class of thing PARTs 18–22 exist to catch — and each of them fixes one spelling, so none could.
+
+### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
+
+- [ ] **FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
+      `functions: []` and `analyzed.count: 0` — *"I judged nothing"* — is read as **full coverage**. The
+      caller drops out of `functions`, which under ⟨0.21⟩ is a **positive purity claim**, with **no
+      advisory anywhere**. `deny Fs` **exit 1 → exit 0**. rust 64 / java 72 / ts 56 / swift 64 live cells
+      ABSENT. Strictly MORE confident than the unchained arm, which correctly discloses `invisible` +
+      `coverage.uncovered`.
+      **THE FIX PATH IS PROVEN, NOT ARGUED — and that is the valuable half.** The wire ALREADY expresses the
+      difference: candor-scan emits `count: 0` for a `pub use`-only facade crate and `count: 2` for an
+      all-pure two-function crate. **No engine reads it.** Demonstrated by a negative-control arm differing
+      by that single integer — a legitimate all-pure claim §2 rule 3 says a consumer SHOULD believe, so it
+      must never fail — and `CONTROL SEPARATION` prints INDISTINGUISHABLE for all four today. **A fix must
+      make those two arms diverge.**
+      Provenance worth keeping: rust noticed `futures@0.3.32`'s empty report while measuring something
+      else → relayed as a candidate P3 arm → P3 turned it into a four-way finding with a remedy.
+      - [ ] **Producer-side caveat, unmeasured:** `analyzed.count` was verified correct (0 for a facade,
+            N for all-pure) **on candor-rust only**. Whether java/ts/swift EMIT 0 correctly for their own
+            facade packages is a separate question.
+- [→] **rust's chain-idempotence and the BESIDE-erasure are both the ENTRY-COLLISION union decision**
+      (§2, decided `b47c9ab`, unimplemented). They now have a conformance gate waiting for them — PARTs 25
+      and 26 will go green on the engines the moment the union lands, and fail if it regresses.
+- [x] **The harness caught a defect in ITSELF, the same shape P1's did.** P2's first draft reused a
+      `GAINED` verdict and printed *"the duplicate arm invented an effect … once=(ABSENT) twice=(ABSENT)"* —
+      a mis-invocation dressed as a finding about candor. It now has its own `BROKEN` verdict. **Two
+      property harnesses, two instances, both found by deliberately firing every guard.**
 
 ### 3b — THE GATE-A-REPORT VERB · **BUILT in java as reference**; rust/ts/swift to copy the shape
 **candor-java SHIPPED it, and it produced more normative content than the clause I wrote — three
@@ -697,7 +741,18 @@ divergence every engine implemented faithfully, and no end-to-end test could hav
 §1 produced THREE separable implementation items, not one. They have different blast radii and the first is
 the only verdict-changing one — do not bundle them.
 
-- [ ] **4a. §6.2 CONTRIBUTES — the only one that can turn a GREEN GATE RED.** A reasonless `Unknown` ADDS
+- [x] **4a DONE FOUR-WAY — and java was the ONLY engine where it was reachable.** swift 0 fires / 487 fns,
+      ts **0 / 1872** (and *unwritable* — a self-check refuses to emit such a report at all), rust 0 fires.
+      java was reachable via the **dependency boundary**, the one route the other three had already closed;
+      36% verdict flips on stale deps, 0 on trusted.
+      **rust's measurement found the MIRROR instead, live on TRUSTED reports**: its source-side contribution
+      was gated only on the dep entry's own direct tag, and §4 makes `unknownWhy` direct-only — so an
+      *inherited* dep `Unknown` looked identical to an unaccounted one. **26 functions on candor-scan's own
+      tree fired `deny Unknown[unresolved]` wrongly**, all tracing to 8 callers of three `syn` entries whose
+      `Unknown` syn's own `calls` chain explains 2–5 hops down. Fixed by resolving across the dep's
+      published edges: 26 → **0**, and `[dispatch]` **19 → 28** (the discrimination control — merely
+      dropping the contribution leaves it at 19).
+      ORIGINAL — 4a. §6.2 CONTRIBUTES — the only one that can turn a GREEN GATE RED.** A reasonless `Unknown` ADDS
       `unresolved` to the class set instead of defaulting when the set is empty. Matches a strict superset,
       so `deny E Unknown[<class>]` can go exit 0 → exit 1 on unchanged code, and re-baselining does not fix
       it. **Each engine must reproduce the three-row counterexample BEFORE changing anything** (reasonless
@@ -849,7 +904,15 @@ the only verdict-changing one — do not bundle them.
       Control: `banana:whatever` unchanged, asserted at model level AND end-to-end. **Four mutations, each
       caught** — including catch-all→`DISPATCH` (the blanket), which failed BOTH controls. No verdict change.
       - [→] **rust DISPATCHED** with both predictions + 4a. ts/swift after.
-      - [ ] **conformance PART 10** (held by the P2/P3 agent) must move from *tolerating* `ambiguous` as a
+      - [x] **conformance PART 10 FIXED (`2efe0bf`) — it CONTRADICTED the spec and would have hard-DIVERGEd
+            any engine implementing ⟨0.24⟩ in the field, two ways.** `CANON` still held four kinds with
+            `ambiguous` in a warn bucket and `dep:`/`dep-stale:` in none. Worse, the dispatch-detail check
+            DIVERGEd on **any dot-free detail** — the exact form ⟨0.24⟩ reserves, and the reference Rust
+            engine's **dominant** dispatch reason. Now five canonical kinds + a `REGISTERED` bucket
+            (deliberately not `MIGRATION`, whose meaning is "being reconciled away"), the dot shape checked
+            only when a dot is present, and **the negative control** without which "pins five kinds" and
+            "stopped checking" are the same diff. Verified on nine rows across all five outcomes.
+            ORIGINAL — PART 10 must move from *tolerating* `ambiguous` as a
             warning to pinning it canonical: accepted with no warning; detail **best-effort, NOT**
             conformance-compared; `dep:`/`dep-stale:` registered; migration tolerance narrowed to
             `task-handoff:`/`indy:` only; **and the negative control that makes the other four mean
