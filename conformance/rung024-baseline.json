@@ -1,0 +1,79 @@
+{
+  "_": [
+    "RATCHET BASELINE for conformance PART 27 / gen_rung024.py (the ⟨0.24⟩ rung's BEHAVIOUR).",
+    "",
+    "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. The expected answers live in the generator, taken",
+    "verbatim from the SPEC clauses they pin — this file only says 'this (row, engine, cell) is",
+    "known-broken today, here is why, and here is a hand fixture that reproduces it without the",
+    "generator'. If you find yourself editing an expected value into this file, stop: the oracle for",
+    "R1–R6 is the spec, and weakening it here would turn a differential into a description.",
+    "",
+    "IT RATCHETS BOTH WAYS. A failing cell that is NOT listed here fails the suite. An entry listed here",
+    "whose cells ALL pass ALSO fails the suite, so a waiver cannot outlive its defect and start masking",
+    "the defect's return. Deleting the entry is part of the fix.",
+    "",
+    "Every entry below was found by PART 27 on 2026-07-27, the first time it ran, and then RE-DERIVED",
+    "from a hand-written report + policy so that no waiver rests on the generator being right."
+  ],
+  "known": [
+    {
+      "row": "R1",
+      "engine": "java",
+      "cell": "disclosure",
+      "why": "candor-java's `unverified --class` has not landed the §6.2 ⟨0.24⟩ repair that rust, ts and swift all carry. Query.java's filter tests `f.unknownReasons()` — the DIRECT `unknownWhy` — so it (1) never resolves the class set transitively, and (2) never CONTRIBUTES `unresolved` to a function whose direct Unknown carries no reason. The counterexample therefore reads inverted: `--class unresolved` selects NOTHING at all (0 of 3), and `--class dispatch` selects only the source, not the two callers that inherit from it. The GATE half of this row is clean on java — `deny Unknown[unresolved]` exits 2 (the answerability refusal), fail-closed — which is exactly §6.2's 'the gate had never been party to the defect: the divergence was entirely consumer-side, in the one query that reads a REPORT rather than the scan's in-memory graph, and which carried an open-coded second copy of the classification'.",
+      "repro": [
+        "HAND-WRITTEN report r.json (no scan, no compiler):",
+        "  { \"candor\": {\"version\":\"handwritten\",\"spec\":\"0.23\"}, \"package\":\"app\",",
+        "    \"analyzed\": {\"count\":3,\"digest\":\"0\"}, \"functions\": [",
+        "      {\"fn\":\"app.a\",\"inferred\":[\"Unknown\"],\"calls\":[\"app.src_reasonless\"]},",
+        "      {\"fn\":\"app.src_reasonless\",\"inferred\":[\"Unknown\"],\"direct\":[\"Unknown\"],\"unknownWhy\":[]},",
+        "      {\"fn\":\"app.src_reasoned\",\"inferred\":[\"Unknown\"],\"direct\":[\"Unknown\"],\"unknownWhy\":[\"dispatch:app.Base.run\"]} ] }",
+        "  plus r.callgraph.json = {\"app.a\":[\"app.src_reasonless\"],\"app.src_reasonless\":[],\"app.src_reasoned\":[]}",
+        "  and a policy file containing `pure app`.",
+        "",
+        "  java -jar candor-java-all.jar unverified --report r.json --policy pol --json --class unresolved",
+        "    java  -> []                        candor-rust / candor-ts / candor-swift -> [app.a, app.src_reasonless]",
+        "  ... --class dispatch",
+        "    java  -> [app.src_reasoned]        the other three -> [app.b, app.c, app.src_reasoned]",
+        "",
+        "The fix is the one §6.2 names: hoist the transitive class fixpoint and the match rule into the",
+        "code the gate already uses, rather than patching the consumer's second copy."
+      ]
+    },
+    {
+      "row": "R5",
+      "engine": "java",
+      "cell": "dynamic",
+      "why": "the same root cause as the R1 waiver, seen through the diagnostic §6.2 prescribes. `--class dynamic` should exclude nothing but a setup-only entry; on candor-java it selects 2 of 7 (−71%), dropping every entry whose Unknown is inherited AND every entry whose direct Unknown carries no reason. The discrimination control fails in the opposite direction and is why the two cells are waived together: `--class unresolved` selects NOTHING, so a repair that merely made `dynamic` converge — by keeping everything — would clear one cell and leave this one failing, which is the outcome the ratchet should say out loud.",
+      "repro": [
+        "the same r.json as the R1 entry, extended to the generator's seven-function fixture:",
+        "  java -jar candor-java-all.jar unverified --report r.json --policy pol --json            -> 7 entries",
+        "  java -jar candor-java-all.jar unverified --report r.json --policy pol --json --class dynamic -> 2",
+        "  ... --class unresolved -> 0        rust / ts / swift: 7, 7 and 3 respectively.",
+        "Matches §6.2's own measurement of this defect on the engine where it was found (387 -> 230, −41%,",
+        "and 51 -> 16, −69%), with `--class unresolved` selecting 6 of 387 after repair."
+      ]
+    },
+    {
+      "row": "R5",
+      "engine": "java",
+      "cell": "discriminates",
+      "why": "the OTHER direction of the same java defect, waived as its own cell rather than under a `cell: \"*\"` blanket. `--class unresolved` selects NOTHING (0 of 3 expected). A repair that only made `dynamic` converge — by keeping everything — would clear the `dynamic` cell and leave this one failing, and a blanket waiver would hide exactly that. See the R5/dynamic entry for the repro.",
+      "repro": ["as the R5 `dynamic` entry: `--class unresolved` -> 0 on java, 3 on rust / ts / swift."]
+    },
+    {
+      "row": "R5",
+      "engine": "*",
+      "cell": "value-grammar",
+      "why": "NOT YET IMPLEMENTED IN ANY ENGINE — an `engine: \"*\"` waiver, used here because the defect is a CLAUSE with no implementation anywhere rather than a per-engine divergence, so there is no shrinking failure list for the blanket to hide. ⟨0.24⟩ §6.2 makes an unrecognised `--class` token and a repeated `--class` flag USAGE ERRORS (exit 2); all four engines exit 0. The clause explains why it is not the policy-side drop-with-warning: on the policy side a dropped token leaves a WIDER rule standing, here it leaves a NARROWER filter, so `--class dyanmic` silently answers a question the user did not ask, with a smaller number. This is the fail-open §6.2 says is 'where the next divergence would have gone' — measured on 2026-07-27 and found to be four-way, not a divergence but a shared gap.",
+      "repro": [
+        "any report + `pure app` policy, on each engine in turn:",
+        "  <engine> unverified --report r --policy pol --class dyanmic                  -> exit 0 on all four (want 2)",
+        "  <engine> unverified --report r --policy pol --class unresolved --class native -> exit 0 on all four (want 2)",
+        "Measured on candor-rust, candor-java, candor-ts and candor-swift at 0a3e6c9 / 91930f2 / d64c032 /",
+        "b514dbc. Delete this entry one engine at a time as they land it — the `*` will then have to be",
+        "narrowed to the engines still failing, which is the ratchet doing its job."
+      ]
+    }
+  ]
+}
