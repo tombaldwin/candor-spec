@@ -920,14 +920,35 @@ and the only conformer, app has none:
         entry deltas with the new `typeSurface` key as the ONLY envelope change. Consumer: 5 chained
         consumers / 2 805 entries, 0 gains 0 losses, arm ENTERED 20 times, every one a `returns` miss —
         the same shape rust measured (408 crates, 2 hits, 406 misses).
-      - **RESIDUAL, and it is why one guard is honestly UNPROVEN.** A nested type's method is unreachable
-        for the consumer: the key is three segments and this engine's dep index carries only `pkg#leaf`
-        and `pkg#tail2`, so it misses and discloses (fail-closed). That also means relaxing the exact
-        type-path match to a SUFFIX match fails no test and changes no corpus output — a wrong answer can
-        only ever miss. Written into the code as an open question rather than a claim; it becomes
-        load-bearing the day swift gets the full-qual index key (rust's prerequisite `5feba18`), and the
-        fixture that catches it must be written WITH that key. `-> any P` / `-> some P` returns are also
-        refused; `any P` is erased and would be safe to admit later, `some P` is not.
+      - **RESIDUAL — CLOSED, candor-swift `9a51e7f` + `74bed40` (2026-07-27). The guard is PROVEN.**
+        As filed: a nested type's method was unreachable for the consumer, because the key is three
+        segments and this engine's dep index carried only `pkg#leaf` and `pkg#tail2`. Swift now carries
+        rust's prerequisite too — a third key shape `pkg#<full qual>`, NORMALIZED rather than raw (the
+        one place swift is not rust: `tail2` already normalizes `.`/`::`, so pushing the raw qual would
+        add a key no Swift call site can spell). Index 14 535 → 15 398 keys over seven real repos split
+        one package per target; keys present before and absent after: 0; new ≥3-segment collisions 0,
+        unlike rust's pgman 1 865 — swift's scanner emits no cfg-gated duplicates, so the fall-back-to-
+        disclosure is unexercised here but stays required. The dedup is the whole safety argument and
+        was mutated out: `viaFactory` loses its Fs and a bare free call goes ABSENT from the report (a
+        ⟨0.21⟩ purity claim) — item 9b in its exact shape.
+      - **The exact type-path match is now load-bearing, and the counterfactual was MEASURED rather than
+        argued.** The fixture was written WITH the key, as instructed: `openForeign() -> Progress` names
+        a type the package does not declare, a suffix match answers the nested `Mock.Progress` that
+        merely shares its leaf, and the third key makes that guess LAND — the caller is charged an Env
+        it cannot reach AND loses half 1's disclosure with it. The mutation fails that test and no other.
+        **Then the interesting half:** with the key mutated back OUT and the suffix mutant left IN, the
+        CONSUMER rows go green again and only a producer-side "publishes nothing" assertion fails. So
+        what the key changed is not that a wrong answer can be OBSERVED — a producer assertion could
+        always have seen that, and nobody had written one — it is that a wrong answer now LANDS. *An
+        untestable guard is a hope; but "untestable" can mean "nobody wrote the cheap assertion" as well
+        as "the mechanism cannot bite", and only the second is a real blocker. Say which one you have.*
+        `-> any P` / `-> some P` returns are still refused; `any P` is erased and would be safe to admit
+        later, `some P` is not.
+      - **FOUND WHILE FIXTURING, reported not fixed:** `let c = openMock(); c.probe()` on a NESTED type
+        does not resolve IN-SCAN either, so the new row has no single-tree control and the chained arm is
+        now strictly BETTER than the unsplit one — candor-java `9ae68f7`'s smell, one repo over. The
+        local returns/binder path does not carry a nested type path. Documented on the test rather than
+        asserted, since pinning it would encode the gap as a requirement (item 7g).
 - [x] **swift row 3 — ALREADY SOLVED by `interfaceUnion`; my characterisation was wrong (2026-07-26).**
       Recorded here as "NOT fixable locally" and "the strongest argument for `typeSurface.implements` in the
       whole queue". Both false. Measured:
@@ -1387,12 +1408,22 @@ real Swift targets / 12 004 entries (0 gains, 0 losses, Unknown unchanged) and f
       functions only. This is over-disclosure, not the cardinal sin, so it is noise rather than a lie; but
       a hedge that is wrong 20 times out of 20 teaches a consumer to ignore the channel, and rust measured
       the same conjunct firing on `max()`/`min()` before narrowing it.
-- [ ] **swift has no full-qualification key in its dep index — rust's PREREQUISITE 0, unfixed.** The
-      `typeSurface` consumer's exact type-path match therefore cannot be shown to matter: relaxing it to a
-      suffix match fails no test, because with no full-qual key a wrong answer can only ever MISS. The
-      agent reported this as an UNPROVEN requirement rather than claiming the guard, which is the right
-      call. Landing the rust-style third key would make the exactness testable — and until it is testable
-      it is a hope, not a guard.
+- [x] **FIXED — candor-swift `9a51e7f` (the key) + `74bed40` (the guard it makes provable), 2026-07-27.**
+      Swift's index now carries `pkg#<full qual>` beside `pkg#leaf` and `pkg#tail2`, NORMALIZED rather
+      than raw — the one place it is not a copy of rust's `5feba18`, since `tail2` already folds `.`/`::`
+      and the raw qual would key a string no Swift call site spells. Additive with the dedup, both
+      directions mutation-verified; 14 535 → 15 398 keys over seven real repos split one package per
+      target, 0 keys lost, and 43 chained consumer reports byte-identical.
+
+      **And the exactness guard IS provable now** — a suffix match publishes a nested type that merely
+      shares its leaf, the third key makes that guess LAND, and the caller is charged an effect it cannot
+      reach. But the useful result is the counterfactual, which was measured: with the key removed and the
+      suffix mutant left in, the CONSUMER rows go green and only a producer-side assertion fails. **"The
+      guard is untestable" was half true.** Nobody had written the cheap producer assertion, which needed
+      no key at all; what genuinely needed the key was showing the guard is LOAD-BEARING rather than
+      cosmetic. Two different claims, and this row conflated them. *When you file a guard as unprovable,
+      say whether the mechanism cannot bite or whether the assertion was merely never written.*
+      Full detail on the `typeSurface` row above.
 
 ## The 2026-07-26 adversarial review: 9 confirmed defects, ALL of them narrowings that went one step too far
 
