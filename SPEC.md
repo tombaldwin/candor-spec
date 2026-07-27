@@ -1956,12 +1956,31 @@ declare it via the envelope's `spec`.
   not**. `CONTRIBUTES` keeps the fail-closed intent — an unclassifiable hole still matches a narrowed
   filter — and restores monotonicity.
 
-  **VERDICT IMPACT, stated plainly because it is the adoption cost.** The new rule matches a strict superset:
-  a function carrying both a reasonless `Unknown` and a classified one now contributes `unresolved` where it
-  previously did not, so a `deny E Unknown[<class>]` gate can go **exit 0 → exit 1** on unchanged code. That
-  is the *correct* verdict — the old pass was the silent relaxation Lemma 2 forbids — but it is a break for
-  anyone gating on it, and it is not fixed by re-baselining a report. Engines SHOULD name the new matches in
-  the disclosure rather than letting a build fail without explanation.
+  **VERDICT IMPACT — MEASURED, and it is sharply conditional.** The new rule matches a strict superset, so a
+  `deny E Unknown[<class>]` gate can go **exit 0 → exit 1** on unchanged code. That is the *correct* verdict
+  (the old pass was the silent relaxation Lemma 2 forbids) but it is a real break, and re-baselining a report
+  does not fix it. The numbers, old vs new over one identical scan on the JVM engine, two real targets:
+
+  | dependency reports | class sets changed | `[unresolved]` verdict flips |
+  |---|---|---|
+  | **trusted** | 0 / 141 and 0 / 211 | **0** |
+  | **stale** (§2.1 distrusted) | 130 / 145 and 311 / 311 | **52** and **2** |
+
+  **52 of 145 is 36% of one target — a large break — and it is reachable ONLY through the dependency
+  boundary.** With trusted reports nothing moves at all. That is not a coincidence: an engine records a
+  reason beside every `Unknown` it raises itself, so the only route to a reasonless one is a report it did
+  not produce — a §2.1 distrusted one whose effects were downgraded wholesale, or an entry whose `Unknown`
+  neither its own tags nor its published `calls` chain accounts for. An adopter on trusted reports sees no
+  change; an adopter consuming reports this build cannot verify sees the gate start telling the truth about
+  them. Engines SHOULD name the new matches in the disclosure rather than let a build fail unexplained.
+
+  **The control this rung is easiest to fake.** The naive form — contribute `unresolved` whenever an
+  `Unknown` is present, without asking whether it is already accounted for — is indistinguishable from the
+  correct rule *on a stale-report fixture*, because under a stale report nothing is accounted for. It must
+  therefore be separated by a **fresh** dependency whose `Unknown` IS explained, once via its own tag and
+  once via a `calls` edge. Measured on the same two targets, the naive form flips **96/141 and 211/211**
+  with fresh reports where the correct rule flips **none** — and on the Swift engine, whose default is
+  unreachable, it marks **435** functions where the legitimate count is **0**.
 
   **Secondary, additive: `ambiguous:` is a fifth §4 kind.** §6.2 has always projected `ambiguous:*` to
   `dispatch`, so a CONSUMER classified it correctly while a PRODUCER emitting it was non-conforming — an
