@@ -605,16 +605,16 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       depend on, which strengthens the union recommendation rather than weakening it.
 
 ### Cardinal sins and gate flips — in flight
-- [ ] **ts `scan.mjs:504`** — `--workspace` deletes a stale cached dep report AFTER the fixpoint rounds and
+- [x] **FIXED candor-ts `7ba3776`** — ts `scan.mjs:504` — `--workspace` deleted a stale cached dep report AFTER the fixpoint rounds and
       never re-runs them, so a sibling that scanned successfully has ALREADY chained the report being
       deleted and its own cache keeps that answer. The stale content survives inside a downstream report
       after the file it came from is gone. swift's equivalent fix does a second `runRounds()` for exactly
       this reason (`43a0eaa`).
-- [ ] **swift `main.swift:468`** — `sweepStale` deletes a HEALTHY sibling's freshly-written report: it skips
+- [x] **FIXED candor-swift `497e117`** — swift `main.swift:468` — `sweepStale` deleted a HEALTHY sibling's freshly-written report: it skips
       deps that succeeded, not files THIS RUN produced. Two path deps deriving one report name, one fails,
       the other's output is deleted — and deleted AGAIN after the retry rewrites it. Second round of this
       class after `b4f6cbc` deleted user-placed reports.
-- [ ] **swift `Deps.swift:424`** — `incompletePkgs.subtract(coveredPkgs)` restores FULL coverage as soon as
+- [x] **FIXED candor-swift `756a8f0`, INVERTED so incompleteness wins** — swift `Deps.swift:424` — `incompletePkgs.subtract(coveredPkgs)` restored FULL coverage as soon as
       any report claims the package complete, cancelling a second report's hedge over a region it could not
       read. Complete-wins is the reading rust REFUSED twice (`63bbe87`, `dbab8be`): **two reports covering
       one package do not cover the same SOURCE.**
@@ -659,12 +659,12 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       unilateral edit.
 
 ### The wire-format break, both halves from one java commit
-- [ ] **THE THIRD READER — candor-rust `candor-query::load_hierarchy`** deserializes the sidecar as a strict
+- [x] **FIXED candor-rust `e3e99aa` (mine)** — THE THIRD READER — `candor-query::load_hierarchy` deserializes the sidecar as a strict
       `BTreeMap<String, Vec<String>>`, so java `bb8459a`'s new `"@superclass"` OBJECT makes the WHOLE file
       fail to parse and be silently discarded. **That is the identical failure the same commit fixed in the
       SECOND reader** (`Query.loadHierarchy` threw, swallowed it, and dropped the whole hierarchy with 540
       tests green). Introduced by the fix for it, in another language.
-- [ ] **`@superclass` is written UNCONDITIONALLY**, so an empty sidecar becomes `{"@superclass":{}}` and
+- [x] **FIXED candor-java `7acd64a`; the key is now a flat ARRAY (`403f24b`)** — `@superclass` was written UNCONDITIONALLY, so an empty sidecar becomes `{"@superclass":{}}` and
       candor-ts's `callersFrontier` — which gates on `Object.keys(hierarchy).length > 0` — flips from its
       safe over-listing fallback to the precise path over an EMPTY hierarchy. A metadata key silently
       narrows another engine's frontier.
@@ -673,14 +673,14 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       WRITER-side constraint would have made both defects impossible.
 
 ### Partial ports and a comment that lies
-- [ ] **swift `Deps.swift:212`** — the identical-entry exemption (rust `6f2210c`) was added only to the
+- [x] **FIXED candor-swift `cbed5df`** — swift `Deps.swift:212` — the identical-entry exemption (rust `6f2210c`) was added only to the
       TRUSTED arm; two IDENTICAL entries from two STALE reports still withdraw the key, losing the §2.1
       `Unknown` downgrade the stale arm exists to produce.
-- [ ] **swift `main.swift:447`** — `ownedReportFile` parses the manifest name anchored AFTER `Package(`;
+- [x] **FIXED candor-swift `fce24ec`, one parse and one transform, both the writer's** — swift `main.swift:447` — `ownedReportFile` parsed the manifest name anchored AFTER `Package(`;
       the WRITER at `:304` is UNANCHORED and takes the FIRST `name:` in the file. The comment claims "the
       same three sources the writer uses, in the same order". It is not, and the sweep can therefore
       compute a different name than the writer did.
-- [ ] **swift `CallCollector.swift:1465`** — the TYPED enum-payload binder calls `shadowName` only, missing
+- [x] **FIXED candor-swift `ba91a27`; the rename control then found FOUR MORE doors (`7646c3d`)** — swift `CallCollector.swift:1465` — the TYPED enum-payload binder calls `shadowName` only, missing
       `protoTyped`/`arrayElem`/`opaqueElem`/`dictElem`/`tupleElem`, so a payload shadowing a protocol-typed
       parameter still dispatches over the protocol's conformers. **`NameKeyedStateTests` cannot see it** —
       it derives the map SET and checks classifications, not whether each BINDER SITE honours them. Its
@@ -889,7 +889,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       exactly the shape item 0 warns about, so it wants its own A/B in both directions.
 
 ### Precision gaps, disclosed and not silent
-- [ ] **ts — the BY-REFERENCE HOF arm has the `.bind` arm's hole, but DISCLOSED.** Found while fixing
+- [x] **FIXED candor-ts `1960979`** — ts — the BY-REFERENCE HOF arm had the `.bind` arm's hole, but DISCLOSED.** Found while fixing
       `b66b69a` and deliberately not fixed with it. That arm keeps the positive `!hofInvokesArg(…)`
       early return, so a DEP function passed BY REFERENCE at a position a loosely typed dep HOF does not
       declare loses its concrete effect. Reduced to a fixture rather than asserted — `forEach(xs: any[],
@@ -941,7 +941,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       the gap as a requirement.
 - [ ] **swift — `returnsIdx` is bare-name keyed package-wide**, a pre-existing residual doing one conjunct
       earlier what `7a4f977` fixed. Pinned as a test asserting TODAY's behaviour with instructions to flip it.
-- [ ] **ts — `.candor/dep-inits/` and `.candor/deps/` are never cleared**, so a package whose rescan throws
+- [x] **FIXED candor-ts `95d0b8b` + `29cd992`, which found TWO further defects in the fix itself** — ts — `.candor/dep-inits/` and `.candor/deps/` were never cleared**, so a package whose rescan throws
       is served from the PREVIOUS run's file while the code comment claims it "is skipped".
       ABSENT-BY-ACCIDENT: the incompleteness fix (`21277eb`) removed the sharpest edge, but nothing prevents
       the shape returning.
