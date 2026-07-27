@@ -7,6 +7,80 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
+## DONE — the THIRD review, swift only (4 confirmed + 1 alignment, all closed 2026-07-27)
+
+A third adversarial pass, scoped to candor-swift's half of the wave. **Four confirmed defects, and the
+base rate held for the third time running: every one was a guard written during the wave under review.**
+All five rows below are closed, each with both fixtures (the second written first), each guard mutated
+out and the failing test named, A/B over 13 real Swift packages with both arms' release binaries kept by
+content hash, four-way conformance green after each commit.
+
+- [x] **swift `CallCollector.swift:1465` — the TYPED enum-payload binder called `shadowName` only**, so
+      `protoTyped`/`arrayElem`/`opaqueElem`/`dictElem`/`tupleElem` survived a rebind that wrote `vars`
+      over the top. A payload binding shadowing a same-named PROTOCOL-TYPED parameter dispatched over
+      that protocol's conformers. **FIXED candor-swift `ba91a27` — and the review's real question was
+      about the TEST**, so: `NameKeyedStateTests` was green through it and correctly so. That file
+      derives the SET of name-keyed maps and checks each MAP's classification; what was violated is
+      per-NAME and per-CONTROL-PATH, which a parse tree cannot see. **Both derivable strengthenings were
+      priced and both would have PASSED on the defective code** — "every method that writes a
+      per-binding map must mention a clear helper" (the method mentioned both) and "every write SITE
+      must be on an authored list" (the site predates the wave that broke it, and it re-introduces the
+      authored list that file exists to delete). The remedy is at the site — the branches are fused so
+      no path can write a type without the clear — and **the limit is now written into the file**, since
+      the next reader would otherwise assume coverage.
+- [x] **AND THE RENAME CONTROL THEN FOUND FOUR MORE (candor-swift `7646c3d`).** One mechanism, five
+      doors: `if let`, an ANNOTATED closure parameter, a tuple destructure, and a nested `func`
+      parameter, each shadowing a protocol-typed parameter and each reading `['Fs']` against an ABSENT
+      control. **Two of the second-direction rows came back as RECOVERIES**, which is the part worth
+      carrying: the stale entry was not only fabricating, it was MASKING the shadowing binding's own
+      type, so `if let j = o { j.go() }` resolves `Ctx.go` for the first time. The ordering carve-out
+      (`let u = u.asURL()` resolves THROUGH the entry being cleared) is a denylist and is pinned by a
+      row whose mutant fails only it. Two sites take a narrower treatment for stated reasons — the
+      nested-func parameter clears only the SCOPED maps (`vars` is not in `ShadowSave`, so clearing it
+      would leak outward), and the closure parameter is cleared inside `visit(ClosureExprSyntax)`
+      because only there is the save live.
+- [x] **swift `main.swift:468` — `sweepStale` deleted a report a HEALTHY sibling had just written.** It
+      skipped deps that SUCCEEDED, which is not the set of files THIS RUN PRODUCED. Two path deps
+      deriving one report name (a vendored fork beside the upstream checkout) put the failed copy in
+      charge of the healthy copy's file — and the non-empty sweep triggers the retry, which rewrites it,
+      and the second sweep deletes it AGAIN. Consumer `['Fs']` + literal surface → `invisible:
+      ['Shared']`. **FIXED candor-swift `497e117`**: never delete a file this run wrote (`confirmed` was
+      already that set and was otherwise write-only). The per-dep failure line no longer claims a
+      removal that did not happen — a false disclosure in the collision case, twice over.
+- [x] **swift `main.swift:447` — the sweep's manifest parse was not the writer's, under a comment saying
+      it was.** Anchored after `Package(` vs the writer's unanchored first `name:`; a hoisted target or
+      dependency array splits them. **BOTH directions land on one fixture**: the stale report SURVIVES
+      (`use0` ABSENT — a ⟨0.21⟩ purity claim over a dep that writes to disk) and a user-placed file
+      under the invented name is DELETED. **FIXED candor-swift `fce24ec`** — one parse and one name
+      transform, both the writer's, both called by the writer. Two of the row's assertions were
+      DECORATIVE at first and the mutant is what showed it: both file names appear in the mutant's
+      stderr with the two lines' contents SWAPPED, so a `contains` over the whole stream could not tell
+      the arms apart. They assert per LINE now.
+- [x] **swift `Deps.swift:424` — `incompletePkgs.subtract(coveredPkgs)` restored full coverage to a
+      package as soon as ANY report claiming it was complete.** **FIXED candor-swift `756a8f0`,
+      incompleteness now wins.** Coverage turns SILENCE into a purity claim, so a set of reports' silence
+      is only as strong as the weakest completeness claim in it — **two reports covering one package do
+      not cover the same SOURCE**. Measured: B alone hedges `invisible: ['RatesDep']`, A+B went ABSENT.
+      The sharper form is `63bbe87`'s argument arriving on the COMPLETENESS axis — two fresh reports
+      disagreeing on a key withdraw it (rule 1, correctly) and complete-wins turned the withdrawal into
+      a purity claim over a function both reports call effectful (`A alone go->['Net']`, `C alone
+      go->['Exec']`, `A+C go->ABSENT`). The staleness line one below is NOT the same shape and is
+      untouched: a stale report makes no claim about its own source, and swift's `insert` keeps the
+      trusted answer on a fresh/stale collision (`ca5feb0`) rather than withdrawing the key — **which
+      also closes the open "FOR candor-swift" row further down this file: swift does NOT drop the
+      colliding key the way rust does.** `testPackageChainedCompleteAndIncompleteKeepsItsCoverage`
+      PINNED the defect (item 7g) and is inverted with flip instructions rather than deleted.
+- [x] **swift `Deps.swift:212` — the identical-entry exemption was a PARTIAL port** of rust `6f2210c`:
+      trusted arm only. Two byte-identical entries from two STALE reports still withdrew the key,
+      costing the §2.1 `Unknown` downgrade the stale arm exists to produce (`['Unknown']` +
+      `dep-stale:RatesDep` → a bare ledger hedge, so `deny E Unknown[…]` stopped firing). **FIXED
+      candor-swift `cbed5df`**, aligned with rust. **The population is not marginal: 476 of 8367 join
+      keys already collide WITHIN a single real report, in 12 of 13 corpus packages** (Alamofire 119,
+      pollen 104, vapor 95). Found while writing it and stated in the code rather than left to be
+      discovered: the stale-vs-stale WITHDRAWAL is now unreachable, because a stale entry is built from
+      nothing but its package and the key begins with that package — kept, not deleted, because it goes
+      live the moment a stale entry carries anything per-FUNCTION.
+
 ## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 9 resolved, 1 live — rust incompleteness)
 
 A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
@@ -167,6 +241,66 @@ up, so they are written here first and worked second.
         whole-module optimization ONLY. The first "verified" arm was a binary the failed build had left
         on disk — item 7c, in a new spelling: `swift build -c release` failing does not remove
         `.build/release/`.
+- [x] **ts `scan.mjs:504` — `--workspace` DELETED the stale cached dep report AFTER the fixpoint rounds
+      and never re-derived them.** `95d0b8b` correctly established that a cached report this run did not
+      write is not this run's answer, and swept one — but the sweep runs after the rounds, and every
+      child in those rounds is spawned with `CANDOR_DEPS` pointing at the SAME cache. So a sibling that
+      scanned cleanly had already chained the report being deleted, its own cached report kept that
+      answer, and the parent chained the sibling. **The file went; the conclusion drawn from it survived
+      one hop away.** swift's `43a0eaa` re-runs its fixpoint for exactly this reason and ts did not.
+      **FIXED candor-ts `7ba3776`.**
+      - Reproduced on a two-hop workspace (`libb` imports `liba`; `liba` loses its analyzable source
+        while its `.d.ts` keeps it RESOLVABLE), with the COLD arm as the control: WARM `callB` **ABSENT
+        from `functions`** — a ⟨0.21⟩ positive purity claim — against COLD `invisible: ['liba']` plus a
+        `coverage.uncovered` row. **And it moves a GATE through the interface-CHA join**: `liba`'s run-1
+        report carries an `interfaceUnion` entry, so the concrete `Fs` survived inside `libb`'s cached
+        report and `deny Fs` was **exit 1 warm / exit 0 cold** — RED over a body not on disk.
+      - **NO `deny` goes exit 0 → exit 1, and that is structural rather than an accident of the
+        fixture.** candor-ts gates read `inferred` (`policy.mjs:235`), an unchained-but-resolvable dep
+        call yields `invisible` and never `Unknown`, and withdrawing a chained report's coverage can only
+        move a call from the half-1 `Unknown[dispatch]` arm to the ledger's `invisible`. So sweeping can
+        only ever REDUCE `inferred`. Worth knowing before anyone hunts for a `deny Fs` flip in the
+        cardinal-sin direction here: the sin is at the ⟨0.21⟩ report level, which is also where swift
+        `43a0eaa` and ts `95d0b8b` measured their own.
+      - **Scoped honestly: the wrong answer lasts exactly ONE run** — measured, runs 3 and 4 are correct,
+        because by then the swept file is gone before the siblings are scanned. That run is the one a CI
+        gate sees the first time somebody breaks a workspace package, over a persisted `.candor/deps`.
+      - **NO second sweep**, unlike swift: a report file only ever appears from a success, so a second
+        `dropUnanswered` can only return `[]` — item 8c, a guard that costs nothing needs deleting rather
+        than writing. The re-pass is gated on something having been swept and DISCLOSES itself on stderr,
+        because without that line the gate is invisible in every channel the suite reads (an ungated
+        re-pass is byte-identical and merely slower).
+      - **The A/B needed its corpus proved first, and the first one was inert** — item 8, and exactly the
+        trap this queue warns about. A bare vue-core checkout resolves NO cross-package declaration, so
+        `--workspace` chained 12 reports and changed NOTHING (chained == unchained, 0 gains, 0
+        `invisible`). With each package's `types` pointing at its own source entry the join is real
+        (runtime-core's own ledger names `@vue/shared` at 273 calls, `@vue/reactivity` at 119). Then:
+        clean arm **byte-identical** across the change (app report and both dep reports); armed
+        (`@vue/shared` given an unreadable `.candor/config`, source untouched) **0 effect gains, 0
+        losses, Unknown delta 0**, and **+53 `invisible` and +18 entries recovered in the carrier's
+        report**, 3 reaching the consumer. **The invariant: POST-armed is byte-identical to POST-cold and
+        PRE-armed is not** — a cache must not change the answer.
+- [x] **ts — and the ownership derivation `95d0b8b` introduced had TWO defects, found by asking its own
+      two questions rather than by suspicion. FIXED candor-ts `29cd992`.**
+      - **A file a USER placed CAN be deleted, and it needs no malice.** The rule is "a file candor would
+        have OVERWRITTEN on success is the file it removes on failure", which holds only while the
+        writer's name and the sweeper's candidate name are the same string — and they were two spellings:
+        the writer took `report.package` on trust, `failedDepName` required a non-empty STRING. A
+        manifest saying `"name": 123` made `name.replace` throw, the `catch` read a scan that **exited
+        0** as a failure, and the sweep deleted `<directory-basename>.json`, a name that writer would
+        never have produced. stderr said "could not scan utils" about a successful scan and the count
+        line claimed to have chained `123` with no file on disk. **Count the spellings of a derivation,
+        not just the anchors of a gate.**
+      - **A write that THREW was recorded as an answer.** `answered`/`ownFiles` sat three lines above the
+        write, so a read-only cache dir or a full disk marked the dep answered, the sweep skipped it, and
+        the previous run's report stood in for one this run never put on disk — `95d0b8b`'s own class
+        through the write door instead of the scan door.
+      - **Two clean negatives, recorded because deletion is unrecoverable.** An INTERRUPTED run
+        self-heals (measured: the cache converges on the next run). TWO PROCESSES on one `.candor/deps`
+        FAIL CLOSED — fed a report truncated at 40 bytes the consumer prints "CANDOR_DEPS report
+        unparsable, skipped" and reads `invisible`, so non-atomic writes cost precision, not soundness.
+      - Inert on real input and instrumented rather than assumed: **0 of 28,407 real `package.json`
+        manifests across 61 `node_modules` trees** have a non-string `name`.
 
 ### NEW, from the same swift pass — the EIGHTH and NINTH maps, REFUSED with numbers
 - [~] **swift `boundLocals` (and `catchBindings` with it) — the same mechanism, in the map neither audit
@@ -319,6 +453,24 @@ up, so they are written here first and worked second.
         cannot express.
 
 ### Cross-engine divergence — `Unknown[class]` gates now fire differently per engine
+- [x] **ts `query-core.mjs:333` — a hierarchy-sidecar key the reader cannot interpret was coerced to `[]`
+      and KEPT, which is a PHANTOM TYPE.** Routed from java's `bb8459a`/`403f24b` `"@superclass"` rung.
+      Not inert: `callersFrontier` gates on `Object.keys(hierarchy).length > 0`, so ONE metadata key takes
+      the frontier off its documented over-listing simple-name fallback and onto the precise subtype test
+      over a hierarchy that can answer nothing. Measured: sidecar `{}` → `possibleViaUnknownDispatch:
+      [app.Frontier.go]`; sidecar `{"@superclass":{}}` → `[]`. **FIXED candor-ts `7bbf73c`** — the `@`
+      extension namespace and any non-array value are DROPPED, asymmetrically on purpose (a phantom can
+      only NARROW this frontier; a dropped key only widens it back to the fallback a "cannot confirm"
+      disclosure is allowed to sit at). **The array-valued spelling is java's CURRENT one, so a type check
+      alone would have left the phantom in and read as a fix** — the second mutant is what showed that.
+      The old row PINNED the bug (it required the coerced key to be kept) and is inverted, not deleted.
+- [ ] **FOUR-WAY RULING WANTED: `hasHier` gates on EMPTINESS, java gates on ABSENCE.** ts
+      `query-core.mjs` and rust `callers.rs:121` both read `Object.keys(h).length > 0` / the equivalent,
+      so a present-but-EMPTY sidecar takes the over-listing fallback; candor-java's `Query.java:672`
+      gates on absence and takes the PRECISE path over an empty map, which NARROWS the frontier. Three
+      engines, two answers, same input, and no PART pins it. Deliberately NOT aligned unilaterally
+      (`63bbe87`'s precedent). ts's new rows pin only "metadata-only == empty", which stays correct under
+      either ruling; nothing there asserts "empty == absent".
 - [x] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
       which for java's own hash form lands inside the method DESCRIPTOR, so entry-level coverage registers
       a garbage package name. **DONE — candor-java `47e2721`**, and the review's "harmless-looking"
@@ -383,7 +535,15 @@ up, so they are written here first and worked second.
       unilateral edit. Pinned by a two-direction fixture carrying flip instructions.
       - Not theoretical: two reports naming one package is the ordinary Cargo shape (semver-major
         duplication) — **7 of 167 dep reports in candor-rust, 9 of 259 in pgman, 30 of 378 in ebman**.
-- [ ] **FOR candor-swift, from that refusal: swift drops the colliding key exactly as rust does
+- [x] **CHECKED IN SWIFT, 2026-07-27, and the answer is NO on the first half — so the false all-clear
+      does not arise on the staleness axis.** `Deps.swift`'s `insert` is TRUST-AWARE (`ca5feb0`): a
+      fresh/stale collision keeps the TRUSTED entry rather than withdrawing the key, which is exactly
+      what java's last-wins and ts's Set-merge buy, and it is why rust's refusal is rust-specific. Two
+      residuals fell out of the check and are FIXED: the identical-entry exemption had been ported to the
+      trusted arm only (candor-swift `cbed5df`), and the same complete-wins reading rust refused WAS
+      landed on the COMPLETENESS axis, where swift's index does withdraw (both fresh, both trusted) —
+      measured at a positive purity claim and reversed in `756a8f0`. See the third-review section at the
+      top. ORIGINAL: **swift drops the colliding key exactly as rust does
       (`Deps.swift` `insert`) AND resolves coverage fresh-wins** — the two halves that together produce the
       false all-clear measured above. Not checked in swift (another repo, another measurement); the
       fixture to reproduce is in candor-rust `tests.rs`
