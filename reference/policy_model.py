@@ -1,6 +1,15 @@
 """The POLICY LAYER of candor's formal model, executable.
 
-This is a transcription of PAPER3 (the formal reference, cited as `candormodel`) Definitions 4-7 and
+This transcribes PAPER3's Definitions 4-7, 30-32, 35 and 36, and Lemma 2. It deliberately does NOT
+transcribe Definitions 33 (`forbid`) and 34 (`allow`): a 2026-07-27 review established that both describe
+verbs the deployment does not have — `forbid` is a call-graph dependency rule with no effect predicate, and
+`allow` is a fail-closed literal-surface certification whose carrier is outside this lattice. PAPER3's
+Proposition 5 has been rescoped accordingly, and a differential built on this file MUST NOT add rows for
+them, nor for `deny E[dest...]`, nor for the `unknown-ratchet` (whose shipped form grandfathers a function
+already disclosed at baseline, so Definition 35 as written rejects where every engine passes). Adding those
+rows manufactures divergences out of the theory rather than finding them in the code.
+
+Originally described as a transcription of PAPER3 Definitions 4-7 and
 30-36, and of Lemma 2. It exists because those definitions are the one part of the system the paper
 claims as PROVED, and until now nothing connected them to what the engines do.
 
