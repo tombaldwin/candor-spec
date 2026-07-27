@@ -911,6 +911,16 @@ A wording-based check is an ALLOWLIST, and everything it omits is a silent drop 
 also fails on arrival: an engine whose dot-free detail is a plain identifier rather than a phrase would be
 matched against reacher names by exactly the equality above.
 
+⟨0.24⟩ **The MIXED source.** One function may carry several `dispatch:` reasons — dotted ones that pass
+condition (3) and dot-free ones that cannot be evaluated. It gets **one** entry, whose `viaDispatchOn` is
+the **sorted, deduplicated, comma-joined** union of the dispatched members (`M`, for each dotted reason
+that passed) and the raw details (for each dot-free one). Sorted and deduplicated so two engines cannot
+disagree on a field neither of them re-parses; `viaDispatchOn` is a disclosure string, and candor never
+parses an owner back out of it. A detail containing a comma would be ambiguous to a consumer that splits on
+one, and that is accepted deliberately rather than escaped: no engine emits one, and the alternatives are a
+new sub-grammar in a pinned field, or truncating the detail — which re-opens the drop this clause exists to
+close.
+
 The cross-impl suite pins the frontier output, including the dot-free arm, across the engines that
 IMPLEMENT this query — the Rust, JVM and TypeScript query surfaces. The Swift engine deliberately ships no
 `callers` verb (it is a producer that writes the §2.2 sidecar *for* those consumers); ⟨0.24⟩ binds it only
