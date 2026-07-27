@@ -363,7 +363,16 @@ overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missi
       `D={dispatch,reflect}` → model REJECT, engine passes). Also unmodelled: `deny Net[dest…]`, the
       marketed security gate. **Consequence: the planned engine-vs-model differential will falsely flag
       engines on the ratchet row and cannot exercise `forbid`/`allow`/`Net[dest]` at all.** Paper work.
-- [ ] Lower priority, all real: a **fourth escape** §8 does not catalogue (within-`D` reason-class
+- [x] **CLEARED (`eab46fc`) the spec-only leftovers** — the three NAMED-BUT-UNDEFINED surfaces
+      (`blindspots --stats`, the `reports` verb — cited in §2.2 as *"the canonical what-counts-as-a-report
+      oracle"* and specified NOWHERE, and the `encountered-*` family), plus the locale clause's two readings
+      (locale-independence binds EVERY ordering; code-point binds only where a field's collation is pinned,
+      so ts's ~70 UTF-16 sites are conformant and the clause now says so), plus `--class`'s value grammar
+      (one comma list, not repeatable, unrecognised token = **exit 2**, deliberately NOT the policy side's
+      drop-with-warning: a dropped POLICY token leaves a WIDER rule standing, a dropped QUERY token leaves a
+      NARROWER filter and would silently answer a question the user did not ask), plus requirement 0's
+      antecedent, which as written abolished `blindspots --class` rather than exempting it.
+- [ ] Still open, lower priority: a **fourth escape** §8 does not catalogue (within-`D` reason-class
       reclassification is `⊑`-incomparable, H-invisible, flips a scoped gate red→green — and §6.2 names the
       hazard itself); `deny <NewEffect>` on an older engine is **silently dropped** = gateless-green,
       fail-OPEN, the shape the unreadable-policy clause refuses with exit 2; `gate --report`'s four
@@ -476,6 +485,23 @@ here fires. That is the runtime oracle's job, the instrument exists, and it is c
       environment-independent** → §2-clean. They are not code-point-ordered, which would only matter for
       CROSS-engine byte comparison — and §2 defines `digest` as *"an opaque, **within-engine**-comparable"*
       value, so no such claim exists to break. The §3.1 collation rule binds the one joined field it names.
+
+- [→] **P2 (chain idempotence) + P3 (trust monotonicity) DISPATCHED** into `conformance/`. Both picked next
+      because both are **regression-shaped**: P2 would have caught rust `6f2210c` (two byte-identical
+      reports made a consumer **VANISH from `functions`**), P3 would have caught the coverage door **in all
+      four engines** plus java's stale-`{Unknown}` erasing a trusted effect (`deny Fs` exit 1 → 0).
+      Briefed with every P1 judgment call restated as a CONSTRAINT rather than a suggestion, since those are
+      what kept P1 from being a worthless artefact: no expected-value table; vacuity earned with a refusal
+      on zero live cells; ratchet-not-red with a both-ways baseline; **the RELATION justified with numbers**
+      (P2 is probably genuine equality, P3 is explicitly DIRECTIONAL — subset-or-equal, never-more-
+      confident); verified-to-catch in **isolated worktrees** (rust and ts have live agents, standing bar
+      7f); and **every guard made to fire**, which is how P1 found the defect in its own harness.
+      **P4 is now UNBLOCKED** by `gate --report`.
+      **MY FIFTH CONCURRENCY SLIP, caught before it bit**: I told this agent it was the only writer in
+      `conformance/`. It is not — the rust agent is deleting its own waivers from
+      `split-invariance-baseline.json`, which lives there. Corrected mid-flight: that file is shared, P2/P3
+      get their own baselines, and a `STALE WAIVER` failure right now is most likely the other agent's fix
+      landing rather than a defect.
 
 ### 3c — WHAT P1 FOUND ON HEAD · per-engine, parallel, each already reduced to a fixture
 Four defects, found by P1 on its first run (2026-07-27) and each then re-derived from a hand-written
