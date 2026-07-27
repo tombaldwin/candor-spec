@@ -200,6 +200,25 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       all engines — the sidecar suffixes (`.callgraph.json`, `.hierarchy.json`) should be excluded at the
       glob, not diagnosed at the parse.
 
+- [ ] **NEW — the FRONTIER DIFFERENTIAL has three named arms and only TWO independent consumers, and it
+      excludes the engine it silently depends on.** Found while correcting SPEC §3.1's "all four engines".
+      `conformance/frontier_differential.py` runs `java`, `ts`, `swift` and asserts "three engines must
+      AGREE". But `frontier_swift()` uses candor-swift only as the **producer** and then runs **rust's
+      `candor-query`** as the consumer (line 87: `CANDOR_QUERY_BIN` / `candor-rust/target/debug/candor-query`)
+      — because candor-swift ships no `callers` verb at all. So the arms are really java(prod+cons),
+      ts(prod+cons), swift(prod) + **rust(cons)**.
+      Two consequences, and the second is the sharp one:
+      - Its header excludes rust because *"rust has no `dispatch:` — its indeterminacy is callback/native"*.
+        **That is the same stale claim SPEC §3.1 carried** (`7fb5356`): rust emits `dispatch:` for every
+        dispatch reason in a 1062-report census. So rust's producer side is untested here **while rust's
+        consumer silently carries the swift arm**.
+      - A common-mode defect in the rust consumer appears IDENTICALLY in the swift arm and cannot be
+        distinguished — which is precisely §3's structural gap, occurring **inside the suite built to
+        detect it**, and dressed as a third independent vote. This is the concrete artefact to point at
+        when justifying §3: not a hypothetical, a live one, in our own instrument.
+      Fix has two halves: separate PRODUCER from CONSUMER in the arm labels so a shared consumer cannot read
+      as independent agreement, and add rust's producer arm. Belongs with §3 (P1 holds `conformance/`).
+
 ### 3 — CLOSE THE STRUCTURAL GAP WITH SELF-DIFFERENTIAL PROPERTIES · the highest-yield row here
 
 **The gap.** Conformance asks *"do the engines agree?"* All four share one spec, one set of design docs
