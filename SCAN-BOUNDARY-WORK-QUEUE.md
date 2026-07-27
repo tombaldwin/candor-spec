@@ -429,7 +429,34 @@ the only verdict-changing one — do not bundle them.
       `unknownWhy` because their Unknown is purely inherited.
       **Both halves must land together**: fixing only (1) contributes `unresolved` to an inherited-Unknown
       entry whose Unknown is perfectly well classified at the callee — trading a fail-open for a
-      fabrication, which the standing bar forbids. [→] DISPATCHED to swift with both controls specified.
+      fabrication, which the standing bar forbids.
+      - [x] **swift FIXED `2c96569` — converged EXACTLY, on all 8 target × policy rows.**
+        | target | unfiltered | `--class dynamic` BEFORE | AFTER |
+        |---|---|---|---|
+        | pollen | 387 | 230 (−41%) | **387** |
+        | candor-swift | 51 | 16 (−69%) | **51** |
+        candor-swift's own arm was WORSE than the corpus target — 69% of its holes vanished under a filter
+        that excludes nothing. Half 1 gated on `direct ∋ Unknown` with no `unknownWhy` (the function
+        introduced the hole and named nothing), **not** on absence-of-reason, which is the mirror
+        fabrication. Half 2 reuses the gate's own least-fixpoint. A third rule handles neither case: an
+        `Unknown` nothing in its reach explains (truncated report, callee in an unloaded report) gets
+        `unresolved` — §6.2's conservative projection.
+        Controls held at corpus scale, which is the part that proves it is not a blanket: `--class
+        unresolved` = **6 of 387**, `--class native` = **0**. And `--class unresolved` went 1 → 6, not
+        1 → 387. `direct`/`calls` are now non-defaulted on the entry type so a construction site cannot
+        silently rebuild the direct-only reading. **No format rung needed** — both fields were already on
+        every entry, just unread.
+      - [→] **rust DISPATCHED** — and the sweep is TWO verbs, not one: `blindspots --class` shares the
+        filter (`containment.rs:79`), as does java's (`Query.java:1869-1876`). ts/java pending on repo
+        availability. Each briefed to measure `--class dynamic` (an alias naming every genuine class, so it
+        must exclude nothing) against unfiltered, and to STOP if the counts already match.
+- [ ] **Residual, deliberately left (swift, and check it four-way when the sweep lands):** `UnverifiedHole`
+      still prints the report's DIRECT `unknownWhy`, so a hole surfaced by `--class dispatch` *through
+      inheritance* is listed with an empty `unknownWhy` — the filter matched on a class the output does not
+      show. Not a defect against §4 (direct-only is by design) and not a dead end (`upgrade` carries the
+      remedy, `path` traces the origin), but incoherent to read. Putting the RESOLVED class set on the wire
+      is a **format rung**, and it was left alone deliberately given the standing result that none of this
+      vein's fixes has needed one.
 - [ ] **4b. `ambiguous:` as a fifth §4 kind.** Vocabulary-only; no verdict change (§6.2 already projected
       `ambiguous:*` → `dispatch`, which is why the producer was non-conforming while consumers were fine).
       Mostly a conformance/vocabulary-check update per engine — check each engine's `unknownWhy` kind
