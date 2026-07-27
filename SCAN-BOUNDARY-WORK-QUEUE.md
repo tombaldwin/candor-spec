@@ -2623,3 +2623,51 @@ code it names.
       the unit", so `let location = location(converter:)` loses a real edge (`Note.debugDescription`); and a
       bare read of a PARAMETER charges the enclosing type's same-named property (`TokenKind.fromRaw`),
       hidden today only by an accident of the monotone set.
+
+### rust's three rows — the door closes FOUR-WAY, and two refusals with decisive numbers
+
+**TASK 1, the incomplete-report door — CLOSED (`dbab8be`), and rust is the only engine where the corpus is
+EVIDENCE rather than a fabrication control.** java saw 0 of 11 real dep reports declaring `unanalyzed`,
+swift 0 of 34; rust sees **4 of 855** (0.47%, two crates) and 1 of 200 crates.io crates cold. The live case
+is as sharp as this shape gets: **`signal-hook-registry` 1.4.8's entire `src/lib.rs` fails to parse**,
+leaving a two-function report that nonetheless vouched for `signal_hook::PendingSignals::add_signal` —
+whose body is `unsafe { signal_hook_registry::register_sigaction(…) }`, i.e. installing a signal handler.
+Now `invisible: ['signal_hook_registry']` plus a ledger row. ARMED across all 855 reports: +123 entries,
+**+278 functions gain `invisible`**, 0 gains, 0 losses.
+- Per java's warning about anchors: rust registers coverage from four sites but all funnel through ONE
+  `cover` closure and coverage is consumed at exactly one place — **counted, not assumed**.
+- One mutant DELETED a guard: the `!stale &&` conjunct failed nothing, because `cover`'s `else if` already
+  decides it (item 8c, a guard that cannot be observed).
+- **Refused swift's `subtract(coveredPkgs)`**: rust drops a key two entries disagree under, so complete-wins
+  makes it read confidently pure — `63bbe87`'s argument, same shape.
+
+- [ ] **ts and swift FAIL OPEN on a MALFORMED `unanalyzed` manifest** (present but not an array). java fails
+      closed and rust adopted java's reading. A report carrying `"unanalyzed": "oops"` is therefore read as
+      COMPLETE and its silence buys full coverage — the door `21277eb` closed for the well-formed case,
+      reopened by a malformed one. Relayed to the live ts agent; **swift remains.**
+
+**TASK 2, `ambiguous:` — REFUSED, and the number is a deletion rather than a narrowing (`4817b71`).**
+With `ambiguous*` → `indirect`, `deny E Unknown[dispatch]` goes from **58 of 200 crates.io crates to 0 of
+200**, and exit 1 → 0 on all three projects — because rust's only OTHER `dispatch:` needs a chained dep. The
+filed "757 across 253 crates" was a large undercount: censused over 1062 reports it is **8710 of 19607
+entries**. Landed instead: PART 10 now scans a purpose-built fixture that PRODUCES the kind, tolerates it
+with a WARNING, and carries a vacuity floor.
+- [ ] **THE SPEC CONTRADICTS ITSELF HERE, and that is the real rung.** SPEC §6.2's class table (line 1433)
+      explicitly lists `ambiguous*` under `dispatch` — so the emission is BLESSED there — while §4's kind
+      vocabulary omits it from the closed list of four. One section names it, the other excludes it.
+      Reconciling them is a spec change, not an engine change, and it should be made before any engine
+      renames anything.
+- [ ] **Filed by the same pass:** every `dispatch:` rust AND swift emit at the half-1 site is dot-free — a
+      canonical kind with a malformed normative detail, and §4 says an untyped receiver is `callback:`
+      anyway. Wants a four-way ruling. Also: that arm's candidate set includes methods a bare free call
+      cannot reach — 156 of 930 emissions have ≤1 free candidate, 48 have none (bare `drop(x)` is the
+      prelude fn, charged 36 times).
+
+**TASK 3, the quiet span half — CONFINED, measured (`fc71bc9`).** **24,008 of 24,008** non-synthetic `loc`
+strings across 200 crates pass an oracle that opens the named file and checks it declares the function —
+and **the oracle was calibrated rather than trusted**: permuted locs flag at 84.5%. 800 scans across four
+rayon thread counts are byte-identical, and a seeded control (moving `fn_locs` out of the parse closure)
+PANICS on 57 of 60, so the failure mode is loud by nature. **Two instrument errors caught and recorded
+rather than shipped, both pointing the flattering way**: a first oracle whose 2,523 "wrong lines" were all
+doc comments, and a first differential whose "0 differing" compared two arms that had both panicked to
+empty files.
