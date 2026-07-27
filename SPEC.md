@@ -457,7 +457,7 @@ Each entry:
   "tables":       ["ledger.entries"],    // OPTIONAL: when `Db` is present, the LITERAL database
                                          // tables statically visible (table-position identifiers
                                          // in a SQL string literal). Same rules as `hosts`.
-  "netClass":     ["unknown-host"]       // ⟨0.21⟩ OPTIONAL: when `Net` is present, the DESTINATION
+  "netClass":     ["unknown-host"]       // ⟨0.20⟩ OPTIONAL: when `Net` is present, the DESTINATION
                                          // classes in the fn's transitive Net surface —
                                          // known-telemetry / known-partner / unknown-host (§6.2).
                                          // Fail-closed: a masked/runtime host is unknown-host.
@@ -744,12 +744,15 @@ guess: reading an unmarked list as all-interfaces puts a real superclass below a
 silent under-report the ordering exists to prevent. An engine whose language has no such rule needs neither
 the key nor the marker.
 
-NOT YET RULED: what an **empty** sidecar licenses. candor-ts and candor-rust gate the precise frontier on
-the map being non-empty and fall back to the simple-name match; candor-java gates on the file being absent
-and takes the precise path over an empty map, which narrows the disclosure. Three engines, two answers,
-same input. The divergence predates this rung — it is why the unconditional metadata key was able to move
-a gate at all — and is recorded in `SCAN-BOUNDARY-WORK-QUEUE.md` pending a four-way ruling rather than a
-unilateral edit.
+⟨0.24⟩ **RULED — see §3.1: an EMPTY sidecar, an ABSENT one and an UNPARSEABLE one are the SAME INPUT, and
+all three take the over-listing fallback.** This paragraph previously read "NOT YET RULED", describing three
+engines and two answers and deferring "pending a four-way ruling rather than a unilateral edit". The ruling
+was then made in §3.1 as a MUST — and it *forbids* the behaviour this paragraph listed as one of the two
+live options (gating on the file's absence, so a sidecar parsing to `{}` is honoured and collapses the
+frontier). An implementer reading only this section would have preserved a behaviour the document elsewhere
+prohibits. Left standing for several hours after the ruling; caught on review. The reasoning is in §3.1 —
+`{}` cannot distinguish "no type has a supertype" from "the pass never ran", so the subtype test is
+unanswerable and an unanswerable condition is disclosed, never scored as failed.
 
 ## 3. Modes
 
@@ -1047,7 +1050,12 @@ one, and that is accepted deliberately rather than escaped: no engine emits one,
 new sub-grammar in a pinned field, or truncating the detail — which re-opens the drop this clause exists to
 close.
 
-The cross-impl suite pins the frontier output, including the dot-free arm, across the engines that
+⟨0.24⟩ The cross-impl suite **WILL pin** the frontier output including the dot-free arm — it does not yet;
+`frontier_differential.py` has no dot-free arm today and its own header still carries the stale "rust has no
+`dispatch:`" rationale. Stated in the future tense on review, because the sentence previously claimed a pin
+that does not exist while this rung's own changelog entry says it is "NOT yet conformance-pinned". A spec
+that overstates its own coverage is the same failure as an engine that overstates its own: the reader stops
+looking. When it lands it will cover the engines that
 IMPLEMENT this query — the Rust, JVM and TypeScript query surfaces. The Swift engine deliberately ships no
 `callers` verb (it is a producer that writes the §2.2 sidecar *for* those consumers); ⟨0.24⟩ binds it only
 through §4 and the §6.2 class projection, which is pinned separately.
