@@ -29,7 +29,11 @@ from itertools import combinations, chain
 # way Db does"). PAPER3 Definition 4 uses exactly this: "`deny Net` fires on a determined `{Db}`".
 # `Unknown` is NOT an effect in the model — it is the NAME of the `D ≠ ∅` posture (Definition 6), and
 # treating it as a member of `E` is one of the ways an implementation drifts out of the model.
-E = ("Clock", "Db", "Env", "Exec", "Fs", "Llm", "Log", "Net", "Rand")
+# SPEC §1's effect vocabulary IN FULL. `Ipc` and `Clipboard` were missing until a review caught it —
+# harmless to Lemma 2 (whose proof is vocabulary-independent) but fatal to this file's ACTUAL job: a real
+# report carrying `Clipboard` would have tripped `Sig`'s assert on the first differential run against an
+# engine. `Unknown` is deliberately NOT here — it is not an effect (Def 6); it is carried by `D ≠ ∅`.
+E = ("Clipboard", "Clock", "Db", "Env", "Exec", "Fs", "Ipc", "Llm", "Log", "Net", "Rand")
 _REFINES = {("Db", "Net"), ("Llm", "Net")}
 
 
@@ -116,9 +120,36 @@ def deny_unknown(e: str, C=None):
     return lambda sig: phi(e, sig) or psi(cs, sig)
 
 
+def pure_as_defined_in_paper3_def32():
+    """PAPER3 Def 32 AS WRITTEN: reject `(S,D) ≠ (∅,∅)` — any effect OR any disclosure fails.
+
+    **This is NOT the shipped verb.** Kept as an exhibit so the divergence stays visible rather than being
+    quietly edited away. See `pure()` below for what the contract actually specifies, and the note there
+    for which of the two was judged wrong.
+    """
+    return lambda sig: bool(sig.S) or bool(sig.D)
+
+
 def pure():
-    """Definition 32 (`pure`). Any determined effect OR any disclosure fails it."""
-    return lambda sig: sig != Sig()
+    """`pure` AS THE CONTRACT SPECIFIES IT: `Reject(S,D) ⇔ S ≠ ∅`. A disclosure alone PASSES.
+
+    **PAPER3 Def 32 and SPEC §4.0 disagreed, and the CONTRACT was judged right.** Def 32 says
+    `Reject ⇔ (S,D) ≠ (∅,∅)` — any effect *or any disclosure* fails. SPEC §4.0's verb table says `pure` is
+    "violated when `S ≠ ∅` (an effect) — `D ≠ ∅` alone is AS-EFF-003 **disclosure**, not AS-EFF-006", and
+    §6.2 makes `pure` shorthand for "deny every effect", which does not fire on `D ≠ ∅`.
+
+    The contract wins because the divergence is not an oversight there: an entire verb (`unverified`) exists
+    to name the holes a `pure` layer PASSES without proving anything, and the documented upgrade path for an
+    author who wants provable purity is `pure` PLUS `deny Unknown`. Changing the contract to match Def 32
+    would delete that design; changing Def 32 costs a sentence.
+
+    Why this mattered enough to find: the divergence is benign for Lemma 2 (both predicates are upward-
+    closed, and the model was merely STRICTER), so no monotonicity counterexample exists and nothing would
+    have gone red. But this file's purpose is to judge ENGINES against the definitions — so on `(∅, {r})`
+    the first differential run would have reported all four conforming engines as violating, and the
+    conclusion "four engines disagree with the theory" would have been an artefact of the theory.
+    """
+    return lambda sig: bool(sig.S)
 
 
 def unknown_ratchet(baseline_D):

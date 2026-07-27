@@ -209,8 +209,10 @@ vocabulary:
 
 An implementation MAY add language-specific effects, but SHOULD use these names where they apply.
 `Unknown` is mandatory and special — a **visibility marker**, not a declarable effect: where this document
-says "a §1 effect name" (the §5.1 manifest, §6.1 containment, a policy `deny` set), it means the ten
-effects above, never `Unknown` (which `deny Unknown` addresses explicitly, §6.2).
+says "a §1 effect name" (the §5.1 manifest, §6.1 containment, a policy `deny` set), it means **every effect
+in the table above, excluding `Unknown`** — stated that way ⟨0.24⟩ because it previously said "the ten",
+which went stale when `Llm` was added at ⟨0.13⟩ and left §5.1's manifest-voiding MUST answering differently
+depending on whether you counted or read. Never `Unknown` (which `deny Unknown` addresses explicitly, §6.2).
 
 Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not**
 classified — not as `Log`, not as `Fs`. Classifying them would flood every CLI tool's report (printing
@@ -1396,7 +1398,7 @@ vs. inherited split is what makes the `blindspots` query (§3.1) name the handfu
 behind a widely-propagated `Unknown`; a 0.5 consumer that ignores the field is unaffected.
 
 ⟨0.7⟩ **Canonical `unknownWhy` vocabulary.** Each entry is `kind:detail`, where `kind` is exactly one of
-four, chosen to be language-neutral over *why a call's body could not be resolved*:
+**five** ⟨0.24⟩, chosen to be language-neutral over *why a call's body could not be resolved*:
 
 | `kind` | meaning | `detail` |
 |---|---|---|
@@ -1404,6 +1406,7 @@ four, chosen to be language-neutral over *why a call's body could not be resolve
 | `native:` | a boundary to code the engine cannot analyse — native methods, FFI/`extern`, intrinsics | best-effort |
 | `dispatch:` | an unresolved **virtual / interface / protocol** dispatch with a **resolvable owner type + member** — static target known, concrete body not (no impl, bounded-CHA over many impls, dynamic receiver of known type) | **`<owner-type>.<member>`** (dotted) — NORMATIVE |
 | `callback:` | an unresolved **higher-order / owner-less** invocation — a function/closure *value* (param, field, bound, computed, opaque-iterable) whose target and owner type are not both known | best-effort |
+| `ambiguous:` ⟨0.24⟩ | the analyser's own **name resolution** was ambiguous — two same-named local definitions, so no owner could be formed at all. Not a `dispatch:` with a missing body and not a `callback:` (no function value); a vocabulary without it forces an engine to lie or fall silent | best-effort |
 
 ⟨0.24⟩ **The dotted detail is normative WHEN an owner was formed; a DOT-FREE detail is the reserved form
 for "no owner could be formed at all".** It is free text naming the cause (`untyped cross-package receiver`)
@@ -1421,22 +1424,32 @@ The dividing line between `dispatch:` and `callback:` is whether a **resolvable 
 every other unresolved invocation (an opaque function value, an untyped receiver, opaque iteration) is
 `callback:`. Only the `dispatch:` detail is conformance-compared (as `owner.member`); the other three
 kinds' details are best-effort prose. An engine emits whichever kinds its language model produces — a
-language with no virtual/interface dispatch (e.g. the Rust scanner: only `callback:`/`native:`) simply
-emits no `dispatch:`, and its frontier is correspondingly empty.
+language whose model genuinely produces no virtual/interface dispatch emits no `dispatch:`, and its frontier
+is correspondingly empty. ⟨0.24⟩ *This sentence named the Rust scanner as such a language. It is not one —
+it emits `dispatch:` for **every** dispatch reason in a 1062-report census, and `ambiguous:` on 8710 of
+19607 `Unknown`-bearing entries. The claim was a **description of a defect's symptom promoted to a language
+property**, sitting in the section an auditor of the vocabulary would read to confirm it was not a defect.
+It was corrected in §3.1 first, and this copy survived that correction — which is the transferable part: a
+falsified assertion has as many homes as it has restatements, and fixing the one you found is not fixing
+it.*
 
 ⟨0.7⟩ **What is conformance-binding, and what is per-language.** Precisely: the **`kind` SET**
-(`reflect`/`native`/`dispatch`/`callback`) is the closed vocabulary every code engine's reasons draw from,
+(`reflect`/`native`/`dispatch`/`callback`/`ambiguous` ⟨0.24⟩) is the closed vocabulary every code engine's
+reasons draw from,
 and the **`dispatch:` detail** (`owner.member`) is the one normative detail. Everything else is
 per-language and **OPTIONAL**: an engine emits `native:` / `reflect:` **only where its language model
 actually produces that origin** — they are not universal. By design the engines diverge here, legitimately:
-the Rust scanner emits only `callback:`/`native:` (no class dispatch); TypeScript folds a native boundary
+TypeScript folds a native boundary
 into `reflect:` (`eval`/`defineProperty`/dynamic accessor) and emits no bare `native:`; Swift's syntactic
 model produces neither `reflect:` nor `native:`. A consumer therefore MUST NOT assume all four kinds appear
-in every report — only that any kind it *does* see is one of the four (and that a `dispatch:` carries
-`owner.member`). Finally, an engine **MAY** emit an additional, off-vocabulary kind **during a migration**
+in every report — only that any kind it *does* see is one of the **five** (and that a `dispatch:` which
+formed an owner carries `owner.member`; see the dot-free reserved form above). Finally, an engine **MAY** emit an additional, off-vocabulary kind **during a migration**
 (candor-java has historically emitted `task-handoff:` and `indy:`; reconciling them onto the four is a
 tracked, byte-changing task — MODEL.md): such a kind round-trips and a consumer tolerates it under §2
-forward-compatibility. The conformance check pins the four canonical kinds and the `dispatch:` shape, and
+forward-compatibility. ⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** —
+§6.2 holds them up as the correct shape (a reason attached where the `Unknown` is created, per dependency
+ENTRY), so they must not sit in a clause about kinds being reconciled away. They project to `unresolved`.
+The conformance check pins the canonical kinds and the `dispatch:` shape, and
 **tolerates a known migration kind as a warning rather than a hard divergence**, so a not-yet-reconciled
 engine is visible without being falsely red.
 
@@ -1691,8 +1704,14 @@ requirements:
    contributing `unresolved` to one whose `Unknown` is correctly classified at the callee is the mirror
    fabrication. A fix that trades one for the other is not a fix.
 
-The diagnostic is cheap and every implementation should carry it as a test: `--class dynamic` is an alias
-naming every genuine class, so **it must exclude nothing** — a filtered count below the unfiltered one is
+The diagnostic is cheap and every implementation should carry it as a test, **but it must be stated
+precisely, because the obvious phrasing is false.** `--class dynamic` is an alias for every *genuine* class
+— which by its own definition **excludes `setup`**, and `setup`-classed entries are reachable
+(`missing-config`, `no-tsconfig`). So the invariant is *filtered = unfiltered MINUS entries whose only class
+is `setup`*, or equivalently, run the diagnostic on a setup-free fixture. ⟨0.24⟩ *This clause first said
+"`dynamic` must exclude nothing", flatly. That is a normative test that fails spuriously on any corpus
+carrying a `setup` reason, and it would have pressured implementers to fold `setup` into `dynamic` and
+contradict its definition. Corrected on review.* With that stated — a filtered count below the unfiltered one is
 the defect, and the gap is its size. Measured on the engine where this was found, before repair: 387 → 230
 (−41%) on a corpus target and 51 → 16 (−69%) on the engine's own sources; after, both converge exactly
 across all eight target × policy rows. The *discrimination* control matters equally and is the one a blanket
@@ -1778,8 +1797,12 @@ resolves the transitive class). Filter forms:
 - an **unrecognized class token** in the brackets is **dropped with a warning** (the rule keeps its recognized
   classes); a narrowed filter that omits `unresolved` SHOULD emit an **advisory under-gating lint** (it may
   tolerate holes the engine could not classify).
-- **`pure`** is unaffected — it fails on *any* `Unknown` (all classes) this rung; reason-scoping is a `deny`-side
-  feature only.
+- **`pure`** is unaffected — **its verdict never depended on `Unknown` at all**; reason-scoping is a
+  `deny`-side feature only. ⟨0.24⟩ *This bullet previously read "it fails on any `Unknown` (all classes)",
+  contradicting §4.0's verb table, conformance **PART 16** (which pins the same fixture under a bare `pure`
+  as PASS, four-way) and every engine. `D ≠ ∅` alone is AS-EFF-003 disclosure, not an AS-EFF-006 violation
+  — which is exactly why `unverified` exists. PAPER3's Definition 32 carried the same error; the reference
+  model has been amended to match the contract, not the reverse.*
 
 A conformant `--gate-json` verdict (§3.3) records, on an `AS-EFF-006` violation whose `effects` include
 `Unknown`, a **`reasonClass`** array listing **all** reason classes present on the function (not just the
