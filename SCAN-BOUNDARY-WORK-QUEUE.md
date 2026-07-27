@@ -746,6 +746,18 @@ Each was refused or deferred with a measurement, not left undone. None is a know
    Corollary found with it: **`callback:` is NOT the residual bucket** several comments in this codebase
    call it. §4 defines it as an unresolved HIGHER-ORDER invocation; the residual class is reached by the
    ABSENCE of a reason, not by a token standing in for one.
+1b. **A DISAPPEARING UNIT IS NOT AUTOMATICALLY A LOST REACH — CHECK WHY IT WAS AN ENTRY.** Item 1 says
+   revert when an A/B shows losses you cannot trace, and that is right. But swift's `boundLocals` attempt
+   was reverted on 405 "losses" that a later pass proved were mostly the fix WORKING. A unit is in the
+   report iff it has EFFECTS **or** a DISCLOSURE. When the fabrication you are removing was the thing
+   manufacturing the disclosure, the unit correctly stops being an entry — and it looks identical, in a
+   diff, to a unit whose real reach you just dropped. **A withdrawn `invisible` is not a withdrawn reach.**
+   The 13-line repro: an enum-payload binding landed in neither `vars` nor `boundLocals`, so a bare
+   `help(ctx)` hit the fn-ref-as-argument rule, was emitted as an unqualified free call, resolved to
+   nothing, set `resolved = false` — which is the Driver's ENTIRE test for "this unit reaches code the
+   scan cannot see" — and fired a per-fn `invisible`. The unit's only reason to exist was that fabricated
+   disclosure. So: before reverting on lost entries, check each one's effect set. An entry that leaves
+   carrying no effects and only a disclosure is a candidate for a correct removal, not a loss.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -2491,3 +2503,44 @@ assumed. A/B free: pgman 0/0/0, ebman +2 entries recovered from absence.
       MERGES INTO A SET (unions effects). Whatever the right answer is, three answers cannot all be it, and
       a `deny` gate gives different verdicts per engine on the same two reports. Wants a conformance part
       once the decision above is made.
+
+### swift's `boundLocals` row — the repro EXPLAINED, and it inverts the previous reading
+
+The deliverable was the explanation, and it arrived: **the vanishing units were the fabrication, not a lost
+reach** (13-line repro, traced end to end — see new standing-bar item 1b). The previous round's two
+sub-cases that "pointed opposite ways" are ONE defect arriving through two channels: the 173 were
+fabrications removed in the EFFECT channel, and a chunk of the 305 were the same fabrications removed in
+the DISCLOSURE channel. Reverting was right; the missing step was knowing that a withdrawn `invisible` is
+not a withdrawn reach.
+
+**Landed (`083f370`, `5c42ad2`):** enum-case payload bindings register in a separate, lexically scoped
+`casePayloadLocals`. A/B over 13 packages / 11,924 entries: 0 gains, **8 fabricated call edges removed, 13
+manufactured `invisible` disclosures withdrawn, 1 fabricated `Unknown` withdrawn** — every one traced
+(Alamofire's `AuthenticationInterceptor.adapt` → its own `credential`; `UploadRequest.task` → the unrelated
+`DataRequest.data`; TCA's `TypeSyntax.identifier` reported as its own caller).
+
+**Three refusals, each pinned as a fixture**, and the first is the one to keep: putting payload names into
+the FUNCTION-WIDE `boundLocals` is 0 gains / 15 changes but **drops a genuine edge** (swift-syntax's
+`IfConfigDiagnostic.asDiagnostic` binds `syntax` in three `if case` blocks and then reads the real
+`self.syntax`) — a silent under-report manufactured by a fabrication fix, item 0 caught in the act.
+Scoping `boundLocals` itself was refused because the Driver reads it ONCE, after the walk, where a restored
+set is empty — **a post-hoc guard has no lexical position.**
+
+One mutant `started life unable to fail` (its edge came from `globalReads`, which no guard it touched
+consults) and was rewritten until it could — the third instance this week of a test that cannot reach the
+code it names.
+
+- [ ] **swift chaining is INERT when a package's name is not its module's** — reproduced `399433c`, filed
+      not fixed, and the filing explains why the one-liner is a CARDINAL SIN. Two-package fixture: dep
+      manifest `name: "swift-dep-kit"`, target `DepKit` → chained and unchained reports are BYTE-IDENTICAL.
+      Rename the manifest to `DepKit` and the same code resolves `['Fs']`. Cause: `pkgName` is both the
+      envelope `package` and every entry `hash` prefix, while every consumer lookup is keyed by an IMPORT.
+      **The tempting fix — emit module names in the already-consumed plural `packages` — grants COVERAGE
+      without moving the entry keys, so the consumer withdraws its `invisible` and finds nothing to replace
+      it: silence read as purity.** The key half moves the report's primary join key, is
+      baseline-invalidating, and the conformance chaining fixtures use package == module so they would not
+      notice. Wants its own session.
+- [ ] **two residuals un-masked by the fix, filed not patched:** the Driver's guard is "bound ANYWHERE in
+      the unit", so `let location = location(converter:)` loses a real edge (`Note.debugDescription`); and a
+      bare read of a PARAMETER charges the enclosing type's same-named property (`TokenKind.fromRaw`),
+      hidden today only by an accident of the monotone set.
