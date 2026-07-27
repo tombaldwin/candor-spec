@@ -7,6 +7,96 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
+**HOW TO READ THIS FILE (2026-07-27).** It has two halves and they have different jobs.
+**`## THE QUEUE`, immediately below, is the authoritative open list**, ordered by dependency. Everything
+after it is the RECORD — the standing bar, the durable lessons, and the original filings with their
+measurements — kept chronological because it is a history and its value is in why each thing was decided.
+Markers in the record mean: `- [x]` closed · `- [→]` folded into or indexed at a QUEUE section, not
+separate work · `- [D]` decided and refused with numbers, re-open only with new evidence · `- [ ]` in the
+record but not yet promoted, which should be rare and is a bug in this file if it is not.
+
+## THE QUEUE — the authoritative open list, ordered by DEPENDENCY (2026-07-27)
+
+Everything below this section is the RECORD: the standing bar, the lessons, and the original filings with
+their measurements. It is chronological because it is a history. **This section is the queue.** A `- [ ]`
+further down is the original filing of something indexed here, not a separate job.
+
+Reordered because the shape of the work changed. When this document started it was a worklist of silent
+under-reports; **none of what is open now is one.** It is decisions, priced refusals, and disclosed
+precision — which wants a different order, and makes two of the old groupings actively misleading.
+
+### 1 — THE §4 VOCABULARY RUNG · serial, first, cannot be parallelised
+**One decision with four symptoms**, filed separately across three review rounds and only visible as one
+thing when read together. It is the critical path: it blocks the `ambiguous:` rename, any engine renaming,
+and probably the dot-free detail fix.
+
+- [ ] **Settle §4's reason vocabulary: its MEMBERSHIP, its normative DETAIL, and its relation to §6.2's
+      class table.** The four symptoms:
+      1. **§6.2's class table (line 1433) lists `ambiguous*` under `dispatch`; §4's kind vocabulary omits
+         it.** The spec blesses an emission in one section and excludes it in another.
+      2. **No kind can express "Unknown, and one of them has no reason."** §4 has none, §6.2's rule is
+         per-function and keyed on ABSENCE so it does not compose, and a second-hop consumer re-derives
+         `dispatch` alone. All four engines. **This is the one that reaches the theory paper** — PAPER1
+         now carries it as the well-formedness condition (W), with a measured monotonicity violation.
+      3. **Every `dispatch:` rust and swift emit at the half-1 site is dot-free** — canonical kind,
+         malformed normative detail. PART 10 would DIVERGE on it and does not only because its fixture
+         never chains a dependency. §4's own dividing line says an untyped receiver is `callback:` anyway,
+         so the KIND may be wrong too.
+      4. Consequence, already priced: rust's `ambiguous:` rename is refused because it would take
+         `deny E Unknown[dispatch]` from 58 of 200 crates to **0 of 200** — a deletion, not a narrowing.
+      **Do not let an engine rename anything until this is settled.**
+
+### 2 — TWO MORE SPEC SILENCES · concurrent with (1), different subject matter
+Neither depends on the other or on (1). Both are the same failure: the spec is silent and the engines
+diverged, so a `deny` gate gives different verdicts per engine on identical input.
+
+- [ ] **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
+      (and a stale `{Unknown}` therefore erases a trusted effect — measured, `deny Fs` exit 1 → 0), ts
+      UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`, which recommends
+      ts's union and is **deliberately unmade**. Note the doc's own history: this rule has been described
+      three times and been wrong twice.
+- [ ] **`hasHier` gates on EMPTINESS (rust, ts) vs ABSENCE (java).** java takes the precise path over an
+      empty map, which NARROWS the disclosure. Three engines, two answers.
+
+### 3 — THE VERIFICATION BLOCKER · parallel per engine, high leverage
+- [ ] **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only via
+      `scan --policy` (which computes `S` from source, putting the classifier back in the loop) and
+      `whatif` (which reports only violations the hypothetical INTRODUCES — verified: a report with
+      `inferred: ["Net"]` under `deny Net` returns `ok: true`). **This is plausibly WHY the model and the
+      engines drifted**: the gate is only ever exercised end-to-end, so no test could isolate it.
+      Closing it makes conformance PART 23 extend from "the model is monotone" to "each ENGINE agrees with
+      the model", which is the code-implements-spec direction and is currently unverifiable.
+      Was recorded ONLY in `reference/README.md` until now — the recorded-in-a-narrative failure, again.
+
+### 4 — IMPLEMENT (1) FOUR-WAY · blocked on (1), then fully parallel
+
+### 5 — DECIDED, NOT OPEN · re-open only with new evidence
+These were refused WITH MEASUREMENTS and the arguments live in the code. They are listed so nobody
+re-litigates them, not as work.
+- **swift's local-protocol erasure arm** — suppress costs 5 losses and 7 entries REMOVED; disclose costs 9
+  concrete effects → hedge.
+- **rust's `ambiguous:` rename** — 58/200 crates → 0/200. A deletion.
+- **java's concrete-dep override** — 12 of 22 changed functions are `super` calls that can never dispatch
+  to an override. It is the wrong KEY, not a missing bound.
+- **rust's withdrawn-key disclosure** — built and verified in five directions, costs 15–20% of functions
+  newly carrying `Unknown`. May be dissolved entirely by the collision decision in (2).
+
+### 6 — PRECISION GAPS · parallel, and I recommend NOT doing them yet
+Seven rows, **none a silent under-report**: swift package-vs-module chaining inertness, swift
+`boundLocals`/`catchBindings` (filed with a 12-line repro after a 405-loss revert), swift `returnsIdx`,
+swift nested-type factory, rust's quiet span half (72.4% precondition, no known wrong output), rust's
+`ambiguous:` candidate set (156/930 with ≤1 candidate), ts's remaining malformed reasons.
+
+**The argument for waiting is a measured one.** Three review rounds today produced **29 confirmed defects,
+every single one a guard written during the wave under review**, all with clean A/Bs and green suites.
+These rows are exactly that kind of change — narrowing guards at the fabrication boundary — and none of
+them closes a lie. On today's base rate, four agents here would ship roughly ten new defects to find in
+exchange for precision nobody is currently missing. Revisit when the defect rate on new work falls.
+
+### 7 — RELEASE · needs Tom, not work
+- [ ] **candor-ts is build 0.23.2, the family 0.23.1.** Legitimate — its module-unit wire key moved and
+      §2.1's staleness gate keys on the per-engine build id. Preflight is green. A release-set decision.
+
 ## DONE — the THIRD review, swift only (4 confirmed + 1 alignment, all closed 2026-07-27)
 
 A third adversarial pass, scoped to candor-swift's half of the wave. **Four confirmed defects, and the
@@ -464,7 +554,7 @@ up, so they are written here first and worked second.
       disclosure is allowed to sit at). **The array-valued spelling is java's CURRENT one, so a type check
       alone would have left the phantom in and read as a fix** — the second mutant is what showed that.
       The old row PINNED the bug (it required the coerced key to be kept) and is inverted, not deleted.
-- [ ] **FOUR-WAY RULING WANTED: `hasHier` gates on EMPTINESS, java gates on ABSENCE.** ts
+- [→] **INDEXED at THE QUEUE §2.** FOUR-WAY RULING WANTED: `hasHier` gates on EMPTINESS, java gates on ABSENCE.** ts
       `query-core.mjs` and rust `callers.rs:121` both read `Object.keys(h).length > 0` / the equivalent,
       so a present-but-EMPTY sidecar takes the over-listing fallback; candor-java's `Query.java:672`
       gates on absence and takes the PRECISE path over an empty map, which NARROWS the frontier. Three
@@ -767,7 +857,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         charged the union, and `aSuperCallToAConcreteDepMethodIsNeverChargedItsOverrides`, which must never
         be made to pass by closing the row. Separate because inside the first it would sit behind the
         flipping assertion and could never be observed (item 8c). Both fail under the naive mutant.
-- [ ] **swift — the erasure gate does not reach the LOCAL-protocol dispatch arm.** REFUSED with both
+- [D] **DECIDED — see THE QUEUE §5. Not open work.** swift — the erasure gate does not reach the LOCAL-protocol dispatch arm. REFUSED with both
       treatments priced (`020add4`): suppress costs 5 losses and 7 entries REMOVED; disclose costs 9
       concrete effects → hedge. The deciding argument is recorded in the code — for an IMPORTED protocol
       the in-scan conformers are an arbitrary subset of the candidates, for a LOCAL one they BOUND them.
@@ -869,7 +959,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         than passing quietly. Two mutants, two named failures.
 
 ### NEW, found while measuring that refusal — both filed with numbers, neither fixed
-- [ ] **rust AND swift — every `dispatch:` they emit at the half-1 site is `dispatch:untyped
+- [→] **FOLDED into THE QUEUE §1, symptom 3.** rust AND swift — every `dispatch:` they emit at the half-1 site is `dispatch:untyped
       cross-package receiver`: the CANONICAL kind with a MALFORMED normative detail.** §4 makes
       `<owner>.<member>` the one conformance-compared detail and PART 10 DIVERGES on a dot-free one; it
       does not fire only because PART 10's fixture never chains a dependency (PART 21, which does, prints
@@ -2852,7 +2942,7 @@ on one fixture: one report chained gives `go = ['Exec']`; the SAME report chaine
 `invisible`, no coverage hedge**. java is CLEAN (last-wins keeps an answer) — verified directly, not
 assumed. A/B free: pgman 0/0/0, ebman +2 entries recovered from absence.
 
-- [ ] **A WITHDRAWN KEY READS AS SILENCE AT THE ORDINARY CALL JOIN — and `a1e53e7` says it must not.**
+- [D] **DECIDED — see THE QUEUE §5; may be dissolved entirely by the collision ruling.** A WITHDRAWN KEY READS AS SILENCE AT THE ORDINARY CALL JOIN — and `a1e53e7` says it must not.**
       Two TRUSTED reports that DISAGREE about one function leave the consumer ABSENT from `functions` with
       no `invisible` and no coverage hedge: a confident purity claim assembled out of the index's refusal to
       answer. This is the three-row rule (PART 21) one level down — at the INDEX rather than at the receiver
@@ -2877,7 +2967,7 @@ assumed. A/B free: pgman 0/0/0, ebman +2 entries recovered from absence.
       unioning the surfaces is the sound over-approximation. Measured cost: 24/200 and 108/544 functions
       newly carry `Unknown` — because the entries recovered are ones the DEPENDENCY could not resolve, so
       this is disclosure the consumer was previously denied rather than noise. Filed with the numbers.
-- [ ] **THE FOUR ENGINES DO THREE DIFFERENT THINGS ON AN ENTRY COLLISION** and nothing pins it:
+- [→] **INDEXED at THE QUEUE §2.** THE FOUR ENGINES DO THREE DIFFERENT THINGS ON AN ENTRY COLLISION** and nothing pins it:
       rust WITHDRAWS, java takes LAST-WINS (it picks — which the never-guess rule forbids elsewhere), ts
       MERGES INTO A SET (unions effects). Whatever the right answer is, three answers cannot all be it, and
       a `deny` gate gives different verdicts per engine on the same two reports. Wants a conformance part
@@ -2952,7 +3042,7 @@ With `ambiguous*` → `indirect`, `deny E Unknown[dispatch]` goes from **58 of 2
 filed "757 across 253 crates" was a large undercount: censused over 1062 reports it is **8710 of 19607
 entries**. Landed instead: PART 10 now scans a purpose-built fixture that PRODUCES the kind, tolerates it
 with a WARNING, and carries a vacuity floor.
-- [ ] **THE SPEC CONTRADICTS ITSELF HERE, and that is the real rung.** SPEC §6.2's class table (line 1433)
+- [→] **FOLDED into THE QUEUE §1, symptom 1.** THE SPEC CONTRADICTS ITSELF HERE, and that is the real rung. SPEC §6.2's class table (line 1433)
       explicitly lists `ambiguous*` under `dispatch` — so the emission is BLESSED there — while §4's kind
       vocabulary omits it from the closed list of four. One section names it, the other excludes it.
       Reconciling them is a spec change, not an engine change, and it should be made before any engine
@@ -3041,7 +3131,7 @@ set-equality is not a relaxation of never-guess but its exact statement.
 reads both again for its two stderr disclosures. The argument is now a test that DERIVES writes and
 consumers from the source instead of asserting them.
 
-- [ ] **FILED, all four engines — a report cannot say "Unknown, and one of them has no reason" beside a
+- [→] **FOLDED into THE QUEUE §1, symptom 2 — and it is the one that reaches the theory paper.** All four engines: a report cannot say "Unknown, and one of them has no reason" beside a
       reason it does have.** §4 has no kind for it (which is why the invented one was removed), and §6.2's
       rule is per-function and keyed on ABSENCE, so it does not compose. A second-hop consumer re-derives
       `dispatch` alone. This is a §4/§6.2 rung, not an engine fix.
