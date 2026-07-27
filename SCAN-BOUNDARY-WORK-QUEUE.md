@@ -137,7 +137,7 @@ up, so they are written here first and worked second.
         `.build/release/`.
 
 ### NEW, from the same swift pass — the EIGHTH and NINTH maps, REFUSED with numbers
-- [ ] **swift `boundLocals` (and `catchBindings` with it) — the same mechanism, in the map neither audit
+- [~] **swift `boundLocals` (and `catchBindings` with it) — the same mechanism, in the map neither audit
       classified, because it is not a FACT.** Every other row in this family is a name-keyed fact (a type,
       an opacity, a provenance, a literal, an alias) outliving its binding. `boundLocals` is the other
       half: an EXISTENCE claim — "this name names a local" — and both audits were looking for facts.
@@ -189,6 +189,74 @@ up, so they are written here first and worked second.
       **Whoever picks this up: start from the 12-line vapor repro, not from the corpus.** The two
       sub-cases must be separated before either is shipped; they are different defects that happen to
       share a map.
+
+      ### THE 12-LINE REPRO, EXPLAINED — and the answer is that a UNIT DISAPPEARING WAS THE FABRICATION
+      **candor-swift `083f370` lands the enum-payload half. 0 gains, 15 report changes over 13 packages,
+      every one traced.** The unexplained losses were not losses.
+
+      Reproduced in 13 lines, and the mechanism runs end to end:
+
+      ```swift
+      import BlindMod                    // any module the classifier doesn't cover
+      struct Ctx {}
+      enum E { case one(Ctx) }
+      extension E {
+          var reason: String { switch self { case let .one(ctx): return help(ctx) } }
+          var description: String { "d: \(self.reason)" }
+          func help(_ c: Ctx) -> String { "x" }
+      }
+      ```
+
+      1. `case let .one(ctx)` binds through a `patternExpr > identifierPattern` — **no
+         `ValueBindingPattern`**, so `typeEnumCaseBinding` skipped it (its own comment said so) and only
+         `visit(IdentifierPatternSyntax)`'s `clearBinding` ran. `ctx` ends up in NEITHER `vars` NOR
+         `boundLocals`. The multi-payload form reaches the same state through the ARITY guard, and an
+         ambiguous case name through the ambiguity guard — three doors, one state.
+      2. `help(ctx)` then hits the **fn-ref-as-argument rule** (`xs.map(transform)`, CallCollector ~1520):
+         a bare identifier argument that is not a known local is taken to name a FREE FUNCTION and emitted
+         as an unqualified untyped call.
+      3. That call resolves to no local unit, so the Driver sets `resolved = false` — **which is the
+         Driver's entire test for "this unit reaches code the scan cannot see"** — and the per-fn
+         `invisible` disclosure names every blind module in the file's import scope.
+      4. **A unit is in the report iff it has effects OR a disclosure.** `DecodingError.reason` has no
+         effects. Its only reason to exist as an entry was that `invisible`.
+      5. `DecodingError.description` reads `self.reason` → a property edge → it inherits `reason`'s
+         `invisible` transitively. When `reason`'s goes, so does its own, and both entries leave.
+
+      **So the disappearing units were a fabricated disclosure being withdrawn, and the disclosure's
+      parent was a phantom free-function reference built out of a local binding's name.** The previous
+      round was right to revert and right about the shape (two defects, one map); what it could not see
+      was that ONE of its loss classes was the same fabrication-removal as the other, arriving through
+      the disclosure channel instead of the effect channel. `UploadRequest.task` is the same story with
+      the volume turned up: `case let .data(data)` resolved to the unrelated `DataRequest.data` accessor
+      and inherited an `Unknown` from it.
+
+      **What landed** (`083f370`): the payload names go into a SEPARATE, LEXICALLY SCOPED
+      `casePayloadLocals` that the collector's in-walk guards consult alongside `boundLocals`. Both
+      spellings are claimed for the EXISTENCE claim; only the `.active(let c)` spelling is TYPED, as
+      before. Keying on `patternExpr` is exact in both directions — a matched CONSTANT parses to
+      `declReferenceExpr`, a literal to `integerLiteralExpr`, so a compared value can never be read as a
+      bound name (verified against SwiftParser, not assumed).
+
+      **What was refused, with numbers.** Three arms measured over the same 13 packages, binaries kept:
+      | arm | vs. baseline | verdict |
+      |---|---|---|
+      | payload names into the FUNCTION-WIDE `boundLocals` | 0 gains, 15 changes — **but drops a genuine edge**: swift-syntax `IfConfigDiagnostic.asDiagnostic` binds `syntax` in three `if case` blocks and then reads the real `self.syntax` | REFUSED — a silent under-report manufactured by a fabrication fix |
+      | scope `boundLocals` ITSELF (`ShadowSave`) | +1 entry, and **`if c { let loadIt = { }; loadIt() }` starts charging the caller the free `loadIt`'s effects** | REFUSED — `Driver` reads `boundLocals` ONCE, AFTER the walk, where a restored set is empty; a post-hoc guard has no lexical position |
+      | also TYPE the `case let .active(c)` spelling from `singleAssoc` | 4 new `Unknown`s (`dispatch:URLConvertible.??`, `LocalizedError.map`, `URLQueryFragmentConvertible.*`), 1 withdrawn, 1 `invisible` withdrawn | NOT LANDED — the typing is right; it feeds the external-supertype rung, which counts a LOCAL PROTOCOL as an external supertype and discloses on `??`/`*`. Separate row below. |
+
+      **Two residuals this un-masked, both filed rather than patched:**
+      - `Driver`'s guard is "was this name bound ANYWHERE in the unit", so `let location = location(converter:)`
+        (swift-syntax `Note.debugDescription`) loses a real edge to `Note.location` — the self-referential
+        initializer carve-out `fnValueAlias` already needed, one consumer over. Over-suppression, so it is
+        the direction a call-graph guard is allowed to be wrong in — but it is a real miss.
+      - a bare read of a **PARAMETER** charges the enclosing type's same-named property
+        (`TokenKind.fromRaw`'s `text`), and today that only stays hidden because some inner binder happens
+        to have poisoned the function-wide set. The `boundLocals` `.knownDefect` entry now names the three
+        binder forms still missing — catch, closure parameter, function parameter — instead of "~5 of 7".
+      - TCA `TypeSyntax.genericSubstitution`'s `genericBase?.identifier` never resolved in EITHER arm
+        (proved by deleting the case-binding block: both arms lose the edge). A dictionary-of-optionals
+        receiver is untyped; not this vein.
 
 ### The remedy for the whole family — DONE
 - [x] **swift — the set of maps a rebind must invalidate is now DERIVED, not listed** (candor-swift
