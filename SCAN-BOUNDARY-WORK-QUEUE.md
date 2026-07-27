@@ -400,7 +400,36 @@ the only verdict-changing one — do not bundle them.
       must still NOT match `deny E Unknown[unresolved]`. Without it the fix is indistinguishable from one
       that floods every narrowed gate and makes `[class]` useless.
       **Blast radius must be MEASURED per engine on real code and reported as a number.**
-      - [→] swift DISPATCHED. rust/java/ts pending (repos held by the frontier agents).
+      - [x] **swift: NO-OP, measured — and the measurement found the RIGHT IMPLEMENTATION SHAPE.** The
+            counterexample does not reproduce. Swift attaches a reason **at the point the Unknown is
+            created**, not at the join: `dep:<hash>` synthesized per dependency ENTRY exactly when that dep
+            classified nothing, plus `dep-stale:<pkg>` for a distrusted producer. Per-ENTRY, so a caller of
+            both a reasonless and a reasoned dep accumulates `{unresolved, dispatch}` with no join-time
+            special case. Its empty-set default is **UNREACHABLE — 0 fires across 487 Unknown-bearing
+            functions** over two real targets, corroborated by an offline fixpoint recomputation. My
+            specified join-side change would have been a no-op that looked like a fix.
+            **Now normative** (SPEC §6.2 `f6337fa`): attach at the source. Same conclusion the formal model
+            reaches from the other end — a reasonless `Unknown` is not representable in `(S,D)` at all, so
+            the state must be made unreachable, not handled. **Swift got there independently, before the
+            model was written.**
+            Calibration number for the other engines: the naive form (contribute whenever `Unknown` is
+            present) marks **435** on the corpus where the legitimate count is **0**.
+      - [→] java DISPATCHED (with swift's result, so it measures reachability before changing anything).
+            rust/ts pending.
+- [ ] **NEW — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
+      4a.** The tool whose entire job is to name the holes a green gate does not prove — and its filter
+      **under-reports the more the user narrows**. Two causes, both needed:
+      (1) an entry with empty `unknownWhy` matches NO filter, including `unresolved` — the exact fail-open
+      ⟨0.24⟩ closes; (2) it reads the report's **direct-only** `unknownWhy` with no transitive resolution,
+      where the gate does resolve via `reasonClassAcc`. §4 makes `unknownWhy` direct-only BY DESIGN, so this
+      is misreading the format rather than hitting a format gap.
+      **Measured on pollen, `deny Exec`: 387 holes unfiltered vs 230 under `--class dynamic`** — and
+      `dynamic` names every genuine class, so **157 (41%) vanish under a filter that should be a no-op**.
+      Cause is (2): 192 of 435 pollen entries (44%) and 35 of 52 of candor-swift's own (67%) carry no direct
+      `unknownWhy` because their Unknown is purely inherited.
+      **Both halves must land together**: fixing only (1) contributes `unresolved` to an inherited-Unknown
+      entry whose Unknown is perfectly well classified at the callee — trading a fail-open for a
+      fabrication, which the standing bar forbids. [→] DISPATCHED to swift with both controls specified.
 - [ ] **4b. `ambiguous:` as a fifth §4 kind.** Vocabulary-only; no verdict change (§6.2 already projected
       `ambiguous:*` → `dispatch`, which is why the producer was non-conforming while consumers were fine).
       Mostly a conformance/vocabulary-check update per engine — check each engine's `unknownWhy` kind
