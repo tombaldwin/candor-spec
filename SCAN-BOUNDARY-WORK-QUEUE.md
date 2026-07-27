@@ -7,12 +7,14 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
-## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 3 closed, 7 live — one of them java-done, rust+swift open)
+## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 6 resolved, 4 live — all four now swift/ts)
 
 A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
 defects. Every one is again a guard written during that wave** — the same base rate as the previous
 review's nine-for-nine, and the reason that review was commissioned at all. Two were mine and are closed;
-a third (java's `entryPackage`) and the java half of the incompleteness door closed 2026-07-27. None is recorded anywhere else — they arrived in a task notification, which is
+a third (java's `entryPackage`) and the java half of the incompleteness door closed 2026-07-27, as did all
+three rust rows — two fixed, one REFUSED with the counterfactual measured (a refusal with numbers is a
+result). None is recorded anywhere else — they arrived in a task notification, which is
 the "a residual recorded only in a narrative is a residual nobody will find" failure repeating one level
 up, so they are written here first and worked second.
 
@@ -79,20 +81,82 @@ up, so they are written here first and worked second.
         the fallback exists for — and the mechanism fires: httpclient sheds 966 false `invisible` markers
         and 320 entries, each package traced to real entries in httpcore's own report. Still 0 effect
         gains and 0 losses.
-- [ ] **rust `deps.rs:307` — a stale report's `Unknown` now arrives tagged `callback:…`**, classifying as
+- [x] **rust `deps.rs:307` — a stale report's `Unknown` now arrives tagged `callback:…`**, classifying as
       `indirect`, where the other three leave it `unresolved`. Rust is the four-way outlier, and the class
       the stale Unknown used to carry has been replaced by a fabricated one. This is the fail-closed
       fallback rust's own sweep agent wrote. Also java `ReasonClass.java:77`.
-- [ ] **rust `deps.rs:377` — a package chained BOTH fresh and stale resolves as untrusted**; java, ts and
+      **DONE — candor-rust `f2309a5`**, both sites (the staleness downgrade AND the reasonless-Unknown
+      fallback in `apply_dep_fn`). The generalisation is worth keeping: **`callback:` is not a residual
+      bucket.** §4 ⟨0.7⟩ defines it as an unresolved higher-order / owner-less INVOCATION — a claim about
+      code — and §6.2 already names the residual, `unresolved`, reached by ABSENCE. Reaching for a
+      canonical kind to "fail closed" is how a fabricated class gets written.
+      - Measured chained on pgman/ebman/candor-rust: **0 effect gains, 0 losses, entry count +0, Unknown
+        count +0**; 18 of 367 Unknown-bearing fns move class — 15 `indirect`→`unresolved`, 3
+        `{dispatch,indirect}`→`{dispatch}` (swift's documented "a class the chained arm has and the
+        single-tree control does not", live on real code).
+      - **rust's own writer invariant is what forced the fabrication.** `scan_one`'s `debug_assert`
+        ("`direct` carries Unknown ⇒ `unknownWhy` non-empty") makes the boundary case name one of the four
+        §4 kinds, and NONE of them projects to `unresolved`. §4's own definition of a source — a unit
+        "whose own body has the unresolvable call" — exempts a chained consumer, so the assertion was too
+        broad, not the fix. **Any engine with an equivalent assertion has the same trap.**
+      - rust deliberately did NOT copy ts's `stale-dep:` / swift's `dep-stale:`: PART 10 makes an
+        off-vocabulary kind a HARD divergence. **Those two engines are one fixture away from failing their
+        own conformance part** — worth checking, not checked here.
+      - Found on the way: rust had NO staleness disclosure on ANY channel (ts and swift both print one);
+        added on stderr.
+- [ ] **OPENED BY THAT FIX — rust is the only engine with no transitive-why resolution.** java
+      (`depTransitiveWhy`) and ts (`resolveInheritedWhy`) both walk the dependency's own `calls` edges to
+      recover the class of an Unknown the dep unit only INHERITED (⟨0.6⟩ makes `unknownWhy` direct-only, so
+      a dep's exported function publishes `inferred:['Unknown']` with no reason whenever the hole is one
+      hop further in). rust leaves those at the honest `unresolved`. Its report already carries `calls`, so
+      this needs **no format rung** — it is determination replacing disclosure, and it is the reach the
+      fabricated tag was groping for. 15 fns on the three-project corpus are waiting for it.
+- [x] **rust `deps.rs:377` — a package chained BOTH fresh and stale resolves as untrusted**; java, ts and
       swift all resolve the same input the other way (fresh wins). Four engines, two answers, same input.
+      **REFUSED, with the counterfactual measured — candor-rust `63bbe87`.** Aligning rust costs a silent
+      under-report. Coverage is the claim that an absent entry is a purity claim (§2 rule 3); rust's index
+      DROPS a key two dep functions share rather than picking, so a fresh+stale collision withdraws the
+      answer entirely. With `untrusted` cleared (the ts/swift shape, one line) the fixture's consumer fn
+      does not merely lose a hedge — **it disappears from the report**, and an `Exec` the fresh report
+      names reads as a confident purity claim. java and ts can afford fresh-wins because their entry-level
+      conflict keeps an answer (java `crossDeps.put` last-wins, ts merges into a Set); rust's cannot. SPEC
+      §2.1 is silent on the conflict and no PART pins it, so this wants a **four-way ruling**, not a
+      unilateral edit. Pinned by a two-direction fixture carrying flip instructions.
+      - Not theoretical: two reports naming one package is the ordinary Cargo shape (semver-major
+        duplication) — **7 of 167 dep reports in candor-rust, 9 of 259 in pgman, 30 of 378 in ebman**.
+- [ ] **FOR candor-swift, from that refusal: swift drops the colliding key exactly as rust does
+      (`Deps.swift` `insert`) AND resolves coverage fresh-wins** — the two halves that together produce the
+      false all-clear measured above. Not checked in swift (another repo, another measurement); the
+      fixture to reproduce is in candor-rust `tests.rs`
+      `a_package_chained_both_fresh_and_stale_keeps_its_blind_spot_disclosure`.
 
 ### The one I would look at hardest
-- [ ] **rust `scan.rs:622` — the cached parser-abort replay is gated on content hash + decl-index hash,
+- [x] **rust `scan.rs:622` — the cached parser-abort replay is gated on content hash + decl-index hash,
       but the abort is NOT a function of those two.** `4f7b704` established that the abort depends on how
       much each rayon worker happened to parse, so a ONE-OFF abort is latched into the cache and replayed
       forever. This is the fix for MY cache-poisoning defect, and it may have replaced one latch with
       another — the direction is different (a spurious `unanalyzed` + a gate that will not go green, rather
       than a false all-clear) but the shape is identical. Also `:618`.
+      **CONFIRMED AND DONE — candor-rust `35466f0`.** A cached abort is now a marker that the FnInfos were
+      never derived, not an answer to replay: the entry is dropped at the one place `cached_fninfos` is
+      populated, so the reuse gate misses it, the round-2 re-parse picks it up as ordinary stale FnInfos,
+      and the file either aborts again (disclosing by the same cold path, byte for byte) or produces the
+      answer it always owed. The write-back takes the marker only from THIS run, so an abort cannot outlive
+      the run that observed it.
+      - **The latch also broke the documented `--incremental` contract** ("produces a BYTE-IDENTICAL report
+        to a full scan"), silently, in a mode nobody re-runs from cold.
+      - Measured by injecting the fault into a REAL crate's real file (reqwest 0.12.28 `src/cookie.rs`),
+        injection removed for runs 2–3: pre latches forever at 361 entries + 1 `unanalyzed`; post recovers
+        **22 entries, 0 losses, 0 changed effect sets, Unknown delta 0**, `analyzed` 946→969, and is
+        byte-identical to the full scan. Inert on pgman/ebman/candor-rust and **196 crates.io crates**
+        (full + cold + warm, both arms, 0 differ).
+      - The old test's `warm2` arm — injection removed, disclosure expected anyway — was the assertion that
+        PINNED the latch (standing-bar item 7g, again). It survives inverted in
+        `a_cached_abort_is_re_attempted_rather_than_latched`; the still-aborting arm keeps the original
+        defect's requirement and is now named for it.
+      - The generalisation: **`--incremental` reuse is licensed by "the input is unchanged", and an abort is
+        not a function of the input.** Any per-file cache that persists an OUTCOME rather than a DERIVATION
+        has this shape; ask what the outcome actually depends on before choosing the cache key.
 
 ### Closed already — both mine
 - [x] **conformance PART 22 could not regress two of the four defects its own header cites** — `unknownWhy`
