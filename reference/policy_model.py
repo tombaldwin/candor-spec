@@ -137,10 +137,34 @@ def _lattice(effects, reasons):
     return [Sig(s, d) for s in subsets(effects) for d in subsets(reasons)]
 
 
+def covers(sig: Sig):
+    """The immediate successors of `sig` in `⊑`: add exactly one effect, or exactly one reason."""
+    for e in E:
+        if e not in sig.S:
+            yield Sig(sig.S | {e}, sig.D)
+    for r in R:
+        if r not in sig.D:
+            yield Sig(sig.S, sig.D | {r})
+
+
 def check_upward_closed(reject, points) -> list:
-    """Lemma 2: `Reject(x) ∧ x ⊑ y ⇒ Reject(y)`. Returns the counterexamples, exhaustively."""
+    """Lemma 2: `Reject(x) ∧ x ⊑ y ⇒ Reject(y)`. Returns counterexamples.
+
+    CHECKED AGAINST COVERS, NOT ALL PAIRS, and that is what makes this COMPLETE rather than a sample.
+    Upward-closure is equivalent to closure under immediate successors: if `Reject` survives every
+    single-element step it survives every chain, by induction on the length of the step sequence, and
+    every `x ⊑ y` in a finite Boolean lattice is such a chain. So this is a proof for the given `E` and
+    `R` rather than bounded model-checking of them — the whole lattice is 2^|E| × 2^|R| points and the
+    work is linear in that, where the naive pair check is quadratic (10^9 for the real vocabulary, which
+    is why the first version of this file could only afford a toy sublattice).
+    """
     return [(x, y) for x in points if reject(x)
-            for y in points if x.leq(y) and not reject(y)]
+            for y in covers(x) if not reject(y)]
+
+
+def full_lattice():
+    """Every point of `L = 𝒫(E) × 𝒫(R)` for the REAL vocabulary — 2^9 × 2^6 = 32768 signatures."""
+    return _lattice(E, R)
 
 
 def monotonicity_counterexample():
@@ -162,7 +186,7 @@ def monotonicity_counterexample():
 
 
 def selftest() -> int:
-    pts = _lattice(("Db", "Fs", "Net"), ("dispatch", "reflect", "unresolved"))
+    pts = full_lattice()
     verbs = {
         "deny Net": deny("Net"),
         "deny Net Unknown": deny_unknown("Net"),
@@ -173,7 +197,8 @@ def selftest() -> int:
         "unknown-ratchet({dispatch})": unknown_ratchet({"dispatch"}),
     }
     rc = 0
-    print(f"Lemma 2 over {len(pts)} signatures ({len(pts)**2} ordered pairs each):")
+    print(f"Lemma 2 over the FULL lattice: {len(pts)} signatures, "
+          f"{sum(1 for x in pts for _ in covers(x))} cover-steps each verb:")
     for name, v in verbs.items():
         ce = check_upward_closed(v, pts)
         print(f"  {'OK  ' if not ce else 'FAIL'}  {name}" + (f"   {ce[0][0]} ⊑ {ce[0][1]}" if ce else ""))
