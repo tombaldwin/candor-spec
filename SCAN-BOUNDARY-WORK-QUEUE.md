@@ -979,7 +979,33 @@ the only verdict-changing one — do not bundle them.
       - **java's `unverified --class` never landed the §6.2 repair** the other three carry: `--class
         unresolved` selects **nothing** where they select three, `--class dynamic` **2 of 7**. Its GATE half
         is clean — §6.2's own diagnosis, an open-coded second copy consumer-side.
-      - **FOUR-WAY: nobody implements the `--class` VALUE GRAMMAR.** `--class dyanmic` and a repeated
+      - [x] **rust `7d916f4` + swift `0646085` — grammar landed.** rust covers BOTH verbs that take the
+        flag, with the token rule in one place (`parse_class_filter`, now `Result`-returning) so the two
+        cannot drift and the repeat rule in `grammar.rs` covering every verb; swift covers `unverified`,
+        which is its whole surface. Messages carry the REASONING, not just the refusal — *"a `--class`
+        value that cannot be honoured is refused, not dropped: dropping it would narrow the filter and
+        answer a question you did not ask, with a smaller number"*.
+        **Two things fell out of writing it that the brief did not ask for, and both are right:** `*` is
+        now evaluated only after the WHOLE list is walked, so `--class *,dyanmic` still reports the typo
+        instead of short-circuiting past it (it did short-circuit before); and a refusal emits **no answer
+        document at all** — *"a narrower result one exit code away from a refusal is the same fail-open in
+        a different hat."*
+        Failability shown per rule: warn-and-continue → only the typo test; last-wins → only the repeat
+        test; filter-keeps-everything → both regression controls and **neither** refusal test. The repeat
+        test asserts two phrases PRESENT and two ABSENT, which is what stops it passing for the wrong
+        reason — the exact trap a swift test fell into earlier today.
+      - **[→] java + ts in flight.** The floor bump is blocked on ts alone.
+      - **AN AGENT DETECTED A COLLISION INSTEAD OF FILING A FINDING, unprompted** — standing bar 7f
+        working as intended. PART 27's java cell **passed against an uncommitted jar**: candor-java HEAD is
+        still the commit the waiver records as FAILING, but its tree is dirty and the jar was rebuilt at
+        23:12 by the live java agent. The agent checked *"precisely because the measurement changed for a
+        reason I couldn't explain"*, left java **unwaived** ("the ratchet reports what's on the box"), and
+        wrote the caveat into the entry so a revert fails java *unwaived* rather than looking like a
+        regression in the baseline file.
+      - The baseline narrowing (`engine: "*"` → `engine: "ts"`) is deliberately **uncommitted**, to avoid
+        conflicting with two live agents in the same repo; patch saved in the scratchpad. PART 27 currently
+        exits 1 on three now-stale JAVA waivers, which are the java agent's to delete with its commit.
+      ORIGINAL — FOUR-WAY: nobody implements the `--class` VALUE GRAMMAR.** `--class dyanmic` and a repeated
         `--class` are specified exit 2; all four exit **0**. Not a divergence — a **shared gap**, the
         suite's only `engine: "*"` waiver, and a clause I wrote today that no engine implements.
       **The harness caught two of its own faults, both by measuring rather than reviewing.** A zero-byte jar
