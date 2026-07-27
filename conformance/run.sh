@@ -4086,9 +4086,53 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 23 — THE MODEL'S OWN LEMMA STILL HOLDS                                              [TIER 1]
+#
+# Every other PART here is a differential BETWEEN ENGINES. That answers "do the engines agree" and it
+# has twice reported OK while all four were wrong the same way. This one is not a differential at all:
+# it checks the SPEC's policy semantics against the THEORY they are supposed to implement — PAPER3
+# Definitions 30-32/35 and Lemma 2 — using `reference/policy_model.py`, the model as executable code.
+#
+# WHY IT IS HERE. On 2026-07-27 a shipped engine took `deny Unknown[unresolved]` from a REJECT to a PASS
+# when a call was ADDED to the function under test, contradicting Lemma 2's corollary ("a newly-determined
+# effect or a newly-disclosed blind spot can only turn a green verdict red"). The lemma was not wrong: the
+# engine had reached a signature the model does not admit and coped with a rule that is nowhere in the
+# model — default the reason class to `unresolved` when D is empty — which is keyed on ABSENCE and is
+# therefore not upward-closed. Nothing in this suite could have caught that, because the model lived only
+# in prose and the suite only ever compared engines to each other.
+#
+# WHAT IT DOES AND DOES NOT COVER. It verifies the model, completely: upward-closure is checked against
+# COVERS rather than all ordered pairs, so a single-element step suffices by induction and the check is a
+# proof for the whole finite lattice (2^|E| x 2^|R| = 32768 signatures) rather than a sample. It does NOT
+# verify any engine — no engine exposes a way to gate a GIVEN signature (the gate is reachable only via
+# `scan --policy`, which computes S from source, and via `whatif`, which reports only violations the
+# hypothetical INTRODUCES), so the code-implements-spec direction stays with the differential PARTs above.
+# That gap is recorded in `reference/README.md` with the two routes that would close it.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+P23_OK=0
+REF="$HERE/../reference/policy_model.py"
+if [ -f "$REF" ]; then
+  P23_OUT="$(python3 "$REF" 2>&1)" || P23_OK=1
+  echo "$P23_OUT" | sed 's/^/  /'
+  # A vacuity floor: the file must actually have checked the whole lattice, not a stub that prints OK.
+  echo "$P23_OUT" | grep -q "32768 signatures" || { echo "  FAIL: the model check did not cover the full lattice"; P23_OK=1; }
+  echo "$P23_OUT" | grep -q "NOT upward-closed" || { echo "  FAIL: the known-bad rule is no longer demonstrated — the check has stopped discriminating"; P23_OK=1; }
+else
+  echo "  FAIL: reference/policy_model.py is missing — the theory-vs-spec check cannot run"
+  P23_OK=1
+fi
+
+echo "PART 23 — the model's own lemma still holds (PAPER3 Lemma 2, over the full lattice)"
+if [ "$P23_OK" = 0 ]; then
+  echo "  -> MATCH — every shipped verb's rejection set is upward-closed, and the absence-keyed rule still is not"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
