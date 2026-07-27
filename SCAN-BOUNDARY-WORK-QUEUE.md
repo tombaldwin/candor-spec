@@ -343,6 +343,32 @@ no reference implementation, no second opinion, no spec interpretation in the lo
 know `Foo.bar()` performs `Net`, single-tree and chained agree on the same wrong answer and no property
 here fires. That is the runtime oracle's job, the instrument exists, and it is calibrated.
 
+- [x] **CLOSED — LOCALE-SENSITIVE ORDERING (candor-ts `6502b56`, SPEC §2 ⟨0.24⟩ `e3e61d6` + `aa82937`).**
+      Raised by the ts engine as out of scope for its own task, which was the right call twice over.
+      **7 call sites** (not 8 — one grep hit is a comment), one of them ordering the κ-coverage ledger
+      **inside the emitted report**. Wider sweep found nothing beyond the list: no `Intl.Collator`, no
+      `Intl` at all, no `toLocale*Case`.
+      **OBSERVED, not latent** — same build, same tree, environment only:
+      `LC_ALL=C` → `uncovered = [tpad, zpad]`, md5 `8ad6e50a…`; `LC_ALL=et_EE.UTF-8` → `[zpad, tpad]`,
+      md5 `d5b2cac1…`. Estonian collates `z` between `s` and `t`. Post-fix: C / et_EE / da_DK / tr_TR give
+      four identical md5s.
+      **THE CONTROL I PROPOSED WOULD HAVE MISSED IT.** I briefed C-vs-`tr_TR` on the dotless-i reasoning.
+      Turkish inserts its extra letters BETWEEN the ASCII ones, so pure-ASCII relative order is unchanged —
+      the experiment returns "no difference" and licenses "latent, not observed", which is false. The agent
+      chose `et_EE`. **I spent the day telling agents a fixture that cannot show the gap is not a control,
+      then wrote one.**
+      **And the deeper correction: ASCII DOES NOT PROTECT YOU.** The whole day's collation reasoning ran
+      "our identifiers are ASCII, so UTF-16 and code-point order agree" — true, and it is why THAT risk is
+      latent. **Locale collation reorders pure ASCII**: the ledger keys are lowercase npm package names,
+      exactly the case that argument declares safe. Danish breaks a second ASCII pair (`aa` = `å`, so
+      `aardvark` follows `z`).
+      **The ~10 bare `.sort()` sites that write REPORT BYTES are CHECKED AND NOT A DEFECT** — recorded so
+      nobody re-opens them. `calls`/`hosts`/`tables`/`cmds`/`paths`/`unknownWhy`/`invisible` and
+      `analyzedQuals` (which feeds `analyzed.digest`) are UTF-16-ordered, hence **deterministic and
+      environment-independent** → §2-clean. They are not code-point-ordered, which would only matter for
+      CROSS-engine byte comparison — and §2 defines `digest` as *"an opaque, **within-engine**-comparable"*
+      value, so no such claim exists to break. The §3.1 collation rule binds the one joined field it names.
+
 ### 3c — WHAT P1 FOUND ON HEAD · per-engine, parallel, each already reduced to a fixture
 Four defects, found by P1 on its first run (2026-07-27) and each then re-derived from a hand-written
 two-package fixture so none of them rests on the generator being right. All four are baselined in
