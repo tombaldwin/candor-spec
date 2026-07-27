@@ -44,33 +44,6 @@
         "conformance PART 21's rust fixture binds the factory result, which is why it has never seen this.",
         "PART 21's own ruling — a key that could not be formed MUST NOT read pure — is what this violates."
       ]
-    },
-    {
-      "engine": "swift",
-      "split": "lazy_init",
-      "why": "a chained dep type's PROPERTY ACCESSOR read is silent-pure even though the dep report carries the accessor under exactly the key the consumer would need. Not lazy-specific: a plain computed `var` behaves identically. 8/8 cells ABSENT.",
-      "repro": [
-        "DepLib:  public struct L { public lazy var v: Int = { …Fs…; return 1 }() }",
-        "         public struct C { public var w: Int { …Env…; return 2 } }",
-        "         public let depCfg = ProcessInfo.processInfo.environment[\"IE_CFG\"] ?? \"\"",
-        "app:     func globalRead()      { print(depCfg.count) }        // -> ['Env']  correct (PART 19)",
-        "         func lazyAcc(_ l: inout L)  -> Int { return l.v }      // -> ABSENT   silent",
-        "         func computedAcc(_ c: C)    -> Int { return c.w }      // -> ABSENT   silent",
-        "the dep report carries `L.v ['Fs'] accessor` and `C.w ['Env'] accessor`. PART 19's swift fixture",
-        "reads a module-level global, which IS modelled — so the accessor form has never been asked."
-      ]
-    },
-    {
-      "engine": "swift",
-      "split": "fn_returned_dyn",
-      "why": "the same unbound-factory shape as rust: `getDyn().run()` and `build().fetch()` read silent-pure, while `let t = getDyn(); t.run()` discloses `Unknown[dispatch:untyped cross-package receiver]` and `let c = build(); c.fetch()` resolves. 8/8 cells ABSENT.",
-      "repro": [
-        "DepLib:  public func getDyn() -> any Task ;  public func build() -> Cl",
-        "app:     let c = build(); _ = c.fetch()   // -> ['Fs']      resolved",
-        "         _ = build().fetch()              // -> ABSENT      silent",
-        "         let t = getDyn(); t.run()        // -> ['Unknown'] disclosed",
-        "         getDyn().run()                   // -> ABSENT      silent"
-      ]
     }
   ]
 }
