@@ -926,6 +926,19 @@ any engine emits today is ASCII, so nothing diverges yet — but all four analys
 identifiers, and `<owner>.<member>` is built from user identifiers, so this is reachable rather than
 theoretical. An engine whose natural comparator is UTF-16 MUST compare by code point explicitly.
 
+**"UTF-8 byte order" names the ORDER, not the METHOD — do not implement it by encoding to UTF-8.** In a
+language whose strings are UTF-16 (Java, JavaScript), an *unpaired surrogate* is representable in memory
+but has no UTF-8 encoding, so every lone surrogate encodes to the same replacement byte. A comparator built
+on that encoding is **order-correct and cardinality-lossy at once**: two distinct details differing only in
+a lone surrogate compare EQUAL, and a set-backed accumulator reads equal as duplicate and **silently drops
+one from the join** — reintroducing, inside the conformance fix, the exact drop class this rung exists to
+close. Measured: the encoding-based comparator passes the ordering test and fails a lone-surrogate
+cardinality test. Compare code points directly.
+
+Note also what is *not* checkable across engines here: a lone surrogate has no UTF-8 encoding and therefore
+cannot cross the JSON wire in any engine, so cross-impl fixtures MUST NOT assert a lone-surrogate literal.
+**Cardinality survives that channel and identity does not** — pin the count, not the string.
+
 This is a small thing pinned at length on purpose: an unspecified collation on a field no consumer parses
 is invisible until a conformance row is written years later and fails for a reason nobody can reconstruct; `viaDispatchOn` is a disclosure string, and candor never
 parses an owner back out of it. A detail containing a comma would be ambiguous to a consumer that splits on
