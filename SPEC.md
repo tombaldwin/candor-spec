@@ -892,7 +892,29 @@ hierarchy pass found nothing, was not run, or wrote a stub" than a claim about t
 distinction is not recoverable from the file. Absent, empty, and unparseable therefore all mean *the
 subtype test is unanswerable*, which by the rule above means over-list, not drop.
 
-The cross-impl suite pins the frontier output across all four engines, including the dot-free arm.
+**A dot-free detail MUST be recognised STRUCTURALLY** (the detail contains no `.`) and short-circuited
+*before* the owner/member split is attempted — not by matching a known wording. Two hazards make this a
+requirement rather than a style note, both measured on the reference implementation:
+
+- The split helpers fall back to the WHOLE STRING when there is no dot, and they are applied to the reason
+  detail *and* to the confirmed reachers' qualified names. The override test therefore degenerates into
+  **string equality between a reason detail and a function name**. Measured: a dot-free detail that happens
+  to equal a reacher's qual was *disclosed*, and in the hierarchy arm the subtype check passed **only by
+  reflexivity** (`ty == owner`) over a string that is not a type name — the sidecar was never consulted.
+  The entry belonged in the output under this clause anyway, so the pre-fix behaviour was **right for the
+  wrong reason**, which is the shape that hides a gap rather than showing one.
+- Without the short-circuit the same detail can be **disclosed in one arm and dropped in the other**,
+  decided by nothing but whether a §2.2 sidecar happens to exist. Measured: a dot-free detail equal to a
+  dotted reacher's simple method name matched in the no-hierarchy arm and was dropped in the hierarchy arm.
+
+A wording-based check is an ALLOWLIST, and everything it omits is a silent drop — the defect itself. It
+also fails on arrival: an engine whose dot-free detail is a plain identifier rather than a phrase would be
+matched against reacher names by exactly the equality above.
+
+The cross-impl suite pins the frontier output, including the dot-free arm, across the engines that
+IMPLEMENT this query — the Rust, JVM and TypeScript query surfaces. The Swift engine deliberately ships no
+`callers` verb (it is a producer that writes the §2.2 sidecar *for* those consumers); ⟨0.24⟩ binds it only
+through §4 and the §6.2 class projection, which is pinned separately.
 
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
