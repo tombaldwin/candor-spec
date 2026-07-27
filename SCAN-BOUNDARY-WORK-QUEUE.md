@@ -26,9 +26,10 @@ under-reports; **none of what is open now is one.** It is decisions, priced refu
 precision — which wants a different order, and makes two of the old groupings actively misleading.
 
 **The order in one line:** settle §4's vocabulary (§1, serial) · rule on the two other spec silences
-(§2, concurrent) · **close the structural gap with self-differential properties (§3, highest yield)** ·
-add the gate-a-report verb (§3b, unblocks P4) · implement §1 four-way (§4, parallel) · leave precision
-alone for now (§6, with the measured argument for waiting).
+(§2, concurrent) · **close the structural gap with self-differential properties (§3, highest yield —
+P1 is DONE and shipped as conformance PART 24; P2/P3/P4 open)** · fix the four defects P1 found (§3c,
+per-engine, parallel) · add the gate-a-report verb (§3b, unblocks P4) · implement §1 four-way (§4,
+parallel) · leave precision alone for now (§6, with the measured argument for waiting).
 
 ### 1 — THE §4 VOCABULARY RUNG · serial, first, cannot be parallelised
 **One decision with four symptoms**, filed separately across three review rounds and only visible as one
@@ -262,9 +263,43 @@ engines can share a wrong model of the spec; an engine cannot share a wrong mode
 renderings of the same program. The engine's own single-tree answer is the oracle for its chained answer —
 no reference implementation, no second opinion, no spec interpretation in the loop.
 
-- [ ] **P1 — SPLIT-INVARIANCE.** One tree ≡ split + chained, modulo disclosure. Do this FIRST: largest
-      yield, needs no engine change, and it replaces 44 hand-written fixtures with a property. Would have
-      caught the entire vein, including the "13 of 13 JVM mechanisms silent" finding.
+- [x] **P1 — SPLIT-INVARIANCE. BUILT AND WIRED IN — `conformance/gen_split_invariance.py`, conformance
+      PART 24 (`75b7044` + `41216aa`).** 8 effects × 10 split shapes = 80 cells, each rendered in all four
+      languages and scanned BOTH as one tree and as two chained packages; the assertion is that each
+      engine agrees with ITSELF. Reuses `gen_differential.py`'s EFFECTS table so the effect vocabulary
+      stays in one place. **Counts: 80 cells, 80 LIVE, 0 vacuous, on every engine.** (`direct` is the one
+      shape with no dep half — its sink is inline in the entry — so it is named and not rendered: 8 more
+      cells, structurally vacuous.) ~45s for the full four-way matrix.
+
+      **VERIFIED TO CATCH**, on two engines, by reverting a shipped boundary fix in an isolated worktree
+      with its own build dir — never the shared binaries (item 7f): candor-ts `625e8fd` → the 8
+      `implicit_conv` cells go ABSENT, **ts only, its other 72 unchanged**; candor-rust `1623a07` → the
+      same 8 cells, **rust only, ts and swift unchanged**. Each fires on exactly the shape whose fix was
+      removed and on exactly the engine that was mutated.
+
+      **AND IT FOUND FOUR LIVE DEFECTS ON HEAD, ON ITS FIRST RUN**, every one of them the same shape of
+      thing: *the dependency's report already carries the witness under exactly the key the consumer
+      needs, and the consumer's join has a branch that does not fire.* All four are baselined in
+      `conformance/split-invariance-baseline.json`, each with a hand-written two-package repro, so no
+      waiver rests on the generator being right. **They are engine work, not conformance work — §3c.**
+
+      Two durable notes, both learned here. (a) **A rendering choice can weaken the ORACLE, and nothing
+      but the vacuity count will say so.** The first draft spelled the rust app half `deplib::X` (a
+      `pub mod deplib` wrapper in the single-tree arm) and that alone made **16 of rust's 80 cells
+      vacuous** — candor-scan resolves neither a module-qualified unit-struct value literal (`m::T.run()`)
+      nor a module-qualified lazy-static read (`*m::L`), so the single-tree arm went silent and those rows
+      stopped demanding anything. Verdict unchanged, signal gone. That is item 8 in a new costume.
+      (b) **The assertion must stay DIRECTIONAL.** An effect that becomes `Unknown` across the split is a
+      HEDGE — counted, never failed — because PART 21's ruling is precisely that a consumer which cannot
+      form a key MUST disclose where the single-tree arm resolves. Simplifying it to equality would fail
+      every case the family has already decided is correct. Both are written into the file at length,
+      because someone will later try to "simplify" it.
+
+      Bonus, not this row's job: rust charges a lazy-static read to its reader inside the same module but
+      **not through a module path** — `m::INNER` from outside `mod m` reads pure while `INNER` from inside
+      it reads `['Fs']`, single tree, no boundary involved. Filed at §3c as a separate finding because it
+      is a plain single-tree under-report, and P1 correctly does NOT fail on it (the property is
+      directional and this weakens the oracle rather than the chained arm).
 - [ ] **P2 — CHAIN IDEMPOTENCE.** Chaining a report twice ≡ chaining it once. Would have caught the
       identical-entry withdrawal (`6f2210c`) — two byte-identical reports made a consumer vanish from
       `functions`.
@@ -277,6 +312,49 @@ no reference implementation, no second opinion, no spec interpretation in the lo
 **What this will NOT catch, and it is the right thing to leave out:** the classifier. If candor does not
 know `Foo.bar()` performs `Net`, single-tree and chained agree on the same wrong answer and no property
 here fires. That is the runtime oracle's job, the instrument exists, and it is calibrated.
+
+### 3c — WHAT P1 FOUND ON HEAD · per-engine, parallel, each already reduced to a fixture
+Four defects, found by P1 on its first run (2026-07-27) and each then re-derived from a hand-written
+two-package fixture so none of them rests on the generator being right. All four are baselined in
+`conformance/split-invariance-baseline.json`, which carries the repros; deleting the entry is part of
+the fix, because the ratchet FAILS on a waiver whose defect is gone.
+
+**One sentence covers all four: the dependency's report already carries the witness under exactly the key
+the consumer needs, and the consumer's join has a branch that does not fire.** That is "the template that
+works" from further down this file, and it means none of these should need a report-format change.
+
+**And the reason PARTs 18–22 could not see any of them is the same in every case: each hand-written
+fixture picked ONE spelling.** This is finding (1) at the top of §3 — a human chose each shape — landing
+with four concrete instances rather than an argument.
+
+- [ ] **rust — a chained dep's lazy static is charged only through a PATH-QUALIFIED read.**
+      `deplib::C.len()` → `['Env']`; `use deplib::C; C.len()` → **absent**. Deref vs method call makes no
+      difference; the `use` does. PART 19's rust fixture uses the qualified spelling.
+- [ ] **rust — a chained dep FACTORY call with NO intermediate binding reads silent-pure.**
+      `let c = deplib::build(); c.fetch()` → `['Fs']` (resolved); `deplib::build().fetch()` → **absent**.
+      `let t = deplib::get_dyn(); t.run()` → `['Unknown'] dispatch:untyped cross-package receiver`;
+      `deplib::get_dyn().run()` → **absent**. A hole in a SHIPPED guard, not an un-attempted precision
+      gap — and it violates PART 21's own ruling that an unformable key must not read pure. PART 21's
+      rust fixture binds the factory result.
+- [ ] **swift — a chained dep type's PROPERTY ACCESSOR read is silent-pure.** The dep report carries
+      `L.v ['Fs'] accessor` and `C.w ['Env'] accessor`; the consumer's `l.v` / `c.w` are absent. **Not
+      lazy-specific — a plain computed `var` behaves identically**, which makes this much wider than the
+      cell that found it. PART 19's swift fixture reads a module-level GLOBAL, which IS modelled, so the
+      accessor form had never been asked.
+- [ ] **swift — the same unbound-factory shape as rust**, with the same asymmetry: `let t = getDyn();
+      t.run()` discloses and `let c = build(); c.fetch()` resolves, while `getDyn().run()` and
+      `build().fetch()` are both absent.
+- [ ] **rust, single-tree, no boundary — a lazy-static read through a MODULE PATH is not charged.**
+      `mod m { pub static INNER: LazyLock<u8> = …Fs…; pub fn inside() { let _ = *INNER; } }` charges
+      `m::inside` correctly; `fn outside() { let _ = *m::INNER; }` reads **pure**. The unit is emitted as
+      `<lazy>::m::INNER ['Fs']`, so the writer knows; the reader-side edge does not make the hop. Worth
+      checking against `5447eba` (which moved the module path INSIDE the `<lazy>::` prefix to stop
+      same-named globals merging) — if the reader still keys on the bare name, that fix bought identity
+      at the cost of this edge, which is [[feedback-fabrication-fixes-cause-misses]] exactly.
+
+**Two of these put rust and swift SILENT where java and ts both disclose `Unknown` on byte-identical
+input** (the `fn_returned_dyn` pair). That is a four-way divergence on a decided contract, which is the
+class of thing PARTs 18–22 exist to catch — and each of them fixes one spelling, so none could.
 
 ### 3b — THE GATE-A-REPORT VERB · parallel per engine, unblocks P4
 - [ ] **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only via
