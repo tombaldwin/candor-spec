@@ -7,12 +7,12 @@ Written to be picked up cold — by a fresh session, or by an agent — without 
 should fail, it reproduces in all four engines, and it is gate-level rather than report-level. PAPER1 §6.1b
 now scopes the headline claim because of it.
 
-## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 2 fixed, 8 live)
+## OPEN — the 2026-07-27 review of the sweep wave (10 confirmed, 3 closed, 7 live — one of them java-done, rust+swift open)
 
 A second workflow review, scoped to the ~40 commits the five-shape sweep produced. **Ten confirmed
 defects. Every one is again a guard written during that wave** — the same base rate as the previous
 review's nine-for-nine, and the reason that review was commissioned at all. Two were mine and are closed;
-the eight below are live. None is recorded anywhere else — they arrived in a task notification, which is
+a third (java's `entryPackage`) and the java half of the incompleteness door closed 2026-07-27. None is recorded anywhere else — they arrived in a task notification, which is
 the "a residual recorded only in a narrative is a residual nobody will find" failure repeating one level
 up, so they are written here first and worked second.
 
@@ -21,12 +21,30 @@ up, so they are written here first and worked second.
       static/free-form HOF whose callee signature cannot be resolved now DROPS a `.bind`-wrapped dependency
       callback it previously charged. Measured as a `deny Fs` flip from exit 1 to **exit 0**. A guard added
       this wave, narrowing past a real reach — standing-bar item 0, for the third wave running.
-- [ ] **rust `deps.rs:220` + java + swift — only candor-ts withholds coverage from a dep report that
+- [ ] **rust `deps.rs:220` + ~~java~~ + swift — only candor-ts withholds coverage from a dep report that
       declares ITSELF incomplete** (non-empty ⟨0.21⟩ `unanalyzed`). The other three gate coverage on
       STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
       shape 1's second door — the one ts found in its own sweep (`21277eb`) — unswept in three engines.
       **The sweep found the door and did not carry it across, which is the exact thing the sweep exists
-      to do.**
+      to do.** **JAVA DONE — candor-java `d1d3045`; rust and swift remain.**
+      - Entries KEPT (they came from source the dep really did read), coverage withheld, stderr says why.
+        Absent or explicitly EMPTY `unanalyzed` = complete; anything else, malformed included, fails
+        closed. ts's item-0 trade — the ledger hedge REPLACING half 1's `Unknown[dispatch]`, its
+        `deny Fs Unknown[dispatch]` going exit 1 → 0 — **cannot happen in java**, because `7e41327` had
+        already given chained-ness its own ungated set. That is an argument, so it is a third arm of the
+        κ-curated fixture rather than a comment.
+      - **Two things to carry into rust and swift.** (1) In java, coverage AND chained-ness are each
+        anchored TWICE — a file-level envelope registration and an entry-hash fallback — so gating one is
+        a **no-op wearing a fix's clothes**: the mutant that gates only the file-level path fails
+        NOTHING. Count the anchors before believing a gate. (2) Reading an ABSENT `unanalyzed` as
+        incompleteness is the tempting fail-closed reading and it is wrong — that mutant fails seven
+        tests across four classes, because it deletes chained coverage outright. The writer omits the key
+        when the manifest is empty, so absent = complete; malformed = incomplete.
+      - Measured: 7 chained real jar pairs from `~/.m2`, **0 of 11 real dep reports declare an
+        `unanalyzed` unit** — the corpus is the fabrication control and the fixtures are the evidence.
+        Armed (every dep report made to declare itself incomplete, envelope only, `functions`
+        byte-identical): 4147 functions gain `invisible`, 662 entries appear, **0 effect gains, 0 losses,
+        Unknown delta 0 on every pair** — the additive shape, with half 1 still speaking.
 
 ### Fabrication / data loss
 - [ ] **swift `CallCollector.swift:813` — `fnValueAlias` is a name-keyed RESOLUTION table no clear path
@@ -40,9 +58,27 @@ up, so they are written here first and worked second.
       at `:439`.
 
 ### Cross-engine divergence — `Unknown[class]` gates now fire differently per engine
-- [ ] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
+- [x] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
       which for java's own hash form lands inside the method DESCRIPTOR, so entry-level coverage registers
-      a garbage package name.
+      a garbage package name. **DONE — candor-java `47e2721`**, and the review's "harmless-looking"
+      caveat was the right question to ask: the two directions came out opposite.
+      - It could never FABRICATE coverage. A parse that runs into the descriptor necessarily keeps the
+        `(` that opens it, and no JVM package name can contain one, so the bogus string matched nothing
+        in `depCoveredPkgs` — inert, and now asserted inert.
+      - The cost is the registration that did NOT happen. `depChainedPkgs` is conjunct 3 of the half-1
+        unanswerable-key rung, so a chained report with no envelope package field left an INVOKEINTERFACE
+        into an unnameable dep implementation reading as a confident purity claim:
+        `deny Fs Unknown[dispatch]` **0 → 1 violation**, against a single-tree control that is 1 in both
+        arms. A silent under-report, not a cosmetic parse bug.
+      - **Every dep-report fixture in candor-java's suite predating the fix used `()V` or `(I)V`** — no
+        reference type, no descriptor slash — which is exactly why they all passed. Worth checking in the
+        other engines' fixtures for the same shape of blind spot.
+      - A/B 7 chained real jar pairs: 0 delta, because every candor-java report carries `packages` and the
+        fallback is redundant there. **A zero-delta arm is a claim about the experiment first** (item 8),
+        so the same pairs were re-run with the envelope package field STRIPPED — the legacy/foreign shape
+        the fallback exists for — and the mechanism fires: httpclient sheds 966 false `invisible` markers
+        and 320 entries, each package traced to real entries in httpcore's own report. Still 0 effect
+        gains and 0 losses.
 - [ ] **rust `deps.rs:307` — a stale report's `Unknown` now arrives tagged `callback:…`**, classifying as
       `indirect`, where the other three leave it `unresolved`. Rust is the four-way outlier, and the class
       the stale Unknown used to carry has been replaced by a fabricated one. This is the fail-closed
