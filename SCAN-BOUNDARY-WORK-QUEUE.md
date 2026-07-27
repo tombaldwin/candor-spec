@@ -458,10 +458,45 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       any report claims the package complete, cancelling a second report's hedge over a region it could not
       read. Complete-wins is the reading rust REFUSED twice (`63bbe87`, `dbab8be`): **two reports covering
       one package do not cover the same SOURCE.**
-- [ ] **rust `deps.rs:135`** — the reasonless-Unknown class reaches only a `debug_assert`, never
+- [x] **rust `deps.rs:135`** — the reasonless-Unknown class reaches only a `debug_assert`, never
       `reason_class_direct`. §6.2's `unresolved` fallback is per-FUNCTION and fires only on an absent or
       empty class set, so **any other reason on the same function swallows it** — precisely where a gate
-      needs it.
+      needs it. **CONFIRMED AND FIXED — candor-rust `558342f`.**
+      - Reproduced at gate level first, bracketed by both single-call controls, and the sharpest statement
+        of it is a MONOTONICITY failure: `one(){dep::mute();}` exits 1 under `deny Unknown[unresolved]`,
+        `one(){dep::murky();}` exits 0 (correctly, it is classified), and
+        `one(){dep::murky(); dep::mute();}` exits **0**. **Adding a call REMOVED a class.** The
+        pre-existing fixture could not see it — its consumer calls ONE dep function, so the class set was
+        empty and the fallback answered; it still PASSES under the mutant.
+      - The fix CONTRIBUTES `unresolved` into `reason_class_direct` for every `unknown_via_dep` caller,
+        which then propagates like any other class. **No token is invented**: it writes a §6.2 CLASS, not
+        a §4 kind, into a gate-side map — `unknownWhy` and the report are untouched, and byte-identical
+        reports on every A/B arm prove it.
+      - **The gate moves and the analysis does not.** Reports byte-identical on candor-rust, pgman and
+        ebman under four policies; 0 effect gains, 0 losses, 0 entry delta, 0 Unknown delta.
+        `deny Unknown[unresolved]` violations: candor-rust **8 → 26**, ebman **7 → 29**, pgman 0 → 0,
+        with 0 lost anywhere and `deny Unknown` / `[dispatch]` / `[indirect]` counts unchanged — every
+        class change ADDS `unresolved` to an existing set.
+      - Per item 8 the precondition was instrumented, and pgman's zero is a fact about pgman: the join
+        fires on 8 functions in candor-scan, 13 in ebman, **0 in pgman**. Traced to source —
+        `lang::format_const_prefix_arg` calls `m.parse_body_with(…)` and syn 2.0.117's
+        `mac::Macro::parse_body_with` publishes `inferred:['Unknown']` with no `unknownWhy`, because ⟨0.6⟩
+        makes the field direct-only. **2643 of candor-rust's 6773 Unknown-bearing dep entries are
+        reasonless (39%)** — the ordinary shape, not a corner.
+      - §6.2's by-absence fallback is KEPT and re-documented as a NET rather than a route: the writer's §4
+        invariant is a `debug_assert`, so in release a future reasonless path still fails closed there.
+        Its mutant fails a named test, so it is not the item-8c "costs nothing" case.
+- [ ] **THE RESIDUAL THAT FIX LEAVES IS THE FORMAT'S, AND IT IS FOUR-WAY.** A report cannot say
+      "`Unknown`, and one of them has no reason" *alongside* a reason the function does have: §4's kind
+      vocabulary has no member for it (that is why `f2309a5` had to remove an invented one) and §6.2's
+      "no recorded reason ⇒ `unresolved`" is stated per FUNCTION and keyed on ABSENCE, so it does not
+      compose. Consequence: a SECOND-hop consumer chaining the fixed report re-derives `dispatch` alone
+      and the same gate goes quiet one boundary further out. rust fixed its own in-process gate and
+      **cannot fix the wire half without a token PART 10 makes a hard divergence** — which would be the
+      fabrication `f2309a5` removed. java, ts and swift have the same hole (swift's `dep:` pointer is the
+      nearest thing to an answer and is off-vocabulary). **This wants a §4/§6.2 rung**, e.g. an explicit
+      per-function reason-CLASS surface, or a §6.2 rule that a reason set is a LOWER bound. Not a
+      unilateral edit.
 
 ### The wire-format break, both halves from one java commit
 - [ ] **THE THIRD READER — candor-rust `candor-query::load_hierarchy`** deserializes the sidecar as a strict
@@ -490,6 +525,46 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       parameter still dispatches over the protocol's conformers. **`NameKeyedStateTests` cannot see it** —
       it derives the map SET and checks classifications, not whether each BINDER SITE honours them. Its
       author named that limit; this is the limit biting.
+
+### Found by re-checking two rust guards from this wave that the review probed and did not confirm
+Both were sent as "establish whether this is reachable, or record precisely why it cannot happen". One was
+reachable and is fixed; the other's claim held with one word wrong. Neither would have been found by a
+suite or an A/B — the first needs a producer the corpus does not contain, the second is a claim about the
+source rather than about any run.
+- [x] **rust `deps.rs` — the identical-entry exemption (`6f2210c`) compared SERIALISATIONS, not claims.
+      REACHABLE, and FIXED in the type — candor-rust `811bbf3`.** Derived `PartialEq` on a `Vec` is
+      element-wise and order-sensitive, so two entries stating one claim in a different order (or one of
+      them restating a host) read as a DISAGREEMENT, the key was withdrawn, and under ⟨0.21⟩ the
+      consumer's silence is a purity claim — **the same cardinal sin `6f2210c` closed, surviving for any
+      producer that orders a vector differently.** All eight `DepFn` fields are `BTreeSet`s now: the
+      argument is that `apply_dep_fn` folds every one into a set, so the join is invariant under order and
+      multiplicity and set-equality is not a RELAXATION of never-guess but its exact statement. A type
+      cannot be forgotten by the next field; a hand-written per-field comparison can.
+      - **The corpus is a fabrication control here, not evidence, and that was measured before the edit:**
+        over 850 real dep reports, 72 490 key collisions — 65 685 restatements, 6 805 genuine
+        disagreements, and **ZERO set-equal-but-not-vec-equal**; zero entries carry an unsorted or a
+        duplicate-bearing field. §2.1 only admits a report claiming this binary's version and this writer
+        emits every field from a `BTreeSet` — but `scan-{CARGO_PKG_VERSION}` is a CRATE VERSION, not a
+        build id, so a different build of the same version, a hand-written report (the suite writes them)
+        or a future non-set field all pass.
+      - **So the arm was ARMED**, each dep tree re-chained with a second copy of every report whose
+        multi-element arrays are REVERSED. Pre-fix: **pgman loses 7 entries and changes 13** —
+        `app::persist_draft_to` and `app::persist_history_to` lose `['Clock','Fs']` and DISAPPEAR;
+        **ebman changes 47** (live `invisible` disclosures withdrawn); candor-rust loses 1. Post-fix all
+        three are identical to the unarmed baseline, and unarmed the two binaries are byte-identical.
+      - The opposite direction is safe by construction: `DepFn` IS what a consumer inherits, `apply_dep_fn`
+        is its only reader, and equality compares all eight fields.
+- [x] **rust — `dbab8be`'s own "four anchors, one `cover`, one consumer" claim: TRUE in substance, wrong in
+      one word, and now a TEST — candor-rust `8a9618e`.** Enumerated rather than re-read: the three set
+      writes appear exactly once each in the whole workspace and all sit inside `cover`; `untrusted` and
+      `incomplete_pkgs` are CONSUMED at exactly one place (the κ-ledger `covered` predicate), with every
+      downstream surface reading the one `coverage_ledger`/`global_blind` derived from it. **The comment
+      said "read nowhere else in the engine", which is false** — `load_dep_reports` reads both again for
+      its two stderr disclosures. `coverage_has_exactly_one_anchor_and_exactly_one_consumer` now derives
+      the writes and the consumers out of the source at test time (the `NameKeyedStateTests` shape), with
+      four mutants and four named failures including a vacuity floor. **Whoever ports the incompleteness
+      door to another engine: the anchor count is per-engine — java's was 2, swift's 3, rust's 1 — and
+      "all N funnel through one closure" is a claim a fifth site added later silently breaks.**
 
 ## CARRIED FORWARD — the vein's own rows are all closed; these are what it uncovered
 
