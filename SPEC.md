@@ -1805,6 +1805,53 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.24 (IN PROGRESS — engines landing; NOT yet conformance-pinned, and no engine declares it yet)** — a
+  **tier-1** rung, and the first one whose primary change can **turn a currently-green gate RED**. Read the
+  verdict note below before adopting.
+
+  **Primary: §6.2's reason-class projection CONTRIBUTES `unresolved` rather than defaulting to it.** The old
+  rule keyed on ABSENCE — "a function whose `Unknown` carries no recorded reason *is treated as*
+  `unresolved`" — which fires only when the class set is *empty*, so acquiring a *second*, classifiable
+  reason **removed** the default. That is a counterexample to the monotone-denial corollary the formal model
+  proves (`reference/policy_model.py`, Lemma 2: `Reject` is upward-closed, so no signature can be *relaxed*
+  by learning more about it). Measured: a function calling one reasonless dep was rejected under
+  `deny E Unknown[unresolved]`, one calling a correctly-reasoned dep was not, and **one calling BOTH was
+  not**. `CONTRIBUTES` keeps the fail-closed intent — an unclassifiable hole still matches a narrowed
+  filter — and restores monotonicity.
+
+  **VERDICT IMPACT, stated plainly because it is the adoption cost.** The new rule matches a strict superset:
+  a function carrying both a reasonless `Unknown` and a classified one now contributes `unresolved` where it
+  previously did not, so a `deny E Unknown[<class>]` gate can go **exit 0 → exit 1** on unchanged code. That
+  is the *correct* verdict — the old pass was the silent relaxation Lemma 2 forbids — but it is a break for
+  anyone gating on it, and it is not fixed by re-baselining a report. Engines SHOULD name the new matches in
+  the disclosure rather than letting a build fail without explanation.
+
+  **Secondary, additive: `ambiguous:` is a fifth §4 kind.** §6.2 has always projected `ambiguous:*` to
+  `dispatch`, so a CONSUMER classified it correctly while a PRODUCER emitting it was non-conforming — an
+  asymmetry that survives because a consumer never complains about a token it can classify. Removing it was
+  measured and rejected (8710 of 19607 `Unknown`-bearing entries on candor-rust;
+  `deny E Unknown[dispatch]` would go from 58 of 200 crates to **0 of 200** — a deletion of the verb, not a
+  narrowing). It also names what no other kind can: no owner type was ever formed, and no function value is
+  involved.
+
+  **Also, §3.1 — an UNANSWERABLE frontier condition is disclosed, never scored as a failed one.** Three
+  inputs now collapse to the same answer, over-list rather than drop: a **dot-free** `dispatch:` detail (no
+  owner could be formed), and an **empty or unparseable** §2.2 hierarchy sidecar. All three were silently
+  dropping entries from `possibleViaUnknownDispatch`, which a consumer reads as "nothing may reach the
+  target through an unresolved dispatch" — about calls the engine had explicitly charged `Unknown`. The
+  clause additionally pins the **mixed source** (one entry, `viaDispatchOn` = the sorted, deduplicated,
+  comma-joined union) and names the **collation** (Unicode code point ≡ UTF-8 byte order; UTF-16-natural
+  comparators must compare explicitly). This half is a **three**-surface query — the Swift engine ships no
+  `callers` verb, being the producer that writes the sidecar *for* the other engines.
+
+  Two corrections to this document ride the rung, both recorded because of how they survived. §3.1 asserted
+  *"the Rust scanner emits no `dispatch:`"* and therefore returns an empty frontier "by language model, not
+  a gap" — the scanner emits it for every dispatch reason in a 1062-report census, so **the specification
+  had promoted the bug's symptom to an invariant**, in the one place an auditor would look to confirm it was
+  not a bug. And the absence-keyed §6.2 rule was **in this file**, not invented by the implementations:
+  every engine was conforming, and the divergence was between the *model* and the *contract* — a class of
+  defect no amount of four-way implementation agreement can surface.
+
 - **0.23 (all code engines declare `0.23`; conformance-pinned four-way)** — a **tier-1 additive** rung: the
   **cross-package interface-dispatch** rung (§2, `WORKSPACE-CHAINING-DESIGN.md`). Adds the optional
   **`interfaceUnion`** report entry — a synthetic `pkg#Iface.method` union over a package's local implementers
