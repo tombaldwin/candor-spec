@@ -950,7 +950,36 @@ the only verdict-changing one — do not bundle them.
 - [x] **4c. The §3.1 frontier rung** — dot-free disclosed, empty sidecar ≡ absent, mixed source pinned,
       collation named. **rust `a11adf1`, java (3 commits), swift `5f9e75e` (producer half — no `callers`
       verb), ts in flight.** Three-surface, not four.
-- [→] **4d DISPATCHED as PART 27 — and the audit that preceded it IS the finding.** `grep -c` over
+- [x] **4d DONE — conformance PART 27 (`dc892a7`), 45 live cells, every row VERIFIED-TO-CATCH in isolated
+      worktrees.** `gen_rung024.py` + a both-ways ratchet. Seven rows: CONTRIBUTES, the `viaDispatchOn`
+      exact literal, the dot-free frontier (3 shapes × 2 arms), the sidecar triple, `--class`, `gate
+      --report`, and locale. **All fixtures are hand-written reports, so the classifier is out of the loop
+      entirely** — a divergence is a CONSUMER defect, which is where ⟨0.24⟩ found every one of its defects.
+      Rows scoped honestly: R2–R4 three-surface (swift ships no `callers`), R6 two-engine (rust/ts lack the
+      verb), both printing **NOSURF with the reason** rather than skipping.
+      **TWO REAL DEFECTS FOUND ON HEAD, both waived with hand repros:**
+      - **java's `unverified --class` never landed the §6.2 repair** the other three carry: `--class
+        unresolved` selects **nothing** where they select three, `--class dynamic` **2 of 7**. Its GATE half
+        is clean — §6.2's own diagnosis, an open-coded second copy consumer-side.
+      - **FOUR-WAY: nobody implements the `--class` VALUE GRAMMAR.** `--class dyanmic` and a repeated
+        `--class` are specified exit 2; all four exit **0**. Not a divergence — a **shared gap**, the
+        suite's only `engine: "*"` waiver, and a clause I wrote today that no engine implements.
+      **The harness caught two of its own faults, both by measuring rather than reviewing.** A zero-byte jar
+      made three cells print *"the frontier came back empty"* and *"unfiltered selected 0/7"* — sentences
+      about candor from a CLI that never started; fixed with an empty-stdout ERROR plus a `--help` liveness
+      probe. And scanning each locale into its own DIRECTORY reported swift as locale-dependent, because
+      swift derives the package name from the containing directory — **the harness's own path was leaking
+      into the bytes it was diffing.**
+      **R4's equivalence assertion alone did NOT catch** java's `hasHier` deletion, because ts's absent path
+      normalises to `{}`; adding the over-listing assertion caught it on both. *Equality between two arms is
+      weaker than equality plus a positive claim about what must survive.*
+      - [x] **The open question ANSWERED and specced (`05158db`)**: swift's `gate --report` REFUSED the
+            CONTRIBUTES counterexample instead of firing, and that is **over-broad**. The refusal is now
+            MINIMAL: refuse only when the absent datum could CHANGE the answer. The class set only grows and
+            `Reject` is upward-closed, so if the entry-alone classes already intersect the filter the rule
+            FIRES — missing data could only add matches. **First place the document uses monotone denial to
+            DO something rather than to be preserved.**
+      ORIGINAL — 4d DISPATCHED as PART 27 — and the audit that preceded it IS the finding.** `grep -c` over
       `run.sh` returns **0** for `CONTRIBUTES`, `viaDispatchOn`, `dot-free`, `--class dynamic` and locale:
       **a whole rung of normative requirements shipped today with no differential behind any of its
       behaviour.** Seven rows briefed, each verified-to-catch, scoped to the engines that actually have the
