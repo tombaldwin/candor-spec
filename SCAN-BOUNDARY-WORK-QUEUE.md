@@ -903,7 +903,32 @@ the only verdict-changing one — do not bundle them.
       resolve against. Sent to rust with 8710 entries at stake.
       Control: `banana:whatever` unchanged, asserted at model level AND end-to-end. **Four mutations, each
       caught** — including catch-all→`DISPATCH` (the blanket), which failed BOTH controls. No verdict change.
-      - [→] **rust DISPATCHED** with both predictions + 4a. ts/swift after.
+      - [x] **rust: ONE representation, structurally immune** (`0a3e6c9`). Raw `kind:detail` strings out,
+            one prefix table in, already right since ⟨0.19⟩. **Both predictions answered NO**: it is not
+            emitting a kind it cannot parse back (no typed vocabulary to lack it), and its frontier is
+            **KIND-keyed** (`strip_prefix("dispatch:")`) so `ambiguous:` is excluded for free — **0 wrongly
+            admitted**, now pinned by a fixture running the kind-keyed frontier and the class-keyed
+            `blindspots --class dispatch` over ONE report: the class selector returns the entry, the
+            frontier does not.
+      - [x] **swift: ONE representation too — NO production change, zero source diff** (`0855fff`). Its
+            `reasonClass` `dispatch` arm has read `ambiguous` since `8b0a660` (the ⟨0.19⟩ port), traced not
+            assumed. No `Kind` enum, union, validator or accepted-prefix set anywhere; every consumer routes
+            through `reasonClass`. **Emits none but RELAYS them** — `Deps.swift:387` copies a dep's tokens
+            verbatim, so a chained rust `ambiguous:` lands in swift's own report and is gated on there.
+            No class-where-kind instance (it ships no `callers`/`blindspots`, and nothing parses a
+            `dispatch:` detail into `owner.member`).
+            **ITS MUTATION TABLE UPGRADED A SPEC SHOULD TO A MUST** (`fc501bb`): rewriting the prefix test
+            from *is the kind in the SET* to *does the token have the `kind:detail` SHAPE* passes EVERY
+            assertion about EVERY real kind — they all have the shape — and is caught **solely by the
+            fabricated kind**. Load-bearing in 3 of 4 mutations, sole detector in one. *A control only
+            exercised by inputs the implementation already handles is not a control.*
+      - [→] ts pending.
+      - [ ] **NEW, opened by swift: two OFF-VOCABULARY kinds in the field.** `dynamicMemberLookup:` is mild
+            (absent from §4, registered in §6.2's table — the same asymmetry `ambiguous:` sat in).
+            **`contentsOf:indeterminate-url-scheme` is registered NOWHERE** and **answers a different
+            question from the five**: all five mean *"the body could not be resolved"*, this means *"the
+            call resolved; its effect CATEGORY is unprovable"*. Recorded in §4, not reconciled — either fix
+            changes report bytes.
       - [x] **conformance PART 10 FIXED (`2efe0bf`) — it CONTRADICTED the spec and would have hard-DIVERGEd
             any engine implementing ⟨0.24⟩ in the field, two ways.** `CANON` still held four kinds with
             `ambiguous` in a warn bucket and `dep:`/`dep-stale:` in none. Worse, the dispatch-detail check
