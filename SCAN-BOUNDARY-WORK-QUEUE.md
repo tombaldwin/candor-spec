@@ -92,6 +92,20 @@ now scopes the headline claim because of it.
    the measurement into the product's report. Instrument freely, but treat the probe as an ARM to be
    removed, and never leave one in a path the engine walks over itself. (Cf. item 7: this is the same
    family as reading a stale artifact — the tool and the thing measured are the same object.)
+7f. **CONCURRENT AGENTS SHARE THE BINARIES, THE HARNESS AND THE SCRATCHPAD — A MUTATION TEST IS A
+   DESTRUCTIVE WRITE TO SOMEBODY ELSE'S MEASUREMENT.** Four per-engine agents ran at once, every one of
+   them instructed (correctly) to verify guards by mutating them out and re-running the shared four-way
+   conformance suite. I did the same thing myself to prove PART 22 catches a dropped surface: deleted the
+   `paths` fold from rust's `apply_dep_fn`, rebuilt the shared release binary, ran conformance, restored.
+   The rust agent's conformance run landed inside that window and reported a divergence — `cmds` travelled,
+   `paths` did not — **which it could not reproduce in 129 subsequent runs and honestly flagged as
+   unexplained.** It was mine. Two further collisions the same hour: one agent clobbered another's
+   scratchpad directory, and a candor-java jar rebuilt mid-run aborted a conformance pass.
+   - **A divergence on an engine that is not yours is not your finding** until it reproduces.
+   - Keep mutation windows short; restore before touching the shared suite.
+   - The orchestrator owns this: fanning out per-repo work is safe, but per-repo agents that all run ONE
+     shared differential harness are not isolated, and saying "one agent per repo, no file conflicts" is
+     true of the source and false of the build outputs.
 8. **An A/B diff cannot show that a mechanism never fires, or fires on the wrong thing.** It shows what
    CHANGED. Two defects this vein produced had perfectly clean A/Bs: `typeSurface` was near-inert because
    the producer read module names as types, and swift's half-1 provenance conjunct was matching `max()`,
@@ -1534,3 +1548,44 @@ The two that were right as stated (swift's ternary `||`, swift's pattern binders
 **A verified finding is a verified SYMPTOM.** The verifier's job is to prove the failure is reachable; it is
 not to design the repair, and a brief that hands over the reviewer's proposed remedy as if it were settled
 will get it built.
+
+### rust's five-shape sweep — 3 of 5 PRESENT, and the worst one was where it was predicted
+
+The sweep hypothesis (a shape found in one engine belongs swept in all four) paid immediately.
+
+- **1. An untrusted report still grants coverage — PRESENT, `069b4c0`.** The predicted one, and the worst.
+  §2.1 downgraded a stale report's effects to `Unknown` while the same load registered its package in
+  `DepIndex::crates` — the set that EXEMPTS a crate from the κ ledger. So every function the distrusted
+  report did not mention became a purity claim with `invisible`, `coverage.uncovered` and the stderr line
+  all gone. Split into `crates` (the join gate) and `untrusted` (the claim that silence is informative).
+  Measured on real trees restamped to a previous build: ebman 483→584 entries with 389 `invisible` gains
+  and **13 crates re-entering the ledger** (`ratatui` at 2977 calls, silently claimed covered); pgman
+  195→244. **Verified independently:** a consumer calling a PURE dep fn under a stale report now discloses
+  `invisible: ['deplib']` + `coverage.uncovered: [deplib]`, where it previously read as a clean purity claim.
+- **2. An unordered walk — ABSENT, now pinned `b16dd38`.** `resolve_target` filters on `v.len() == 1` — it
+  REFUSES rather than picks — and the dep index removes colliding keys. **The never-guess rule that
+  prevents fabrication is what makes it order-independent**, which is a nice structural result. Gate added
+  (123 targets × 5 runs byte-identical, with a probe confirming `RandomState` really reseeds). Note the
+  agent's first fixture COULD NOT WITNESS the property — its hits came from a walk-ordered `Vec`; it needed
+  a type implementing two traits with differing defaults to reach a genuinely hash-ordered container.
+- **3. A disclosure lost to a cache — ABSENT-BY-ACCIDENT, closed `34e425e`.** The abort/ordering paths are
+  sound, but `MergedDecls` has 17 fields and the digest hashed 16 (`deref_target` missing). It costs
+  nothing ONLY because the deref chase reads it live rather than baking it into an FnInfo — every other
+  receiver-typing rung of the last month landed in `CallCollector`. **The reflective guard that promised
+  "add a field → the build fails" could not deliver it** (two hand-maintained lists, so binding the field
+  `_` restored the build). One macro now generates both.
+- **4. A trust marker failing open — PRESENT, `e429a0e`.** ts's exact shape is impossible (`unresolved` is
+  derived), but the ⟨0.19⟩ reason class was lost instead: `deny Unknown[indirect]` exited 0 on a function
+  whose dep report NAMED `indirect`. Partial, which is why it survived — bare `deny Unknown` and
+  `[dynamic]` both fired; only the class-targeted middle, which is how the ratchet is adopted, read green.
+- **5. A flag outliving its scope — PRESENT, `05d0ee9`.** `fn f(s: &dyn Store) { for s in 0..3 { s.go(); } }`
+  charged `f` with `Fs` on a `u8`. **`scoped_var` DID clear `vars`, and `vars` is read before `trait_vars`
+  — so every TYPABLE shadow is masked by precedence and looks perfect**; only a shadow that types to
+  nothing exposes it, and the agent's five typed-shadow fixtures all passed. Instrumented: 72,872 binder
+  calls, 116 shadowing a live entry, **76 hitting the exact precondition** on named real crates (cap-std,
+  clap_builder, h2, ignore) — latent, one effectful impl away from being charged.
+
+**Deliberately not fixed, and correctly:** rust emits `ambiguous:same-name local defs` — outside the closed
+§4 vocabulary — **757 times across 253 crates**, and PART 10 misses it because the harness's own fixtures
+never produce that kind. Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
+`deny Unknown[dispatch]`. Wants its own measurement and probably the spec's migration mechanism.
