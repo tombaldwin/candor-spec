@@ -1430,6 +1430,26 @@ Each was refused or deferred with a measurement, not left undone. None is a know
    - The orchestrator owns this: fanning out per-repo work is safe, but per-repo agents that all run ONE
      shared differential harness are not isolated, and saying "one agent per repo, no file conflicts" is
      true of the source and false of the build outputs.
+   - **RECURRENCE 2026-07-27, and this time the rule I broke was "one agent per repo" itself.** I
+     dispatched a follow-up into candor-rust for the frontier literal pins while a *second* agent was
+     already live in candor-rust on the sidecar false-disclosure. Both edited `crates/candor-query/tests/
+     cli.rs`. The frontier agent noticed only because the **test count jumped 53 → 55 between two of its
+     own mutation runs**, and it then saw 3 bin unit tests red that had been 23/23 green at its baseline —
+     the other agent's in-flight state, not a regression it had caused.
+     It handled the collision better than I set it up: reversed its own mutant **immediately** on
+     discovery (a concurrent `cargo test` would otherwise have shown failures from a deliberately-broken
+     join and sent the other agent chasing a ghost), then reconstructed a my-changes-only `cli.rs`,
+     verified by diff that it equalled the working file minus exactly the other block, and staged it via
+     `git hash-object -w` + `git update-index --cacheinfo` so its commit carried only its own version
+     while the working tree kept the other's. **A plain `git add -A` from either side would have swallowed
+     the other's work** — which is the same failure as [[feedback-evidence-dirs-are-sacred]], one repo over.
+     Outcome was clean (`276838c` + `97c1a2b`, working tree clean, `cargo test --workspace` 14 legs exit 0),
+     but that was the agent's recovery, not my orchestration.
+     - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
+       independent in subject matter are not independent if they touch the same repo. Sequence them, or
+       give the second a worktree.
+     - A test-count change you did not cause is the cheapest available collision detector. Nothing else
+       reported this — the tree looked fine, both agents' work was correct, and the only signal was 53→55.
    - **AND OF candor-spec ITSELF, which is worse: `git add -A` there COMMITS ANOTHER AGENT'S IN-FLIGHT
      EDIT under your message.** 2026-07-27: the SPEC §2.2 + CHANGELOG halves of the java hierarchy-sidecar
      rung (`bb8459a`) were written into the working tree and swept, minutes later, into `272e423` — a
