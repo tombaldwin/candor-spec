@@ -667,6 +667,54 @@ class of thing PARTs 18–22 exist to catch — and each of them fixes one spell
       generators are individually runnable with `--baseline`, so the mechanism for splitting already
       exists.
 
+### 2c — WHAT THE TARGETED REVIEWS FOUND (2026-07-27/28) · one real defect, in the least-covered component
+
+Three lenses, each chosen for a NAMED reason to be under-checked rather than for generic diligence:
+candor-agents (four clauses in one pass, verdict-changing, **no conformance PART covers it at all**), the
+four independent `--class` fixes (fabrication-mirror risk), and my own floor bump (the only work of the day
+not written by an agent and checked by a second party).
+
+- [→] **FINDING 1 (real, verified LIVE, dispatched): §6.2's transitive class resolution STOPS AT THE
+      `--link` BOUNDARY — and BOTH failure modes the spec names fire at once.** The gate's `Unknown` reach
+      includes linked code entrypoints; the CLASS resolution does not (`link_code_report` keeps only
+      `inferred`; `build_functions` drops the pseudo-node; the code report's `unknownWhy` never reaches
+      `transitive_reason_classes`).
+      - `deny Unknown[dispatch] runner` → **exit 0** on a unit whose transitive `Unknown` is *exactly*
+        dispatch-classified — requirement 2's failure text verbatim, *"excluded by every filter, including
+        one naming its own class."* **An under-report.**
+      - `deny Unknown[unresolved] runner` → **exit 1**, charging `unresolved` to an `Unknown` correctly
+        classified `dispatch` at its source — **the mirror fabrication requirement 3 forbids**, firing
+        through the absence-keyed arm CONTRIBUTES exists to replace.
+      - The verdict **omits `reasonClass` entirely**, which the spec makes a MUST.
+      **THE TESTS COULD NOT SEE IT, for the reason I made a MUST hours earlier**: the existing `--link`
+      control uses `unknownWhy: ["banana:whatever"]`, which classifies `unresolved` ANYWAY — so it passes
+      whether or not linked reasons are consumed at all. *"A control only exercised by inputs the
+      implementation already handles is not a control"* — written into §4 this afternoon, and violated in a
+      test written this evening.
+- [ ] **FINDING 2 (judgment, well-argued, NOT dispatched): the `Net[…]` widening.** The fail-open IS closed
+      (old dropped the rule and exited 0; new exits 1, both reproduced). But `deny Net[known-telemetry]` now
+      fires on **all** `Net` — fail-closed and loud, yet a legitimate narrow rule becomes a permanent red on
+      any `Net`-holding fleet. **The reviewer's counter is the strong part**: the commit argued "no
+      `netClass` is emitted, so honouring it would fail open", which elides that §6.2's classifier is
+      defined fail-closed over HOST LITERALS — and this engine *does* have `cmds`/`hosts` surfaces, so
+      everything not positively identified is `unknown-host`. That is implementable, and for
+      `deny Net[unknown-host]` it would coincide with what shipped. Exit-2 refusal (the §3.1 answerability
+      precedent) was the other spec-consonant option. Also: the widening is disclosed on **stderr only** —
+      `--gate-json` carries no record that the rule's semantics changed, so a SARIF/CI consumer sees
+      violations under a rule text whose meaning was silently altered.
+- [ ] Minor, from the same review: the widening message is Net-specific wording for any bracketed effect
+      (`deny Fs[x]` gets "scopes by destination class"); and the candor-query parity harness never feeds a
+      bracketed form, so **cross-impl agreement on the new grammar is unpinned** — while
+      `deny Net[unknown-host]` verdicts now deliberately diverge from candor-rust's, with the divergence
+      nowhere recorded as deliberate.
+- [x] **Verified sound, each checked against the claim rather than taken from the commit message**: `pure`
+      (A/B both directions, non-tautological control), `Llm` (single-sourced, co-emits `Net`, `Db` alone),
+      the `Unknown[class]` grammar (bare ≡ `[*]` ≡ `[unresolved]` ≡ `[dynamic]`, and the
+      all-unrecognised→ALL fallback is the correct SIDE because the exit-2 rule is explicitly the
+      query-side flag and this engine ships no §3.1 verb), CONTRIBUTES gating within fleet reach, the
+      sidecar denylist (all seven, trailing-segment-only), and the locale control (non-vacuous in fixture
+      AND platform, with a disclosed SKIP rather than a vacuous pass).
+
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
 - [ ] **FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
