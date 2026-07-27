@@ -674,8 +674,31 @@ candor-agents (four clauses in one pass, verdict-changing, **no conformance PART
 four independent `--class` fixes (fabrication-mirror risk), and my own floor bump (the only work of the day
 not written by an agent and checked by a second party).
 
-- [→] **FINDING 1 (real, verified LIVE, dispatched): §6.2's transitive class resolution STOPS AT THE
-      `--link` BOUNDARY — and BOTH failure modes the spec names fire at once.** The gate's `Unknown` reach
+- [x] **FINDING 1 FIXED (candor-agents `f83b3c8`) — reproduced exactly, and the agent CORRECTED MY BRIEF.**
+      `link_code_report` now resolves each linked report's **own transitive** reason classes (the
+      `.callgraph.json` sidecar **unioned with the rows' `calls`**, so it works sidecar-less) and seeds them
+      into the direct map before propagation. Post-fix: `[dispatch]` → exit 1 with
+      `reasonClass: ["dispatch"]`; `[unresolved]` → exit 0; bare/`[*]`/`[dynamic]` unchanged.
+      **THE MUTATION TABLE IS THE EVIDENCE, and its middle row is the good one:**
+      | mutation | result |
+      |---|---|
+      | seed dropped (= pre-fix) | **12 of 13 fail** — survivor is the non-fabrication pin, correct in both states |
+      | **seed from the entry's DIRECT `unknownWhy`** (the tempting wrong fix) | **exactly the 4 inherited-case checks fail** |
+      | source-side fail-close removed | the masking check flips to exit 0 — the under-report restored one layer up |
+      That middle row is the whole point: `unknownWhy` is direct-only by §4 design, so seeding from it looks
+      right and silently misses every case where the code report's `Unknown` is reached a frame deeper.
+      **MY BRIEF WAS WRONG and the agent said so.** I asked that `[unresolved]` behaviour be "unchanged —
+      all four still fire today", but direction 2 REQUIRES `[unresolved]` to **stop** firing on the
+      linked-dispatch unit; that is the fabrication half. It scoped "unchanged" to the unlinked fleet
+      (where every pre-existing check passes untouched) and pinned the correct behaviour instead of the
+      one I asked for.
+      Also: a linked `Unknown` with no resolvable reason now contributes `unresolved` **at the pseudo-node**
+      rather than via the join's empty-`classes` arm — without which a unit inheriting BOTH a classed and a
+      classless linked `Unknown` has a non-empty set, never reaches the net, and is dropped by every
+      narrowed filter. And `classify_reason`'s code-prefix table is **no longer dead**; its docstring now
+      names the single production path instead of claiming one it did not have.
+      463 checks / 0 failed on Python 3.9 and 3.12.
+      ORIGINAL — FINDING 1: §6.2's transitive class resolution STOPS AT THE `--link` BOUNDARY — and BOTH failure modes the spec names fire at once.** The gate's `Unknown` reach
       includes linked code entrypoints; the CLASS resolution does not (`link_code_report` keeps only
       `inferred`; `build_functions` drops the pseudo-node; the code report's `unknownWhy` never reaches
       `transitive_reason_classes`).
