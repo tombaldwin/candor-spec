@@ -4991,3 +4991,43 @@ from a reasonless source and found rust firing — nearly filed it. But that cla
 the real case is an EMPTY class set, not a reasonless one, and the difference is exactly the difference
 between "resolved to nothing" and "could not be resolved". **Every fix here now needs its mirror checked —
 withholding is precisely where the under-report gets reintroduced.**
+
+## ts's round 1 — CLOSED (`be739fa`, `de2b2a1`, `df85cfd`), and my severity call was wrong
+
+Two items dispatched, **three defects fixed**, and the one I graded LOW-MEDIUM was the largest in the round.
+
+**I called `inferred: [1]` "LOW-MEDIUM, narrow".** Measured: **12 of 14 corrupt shapes gated GREEN**; all 14
+refuse now. `inferred: [1]` was the smallest instance of an idiom that was live on `unanalyzed`,
+`analyzed.count`, AND the chained-dep join — where it was **both a silent under-report and a live
+fabrication reaching a consumer's own report.** I graded the instance I was shown rather than the idiom it
+was an instance of, which is the same error as scoping a clause to where its defect was found.
+
+**FIX 3, found by the sweep and not in the brief, is the worst of the three.** On the chained-dep route,
+`functions: "oops"` / `{}` / `inferred: null` put the caller **ABSENT from `functions`** with no
+`invisible`, no `coverage.uncovered`, no verdict block — **strictly more confident than not chaining the
+dep at all.** That is the count-0 defect arriving through a different key. The fabrication mirror sat on the
+same line: `inferred: "Fs"` iterated into `['F','s']`, writing two invented effects into the consumer's
+report. **Its first attempt at this fix was wrong and measuring caught it** — withholding coverage alone
+left a `crossDeps` cell that short-circuits `chargeExternalDecl` before the coverage check, so the fix
+*moved* the under-report rather than closing it.
+
+**The MCP `candor_gate` tool had the multi-report hole identically**, returning `{ok:true,violations:[]}`
+to an AGENT with the disclosure on the *server's* stderr — a channel no agent reads. Read-only tools
+deliberately left alone.
+
+**The empty-coercion sweep came back with a ruling on every idiom**, which is the output shape I want from
+these: 7 fixed as the same defect; 8 kept as legitimate absent-defaults with the reason each (Map/graph
+misses over already-normalised entries, an advisory κ ledger the gate reads separately, a callgraph already
+tagged `partial`); 7 keys deliberately out of scope because no verdict reads them and refusing there is a
+spurious-refusal machine — **pinned by a control row**, so the scope decision is itself tested.
+
+**Verified on real code, not just fixtures:** byte-equality over two corpora scanned at HEAD — hal-explorer
+(45 entries) and ukri-tfs (4121) — byte-equal across `deny Net`/`deny Fs`/`pure`, **zero spurious refusals
+over 4166 real entries**, and ukri-tfs exits 1 so the check is non-vacuous. That is the control that makes
+"refuse on corrupt input" safe to ship: the fear with a new refusal is that it fires on healthy code.
+
+- [ ] **NEW — MCP `candor_gate` implements NO ⟨0.21⟩ incompleteness rule at all.** It returns `{ok:true}`
+      over a report declaring `unanalyzed` units where the CLI exits 2. Reported not fixed: it needs a
+      tool-result shape decision (`incomplete`/`unanalyzed` keys). **The agent-facing surface is the one
+      where a false all-clear is acted on without a human reading it.** Check the LSP surface too, and the
+      other three engines' MCP servers.
