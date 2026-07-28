@@ -1,6 +1,6 @@
 {
   "_": [
-    "P3 TRUST MONOTONICITY — the ratchet (conformance PART 26, gen_trust_monotonicity.py).",
+    "P3 TRUST MONOTONICITY \u2014 the ratchet (conformance PART 26, gen_trust_monotonicity.py).",
     "",
     "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an effect should",
     "be: the engine's own `trusted` and `unchained` arms remain the only oracles. Each entry says only",
@@ -9,7 +9,7 @@
     "",
     "IT RATCHETS BOTH WAYS. An unwaived failure fails the suite; a waiver whose cells now all pass ALSO",
     "fails it, so deleting the entry is part of the fix. `split: \"*\"` waives every shape for an",
-    "(engine, arm) pair — a trust defect is a property of the JOIN, not of the call shape — and the failing",
+    "(engine, arm) pair \u2014 a trust defect is a property of the JOIN, not of the call shape \u2014 and the failing",
     "shape list prints on every run so a shrinking defect stays visible.",
     "",
     "Every entry was found by the generator and then RE-DERIVED from a hand-written two-package fixture",
@@ -41,15 +41,9 @@
       "engine": "java",
       "arm": "empty_zero",
       "split": "*",
-      "why": "identical to rust's: an `analyzed.count: 0` report with no functions is read as covered-and-pure, the caller leaves `functions`, and no advisory is emitted. 72/80 live cells ABSENT.",
+      "why": "\u27e80.24\u27e9 FIXED in candor-java `110bec5` \u2014 the count-0 rule lands as a third conjunct on the COVERED set beside \u00a72.1 stale and \u27e80.21\u27e9 incomplete. This waiver is NARROWED, not retired: 16 residual cells over [implicit_conv, lazy_init] where the UNCHAINED REFERENCE ARM IS ALSO ABSENT \u2014 a separate pre-existing \u03ba-reach gap, not this door. CONTROL SEPARATION now SEPARATED on 56/80.",
       "repro": [
-        "dep/Dep.java: public static void readCfg() { Files.readAllBytes(Path.of(\"/tmp/x\")); }",
-        "app/App.java: public static void entry() { dep.Dep.readCfg(); }",
-        "HAND-WRITTEN dep reports, `candor.version` matching the running jar, hash `dep/Dep.readCfg()V`:",
-        "  (unset)      -> entry []  invisible=['dep']  coverage.uncovered=[dep]   hedged",
-        "  good.json    -> entry ['Fs']                                            correct",
-        "  empty0.json  -> entry ABSENT, no coverage field                         SILENT",
-        "`--policy 'deny Fs'`: exit 1 with good.json, exit 0 with empty0.json."
+        "implicit_conv / lazy_init only: the unchained arm is itself ABSENT, so the property has no reference to compare against \u2014 the residual is the \u03ba-reach gap, filed separately."
       ]
     },
     {
@@ -57,14 +51,18 @@
       "arm": "empty_zero",
       "split": "*",
       "why": "same shape as rust and java: an `analyzed.count: 0` report buys full coverage and the caller becomes a silent purity claim. 56/56 live cells ABSENT. CONTROL SEPARATION: INDISTINGUISHABLE.",
-      "repro": ["as the rust entry, with deplib/src/index.ts + app/src/index.ts and CANDOR_DEPS pointing at the hand-written reports."]
+      "repro": [
+        "as the rust entry, with deplib/src/index.ts + app/src/index.ts and CANDOR_DEPS pointing at the hand-written reports."
+      ]
     },
     {
       "engine": "swift",
       "arm": "empty_zero",
       "split": "*",
-      "why": "same shape, 64/72 live cells ABSENT (8 cells hedge for an unrelated reason and are not part of the defect). CONTROL SEPARATION: INDISTINGUISHABLE.",
-      "repro": ["as the rust entry, with a DepLib target and an App target importing it."]
+      "why": "\u27e80.24\u27e9 FIXED in candor-swift `b41b1df` \u2014 the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` \u2014 the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
+      "repro": [
+        "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
+      ]
     },
     {
       "engine": "rust",
@@ -82,13 +80,13 @@
       "engine": "java",
       "arm": "stale_beside",
       "split": "*",
-      "why": "the §2.1 downgrade turns the stale copy's entries into exactly `{Unknown}`, which is non-empty and so sails through the last-non-empty-wins guard and OVERWRITES the trusted report's `Fs`. 72/72 live cells ERASED. Already recorded in ENTRY-COLLISION-DECISION.md as a measured `deny Fs` exit 1 -> exit 0; P3 is where it becomes a standing gate.",
+      "why": "the \u00a72.1 downgrade turns the stale copy's entries into exactly `{Unknown}`, which is non-empty and so sails through the last-non-empty-wins guard and OVERWRITES the trusted report's `Fs`. 72/72 live cells ERASED. Already recorded in ENTRY-COLLISION-DECISION.md as a measured `deny Fs` exit 1 -> exit 0; P3 is where it becomes a standing gate.",
       "repro": [
         "the java fixture above, with stale.json = good.json and `candor.version` changed to `NOT-THIS-BUILD`:",
         "  good.json               -> entry ['Fs']",
         "  'good.json stale.json'  -> entry ['Unknown']    the Fs is gone",
         "`--policy 'deny Fs'`: exit 1 -> exit 0. Disclosed (so `deny Unknown` still bites), which is why it",
-        "is ERASED and not CARDINAL — but a report the engine refused to trust erased a fact from one it did."
+        "is ERASED and not CARDINAL \u2014 but a report the engine refused to trust erased a fact from one it did."
       ]
     }
   ]
