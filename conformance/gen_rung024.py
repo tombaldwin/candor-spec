@@ -1447,8 +1447,25 @@ def row_r10(ws, pols):
             cells.append((eng, "report-parity", ERROR,
                           "the scan produced no report (harness/toolchain)", "a report on disk"))
             continue
+        # ⟨0.24⟩ RESOLVE A PREFIX. Three of the four `_*_scan` helpers return a report LOCATOR (a prefix
+        # like `<dir>/out/r`) because that is what their engine's `--out` takes; only java's returns a
+        # file. R10's first version called `json.load(open(...))` on the locator, so three engines ERRORed,
+        # java landed VACUOUS ("parity needs two"), and **the row never measured anything** — found by a
+        # candor-rust agent reading my code, not by me. The per-row vacuity floor is what turned it into a
+        # visible failure instead of a green row describing nothing; without that floor this would have
+        # read as four-way parity confirmed.
+        path = rep
+        if not os.path.isfile(path):
+            import glob as _glob
+            cand = sorted(c for c in _glob.glob(rep + "*.json") if "callgraph" not in c
+                          and "hierarchy" not in c and "locs" not in c)
+            if not cand:
+                cells.append((eng, "report-parity", ERROR,
+                              "no report file at locator %r (harness: prefix not resolved)" % rep, ""))
+                continue
+            path = cand[0]
         try:
-            d = json.load(open(rep))
+            d = json.load(open(path))
         except Exception as e:
             cells.append((eng, "report-parity", ERROR, "report did not parse: %s" % e, ""))
             continue

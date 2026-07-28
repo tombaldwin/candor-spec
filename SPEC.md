@@ -1350,7 +1350,16 @@ are the same one: *pinning a field from a description instead of from the artifa
 running the thing is a fifth guess, not a constraint.
 
 ⟨0.24⟩ **`errors[].accepted` IS AN ARRAY OF TOKENS, and `kind` is drawn from a CLOSED set** —
-`reason-class/alias`, `Net destination-class`, `effect-name`, `rule-kind`. Measured divergence already
+`reason-class/alias`, `Net destination-class`, `effect-name`, `rule-kind`, `rule-form`.
+
+⟨0.24⟩ *`rule-form` was missing and the set was wrong the day it was pinned — the SIXTH time I have scoped
+a clause to the cases in front of me.* candor-java already emitted `forbid form` and `allow values`: a rule
+whose KIND is recognised (`forbid`, `allow`) but whose FORM is malformed, which none of my four values
+describes. candor-rust, following the spec over the reference engine, mapped those onto `rule-kind` — a
+true statement about a closed set that was itself incomplete. **A closed set is only a constraint if it is
+closed over the domain rather than over the author's sample**; five values with a stated meaning each beats
+four plus an engine quietly widening one. Engines emitting `forbid form` / `allow values` / `rule kind`
+normalise to these spellings; the hyphen is not decoration, it is what makes the value machine-comparable. Measured divergence already
 shipped: java emits `accepted` as an array, **candor-ts emits it as a PROSE STRING** ("reflect, dispatch, …
 aliases: dynamic, *, or a config `unknown-alias`") and additionally names the pinned `kind` field
 `vocabulary` and `rule` field `where`. A prose string is unparseable by the consumer the field exists for,
