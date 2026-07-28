@@ -17,42 +17,12 @@
   ],
   "known": [
     {
-      "engine": "rust",
-      "arm": "empty_zero",
-      "split": "*",
-      "why": "a chained report that lists no functions and says `analyzed.count: 0` (\"I judged nothing\") is read as full coverage: the consumer's caller drops out of `functions` entirely, which under <0.21> is a POSITIVE PURITY CLAIM, and no coverage advisory is emitted. Strictly more confident than the SAME scan with no dep report at all, which discloses `invisible:[deplib]` + `coverage.uncovered`. 64/64 live cells ABSENT.",
-      "repro": [
-        "deplib/src/lib.rs:  pub fn read_cfg() { let _ = std::fs::read(\"/tmp/x\"); }",
-        "app/src/lib.rs:     use deplib::read_cfg;  pub fn entry() { read_cfg(); }",
-        "HAND-WRITTEN dep reports, version matching the running engine (`scan-0.23.1`):",
-        "  good.json   {\"analyzed\":{\"count\":1},\"functions\":[{\"fn\":\"deplib::read_cfg\",\"hash\":\"deplib#read_cfg\",\"inferred\":[\"Fs\"]}]}",
-        "  empty0.json {\"analyzed\":{\"count\":0},\"functions\":[]}",
-        "  (unset)      -> entry []  invisible=['deplib']  coverage.uncovered=[deplib]   hedged",
-        "  good.json    -> entry ['Fs']                                                  correct",
-        "  empty0.json  -> entry ABSENT, no coverage field at all                        SILENT",
-        "`--policy 'deny Fs'`: exit 1 with good.json, exit 0 with empty0.json.",
-        "The wire CAN express the difference and the engine is not reading it: candor-scan on a `pub use`-only",
-        "facade crate emits `analyzed.count: 0`, and on an all-pure two-function crate emits `count: 2`. The",
-        "harness's CONTROL SEPARATION line reports INDISTINGUISHABLE for this engine, which is the diagnosis.",
-        "Live corpus shape: futures@0.3.32's chained report contains zero functions."
-      ]
-    },
-    {
       "engine": "java",
       "arm": "empty_zero",
       "split": "*",
       "why": "\u27e80.24\u27e9 FIXED in candor-java `110bec5` \u2014 the count-0 rule lands as a third conjunct on the COVERED set beside \u00a72.1 stale and \u27e80.21\u27e9 incomplete. This waiver is NARROWED, not retired: 16 residual cells over [implicit_conv, lazy_init] where the UNCHAINED REFERENCE ARM IS ALSO ABSENT \u2014 a separate pre-existing \u03ba-reach gap, not this door. CONTROL SEPARATION now SEPARATED on 56/80.",
       "repro": [
         "implicit_conv / lazy_init only: the unchained arm is itself ABSENT, so the property has no reference to compare against \u2014 the residual is the \u03ba-reach gap, filed separately."
-      ]
-    },
-    {
-      "engine": "ts",
-      "arm": "empty_zero",
-      "split": "*",
-      "why": "same shape as rust and java: an `analyzed.count: 0` report buys full coverage and the caller becomes a silent purity claim. 56/56 live cells ABSENT. CONTROL SEPARATION: INDISTINGUISHABLE.",
-      "repro": [
-        "as the rust entry, with deplib/src/index.ts + app/src/index.ts and CANDOR_DEPS pointing at the hand-written reports."
       ]
     },
     {
