@@ -16,6 +16,8 @@ their own output rather than skipping quietly:
   R5  §6.2 `--class` — `dynamic` excludes only `setup`, narrower filters DISCRIMINATE, and the
            flag's VALUE GRAMMAR refuses a filter it cannot honour                              4-way
   R6  §3.1 `gate --report` — byte-equality, the MUST NOT, and the three answerability refusals 4-way
+  R8  §3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a
+           document that is fail-closed to a NAIVE reader                                      4-way
   R7  §2   LOCALE-INDEPENDENCE — the same input under two collations, byte for byte            4-way
 
   R2/R3/R4 are three-surface (rust, java, ts): candor-swift deliberately ships NO `callers` verb — it is
@@ -986,6 +988,132 @@ def row_r6(ws, pols):
 
 
 # =====================================================================================================
+# R8 — §3.1 PRECEDENCE: a CERTAIN violation dominates a refusal, and a refusal still writes a document
+# =====================================================================================================
+#
+# ⟨0.24⟩ Two clauses, one fixture, and the row exists because FOUR-WAY AGREEMENT WAS THE WRONG ANSWER.
+# Measured on rust, java, ts and swift alike: a policy carrying a firing `deny Fs` PLUS one unanswerable
+# scoped rule exits 2 and writes NO `--gate-json` document. The spec first ratified that, then corrected
+# it within the hour — `Reject` is upward-closed (PAPER3 Lemma 2), so if a rule already fires on evidence
+# the report carries, however the unanswerable rule would have resolved CANNOT UN-REJECT IT. Exit 1 is
+# therefore certain, not merely fail-closed, and it names the violation where exit 2 does not.
+#
+# THE HARM IS IN THE DOCUMENT, NOT THE EXIT CODE, and that is why this row asserts on both. A refusal
+# writes no document, so refusing over a firing rule DELETES A CERTAIN VIOLATION from the machine-consumer
+# channel — the identical harm to candor-rust's incomplete-analysis path, which this same rung is fixing.
+# A row that checked only `exit == 1` would pass on an engine that emitted an empty violation list.
+#
+# TWO CONTROLS, AND NEITHER IS OPTIONAL:
+#   - `deny Net[unknown-host]` ALONE must exit 2. Without it the row cannot distinguish "the violation
+#     dominated the refusal" from "the scoped rule was answerable all along and there was never a
+#     refusal to dominate" — the fixture would prove nothing and would look identical.
+#   - `deny Fs` ALONE must exit 1. Without it a gate that has stopped evaluating anything scores OK.
+# A broken invocation returns ONE code; these three probes demand 1, 2 and 1 across different inputs.
+#
+# THE REFUSAL DOCUMENT is the second cell. On the refuse-only policy a document MUST exist, MUST carry
+# `ok: false` (so a consumer keying only on `ok` lands on FAIL), MUST carry `refused: true`, and MUST NOT
+# carry a `violations` key at all — the gate is making no claim about violations, and an empty array is
+# precisely the claim a refusal cannot make. ABSENT-vs-EMPTY is the whole assertion; `== []` would pass
+# on the fail-open shape.
+
+R8_REPORT = {
+    "candor": {"version": "handwritten", "spec": "0.23"},
+    "package": "app",
+    "analyzed": {"count": 2, "digest": "0"},
+    "functions": [
+        # the FIRING half: unambiguous, evidence in the entry, no transitive step.
+        {"fn": "app.writes", "inferred": ["Fs"], "direct": ["Fs"], "paths": ["/etc/hosts"]},
+        # the UNANSWERABLE half: Net with NO `netClass`, so `deny Net[unknown-host]` cannot be decided.
+        {"fn": "app.calls", "inferred": ["Net"], "direct": ["Net"]},
+    ],
+}
+
+
+def row_r8(ws, pols):
+    cells = []
+    for eng in ENGINES:
+        if not present(eng):
+            cells.append((eng, "precedence", ABSENT, "", ""))
+            cells.append((eng, "refusal-doc", ABSENT, "", ""))
+            continue
+        loc = write_report(ws, eng, R8_REPORT)
+
+        rc_fire = q_gate(eng, loc, pols["r8_fire_only"])
+        rc_refuse = q_gate(eng, loc, pols["r8_refuse_only"])
+        gj = os.path.join(ws, "r8.%s.mixed.json" % eng)
+        if os.path.exists(gj):
+            os.remove(gj)    # DELETE BEFORE MEASURING — a stale artifact here reads as a pass.
+        rc_mixed = q_gate(eng, loc, pols["r8_mixed"], gate_json=gj)
+
+        if rc_fire is None:
+            cells.append((eng, "precedence", NOSURF, "no `gate --report` verb on this engine", ""))
+            cells.append((eng, "refusal-doc", NOSURF, "no `gate --report` verb on this engine", ""))
+            continue
+        if rc_fire != 1 or rc_refuse != 2:
+            cells.append((eng, "precedence", ERROR,
+                          "CONTROLS did not separate: `deny Fs` alone -> %s (want 1), "
+                          "`deny Net[unknown-host]` alone -> %s (want 2). Without both, the mixed probe "
+                          "cannot distinguish domination from there having been no refusal to dominate"
+                          % (rc_fire, rc_refuse), "controls 1 and 2"))
+            cells.append((eng, "refusal-doc", ERROR, "precedence controls failed; document cell moot", ""))
+            continue
+
+        bad = []
+        if rc_mixed != 1:
+            bad.append("firing + unanswerable in one policy -> exit %s, want 1 (Lemma 2: an absent datum "
+                       "cannot un-reject a rule that already fires)" % rc_mixed)
+        doc = None
+        if os.path.exists(gj):
+            try:
+                doc = json.load(open(gj))
+            except Exception as e:
+                bad.append("the verdict document did not parse: %s" % e)
+        else:
+            bad.append("no `--gate-json` document was written at all")
+        if isinstance(doc, dict):
+            vs = doc.get("violations")
+            if not vs:
+                bad.append("the document carries NO violations — the certain `deny Fs` finding was "
+                           "deleted from the machine-consumer channel, which IS the harm this row is "
+                           "about; the exit code alone would not have shown it")
+            elif not any("writes" in json.dumps(v) for v in vs):
+                bad.append("the document's violations do not name `app.writes`: %r" % (vs,))
+        cells.append((eng, "precedence", OK if not bad else FAIL,
+                      "; ".join(bad) or "exit 1 and `app.writes` present in the document",
+                      "exit 1 + violation in document"))
+
+        # -- the refusal document ------------------------------------------------------------------
+        gj2 = os.path.join(ws, "r8.%s.refusal.json" % eng)
+        if os.path.exists(gj2):
+            os.remove(gj2)
+        q_gate(eng, loc, pols["r8_refuse_only"], gate_json=gj2)
+        bad = []
+        if not os.path.exists(gj2):
+            bad.append("a refusal wrote NO document, so a CI wrapper reading this path re-reads the "
+                       "PREVIOUS run's verdict as current")
+        else:
+            try:
+                d2 = json.load(open(gj2))
+            except Exception as e:
+                d2 = None
+                bad.append("the refusal document did not parse: %s" % e)
+            if isinstance(d2, dict):
+                if d2.get("ok") is not False:
+                    bad.append("`ok` is %r, want false — a consumer keying only on `ok` must land on FAIL"
+                               % d2.get("ok"))
+                if d2.get("refused") is not True:
+                    bad.append("`refused` is %r, want true" % d2.get("refused"))
+                if "violations" in d2:
+                    bad.append("the document carries a `violations` key (%r) — a refusal makes NO claim "
+                               "about violations, and an empty array is exactly the claim it cannot "
+                               "make. ABSENT, not empty." % (d2["violations"],))
+        cells.append((eng, "refusal-doc", OK if not bad else FAIL,
+                      "; ".join(bad) or "ok:false + refused:true, no `violations` key",
+                      "document exists, fail-closed to a naive reader"))
+    return cells
+
+
+# =====================================================================================================
 # R7 — §2 LOCALE-INDEPENDENCE
 # =====================================================================================================
 #
@@ -1294,6 +1422,7 @@ ROWS = [
     ("R4", "§3.1 the SIDECAR TRIPLE — absent ≡ {} ≡ unparseable ≢ populated"),
     ("R5", "§6.2 --class — dynamic excludes only setup-only entries, narrower filters\n        discriminate, and an unhonourable filter value is refused"),
     ("R6", "§3.1 gate --report — byte-equality, the MUST NOT, and the three answerability refusals"),
+    ("R8", "§3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a document"),
     ("R7", "§2 locale-independence — the same input under two collations, byte for byte"),
 ]
 
@@ -1339,7 +1468,11 @@ def main():
                        ("deny_fs", "deny Fs"), ("deny_net", "deny Net"),
                        ("forbid", "forbid app -> infra"), ("allow", "allow Net in app example.com"),
                        ("scoped", "deny Net[unknown-host] app"), ("bare_net", "deny Net app"),
-                       ("r1_fire", "deny Unknown[reflect] app")):
+                       ("r1_fire", "deny Unknown[reflect] app"),
+                       # R8: a FIRING rule and an UNANSWERABLE rule in the SAME policy.
+                       ("r8_mixed", "deny Fs\ndeny Net[unknown-host] app"),
+                       ("r8_refuse_only", "deny Net[unknown-host] app"),
+                       ("r8_fire_only", "deny Fs")):
         p = os.path.join(ws, "pol." + name)
         open(p, "w").write(text + "\n")
         pol[name] = p
@@ -1363,6 +1496,7 @@ def main():
                 ("R4", lambda: row_r4(ws)),
                 ("R5", lambda: row_r5(ws, pol["pure"])),
                 ("R6", lambda: row_r6(ws, gate_pols)),
+                ("R8", lambda: row_r8(ws, pol)),
                 ("R7", lambda: row_r7(ws, pol["pure"], disc))]
         for name, fn in plan:
             if only and name not in only:
