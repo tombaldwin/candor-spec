@@ -1066,8 +1066,14 @@ FAIL-OPEN if approximated instead:
 
 - **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into
   a wholly pure unit is invisible in the report. Unanswerable.
-- **`allow <E> …`** — the AS-EFF-008 literal allowlist. Its surface-completeness marker does not ride the
-  wire. The reference engine's first attempt *reconstructed* it for `Net` from `netClass ∋ unknown-host`;
+- **`allow <E> …`** — the AS-EFF-008 literal allowlist. Its surface-completeness marker **is not
+  guaranteed** to ride the wire, and the refusal is required of every engine **regardless of whether a
+  given one happens to carry it**. ⟨0.24⟩ *This clause first said the marker "does not ride the wire", flatly.
+  That is FALSE for at least one engine: candor-rust emits a per-entry `incomplete` field, which §2's
+  chained-join clause names, so it could answer `allow` from a report. It refuses anyway, and correctly —
+  **an engine that answers a question its three siblings refuse has SPLIT THE VERB**, and `gate --report`'s
+  whole value is that one report and one policy give one verdict everywhere. Uniform refusal is the
+  requirement; the wire's contents are not the reason, they were merely the first reason noticed.* The reference engine's first attempt *reconstructed* it for `Net` from `netClass ∋ unknown-host`;
   the equivalence test refuted that in one run, because the same token also names a merely **unrecognised**
   host, so it flagged two functions the scan passes.
 - **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a
@@ -2323,8 +2329,7 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.24 (all code engines declare `0.24`; conformance-pinned — with ONE clause pinned 2-of-4, stated
-  below)** — a **tier-1** rung, and the
+- **0.24 (all code engines declare `0.24`; conformance-pinned four-way)** — a **tier-1** rung, and the
   first one whose primary change can **turn a currently-green gate RED**. Read the verdict note below
   before adopting.
 
@@ -2334,15 +2339,18 @@ declare it via the envelope's `spec`.
   fixtures are hand-written reports, so the classifier is out of the loop and a divergence there is a
   CONSUMER defect — which is where every defect this rung fixed actually lived.
 
-  **`gate --report` IS IMPLEMENTED IN TWO ENGINES OF FOUR — java and swift — and this entry said
-  "conformance-pinned four-way" without saying so.** That was an overstatement and it is corrected here
-  rather than left for a reader to discover: PART 27 prints `NOSURF` for rust and ts, which does not fail
-  the run, so the suite is green while a clause §3.1 calls a MUST is pinned 2-of-4. It is disclosed the way
-  swift's absent `callers` verb is disclosed, because the two situations are not alike — swift ships no
-  `callers` **by design**, whereas rust and ts simply have not landed this verb yet, and §3.4's own floor
-  definition ("the highest version *every* engine implements") makes the unqualified claim false under the
-  MUST reading. The verb is queued for both; when it lands this paragraph goes away rather than being
-  softened.
+  ⟨0.24⟩ **`gate --report` was pinned 2-of-4 for part of this rung's life, and this entry said "four-way"
+  without saying so.** Recorded rather than erased, because the correction was the point: PART 27 prints
+  `NOSURF` for an engine lacking a surface, and NOSURF does not FAIL — so the suite was green while a clause
+  §3.1 calls a MUST held in two engines. It is now genuinely four-way (rust `93ed0a1`, ts `c2b8ce4`), R6
+  green on all twelve cells.
+  **And building it in the remaining two immediately justified the verb.** candor-rust's equivalence run
+  found a defect **in its own gate** that no end-to-end test could have isolated: a `#[cfg(unix)]` function
+  beside its `#[cfg(not(unix))]` twin put one qualified name in the gate's function list **twice**, so the
+  gate emitted two byte-identical violation records and an inflated count — **15 of the first 90 rows.** The
+  report route cannot reproduce it, because a report is keyed by name; that asymmetry is what surfaced it.
+  This is exactly what the clause promised — a defect in the GATE and a defect in the CLASSIFIER were
+  previously indistinguishable — and it was found the first time the two routes were compared.
 
   Three self-differential properties landed alongside it and are not part of the contract but are how it
   was checked: **PART 24** split-invariance, **PART 25** chain idempotence, **PART 26** trust monotonicity.
