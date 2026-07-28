@@ -2469,6 +2469,21 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7l. I RETIRED A WAIVER ON A MEASUREMENT OF AN UNCOMMITTED TREE — the seventh instance, and mine,
+     one hour after writing the rule down for the fifth time.** The rust agent reported candor-ts's
+     `empty_zero` waiver stale, having seen PART 26 print `ts SEPARATED`. I deleted it. But candor-ts's HEAD
+     was still its `gate --report` commit and its empty-report fix was **eleven dirty files** — the agent
+     had measured ts's WORKING TREE mid-flight and **said so plainly** (*"ts appears to have landed in
+     parallel"*), and I read a hedged observation as a landed fact. My own re-run showed ts
+     INDISTINGUISHABLE. Restored.
+     - **A waiver is retired when THE RATCHET reports it stale against a COMMITTED tree.** Nothing else is
+       evidence — not another engine's run, not a working-tree measurement, and not a report that says
+       "appears to".
+     - The hedge word is the tell. Every one of today's seven collisions was reported honestly by the agent
+       that hit it; **the losses came from the reader, not the reporter.** An agent writing "appears to",
+       "seems", or "in parallel" is telling you it did not verify — and that qualifier is exactly what gets
+       dropped when the finding is acted on second-hand.
+
    - **7k. `cargo test … --lib <filter>` ON A GATE THAT LIVES IN THE `--bin` TARGET SELECTS ZERO TESTS AND
      PRINTS `ok`.** During the floor bump I verified rust's doc drift gate with
      `cargo test -p candor-scan --lib repo_docs`, read *"test result: ok. 0 passed"*, and banked it as
