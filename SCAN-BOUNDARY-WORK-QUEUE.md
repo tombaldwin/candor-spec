@@ -889,8 +889,41 @@ meaning would be the one place a consumer could tell the routes apart.
 - **100 model disagreements over 1792 rows, ALL one family** — `Db` under `deny Net`. The engine reached
   **the same ruling I had recorded independently**: model-vs-contract, not an engine defect, pinned both
   ways rather than patched. `pure` went from 15 disagreements to **0/256** once the model was corrected.
-- [ ] **rust + ts: copy the shape** (swift landed it, `b514dbc`; java is the reference). **NOW THE LARGEST
-      SINGLE CORRECTNESS GAP IN THE RUNG**: §3.1 calls it a MUST, PART 27 prints NOSURF for rust/ts, NOSURF
+- [x] **DONE FOUR-WAY — rust `93ed0a1`, ts `c2b8ce4`, and PART 27's R6 is OK on ALL TWELVE CELLS.**
+      The harness needed three fixes of MINE before it could say so: `GATE_ENGINES` hard-coded to
+      java+swift, no rust/ts branch in `q_gate`, and — the real bug — **the equivalence cell dispatched
+      everything non-java to `_swift_scan`**, so rust's and ts's gate was compared against SWIFT's scan.
+      Both agents reported *"no change in my repo can flip this row"* and verified against scratch patches
+      rather than editing a harness they were told not to touch.
+      **AND BUILDING IT IMMEDIATELY JUSTIFIED THE VERB — a defect IN RUST'S OWN GATE that no end-to-end
+      test could have isolated.** A `#[cfg(unix)]` fn beside its `#[cfg(not(unix))]` twin put one qualified
+      name in the gate's function list **TWICE**, so the gate emitted two byte-identical violation records
+      and an inflated count — **15 of the first 90 rows.** The report route cannot reproduce it (a report is
+      keyed by NAME), and that asymmetry is what surfaced it. Exactly what the clause promised: a defect in
+      the GATE and one in the CLASSIFIER were previously indistinguishable. Equivalence after: **90/90
+      byte-equal**, 30 policies × 3 corpora. Model cross-check **2,949,120 rows, 0 disagreements**, negative
+      control firing on the known unreachable family.
+      **ts found a second real defect, on the FOREIGN-report routes**: `netClass` was being **RE-DERIVED
+      from `hosts`** on MCP/LSP, because the producer's `net-partner` list and masked-surface flag are not
+      on the wire. Both directions wrong — a `known-partner` host re-read as `unknown-host` (**fabricated**
+      `deny Net[unknown-host]` hit) and a masked surface re-read from its one benign literal (**fail-open
+      mirror**). Now read verbatim. ts also confirmed **the minimal-refusal rule was implementable as
+      stated**: it exits 1 on PART 27's R1 fixture where swift exits 2, because it already CONTRIBUTES
+      `unresolved` at the entry.
+      **`allow`'s justification was FALSIFIED by rust and is corrected** (`98ac23b`): the clause said the
+      completeness marker "does not ride the wire" — rust emits a per-entry `incomplete` field §2 names, so
+      it COULD answer. It refuses anyway, and its reason is better than mine: **an engine that answers a
+      question its three siblings refuse has SPLIT THE VERB.**
+- [ ] **NEW, from rust: a live cross-engine EXIT-CODE divergence.** rust's scan lets **incomplete analysis
+      dominate a violation** (`had_parse_failure` returns 2 *before* recording violations), so rust exits 2
+      where java and swift exit 1 on the same input. rust's `gate --report` mirrors rust's own scan, which
+      is what byte-equivalence demands — so the divergence is now pinned on BOTH routes rather than one.
+      Needs a four-way ruling: does incompleteness outrank a found violation, or the reverse?
+- [ ] **NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
+      checked-in `report.*.scan.json` artifacts in all four crates. The agent restored them byte-for-byte
+      via `git show HEAD:<path> >` rather than `git checkout` (the standing rule). Harmless in CI,
+      destructive locally — and it is a script a contributor is told to run.
+      ORIGINAL — rust + ts: copy the shape. NOW THE LARGEST SINGLE CORRECTNESS GAP IN THE RUNG: §3.1 calls it a MUST, PART 27 prints NOSURF for rust/ts, NOSURF
       does not fail the run, and the 0.24 changelog entry had to be **corrected to "pinned 2-of-4"** rather
       than four-way. Swift's finding sizes the job: the report READER had to be written, because *"a
       `gate --report` reader must read strictly LESS than the enrichment loader, which is not a subset you
