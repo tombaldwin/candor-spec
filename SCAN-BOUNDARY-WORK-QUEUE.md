@@ -5254,3 +5254,40 @@ yet**, so there is nothing to match. And printing `raw` alone, which is what I a
 a filter candor evaluated and didn't. The answer is §3.1's own rule — disclose the condition, never score
 it. Pinned as `conditional` in `6f30540`, **before the other three implement it**, which is the first time
 this rung has got ahead of the unpinned-field hole instead of behind it.
+
+## swift's release round — CLOSED (`db3e9e6`…`954bc04`), 457 tests, zero swift cells failing
+
+All six items reproduced before fixing. Both R8 cells, both R9 cells and **R10 report-parity OK**.
+
+**Two method notes worth more than the fixes.** *One of its OWN new rows was vacuous against the defect* —
+the `errors` shape check looped over an absent array, so it passed before the fix; caught by asserting a
+count first. And *one existing test changed its answer, and the old answer was the defect*:
+`allow Location somewhere` used to warn-and-ignore at exit 0, **leaving a sensor ungated behind a rule that
+looked like a gate.** `Location` is not a typo — it is a real effect with no literal surface — so the new
+refusal text names both readings rather than asserting "typo", which is the right call: a disclosure that
+guesses the operator's intent is a disclosure that will eventually guess wrong.
+
+Its mirrors are the strongest of the round: a *consumed* alias typo still refuses; a **sole** refusal still
+exits 2 with no `violations` key; and — the one that matters — **the refused policy is still NOT EVALUATED**
+(a `deny Fs` beside the bad token must not fire), because otherwise *"could not read this policy"* silently
+becomes *"enforced it anyway"*.
+
+- [ ] **SOUNDNESS, OPEN — swift extracts a Net host ONLY from a direct string argument of
+      `NWConnection(host:port:)`, the one idiom PART 4e pins.** Measured, and worse than the review
+      reported: **every `URLSession` form yields NO `hosts`** (the `URL(string:)` constructor interposes)
+      and **every `Process` form yields NO `cmds`** (`launchPath`/`executableURL` are property WRITES;
+      `Process.run` takes a `URL`). rust and ts extract on their equivalents from both an inline literal
+      and a local binding. Three consequences, all live on Apple-platform code:
+      - **`deny Net[known-telemetry]` reads GREEN over a `URLSession` call to `api.segment.io`** — a
+        narrowed deny that silently misses, which is the fail-open the destination-class rung exists to
+        close.
+      - a `URLSession` call to `api.openai.com` is **not classified `Llm`**, so the §1 ⟨0.13⟩ refinement
+        AND the privacy manifest both miss it.
+      - `allow Net` / `allow Exec` fail closed over essentially all Apple-platform code.
+      **Correctly NOT fixed in this round.** It is three mechanisms (constructor unwrap, local-binder
+      provenance, property-assignment provenance) and **every one moves the gate in the RELAXING
+      direction** — extracting a host turns a fail-closed `unknown-host` into a classified destination and
+      an uncertifiable `allow` into a certified one. That needs its own A/B on real corpora with the
+      second fixture written first, not a tail-end change after five gate-semantics commits.
+      PART 4e pins only `NWConnection` for swift, so **the suite cannot see any of this** — a
+      single-idiom fixture standing in for a language's whole network surface.
