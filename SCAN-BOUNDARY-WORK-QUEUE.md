@@ -5220,3 +5220,37 @@ untouched, and the stderr sentence filtered too, since printing "the GATE REFUSE
 merely-dropped line would itself be a false disclosure. The `Policy.java` NUL is escaped —
 `grep -n unanswerableKey Policy.java` went from **nothing to three hits** — and the guard is a scan over
 the whole main tree, not the one line, because candor-ts hit the same idiom independently.
+
+## rust closes the last red cell (`15917d2`, `481269b`, `736957b`) — FULL FOUR-WAY CONFORMANCE EXIT 0
+
+442 tests, clippy 0, all 18 rust PART 27 cells OK with no other cell moved, PART 12b/12c/12d unmoved,
+PART 2's whatif differential matching java. Mutant audit re-run: the empty-`violations` serializer is now
+killed by **43** gate-equivalence rows and **11** cargo tests (it survived 50 of 51 arms two rounds ago).
+
+**Two test-design points worth keeping.** The rename tests assert **the OLD key is ABSENT**, not merely
+that the new one is present — an engine emitting both would satisfy every "policyVocabulary present"
+assertion while leaving the divergence standing. And the first run's default **fail-fast hid the second
+route's failure**; `--no-fail-fast` is required in that repo to see both.
+
+### THE HAZARD FIRED A FOURTH TIME, AGAIN CREATED BY THE FIX
+
+Making `unverified`'s predicate filter-aware is precisely what first lets a NARROWED rule *be* the rule a
+hole is disclosed under — and `rule_and_upgrade`'s reconstruction dropped the bracket, so it would have
+printed `deny Unknown` for `deny Unknown[reflect]` and advised the nonsense `deny Unknown Unknown`. Dormant
+until the fix reached it. That is now **four times on this rung**, and the shape has been identical every
+time: *code that was correct only because something upstream never handed it the case it mishandles.*
+
+Two further copies of the same defect, found by measuring rather than by the brief: **candor-scan's gate
+note re-parsed the policy WITHOUT the `.candor/config` vocabulary** — `ea0df4f`'s defect standing in the
+other copy — and **`fix-gate` ran the mirror**, computing a hoist remedy for a crossing the gate does not
+report. `fix`'s upward climb correctly keeps the hypothetical predicate, because it asks about a *layer*.
+
+### The brief's premise on `whatif` was wrong, and the obvious fix was worse than the bug
+
+I said (a) would carry over to `whatif`. It does not: `unverified`/`fix-gate` read a signature that EXISTS,
+while `whatif` asks a hypothetical — a narrowing filter quantifies over the class of an effect **not written
+yet**, so there is nothing to match. And printing `raw` alone, which is what I asked for, would have been
+**worse than the bug it fixed**: attaching an unconditional verdict to the operator's narrowed line reads as
+a filter candor evaluated and didn't. The answer is §3.1's own rule — disclose the condition, never score
+it. Pinned as `conditional` in `6f30540`, **before the other three implement it**, which is the first time
+this rung has got ahead of the unpinned-field hole instead of behind it.
