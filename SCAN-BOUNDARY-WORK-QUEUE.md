@@ -5083,3 +5083,47 @@ the suite. **When a ruling changes a shared component, name the verbs that share
 - [ ] **Reserved-NAME alias rejection (`unknown-alias reflect = native`) is a different rule** from the
       unrecognised-TOKEN rule and stays warn-and-skip: the name IS recognised, and skipping leaves the
       built-in meaning standing, so there is no fail-open. Pinned four-way by PART 4. Confirmed, not open.
+
+## The parsepolicy blocker is CLEARED (java `a71cf3a`) — suite runs all 27 PARTs again
+
+PART 4 MATCH four-way, 18/7/3 in every engine; zero java FAIL rows in the whole run. `errors` is omitted
+when empty so a clean dump stays byte-identical and PART 4's comparison is untouched. An unreadable policy
+FILE still exits 2 — there is no parse to report — and that stays distinguishable in the API
+(`policyUnreadable` vs `policyErrors`) rather than being inferred from an empty list.
+
+**My brief was wrong about who broke it.** I wrote "candor-ts did the same"; measured, **ts exits 0 and never
+had the defect — the halt was candor-java alone.** I relayed swift's report without checking, which is the
+second time this session I have propagated an unverified cross-engine claim (the first was `interfaceUnion`).
+Both times the agent measured and corrected me. **A cross-engine claim in a brief is a measurement someone
+else made, and it inherits none of my confidence unless I re-run it.**
+
+- [ ] **The ruling's second half is unimplemented in ALL THREE siblings.** rust, ts and swift exit 0 but
+      **silently drop** the token — their `parsepolicy` keys are exactly `deny/allow/forbid`. That is the
+      pre-⟨0.24⟩ drop-with-a-warning the ruling says cannot pin the rung, so **the diff still cannot
+      distinguish "dropped" from "rejected"** and the blocker being cleared has NOT restored the pin. java
+      is the only engine emitting `errors`, and **the spec does not pin its shape** — java chose
+      `{kind, token, accepted, rule, message}`. Pin it, then converge three engines.
+
+### A NUL byte hid 1,105 lines of the policy parser from grep — and my first measurement of it was WRONG
+
+`Policy.java:363` holds a raw `\0` in a string literal (`r.src().trim() + "\0" + fn`). It compiles and is
+semantically fine, but **grep treats the whole file as binary and exits 1 printing nothing**: a probe that
+has 13 real matches reports none. That file is 1,105 lines of the POLICY PARSER — the exact component this
+entire session has been changing.
+
+**And my first attempt to size it was flattering nonsense.** I ran `grep -rl $'\0'`, got 14 files, and was
+about to record "93% of candor-java's core source is invisible to grep". In zsh `$'\0'` is an EMPTY STRING,
+so that command matched every file it was given. The real number is **one file**. Checked whether it had
+corrupted any conclusion I drew today: it had not — the `packages`/`modules` ruling was confirmed from
+`VerifyCli.java`, which my earlier glob missed for an unrelated reason (a subdirectory).
+
+Two things worth keeping. **This is standing bar 7j with a new cause**: not "the surface is absent" but
+"the tool cannot read the file and does not say so" — and unlike a zero-match grep, this one is invisible
+even when you are looking for it, because exit 1 with no output is what a genuine miss looks like.
+**And I produced the exact failure I spend this queue documenting** — a dramatic number, arrived at in one
+step, not controlled. The tell was available: 14 files each containing a NUL is implausible for hand-written
+Java, and I had a second tool (python) that took ten seconds to disagree.
+
+- [ ] Replace the literal NUL in `Policy.java:363` with the `\0` ESCAPE — byte-identical semantics,
+      searchable file. Also: `unverified` over an unhonourable policy prints "— no fix computed" (shares
+      `loadPolicyOrDie` with `fix`/`fix-gate`): right posture, wrong noun.
