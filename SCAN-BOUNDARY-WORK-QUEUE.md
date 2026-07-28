@@ -2327,6 +2327,21 @@ Each was refused or deferred with a measurement, not left undone. None is a know
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
        give the second a worktree.
+   - **7k. `cargo test … --lib <filter>` ON A GATE THAT LIVES IN THE `--bin` TARGET SELECTS ZERO TESTS AND
+     PRINTS `ok`.** During the floor bump I verified rust's doc drift gate with
+     `cargo test -p candor-scan --lib repo_docs`, read *"test result: ok. 0 passed"*, and banked it as
+     green. **It selected nothing.** The gate lives on the BIN target; the correct invocation is
+     `--bin candor-scan repo_docs`, which runs 1 test. I ran a verification that verified nothing and did
+     not notice, because a zero-test run and a passing run print the same word.
+     **`0 passed` IS NOT A PASS. Read the COUNT, not the verdict** — and when filtering by name, confirm the
+     filter matched something before believing the result. This is the same shape as 7j one level up: there
+     I treated a grep's zero as evidence of absence; here I treated a test runner's zero as evidence of
+     correctness. Both are the instrument reporting that it did nothing, in the vocabulary of success.
+     Related, from the same sweep: rust's doc gate greps the PROSE form `spec 0.24` and **structurally
+     cannot see the JSON form** (`"spec": "0.23"`), so it never had a chance at the README line it exists
+     to guard — a gate can be correctly invoked, pass honestly, and still be blind to the shape it is
+     pointed at.
+
    - **7j. A GREP THAT RETURNS ZERO MEANS "THE SURFACE IS ABSENT", NOT "THE OBLIGATION DOES NOT APPLY" —
      AND THE ZERO CAN BE THE DEFECT ITSELF.** Before sweeping the fifth component (candor-agents) for the
      ⟨0.24⟩ rung I grepped it and reported: `Unknown[` **0**, `reasonClass` **0**, `--class` **0**, and
