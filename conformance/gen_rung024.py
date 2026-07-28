@@ -20,6 +20,8 @@ their own output rather than skipping quietly:
            document that is fail-closed to a NAIVE reader                                      4-way
   R9  CROSS-ENGINE verdict KEY PARITY — byte-equality is WITHIN-engine and caught nothing when
            swift emitted `coverage.modules` for three years of `coverage.packages`                4-way
+  R10 REPORT-ENVELOPE key parity — R9 compares the VERDICT; nothing compared the artifact that
+           actually TRAVELS between engines and is chained as a dependency                        4-way
   R7  §2   LOCALE-INDEPENDENCE — the same input under two collations, byte for byte            4-way
 
   R2/R3/R4 are three-surface (rust, java, ts): candor-swift deliberately ships NO `callers` verb — it is
@@ -1231,8 +1233,14 @@ def _shape(doc):
     return top, rec
 
 
-def _parity(shapes):
-    """{eng: (topkeys, reckeys)} -> {eng: [complaint, ...]}. Extracted so it is testable without engines.
+def _parity(shapes, second="violation-record"):
+    """{eng: (topkeys, secondkeys)} -> {eng: [complaint, ...]}. Extracted so it is testable without engines.
+
+    `second` NAMES the second key set, because this is shared between R9 (whose second set is a violation
+    record) and R10 (whose second set is a report ENTRY). It was hardcoded to "violation-record", so R10's
+    first run reported a report-entry divergence as a "violation-record keys differ" — a message that
+    would have sent the next reader to the wrong file. A conformance suite's failure text is part of the
+    check: a true finding described wrongly costs the same hour as a false one.
 
     The majority shape is the reference, and DISAGREEMENT IS REPORTED ON EVERY ENGINE THAT DIFFERS — not
     on "the odd one out". A tie has NO majority and fails on ALL engines, loudly, naming the split: this
@@ -1259,10 +1267,9 @@ def _parity(shapes):
                        % (sorted(set(top) - set(top_ref)), sorted(set(top_ref) - set(top)),
                           top_n, sorted(top_ref)))
         if tie_rec:
-            bad.append("NO MAJORITY on the violation-record shape %s"
-                       % [sorted(x) for x in rec_counts])
+            bad.append("NO MAJORITY on the %s shape %s" % (second, [sorted(x) for x in rec_counts]))
         elif frozenset(rec) != rec_ref:
-            bad.append("violation-record keys differ: extra %s, missing %s (majority of %d: %s)"
+            bad.append(second + " keys differ: extra %s, missing %s (majority of %d: %s)"
                        % (sorted(set(rec) - set(rec_ref)), sorted(set(rec_ref) - set(rec)),
                           rec_n, sorted(rec_ref)))
         out[eng] = bad
@@ -1370,6 +1377,99 @@ def row_r9(ws, pols):
         for eng in alias_shapes:
             cells.append((eng, "key-parity(opt)", VACUOUS,
                           "only one engine produced a comparable aliased verdict", "two or more"))
+    return cells
+
+
+# =====================================================================================================
+# R10 — REPORT-ENVELOPE KEY PARITY: the four engines must describe the same code with the same SHAPE
+# =====================================================================================================
+#
+# ⟨0.24⟩ R9 compares the VERDICT document. Nothing compared the REPORT — the artifact that actually
+# travels between engines, gets chained as a dependency, and is the whole premise of the supply-chain
+# route. A review enumerated what the four engines emit and cross-checked it against what any PART
+# asserts; the report envelope came back with a list of live divergences that no cell could see:
+#
+#   - `declared` / `undeclared` / `overdeclared`: java emits `undeclared: ["Exec","Fs","Net"]` where ts
+#     and swift emit `undeclared: []` for the SAME situation — OPPOSITE SEMANTICS for "no declaration" —
+#     and rust emits none of the three keys at all.
+#   - top-level `packages` (plural, java) vs `package` (singular, the other three).
+#   - the AS-EFF-008 `incomplete` marker: rust PUBLISHES it per-fn on the wire; ts models it and
+#     deliberately does not; swift CONSUMES it from chained deps but never produces it; java has nothing
+#     — while every engine's own allow-refusal message asserts the marker "does not ride the report wire
+#     in any form", which is untrue of rust's wire.
+#   - omit-vs-explicit-empty: rust omits `unresolved: false`, `direct: []` and empty surfaces where the
+#     others emit them, so a consumer writing `e.unresolved === false` behaves differently per engine.
+#
+# Every one of those is a consumer-visible difference in the format this family exists to standardise,
+# and each was invisible because the suite compared ANSWERS (effect sets, verdicts) and never SHAPE.
+#
+# THIS ROW IS A RATCHET, NOT A CLIFF. The engines diverge today and cannot all be fixed at once, so the
+# measured divergences go in the baseline WITH A REASON EACH and the row fails on anything NEW. A waiver
+# whose divergence is repaired then reads STALE and fails, which is what makes it a ratchet rather than a
+# permanent exemption.
+#
+# WHY IT COMPARES TYPES AND NOT VALUES: the four engines scan four different languages, so counts, names,
+# `loc` strings and hashes legitimately differ. The claim is the narrow one — the same SITUATION produces
+# the same KEY PATHS carrying the same TYPES. `undeclared: []` vs `undeclared: ["Fs"]` is a value
+# difference this row deliberately does NOT judge; `undeclared` present vs absent, or list vs dict, is
+# what it catches. (The semantic inversion above is therefore reported by the review, not by this row —
+# a limit worth stating rather than pretending away.)
+
+def _report_shape(rep):
+    """Envelope key paths + types, and the UNION of per-function entry key paths."""
+    top = set()
+    for k, v in rep.items():
+        if k == "functions":
+            top.add("functions:" + type(v).__name__)
+            continue
+        top.add(k + ":" + type(v).__name__)
+    ent = set()
+    for f in (rep.get("functions") or []):
+        if isinstance(f, dict):
+            for k2, v2 in f.items():
+                ent.add(k2 + ":" + type(v2).__name__)
+    return top, ent
+
+
+def row_r10(ws, pols):
+    cells = []
+    shapes = {}
+    for eng in ENGINES:
+        if not present(eng):
+            cells.append((eng, "report-parity", ABSENT, "", ""))
+            continue
+        scan = {"rust": _rust_scan, "java": _java_scan, "ts": _ts_scan, "swift": _swift_scan}[eng]
+        gj = os.path.join(ws, "r10.%s.gate.json" % eng)
+        if os.path.exists(gj):
+            os.remove(gj)
+        rep, rc = scan(ws, pols["pure"], gj)
+        if rep is None:
+            cells.append((eng, "report-parity", ERROR,
+                          "the scan produced no report (harness/toolchain)", "a report on disk"))
+            continue
+        try:
+            d = json.load(open(rep))
+        except Exception as e:
+            cells.append((eng, "report-parity", ERROR, "report did not parse: %s" % e, ""))
+            continue
+        # VACUITY GUARD: an empty report has no entry keys to compare, so the row would pass by
+        # describing nothing — the exact failure mode this suite exists to avoid.
+        if not (d.get("functions") or []):
+            cells.append((eng, "report-parity", VACUOUS,
+                          "the scan produced a report with NO functions — nothing to compare",
+                          "at least one entry"))
+            continue
+        shapes[eng] = _report_shape(d)
+
+    if len(shapes) < 2:
+        for eng in shapes:
+            cells.append((eng, "report-parity", VACUOUS,
+                          "only one engine produced a comparable report — parity needs two", "two or more"))
+        return cells
+    for eng, bad in sorted(_parity(shapes, second="report-entry").items()):
+        cells.append((eng, "report-parity", OK if not bad else FAIL,
+                      "; ".join(bad) or "envelope + entry shape match the other %d" % (len(shapes) - 1),
+                      "the same situation produces the same report shape"))
     return cells
 
 
@@ -1684,6 +1784,7 @@ ROWS = [
     ("R6", "§3.1 gate --report — byte-equality, the MUST NOT, and the three answerability refusals"),
     ("R8", "§3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a document"),
     ("R9", "CROSS-ENGINE verdict KEY PARITY — the same situation must produce the same keys"),
+    ("R10", "REPORT-ENVELOPE key parity — the artifact that TRAVELS between engines"),
     ("R7", "§2 locale-independence — the same input under two collations, byte for byte"),
 ]
 
@@ -1795,6 +1896,7 @@ def main():
                 ("R6", lambda: row_r6(ws, gate_pols)),
                 ("R8", lambda: row_r8(ws, pol)),
                 ("R9", lambda: row_r9(ws, pol)),
+                ("R10", lambda: row_r10(ws, pol)),
                 ("R7", lambda: row_r7(ws, pol["pure"], disc))]
         for name, fn in plan:
             if only and name not in only:
