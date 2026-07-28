@@ -1274,6 +1274,37 @@ The `ok: false` is not ceremony: a consumer keying only on `ok` must land on FAI
 `refused` learns why. This is the same reasoning as the empty-report rung — the naive read of a document
 this format emits must be the safe one, because the naive read is the one that ships.
 
+⟨0.24⟩ **THE OPERATIONAL FORM OF MINIMAL REFUSAL: WITHHOLD PER (RULE, FUNCTION) — and applying the
+precedence ruling WITHOUT this introduces a FABRICATION.** This is not a refinement; it is the half of
+`7271c69` that makes it safe, and it was found by implementing the ruling rather than by reading it.
+
+Once a firing rule stops short-circuiting the refusal, the evaluator reaches code it never reached before.
+Measured on the reference engine: a scoped `deny Unknown[unresolved]` over an entry whose `Unknown` is
+**INHERITED and reasonless** began emitting an actual **violation record**, because the class-set helper
+floors an empty set at `unresolved`. **That floor is the correct fail-closed default for a MATCHER — "could
+this rule apply?" — and the wrong basis for a FIRING — "did it?"** The two questions had shared one helper
+safely only because the refusal short-circuited before the difference could show.
+
+So the rule is: **a rule FIRES on a function only where the match is evidenced by that function's own
+entry, and is WITHHELD exactly where it is not.** Withholding is per `(rule, function)`, never
+whole-policy: the same rule may fire on one function, be withheld on another, and the verdict carries both
+— exit 1 for what fired, a disclosure for what could not be evaluated. That is already what the
+minimal-refusal rule says; what was missing was saying it about the *firing* side rather than only the
+*refusing* side.
+
+**Two things generalise here, and both are expensive to learn twice.**
+
+*A fail-closed default is not portable between a predicate that GUARDS and a predicate that CHARGES.*
+Flooring an unknown class set at `unresolved` makes a matcher conservative — it considers the rule
+applicable and lets the refusal machinery decide. The identical floor, read as grounds to emit a violation,
+asserts a reason nobody recorded. Same constant, same helper, opposite direction of harm.
+
+*And a soundness fix is a fabrication risk in its own right.* This project already records that killing a
+fabrication is where silent under-reports get introduced ([[feedback-fabrication-fixes-cause-misses]]);
+this is the mirror, and it arrived within an hour of the ruling. **The new-reachability question is the one
+to ask of any short-circuit removal: what code now runs that never ran, and what did it assume about who
+would call it?** Three engines had already landed the precedence fix before this surfaced.
+
 ⟨0.24⟩ **NEITHER RULE HAS A CARVE-OUT, AND BOTH OF MINE DID.** candor-rust implemented the two clauses
 above, then reported the two places they stop short. Both stops were mine, both were inherited from where
 the defect happened to be found, and the reasoning in each clause reaches further than the clause does.
