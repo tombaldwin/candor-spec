@@ -4165,13 +4165,38 @@ if [ -f "$REF" ]; then
     echo "$P23_OUT" | grep -q "$P23_EXPECT signatures" || {
       echo "  FAIL: the model check did not cover the full lattice (expected $P23_EXPECT signatures from |E|x|R|)"; P23_OK=1; }
   fi
-  # And the vocabulary itself must not drift from SPEC §1 — the reason the count moved in the first place
-  # was that the model had NINE effects where §1 has eleven, which would have crashed the planned
-  # engine-vs-model differential on the first report carrying `Ipc` or `Clipboard`.
-  SPEC_EFFECTS="$(grep -c '^| `[A-Z][A-Za-z]*` |' "$HERE/../SPEC.md" 2>/dev/null || echo 0)"
-  MODEL_EFFECTS="$(python3 -c 'import sys; sys.path.insert(0, "'"$HERE"'/../reference"); import policy_model as m; print(len(m.E))' 2>/dev/null || echo 0)"
-  if [ "$SPEC_EFFECTS" -gt 0 ] && [ "$MODEL_EFFECTS" -gt 0 ] && [ "$MODEL_EFFECTS" -ne "$((SPEC_EFFECTS - 1))" ]; then
-    echo "  NOTE: model has $MODEL_EFFECTS effects, SPEC §1's table has $SPEC_EFFECTS rows (incl. Unknown, which is not an effect) — check for drift"
+  # And the vocabulary itself must not drift from SPEC §1. ⟨0.24⟩ A REVIEW FOUND THIS BLOCK VACUOUS FOUR
+  # WAYS, and the floor above CIRCULAR because of the first of them.
+  #
+  #   (1) It was a NOTE that never set P23_OK, so drift printed and PASSED. The one check anchored to a
+  #       source outside the model was the one that could not fail.
+  #   (2) That made the derived floor above CIRCULAR along the vocabulary dimension: P23_EXPECT is
+  #       computed by importing the very module whose printed count it checks, so deleting `Ipc` and
+  #       `Clipboard` — THE EXACT HISTORICAL DEFECT — moves both numbers together and passes. The floor
+  #       detects a stub; it cannot detect a shrink. Only a comparison against SPEC.md can, and that
+  #       comparison was the toothless one.
+  #   (3) `grep -c ... || echo 0` and the `-gt 0` guard mean that if the table is ever reformatted so the
+  #       pattern stops matching, the check SILENTLY SKIPS. A grep returning zero here means the SURFACE
+  #       is absent, never that the obligation is — the standing bar this project keeps relearning.
+  #   (4) It compared COUNTS. Renaming `Ipc` to `Ipx`, or swapping one effect for another, leaves the
+  #       count identical and the vocabularies disjoint at that row.
+  #
+  # So: compare the NAME SETS, and fail on drift, on an unreadable table, and on an empty parse.
+  SPEC_EFFECTS="$(grep -o '^| `[A-Z][A-Za-z]*` |' "$HERE/../SPEC.md" 2>/dev/null | tr -d '|` ' | grep -v '^Unknown$' | sort | tr '\n' ' ')"
+  MODEL_EFFECTS="$(python3 -c 'import sys; sys.path.insert(0, "'"$HERE"'/../reference"); import policy_model as m; print(" ".join(sorted(m.E)) + " ")' 2>/dev/null)"
+  if [ -z "$SPEC_EFFECTS" ]; then
+    echo "  FAIL: parsed ZERO effect rows out of SPEC §1's table — the pattern no longer matches the"
+    echo "        document, so the model's vocabulary is unanchored. This is not a skip."
+    P23_OK=1
+  elif [ -z "$MODEL_EFFECTS" ]; then
+    echo "  FAIL: could not read the model's effect vocabulary"; P23_OK=1
+  elif [ "$SPEC_EFFECTS" != "$MODEL_EFFECTS" ]; then
+    echo "  FAIL: the model's effect vocabulary has DRIFTED from SPEC §1"
+    echo "        SPEC  §1: $SPEC_EFFECTS"
+    echo "        model E : $MODEL_EFFECTS"
+    echo "        (this is also what keeps the lattice floor above non-circular — it is the only"
+    echo "         assertion in PART 23 anchored to a source the model does not supply)"
+    P23_OK=1
   fi
   echo "$P23_OUT" | grep -q "NOT upward-closed" || { echo "  FAIL: the known-bad rule is no longer demonstrated — the check has stopped discriminating"; P23_OK=1; }
 else
