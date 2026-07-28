@@ -5291,3 +5291,55 @@ becomes *"enforced it anyway"*.
       second fixture written first, not a tail-end change after five gate-semantics commits.
       PART 4e pins only `NWConnection` for swift, so **the suite cannot see any of this** — a
       single-idiom fixture standing in for a language's whole network surface.
+
+## java's release round — CLOSED (`d6a1312`…`54e11ca`), 621 tests, all 18 PART 27 java cells OK
+
+Six items reproduced then fixed, plus a **seventh found while checking a mirror**. Its `report-parity` FAIL
+is `packages:list` vs `package:str` — **byte-identical on the pre-change jar**, so R10 is reporting a
+pre-existing divergence, which is the row working.
+
+**The seventh is the stale-document defect on the SCAN route** — specced in `901f14d`, implemented by
+nobody: a clean run leaves `ok:true` in the gate-json, then an invalidated baseline OR an unreadable scan
+target exits 2 and **leaves the green in place**. Its fix is better than the obvious one: rather than thread
+a sink through ~20 exit sites — *the position-scoped fix this rung has criticised four times, and one that
+still misses crashes and kills* — it arms the path **fail-closed when the flag is PARSED**, and normal
+paths overwrite it. `-` (stdout) excluded and pinned by its own test.
+
+**Same harm class on the MCP surface:** `ensure_report()` discarded the scan result, so with a good jar
+scanned and the path then replaced by a corrupt one, `candor_effects` **kept returning the OLD jar's
+`Net`/`hosts`/`netClass`**. Fixed on the INVARIANT (report newer than the newest class), not on the exit
+code — because exit 1 is a gate violation and does write a good report.
+
+Its item-1 fix keys the refusal arm on `violations == 0` — *"evaluated nothing"* — never on "ended
+refused", which is the conflation the review named. And it emits `unevaluated` for **every** rule of a
+refused policy, since naming only the typo'd line would read as the rest having passed.
+
+### The correction that matters most came from java, and it had the opposite sign to every other one today
+
+`allow` takes **FIVE** effects, not four — `Llm` rides `Net`'s host literal (⟨0.13⟩) and all three
+measurable engines have accepted `allow Llm <host>` the whole time. The grammar clause has said "four"
+since before `Llm` existed, and I repeated it in `1e1748a` while declaring the position CLOSED — which
+would have made **`allow Llm api.openai.com`, the privacy-manifest use case, exit 2.** Fixed `a07b9d3`.
+
+**Six scoping errors today were too narrow in what they REFUSED, leaving a fail-open. This one was too
+narrow in what it ADMITTED, and would have shipped a fail-CLOSED regression on working policy.** A closed
+set is load-bearing in both directions and I had only been checking one. java measured it while
+implementing and reported rather than complying, which is the only reason it did not ship.
+
+## OPEN at the budget stop — what a release still needs
+
+- [ ] **java: normalise `errors[].kind` onto the pinned set** (`forbid form`/`allow values` → `rule-form`,
+      added in `f735b16` after java's round began; it argued for exactly this member and was right).
+- [ ] **R10's baseline**: the row is live and correct but has no waiver file yet, so today's real
+      divergences (java `packages`, rust's `incomplete` marker, omit-vs-empty) fail it. Measure once, record
+      each with a reason, and it ratchets from there.
+- [ ] **Per-shape vacuity ratchet in PARTs 24/25/26** — the floor trips only at `live == 0` in TOTAL, so a
+      review neutered one split shape (8 cells/engine) and the run stayed green. Up to 9 of 10 shapes could
+      rot with exit 0. **The `live` column and the `0/0` witness count are PRINTED, never ASSERTED.**
+- [ ] **R9 needs an `unevaluated`-present arm** — the field is now pinned and four-way implemented, and no
+      cell compares it.
+- [ ] **`whatif` returns `ok:true` over a report declaring `unanalyzed`** — measured by rust AND java, both
+      declined to fix unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so it is a
+      four-way rung, not a bug. Its `ok` reads as a verdict and its `affected` set is computed over an
+      incomplete universe.
+- [ ] **swift host/cmd extraction** (see above) — the largest open soundness item.
