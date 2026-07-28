@@ -1274,6 +1274,34 @@ The `ok: false` is not ceremony: a consumer keying only on `ok` must land on FAI
 `refused` learns why. This is the same reasoning as the empty-report rung — the naive read of a document
 this format emits must be the safe one, because the naive read is the one that ships.
 
+⟨0.24⟩ **NEITHER RULE HAS A CARVE-OUT, AND BOTH OF MINE DID.** candor-rust implemented the two clauses
+above, then reported the two places they stop short. Both stops were mine, both were inherited from where
+the defect happened to be found, and the reasoning in each clause reaches further than the clause does.
+
+**(a) Precedence binds `forbid` and `allow` too.** Measured: `deny Fs app.fsUnit` (fires) beside
+`forbid app -> dep` (refused whole-policy) still exits 2, with the certain violation absent from the
+document. **Lemma 2 does not care which KIND of refusal stands beside the firing rule** — `Reject` is
+upward-closed, so a rule that already fires on carried evidence stays fired however the refused rule would
+have resolved. The whole-policy granularity of a `forbid`/`allow` refusal (§3.1) governs *which rules go
+unevaluated*; it was never a licence to suppress a violation that was evaluated and certain. The engine
+declined to change this unilaterally because §3.1's prose makes those refusals whole-policy and it wanted a
+ruling rather than a divergence. Correct instinct — and the ruling is that the precedence is general.
+
+**(b) The refusal document has no exempt cause.** §3.3 enumerates exit-2 causes including a broken gate
+CONFIG or an unreadable policy, and mandates writing no document there; two tests in candor-rust pin that.
+But the argument I used to require a document — *a CI wrapper reading the path unconditionally re-reads the
+PREVIOUS run's verdict as current* — is **exactly as true for an unreadable policy as for an answerability
+refusal.** A stale green does not care why this run declined to overwrite it. So: **if `--gate-json` was
+requested and the run exits 2 for ANY reason, a fail-closed document is written at that path.** An
+unreadable policy has no rules to reason about, which is precisely why the document carries no `violations`
+key — the shape already says "no claim about violations", and that is the honest thing to say when the
+policy could not be read at all.
+
+**The pattern in both is one thing: a rule stated over the instance it was found in rather than over the
+condition that makes it true.** A carve-out in a fail-closed rule is a fail-open path with a reason attached
+— and in each of these two the reason was only ever "the measurement that prompted the clause did not
+happen to cover this case".
+
 ⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope
 function REACHES, not over the in-scope entry's own class set. Adding a scope currently RE-OPENS the
 fail-open the third refusal exists to close, in ALL FOUR ENGINES.** Measured:
