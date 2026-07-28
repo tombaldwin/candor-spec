@@ -349,6 +349,31 @@ report **omits pure functions** (§2 lists only effectful/`Unknown` units), so t
 can't support — distinguishing **provably-pure** (analyzed, no effects) from **never-seen** (a unit the scan
 never judged, the cardinal-sin drop), and making incompleteness **machine-legible**:
 
+⟨0.24⟩ **`analyzed.count == 0` IS "I JUDGED NOTHING", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE.**
+A chained report carrying `functions: []` and `analyzed.count: 0` currently buys a consumer **MORE
+confidence than not chaining the package at all** — the caller drops out of `functions`, which under ⟨0.21⟩
+is a **positive purity claim**, with **no advisory anywhere**; `deny Fs` goes **exit 1 → exit 0**. Measured
+on all four engines by conformance PART 26, and strictly more confident than the unchained arm, which
+correctly discloses `invisible` + `coverage.uncovered`.
+
+**The wire ALREADY distinguishes the two cases and no engine reads it.** A `pub use`-only facade package
+emits `count: 0`; an all-pure two-function package emits `count: 2` with the same empty `functions`. So:
+
+| `analyzed.count` | `functions` | what it means | what a consumer MUST do |
+|---|---|---|---|
+| `0` | `[]` | **nothing was judged** | treat the package as **NOT COVERED** — the κ ledger records it `invisible`, exactly as if unchained. It MUST NOT license a purity claim for any unit in it. |
+| `n > 0` | `[]` | **n units judged, all pure** | believe it (§2 rule 3). This is a legitimate all-pure claim and MUST NOT be hedged. |
+| absent | `[]` | pre-⟨0.21⟩ producer | fall back to the unchained reading — no manifest, no claim. |
+
+The second row is the control that makes the first meaningful: a fix that hedges *both* has not implemented
+the rule, it has disabled the feature. Conformance PART 26 prints `CONTROL SEPARATION`, and a correct
+implementation makes the two arms **diverge** where today all four print INDISTINGUISHABLE.
+
+**Note what this does NOT fix.** It separates *judged nothing* from *judged and found nothing*. It does not
+separate *judged n and dropped one* from *judged n−1* — that needs the per-unit analysed NAME SET, which
+§3.1's `gate --report` clause records as the open format question. This rule is the half the wire can
+already carry.
+
 - `"analyzed": { "count": <n>, "digest": "<hex>" }` — the ANALYZED UNIVERSE: `count` = the units candor
   formed an effect judgment for (effectful + pure) = the §2.2 call-graph node set (pure leaves included). So a
   consumer reading the **bare envelope** computes the pure count = `analyzed.count − |functions|` and reads a
