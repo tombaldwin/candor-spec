@@ -1428,10 +1428,30 @@ ROWS = [
 
 
 def load_baseline(path):
+    """⟨0.24⟩ An UNREADABLE baseline must not read as 'nothing is waived'.
+
+    PARTs 24, 25 and 26 all say this explicitly and print a FAIL line naming the parse error. PART 27 —
+    the newest, and the one whose author wrote the other three — just let `json.load` raise. A crash is
+    caught upstream by run.sh's `|| P27_OK=1`, so this was never fail-OPEN; what it cost was the
+    diagnosis. The run reported a Python traceback where its three siblings report which file could not
+    be read and why, and 'the ratchet is misconfigured' then looks exactly like 'an engine regressed'.
+
+    Found by auditing the four ratchets for the shape that produced three of five harness defects this
+    week — a check whose subject and oracle come from the same source. That shape was ABSENT here (the
+    baselines are hand-maintained and never regenerated from live output, and all four hard-fail when
+    the file is missing). This inconsistency is what the audit turned up instead, and a sweep whose main
+    result is 'three of four were already right' is worth the same as one that finds a defect: it says
+    the pattern is not systemic.
+    """
     if not path:
         return []
-    with open(path) as fh:
-        return json.load(fh).get("known", [])
+    try:
+        with open(path) as fh:
+            return json.load(fh).get("known", [])
+    except Exception as ex:
+        print(f"\nFAIL: --baseline {path} is unreadable ({ex}). A baseline that cannot be read must "
+              f"not read as 'nothing is waived'.")
+        raise SystemExit(2)
 
 
 def waived(known, row, engine, cell):
