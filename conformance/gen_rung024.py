@@ -1140,10 +1140,29 @@ def row_r8(ws, pols):
 # property this family claims, and asserting it would produce a row that fails for correct reasons.
 # The claim is narrower and it is the one that was broken: THE SAME SITUATION MUST PRODUCE THE SAME KEYS.
 #
-# THE FIXTURE IS CHOSEN SO EVERY OPTIONAL BLOCK IS UNIFORMLY ABSENT — one plain `Fs` entry, no `Unknown`
-# (so no `reasonClass`), no `Net` (so no `netClass`), no `unanalyzed`, nothing uncovered. Otherwise the
-# row would flag legitimate per-situation differences as divergence. `deny Fs` then fires on all four,
-# which is also the vacuity guard: a document with no violations cannot exercise the record's key set.
+# THE FIRST ARM'S FIXTURE IS CHOSEN SO EVERY OPTIONAL BLOCK IS UNIFORMLY ABSENT — one plain `Fs` entry, no
+# `Unknown` (so no `reasonClass`), no `Net` (so no `netClass`), no `unanalyzed`, nothing uncovered.
+# Otherwise the row would flag legitimate per-situation differences as divergence. `deny Fs` then fires on
+# all four, which is also the vacuity guard: a document with no violations cannot exercise the record's
+# key set.
+#
+# ⟨0.24⟩ **AND THAT CHOICE MADE THE ROW BLIND TO EXACTLY THE FIELDS MOST LIKELY TO DIVERGE — measured, on
+# the very next field after the one this row was built for.** A single uniformly-minimal fixture only ever
+# compares the keys that are ALWAYS present. The optional blocks — the ones an engine adds when a
+# particular thing happened — are absent in every arm and therefore uniform for free. candor-ts measured
+# the ⟨0.24⟩ policy-vocabulary disclosure and found **three engines, three names**:
+#
+#     rust  "vocabulary":       {config, aliases}
+#     java  "policyVocabulary": {config, aliases}
+#     swift "configSources":    [path]            ← an ARRAY, and it drops the alias names entirely
+#
+# `coverage.modules` again, one field later, and arm 1 cannot see it because its policy has no alias so
+# the block is uniformly absent. Same for `unevaluated`: java puts it in the DOCUMENT, rust and swift
+# disclose only on stderr.
+#
+# So the row is a LIST OF SITUATIONS, not one fixture, and the rule for adding to it is: **every optional
+# block needs an arm that makes it PRESENT.** A parity row that only exercises the mandatory keys is
+# checking the half of the document that was never going to drift.
 
 R9_REPORT = {
     "candor": {"version": "handwritten", "spec": "0.23"},
@@ -1205,13 +1224,64 @@ def _parity(shapes):
     return out
 
 
+# ARM 2's report carries an `Unknown` with a NAMED reason, gated through an ALIAS defined in a
+# `.candor/config` beside the policy — so every engine must emit its policy-vocabulary disclosure, and the
+# arm compares the shape of a block that arm 1 cannot reach. The alias resolves to the reason the entry
+# actually carries, so the rule FIRES: a refusal here would make the arm vacuous.
+R9_ALIAS_REPORT = {
+    "candor": {"version": "handwritten", "spec": "0.23"},
+    "package": "app",
+    "analyzed": {"count": 1, "digest": "0"},
+    "functions": [{"fn": "app.dyn", "inferred": ["Unknown"], "direct": ["Unknown"],
+                   "unknownWhy": ["reflect:Method.invoke"]}],
+}
+
+
+def _r9_alias_policy(ws):
+    """A policy in its OWN directory with a `.candor/config` alias beside it — per §3.1 ⟨0.24⟩ the
+    vocabulary anchors at the policy file, so this is where an engine must look."""
+    d = os.path.join(ws, "r9alias")
+    os.makedirs(os.path.join(d, ".candor"), exist_ok=True)
+    pol = os.path.join(d, "p.policy")
+    with open(pol, "w") as fh:
+        fh.write("deny Unknown[corp] app\n")
+    with open(os.path.join(d, ".candor", "config"), "w") as fh:
+        fh.write("unknown-alias corp = reflect\n")
+    return pol
+
+
 def row_r9(ws, pols):
     cells = []
     shapes = {}
+    alias_shapes = {}
+    alias_pol = _r9_alias_policy(ws)
     for eng in ENGINES:
         if not present(eng):
             cells.append((eng, "key-parity", ABSENT, "", ""))
+            cells.append((eng, "key-parity(opt)", ABSENT, "", ""))
             continue
+
+        # -- ARM 2: the OPTIONAL blocks, which arm 1 is structurally blind to --------------------
+        loc2 = write_report(ws, eng, R9_ALIAS_REPORT)
+        gj2 = os.path.join(ws, "r9alias.%s.json" % eng)
+        if os.path.exists(gj2):
+            os.remove(gj2)
+        rc2 = q_gate(eng, loc2, alias_pol, gate_json=gj2)
+        if rc2 is None:
+            cells.append((eng, "key-parity(opt)", NOSURF, "no `gate --report` verb on this engine", ""))
+        elif rc2 != 1:
+            cells.append((eng, "key-parity(opt)", ERROR,
+                          "aliased `deny Unknown[corp]` over a `reflect` entry -> exit %s, want 1. The "
+                          "alias must RESOLVE and the rule must FIRE, or the vocabulary block is never "
+                          "emitted and this arm is vacuous." % rc2, "exit 1"))
+        elif not os.path.exists(gj2):
+            cells.append((eng, "key-parity(opt)", ERROR, "no `--gate-json` document written", ""))
+        else:
+            try:
+                alias_shapes[eng] = _shape(json.load(open(gj2)))
+            except Exception as e:
+                cells.append((eng, "key-parity(opt)", ERROR, "verdict did not parse: %s" % e, ""))
+
         loc = write_report(ws, eng, R9_REPORT)
         gj = os.path.join(ws, "r9.%s.json" % eng)
         if os.path.exists(gj):
@@ -1245,6 +1315,16 @@ def row_r9(ws, pols):
         cells.append((eng, "key-parity", OK if not bad else FAIL,
                       "; ".join(bad) or "shape matches the other %d" % (len(shapes) - 1),
                       "the same situation produces the same keys"))
+    if len(alias_shapes) >= 2:
+        for eng, bad in sorted(_parity(alias_shapes).items()):
+            cells.append((eng, "key-parity(opt)", OK if not bad else FAIL,
+                          "; ".join(bad) or "optional-block shape matches the other %d"
+                          % (len(alias_shapes) - 1),
+                          "the vocabulary disclosure has one name"))
+    else:
+        for eng in alias_shapes:
+            cells.append((eng, "key-parity(opt)", VACUOUS,
+                          "only one engine produced a comparable aliased verdict", "two or more"))
     return cells
 
 
