@@ -1281,7 +1281,14 @@ its reasoning names.**
 The grammar defence for leaving this open is real but NARROWER than I took it to be. `deny Net Exex app`
 genuinely cannot be told from a legitimate scope by the parser. But:
 
-- **`allow`'s effect position is a fixed, closed four-token set.** `allow Nett …` is unambiguously a typo,
+- **`allow`'s effect position is a fixed, closed FIVE-token set** — `Net`, `Exec`, `Fs`, `Db`, `Llm`.
+  ⟨0.24⟩ **I wrote FOUR here, and that error had the opposite sign to the six before it: it would have made
+  the engines REFUSE A VALID POLICY.** `allow Llm api.openai.com` is the privacy-manifest use case, all
+  three measurable engines accept it today, and this clause would have turned it into exit 2. candor-java
+  measured it while implementing and reported rather than complying — which is the only reason a fail-open
+  fix did not ship a fail-CLOSED regression on a real policy. **A closed set is a load-bearing claim in
+  BOTH directions: too wide lets a typo through, too narrow rejects working policy** — and I had only been
+  checking one of those. `allow Nett …` is still unambiguously a typo,
   with no scope reading available. It MUST be a policy error.
 - **A `deny` whose effect list ends up EMPTY after scope-splitting is malformed under either reading** —
   there is no legitimate policy it could be — so refusing it loses nothing.
@@ -2447,8 +2454,10 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
   AS-EFF-008's companion).
 - **`pure`**: an empty forbidden set, meaning **every** effect; the optional next token is the scope.
   `pure parse` ≡ "functions in `parse` must be effect-free."
-- **`allow`**: the effect MUST be one of the four that carry a literal surface (`Net`, `Exec`, `Fs`,
-  `Db`); an `allow` for any other effect is dropped with a warning. An optional `in <scope>` follows; the
+- **`allow`**: the effect MUST be one of the **five** that carry a literal surface (`Net`, `Exec`, `Fs`,
+  `Db`, ⟨0.13⟩ `Llm`, which rides `Net`'s host literal); an `allow` for any other effect is dropped with a
+  warning. ⟨0.24⟩ *This said FOUR and omitted `Llm` from the moment `Llm` was added in ⟨0.13⟩; all three
+  measurable engines have accepted `allow Llm <host>` the whole time.* An optional `in <scope>` follows; the
   remaining tokens are the allowed values (≥1 required, else the rule is dropped).
 - **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
