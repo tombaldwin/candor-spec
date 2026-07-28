@@ -319,7 +319,7 @@ R1_EXPECT = {
 }
 
 
-def row_r1(ws, pol_pure, pol_unres):
+def row_r1(ws, pol_pure, pol_unres, pol_fire, pol_quiet):
     cells = []
     for eng in ENGINES:
         if not present(eng):
@@ -352,15 +352,45 @@ def row_r1(ws, pol_pure, pol_unres):
         cells.append((eng, "disclosure", OK if not bad else FAIL, "; ".join(bad) or "a,c,src_reasonless",
                       "the §6.2 CONTRIBUTES partition"))
 
-        # the gate half — java + swift only, and it is the SAME rule (§6.2's "share the same code").
+        # the gate half — §6.2's "THE GATE AND THE DISCLOSURE MUST APPLY THE SAME RULE".
+        #
+        # ⟨0.24⟩ THIS CELL USED TO BE VACUOUS TWO WAYS, and a review found both. It accepted
+        # `rc_g in (1, 2)`, and **2 is also the generic usage-error code** — so an engine whose gate
+        # verb was absent, or simply mis-invoked by this harness, scored OK. The `None -> NOSURF` path
+        # that was supposed to catch that died the moment rust and ts branches were added to `q_gate`:
+        # every engine now has a branch, so `None` is unreachable and only an unknown NAME returns it.
+        # A cell that cannot distinguish "the rule holds" from "nothing ran" is not a test.
+        #
+        # Both halves are closed here, and the first closes on a SPEC correction rather than on
+        # harness cleverness. §3.1 ⟨0.24⟩ now settles what exit 2 means on this input: the entries
+        # carrying a reasonless direct `Unknown` CONTRIBUTE `unresolved`, so the rule FIRES from the
+        # entry alone and the answer is certain — **exit 1 is the only correct code, and refusing is
+        # "a worse answer than the correct one"**. Requiring exactly 1 is therefore both the stricter
+        # reading of the clause AND, incidentally, immune to the usage-error code.
+        #
+        # The DISCRIMINATION CONTROLS close the second half, and they are the part that generalises:
+        # a broken invocation returns ONE code, so demanding the gate return TWO DIFFERENT codes on
+        # two inputs proves the verb ran and decided. `deny Unknown[reflect]` must FIRE (app.d names
+        # `reflect` directly — no transitive step, no unanswerability); `deny Fs` must PASS (this
+        # report carries no `Fs` anywhere). If either control misses, the cell is ERROR — a harness
+        # or engine fault — and it MUST NOT be reported as either a pass or a defect of the rule.
+        rc_fire = q_gate(eng, loc, pol_fire)
+        rc_quiet = q_gate(eng, loc, pol_quiet)
         rc_g = q_gate(eng, loc, pol_unres)
-        if rc_g is None:
-            cells.append((eng, "gate", NOSURF, "no `gate --report` verb on this engine yet", ""))
+        if rc_g is None or rc_fire is None or rc_quiet is None:
+            cells.append((eng, "gate", NOSURF, "no `gate --report` verb on this engine", ""))
+        elif rc_fire != 1 or rc_quiet != 0:
+            cells.append((eng, "gate", ERROR,
+                          f"CONTROLS did not discriminate: deny Unknown[reflect] -> {rc_fire} "
+                          f"(want 1), deny Fs -> {rc_quiet} (want 0) — the verb did not run or did "
+                          f"not decide, so the subject probe says nothing",
+                          "controls 1 and 0"))
         else:
-            # exit 1 (the deny fires) or exit 2 (answerability refusal) are BOTH fail-closed and both
-            # acceptable here; exit 0 is not — that is the silent relaxation the clause forbids.
-            cells.append((eng, "gate", OK if rc_g in (1, 2) else FAIL,
-                          f"deny Unknown[unresolved] -> exit {rc_g}", "exit 1 (fires) or 2 (refuses)"))
+            cells.append((eng, "gate", OK if rc_g == 1 else FAIL,
+                          f"deny Unknown[unresolved] -> exit {rc_g}"
+                          + ("" if rc_g != 2 else "  (refusal — but §3.1 ⟨0.24⟩ says this entry "
+                             "CONTRIBUTES `unresolved`, so the rule fires and the answer is certain)"),
+                          "exit 1 — it fires"))
     return cells
 
 
@@ -1304,7 +1334,8 @@ def main():
     for name, text in (("pure", "pure app"), ("unres", "deny Unknown[unresolved] app"),
                        ("deny_fs", "deny Fs"), ("deny_net", "deny Net"),
                        ("forbid", "forbid app -> infra"), ("allow", "allow Net in app example.com"),
-                       ("scoped", "deny Net[unknown-host] app"), ("bare_net", "deny Net app")):
+                       ("scoped", "deny Net[unknown-host] app"), ("bare_net", "deny Net app"),
+                       ("r1_fire", "deny Unknown[reflect] app")):
         p = os.path.join(ws, "pol." + name)
         open(p, "w").write(text + "\n")
         pol[name] = p
@@ -1322,7 +1353,7 @@ def main():
     try:
         gate_pols = {k: pol[k] for k in ("deny_fs", "deny_net", "pure", "forbid", "allow", "scoped",
                                          "bare_net")}
-        plan = [("R1", lambda: row_r1(ws, pol["pure"], pol["unres"])),
+        plan = [("R1", lambda: row_r1(ws, pol["pure"], pol["unres"], pol["r1_fire"], pol["deny_fs"])),
                 ("R2", lambda: row_r2(ws)),
                 ("R3", lambda: row_r3(ws)),
                 ("R4", lambda: row_r4(ws)),
