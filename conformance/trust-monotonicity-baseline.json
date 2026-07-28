@@ -58,15 +58,6 @@
       "repro": [
         "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
       ]
-    },
-    {
-      "engine": "ts",
-      "arm": "empty_zero",
-      "split": "*",
-      "why": "an `analyzed.count: 0` report buys full coverage and the caller becomes a silent purity claim. 56/56 live cells ABSENT. CONTROL SEPARATION: INDISTINGUISHABLE. \u27e80.24\u27e9 NOTE: this waiver was briefly deleted on 2026-07-28 on the strength of another engine's measurement of candor-ts's UNCOMMITTED working tree \u2014 standing bar 7f, committed by the coordinator. RESTORED. Delete it when candor-ts's fix is COMMITTED and the ratchet itself reports it stale, which is the only evidence that should retire a waiver.",
-      "repro": [
-        "as the rust entry: a dep report with `functions: []` and `analyzed.count: 0`, chained into a consumer that calls it."
-      ]
     }
   ]
 }
