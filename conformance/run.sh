@@ -2235,6 +2235,37 @@ REGISTERED = {"dep", "dep-stale"}
 TOLERATED = set()   # ⟨0.24⟩ emptied — `ambiguous` is canonical, `dep*` registered. Kept so a future
                     # genuinely-transitional kind has a home that is neither canon nor a hard divergence.
 labels = ["rust", "java", "ts", "swift", "rust(vocab)"]
+
+# ⟨0.24⟩ THE CLASSIFICATION IS A FUNCTION SO THE NEGATIVE CONTROL CAN GO THROUGH IT.
+# It used to be inlined in the loop below, and the control below tested the SET MEMBERSHIPS instead —
+# `banana` not in CANON/REGISTERED/MIGRATION/TOLERATED. A review pointed out what that cannot see:
+# neutralise the loop's `kind not in CANON -> DIVERGE` branch and the sets are UNCHANGED, so the control
+# still prints green while every real off-vocabulary kind is accepted silently. The control was checking
+# the data the decision reads, not the decision. One function, two callers, and the control now exercises
+# the exact code path the engines' output does.
+def classify(w, fn):
+    """-> (verdict, message). verdict in {'ok','warn','diverge'}. THE decision path for §4 vocabulary."""
+    kind = w.split(":", 1)[0]
+    if kind in REGISTERED:
+        return "ok", ""          # accepted silently: named by §4, classed by §6.2
+    if kind in MIGRATION:
+        return "warn", f"migration unknownWhy kind (not yet reconciled, SPEC §4): {w!r}  (fn {fn})"
+    if kind in TOLERATED:
+        return "warn", f"off-§4-vocabulary kind named+classed by SPEC §6.2: {w!r}  (fn {fn})"
+    if kind not in CANON:
+        return "diverge", f"non-canonical unknownWhy kind: {w!r}  (fn {fn})"
+    if kind == "dispatch":
+        # ⟨0.24⟩ A DOT-FREE DETAIL IS THE RESERVED "no owner could be formed" FORM — free text,
+        # explicitly NOT conformance-compared. This check used to DIVERGE on it, which would hard-fail
+        # the reference Rust engine on its DOMINANT dispatch reason
+        # (`dispatch:untyped cross-package receiver`) the moment §4 ⟨0.24⟩ was implemented. The
+        # dotted form is still normative WHERE AN OWNER WAS FORMED, so the shape is only checked
+        # when a dot is present.
+        detail = w.split(":", 1)[1] if ":" in w else ""
+        if "." in detail and (detail.startswith(".") or detail.endswith(".")):
+            return "diverge", f"dotted dispatch: detail must be owner.member: {w!r}  (fn {fn})"
+    return "ok", ""
+
 fails = 0; warns = 0; seen = {}; total = 0
 for label, path in zip(labels, sys.argv[1:6]):
     if not path or not os.path.exists(path):
@@ -2247,26 +2278,12 @@ for label, path in zip(labels, sys.argv[1:6]):
     for f in fns:
         for w in (f.get("unknownWhy") or f.get("unknown_why") or []):
             total += 1
-            kind = w.split(":", 1)[0]
-            seen.setdefault(label, set()).add(kind)
-            if kind in REGISTERED:
-                pass    # accepted silently: named by §4, classed by §6.2
-            elif kind in MIGRATION:
-                print(f"  WARN    [{label}] migration unknownWhy kind (not yet reconciled, SPEC §4): {w!r}  (fn {f.get('fn')})"); warns += 1
-            elif kind in TOLERATED:
-                print(f"  WARN    [{label}] off-§4-vocabulary kind named+classed by SPEC §6.2: {w!r}  (fn {f.get('fn')})"); warns += 1
-            elif kind not in CANON:
-                print(f"  DIVERGE [{label}] non-canonical unknownWhy kind: {w!r}  (fn {f.get('fn')})"); fails += 1
-            elif kind == "dispatch":
-                # ⟨0.24⟩ A DOT-FREE DETAIL IS THE RESERVED "no owner could be formed" FORM — free text,
-                # explicitly NOT conformance-compared. This check used to DIVERGE on it, which would hard-fail
-                # the reference Rust engine on its DOMINANT dispatch reason
-                # (`dispatch:untyped cross-package receiver`) the moment §4 ⟨0.24⟩ was implemented. The
-                # dotted form is still normative WHERE AN OWNER WAS FORMED, so the shape is only checked
-                # when a dot is present.
-                detail = w.split(":", 1)[1] if ":" in w else ""
-                if "." in detail and (detail.startswith(".") or detail.endswith(".")):
-                    print(f"  DIVERGE [{label}] dotted dispatch: detail must be owner.member: {w!r}  (fn {f.get('fn')})"); fails += 1
+            seen.setdefault(label, set()).add(w.split(":", 1)[0])
+            verdict, msg = classify(w, f.get("fn"))
+            if verdict == "warn":
+                print(f"  WARN    [{label}] {msg}"); warns += 1
+            elif verdict == "diverge":
+                print(f"  DIVERGE [{label}] {msg}"); fails += 1
 for label in labels:
     if label in seen:
         print(f"  {label}: kinds = {sorted(seen[label])}")
@@ -2277,13 +2294,21 @@ for label in labels:
 # ⟨0.24⟩ THE NEGATIVE CONTROL, and it is what makes the five rows above mean anything. Without it this PART
 # cannot distinguish "pins five kinds" from "stopped checking the kind set" — the same diff. A fabricated
 # off-vocabulary kind must still DIVERGE.
-_probe = {"functions": [{"fn": "probe.f", "inferred": ["Unknown"], "unknownWhy": ["banana:whatever"]}]}
-_pk = _probe["functions"][0]["unknownWhy"][0].split(":", 1)[0]
-if _pk in CANON or _pk in REGISTERED or _pk in MIGRATION or _pk in TOLERATED:
-    print("  DIVERGE [self-check] the fabricated control kind is in an accepted bucket — this PART has "
-          "stopped discriminating"); fails += 1
+# Two probes, both through `classify` — the same function the loop above calls on every engine entry.
+# One must DIVERGE (an off-vocabulary kind), one must NOT (a canonical kind), because a decision path
+# that has been neutralised to accept everything and one that has been broken to reject everything are
+# both dead, and a single probe can only see one of them.
+_bad = classify("banana:whatever", "probe.f")[0]
+_good = classify("reflect:Method.invoke", "probe.g")[0]
+if _bad != "diverge":
+    print(f"  DIVERGE [self-check] the fabricated kind `banana:` classified as {_bad!r}, not 'diverge' — "
+          "the §4 vocabulary decision path has stopped discriminating"); fails += 1
+elif _good != "ok":
+    print(f"  DIVERGE [self-check] the canonical kind `reflect:` classified as {_good!r}, not 'ok' — the "
+          "decision path rejects everything, so its DIVERGEs carry no information"); fails += 1
 else:
-    print("  self-check: a fabricated kind (`banana:`) is still non-canonical — the vocabulary check discriminates")
+    print("  self-check: `banana:` DIVERGEs and `reflect:` does not, through the same classifier the "
+          "engine entries run through — the vocabulary check discriminates")
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
           "this row's coverage of the off-vocabulary kind is vacuous, not passing"); fails += 1
