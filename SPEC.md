@@ -1288,6 +1288,27 @@ The `ok: false` is not ceremony: a consumer keying only on `ok` must land on FAI
 `refused` learns why. This is the same reasoning as the empty-report rung — the naive read of a document
 this format emits must be the safe one, because the naive read is the one that ships.
 
+⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING
+A CERTAIN VIOLATION — and that is a BOUNDARY, not a carve-out.** The distinction is load-bearing and the
+two look identical from the exit code:
+
+- An **answerability** refusal says *the report is trustworthy and this particular rule cannot be decided
+  from it.* The evidence for the OTHER rules is carried, so a rule that fires is certain, Lemma 2 applies,
+  and exit 1 dominates.
+- A **corruption** refusal says *this report cannot be read as a report.* That undermines the premise the
+  precedence argument runs on. A violation "computed from" a document with an unparseable §2 key is not a
+  certain finding — it is a finding computed from bytes of unknown meaning, and reporting exit 1 would
+  assert a confidence the input does not support.
+
+So `netClass: 1` moving exit 1 → 2 is **correct**, and it is not the precedence ruling being walked back.
+Applying "a violation dominates" there would be the mirror error to the one `5a8cf48` just fixed: charging
+something the evidence does not carry.
+
+The general test, and the reason this is a boundary rather than a carve-out: **ask whether the refusal's
+cause undermines the premise that the fired rule's evidence was carried.** If it does not, the violation
+dominates. If it does, nothing downstream of that input is certain. A carve-out is an exception with no
+account of itself; this one is derived from the same Lemma the precedence rule is.
+
 ⟨0.24⟩ **THE OPERATIONAL FORM OF MINIMAL REFUSAL: WITHHOLD PER (RULE, FUNCTION) — and applying the
 precedence ruling WITHOUT this introduces a FABRICATION.** This is not a refinement; it is the half of
 `7271c69` that makes it safe, and it was found by implementing the ruling rather than by reading it.
