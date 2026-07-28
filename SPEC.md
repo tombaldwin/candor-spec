@@ -1395,6 +1395,15 @@ conformance row to catch it — which is what today cost. **`conditional` is rus
 and it is pinned before the other three implement it rather than after**, which is the first time this
 rung has got ahead of that.
 
+⟨0.24⟩ **`aliases` MAPS EACH ALIAS TO THE CLASSES IT EXPANDS TO — `{"corp": ["reflect"]}`, AN OBJECT.**
+This clause already pinned braces and three engines shipped `["corp"]` anyway, so the pin was not explicit
+about the VALUE. candor-ts kept the object and argued for it from this section's own sentence, which is why
+it stands rather than the majority: `configSources: [path]` is rejected below because *a disclosure that
+names the source but not the content leaves the reader knowing they were affected and not how* — and
+`aliases: ["corp"]` fails that same test one level down. **`corp = reflect` and `corp = reflect,native`
+gate DIFFERENTLY under one unchanged policy line**, so a reader given only the name cannot tell which gate
+ran. The object is a strict superset; `Object.keys` recovers the array. rust, java and swift move.
+
 ⟨0.24⟩ **THE DISCLOSURE'S SHAPE IS `"policyVocabulary": { "config": "<path>", "aliases": { … } }`.** I left
 this unspecified when I required the disclosure, and three engines invented three answers within the hour —
 `vocabulary` (rust), `policyVocabulary` (java), and `configSources: [path]` (swift). **That is the
