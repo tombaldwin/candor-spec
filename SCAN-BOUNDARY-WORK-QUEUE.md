@@ -795,7 +795,41 @@ not written by an agent and checked by a second party).
             one reads `unchained=(ABSENT)`, so the unchained baseline is equally silent, and PART 26 credits
             only shapes where swift also attributes a per-fn `invisible`. **java shares two of them.** Worth
             its own pass.
-      - [ ] **Both `empty_zero` waivers are now STALE and OVERSTATE** (swift's still says "64/72 ABSENT …
+      - [x] **java LANDED `110bec5`, and it produced THE number of the whole exercise.** Same placement
+            shape as swift, reached independently: a **third conjunct on the COVERED set**, beside §2.1
+            `stale` and ⟨0.21⟩ `incomplete`. **Keyed on the INTEGER, never on the emptiness of
+            `functions`** — and here is why, over **1997 deduplicated JVM dependency jars**:
+            | | count |
+            |---|---|
+            | emit `analyzed.count: 0` | 79 (4.0%) — of which only **6** actually granted coverage |
+            | are the LEGITIMATE all-pure kind | **104 (5.2%)** |
+            **A fix keyed on emptiness would have withdrawn 104 REAL CLAIMS to catch 6.** The
+            plausible-but-wrong fix is *more destructive than the defect*. Cross-checked on a rust chained
+            tree (69 reports): 5 count-0, all genuine facade/platform stubs.
+            **Two structural traps recorded for the copiers**: coverage is anchored **TWICE** (envelope
+            `packages` AND each entry's `hash` prefix) so *"gating one is a no-op wearing a fix's clothes"*;
+            and the CHAINED set must stay **ungated** since it only adds disclosure.
+            Its mutation table mirrors swift's: hedging on emptiness fails the control, the divergence row
+            and the shape table **while the count-0 row stays GREEN** — *"what a plausible-but-wrong fix
+            looks like"*.
+            **BOTH ENGINES CORRECTED MY BRIEF THE SAME WAY**: `deny Fs` does NOT return to exit 1 and
+            should not — *"restoring the verdict would mean asserting an effect the consumer has no
+            evidence for."* Spec text fixed (`400e8e1`).
+      - [x] **Both waivers NARROWED, not retired** — java 72→16 cells, swift 64→40. The residuals are a
+            **separate pre-existing gap**: every one reads `unchained=(ABSENT)`, so the reference arm is
+            itself silent and the property has nothing to compare against. java's two shapes are a subset
+            of swift's five.
+      - [ ] **NEW, from java: `⟨0.24⟩` row 3 RETIRES a pre-⟨0.21⟩ affordance** — a manifest-less empty
+            report used to buy coverage, and java had a test pinning exactly that. Now recorded in §2 as
+            deliberate, with the guidance to re-point such a pin at a manifest-bearing fixture rather than
+            delete it.
+      - [ ] **NEW, from java: the same rule must bind `gate --report`** — a `count: 0` report handed
+            DIRECTLY to the verb still prints "no violations", exit 0. Specced (`4ef7166`); unimplemented
+            in java and swift, and rust/ts are building the verb now.
+      - [ ] **Minor, live shell bug java found and fixed**: a smoke row's label had unescaped backticks
+            inside a double-quoted string, so it had been **running `package` as a command** and printing
+            the substituted result.
+      ORIGINAL — Both `empty_zero` waivers are now STALE and OVERSTATE (swift's still says "64/72 ABSENT …
             INDISTINGUISHABLE"; the live numbers are 40 cells / 24-80 separated). The ratchet does not fail
             on improvement, so nothing is red — which is exactly why they will rot. **Mine to retire, once
             java's in-flight work lands** (swift measured java against an uncommitted tree).
