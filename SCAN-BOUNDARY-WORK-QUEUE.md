@@ -5178,3 +5178,45 @@ Its first corpus run **discarded the violation lines** (they go to stdout), and 
 looked "caught". **A mutant that doesn't compile is not a mutant** — and the tell was arithmetic: 6 bait
 failures with 0 test failures is impossible. Also fixed: a `gate-equivalence` arm asserting *neither* route
 writes a document on a policy error — an equality claim about an ABSENCE, which `1503368`(b) inverted.
+
+## R8 IS GREEN FOUR-WAY — and the last fix CREATED the mirror rather than leaving it standing
+
+ts round 2 (`4faac08`, `4762b2f`, +2) and java (`74f348c`, `93ac572`, `868dbc9`) close the rung.
+**All four engines pass both R8 cells and both R9 cells.** One red cell remains in the whole suite —
+rust's `key-parity(opt)` — dispatched.
+
+**My withholding clause was wrong and an engine measured it.** I specced per `(rule, function)`. On one
+function carrying a certain `Fs` beside a `netClass`-less `Net`, that form gives **exit 2 with the
+`violations` key ABSENT** — the certain finding deleted, which is `7271c69`'s defect arrived at through the
+fix for `7271c69`'s defect. Amended to per `(rule, function, EFFECT)` in `b3748ed`. **I then assumed java
+and swift both had it and measured instead: only java did.** swift exits 1 with the violation present.
+Second time today that measuring corrected an assumption before it reached a brief.
+
+### The finding worth carrying: a latent bug made LIVE by a correctness fix
+
+java's mirror check was not "did the old fabrication survive" — **the granularity fix CREATED a new one.**
+`unanswerableScopedFilters` tested its two withhold causes with `else if`. That is harmless while either
+cause withholds the whole pair, and becomes a live fabrication the instant the key stops covering the pair:
+measured on the real binary, one function carrying both a `netClass`-less `Net` and a reasonless inherited
+`Unknown` under one rule was **charged `Unknown` — a class its report never asserted.**
+
+    else if  ->  exit 1, violations: [{app.both, ["Unknown"]}]      FABRICATED
+    if       ->  exit 2, both withheld effects disclosed
+
+**Three times on this rung a fix has produced its own inverse, and this is the first where the inverse did
+not pre-exist.** The general shape: *a guard that was sound only because a coarser key upstream made its
+weaker branch unreachable.* Widening precision anywhere downstream of such a guard arms it. The operational
+question is the same one short-circuit removal asks — **what did this code assume about who would call it,
+and is that still true?**
+
+java also produced the state no engine had before: a document carrying **both** `violations` (the certain
+`Fs`) **and** `unevaluated` (the withheld `Net`) — the verdict finally says *what fired* and *what could not
+be read* in the same breath, which is the whole point of the precedence ruling.
+
+Follow-ons landed: `parsepolicy`'s `errors` now carries **10** entries where it carried 2 (the 8 dropped
+lines included an NBSP-separated `deny Net Db` read as an unknown rule kind — worth knowing that
+whitespace, not vocabulary, was the cause of one); the gate's behaviour on dropped rules deliberately
+untouched, and the stderr sentence filtered too, since printing "the GATE REFUSES this policy" over a
+merely-dropped line would itself be a false disclosure. The `Policy.java` NUL is escaped —
+`grep -n unanswerableKey Policy.java` went from **nothing to three hits** — and the guard is a scan over
+the whole main tree, not the one line, because candor-ts hit the same idiom independently.
