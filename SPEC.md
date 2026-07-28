@@ -1189,6 +1189,34 @@ remedy (gate at scan time). Refusing costs nothing on a self-produced report: `n
 every `Net`-bearing entry and is floored at `unknown-host`, and an inherited `Unknown` always has its callee
 in `calls` (that callee carries `Unknown`, so it is effectful).
 
+⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope
+function REACHES, not over the in-scope entry's own class set. Adding a scope currently RE-OPENS the
+fail-open the third refusal exists to close, in ALL FOUR ENGINES.** Measured:
+
+    app.web.go   Unknown, own unknownWhy [dispatch:virtual], calls [lib.B.g]
+    lib.B.g      Unknown inherited, NO reason, NO calls      ← the uncomputable state
+
+    deny Unknown[reflect] app.web   →  rust 0  ts 0  java 0  swift 0     ← GREEN
+    deny Unknown[reflect]           →  rust 2  ts 2  java 2  swift 2     ← correctly refused
+
+The unscoped form of the very same question is refused by every engine; adding `app.web` makes all four
+answer it. And the CONTROL is decisive: supply `lib.B.g`'s reason as `reflect` and all four go to **exit
+1**. The absent datum flips the verdict 0→1, so by the minimal-refusal rule directly above, this is the
+second bullet — it does not yet fire, and the missing datum could still make it fire — and it MUST be
+refused.
+
+The cause is uniform: each engine tests whether the *in-scope entry's own* class set is empty, and never
+asks whether an entry REACHABLE from it had its reason channel dropped. The scope selects which functions
+the rule applies to; it does not license reading a smaller graph. So: **propagate an unknowable-contribution
+marker through the same transitive fixpoint that builds the class set, and refuse on an INCOMPLETE set, not
+only on an EMPTY one.**
+
+This one is worth stating as a general shape, because it is the second time in this rung the same mistake
+has appeared: *a guard written against the value at hand rather than against the closure the value stands
+for.* The class set is a transitive object; every predicate over it must be too. An implementation that
+answers correctly on the bare form and green on the scoped form has not scoped the rule — it has scoped
+the evidence.
+
 ⟨0.24⟩ **THE MANIFEST DOES NOT TRAVEL, AND THIS VERB IS WHERE THAT BITES.** The verb leans on *absent is
 absent*. PAPER3 Def 24 already says a `{count, digest}` manifest cannot discharge that — it cannot separate
 *dropped* from *pure* — and measurement on the reference engine found the situation is worse than the
