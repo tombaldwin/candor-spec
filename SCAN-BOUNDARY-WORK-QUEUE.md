@@ -4811,3 +4811,51 @@ effects from its dispatch union, so **skipping by "the hash names an interface m
 `default`-body violation — trading a fabrication for the cardinal sin**, which is the exact move
 [[feedback-fabrication-fixes-cause-misses]] exists to forbid. It needs a four-engine format rung. It fails
 safe as it stands: an extra row, never a missing one. Recorded in java's BACKLOG.md.
+
+## rust's round — CLOSED (`ff34070`, `a88a562`, `464c682`, `6175f3d`), and it caught its own overreach
+
+428 tests (426 before), clippy clean, 51 byte-equal gate-equivalence rows, every new test verified to FAIL
+against stashed pre-fix sources.
+
+**The incomplete-analysis fix was two bugs of one shape, on two routes.** candor-query ran the manifest
+branch first with `write_verdict(&mut [], …)`; candor-scan returned from `had_parse_failure` *before*
+`record_gate_violations`, and `write_gate_json`'s exit-2 arm hard-coded `&mut none`. Both printed the
+AS-EFF-006 lines to stderr and then deleted the findings from the document — **only the machine consumer
+was lied to**, which is the channel that gates the PR.
+
+**Why the existing CI could not see it, and it is the same lesson R8 was built on:**
+`ci/gate-equivalence.sh`'s incomplete arm carried **only a NON-VIOLATING policy**. With nothing to delete,
+a route that deletes violations is indistinguishable from one that does not. Now split into two arms.
+Independent corroboration of R8's design rule: *a precedence row needs a firing rule and an unanswerable
+one in the SAME policy, or it tests neither.*
+
+**The count-0 fix did not just delete the refusal — the pinning test was REWRITTEN and its assertion moved
+to the disclosure.** Deleting a refusal without asserting the note that replaces it is this very defect
+wearing the fix's clothes. A new row keeps a count-0 report that nevertheless lists an effectful entry at
+exit 1, so the hedge can never swallow a finding.
+
+**And it caught its own overreach.** Its `unanalyzed` fix was too strict on `coverage`: sweeping the
+reviewer's 22×10 bait matrix afterwards, `cov.json` refused on all ten policies because its ledger spells
+the count differently while naming the package perfectly well. Refusing there **drops a hedge in order to
+be strict about a decoration** — `calls` is never read on the gate route. `6175f3d` gets a better answer
+than either the pre-fix silent drop or the refusal: exit 1 with `coverage: {uncovered:1, packages:
+[ratesdep]}`. Ledgers that cannot be read at all still refuse. This is [[feedback-fabrication-fixes-cause-misses]]
+running in the OTHER direction — a strictness fix costing a disclosure — and it was found by SWEEPING the
+matrix after the fix, not by reasoning about it.
+
+Grep result as asked: exactly ONE `unwrap_or_default` on a §2 key, the one named. Three near misses checked
+and correctly left alone. Side finding fixed: `analyzed: {"count": 5}` with no digest contributed **0** to
+the verdict's count while a second reader of the same file said "judged 5" — two readers, one file,
+disagreeing.
+
+### Two environment traps, and the second one validates the R1 harness fix
+
+- **`ci/self-gate.sh:21,34` does `rm -rf "$d/.candor"` on every crate dir**, deleting eight TRACKED
+  `crates/*/.candor/report.*.json` files and never restoring them. It caught the agent inside a `git add
+  -A`; restored from `abbb67c`, verified byte-identical. This is [[feedback-evidence-dirs-are-sacred]]
+  again and it has now bitten twice. **Queued to fix — it is a live trap for anyone running that leg.**
+- **`cargo build --release` at the workspace root builds only the root package** (standing bar 7h, third
+  sighting). It left a stale `candor-query` **with no `gate` verb at all**. Caught before it produced a
+  datapoint — but note what would have happened downstream: **that is exactly the state PART 27's R1 cell
+  used to score OK on**, since it accepted exit 2 and 2 is also the usage-error code. The harness fix
+  landed hours before the condition it was written for occurred naturally.
