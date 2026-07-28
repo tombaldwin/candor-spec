@@ -242,8 +242,13 @@ def q_unverified(engine, locator, policy, klass=None):
 
 def q_gate(engine, locator, policy, gate_json=None):
     """`gate --report <locator> --policy <file> [--gate-json <f>]`. Returns rc (or None: no such verb)."""
-    if engine == "java":
+    if engine == "rust":
+        cmd = [rust_query(), "gate", "--report", locator, "--policy", policy]
+    elif engine == "java":
         cmd = ["java", "-jar", java_jar(), "gate", "--report", locator, "--policy", policy]
+    elif engine == "ts":
+        cmd = ["node", os.path.join(ts_root(), "query.mjs"), "gate", "--report", locator,
+               "--policy", policy]
     elif engine == "swift":
         cmd = [swift_bin(), "gate", "--report", locator, "--policy", policy]
     else:
@@ -747,7 +752,10 @@ def row_r5(ws, pol_pure):
 #                an absent optional field silently un-scoping a fail-closed security gate). The bare
 #                rule rides along as the control that proves the fixture can fire at all.
 
-GATE_ENGINES = ["java", "swift"]
+# ⟨0.24⟩ ALL FOUR now implement `gate --report`. This list was ["java","swift"] while rust and ts had not
+# landed it, and the row printed NOSURF for them — which is honest but does not FAIL, so the suite stayed
+# green while a clause §3.1 calls a MUST was pinned 2-of-4. That gap is closed (rust `93ed0a1`, ts `c2b8ce4`).
+GATE_ENGINES = ["rust", "java", "ts", "swift"]
 
 R6_ABSENT_REPORT = {          # `app.hidden` is NOT here. Absent is absent.
     "candor": {"version": "handwritten", "spec": "0.23"},
@@ -804,6 +812,41 @@ def _swift_scan(ws, policy, gate_json):
                             for f in os.listdir(d)) else (None, None)
 
 
+def _rust_scan(ws, policy, gate_json):
+    d = os.path.join(ws, "grs")
+    os.makedirs(os.path.join(d, "src"), exist_ok=True)
+    with open(os.path.join(d, "Cargo.toml"), "w") as fh:
+        fh.write("[package]\nname = \"gcases\"\nversion = \"0.0.0\"\nedition = \"2021\"\n")
+    with open(os.path.join(d, "src", "lib.rs"), "w") as fh:
+        fh.write("pub fn reader() { let _ = std::fs::read(\"/etc/hosts\"); }\n"
+                 "pub fn caller() { reader(); }\n"
+                 "pub fn pure_fn() { let _x = 1; }\n")
+    pfx = os.path.join(d, "out", "r")
+    os.makedirs(os.path.join(d, "out"), exist_ok=True)
+    for f in os.listdir(os.path.join(d, "out")):
+        os.remove(os.path.join(d, "out", f))          # never read a stale report back as this arm's result
+    rc = run([rust_scan(), d, "--out", pfx, "--policy", policy, "--gate-json", gate_json]).returncode
+    return (pfx, rc) if any(f.startswith("r.") for f in os.listdir(os.path.join(d, "out"))) else (None, None)
+
+
+def _ts_scan(ws, policy, gate_json):
+    d = os.path.join(ws, "gts")
+    os.makedirs(d, exist_ok=True)
+    src = os.path.join(d, "cases.ts")
+    with open(src, "w") as fh:
+        fh.write("import * as fs from 'fs';\n"
+                 "export function reader() { fs.readFileSync('/etc/hosts'); }\n"
+                 "export function caller() { reader(); }\n"
+                 "export function pureFn() { const x = 1; return x; }\n")
+    pfx = os.path.join(d, "out")
+    for f in os.listdir(d):
+        if f.startswith("out."):
+            os.remove(os.path.join(d, f))
+    rc = run(["node", os.path.join(ts_root(), "scan.mjs"), d, "--out", pfx,
+              "--policy", policy, "--gate-json", gate_json]).returncode
+    return (pfx, rc) if any(f.startswith("out.") for f in os.listdir(d)) else (None, None)
+
+
 def row_r6(ws, pols):
     cells = []
     for eng in ENGINES:
@@ -827,7 +870,8 @@ def row_r6(ws, pols):
             for p in (a, b):
                 if os.path.exists(p):
                     os.remove(p)            # delete outputs before measuring the control
-            rep, rc_scan = (_java_scan if eng == "java" else _swift_scan)(ws, pol, a)
+            _scan = {"rust": _rust_scan, "java": _java_scan, "ts": _ts_scan, "swift": _swift_scan}[eng]
+            rep, rc_scan = _scan(ws, pol, a)
             if rep is None:
                 bad.append(f"{name}: the scan produced no report (harness)")
                 continue
