@@ -1189,6 +1189,37 @@ remedy (gate at scan time). Refusing costs nothing on a self-produced report: `n
 every `Net`-bearing entry and is floored at `unknown-host`, and an inherited `Unknown` always has its callee
 in `calls` (that callee carries `Unknown`, so it is effectful).
 
+⟨0.24⟩ **THE FOURTH CHANNEL: POLICY VOCABULARY ANCHORS AT THE POLICY FILE, ON BOTH ROUTES.** §3.1's
+MUST NOT names three channels through which an effect must never enter a gate that its report does not
+carry. A review found a fourth that no engine's test covers: **`.candor/config`'s `unknown-alias`.**
+Measured four-way, an alias file placed beside the POLICY moves the verdict 0→1; the same alias in the cwd
+alone does not. Three consequences, and only the third is a defect:
+
+- `CANDOR_CONFIG` alone can flip the verdict, so the verb is **not literally a pure function of
+  `(report, policy)`**. That is tolerable — an alias is policy *vocabulary*, and vocabulary is part of the
+  policy — but the claim in this section must be stated as the closure, not the pair.
+- Config discovery **walks parent directories**, so an alias file anywhere ABOVE the policy participates.
+  Ambient, and invisible in the output.
+- **The two routes anchor differently.** All four gate verbs anchor at the **policy file's** directory
+  while all four scan routes anchor at the **target**. With the policy stored outside the scan target,
+  `scan --policy P` and `gate --report R --policy P` can expand the same rule differently — **so
+  §3.1's byte-equality MUST is breakable by a file that is neither the report nor the policy.** That is
+  the defect, and it is uniform.
+
+**RULING.** `unknown-alias` — and any future key that supplies POLICY VOCABULARY rather than scan
+configuration — resolves **relative to the `--policy` file's directory on BOTH routes** when `--policy` is
+given explicitly. Vocabulary travels with the policy that uses it; target-scoped keys (`deps`,
+`net-partner`, scan settings) keep anchoring at the target, because they describe the thing being scanned.
+This makes byte-equality hold **by construction** rather than by the two routes happening to be pointed at
+the same directory, and it is the only anchor under which the equality MUST is not hostage to where the
+operator filed the policy.
+
+⟨0.24⟩ **AND THE AMBIENCE MUST BE DISCLOSED.** If a config file supplied vocabulary that participated in
+the verdict, the `--gate-json` document MUST name that file. A verdict changed by a file the operator
+cannot see named in the output is the ambient-input failure this whole format exists to refuse; the remedy
+is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
+act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
+
 ⟨0.24⟩ **PRECEDENCE, AND THE STALE-DOCUMENT HAZARD A REFUSAL CREATES.** Three outcomes can be live at
 once. The order is **refusal (2) > violation (1) > incomplete (2)**: a refusal means the gate could not be
 evaluated *as written*, so no verdict it produced would be about the policy the operator asked for; a real
