@@ -5127,3 +5127,54 @@ Java, and I had a second tool (python) that took ten seconds to disagree.
 - [ ] Replace the literal NUL in `Policy.java:363` with the `\0` ESCAPE — byte-identical semantics,
       searchable file. Also: `unverified` over an unhonourable policy prints "— no fix computed" (shares
       `loadPolicyOrDie` with `fix`/`fix-gate`): right posture, wrong noun.
+
+## rust round 3 — CLOSED (7 commits), and removing a short-circuit bit TWICE in one session
+
+438 tests, clippy 0, bait matrix 29/29, gate-equivalence 54 rows, self-gate OK.
+
+**A/B/C reproduced exactly.** `deny Unknown[unresolved] app.opaque` alone: NOTE ending *"Refusing (exit
+2)."* then exit 1 with a violation record → now exit 2, refusal document, no violation. The bare-rule
+control unchanged; the mixed policy now charges only `app.writes` and discloses the withheld rule.
+
+**The tell I missed and rust found: the fabricated record carried NO `reasonClass` KEY AT ALL**, while the
+evidenced records beside it carry `["unresolved"]`. The floor lived in the predicate and never in the data,
+so **the record refuted itself** — the document contained the evidence that it was fabricated. Worth
+remembering as a detection shape: a violation whose justifying field is absent is not a formatting quirk.
+
+Root cause differed from java's: rust had TWO pieces of code and its answerability detector was already
+right — only the firing side was wrong. Fixed by asking the firing question three ways (fire / tolerate /
+**withhold**), with withheld pairs riding out in a `GateOutcome` so no caller can drop them. **The Net
+filter got the same split — it never fabricated, it silently DROPPED, which is the other half of one
+defect.** Both directions of one bug, found because the fix forced the question.
+
+**THE SAME HAZARD BIT TWICE.** Deferring the `forbid`/`allow` refusal (my `1503368`) silently started
+*evaluating* them: `deny Net` + `allow Net other.example.com` put an **AS-EFF-008 record in the document**,
+derived from a `surface_incomplete` map the report route leaves empty ON PURPOSE — precisely the unsound
+verdict that refusal exists to prevent, shipped as if certain. Its own new test caught it on the first run.
+**Removing a short-circuit exposes code to inputs its author never had to consider, and I have now caused
+this twice in one session from two different rulings.**
+
+**`unverified` LOST A DISCLOSURE, in a verb java never named.** A hole is a function that *passes* its rule
+while Unknown — so widening `Unknown[corp]` to a bare `deny Unknown` reclassified a real hole as a
+violation-that-isn't, and the verb printed **"PROVABLY clean ✓"**. The token ruling's blast radius reached
+a *disclosure* verb, not just gates.
+
+- [ ] **Two residuals rust reported rather than fixing unilaterally** (both touch conformance-pinned
+      predicates): (a) `whatif`/`fix-gate`/`unverified` ignore the `Unknown[…]`/`Net[…]` FILTER when
+      matching — `unverified_hole_rule` computes `violates` from `r.effects` alone, so the same lost
+      disclosure is reachable one layer down **with no alias at all**, shared with candor-scan's gate note
+      (PART 12d); (b) `whatif` reconstructs the printed rule from `effects`+`scope` instead of `raw`.
+      **Fixing (b) alone would be WORSE while (a) stands** — it would attribute an unfiltered verdict to the
+      operator's actual narrowed rule.
+- [ ] **A wider vein under `be0b9a9`, for a four-way call:** a policy line whose rule KIND or EFFECT NAME is
+      unrecognised is still dropped with a warning. Now half-addressed: `195d45a` requires `parsepolicy` to
+      REPORT every dropped line, which is additive and needs no grammar decision. Whether the GATE should
+      refuse stays open — `deny Net Exex app` cannot be told from a legitimate scope by the parser.
+
+### Two measurement errors rust caught in itself, both flattering
+
+Its first corpus run **discarded the violation lines** (they go to stdout), and its first mutant harness
+**didn't rebuild after restoring**, so a non-compiling mutant inherited the previous mutant's binary and
+looked "caught". **A mutant that doesn't compile is not a mutant** — and the tell was arithmetic: 6 bait
+failures with 0 test failures is impossible. Also fixed: a `gate-equivalence` arm asserting *neither* route
+writes a document on a policy error — an equality claim about an ABSENCE, which `1503368`(b) inverted.
