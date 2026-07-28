@@ -738,6 +738,37 @@ not written by an agent and checked by a second party).
       sidecar denylist (all seven, trailing-segment-only), and the locale control (non-vacuous in fixture
       AND platform, with a disclosed SKIP rather than a vacuous pass).
 
+### 2d — THE ts `--class` OVER-FIRE · a GATE-LEVEL FABRICATION, and the reviewer called it unreachable
+
+- [x] **FIXED candor-ts `72a9b51`. Both triggers reproduced at the shipped CLI — and a THIRD, which the
+      reviewer had judged unreachable BY INSPECTION and which a RUN proved live.**
+      `reasonClassesMatch` returned `true` on an empty class set, so an unclassifiable hole matched **all
+      six classes**. Four-way before: rust `[]`, java `[]`, swift `[]`, **ts `['app.orphan']`**.
+      **THE THIRD TRIGGER IS THE SERIOUS ONE — A GATE-LEVEL FABRICATION, LIVE.** Driven over the real MCP
+      stdio transport (`candor_gate`, a shipped surface that runs `evaluatePolicy` over a **loaded —
+      possibly FOREIGN — report**), `deny Unknown[reflect] app` **FIRED** on `app.orphan`, with **no
+      `reasonClass` on the violation record** because the set it matched on was empty. The LSP shares the
+      same call.
+      **The reviewer's "unreachable" was a code-inspection judgement and it was wrong.** Its argument — ts's
+      emitter writes `["unresolved"]` on any unnamed direct `Unknown`, plus the exit-2 self-check — holds
+      for ts's OWN reports and says nothing about **MCP/LSP, which read whatever report they are pointed
+      at.** The fixer answered it with a run instead, which is the standing rule at the highest possible
+      stakes: *a judgement about reachability is a hypothesis until something executes it.*
+      Fix, both halves: project empty → `{unresolved}`, and build the edge set from the report's own §2
+      `calls` **unioned** with the sidecar (union, not either-or — the sidecar can carry edges an older
+      report's entries lack, and more edges only ADD classes, the fail-closed direction). The residual
+      genuinely-degraded case (no sidecar AND no `calls`) is now **disclosed on stderr**, the channel a
+      *corrupt* sidecar already used while an *absent* one said nothing.
+      **Four-way agreement: 4 fixtures × 8 filters = 32 comparisons, 0 diverging** (8 diverged before), and
+      byte-identical with and without the sidecar.
+      **IT CORRECTED MY BRIEF AGAIN**: "must NOT match `--class unresolved`" applies to the **no-sidecar**
+      case only. A genuine orphan callee DOES match `unresolved` in rust, java and swift — that is exactly
+      §6.2's projection. Only the no-sidecar-but-classified case must escape it. Both are now asserted.
+      - [ ] **One piece of coverage deliberately NOT added**: the CLI-level arm in `test.mjs` beside the
+            existing `unverified --class` e2e block, because the doc-sweep agent was editing that file
+            concurrently and writing it risked clobbering in-flight work. Verified by hand instead (byte
+            identity over 8 filters ± sidecar, plus the disclosure). **Add it once ts is quiet.**
+
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
 - [ ] **FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
