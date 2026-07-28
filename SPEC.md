@@ -419,11 +419,25 @@ producer that emits no manifest gives a consumer nothing to distinguish "judged 
 found nothing", and the unchained reading is the only honest one. An engine carrying such a pin should
 re-point it at a manifest-bearing fixture rather than delete it.
 
-⟨0.24⟩ **THE SAME RULE BINDS `gate --report` (§3.1).** A report presented *directly* to the gate with
-`analyzed.count: 0` makes the same claim as a chained one, and must be read the same way: it has judged
-nothing, so it licenses no purity claim and the verb MUST say so rather than reporting "no violations,
-exit 0". The clause above is written for the chained path because that is where it was found; the
-obligation is on the reading, not on the route by which the report arrived.
+⟨0.24⟩ **THE SAME RULE BINDS `gate --report` (§3.1) — AS A DISCLOSURE, NOT AS AN EXIT CODE.** A report
+presented *directly* to the gate with `analyzed.count: 0` makes the same claim as a chained one and must be
+read the same way: it has judged nothing, so it licenses no purity claim and **the verb MUST SAY SO**. The
+obligation is on the reading, not on the route the report arrived by.
+
+**The exit code and the verdict document are UNCHANGED.** ⟨0.24⟩ *This clause first read "MUST say so
+rather than reporting 'no violations, exit 0'", which forbade exit 0 — and that contradicted §3.1's own
+byte-equality MUST, because a scan of an empty facade package exits 0 with a clean verdict, so the gate
+route must too. Two engines then implemented the two halves of my contradiction: one refused with exit 2
+and no verdict document (breaking byte-equality on ~7–10% of real dependency reports, measured), the other
+added a stderr caveat and left the verdict alone. **The second is right, and it is what §2 already said
+about this defect: the harm is the DELETED DISCLOSURE, not the verdict — restoring a verdict would assert
+an effect the consumer has no evidence for.** Corrected here rather than in the engines.*
+
+So: an advisory naming the package, on the channel a corrupt report already uses. Exit code untouched,
+`--gate-json` byte-equal to `scan --policy`. Refusing with exit 2 is **not** an available reading — §3.3
+enumerates exactly two exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the target's own
+code) and a judged-nothing DEPENDENCY is neither, so an engine that refuses here has minted a third cause
+and **split the verb**.
 
 ⟨0.24⟩ **THE CONFLICT CASE — a package chained TWICE, once judged and once not.** A `count: 0` report makes
 **no claim**, so it neither adds nor subtracts: the judged report's coverage **stands**. That is the rule,
