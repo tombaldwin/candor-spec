@@ -1255,6 +1255,33 @@ cannot see named in the output is the ambient-input failure this whole format ex
 is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
 act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
 
+⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED:
+`"conditional": [ { "rule": "<the raw policy line>", "condition": "<the narrowing left unevaluated>" } ]`,
+omitted when empty.** `whatif` asks about an effect the code does not yet have. A narrowing filter
+quantifies over a CLASS of that effect — `deny Net[unknown-host]` asks about a destination the hypothetical
+call has not got, because the call does not exist. There is nothing to match, so the filter cannot be
+evaluated and the answer is fail-closed **but conditional**.
+
+Neither of the two obvious answers is right. Printing the rule stripped of its filter (`deny Net` for
+`deny Net[unknown-host]`) misattributes the verdict to a rule the operator did not write. Printing the raw
+line with an unconditional verdict is **worse than that bug**, because it reads as a filter candor evaluated
+and did not. §3.1's own rule settles it: an unanswerable condition is DISCLOSED, never scored — so the raw
+line is printed and the unevaluated narrowing is named beside it.
+
+⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
+`policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
+engine needed — without specifying its shape, and three of the four had produced a live cross-engine
+divergence before anyone looked. Measured interval on the third: **under an hour** from "an engine minted
+an unpinned name" to "R9 reports three names for one field".
+
+So: **a field that enters a machine-consumed document MUST have its name and shape stated here in the same
+rung that introduces it.** A MUST that says "disclose X" without saying what X is called is not a
+requirement, it is four independent guesses with a conformance failure scheduled. The cost of pinning is
+one sentence written at the time; the cost of not pinning is an engine round per implementation plus a
+conformance row to catch it — which is what today cost. **`conditional` is rust-only as this is written,
+and it is pinned before the other three implement it rather than after**, which is the first time this
+rung has got ahead of that.
+
 ⟨0.24⟩ **THE DISCLOSURE'S SHAPE IS `"policyVocabulary": { "config": "<path>", "aliases": { … } }`.** I left
 this unspecified when I required the disclosure, and three engines invented three answers within the hour —
 `vocabulary` (rust), `policyVocabulary` (java), and `configSources: [path]` (swift). **That is the
