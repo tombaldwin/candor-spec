@@ -2048,13 +2048,30 @@ requirements:
    contributing `unresolved` to one whose `Unknown` is correctly classified at the callee is the mirror
    fabrication. A fix that trades one for the other is not a fix.
 
+⟨0.24⟩ **THE POLICY SIDE MUST REFUSE TOO — my "a dropped token leaves a WIDER rule" reasoning was FALSE,
+and the false half is fail-open.** This clause used to justify the query/policy asymmetry by asserting that
+dropping an unrecognised class token on the policy side can only widen. Measured four-way, it does both:
+
+- `deny Unknown[corp]` — the *only* token is unrecognised, the filter empties, and the rule **WIDENS** to a
+  bare `deny Unknown`. Merely surprising. **But the engine prints "ignoring policy rule" and then KEEPS and
+  re-scopes it — a FALSE DISCLOSURE**, the `net-partner` class PART 13b already exists for.
+- `deny Unknown[dispatch,nativ]` — a **typo among valid tokens**. It is silently dropped, the rule
+  **NARROWS** to `[dispatch]`, and it **no longer gates native-caused holes at all** while the operator
+  reads a gate that looks armed. That is fail-open, and it is the common case: a typo lands beside correct
+  tokens far more often than alone.
+
+So the policy side takes the same rule as the query side: **an unrecognised reason-class token is a policy
+error — exit 2, the unreadable-policy posture (§6.2), naming the token and the accepted set.** A policy that
+cannot be honoured as written is not silently rewritten into a different policy. The asymmetry I claimed
+does not exist; only the *direction* of the surprise differed, and one of the two directions is a hole.
+
 ⟨0.24⟩ **THE FLAG'S VALUE GRAMMAR**, which was never stated and is therefore where the next divergence
 would have gone. `--class <c>[,<c>…]` takes ONE comma-separated list; it is **not repeatable** (a second
 occurrence is a usage error, not a union). Accepted tokens are the six classes, plus the two aliases `*`
 and `dynamic` — the latter being what the diagnostic below uses, so it must be accepted. An
 **UNRECOGNISED** token is a **usage error: exit 2**, naming the token and listing the accepted set. It is
-NOT the policy-side drop-with-warning behaviour, and the difference is the point: on the policy side a
-dropped token leaves a *wider* rule standing, whereas here it leaves a *narrower* filter — so `--class
+NOT the policy-side drop-with-warning behaviour, and the difference is the point: here a dropped token
+leaves a *narrower* filter — so `--class
 dyanmic` would silently answer a question the user did not ask, with a smaller number, which is the
 fail-open this whole clause exists to close. A query flag that cannot be honoured is refused.
 
