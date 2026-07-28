@@ -18,6 +18,8 @@ their own output rather than skipping quietly:
   R6  §3.1 `gate --report` — byte-equality, the MUST NOT, and the three answerability refusals 4-way
   R8  §3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a
            document that is fail-closed to a NAIVE reader                                      4-way
+  R9  CROSS-ENGINE verdict KEY PARITY — byte-equality is WITHIN-engine and caught nothing when
+           swift emitted `coverage.modules` for three years of `coverage.packages`                4-way
   R7  §2   LOCALE-INDEPENDENCE — the same input under two collations, byte for byte            4-way
 
   R2/R3/R4 are three-surface (rust, java, ts): candor-swift deliberately ships NO `callers` verb — it is
@@ -1114,6 +1116,139 @@ def row_r8(ws, pols):
 
 
 # =====================================================================================================
+# R9 — CROSS-ENGINE VERDICT KEY PARITY: the four documents must have the SAME SHAPE
+# =====================================================================================================
+#
+# ⟨0.24⟩ THIS ROW EXISTS BECAUSE OF A HOLE THE OTHER ROWS CANNOT SEE, AND THE HOLE WAS FOUND BY A MISS.
+# candor-swift emitted the verdict's uncovered-package list as `coverage.modules` where rust, java and ts
+# emit `coverage.packages`. Nothing caught it for the life of the field:
+#
+#   - §3.1's byte-equality MUST is WITHIN-ENGINE — `scan --policy` vs `gate --report` on the SAME engine.
+#     swift was perfectly self-consistent, so R6's equivalence cell was green and correct.
+#   - the spec never normatively defined the verdict's `coverage` block at all (§2 defines the REPORT's
+#     ledger, which is a DIFFERENT SHAPE), so there was no clause to check against. The one mention was
+#     descriptive prose that said `modules` — written, almost certainly, with swift's output open.
+#   - and no PART compared the KEY SET across engines. Every cell compared an engine to a clause, or to
+#     itself.
+#
+# So a field can be emitted by all four, mentioned in the spec, and covered by a byte-level equivalence
+# test, and still be UNSPECIFIED AND DIVERGENT. What was missing is the cheapest comparison available:
+# do the four documents have the same shape?
+#
+# WHAT THIS ROW DOES NOT DO. It does not compare VALUES. `detail` is free text and legitimately differs
+# in wording per engine; the counts differ with the fixture. Cross-engine value equality is not a
+# property this family claims, and asserting it would produce a row that fails for correct reasons.
+# The claim is narrower and it is the one that was broken: THE SAME SITUATION MUST PRODUCE THE SAME KEYS.
+#
+# THE FIXTURE IS CHOSEN SO EVERY OPTIONAL BLOCK IS UNIFORMLY ABSENT — one plain `Fs` entry, no `Unknown`
+# (so no `reasonClass`), no `Net` (so no `netClass`), no `unanalyzed`, nothing uncovered. Otherwise the
+# row would flag legitimate per-situation differences as divergence. `deny Fs` then fires on all four,
+# which is also the vacuity guard: a document with no violations cannot exercise the record's key set.
+
+R9_REPORT = {
+    "candor": {"version": "handwritten", "spec": "0.23"},
+    "package": "app",
+    "analyzed": {"count": 1, "digest": "0"},
+    "functions": [{"fn": "app.writes", "inferred": ["Fs"], "direct": ["Fs"], "paths": ["/etc/hosts"]}],
+}
+
+
+def _shape(doc):
+    """The document's SHAPE: top-level keys, the nested blocks' keys, and the violation record's keys."""
+    top = set(doc.keys())
+    nested = set()
+    for k in ("analyzed", "coverage"):
+        if isinstance(doc.get(k), dict):
+            nested |= {k + "." + x for x in doc[k]}
+    rec = set()
+    for v in (doc.get("violations") or []):
+        if isinstance(v, dict):
+            rec |= set(v.keys())
+    return top | nested, rec
+
+
+def _parity(shapes):
+    """{eng: (topkeys, reckeys)} -> {eng: [complaint, ...]}. Extracted so it is testable without engines.
+
+    The majority shape is the reference, and DISAGREEMENT IS REPORTED ON EVERY ENGINE THAT DIFFERS — not
+    on "the odd one out". A tie has NO majority and fails on ALL engines, loudly, naming the split: this
+    family has twice this week found the outlier to be the CORRECT one (candor-ts on both contested
+    `gate --report` questions), so the row reports the disagreement and REFUSES TO NOMINATE A WINNER.
+    Adjudicating belongs to the clause, not to a headcount.
+    """
+    from collections import Counter
+    out = {}
+    top_counts = Counter(frozenset(t) for t, _ in shapes.values())
+    rec_counts = Counter(frozenset(r) for _, r in shapes.values())
+    top_ref, top_n = top_counts.most_common(1)[0]
+    rec_ref, rec_n = rec_counts.most_common(1)[0]
+    tie_top = sum(1 for _, n in top_counts.items() if n == top_n) > 1
+    tie_rec = sum(1 for _, n in rec_counts.items() if n == rec_n) > 1
+    for eng, (top, rec) in shapes.items():
+        bad = []
+        if tie_top:
+            bad.append("NO MAJORITY on the top-level shape %s — the engines split evenly, so this row "
+                       "will not nominate a winner; adjudicate from the clause"
+                       % [sorted(x) for x in top_counts])
+        elif frozenset(top) != top_ref:
+            bad.append("top-level keys differ: extra %s, missing %s (majority of %d: %s)"
+                       % (sorted(set(top) - set(top_ref)), sorted(set(top_ref) - set(top)),
+                          top_n, sorted(top_ref)))
+        if tie_rec:
+            bad.append("NO MAJORITY on the violation-record shape %s"
+                       % [sorted(x) for x in rec_counts])
+        elif frozenset(rec) != rec_ref:
+            bad.append("violation-record keys differ: extra %s, missing %s (majority of %d: %s)"
+                       % (sorted(set(rec) - set(rec_ref)), sorted(set(rec_ref) - set(rec)),
+                          rec_n, sorted(rec_ref)))
+        out[eng] = bad
+    return out
+
+
+def row_r9(ws, pols):
+    cells = []
+    shapes = {}
+    for eng in ENGINES:
+        if not present(eng):
+            cells.append((eng, "key-parity", ABSENT, "", ""))
+            continue
+        loc = write_report(ws, eng, R9_REPORT)
+        gj = os.path.join(ws, "r9.%s.json" % eng)
+        if os.path.exists(gj):
+            os.remove(gj)
+        rc = q_gate(eng, loc, pols["r9_fs"], gate_json=gj)
+        if rc is None:
+            cells.append((eng, "key-parity", NOSURF, "no `gate --report` verb on this engine", ""))
+            continue
+        if rc != 1:
+            cells.append((eng, "key-parity", ERROR,
+                          "`deny Fs` over a plain Fs entry -> exit %s, want 1. Without a violation the "
+                          "record's key set is never exercised and the row would compare empty sets." % rc,
+                          "exit 1"))
+            continue
+        if not os.path.exists(gj):
+            cells.append((eng, "key-parity", ERROR, "no `--gate-json` document written", ""))
+            continue
+        try:
+            shapes[eng] = _shape(json.load(open(gj)))
+        except Exception as e:
+            cells.append((eng, "key-parity", ERROR, "verdict did not parse: %s" % e, ""))
+
+    if len(shapes) < 2:
+        for eng in shapes:
+            cells.append((eng, "key-parity", VACUOUS,
+                          "only one engine produced a comparable verdict — parity needs two",
+                          "two or more engines"))
+        return cells
+
+    for eng, bad in sorted(_parity(shapes).items()):
+        cells.append((eng, "key-parity", OK if not bad else FAIL,
+                      "; ".join(bad) or "shape matches the other %d" % (len(shapes) - 1),
+                      "the same situation produces the same keys"))
+    return cells
+
+
+# =====================================================================================================
 # R7 — §2 LOCALE-INDEPENDENCE
 # =====================================================================================================
 #
@@ -1423,6 +1558,7 @@ ROWS = [
     ("R5", "§6.2 --class — dynamic excludes only setup-only entries, narrower filters\n        discriminate, and an unhonourable filter value is refused"),
     ("R6", "§3.1 gate --report — byte-equality, the MUST NOT, and the three answerability refusals"),
     ("R8", "§3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a document"),
+    ("R9", "CROSS-ENGINE verdict KEY PARITY — the same situation must produce the same keys"),
     ("R7", "§2 locale-independence — the same input under two collations, byte for byte"),
 ]
 
@@ -1492,7 +1628,8 @@ def main():
                        # R8: a FIRING rule and an UNANSWERABLE rule in the SAME policy.
                        ("r8_mixed", "deny Fs\ndeny Net[unknown-host] app"),
                        ("r8_refuse_only", "deny Net[unknown-host] app"),
-                       ("r8_fire_only", "deny Fs")):
+                       ("r8_fire_only", "deny Fs"),
+                       ("r9_fs", "deny Fs")):
         p = os.path.join(ws, "pol." + name)
         open(p, "w").write(text + "\n")
         pol[name] = p
@@ -1517,6 +1654,7 @@ def main():
                 ("R5", lambda: row_r5(ws, pol["pure"])),
                 ("R6", lambda: row_r6(ws, gate_pols)),
                 ("R8", lambda: row_r8(ws, pol)),
+                ("R9", lambda: row_r9(ws, pol)),
                 ("R7", lambda: row_r7(ws, pol["pure"], disc))]
         for name, fn in plan:
             if only and name not in only:
