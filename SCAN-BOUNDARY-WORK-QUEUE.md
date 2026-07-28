@@ -4662,3 +4662,68 @@ consumers from the source instead of asserting them.
       reason it does have.** §4 has no kind for it (which is why the invented one was removed), and §6.2's
       rule is per-function and keyed on ABSENCE, so it does not compose. A second-hop consumer re-derives
       `dispatch` alone. This is a §4/§6.2 rung, not an engine fix.
+
+## §2f — the SECOND gate review (2026-07-28): it confirmed the first and found three the first missed
+
+Two independent reviews of the same verb. The overlap is the useful part: where both landed on the same
+defect, the finding is not an artifact of one reviewer's angle. Where the second found something new, it is
+because it probed a channel the first did not.
+
+**CONFIRMED by both, already dispatched:** rust's count-0 byte-equality break; rust's incomplete-analysis
+swallowing the violation *and deleting it from the document*; java's and swift's `gate --report` printing
+the forbidden literal with zero bytes on stderr; the four-way scoped-`Unknown[C]` fail-open.
+
+**NEW in the second review, and the sharpest is MINE:**
+
+1. **The policy parser says "ignoring policy rule" while KEEPING and silently re-scoping it.** Two
+   directions, one false disclosure. `deny Unknown[corp]` — sole unrecognised token — empties the filter and
+   **widens** to a bare `deny Unknown`, having just announced it was ignoring it. `deny
+   Unknown[dispatch,nativ]` — a typo BESIDE valid tokens — is silently dropped and **narrows** to
+   `[dispatch]`, so it no longer gates native-caused holes while the operator reads a gate that looks armed.
+   **I specced this asymmetry deliberately and my reasoning was false:** I argued a dropped policy token can
+   only widen, so the failure is loud. It does both, and the narrowing half is the common case — a typo
+   lands beside correct tokens far more often than alone. **RULED `382a7e0`:** both sides refuse.
+   *Still to implement four-way.*
+
+2. **The FOURTH CHANNEL — `.candor/config` `unknown-alias` moves the verdict, and no engine's MUST-NOT test
+   covers it.** The three documented baits are all covered; this one was not even a candidate. Worse than
+   the coverage gap: **the two routes anchor differently** — every gate verb at the policy file's dir, every
+   scan route at the target — so byte-equality is breakable by a file that is neither report nor policy.
+   **RULED `99eb4e9`:** vocabulary anchors at the policy on both routes, and a config that participated MUST
+   be named in the document. *Still to implement four-way, plus a fourth bait in all four MUST-NOT tests.*
+
+3. **A refusal writes NO document, so a CI wrapper re-reads the PREVIOUS run's verdict as current.** Uniform
+   four-way and defensible in isolation, which is why neither engine's authors saw it — the hazard is not in
+   the exit code, it is in what the file on disk says afterwards. **RULED `107755b`:** a refusal writes a
+   document that is fail-closed to a naive reader (`ok:false` + `refused:true`, and NO `violations` key,
+   because an empty array is exactly the claim a refusal cannot make). *Still to implement four-way.*
+
+Also new, lower: java's prefix locator gates only ONE of several matched reports (engine-wide, pre-existing,
+but the workspace prefix is this verb's use case — dispatched); a present-but-unparseable `unanalyzed`
+dropped by rust, and by ALL FOUR in the bare-string-list shape (ruled `38ba3e2`, dispatched); a
+pre-⟨0.21⟩ report emitting `analyzed:{count:0}` — the exact token that now means "judged nothing" — to a
+machine consumer; swift's verdict using `modules` where the other three use `packages`.
+
+### What the second review is worth, beyond the three findings
+
+It **cleared two things the first could not**, and the clearances are load-bearing:
+
+- The MUST NOT holds four-way **under a stronger test than any engine ships** — `CANDOR_DEPS` set, a
+  `.candor/config` `deps` key in FOUR directories at once, a `.callgraph.json` naming the absent function
+  and edging it to an `Fs` unit, and a `.hierarchy.json` — `deny Fs app.ghost` exits 0 on all four, and the
+  negative control (same baits, effect written INTO the report) exits 1 on all four. Absent stays absent.
+- **Byte-equality is real and non-vacuous in both new engines**, reproduced live on scan-produced reports
+  rather than inferred from the test suites.
+
+And it found the weakest link is **java's** in-repo byte-equality test, which compares only violation count
+and exit code, while conformance PART 27's byte-diff is three policies over a three-function `Fs` fixture —
+so the four fields §3.1 names in the byte-equality MUST are pinned by the NEW engines' own suites rather
+than by the shared gate. **The reference engine has the weakest test of the property it is the reference
+for.** That is a conformance gap, not an engine bug, and it belongs to me.
+
+### Standing bar, 7m
+
+**When two engines disagree, the reference engine is not automatically the right one.** On both contested
+`gate --report` questions this week the answer was **candor-ts**, and java was changed to match it. The
+reference engine is the one whose behaviour the spec was WRITTEN FROM, which makes it the most likely place
+for an unexamined assumption to have been promoted to a rule. Adjudicate from the clause, not the pedigree.
