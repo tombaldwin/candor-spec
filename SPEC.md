@@ -1024,8 +1024,27 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   declines to explain the thing being diagnosed has inverted its purpose, and it would remove the four-way
   pin on token handling at the one input where the engines are most likely to differ.
 
-  So: `parsepolicy` emits its parse **and an `errors` list naming each token it could not recognise and
-  the accepted set**, and exits 0. The unrecognised token MUST appear in that output rather than being
+  So: `parsepolicy` emits its parse **and an `errors` list**, and exits 0. Each entry is
+  `{ "kind", "token", "accepted", "rule", "message" }` — `kind` names the vocabulary
+  (`reason-class/alias`, `Net destination-class`, …), `token` the thing not recognised, `accepted` the
+  admissible set, `rule` the source line verbatim, `message` the human sentence. `errors` is **omitted when
+  empty**, so a clean parse stays byte-identical and the existing four-way `deny`/`allow`/`forbid`
+  comparison is untouched.
+
+  ⟨0.24⟩ **`errors` CARRIES EVERY LINE THE ENGINE DID NOT HONOUR AS WRITTEN — not only unrecognised
+  tokens.** Measured on the reference engine the moment the list existed: `parsepolicy` reported **2** token
+  errors while its stderr reported **8 further policy lines dropped entirely** — an unknown effect name
+  (`deny notaneffect`), an `allow` on an effect that takes no operand, malformed `forbid` lines, an unknown
+  rule kind. None appeared in the machine output. **A dropped rule is the limit case of "silently rewritten
+  into a different policy": the rewritten policy is the one without that line**, and it is a bigger rewrite
+  than a narrowed filter, not a smaller one. The witness was disclosing the two cases that happened to
+  prompt the clause and staying silent on the four that did not.
+
+  This is deliberately **additive to the witness and silent about the gate.** Whether a dropped rule should
+  also make the GATE refuse is a harder question and stays open: `deny Net Exex app` cannot be told from a
+  legitimate scope by the parser, so treating unknown effect names as errors is a GRAMMAR change rather
+  than a token change. Reporting what was dropped requires no such decision, and until it is reported
+  nobody can measure how often it happens. The unrecognised token MUST appear in that output rather than being
   silently dropped from the parse — the pre-⟨0.24⟩ behaviour was *drop with a warning*, and a diff that
   cannot see the difference between "dropped" and "rejected" cannot pin this rung at all.
 
