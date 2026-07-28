@@ -1013,7 +1013,11 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   SHOULD expose it (an enforcer without it is still exercised through the applied `--policy`
   verdict differentials, but its grammar is only indirectly diffed).
 
-  ⟨0.24⟩ **`parsepolicy` MUST NOT REFUSE. It REPORTS the parse, including what it could not honour.**
+  ⟨0.24⟩ **`parsepolicy` MUST NOT REFUSE A POLICY IT CAN READ AND CANNOT HONOUR. It REPORTS that parse,
+  including what it could not honour.** ⟨0.24⟩ *This was first written absolutely, and all four engines
+  correctly exit 2 on a MISSING file — so as written every engine was nonconformant and the conformant
+  behaviour would have been harmful: exit 0 with an empty rule list is the silent-empty this document
+  forbids everywhere else. A file with no parse to report is not the case this clause is about.*
   When ⟨0.24⟩ made an unrecognised policy token a policy error (§6.2), two engines applied it in the
   PARSER and `parsepolicy` began exiting 2 on the conformance battery — which contains such tokens
   deliberately. The suite **halted at PART 4**, so one ruling took the whole differential offline.
@@ -1261,6 +1265,65 @@ the verdict, the `--gate-json` document MUST name that file. A verdict changed b
 cannot see named in the output is the ambient-input failure this whole format exists to refuse; the remedy
 is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
 act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
+
+⟨0.24⟩ **A TYPO'D EFFECT NAME DELETES THE RULE, SILENTLY, FOUR-WAY GREEN — and the token rule stopped at
+the bracket for no reason its own argument supports.** Measured on all four engines:
+
+    deny Nett app             ->  rust 0  ts 0  java 0  swift 0     the rule is DELETED, the gate is green
+    allow Nett host.example   ->  rust 0  ts 0  java 0  swift 0     the certification silently vanishes
+
+The operator reads an armed `deny Net`; there is no gate at all. This document already calls a dropped rule
+*"the limit case of silently rewritten into a different policy… a bigger rewrite than a narrowed filter,
+not a smaller one"* — and yet the bigger rewrite was warning-only while the smaller one is exit 2. **That is
+the fourth time a clause has been scoped to the position its defect was found in rather than the condition
+its reasoning names.**
+
+The grammar defence for leaving this open is real but NARROWER than I took it to be. `deny Net Exex app`
+genuinely cannot be told from a legitimate scope by the parser. But:
+
+- **`allow`'s effect position is a fixed, closed four-token set.** `allow Nett …` is unambiguously a typo,
+  with no scope reading available. It MUST be a policy error.
+- **A `deny` whose effect list ends up EMPTY after scope-splitting is malformed under either reading** —
+  there is no legitimate policy it could be — so refusing it loses nothing.
+
+Both are exit 2. What stays open is only the genuinely ambiguous middle: a `deny` with at least one valid
+effect and an unrecognised trailing token that MIGHT be a scope. `parsepolicy` reports it either way
+(§3.1), so the operator can always see it.
+
+⟨0.24⟩ **CORRUPTION IS JUDGED PER KEY *ROLE*, NOT PER RULE — and the decisive argument is that
+trustworthiness cannot depend on the question you asked.** A review measured the engines split on a corrupt
+`netClass: 1` sitting beside a well-formed `deny Fs` that fires: **rust 2, ts 2, swift 2, java 1.** Both
+readings were conformant under `01d5c6b`, which fixed the DIRECTION of the boundary and left its GRANULARITY
+underivable. The two candidates are *consulted-keys* (refuse only if a rule read the corrupt key — java) and
+*producer impeachment* (a corrupt key impeaches the document — the other three).
+
+**Consulted-keys is wrong, and not by preference: it makes the same report trustworthy under one policy and
+untrustworthy under another.** Whether a document's bytes mean what they say is a property of the document,
+not of the query. Under that reading an operator could make a corrupt report gate green by narrowing their
+policy — the gate would get *quieter* as the input got *worse*.
+
+But producer impeachment is not "any bad byte refuses" either, and this document already ruled otherwise
+without noticing it was ruling: candor-rust relaxed its corrupt-key refusal for a `coverage` ledger whose
+`calls` field it could not read, because **no verdict reads it** — and that was correct. The line is the
+key's ROLE:
+
+- **SIGNATURE keys** — `functions`, `inferred`, `direct`, `unknownWhy`, `netClass`, `analyzed`,
+  `unanalyzed` — carry the claim. One unreadable among them means the document's claim cannot be trusted,
+  whatever this particular policy happens to ask. **Refuse.**
+- **DECORATIONS** — a coverage ledger's detail, `loc`, `hash` — carry no claim a verdict reads. Withhold the
+  decoration, disclose it, and answer. Refusing there drops a hedge to be strict about ornament.
+
+So the three engines are right on `netClass` and rust was right on `coverage`, for one reason rather than
+two.
+
+⟨0.24⟩ **THE FIRING CONDITION IS OVER THE REACHABLE CLOSURE, NOT "THE FUNCTION'S OWN ENTRY".** `5a8cf48`
+and `05158db` say a rule fires where the match is evidenced by *that function's own entry*; `4805fca`, forty
+lines below, says the answerability test runs over what the function REACHES. Measured, a function whose own
+entry is reasonless but whose callee carries `reflect:forName`, gated `deny Unknown[reflect]`: **all four
+exit 1** — firing on the callee's evidence, which this document's own control endorses as correct. An engine
+implementing the "own entry" wording literally would withhold and refuse there. The condition is *evidenced
+by entries the report carries in the function's reachable closure*; "own entry" was the instance the
+measurement that prompted the clause happened to exercise.
 
 ⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED:
 `"conditional": [ { "rule": "<the raw policy line>", "condition": "<the narrowing left unevaluated>" } ]`,
