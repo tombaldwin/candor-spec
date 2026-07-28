@@ -806,7 +806,24 @@ not written by an agent and checked by a second party).
             exit-2 cause (a). It declined to borrow cause (b)'s `incomplete: true` verdict shape because
             that is keyed to `unanalyzed`, **a NAMED list** — a count-0 report names nothing, so borrowing
             it would put an unsupported claim on the wire.
-      - [x] **ALL FOUR NOW SEPARATED** — rust 64/80, java 56/80, ts 64/80, swift 24/80. **rust's and ts's
+      - [x] **ts `4637a16` — CLOSED FOUR-WAY. 56 ABSENT cells → 0.** Placement was the default (third
+            conjunct on the COVERED set in `scan.mjs`'s dep loader). Its mutation table reproduces the
+            signature both prior engines reported: **m2, keying on `functions.length`, leaves the FLOOR row
+            GREEN** while failing the CONTROL rows **plus four pre-existing coverage tests** including
+            *"an all-pure dep's EMPTY report covers its package"* — the deleted-feature signature.
+            **ts's BLAST RADIUS is 0 in 91, for a STRUCTURAL reason worth knowing**: candor-ts mints a
+            `<module>` unit per file, so `count ≥ 1` for any scannable tree, **and it refuses to write a
+            report at all** (exit 2, "no TypeScript sources") for a directory with none. **So in this engine
+            a count-0 report is never SELF-produced — it can only arrive from another engine**, which makes
+            the un-version-checked routes the ones that matter.
+            And that is where the ts-specific warning paid: a foreign-version count-0 report chained via
+            `CANDOR_DEPS` **already takes the §2.1 stale path** (staleness is checked first, deliberately —
+            it carries the more specific remedy). **The routes that actually receive a foreign count-0
+            report are `gate --report`, MCP `candor_gate` and the LSP live gate**, and all three are now
+            covered — the LSP one because *"an empty editor over a count-0 report otherwise reads as
+            green."* Exit codes and the verdict document are deliberately unmoved on the gate route: §3.1
+            byte-equality, and asserting an effect would be fabrication.
+      - [x] **ALL FOUR SEPARATED** — rust 64/80, java 56/80, ts 64/80, swift 24/80. **rust's and ts's
             `empty_zero` waivers DELETED, not narrowed**: the ratchet itself reported
             `FAIL (STALE WAIVER): baselined as known-broken but every cell now passes`, zero residual cells.
       - [x] **A 15TH BUMP SITE, found by this agent as a "pre-existing" failure — it was mine.**
