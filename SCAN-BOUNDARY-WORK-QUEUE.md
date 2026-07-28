@@ -4906,3 +4906,51 @@ That is the predicted first result and it means the row discriminates rather tha
 Every other part is MATCH, including R1's new `deny Unknown[unresolved] → exit 1` cell, **now green
 four-way** because swift's fix 3 landed the CONTRIBUTES half. The tightened R1 cell and the fix that
 satisfies it arrived within an hour of each other from opposite directions.
+
+## MY RULING CREATED A FABRICATION — found by java, reproduced by me in rust, worse there (2026-07-28)
+
+`7271c69` said a certain violation dominates a refusal. Correct, and incomplete. **candor-java implemented
+it and the implementation produced a fabrication that the ruling made reachable**, then reported it rather
+than shipping it.
+
+**The mechanism.** Once a firing rule stops short-circuiting the refusal, the evaluator reaches code it
+never reached before. A scoped `deny Unknown[unresolved]` over an entry whose class set is UNCOMPUTABLE
+began emitting a violation record, because the class-set helper floors an empty set at `unresolved`. **That
+floor is the correct fail-closed default for a MATCHER — "could this rule apply?" — and the wrong basis for
+a FIRING — "did it?"** One helper served both questions safely only while the short-circuit hid the
+difference. Ruled in `5a8cf48`: withhold per (rule, function), never whole-policy.
+
+**I then measured rust, and rust is worse — it is a fabrication AND a false disclosure.** Fresh
+`--workspace` build at `89f2c0f`, fixture: `app.opaque` with `inferred:["Unknown"]`, no `direct`, no
+`unknownWhy`, no `calls`:
+
+```
+A  deny Unknown[unresolved] app.opaque   -> prints a NOTE ending "Refusing (exit 2)."
+                                            then CHARGES that exact rule+function, exit 1,
+                                            violation in the --gate-json document
+B  deny Unknown app.opaque      (bare)   -> exit 1   CONTROL: the fixture is live
+C  deny Fs app.writes + the A rule       -> both charged; app.opaque still fabricated
+```
+
+The NOTE in case **A** also asserts *"a rule FIRED on evidence this report carries"* — **and none did.** The
+only rule in that policy is the unanswerable one. The sentence is attached unconditionally to the refusal
+note instead of being conditioned on a violation having been recorded, which makes it a **false
+disclosure**, the `net-partner`/PART 13b class. Dispatched.
+
+### What this round is actually teaching, and it is not "test more"
+
+**A soundness fix is a fabrication risk in its own right.** The recorded lesson so far runs one way —
+[[feedback-fabrication-fixes-cause-misses]], killing an over-charge is where silent under-reports get
+introduced. This is the MIRROR, and it arrived within the hour: removing a short-circuit to stop losing a
+finding made the engine charge one it could not evidence.
+
+**The operational question for any short-circuit removal is: what code now runs that never ran, and what
+did it assume about who would call it?** The floor was written for a caller that could not reach it in this
+state. Three engines had landed the precedence fix before this surfaced.
+
+**And my first reproduction attempt was WRONG in the flattering direction.** I built an entry inheriting
+from a reasonless source and found rust firing — nearly filed it. But that class set is `{unresolved}`
+*legitimately*, computed over the gate's reach, and R1 already pins it. The control is what caught me:
+the real case is an EMPTY class set, not a reasonless one, and the difference is exactly the difference
+between "resolved to nothing" and "could not be resolved". **Every fix here now needs its mirror checked —
+withholding is precisely where the under-report gets reintroduced.**
