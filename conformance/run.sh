@@ -4431,12 +4431,12 @@ fi
 # floor bump to 0.24 is gated on this PART existing AND on it having been seen to fail.
 #
 # SEVEN ROWS, and the engine coverage differs per row because the ⟨0.24⟩ SURFACES differ per engine:
-#   R1 §6.2 CONTRIBUTES         4-way on `unverified --class` + 2-way on `gate --report`
+#   R1 §6.2 CONTRIBUTES         4-way on `unverified --class` + 4-way on `gate --report`
 #   R2 §3.1 viaDispatchOn       3-way (rust/java/ts) — swift ships no `callers` verb, by design
 #   R3 §3.1 the dot-free arm    3-way
 #   R4 §3.1 the sidecar triple  3-way
 #   R5 §6.2 --class            4-way — `dynamic`, the discrimination control, and the value grammar
-#   R6 §3.1 gate --report       2-way (java/swift) — rust and ts have not landed the verb
+#   R6 §3.1 gate --report       4-way — rust and ts landed the verb 2026-07-27
 #   R7 §2   locale-independence 4-way
 # A surface an engine does not implement prints NOSURF with the reason, never a silent skip: the whole
 # failure mode this PART addresses is a document overstating its own coverage.
