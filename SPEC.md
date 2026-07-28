@@ -1220,6 +1220,20 @@ cannot see named in the output is the ambient-input failure this whole format ex
 is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
 act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
 
+⟨0.24⟩ **THE DISCLOSURE'S SHAPE IS `"policyVocabulary": { "config": "<path>", "aliases": { … } }`.** I left
+this unspecified when I required the disclosure, and three engines invented three answers within the hour —
+`vocabulary` (rust), `policyVocabulary` (java), and `configSources: [path]` (swift). **That is the
+`coverage.modules` failure recurring on the very next field, which is what it looks like when the lesson
+was recorded and the practice was not changed**: I wrote "MUST name that file" and specified no shape, and
+a MUST with no shape is an invitation to diverge.
+
+`policyVocabulary` over `vocabulary` because the document already carries other vocabularies (effects,
+reason classes) and the bare word does not say whose. **And the OBJECT form is required, not the array**:
+swift's `configSources: [path]` names the file but drops the alias names, and the file is the lesser half —
+an operator reading a verdict changed by an ambient definition needs to see *what the definition was*, not
+merely that one existed. A disclosure that names the source but not the content leaves the reader knowing
+they were affected and not how.
+
 ⟨0.24⟩ **THE VERDICT'S `coverage` BLOCK IS `{ "uncovered": <n>, "packages": [ … ] }`, AND UNTIL NOW THIS
 DOCUMENT NEVER SAID SO.** §2 defines the *report's* ledger — `coverage.uncovered` as an ARRAY of
 `{name, calls}` — and that is a different shape from the *verdict's*, which carries a COUNT plus a name
