@@ -391,6 +391,25 @@ logic error, and it contradicted that engine's own documented row. An implementa
 before the integer cast, and its shape-table test MUST carry a boolean row — three engines fail closed here
 only because their JSON readers are stricter, not because anyone tested it.
 
+⟨0.24⟩ **THE GENERAL RULE THESE TWO ARE INSTANCES OF: A KEY THAT IS PRESENT BUT UNPARSEABLE IS CORRUPT
+INPUT, AND MUST NEVER BE COERCED TO ITS EMPTY VALUE.** `count: true` and a missing `functions` are the two
+that were caught by hand; the shape that generalises them is *a reader that recovers from a type mismatch
+by substituting the default*. That default is always the permissive value — `0`, `[]`, absent — so the
+coercion converts corrupt input into a claim, and on every one of these keys the claim is the safe-looking
+one. Measured, the sharpest case is `unanalyzed`:
+
+- `unanalyzed: [{"unit":…,"why":…}]` — right shape, wrong field names, exactly what a hand-built or
+  foreign-produced report yields. candor-rust ran it through `from_value(u).ok().unwrap_or_default()` and
+  got `[]`. **`unanalyzed` non-emptiness IS the fail-closed trigger**, so dropping it turns exit 2 into
+  `policy ✓`. The other three refused.
+- `unanalyzed: ["src/broken.rs"]` — a bare string list. **All four dropped it and exited 0.**
+
+So: on `analyzed`, `unanalyzed`, `functions`, and every §2 key a verdict reads, an implementation MUST
+distinguish ABSENT from PRESENT-BUT-UNPARSEABLE. Absent may take a documented default. Present-but-
+unparseable is a refusal — exit 2, naming the key. `unwrap_or_default`, `?? []`, `optional(...).orElse(…)`
+and their siblings are the exact idiom to grep for, and finding one on a §2 key is a defect until proven
+otherwise: **the language's convenience default is the fail-open direction on every key in this format.**
+
 ⟨0.24⟩ **A report with NO `functions` KEY is MALFORMED, and MUST be refused LOUDLY — not believed, not
 silently dropped.** `functions` is §2-required. The same review found a four-way split on
 `{"package":"p","analyzed":{"count":5}}`: rust and java `continue` past it before the judged-nothing
