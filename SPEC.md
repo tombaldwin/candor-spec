@@ -1013,6 +1013,22 @@ An implementation SHOULD expose them so an agent reaches for them in one cheap c
   SHOULD expose it (an enforcer without it is still exercised through the applied `--policy`
   verdict differentials, but its grammar is only indirectly diffed).
 
+  ⟨0.24⟩ **`parsepolicy` MUST NOT REFUSE. It REPORTS the parse, including what it could not honour.**
+  When ⟨0.24⟩ made an unrecognised policy token a policy error (§6.2), two engines applied it in the
+  PARSER and `parsepolicy` began exiting 2 on the conformance battery — which contains such tokens
+  deliberately. The suite **halted at PART 4**, so one ruling took the whole differential offline.
+
+  The refusal belongs to the **gate**, which must not enforce a policy it cannot honour as written. It does
+  not belong to the **witness**, whose entire job is to answer *what did this engine make of my policy?* —
+  a question that is most valuable exactly when the answer is "not what you meant". A diagnostic that
+  declines to explain the thing being diagnosed has inverted its purpose, and it would remove the four-way
+  pin on token handling at the one input where the engines are most likely to differ.
+
+  So: `parsepolicy` emits its parse **and an `errors` list naming each token it could not recognise and
+  the accepted set**, and exits 0. The unrecognised token MUST appear in that output rather than being
+  silently dropped from the parse — the pre-⟨0.24⟩ behaviour was *drop with a warning*, and a diff that
+  cannot see the difference between "dropped" and "rejected" cannot pin this rung at all.
+
 These bind **engines, not consumers**: a consumer that only reads the JSON report is fully conformant.
 For an engine that exposes them, the query names and JSON shapes ARE part of the versioned contract (a new
 query shape is a minor bump, §8's own rule; 0.6's `blindspots` moved the version). An implementation
