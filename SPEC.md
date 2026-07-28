@@ -1220,15 +1220,30 @@ cannot see named in the output is the ambient-input failure this whole format ex
 is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
 act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
 
-⟨0.24⟩ **PRECEDENCE, AND THE STALE-DOCUMENT HAZARD A REFUSAL CREATES.** Three outcomes can be live at
-once. The order is **refusal (2) > violation (1) > incomplete (2)**: a refusal means the gate could not be
-evaluated *as written*, so no verdict it produced would be about the policy the operator asked for; a real
-violation dominates incompleteness (§3.3); incompleteness is the residual fail-closed. All four engines
-already agree on this, which is why it went unwritten — but agreement discovered by measurement is not a
-contract, and the middle rung is exactly the one candor-rust got backwards.
+⟨0.24⟩ **PRECEDENCE: A CERTAIN VIOLATION DOMINATES A REFUSAL, AND ALL FOUR ENGINES HAVE THIS BACKWARDS.**
+Three outcomes can be live at once. The order is **violation (1) > refusal (2) > incomplete (2)**, and the
+first rung is forced by Lemma 2 rather than chosen. If one rule FIRES on evidence the report carries, the
+policy is rejected — and because `Reject` is upward-closed, *however the unanswerable rule would have
+resolved cannot un-reject it*. Exit 1 is therefore not merely fail-closed here, it is **certain**, and it
+is strictly more informative than exit 2: it names the violation. Refusing instead is the same defect §3.1
+already criticises as "a worse answer than the correct one".
 
-The hazard is on the way out. A policy carrying a firing `deny Fs` **plus** one unanswerable scoped rule
-exits 2 on all four **and writes no `--gate-json` document at all** — so a CI wrapper that reads the path
+The consequence is not cosmetic. A refusal writes no `--gate-json` document (below), so refusing over a
+firing rule **deletes a certain violation from the machine-consumer channel** — byte-identical in harm to
+candor-rust's incomplete-analysis path, which this same rung is making it fix. Measured, a policy carrying
+a firing `deny Fs` plus one unanswerable scoped rule exits 2 on **rust, java, ts and swift alike**, with no
+document. Four-way agreement, and four-way wrong.
+
+⟨0.24⟩ *This clause first read "refusal (2) > violation (1)", ratifying the measured four-way behaviour. I
+wrote it, and it was wrong within the hour: the monotone-denial property this section already invokes two
+paragraphs above settles the question in the other direction, and I had just finished using that same
+property to argue engines should answer more questions rather than fewer. **Uniform agreement is the
+weakest evidence in this project, and it is at its weakest when it agrees with the draft you were about to
+write.*** The refusal message MUST still disclose which rules could not be evaluated — exit 1 reports the
+violation it is sure of, it does not conceal the part it could not read.
+
+The stale-document hazard is separate, and survives the correction above — it bites whenever a refusal is
+the *sole* outcome. A refusal writes no `--gate-json` document at all, so a CI wrapper that reads the path
 unconditionally re-reads **the PREVIOUS run's document as current**. A green file from yesterday's clean
 run, still on disk, is how a refusal becomes an all-clear. Deleting the path is not the fix either: a
 consumer that treats a missing file as "nothing to report" fails open by a different route.
