@@ -2192,9 +2192,25 @@ dropping an unrecognised class token on the policy side can only widen. Measured
   reads a gate that looks armed. That is fail-open, and it is the common case: a typo lands beside correct
   tokens far more often than alone.
 
-So the policy side takes the same rule as the query side: **an unrecognised reason-class token is a policy
-error — exit 2, the unreadable-policy posture (§6.2), naming the token and the accepted set.** A policy that
-cannot be honoured as written is not silently rewritten into a different policy. The asymmetry I claimed
+So the policy side takes the same rule as the query side: **an unrecognised token in ANY policy value list
+is a policy error — exit 2, the unreadable-policy posture (§6.2), naming the token and the accepted set.** A
+policy that cannot be honoured as written is not silently rewritten into a different policy.
+
+⟨0.24⟩ **"REASON-CLASS" WAS TOO NARROW, AND THE NARROWING WAS AN ARTIFACT OF WHERE I FOUND IT.** This
+clause first said *reason-class token*, because a reason-class token is what the review measured. candor-rust
+then measured the siblings and both are live:
+
+- `deny Net[known-telemetry,unknown-hosst]` → **exit 0**, where the correctly-spelled rule exits 1. A
+  NET-class typo, byte-identical in shape to the reason-class one.
+- `unknown-alias corp = dispatch,nativ` → the DEFINITION silently becomes `{dispatch}`, and the gate goes
+  **green on a native hole** where `= dispatch,native` exits 1. The typo is in the vocabulary the policy is
+  written against rather than in the policy, and it fails open just the same.
+
+The rule was never about reason-classes; it is about **a policy value list the implementation cannot honour
+as written**. So it binds every such list — reason-class filters, net-class filters, and alias definitions
+alike. Generalising here is not speculative: the argument in this clause never mentions which vocabulary the
+token belongs to, and each place I let it stay narrow is a place the same fail-open survives under a
+different key. The asymmetry I claimed
 does not exist; only the *direction* of the surprise differed, and one of the two directions is a hole.
 
 ⟨0.24⟩ **THE FLAG'S VALUE GRAMMAR**, which was never stated and is therefore where the next divergence
