@@ -810,6 +810,70 @@ not written by an agent and checked by a second party).
             concurrently and writing it risked clobbering in-flight work. Verified by hand instead (byte
             identity over 8 filters ± sidecar, plus the disclosure). **Add it once ts is quiet.**
 
+### 2e — THE 2026-07-28 REVIEW ROUND · 14 defects, ordered · **THIS IS THE TOP OF THE QUEUE**
+
+Three lenses (empty-report four-way, `gate --report` four-way, my own harness/preflight). Two clean
+results worth naming first: **the MUST NOT holds four-way** with every bait live SIMULTANEOUSLY plus a
+fourth channel the reviewer opened, and **byte-equality is genuine and non-vacuous** in both new engines,
+reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real by mutation battery.
+
+**A — REFUTES A MUST. Do first.**
+- [ ] **rust: count-0 breaks byte-equality against RUST'S OWN SCAN.** Same policy, the report the scan just
+      wrote: `scan` exit 0 with a verdict, `gate --report` **exit 2 and no document written**. ~7–10% of
+      real dep reports. `ci/gate-equivalence.sh`'s 90 rows cannot reach it — every corpus crate has
+      functions. **Fix per the corrected §3.1** (`0744d29`): caveat on stderr, exit and document unmoved.
+- [ ] **rust: incomplete analysis SWALLOWS the violation and the verdict DROPS it.** `gate.rs:558-565`
+      writes `&mut []` before violations are recorded → exit 2, `violations: []`, **a real finding absent
+      from the artifact**. §3.3 settles it: *"a real violation (exit 1) still dominates."* java/swift/ts
+      right, rust wrong on BOTH routes.
+- [ ] **java + swift: `gate --report` prints the literal string the clause forbids** — "no violations",
+      exit 0, **stderr 0 bytes**. Neither commit touched the gate verb; both already collect
+      `analyzed.count` and never test it.
+
+**B — FAIL-OPEN, four-way, in the NEW machinery.**
+- [ ] **A scoped `deny Unknown[C]` under-refuses when the unknowable hole is REACHED FROM in-scope code.**
+      All four exit 0 where the unscoped form exits 2; **the control is decisive** — supply the reason and
+      all four exit 1, so the absent datum DOES change the verdict and §3.1's minimal-refusal rule requires
+      a refusal. Every engine tests answerability on the in-scope function's own post-fixpoint set, so a
+      hole one edge away is tolerated. **Fix: propagate "contributed nothing determinable" through the
+      fixpoint; refuse on an INCOMPLETE set, not only an empty one.**
+- [ ] **swift: `analyzed: {count: true}` reads as JUDGED** — Foundation bridges `NSNumber(bool:)` through
+      `as? Int`. Byte-identical to `count: 2`; the caller drops out of `functions`. **Specced `18fb770`.**
+- [ ] **rust: a malformed `unanalyzed` manifest is silently dropped** (`.ok()…unwrap_or_default()`) →
+      exit 0 where the other three exit 2. `unanalyzed` non-emptiness IS the fail-closed trigger.
+- [ ] **ts + java: a partially-corrupt multi-report prefix gates GREEN** — the dropped member is exactly
+      where the violations could live, and the omission is machine-invisible (`incomplete:false`,
+      `ok:true`, `analyzed.count` silently excludes it). rust and swift refuse.
+
+**C — SPEC RULINGS I OWE.**
+- [ ] **Pin the `unknown-alias` config ANCHOR.** The gate anchors at the POLICY dir, the scan at the
+      TARGET — so with a config inside the scanned tree and the policy outside it, the two routes disagree
+      **and byte-equality is broken by an ambient file.** `CANDOR_CONFIG` alone flips 1→0, so the verdict
+      is not a pure function of (report, policy). Uniform four-way, so no divergence — but unstated, and
+      all four MUST-NOT tests miss the bait.
+- [ ] State **refusal-vs-violation precedence** and the **no-verdict-on-refusal** rule (a CI wrapper can
+      re-read a STALE verdict file as current).
+- [ ] `analyzed:{count:0}` in the verdict for a **pre-⟨0.21⟩ manifest-less** report now collides with the
+      token that means "judged nothing".
+
+**D — MY HARNESS/PREFLIGHT. Two HIGH fixed (`fff7bdf`); these remain.**
+- [ ] **R1's gate cell passes on an engine with NO `gate --report` at all** — adding rust/ts branches killed
+      the `None → NOSURF` path, and `OK if rc_g in (1,2)` accepts **2, the generic usage-error code**. R6
+      catches it three ways because it carries a firing control; R1 does not. **Give R1 a firing control.**
+- [ ] **PART 23's derived floor is CIRCULAR along the vocabulary dimension** — it imports the module it
+      checks, so removing `Ipc`/`Clipboard` (the exact historical defect) self-adjusts and passes. The
+      SPEC-vs-model comparison is an `echo` that **never sets `P23_OK=1`**. Enumeration dimension is sound.
+- [ ] **PART 10's negative control tests the SETS, not the decision path** — neutralise the loop's DIVERGE
+      branch and `banana:whatever` is accepted while the self-check prints green.
+- [ ] Stale coverage prose in `gen_rung024.py` + `run.sh` (still says R6 is 2-way); `bad()` sets `fail=1`
+      rather than incrementing, so the summary always reads "1 check(s) FAILED".
+
+**E — pre-existing, lower.** java's multi-report locator gates only ONE report; java's `interfaceUnion`
+entries gated as ordinary functions (byte-equality refuted on self-produced output); corrupt entries read
+as purity claims (swift keyless, three engines on non-string `inferred`); swift's verdict uses `modules`
+where three use `packages`; java's conflict rule is EMERGENT with no test and its advisory is a **false
+disclosure** in that case.
+
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
 - [→] **SPECCED (§2 ⟨0.24⟩ `34f8443`, harm restated `400e8e1`) and IN FLIGHT four-way.**
