@@ -9,20 +9,24 @@ differential. A floor bump to 0.24 is gated on it existing AND on it having been
 WHAT IT PINS, and on which engines. The ⟨0.24⟩ surfaces are NOT all four-way, and the rows say so in
 their own output rather than skipping quietly:
 
-  R1  §6.2 CONTRIBUTES — a reasonless `Unknown` ADDS `unresolved`, it does not DEFAULT to it   4-way + 2
+  R1  §6.2 CONTRIBUTES — a reasonless `Unknown` ADDS `unresolved`, it does not DEFAULT to it   4-way + 4
   R2  §3.1 `viaDispatchOn` — the EXACT joined literal, sorted + deduplicated                   3-way
   R3  §3.1 the DOT-FREE frontier arm — disclosed verbatim, IDENTICALLY in both arms            3-way
   R4  §3.1 the SIDECAR TRIPLE — absent ≡ `{}` ≢ populated                                      3-way
   R5  §6.2 `--class` — `dynamic` excludes only `setup`, narrower filters DISCRIMINATE, and the
            flag's VALUE GRAMMAR refuses a filter it cannot honour                              4-way
-  R6  §3.1 `gate --report` — byte-equality, the MUST NOT, and the three answerability refusals 2-way
+  R6  §3.1 `gate --report` — byte-equality, the MUST NOT, and the three answerability refusals 4-way
   R7  §2   LOCALE-INDEPENDENCE — the same input under two collations, byte for byte            4-way
 
   R2/R3/R4 are three-surface (rust, java, ts): candor-swift deliberately ships NO `callers` verb — it is
   a producer that writes the §2.2 hierarchy sidecar *for* the others. There is no swift frontier arm to
   write, and a "swift: SKIPPED" line would misdescribe that as a gap.
-  R6 is two-engine TODAY: `gate --report` exists in candor-java and candor-swift only. rust and ts have
-  not landed the verb, and those cells print NOSURF with that reason attached.
+  R6 was two-engine until 2026-07-27 and this note said so for a week after it stopped being true.
+  `gate --report` now ships in ALL FOUR, and the rust and ts branches were added to `q_gate` without this
+  paragraph — or R1's gate cell — being revisited. That is the mundane half of a defect a review found:
+  the NOSURF path those cells relied on became unreachable the moment every engine had a branch, so a
+  cell that meant "this engine has no verb" silently started meaning nothing at all. **Coverage prose is
+  load-bearing here** — it is what tells the next reader which cells are allowed to be empty.
 
 WHY MOST ROWS RUN ON A HAND-WRITTEN REPORT. Every ⟨0.24⟩ surface here except R7 is a pure function of a
 REPORT (plus its §2.2 sidecars) and a policy — that is the whole point of the rung: `gate --report`
@@ -282,7 +286,7 @@ def q_gate(engine, locator, policy, gate_json=None):
 # contribution is gated on the function having a direct `Unknown` IT DID NOT NAME, never on emptiness.
 #
 # TWO SURFACES, ONE RULE. `unverified --class` is the four-way disclosure surface; `gate --report
-# --policy 'deny Unknown[unresolved]'` is the two-way gate surface. §6.2: "THE GATE AND THE DISCLOSURE
+# --policy 'deny Unknown[unresolved]'` is the four-way gate surface (two-way until 2026-07-27). §6.2: "THE GATE AND THE DISCLOSURE
 # MUST APPLY THE SAME RULE". Where both exist the row asserts each against the clause AND against each
 # other, so an engine that fixes one copy and not its open-coded twin is caught by the pair.
 
