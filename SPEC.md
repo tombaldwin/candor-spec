@@ -1530,6 +1530,34 @@ this is the mirror, and it arrived within an hour of the ruling. **The new-reach
 to ask of any short-circuit removal: what code now runs that never ran, and what did it assume about who
 would call it?** Three engines had already landed the precedence fix before this surfaced.
 
+⟨0.24⟩ **PRECEDENCE BINDS THE VERDICT, NOT THE POLICY GATE — a certain BASELINE regression is deleted by an
+unrelated refusal, in all four engines.** This is the ruling's fifth mirror and the broadest: I wrote
+"a certain violation dominates a refusal" while thinking only of the policy gate, and every engine
+implemented it against the policy gate's own violation list. **The AS-EFF-005 baseline guard is a different
+violation producer**, it runs deliberately EARLIER, and it records into the same verdict. Measured — a pure
+function gains an `Fs` call, scanned against a frozen baseline:
+
+                        control (no policy)      + a policy with a bad token
+    rust / java / ts / swift    exit 1, ["AS-EFF-005"]     exit 2, NO `violations` key — all four
+
+So **a typo in a policy token downgrades "your change added an effect" to "could not evaluate"**, and the
+regression disappears from the machine channel. It survives on stderr, so the human sees it and CI does not
+— the same split this rung exists to close. It is fail-LOUD (`ok:false`), so it is not a stale green; it is
+a lost finding.
+
+Three individually-correct decisions composed into it, which is why no engine caught it: the baseline guard
+runs before the policy gate *by design*; the precedence repair was scoped to the gate's violation list; and
+the rule that a refusal document carries no `violations` key was justified by every exit-2 site running
+before anything could be recorded — **true until a producer's evidence sat upstream of the refusal.** That
+last one is worth stating plainly: **it was a claim about ORDERING that reads as a claim about SHAPE**, and
+it stopped being true when the ordering changed underneath it.
+
+**So the rule is over the verdict.** Any violation the run has already established on carried evidence —
+whatever subsystem produced it: the policy gate, the baseline ratchet, or anything later — dominates a
+refusal and MUST appear in the document. An implementation MUST NOT key its refusal arm on a predicate that
+conflates *"this run ended refused"* with *"this run evaluated nothing"*, which is exactly the conflation
+measured here.
+
 ⟨0.24⟩ **NEITHER RULE HAS A CARVE-OUT, AND BOTH OF MINE DID.** candor-rust implemented the two clauses
 above, then reported the two places they stop short. Both stops were mine, both were inherited from where
 the defect happened to be found, and the reasoning in each clause reaches further than the clause does.
