@@ -1,12 +1,12 @@
 {
   "_": [
-    "RATCHET BASELINE for conformance PART 27 / gen_rung024.py (the ⟨0.24⟩ rung's BEHAVIOUR).",
+    "RATCHET BASELINE for conformance PART 27 / gen_rung024.py (the \u27e80.24\u27e9 rung's BEHAVIOUR).",
     "",
     "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. The expected answers live in the generator, taken",
-    "verbatim from the SPEC clauses they pin — this file only says 'this (row, engine, cell) is",
+    "verbatim from the SPEC clauses they pin \u2014 this file only says 'this (row, engine, cell) is",
     "known-broken today, here is why, and here is a hand fixture that reproduces it without the",
     "generator'. If you find yourself editing an expected value into this file, stop: the oracle for",
-    "R1–R6 is the spec, and weakening it here would turn a differential into a description.",
+    "R1\u2013R6 is the spec, and weakening it here would turn a differential into a description.",
     "",
     "IT RATCHETS BOTH WAYS. A failing cell that is NOT listed here fails the suite. An entry listed here",
     "whose cells ALL pass ALSO fails the suite, so a waiver cannot outlive its defect and start masking",
@@ -16,9 +16,9 @@
     "then RE-DERIVED from a hand-written report + policy, so that no waiver rested on the generator",
     "being right.",
     "",
-    "EMPTY AS OF 2026-07-27, AND THAT IS THE GOAL STATE — not a missing or disabled baseline. The one",
-    "entry this file ever held (R5 `value-grammar`) was written `engine: \"*\"` because the ⟨0.24⟩ §6.2",
-    "`--class` VALUE GRAMMAR was found UNIMPLEMENTED IN ALL FOUR ENGINES — a shared gap, not a",
+    "EMPTY AS OF 2026-07-27, AND THAT IS THE GOAL STATE \u2014 not a missing or disabled baseline. The one",
+    "entry this file ever held (R5 `value-grammar`) was written `engine: \"*\"` because the \u27e80.24\u27e9 \u00a76.2",
+    "`--class` VALUE GRAMMAR was found UNIMPLEMENTED IN ALL FOUR ENGINES \u2014 a shared gap, not a",
     "divergence, which is the only shape a blanket waiver may take. It was narrowed to `ts` that same",
     "evening as rust, swift and java landed their halves, and DELETED when candor-ts landed its half and",
     "the ratchet reported it STALE. The waiver named its own exit condition, the fix met it, and the",
@@ -26,12 +26,40 @@
     "because a dead waiver kept 'for context' is exactly what the both-ways ratchet exists to prevent.",
     "",
     "MEASURED AT DELETION (`python3 gen_rung024.py --only R5 --baseline rung024-baseline.json`): all",
-    "FOUR engines OK on all three R5 cells (dynamic, discriminates, value-grammar) — 12 live cells, no",
+    "FOUR engines OK on all three R5 cells (dynamic, discriminates, value-grammar) \u2014 12 live cells, no",
     "unwaived failure and no stale waiver. An earlier run the same evening reported the java cells",
     "ABSENT (the jar was mid-rebuild and not invocable), which is worth recording because it is exactly",
     "the shape an unexplained measurement change takes on a box with several engines moving at once: the",
     "ratchet reports what is ON THE BOX, so a java cell that regresses will fail UNWAIVED rather than",
-    "quietly reading as absent."
+    "quietly reading as absent.",
+    "",
+    "\u27e80.24\u27e9 2026-07-28 \u2014 THREE ENTRIES ADDED, all found by R9/R10 on the first run after the release round,",
+    "all REAL divergences between shipped engines rather than harness faults. Each names the engine that must",
+    "MOVE, which is not always the one the row flags: R9/R10 report the minority against a plurality, and on",
+    "the `aliases` entry the minority is the one that is RIGHT. A waiver here is a statement that the defect",
+    "is understood and scheduled, not that the row is wrong."
   ],
-  "known": []
+  "known": [
+    {
+      "row": "R9",
+      "engine": "ts",
+      "cell": "key-parity(opt)",
+      "kind": "FAIL",
+      "why": "`policyVocabulary.aliases` \u2014 ts emits the OBJECT {\"corp\":[\"reflect\"]}, rust/java/swift the ARRAY [\"corp\"]. THE THREE ARE WRONG, NOT TS: SPEC 3.1 (7f5b5ba) rules the object, because an alias NAME without its CLASSES fails this section's own test \u2014 `corp = reflect` and `corp = reflect,native` gate differently under one unchanged policy line, so a reader given only the name cannot tell which gate ran. ts argued it from the clause and won against three engines. FIX: rust, java and swift emit the object; this waiver then reads STALE and must be deleted."
+    },
+    {
+      "row": "R10",
+      "engine": "java",
+      "cell": "report-parity",
+      "kind": "FAIL",
+      "why": "report envelope: java emits top-level `packages` (list) where the other three emit `package` (str), plus per-entry `entryPoint` and `fs` that no sibling carries. Pre-existing and byte-identical on the pre-round jar \u2014 R10 is reporting it, not causing it. FIX: adjudicate `package` vs `packages` in SPEC 2 (the envelope field is singular everywhere else in the document), then converge; decide separately whether entryPoint/fs are legitimate engine extensions or drift."
+    },
+    {
+      "row": "R10",
+      "engine": "rust",
+      "cell": "report-parity",
+      "kind": "FAIL",
+      "why": "report envelope: rust carries none of `declared`/`undeclared`/`overdeclared`/`unresolved` that the other three emit per entry. Note the review measured a SEMANTIC divergence underneath this one that R10 cannot see (java `undeclared:[\"Exec\",\"Fs\",\"Net\"]` vs ts/swift `undeclared:[]` for the SAME situation \u2014 opposite readings of 'no declaration'), so fixing the key set alone would produce agreement on shape over a disagreement on meaning. Settle the semantics FIRST."
+    }
+  ]
 }
