@@ -771,7 +771,35 @@ not written by an agent and checked by a second party).
 
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
-- [ ] **FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
+- [→] **SPECCED (§2 ⟨0.24⟩ `34f8443`, harm restated `400e8e1`) and IN FLIGHT four-way.**
+      **swift LANDED `b41b1df`.** Placement — `Deps.swift`'s `loadDepReports`, beside the ⟨0.21⟩
+      `incomplete` computation, **consumer-side coverage bookkeeping, NOT the gate**. Its reasoning is the
+      part to keep: *"coverage is the single mechanism that turns a report's silence into a purity claim,
+      and this is the THIRD answer to 'may this silence speak?' after staleness (§2.1) and incompleteness
+      (⟨0.21⟩)."* Gate placement would have fixed `deny` and left the report, the κ ledger and every other
+      consumer of the same silence untouched. No new plumbing — withhold coverage and `blindModules`,
+      per-fn `invisible`, `coverage.uncovered` and the verdict caveat all fall out.
+      **The two reconciliations run in OPPOSITE directions, following what the second report SAYS**:
+      `incomplete` makes a NEGATIVE claim about its source, so it beats a complete sibling; `count: 0` makes
+      NO claim, so a package chained once judged and once not **keeps** coverage.
+      **MUTATION 2 IS WHY THE SECOND ROW HAD TO BE A CONTROL**: hedging both rows reddens the control **plus
+      8 pre-existing coverage tests** including `testEmptyDepReportIsAPurityClaim` — the deleted-feature
+      signature — **while the FLOOR test stays GREEN.** The floor arm alone cannot be trusted.
+      **BLAST RADIUS: 1 in 37.** Across swift-syntax's 21 modules, candor-swift's 2 and 14 fixtures, exactly
+      one report emits `count: 0` — swift-syntax's `SwiftSyntax-all`, whose only source file is a comment
+      reading *"This is a fake target that depends on all targets in the package."* **A rare facade, not
+      half a dep tree** — precisely the shape the rule is for.
+      **PART 26 CONTROL SEPARATION**: java **56/80**, swift **24/80**, rust + ts **INDISTINGUISHABLE**.
+      - [ ] **swift's 40 residual cells are NOT this door** — a **separate pre-existing per-function
+            `invisible` attribution gap** (field, implicit_conv, lazy_init, loop_elem, method_recv): every
+            one reads `unchained=(ABSENT)`, so the unchained baseline is equally silent, and PART 26 credits
+            only shapes where swift also attributes a per-fn `invisible`. **java shares two of them.** Worth
+            its own pass.
+      - [ ] **Both `empty_zero` waivers are now STALE and OVERSTATE** (swift's still says "64/72 ABSENT …
+            INDISTINGUISHABLE"; the live numbers are 40 cells / 24-80 separated). The ratchet does not fail
+            on improvement, so nothing is red — which is exactly why they will rot. **Mine to retire, once
+            java's in-flight work lands** (swift measured java against an uncommitted tree).
+      ORIGINAL — FOUR-WAY, NEW: AN EMPTY CHAINED REPORT BUYS MORE CONFIDENCE THAN NO REPORT AT ALL.** A report with
       `functions: []` and `analyzed.count: 0` — *"I judged nothing"* — is read as **full coverage**. The
       caller drops out of `functions`, which under ⟨0.21⟩ is a **positive purity claim**, with **no
       advisory anywhere**. `deny Fs` **exit 1 → exit 0**. rust 64 / java 72 / ts 56 / swift 64 live cells
