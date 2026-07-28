@@ -5031,3 +5031,55 @@ over 4166 real entries**, and ukri-tfs exits 1 so the check is non-vacuous. That
       tool-result shape decision (`incomplete`/`unanalyzed` keys). **The agent-facing surface is the one
       where a false all-clear is acted on without a human reading it.** Check the LSP surface too, and the
       other three engines' MCP servers.
+
+## swift round 2 — CLOSED, FIRST ENGINE GREEN ON R8, and it found a suite-halting blocker
+
+8 commits, 428 tests / 0 failures. **All 69 live PART 27 cells pass for swift**, including R8 `precedence`
+and R8 `refusal-doc`. The only red PART 27 cell left is `rust key-parity(opt)` — rust's key name.
+
+**Swift HAD the fabrication** the urgent mid-flight warning was about: `deny Unknown[unresolved]` over an
+inherited reasonless `Unknown` fired with a violation record **in the same run whose stderr said that rule
+could not be evaluated for that function.** Fixed by moving the `unresolved` floor out of the matcher and
+into the gate-input builders, where `netClassesOf` has always floored. The test row is one rule over two
+functions and violations went `["app.named","app.orphanU"] → ["app.named"]` — a mirror-checked fix, since
+the sound half must survive.
+
+**And `configSources` proved my own point inside the hour.** The agent minted a key name for the config
+disclosure, flagged it as needing a four-way pin — and R9 immediately measured three names for one field.
+It then converged swift to `policyVocabulary`. **The interval between "I am inventing an unpinned name" and
+"this is a measured three-way divergence" was under an hour**, which is the strongest argument yet that an
+unspecified field is not a small debt.
+
+### THE BLOCKER: my `be0b9a9` took the whole differential offline
+
+`parsepolicy` began exiting 2 on the conformance battery — which contains unrecognised tokens
+DELIBERATELY, as the four-way pin on how such a token parses. **The suite HALTS at PART 4.** java and ts
+applied the token ruling in the PARSER; rust and swift kept the parse and refuse only at the gate.
+
+**Ruled `6929dce`: `parsepolicy` MUST NOT refuse.** The refusal belongs to the gate, which must not enforce
+a policy it cannot honour. It does not belong to the *witness*, whose job is to answer *what did this engine
+make of my policy?* — a question most valuable exactly when the answer is "not what you meant". A
+diagnostic that declines to explain the thing being diagnosed has inverted its purpose. It emits its parse
+plus an `errors` list and exits 0, and the token must APPEAR there rather than being dropped: pre-⟨0.24⟩
+behaviour was drop-with-a-warning, and **a diff that cannot distinguish "dropped" from "rejected" cannot
+pin this rung at all.** java dispatched, ts told.
+
+**The lesson is about blast radius, not about the ruling.** `be0b9a9` was correct and I did not ask which
+OTHER verbs share the code path it changed. Two of four engines put the error where it disabled the
+instrument that would have caught the disagreement — so the failure was silent until an engine tried to run
+the suite. **When a ruling changes a shared component, name the verbs that share it before dispatching.**
+
+### R9's remaining blind spots, named by swift and worth queueing
+
+- [ ] **R9 arm 1 only sees keys present in an AS-EFF-006 verdict**; arm 2 covers exactly ONE optional block.
+      Still uncompared four-way: `incomplete`/`unanalyzed`, `coverage` itself, the refusal document's
+      `reason`, and each violation record's optional `reasonClass`/`netClass`. Each needs its own arm, per
+      the rule arm 2 established: *every optional block needs an arm that makes it PRESENT.*
+- [ ] **`privacy-manifest --verify --json` emits `coverage.modules`** — the SECOND instance of the exact
+      hole `coverage.packages` fell through, on an extension surface. No clause and no PART pins it, and no
+      other engine ships the verb, **so nothing can compare it** — a single-implementation surface is
+      structurally immune to a differential. swift named it rather than renaming unilaterally, which is
+      right.
+- [ ] **Reserved-NAME alias rejection (`unknown-alias reflect = native`) is a different rule** from the
+      unrecognised-TOKEN rule and stays warn-and-skip: the name IS recognised, and skipping leaves the
+      built-in meaning standing, so there is no fail-open. Pinned four-way by PART 4. Confirmed, not open.
