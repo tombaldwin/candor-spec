@@ -1072,6 +1072,9 @@ def row_r8(ws, pols):
                 bad.append("the verdict document did not parse: %s" % e)
         else:
             bad.append("no `--gate-json` document was written at all")
+        if doc is not None and not isinstance(doc, dict):
+            bad.append("the verdict document is not a JSON OBJECT (%r) — every content assertion below "
+                       "would silently skip" % type(doc).__name__)
         if isinstance(doc, dict):
             vs = doc.get("violations")
             if not vs:
@@ -1088,8 +1091,18 @@ def row_r8(ws, pols):
         gj2 = os.path.join(ws, "r8.%s.refusal.json" % eng)
         if os.path.exists(gj2):
             os.remove(gj2)
-        q_gate(eng, loc, pols["r8_refuse_only"], gate_json=gj2)
+        rc_doc = q_gate(eng, loc, pols["r8_refuse_only"], gate_json=gj2)
         bad = []
+        # ⟨0.24⟩ CHECK THE EXIT CODE OF *THIS* RUN. The `rc_refuse == 2` control above ran WITHOUT
+        # `--gate-json`, and a review shimmed an engine that delegates normally but exits 0 whenever
+        # `--gate-json` is present: the document was written correctly, both R8 cells scored OK, and the
+        # suite exited 0 — while a CI wrapper keying on the exit code saw PASS on EVERY refusal. Measuring
+        # a run's document without measuring that run's exit code assumes the flag cannot change the
+        # verdict, which is exactly what the mutation falsified.
+        if rc_doc != 2:
+            bad.append("the run that produced this document exited %s, want 2 — `--gate-json` must not "
+                       "change the verdict (the control above ran WITHOUT the flag, so it cannot see "
+                       "this)" % rc_doc)
         if not os.path.exists(gj2):
             bad.append("a refusal wrote NO document, so a CI wrapper reading this path re-reads the "
                        "PREVIOUS run's verdict as current")
@@ -1099,6 +1112,9 @@ def row_r8(ws, pols):
             except Exception as e:
                 d2 = None
                 bad.append("the refusal document did not parse: %s" % e)
+            if d2 is not None and not isinstance(d2, dict):
+                bad.append("the refusal document is not a JSON OBJECT (%r) — every content assertion "
+                           "below would silently skip" % type(d2).__name__)
             if isinstance(d2, dict):
                 if d2.get("ok") is not False:
                     bad.append("`ok` is %r, want false — a consumer keying only on `ok` must land on FAIL"
@@ -1173,17 +1189,46 @@ R9_REPORT = {
 
 
 def _shape(doc):
-    """The document's SHAPE: top-level keys, the nested blocks' keys, and the violation record's keys."""
-    top = set(doc.keys())
-    nested = set()
-    for k in ("analyzed", "coverage"):
-        if isinstance(doc.get(k), dict):
-            nested |= {k + "." + x for x in doc[k]}
+    """The document's SHAPE: every key path, to any depth, plus each value's TYPE.
+
+    ⟨0.24⟩ THIS DESCENDED INTO A HARDCODED `("analyzed", "coverage")` AND WAS THEREFORE BLIND TO THE
+    ONE BLOCK THIS ROW EXISTS FOR. A review measured a live divergence one level below the compared
+    surface: candor-ts emits `policyVocabulary.aliases` as an OBJECT `{"corp": ["reflect"]}` where
+    rust, java and swift emit the ARRAY `["corp"]` — inside the very block whose three-way naming
+    history this row's own comment narrates. It scored `key-parity(opt) OK` on all four. A shim
+    replacing swift's whole `policyVocabulary` with `{"sources": […], "count": 1}` also passed.
+
+    The author's blind spot and the check's blind spot were the same set, which is this suite's
+    recurring defect. So the walk is GENERIC — no key list to forget to extend — and it records the
+    TYPE at each leaf, because `["corp"]` and `{"corp": …}` differ in type, not in key path, and a
+    key-only comparison is blind to exactly the divergence measured. `effects: null` (key kept, array
+    dropped) is caught by the same addition.
+    """
+    def walk(node, prefix, out):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                out.add(prefix + k + ":" + type(v).__name__)
+                walk(v, prefix + k + ".", out)
+        elif isinstance(node, list):
+            # the ELEMENT type, not each index — a list of 1 and a list of 9 are the same shape.
+            for v in node:
+                out.add(prefix + "[]:" + type(v).__name__)
+                walk(v, prefix + "[].", out)
+
+    top = set()
+    for k, v in doc.items():
+        if k == "violations":
+            top.add("violations:" + type(v).__name__)
+            continue                       # records are compared separately, below
+        top.add(k + ":" + type(v).__name__)
+        walk(v, k + ".", top)
     rec = set()
     for v in (doc.get("violations") or []):
         if isinstance(v, dict):
-            rec |= set(v.keys())
-    return top | nested, rec
+            for k2, v2 in v.items():
+                rec.add(k2 + ":" + type(v2).__name__)
+                walk(v2, k2 + ".", rec)
+    return top, rec
 
 
 def _parity(shapes):
@@ -1670,12 +1715,27 @@ def load_baseline(path):
         raise SystemExit(2)
 
 
-def waived(known, row, engine, cell):
+def waived(known, row, engine, cell, verdict=FAIL):
     """`engine: "*"` waives every engine — used only where the defect is a CLAUSE no engine implements,
-    never to blanket a defect that differs per engine (that is what hides a shrinking one)."""
+    never to blanket a defect that differs per engine (that is what hides a shrinking one).
+
+    ⟨0.24⟩ A WAIVER PINS A DEFECT, NOT A CELL — and it may only absorb the verdict KIND it was written
+    for. A review defeated the two strongest guards in this file with one waiver: `FAILING` contains
+    `ERROR` and `VACUOUS` as well as `FAIL`, so a waiver written for a known wrong ANSWER also absorbed
+    "the engine emitted garbage" (ERROR — the verdict that exists precisely so a mis-invocation cannot
+    read as a statement about candor) and "the fixture stopped triggering" (VACUOUS). Measured: with
+    `CANDOR_QUERY_BIN` shimmed to return non-JSON and one `{"row":"R1","engine":"rust","cell":"*"}`
+    waiver, an engine emitting pure garbage exited 0, the waiver was CONSUMED so it never read stale,
+    and the cells still counted as LIVE. The mechanism built to stop a waiver outliving its defect is
+    the mechanism that hid the defect's replacement.
+
+    So a waiver carries `kind` (default `FAIL`) and matches only that verdict. Waiving an ERROR or a
+    VACUOUS is still possible, but it must be written down as such, where a reader will see it.
+    """
     for k in known:
         if (k["row"] == row and k["engine"] in ("*", engine)
-                and k.get("cell", "*") in ("*", cell)):
+                and k.get("cell", "*") in ("*", cell)
+                and k.get("kind", FAIL) == verdict):
             return k
     return None
 
@@ -1761,7 +1821,7 @@ def main():
             if verdict in LIVE:
                 live += 1
             mark = verdict
-            w = waived(known, name, eng, cell)
+            w = waived(known, name, eng, cell, verdict)
             if verdict in FAILING and w:
                 mark = "FAIL(waived)"
                 stale = [k for k in stale if k is not w]
