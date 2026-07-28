@@ -21,15 +21,56 @@ Everything below this section is the RECORD: the standing bar, the lessons, and 
 their measurements. It is chronological because it is a history. **This section is the queue.** A `- [ ]`
 further down is the original filing of something indexed here, not a separate job.
 
-Reordered because the shape of the work changed. When this document started it was a worklist of silent
-under-reports; **none of what is open now is one.** It is decisions, priced refusals, and disclosed
-precision — which wants a different order, and makes two of the old groupings actively misleading.
+### QUEUE REVIEW, 2026-07-28 — what is actually left
 
-**The order in one line:** settle §4's vocabulary (§1, serial) · rule on the two other spec silences
-(§2, concurrent) · **close the structural gap with self-differential properties (§3, highest yield —
-P1 is DONE and shipped as conformance PART 24; P2/P3/P4 open)** · fix the four defects P1 found (§3c,
-per-engine, parallel) · add the gate-a-report verb (§3b, unblocks P4) · implement §1 four-way (§4,
-parallel) · leave precision alone for now (§6, with the measured argument for waiting).
+The section numbering below is CHRONOLOGICAL (§1, §2, §2b, §2c, §2d, §3, §3b, §3c, §3d, §4…) because
+sections were opened as findings arrived. **It is no longer dependency order and should not be read as
+priority.** This block is the priority; the sections are where the detail lives.
+
+**SHIPPED since this queue was last reordered** — the ⟨0.24⟩ rung entire, floor bumped four-way (seven
+components), and **FIVE four-way defects closed**: the scan-boundary `--class` fail-open, the §4 vocabulary
+rung, `gate --report`, the empty-report cardinal sin, and the frontier rung. Conformance gained **PARTs
+24–27** (three self-differential properties + the rung's behaviour). The theory↔spec↔code loop is closed
+and immediately found the theory wrong twice.
+
+**ONE ITEM DOMINATES, and it is a decision already made:**
+
+1. **The ENTRY-COLLISION UNION (§2).** Decided 2026-07-27 with measurements (`b47c9ab`), still
+   unimplemented. It is now the **only** thing behind BOTH remaining `stale_beside` waivers, and each of
+   those records a measured cardinal sin — java's stale `{Unknown}` erasing a trusted `Fs` (`deny Fs`
+   exit 1 → 0), and rust withdrawing a key when a distrusted copy sits beside the trusted original. It also
+   **dissolves rust's deliberate conflict-case divergence**, which exists ONLY to compensate for the
+   withdraw behaviour the union replaces. *Two waivers retired, two cardinal sins closed, one divergence
+   dissolved, zero new decisions required.* Nothing else open has that ratio.
+
+**THEN, in order:**
+
+2. **P4 — signature monotonicity** (§3). The last self-differential property. P1/P2/P3 found 8 defects
+   between them on first run; there is no reason to expect P4 differs.
+3. **rust's incomplete-vs-violation exit-code divergence** (§3b). rust exits 2 where java and swift exit 1;
+   a four-way ruling I owe, now pinned on BOTH routes since `gate --report` mirrors its own scan.
+4. **java's `blindspots` never lists a setup-only source** (§4). `UnknownReason.parse` returns null on a
+   colon-free tag, so the UNFILTERED list is already wrong. Check the other three for the same
+   colon-required parse.
+
+**FILED WITH MEASUREMENTS, NOT STARTED** — each has a number attached and none is blocking: the manifest
+that cannot cross a trust boundary (§2b); the return-index collision lead (§3c — recovers >half of one
+corpus's unresolved markers, and is `6f2210c`'s rule one index over); the networked-DB classifier question
+(§2b); the frontier differential's three-arms-two-consumers (§2); the per-type sidecar unanswerability
+(§2); two off-vocabulary swift kinds (§4); candor-agents' `Net[…]` widening (§2c).
+
+**OPERATIONAL, and both are the same shape — a tool that costs more than it repays:**
+- The full suite now exceeds **50 MINUTES** (PARTs 24–27 all landed today). Split the property PARTs into
+  their own leg; the generators already take `--baseline` individually.
+- **`ci/self-gate.sh` DELETES TRACKED FILES** — a script contributors are told to run.
+
+**NEEDS TOM, NOT WORK:** ~153 unpushed commits across seven repos; candor-ts at build 0.23.2 against the
+family's 0.23.1 (legitimate — its module-unit wire key moved).
+
+**A NOTE ON THE OLD ORDERING**, kept because it was true when written: this document began as a worklist of
+silent under-reports. That is no longer what it is — the open items are decisions, priced refusals and
+disclosed precision. The one exception is item 1, which is a decision whose *implementation* closes two
+silent under-reports, and that is exactly why it is first.
 
 ### 1 — THE §4 VOCABULARY RUNG · serial, first, cannot be parallelised
 **One decision with four symptoms**, filed separately across three review rounds and only visible as one
