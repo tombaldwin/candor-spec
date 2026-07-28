@@ -1189,6 +1189,27 @@ remedy (gate at scan time). Refusing costs nothing on a self-produced report: `n
 every `Net`-bearing entry and is floored at `unknown-host`, and an inherited `Unknown` always has its callee
 in `calls` (that callee carries `Unknown`, so it is effectful).
 
+⟨0.24⟩ **PRECEDENCE, AND THE STALE-DOCUMENT HAZARD A REFUSAL CREATES.** Three outcomes can be live at
+once. The order is **refusal (2) > violation (1) > incomplete (2)**: a refusal means the gate could not be
+evaluated *as written*, so no verdict it produced would be about the policy the operator asked for; a real
+violation dominates incompleteness (§3.3); incompleteness is the residual fail-closed. All four engines
+already agree on this, which is why it went unwritten — but agreement discovered by measurement is not a
+contract, and the middle rung is exactly the one candor-rust got backwards.
+
+The hazard is on the way out. A policy carrying a firing `deny Fs` **plus** one unanswerable scoped rule
+exits 2 on all four **and writes no `--gate-json` document at all** — so a CI wrapper that reads the path
+unconditionally re-reads **the PREVIOUS run's document as current**. A green file from yesterday's clean
+run, still on disk, is how a refusal becomes an all-clear. Deleting the path is not the fix either: a
+consumer that treats a missing file as "nothing to report" fails open by a different route.
+
+So: ⟨0.24⟩ **if `--gate-json` was requested and the gate REFUSES, the implementation MUST write a document
+at that path, and that document MUST be fail-closed to a NAIVE reader.** Concretely it carries `"ok":
+false` and `"refused": true` with the refusal reason, and it **MUST NOT carry a `violations` key** — the
+gate is making no claim about violations, and an empty array there is precisely the claim it cannot make.
+The `ok: false` is not ceremony: a consumer keying only on `ok` must land on FAIL, and a consumer keying on
+`refused` learns why. This is the same reasoning as the empty-report rung — the naive read of a document
+this format emits must be the safe one, because the naive read is the one that ships.
+
 ⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope
 function REACHES, not over the in-scope entry's own class set. Adding a scope currently RE-OPENS the
 fail-open the third refusal exists to close, in ALL FOUR ENGINES.** Measured:
