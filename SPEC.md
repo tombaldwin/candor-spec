@@ -377,6 +377,31 @@ The second row is the control that makes the first meaningful: a fix that hedges
 the rule, it has disabled the feature. Conformance PART 26 prints `CONTROL SEPARATION`, and a correct
 implementation makes the two arms **diverge** where today all four print INDISTINGUISHABLE.
 
+**KEY THE RULE ON THE INTEGER, NEVER ON THE EMPTINESS OF `functions` — and here is the number.** Measured
+over 1997 deduplicated JVM dependency jars: **79 (4.0%) emit `count: 0`**, of which only **6** actually
+granted coverage — all annotation/marker-only artifacts with no methods. But **104 (5.2%) are the
+LEGITIMATE all-pure kind**, every one carrying packages. **A fix keyed on emptiness would have withdrawn
+104 real claims to catch 6.** That ratio is why the second row of the table is a control and not a
+footnote: the plausible-but-wrong fix is *more* destructive than the defect. Cross-checked on a Rust chained
+tree (69 dep reports): 5 `count: 0`, all genuine facade or platform-stub crates.
+
+**Two structural traps for an implementer**, both found the same way. **Coverage is anchored TWICE** — the
+envelope's `packages` key, and each entry's `hash` prefix for reports carrying no `packages` — so *"gating
+one is a no-op wearing a fix's clothes."* And the CHAINED set (which only ever adds disclosure) must stay
+**ungated**; only the COVERED set takes the new conjunct.
+
+**Row 3 retires a pre-⟨0.21⟩ affordance, and that is deliberate.** A manifest-less empty report previously
+DID buy coverage — one engine had a test pinning exactly that. Under this rule it no longer does, because a
+producer that emits no manifest gives a consumer nothing to distinguish "judged nothing" from "judged and
+found nothing", and the unchained reading is the only honest one. An engine carrying such a pin should
+re-point it at a manifest-bearing fixture rather than delete it.
+
+⟨0.24⟩ **THE SAME RULE BINDS `gate --report` (§3.1).** A report presented *directly* to the gate with
+`analyzed.count: 0` makes the same claim as a chained one, and must be read the same way: it has judged
+nothing, so it licenses no purity claim and the verb MUST say so rather than reporting "no violations,
+exit 0". The clause above is written for the chained path because that is where it was found; the
+obligation is on the reading, not on the route by which the report arrived.
+
 **Note what this does NOT fix.** It separates *judged nothing* from *judged and found nothing*. It does not
 separate *judged n and dropped one* from *judged n−1* — that needs the per-unit analysed NAME SET, which
 §3.1's `gate --report` clause records as the open format question. This rule is the half the wire can
