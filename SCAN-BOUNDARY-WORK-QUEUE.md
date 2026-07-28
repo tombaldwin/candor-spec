@@ -827,7 +827,12 @@ meaning would be the one place a consumer could tell the routes apart.
 - **100 model disagreements over 1792 rows, ALL one family** — `Db` under `deny Net`. The engine reached
   **the same ruling I had recorded independently**: model-vs-contract, not an engine defect, pinned both
   ways rather than patched. `pure` went from 15 disagreements to **0/256** once the model was corrected.
-- [ ] rust/ts/swift: copy the shape. Then extend PART 23 from "the model is monotone" to "each ENGINE
+- [ ] **rust + ts: copy the shape** (swift landed it, `b514dbc`; java is the reference). **NOW THE LARGEST
+      SINGLE CORRECTNESS GAP IN THE RUNG**: §3.1 calls it a MUST, PART 27 prints NOSURF for rust/ts, NOSURF
+      does not fail the run, and the 0.24 changelog entry had to be **corrected to "pinned 2-of-4"** rather
+      than four-way. Swift's finding sizes the job: the report READER had to be written, because *"a
+      `gate --report` reader must read strictly LESS than the enrichment loader, which is not a subset you
+      can reach by passing a flag."* Then extend PART 23 from "the model is monotone" to "each ENGINE
       agrees with the model" — but NOT naively: Defs 33/34/35 still describe verbs that do not exist, so
       those rows would manufacture divergences out of the theory (§2b).
 
@@ -922,7 +927,11 @@ the only verdict-changing one — do not bundle them.
             **So 4a is: java the ONLY engine where it was reachable** — via the dependency boundary, the one
             route swift and ts had already closed. Three of four were already right at the source.
       - [→] rust pending.
-- [ ] **NEW — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
+- [x] **CLOSED FOUR-WAY.** swift `2c96569`, rust `5df4af1`, ts `cbbb05c` (+ `72a9b51` for the over-fire the
+      review found), java `03b833b`. Worst was ts at **got 64→21 (−67%)**. All four now share one fixpoint
+      and one match rule with their own gate. Plus the ⟨0.24⟩ **value grammar** four-way (rust `7d916f4`,
+      swift `0646085`, java `735204c`, ts `53e4585`) — a shared gap no engine had implemented.
+      ORIGINAL — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
       4a.** The tool whose entire job is to name the holes a green gate does not prove — and its filter
       **under-reports the more the user narrows**. Two causes, both needed:
       (1) an entry with empty `unknownWhy` matches NO filter, including `unresolved` — the exact fail-open
@@ -1173,7 +1182,16 @@ the only verdict-changing one — do not bundle them.
       cross-engine `viaDispatchOn` LITERAL (`"run,untyped cross-package receiver,write"` and `"run"`) —
       the existing frontier differential only substring-checks that field and cannot catch an ordering or
       dedup divergence.
-- [ ] **4e. Bump the floor to 0.24** — SITES LOCATED, so it is mechanical once 4d is green. Do NOT bump
+- [x] **4e DONE — floor is 0.24 across all SEVEN components, `release-preflight` exits 0.** It was not
+      mechanical: I located FIVE strings and there were **FOURTEEN**, across five repos. Nine were found by
+      watching a test fail, one at a time; a follow-up review found **six more**, including candor-java's
+      **jar-embedded AGENTS.md** (the engine told an agent it spoke 0.23 while stamping 0.24 into every
+      envelope) and **published npm/jbang metadata**.
+      **THREE GATES WERE GREEN WHILE BLIND, each differently**: java's asserted the stale LITERAL so it
+      *enforced* drift; ts's missed on **FORM** (`spec: "0.23"` evades `/spec 0\.2[0-3]\b/`) and had never
+      swept `package.json`; the preflight's signal was buried under 220 fixture lines. All three now
+      DERIVE the floor rather than assert it.
+      ORIGINAL — 4e. Bump the floor to 0.24, sites located. Do NOT bump
       before then: the rung is tier-1 and VERDICT-CHANGING, so it needs the full pre-publish checklist and
       not a quiet edit.
       **The five strings** (one per engine plus the floor declaration the drift gate reads):
