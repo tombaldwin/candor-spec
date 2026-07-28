@@ -377,6 +377,29 @@ The second row is the control that makes the first meaningful: a fix that hedges
 the rule, it has disabled the feature. Conformance PART 26 prints `CONTROL SEPARATION`, and a correct
 implementation makes the two arms **diverge** where today all four print INDISTINGUISHABLE.
 
+⟨0.24⟩ **`count` MUST BE A NON-NEGATIVE INTEGER; anything else is UNREADABLE and fails closed.** A review
+found four engines reading a fractional `0.5` three different ways (covered / hedged / covered) and a
+`2.5` two ways — all in the safe direction, but an unpinned disagreement on **the exact integer this whole
+rung keys on**. A non-integral, negative, non-numeric or otherwise unparseable `count` is a manifest that
+made no readable claim: treat it exactly as `present-but-unreadable` and withhold coverage.
+**A BOOLEAN IS NOT AN INTEGER, and this one was live.** candor-swift read `analyzed: {count: true}` as
+`1` — Foundation bridges `NSNumber(bool:)` through an `as? Int` cast — and therefore as *judged*, granting
+full coverage byte-identically to `count: 2`. The caller then dropped out of `functions`: **a ⟨0.21⟩
+positive purity claim licensed by a manifest that made no readable claim at all.** That is the
+fabrication mirror this rung exists to close, arriving through a language's type bridge rather than a
+logic error, and it contradicted that engine's own documented row. An implementation MUST reject a boolean
+before the integer cast, and its shape-table test MUST carry a boolean row — three engines fail closed here
+only because their JSON readers are stricter, not because anyone tested it.
+
+⟨0.24⟩ **A report with NO `functions` KEY is MALFORMED, and MUST be refused LOUDLY — not believed, not
+silently dropped.** `functions` is §2-required. The same review found a four-way split on
+`{"package":"p","analyzed":{"count":5}}`: rust and java `continue` past it before the judged-nothing
+predicate — **no coverage and no advisory of any kind, the user's chained file discarded in total
+silence** — while swift and ts default it to `[]`, see `count > 0`, and **grant a purity licence from a
+malformed report.** Both are wrong in different directions. The safe direction is rust's and java's, but
+silence is not a disclosure: withholding coverage without saying so is the same failure the rest of this
+rung is about. Refuse it the way §3.3 refuses a corrupt report, and name the file.
+
 **KEY THE RULE ON THE INTEGER, NEVER ON THE EMPTINESS OF `functions` — and here is the number.** Measured
 over 1997 deduplicated JVM dependency jars: **79 (4.0%) emit `count: 0`**, of which only **6** actually
 granted coverage — all annotation/marker-only artifacts with no methods. But **104 (5.2%) are the
