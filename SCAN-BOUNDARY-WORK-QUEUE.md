@@ -1001,11 +1001,22 @@ meaning would be the one place a consumer could tell the routes apart.
       completeness marker "does not ride the wire" — rust emits a per-entry `incomplete` field §2 names, so
       it COULD answer. It refuses anyway, and its reason is better than mine: **an engine that answers a
       question its three siblings refuse has SPLIT THE VERB.**
-- [ ] **NEW, from rust: a live cross-engine EXIT-CODE divergence.** rust's scan lets **incomplete analysis
-      dominate a violation** (`had_parse_failure` returns 2 *before* recording violations), so rust exits 2
-      where java and swift exit 1 on the same input. rust's `gate --report` mirrors rust's own scan, which
-      is what byte-equivalence demands — so the divergence is now pinned on BOTH routes rather than one.
-      Needs a four-way ruling: does incompleteness outrank a found violation, or the reverse?
+- [ ] **rust DEFECT against an EXISTING MUST — I filed this as "needs a four-way ruling" and it is not one.**
+      §3.3.1 already says it, verbatim: *"A configured gate over incompletely-analyzed code MUST fail closed
+      (exit ≠ 0); **a real violation (exit 1) still dominates.**"* java and swift are right; **rust is
+      wrong** — `had_parse_failure` returns 2 *before* recording violations, so a real violation found
+      alongside an unparseable file is reported as "I could not analyse" instead of "your code violates".
+      **THE MACHINE-CONSUMER CONSEQUENCE IS THE SHARP PART, and it is worse than an exit code.** §3.3.1
+      pairs the code with the document: on **exit 2** an engine writes *only* the ⟨0.21⟩ incomplete verdict
+      `{ok:false, incomplete:true, unanalyzed:[…]}` — **never the violations.** So on an input carrying both,
+      rust's `--gate-json` **DROPS a real finding** and tells a CI consumer the analysis was incomplete. The
+      violation is not merely mis-coded, it is *absent from the artifact*. That is a machine-consumer
+      under-report, which is the class this whole document is about.
+      Now pinned on BOTH routes: `gate --report` mirrors rust's own scan for byte-equality, so fixing the
+      scan fixes both, and fixing only the verb would break the equivalence PART 27 asserts.
+      **Lesson for me, not for rust**: I read a cross-engine disagreement as an open question without
+      checking whether the contract already settled it. Two engines agreeing with the spec and one
+      disagreeing is not a tie.
 - [ ] **NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
       checked-in `report.*.scan.json` artifacts in all four crates. The agent restored them byte-for-byte
       via `git show HEAD:<path> >` rather than `git checkout` (the standing rule). Harmless in CI,
