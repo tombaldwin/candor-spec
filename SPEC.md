@@ -402,6 +402,25 @@ nothing, so it licenses no purity claim and the verb MUST say so rather than rep
 exit 0". The clause above is written for the chained path because that is where it was found; the
 obligation is on the reading, not on the route by which the report arrived.
 
+⟨0.24⟩ **THE CONFLICT CASE — a package chained TWICE, once judged and once not.** A `count: 0` report makes
+**no claim**, so it neither adds nor subtracts: the judged report's coverage **stands**. That is the rule,
+and it follows directly from what row 1 means — "I judged nothing" is silence, not a denial.
+
+Note it runs OPPOSITE to the ⟨0.21⟩ `incomplete` reconciliation, and deliberately: an `incomplete` report
+makes a **negative claim about its own source**, so it beats a complete sibling; a `count: 0` report makes
+none, so it loses to one. Two reconciliations, opposite directions, each following what the second report
+*says*.
+
+**One engine diverges here on purpose and the reason generalises.** candor-rust keeps the HEDGE on conflict
+rather than the coverage, because its dependency index **drops a key two entries disagree under** (the
+never-guess rule) — so granting coverage on the judged report's authority can leave the consumer reading
+*confidently pure* on the very key nobody answered. That is a correct local compensation for a collision
+behaviour that is **itself scheduled to be replaced by the union** (`ENTRY-COLLISION-DECISION.md`), and it
+should be revisited when that lands: with a union there is no dropped key, so the compensation stops being
+needed and the divergence should close. Recorded rather than reconciled away, because an engine that
+deviates from a rule for a stated, measured reason is doing something different from one that deviates by
+accident — and the difference is only visible if the reason is written down.
+
 **Note what this does NOT fix.** It separates *judged nothing* from *judged and found nothing*. It does not
 separate *judged n and dropped one* from *judged n−1* — that needs the per-unit analysed NAME SET, which
 §3.1's `gate --report` clause records as the open format question. This rule is the half the wire can
