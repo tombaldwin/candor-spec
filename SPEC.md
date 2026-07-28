@@ -352,9 +352,17 @@ never judged, the cardinal-sin drop), and making incompleteness **machine-legibl
 ⟨0.24⟩ **`analyzed.count == 0` IS "I JUDGED NOTHING", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE.**
 A chained report carrying `functions: []` and `analyzed.count: 0` currently buys a consumer **MORE
 confidence than not chaining the package at all** — the caller drops out of `functions`, which under ⟨0.21⟩
-is a **positive purity claim**, with **no advisory anywhere**; `deny Fs` goes **exit 1 → exit 0**. Measured
-on all four engines by conformance PART 26, and strictly more confident than the unchained arm, which
-correctly discloses `invisible` + `coverage.uncovered`.
+is a **positive purity claim**, with **no advisory anywhere**. Measured on all four engines by conformance
+PART 26, and strictly more confident than the unchained arm, which correctly discloses `invisible` +
+`coverage.uncovered`.
+
+**State the harm precisely, because the loose form is misleading.** The empty report carries no effects, so
+the count-0 arm cannot itself *trip* a gate; both it and the unchained arm exit 0 on `deny Fs`. **What the
+count-0 arm deletes is the DISCLOSURE** — the `invisible` marker, `coverage.uncovered`, the verdict caveat
+and `--gate-json`'s `coverage.modules`, which is the machine-consumer channel. The gate flip appears only
+against the *trusted* arm (a real report would have said `Fs`, exit 1). So this is a silent under-report in
+its purest form: not a wrong answer, but a **confident** one where the honest answer was a hedge — and it is
+the disclosure channel, not the verdict, that a fix must restore.
 
 **The wire ALREADY distinguishes the two cases and no engine reads it.** A `pub use`-only facade package
 emits `count: 0`; an all-pure two-function package emits `count: 2` with the same empty `functions`. So:
