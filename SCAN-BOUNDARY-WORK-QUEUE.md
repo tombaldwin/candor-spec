@@ -790,6 +790,35 @@ not written by an agent and checked by a second party).
       reading *"This is a fake target that depends on all targets in the package."* **A rare facade, not
       half a dep tree** — precisely the shape the rule is for.
       **PART 26 CONTROL SEPARATION**: java **56/80**, swift **24/80**, rust + ts **INDISTINGUISHABLE**.
+      - [x] **rust `faf4430` — and it hit TRAP 1 exactly as warned, in a shape java's warning did not
+            cover.** rust has **FOUR** coverage anchors (envelope `package`, `packages[]`, **filename
+            fallback**, entry `hash` prefix), and *"a count-0 report reaches the entry loop with no entries,
+            so the `hash` anchor never fires for it"* — the envelope and **filename** anchors are the two
+            that carry this shape. A structural test now enumerates 4 writes / 3 consumers out of the
+            source, so the anchor set cannot grow silently.
+            **rust's ratio is ~1:1, not java's 79:104 — an honest narrowing of my own framing.** 17/173
+            candor-rust (9.8%), 27/409 ebman, 20/270 pgman emit `count: 0` — all macro-only, platform link
+            stubs, data blobs or re-export facades (`cfg_if`, `windows_*_msvc`, `icu_*_data`, `pin_utils`,
+            `static_assertions`) — against 16/49/39 legitimately all-pure. The emptiness-keyed fix is still
+            the wrong trade, **by a narrower margin than the JVM number suggests.** Live effect on
+            candor-rust's own scan: reports IDENTICAL, one new stderr advisory naming all 17.
+            **Its `gate --report` REFUSES (exit 2) with NO verdict**, and the reasoning is careful: §3.3
+            exit-2 cause (a). It declined to borrow cause (b)'s `incomplete: true` verdict shape because
+            that is keyed to `unanalyzed`, **a NAMED list** — a count-0 report names nothing, so borrowing
+            it would put an unsupported claim on the wire.
+      - [x] **ALL FOUR NOW SEPARATED** — rust 64/80, java 56/80, ts 64/80, swift 24/80. **rust's and ts's
+            `empty_zero` waivers DELETED, not narrowed**: the ratchet itself reported
+            `FAIL (STALE WAIVER): baselined as known-broken but every cell now passes`, zero residual cells.
+      - [x] **A 15TH BUMP SITE, found by this agent as a "pre-existing" failure — it was mine.**
+            `tests/integration.sh:368` asserted the deep backend's verdict declares spec **0.23**. The
+            backend derives from `SPEC_VERSION` and emits 0.24 correctly; only the assertion was stale.
+            **The preflight could not have caught it**: check [2]'s pattern DOES match `spec: 0.23`, but the
+            line lives under `tests/`, which my loud/advisory split classifies as advisory on the reasoning
+            that an older spec string there is a deliberate fixture. **That is right for fixtures and wrong
+            for OUTPUT ASSERTIONS, which also live in test files** — and every one of the nine I found
+            during the bump was exactly that shape, found by running suites rather than reading the gate.
+            **The split makes the preflight readable; it cannot replace running the tests.** Not widened,
+            because widening puts 220 fixture lines back.
       - [ ] **swift's 40 residual cells are NOT this door** — a **separate pre-existing per-function
             `invisible` attribution gap** (field, implicit_conv, lazy_init, loop_elem, method_recv): every
             one reads `unchained=(ABSENT)`, so the unchained baseline is equally silent, and PART 26 credits
