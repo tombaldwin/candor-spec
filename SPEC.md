@@ -359,7 +359,7 @@ PART 26, and strictly more confident than the unchained arm, which correctly dis
 **State the harm precisely, because the loose form is misleading.** The empty report carries no effects, so
 the count-0 arm cannot itself *trip* a gate; both it and the unchained arm exit 0 on `deny Fs`. **What the
 count-0 arm deletes is the DISCLOSURE** — the `invisible` marker, `coverage.uncovered`, the verdict caveat
-and `--gate-json`'s `coverage.modules`, which is the machine-consumer channel. The gate flip appears only
+and `--gate-json`'s `coverage.packages`, which is the machine-consumer channel. The gate flip appears only
 against the *trusted* arm (a real report would have said `Fs`, exit 1). So this is a silent under-report in
 its purest form: not a wrong answer, but a **confident** one where the honest answer was a hedge — and it is
 the disclosure channel, not the verdict, that a fix must restore.
@@ -1219,6 +1219,24 @@ the verdict, the `--gate-json` document MUST name that file. A verdict changed b
 cannot see named in the output is the ambient-input failure this whole format exists to refuse; the remedy
 is the same one used everywhere else here — not to forbid the input, but to make it impossible for it to
 act unnamed. **The three documented baits MUST gain this fourth**, on all four engines.
+
+⟨0.24⟩ **THE VERDICT'S `coverage` BLOCK IS `{ "uncovered": <n>, "packages": [ … ] }`, AND UNTIL NOW THIS
+DOCUMENT NEVER SAID SO.** §2 defines the *report's* ledger — `coverage.uncovered` as an ARRAY of
+`{name, calls}` — and that is a different shape from the *verdict's*, which carries a COUNT plus a name
+list. The verdict shape was never pinned anywhere, so the engines diverged unobserved: rust and ts emit
+`packages`, **candor-swift emits `modules`**, and the single prose mention of it in this section said
+`modules` too — almost certainly because it was written with swift's output open.
+
+`packages` is correct, and **not because it is three-to-one.** The §2 envelope names the very same objects
+`package` / `packages`; a verdict that renames them mid-document is drift, and `module` already means a
+different thing in two of the four implementation languages (a compilation unit, which is not what is
+being counted). The prose mention was wrong and is corrected above.
+
+Recording the shape of the miss: **a field can be uniform across three engines, mentioned in this document,
+covered by a conformance suite, and still be UNSPECIFIED** — because the mention was descriptive prose
+rather than a normative shape, and no PART compared the key. That is the same failure mode as an untested
+guard, and the tell is available whenever a "spec says X" claim traces to a sentence that was *describing*
+an implementation rather than *constraining* one.
 
 ⟨0.24⟩ **PRECEDENCE: A CERTAIN VIOLATION DOMINATES A REFUSAL, AND ALL FOUR ENGINES HAVE THIS BACKWARDS.**
 Three outcomes can be live at once. The order is **violation (1) > refusal (2) > incomplete (2)**, and the
