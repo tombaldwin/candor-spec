@@ -1165,6 +1165,13 @@ place a consumer could tell the two routes apart.
 
 **EQUIVALENCE IS THE ACCEPTANCE TEST, AND IT IS BYTE-LEVEL.** For any report a scan produced,
 `gate --report <it> --policy P` MUST produce a `--gate-json` document **byte-equal** to `scan --policy P`'s
+⟨0.24⟩ **for every policy the verb evaluates IN FULL — and that condition was missing, so as written every
+conformant engine violated this MUST.** A policy containing `forbid` or `allow` cannot satisfy it: the scan
+route evaluates AS-EFF-009 from the source it is looking at, and this section REQUIRES the gate route to
+refuse it for lack of a surface. Measured on candor-ts, `deny Fs` + `forbid src.app -> src.lib`: scan exits
+1 with 4 violations, gate exits 1 with 2 plus `unevaluated`. Equality binds the EVALUATED PROJECTION —
+identical bytes over the rules both routes actually decided. The sentence "reaching equivalence required
+exactly three refusals" already presupposed this scoping without stating it
 — `analyzed.count`, `reasonClass`, `netClass` and the coverage advisory included. Measured on the reference
 engine over 25 rows and two corpora (a 970-function report against 13 policies, up to 113 violations, plus
 a fixture making the scoped arms non-vacuous). Anything less than byte-equality lets the two routes drift
@@ -1333,7 +1340,27 @@ wrote it, and it was wrong within the hour: the monotone-denial property this se
 paragraphs above settles the question in the other direction, and I had just finished using that same
 property to argue engines should answer more questions rather than fewer. **Uniform agreement is the
 weakest evidence in this project, and it is at its weakest when it agrees with the draft you were about to
-write.*** The refusal message MUST still disclose which rules could not be evaluated — exit 1 reports the
+write.*** ⟨0.24⟩ **THAT DISCLOSURE IS `"unevaluated": [ { "rule": "<the RAW policy line, verbatim>",
+"why": "<why it could not be decided>" } ]` IN THE `--gate-json` DOCUMENT, one entry PER RULE, omitted when
+empty — and requiring it without naming it is the sharpest failure of my own pinning rule, because it
+happened on the clause sitting beside the one that states the rule.** Measured on `deny Fs` + `forbid …`,
+exit 1, all four engines:
+
+    rust    NOTHING in the document — stderr only
+    swift   NOTHING in the document — stderr only
+    java    "unevaluated": [{"rule": "forbid (× 1)"}]   ← a KIND AGGREGATE; two forbid lines collapse to
+                                                          "forbid (× 2)" and WHICH rules is lost
+    ts      "unevaluated": [{"rule": "<raw line>", "why"}]   ← correct
+
+**A machine consumer of rust's or swift's exit-1 verdict cannot see that any rule went unevaluated at all.**
+That is a finding that never reaches the consumer — the harm class this entire rung exists to close —
+arriving through the disclosure the rung added. stderr is not the machine channel; that is the same
+distinction that made the incomplete-analysis defect a defect. And java's aggregate answers "how many" when
+the operator's question is "which", so it satisfies a naive reading of "disclose which rules" while
+answering the other one.
+
+⟨0.24⟩ The refusal document's `reason` is likewise now pinned: a STRING naming the cause. All four converge
+on it today **by luck, not by pin** — it was specified only as "with the refusal reason". Exit 1 reports the
 violation it is sure of, it does not conceal the part it could not read.
 
 The stale-document hazard is separate, and survives the correction above — it bites whenever a refusal is
@@ -2495,7 +2522,13 @@ resolves the transitive class). Filter forms:
   (soundness-by-default; narrowing is opt-in).
 - **`Unknown[dynamic]`** is a built-in alias for every *genuine* class (`reflect,dispatch,indirect,native,unresolved`
   — excludes `setup`): the recommended usable strict gate.
-- an **unrecognized class token** in the brackets is **dropped with a warning** (the rule keeps its recognized
+- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's
+  unrecognised-token rule.** This bullet is kept only to name what it used to say, because a review found it
+  still reading as normative 130 lines below the rule that replaced it, which makes it a **licence to
+  regress**: an engine could cite it and reintroduce the `deny Unknown[dispatch,nativ]` → `[dispatch]`
+  narrowing that stops gating native holes. A corrected assertion outliving its correction in a second
+  location is a defect class this document has now produced twice. FORMER TEXT: an unrecognized class token
+  in the brackets was dropped with a warning (the rule keeps its recognized
   classes); a narrowed filter that omits `unresolved` SHOULD emit an **advisory under-gating lint** (it may
   tolerate holes the engine could not classify).
 - **`pure`** is unaffected — **its verdict never depended on `Unknown` at all**; reason-scoping is a
@@ -2537,7 +2570,13 @@ call graph exactly as the `Net` effect does. Filter forms mirror `Unknown[…]`:
 
 - bare **`Net`** and **`Net[*]`** mean **all destinations** — a pre-0.21 `deny Net` is byte-identical
   (backward-compatible; narrowing is opt-in).
-- an **unrecognized class token** in the brackets is **dropped with a warning** (the rule keeps its recognized
+- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's
+  unrecognised-token rule.** This bullet is kept only to name what it used to say, because a review found it
+  still reading as normative 130 lines below the rule that replaced it, which makes it a **licence to
+  regress**: an engine could cite it and reintroduce the `deny Unknown[dispatch,nativ]` → `[dispatch]`
+  narrowing that stops gating native holes. A corrected assertion outliving its correction in a second
+  location is a defect class this document has now produced twice. FORMER TEXT: an unrecognized class token
+  in the brackets was dropped with a warning (the rule keeps its recognized
   classes).
 - **`pure`** is unaffected — it fails on *any* `Net`; destination-scoping is a `deny`-side feature only.
 
