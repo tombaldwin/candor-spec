@@ -26,12 +26,16 @@
       ]
     },
     {
-      "engine": "swift",
-      "arm": "empty_zero",
+      "engine": "java",
+      "arm": "stale_beside",
       "split": "*",
-      "why": "\u27e80.24\u27e9 FIXED in candor-swift `b41b1df` \u2014 the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` \u2014 the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
+      "why": "the \u00a72.1 downgrade turns the stale copy's entries into exactly `{Unknown}`, which is non-empty and so sails through the last-non-empty-wins guard and OVERWRITES the trusted report's `Fs`. 72/72 live cells ERASED. Already recorded in ENTRY-COLLISION-DECISION.md as a measured `deny Fs` exit 1 -> exit 0; P3 is where it becomes a standing gate.",
       "repro": [
-        "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
+        "the java fixture above, with stale.json = good.json and `candor.version` changed to `NOT-THIS-BUILD`:",
+        "  good.json               -> entry ['Fs']",
+        "  'good.json stale.json'  -> entry ['Unknown']    the Fs is gone",
+        "`--policy 'deny Fs'`: exit 1 -> exit 0. Disclosed (so `deny Unknown` still bites), which is why it",
+        "is ERASED and not CARDINAL \u2014 but a report the engine refused to trust erased a fact from one it did."
       ]
     },
     {
@@ -47,16 +51,21 @@
       ]
     },
     {
-      "engine": "java",
-      "arm": "stale_beside",
+      "engine": "swift",
+      "arm": "empty_zero",
       "split": "*",
-      "why": "the \u00a72.1 downgrade turns the stale copy's entries into exactly `{Unknown}`, which is non-empty and so sails through the last-non-empty-wins guard and OVERWRITES the trusted report's `Fs`. 72/72 live cells ERASED. Already recorded in ENTRY-COLLISION-DECISION.md as a measured `deny Fs` exit 1 -> exit 0; P3 is where it becomes a standing gate.",
+      "why": "\u27e80.24\u27e9 FIXED in candor-swift `b41b1df` \u2014 the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` \u2014 the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
       "repro": [
-        "the java fixture above, with stale.json = good.json and `candor.version` changed to `NOT-THIS-BUILD`:",
-        "  good.json               -> entry ['Fs']",
-        "  'good.json stale.json'  -> entry ['Unknown']    the Fs is gone",
-        "`--policy 'deny Fs'`: exit 1 -> exit 0. Disclosed (so `deny Unknown` still bites), which is why it",
-        "is ERASED and not CARDINAL \u2014 but a report the engine refused to trust erased a fact from one it did."
+        "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
+      ]
+    },
+    {
+      "engine": "ts",
+      "arm": "empty_zero",
+      "split": "*",
+      "why": "an `analyzed.count: 0` report buys full coverage and the caller becomes a silent purity claim. 56/56 live cells ABSENT. CONTROL SEPARATION: INDISTINGUISHABLE. \u27e80.24\u27e9 NOTE: this waiver was briefly deleted on 2026-07-28 on the strength of another engine's measurement of candor-ts's UNCOMMITTED working tree \u2014 standing bar 7f, committed by the coordinator. RESTORED. Delete it when candor-ts's fix is COMMITTED and the ratchet itself reports it stale, which is the only evidence that should retire a waiver.",
+      "repro": [
+        "as the rust entry: a dep report with `functions: []` and `analyzed.count: 0`, chained into a consumer that calls it."
       ]
     }
   ]
