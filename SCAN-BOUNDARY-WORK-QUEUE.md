@@ -2490,6 +2490,43 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       to report rather than fail (`candor` `b5e2cb0`), and its `WANT_VER` arm still catches a genuine lag
       exactly. The release set is a decision, not a defect.
 
+## Standing bar 7o — A CLEAN TREE IS NOT A COMPLETION SIGNAL. I broke 7f myself (2026-07-28)
+
+The ts round-1 agent committed both briefed items and left `git status` clean. I read that as finished and
+dispatched a second agent into the same repo. It was **a lull between its briefed work and a follow-on it
+had correctly decided to do** (extending the present-but-unparseable rule to the chained-dep route — work I
+would have asked for). Two writers interleaved in `scan.mjs` for about twenty minutes.
+
+**The completion signal is the agent's REPORT, not the tree.** A clean tree means "no edit is half-written
+right now", which is true between every pair of commits. 7f says one writer per repo; this is how the rule
+gets broken by someone who knows it — by substituting a cheap observable for the real one, under time
+pressure, having just been asked to move fast.
+
+No loss: the second agent detected the collision itself, committed nothing, and preserved separated patches
+(`scratchpad/collision/`) before standing down. I told the first agent to stage explicitly by path and never
+`git add -A`, since either side could otherwise sweep the other's half-finished work into its commit. **But
+the recovery being clean is not evidence the risk was small** — it is evidence the agent handled it well.
+
+**The mitigation is to make the signal cheap and correct, not to be more careful**: if a repo must be
+handed over fast, tell the outgoing agent to report before starting anything unbriefed, or dispatch the
+follow-on to the SAME agent via SendMessage, which cannot collide with itself.
+
+### It also produced the round's sharpest cross-engine find, which R9 could not see
+
+Before standing down that agent measured the ⟨0.24⟩ policy-vocabulary disclosure: **rust `vocabulary`, java
+`policyVocabulary`, swift `configSources: [path]`** — three names, and swift's array drops the alias names
+entirely. `coverage.modules` recurring on the very next field.
+
+**And R9 was blind to it by construction.** I chose one uniformly-minimal fixture so no optional block was
+present, which stops the row flagging legitimate per-situation differences — and thereby made it blind to
+every optional block, which is exactly where divergence lives. Fixed (`f06c762`): the row is a LIST OF
+SITUATIONS, and the rule is **every optional block needs an arm that makes it PRESENT**. Shape ruled in
+`b4e9155` — `policyVocabulary: {config, aliases}`, object not array, because naming the source without the
+content leaves the reader knowing they were affected and not how.
+
+Same shape of error twice in one session, mine both times: **a check whose fixture cannot reach the
+condition it is checking for.**
+
 ## THE STANDING BAR — applies to every item, no exceptions
 
 0. **A FABRICATION FIX IS WHERE UNDER-REPORTS GET INTRODUCED. Measured: four defects in five fixes.**
