@@ -1338,6 +1338,33 @@ line with an unconditional verdict is **worse than that bug**, because it reads 
 and did not. §3.1's own rule settles it: an unanswerable condition is DISCLOSED, never scored — so the raw
 line is printed and the unevaluated narrowing is named beside it.
 
+⟨0.24⟩ *I MIS-TRANSCRIBED THIS PIN, WHICH IS ITS OWN LESSON.* The shape above was written from the
+description of candor-rust's behaviour rather than from its output. Measured, rust emits `conditional` as a
+**per-violation STRING** — `violations[].conditional: "the \`Net\` you introduce reaches destination class
+unknown-host"` — not a top-level array of `{rule, condition}`. **Rust's shape is the better one and stands:**
+the condition qualifies a specific hypothetical finding, so it belongs on that finding, not in a parallel
+list a consumer has to re-join. The normative shape is `violations[].conditional: "<the narrowing left
+unevaluated>"`, omitted on rules that do not narrow. It is also pinned here, inside the `gate --report`
+section, while being a **`whatif` output** — a reader of §3.2 will not find it. Both are my errors, and both
+are the same one: *pinning a field from a description instead of from the artifact.* A pin written without
+running the thing is a fifth guess, not a constraint.
+
+⟨0.24⟩ **`errors[].accepted` IS AN ARRAY OF TOKENS, and `kind` is drawn from a CLOSED set** —
+`reason-class/alias`, `Net destination-class`, `effect-name`, `rule-kind`. Measured divergence already
+shipped: java emits `accepted` as an array, **candor-ts emits it as a PROSE STRING** ("reflect, dispatch, …
+aliases: dynamic, *, or a config `unknown-alias`") and additionally names the pinned `kind` field
+`vocabulary` and `rule` field `where`. A prose string is unparseable by the consumer the field exists for,
+and the trailing "…" I left on `kind`'s vocabulary was four future guesses in one ellipsis.
+
+⟨0.24⟩ **THE STALE-DOCUMENT RULE BINDS EVERY MACHINE-OUTPUT PATH, NOT JUST `--gate-json`.** The argument —
+*a CI wrapper reading the path unconditionally re-reads the PREVIOUS run's document as current* — is exactly
+as true of `scan --json <report>`, of SARIF output, and of `fix-gate --json`. It is WORSE for `scan --json`:
+an exit-2 scan leaves yesterday's REPORT on disk, and a downstream `gate --report` then gates stale data
+green — which is this rung's own supply-chain route, poisoned at the source. `1503368` generalised the rule
+over its *causes* and I did not think to generalise it over its *paths*. **On any exit-2, every machine
+output path the invocation requested is written fail-closed, or is not left holding a previous run's
+answer.**
+
 ⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
 `policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
 engine needed — without specifying its shape, and three of the four had produced a live cross-engine
