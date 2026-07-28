@@ -4771,3 +4771,43 @@ signal available; what this adds is that **it is weakest of all when it agrees w
 about to write** — at that moment it stops being evidence and becomes confirmation. The tell was available
 and I walked past it: the behaviour I was about to bless deletes a finding from the machine channel, which
 is the exact harm I had spent the morning making rust fix.
+
+## java's round — CLOSED (`92a7891`, `6c64835`, `2cdc443`), and it corrected the brief
+
+All four dispatched items landed; 596 tests / 0 failures, counted from the XML rather than from "BUILD
+SUCCESSFUL", and each new test verified to fail at its parent by stashing only the main-source file.
+
+**The prefix locator gated ONE of several matched reports** — `m3/rep` exited 0 with `analyzed.count 3` and
+zero violations where rust and ts both exit 1 with count 4. **The scope decision is the interesting part,
+and it went the other way from the obvious one:** fixed on the GATE ROUTE ONLY, not in the engine-wide
+resolver. Every other verb derives per-report *sidecars* from the resolved path (`callers`/`tour`/`whatif`/
+`fix` all call `loadCallgraph`), so unioning entries while the callgraph stayed anchored to one report would
+answer "no callers" for every sibling's function — **a silent under-report introduced by the repair.** The
+gate reads the report file and nothing else, so a union there is a pure function of the located set with
+nothing to desynchronise. It is also the only verb whose output is a machine verdict, which is where the
+narrowing is invisible; the prose verbs keep their `matches N reports; using X` disclosure, and the gate
+route *replaces* that line rather than keeping it, since it would now be a false disclosure. Join is the
+safe direction throughout: counts SUM, `unanalyzed`/κ concatenate, a repeated `fn` UNIONs.
+
+**The partially-corrupt set closed as a consequence** and the agent added no second guard — re-measured
+after the locator fix, `multi/rep` exits 2 naming the torn file and the parse position. Asked to check
+before writing, it checked, and reported the redundancy instead of shipping a guard that would have looked
+like a fix.
+
+**THE BRIEF WAS WRONG ON `interfaceUnion`.** I passed on the first review's claim that `scan --policy`
+exits 0 while `gate --report` exits 1. Measured: **both exit 1.** The divergence is an extra violation ROW
+in the document — scan 2, gate 3 — so byte-equality is refuted either way on the engine's own output, **but
+a CI gate keying on the exit code would never have caught it.** That distinction is the finding, and it is
+sharper than the one I sent: this rung's whole premise is that the DOCUMENT is the machine channel and the
+exit code is not.
+
+### The residual java did NOT patch around, and was right not to
+
+The MERGED arm. Where a real entry already claims the hash the union is merged into it and the entry stays
+unmarked *by design* — it is a real analysed unit counted in `analyzed`, and marking it would make consumers
+subtract it twice. Measured on an effectful `default` method plus an overriding implementer: scan 1
+violation, gate 2. There is no marker to key off, and the report cannot distinguish a widened entry's body
+effects from its dispatch union, so **skipping by "the hash names an interface member" would drop a real
+`default`-body violation — trading a fabrication for the cardinal sin**, which is the exact move
+[[feedback-fabrication-fixes-cause-misses]] exists to forbid. It needs a four-engine format rung. It fails
+safe as it stands: an extra row, never a missing one. Recorded in java's BACKLOG.md.
