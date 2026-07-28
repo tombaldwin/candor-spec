@@ -4859,3 +4859,47 @@ disagreeing.
   datapoint — but note what would have happened downstream: **that is exactly the state PART 27's R1 cell
   used to score OK on**, since it accepted exit 2 and 2 is also the usage-error code. The harness fix
   landed hours before the condition it was written for occurred naturally.
+
+## swift's round — CLOSED (`3ba8b3a`, `beea0e2`, `a0131d5`, `1611608`, `daf62c4`) · 411 tests, 0 failures
+
+Four dispatched, **five landed** — and R8 got verified as a side effect.
+
+**The boolean `count` was live exactly as specced.** `__NSCFBoolean as? Int` succeeds with `1`, so a
+boolean manifest granted coverage byte-identically to `count: 2` and the caller dropped out of `functions`
+— a ⟨0.21⟩ purity claim licensed by a manifest that made no readable claim. Rejected **before** the integer
+cast on `objCType == "c"`, which is the boolean tag on Darwin *and* corelibs, so the Linux CI leg runs the
+same test. **A value test cannot work here**: `count: 1` and `count: true` are the same number. The shape
+table gained seven rows including `float_integral` (`2.0` is still believed) as the anti-flood control.
+
+**A second defect fell out of testing the first: an unreadable `count` was being SUMMED INTO the verdict
+document.** `count: true` emitted `"analyzed":{"count":1}`, `count: -1` emitted `-1` — a fabricated number
+in the machine channel, arriving through the same type bridge. Both now 0.
+
+**FIX 5 was not in the brief.** Probing for siblings found the same coercion on the SCAN path: a corrupt
+chained-dep entry was `continue`d, so a covered package's silence turned it into a purity claim — measured
+**strictly more confident than not chaining the dep at all**, which is the shape to remember. Its first
+measurement of this was **vacuous** (no `import` in the consumer, so the intact arm also read pure) and it
+caught that itself; the intact arm is now asserted in the test for exactly that reason.
+
+**A pre-existing fixture was REFUTED by the fix.** `testScopedUnknownDenyWithNoReachableReasonIsRefused`
+posed `direct: ["Unknown"]` — the helper defaults `direct` to `inferred` — while its prose said "no
+`unknownWhy` nor a `calls` edge". Two different states, and **it had picked ONE SPELLING of two**, which is
+[[candor-selfdifferential-property]]'s finding arriving in a hand-written fixture. Re-pointed at the
+inherited state it meant, and `fnEntry` now takes an explicit `direct:`.
+
+Brief correction: swift did not write *zero* bytes to stderr on `empty/` — it wrote `candor-swift: policy
+✓` there. The substance (no disclosure that the report judged nothing) was right.
+
+### R8 IS VERIFIED NON-VACUOUS, and I did not have to run the suite to learn it
+
+The agent's own conformance run went OK → FAILED mid-session and **it correctly attributed the change to my
+`fae26a0`, not to its work** — checking that its diff touched no `gateDie`, `writeGateVerdict` or `exit(`
+line, and that the pre-session matrix already recorded `mixed_prec` at exit 2 four-way. That is the
+discipline this project keeps asking for: when the suite turns red, establish *which* change moved it
+before defending your own.
+
+**R8 fails on all four engines** — rust/java on `refusal-doc`, ts/swift on `refusal-doc` AND `precedence`.
+That is the predicted first result and it means the row discriminates rather than passing by construction.
+Every other part is MATCH, including R1's new `deny Unknown[unresolved] → exit 1` cell, **now green
+four-way** because swift's fix 3 landed the CONTRIBUTES half. The tightened R1 cell and the fix that
+satisfies it arrived within an hour of each other from opposite directions.
