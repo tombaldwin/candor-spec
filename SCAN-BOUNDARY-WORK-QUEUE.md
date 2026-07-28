@@ -1091,7 +1091,7 @@ meaning would be the one place a consumer could tell the routes apart.
       **Lesson for me, not for rust**: I read a cross-engine disagreement as an open question without
       checking whether the contract already settled it. Two engines agreeing with the spec and one
       disagreeing is not a tie.
-- [ ] **NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
+- [x] **CLOSED 2026-07-28 (rust `89f2c0f`). NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
       checked-in `report.*.scan.json` artifacts in all four crates. The agent restored them byte-for-byte
       via `git show HEAD:<path> >` rather than `git checkout` (the standing rule). Harmless in CI,
       destructive locally — and it is a script a contributor is told to run.
@@ -1112,7 +1112,9 @@ function of (report, policy), and this codebase's loader is built to ENRICH repo
 proving the path does not.
 **Today's evidence supports this entry's own hypothesis**: the ⟨0.24⟩ §6.2 defect was a contract-vs-model
 divergence every engine implemented faithfully, and no end-to-end test could have localised it.
-- [ ] **No engine exposes a way to gate a GIVEN signature.** The gate is reachable only via
+- [x] **CLOSED 2026-07-27 — `gate --report` now ships FOUR-WAY.** (Kept for the diagnosis, which was
+      right and is the reason the rung exists at all.) **No engine exposes a way to gate a GIVEN
+      signature.** The gate is reachable only via
       `scan --policy` (which computes `S` from source, putting the classifier back in the loop) and
       `whatif` (which reports only violations the hypothetical INTRODUCES — verified: a report with
       `inferred: ["Net"]` under `deny Net` returns `ok: true`). **This is plausibly WHY the model and the
@@ -1511,8 +1513,9 @@ them closes a lie. On today's base rate, four agents here would ship roughly ten
 exchange for precision nobody is currently missing. Revisit when the defect rate on new work falls.
 
 ### 7 — RELEASE · needs Tom, not work
-- [ ] **candor-ts is build 0.23.2, the family 0.23.1.** Legitimate — its module-unit wire key moved and
-      §2.1's staleness gate keys on the per-engine build id. Preflight is green. A release-set decision.
+- [→] **candor-ts's build id vs the family's — DUPLICATE, see the single entry under THE STANDING BAR.**
+      Two entries for one open question, written six days apart, is how a queue starts under-counting
+      itself: the second reader closes one and the other survives as a live item nobody owns.
 
 ## DONE — the THIRD review, swift only (4 confirmed + 1 alignment, all closed 2026-07-27)
 
