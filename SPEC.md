@@ -1356,9 +1356,20 @@ this rule apply?" — and the wrong basis for a FIRING — "did it?"** The two q
 safely only because the refusal short-circuited before the difference could show.
 
 So the rule is: **a rule FIRES on a function only where the match is evidenced by that function's own
-entry, and is WITHHELD exactly where it is not.** Withholding is per `(rule, function)`, never
-whole-policy: the same rule may fire on one function, be withheld on another, and the verdict carries both
-— exit 1 for what fired, a disclosure for what could not be evaluated. That is already what the
+entry, and is WITHHELD exactly where it is not.** Withholding is per `(rule, function, EFFECT)` — never
+whole-policy, and ⟨0.24⟩ **never per `(rule, function)` either, which is what this clause first said and
+which reintroduces the exact harm the precedence ruling exists to remove.** Measured on candor-ts with
+`deny Fs Net[unknown-host] app` over ONE function carrying a certain `Fs` beside a `netClass`-less `Net`:
+
+    per (rule, function)          -> exit 2, refused, `violations` key ABSENT   ← the certain Fs is DELETED
+    per (rule, function, effect)  -> exit 1, violations: [{app.mixed, [Fs]}]
+
+A single rule can name several effects, and the evidence for them is independent. Withholding at the pair
+level lets one unevidenced effect suppress a *certain* finding standing beside it in the same rule and the
+same function — which is `7271c69`'s defect, arrived at through the fix for `7271c69`'s defect. The same
+rule may therefore fire on one function and be withheld on another, AND fire for one of its effects while
+being withheld for another on that same function; the verdict carries both — exit 1 for what fired, a
+disclosure for what could not be evaluated. That is already what the
 minimal-refusal rule says; what was missing was saying it about the *firing* side rather than only the
 *refusing* side.
 
