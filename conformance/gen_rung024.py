@@ -1044,6 +1044,14 @@ def row_r8(ws, pols):
 
         rc_fire = q_gate(eng, loc, pols["r8_fire_only"])
         rc_refuse = q_gate(eng, loc, pols["r8_refuse_only"])
+        # ⟨0.24⟩ THE THIRD PROBE, and the row was one-directional without it. `rc_refuse == 2` rules out
+        # "answerable all along" only for the rule as a SINGLETON policy — i.e. under an unstated
+        # assumption that answerability is context-independent. A review shimmed an engine implementing
+        # precedence as "any co-present rule CANCELS refusals" rather than "a FIRING rule dominates", and
+        # it passed all three original probes identically. So: a NON-firing rule (`deny Exec`, which this
+        # fixture cannot match) beside the unanswerable one MUST still exit 2. With it, "violation
+        # dominates refusal" and "refusal dominates pass" are both pinned; without it only the first was.
+        rc_quiet_mixed = q_gate(eng, loc, pols["r8_quiet_mixed"])
         gj = os.path.join(ws, "r8.%s.mixed.json" % eng)
         if os.path.exists(gj):
             os.remove(gj)    # DELETE BEFORE MEASURING — a stale artifact here reads as a pass.
@@ -1063,6 +1071,10 @@ def row_r8(ws, pols):
             continue
 
         bad = []
+        if rc_quiet_mixed != 2:
+            bad.append("a NON-firing rule beside the unanswerable one -> exit %s, want 2. Precedence must "
+                       "be 'a FIRING rule dominates', not 'any co-present rule cancels the refusal' — "
+                       "those two are indistinguishable without this probe" % rc_quiet_mixed)
         if rc_mixed != 1:
             bad.append("firing + unanswerable in one policy -> exit %s, want 1 (Lemma 2: an absent datum "
                        "cannot un-reject a rule that already fires)" % rc_mixed)
@@ -1086,8 +1098,9 @@ def row_r8(ws, pols):
             elif not any("writes" in json.dumps(v) for v in vs):
                 bad.append("the document's violations do not name `app.writes`: %r" % (vs,))
         cells.append((eng, "precedence", OK if not bad else FAIL,
-                      "; ".join(bad) or "exit 1 and `app.writes` present in the document",
-                      "exit 1 + violation in document"))
+                      "; ".join(bad) or "exit 1 + `app.writes` in the document; a quiet rule "
+                      "beside the unanswerable one still refuses",
+                      "exit 1 + violation in document; quiet+unanswerable -> 2"))
 
         # -- the refusal document ------------------------------------------------------------------
         gj2 = os.path.join(ws, "r8.%s.refusal.json" % eng)
@@ -1887,6 +1900,8 @@ def main():
                        ("r8_mixed", "deny Fs\ndeny Net[unknown-host] app"),
                        ("r8_refuse_only", "deny Net[unknown-host] app"),
                        ("r8_fire_only", "deny Fs"),
+                       # R8 third probe: a NON-firing rule beside the unanswerable one.
+                       ("r8_quiet_mixed", "deny Exec\ndeny Net[unknown-host] app"),
                        ("r9_fs", "deny Fs")):
         p = os.path.join(ws, "pol." + name)
         open(p, "w").write(text + "\n")

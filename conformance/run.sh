@@ -3246,9 +3246,15 @@ printf 'import Foundation\nfunc fmt(_ s: String, _ opaque: () -> Void) -> Int { 
 # baselines (sidecar-writing form)
 java -jar "$JAR" "$PUW/jbc" --json "$PUW/jbase.json" >/dev/null 2>&1 || { echo "FAIL: java ⟨0.16⟩ Unknown baseline"; exit 2; }
 "$SCAN" "$PUW/rbu" --out "$PUW/rbase" >/dev/null 2>&1 || { echo "FAIL: scan ⟨0.16⟩ Unknown baseline"; exit 2; }
-[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$PUW/tbu/pe.ts" "$PUW/tbase" >/dev/null 2>&1; }
+# ⟨0.24⟩ THESE TWO USED TO RUN UNCHECKED AND THE ROW BELOW SKIPPED ON A MISSING SIDECAR, so a ts or swift
+# leg that never ran printed MATCH. Sibling PART 15b hard-fails this exact hazard (see its `[ -s … ] || …
+# exit 2`); 15c dropped the guard. A leg that cannot run is a HARNESS fault and must be loud — silently
+# reporting agreement among the engines that happened to work is how this suite lies about its coverage.
+[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$PUW/tbu/pe.ts" "$PUW/tbase" >/dev/null 2>&1 \
+  || { echo "FAIL: candor-ts ⟨0.16⟩ Unknown baseline scan errored — 15c's ts leg cannot run"; exit 2; }; }
 PU_SWBASE=""
-[ -n "$SWBASE" ] && { "$SW_BIN" "$PUW/swbu/pe" --out "$PUW/sbase" >/dev/null 2>&1; PU_SWBASE="$PUW/sbase.pe.Swift.json"; }
+[ -n "$SWBASE" ] && { "$SW_BIN" "$PUW/swbu/pe" --out "$PUW/sbase" >/dev/null 2>&1 \
+  || { echo "FAIL: candor-swift ⟨0.16⟩ Unknown baseline scan errored — 15c's swift leg cannot run"; exit 2; }; PU_SWBASE="$PUW/sbase.pe.Swift.json"; }
 PU_OK=0
 peurow() { # $1 label  $2 basereport  --  after-scan-cmd...
   local label=$1 base=$2; shift 2; shift
@@ -3264,7 +3270,13 @@ peurow() { # $1 label  $2 basereport  --  after-scan-cmd...
 }
 peurow "candor-java " "$PUW/jbase.json" -- java -jar "$JAR" "$PUW/jac" || PU_OK=1
 peurow "candor-scan " "$PUW/rbase.pe.scan.json" -- "$SCAN" "$PUW/rau" || PU_OK=1
+# An ABSENT sidecar is now a FAILURE, not a skip: the engine is present (guarded above), so the sidecar
+# missing means the baseline scan did not produce what this row reads — a fault, not a capability gap.
+[ -n "$TS_OK" ] && { [ -f "$PUW/tbase.callgraph.json" ] \
+  || { echo "  FAIL: candor-ts is present but its ⟨0.16⟩ baseline callgraph sidecar is missing — this leg would have SKIPPED and the row would still have printed MATCH"; PU_OK=1; }; }
 [ -n "$TS_OK" ] && [ -f "$PUW/tbase.callgraph.json" ] && { peurow "candor-ts   " "$PUW/tbase.json" -- node "$TS_DIR/scan.mjs" "$PUW/tau/pe.ts" "$PUW/tu_out" || PU_OK=1; }
+[ -n "$PU_SWBASE" ] && { [ -f "${PU_SWBASE%.json}.callgraph.json" ] \
+  || { echo "  FAIL: candor-swift is present but its ⟨0.16⟩ baseline callgraph sidecar is missing — this leg would have SKIPPED and the row would still have printed MATCH"; PU_OK=1; }; }
 [ -n "$PU_SWBASE" ] && [ -f "${PU_SWBASE%.json}.callgraph.json" ] && { peurow "candor-swift" "$PU_SWBASE" -- "$SW_BIN" "$PUW/swau/pe" --out "$PUW/su_out" || PU_OK=1; }
 if [ "$PU_OK" = 0 ]; then
   echo "  -> MATCH — an Unknown-only gain is advisory (exit 0 + note), never a CI-breaking regression, in every engine"
