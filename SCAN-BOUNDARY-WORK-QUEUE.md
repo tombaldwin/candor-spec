@@ -856,16 +856,26 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
 - [ ] `analyzed:{count:0}` in the verdict for a **pre-⟨0.21⟩ manifest-less** report now collides with the
       token that means "judged nothing".
 
-**D — MY HARNESS/PREFLIGHT. Two HIGH fixed (`fff7bdf`); these remain.**
-- [ ] **R1's gate cell passes on an engine with NO `gate --report` at all** — adding rust/ts branches killed
+**D — MY HARNESS/PREFLIGHT. CLOSED 2026-07-28** (`fff7bdf`, `5b535c9`, `96fedca`, `36a38c0`, `7caea30`,
+`c35e29d`). Every item below is fixed and each fix carries its own negative control, run. Two things worth
+keeping from the round. First, **three of the five were the same defect wearing different clothes: a check
+whose subject and whose oracle came from the same source.** PART 23 derived the expected lattice size by
+importing the module it was checking; PART 10's control asserted properties of the sets the decision reads
+instead of running the decision; R1's cell accepted the code that a *failed invocation* also returns. In
+each case the check passed for a reason unrelated to the thing it was written to detect. Second, **the R1
+fix landed on a SPEC correction, not on harness cleverness** — once §3.1 said the entry contributes
+`unresolved` so the rule fires, `exit 1` became the only correct code, and requiring exactly 1 is
+incidentally immune to the usage-error collision the review found. A tightened spec made the test sharper
+for free.
+- [x] **R1's gate cell passes on an engine with NO `gate --report` at all** — adding rust/ts branches killed
       the `None → NOSURF` path, and `OK if rc_g in (1,2)` accepts **2, the generic usage-error code**. R6
       catches it three ways because it carries a firing control; R1 does not. **Give R1 a firing control.**
-- [ ] **PART 23's derived floor is CIRCULAR along the vocabulary dimension** — it imports the module it
+- [x] **PART 23's derived floor is CIRCULAR along the vocabulary dimension** — it imports the module it
       checks, so removing `Ipc`/`Clipboard` (the exact historical defect) self-adjusts and passes. The
       SPEC-vs-model comparison is an `echo` that **never sets `P23_OK=1`**. Enumeration dimension is sound.
-- [ ] **PART 10's negative control tests the SETS, not the decision path** — neutralise the loop's DIVERGE
+- [x] **PART 10's negative control tests the SETS, not the decision path** — neutralise the loop's DIVERGE
       branch and `banana:whatever` is accepted while the self-check prints green.
-- [ ] Stale coverage prose in `gen_rung024.py` + `run.sh` (still says R6 is 2-way); `bad()` sets `fail=1`
+- [x] Stale coverage prose in `gen_rung024.py` + `run.sh` (still says R6 is 2-way); `bad()` sets `fail=1`
       rather than incrementing, so the summary always reads "1 check(s) FAILED".
 
 **E — pre-existing, lower.** java's multi-report locator gates only ONE report; java's `interfaceUnion`
@@ -4727,3 +4737,37 @@ for.** That is a conformance gap, not an engine bug, and it belongs to me.
 `gate --report` questions this week the answer was **candor-ts**, and java was changed to match it. The
 reference engine is the one whose behaviour the spec was WRITTEN FROM, which makes it the most likely place
 for an unexamined assumption to have been promoted to a rule. Adjudicate from the clause, not the pedigree.
+
+## OPEN, four-way, opened by CORRECTING MY OWN RULING (2026-07-28) — violation dominates refusal
+
+`7271c69`. I pinned `refusal (2) > violation (1)` in `107755b`, ratifying what all four engines measurably
+do, and it was wrong inside the hour. If a rule FIRES on evidence the report carries, `Reject` is
+upward-closed (Lemma 2), so however the unanswerable rule would have resolved **cannot un-reject it** —
+exit 1 is *certain*, not merely fail-closed, and it names the violation where exit 2 does not.
+
+The harm is concrete rather than taxonomic: a refusal writes no `--gate-json` document, so refusing over a
+firing rule **deletes a certain violation from the machine-consumer channel** — the same harm as
+candor-rust's incomplete-analysis path, which this very rung is making it fix. Measured: `deny Fs` (firing)
+plus one unanswerable scoped rule → **exit 2 with no document on rust, java, ts and swift alike.**
+
+- [ ] Implement violation-dominates-refusal four-way, with the refusal message still disclosing which
+      rules could not be evaluated.
+- [ ] Implement the refusal document (`ok:false` + `refused:true`, **no `violations` key**) four-way.
+- [ ] Implement the policy-side class-token refusal (`382a7e0`) four-way.
+- [ ] Implement the config anchor + its disclosure (`99eb4e9`) four-way, and add the **fourth bait** to all
+      four MUST-NOT tests.
+- [ ] A conformance row for the precedence itself. It cannot be `deny Fs` alone — the row must carry a
+      firing rule AND an unanswerable one *in the same policy*, or it tests neither.
+- [ ] **java's byte-equality test is the weakest of the four** and java is the reference engine: it compares
+      violation COUNT and exit code only, while PART 27's byte-diff is three policies over a three-function
+      fixture. The four fields §3.1 names are pinned by the NEW engines' suites, not by the shared gate.
+
+### Standing bar, 7n — how I got the precedence wrong, because the shape will recur
+
+**I took uniform four-way agreement as the contract and wrote the clause to match.** In the same session I
+had used monotone denial to argue engines should answer MORE questions rather than fewer, and then failed to
+apply it one screen further down. Agreement between implementations is already recorded here as the weakest
+signal available; what this adds is that **it is weakest of all when it agrees with the draft you were
+about to write** — at that moment it stops being evidence and becomes confirmation. The tell was available
+and I walked past it: the behaviour I was about to bless deletes a finding from the machine channel, which
+is the exact harm I had spent the morning making rust fix.
