@@ -5385,3 +5385,29 @@ surface could be absent with the row green. Now carries the `URLSession.shared.d
 **The general shape, which is worth more than the fix:** a differential row is only as good as the
 *idiom* each engine's cell instantiates. Four engines agreeing on four DIFFERENT shapes is not four-way
 coverage of one property — it is four one-way checks that happen to share a heading.
+
+### Review of the swift extraction round (2026-07-29, me, measured not read) — no fabrication in 11 probes
+
+Hunted the shape the author's own A/B caught (a literal captured and reported as the value at the call when
+it is not). **All five hard cases fail CLOSED, correctly**: string interpolation, concatenation, a ternary
+over two literals, a `var` rebound before the call, and `URL(string:relativeTo:)` each extract **nothing**
+and keep `netClass: ["unknown-host"]`. Sound controls extract (`good.example`, `/bin/ls`).
+
+**The mirror holds where it matters most:** an unrecoverable `Exec` — interpolated program, or an
+`executableURL` from a parameter — still carries `inferred: ["Exec"]` with an EMPTY `cmds`. The effect is
+kept and only the literal is withheld, which is the distinction that makes `allow Exec` fail closed rather
+than the function reading pure.
+
+**`c611671` (field typing) is broader and cleaner than its commit message claims** — all four forms type
+and extract correctly: `let` singleton, `var` singleton, a field assigned in `init` with an explicit type,
+and a field whose initialiser is a FUNCTION CALL (`URLSession(configuration:)`) rather than a singleton.
+
+- [ ] **ONE INCONSISTENCY, low severity, fail-closed direction.** A double assignment
+      `p.executableURL = …/bin/sh; p.executableURL = …/bin/zsh; p.run()` reports **both**
+      `cmds: ["/bin/sh", "/bin/zsh"]` — but only `/bin/zsh` can run. **The URL path withholds on exactly
+      this shape** (`rebound` above extracts nothing), so the two mechanisms disagree about straight-line
+      rebinding: one unions, one withholds. Harm direction: over-reporting a command is fail-CLOSED for
+      `allow Exec` (a spurious gate failure, never a missed one) and inert for `deny Exec` — so this is a
+      false-positive risk, not a cardinal sin, and NOT a release blocker. Worth settling because the
+      inconsistency will read as a bug to whoever hits it, and because "last write wins" is decidable here
+      where a loop-carried rebind is not.
