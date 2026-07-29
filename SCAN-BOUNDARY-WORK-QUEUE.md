@@ -5411,3 +5411,55 @@ and a field whose initialiser is a FUNCTION CALL (`URLSession(configuration:)`) 
       false-positive risk, not a cardinal sin, and NOT a release blocker. Worth settling because the
       inconsistency will read as a bug to whoever hits it, and because "last write wins" is decidable here
       where a loop-carried rebind is not.
+
+## The 0.23 BACKPORT — and the differential that caught a fabrication the port introduced (2026-07-30)
+
+`release/0.23` off `v0.23.0` carries the locator-provenance work as a genuine 0.23 patch (`specVersion` stays
+`"0.23"`, no ⟨0.24⟩ vocabulary — verified by grepping the whole `+` side). 272 insertions, hand-ported onto
+files that had moved ~1,700 lines.
+
+**A THREE-ARM differential — branch vs `main` vs the plain `v0.23.0` tag — is what made the finding
+attributable rather than arguable.** Two arms would have shown a disagreement; the third proved which side
+introduced it.
+
+**The port FABRICATED hosts on five shapes that main withholds.** An inner `let` SHADOWING an outer name
+wrote the name-keyed locator state, nothing restored it at scope exit, and a later use of the OUTER binding
+claimed the shadow's literal — `hosts: ['phantom40.example.com']` for a host never contacted, and in one
+shape the *real* outer host replaced by the phantom. Relaxing direction, so `deny Net[known-telemetry]` could
+PASS on a phantom. The tag arm reported `hosts=[]` on all five, so this did not pre-exist: the map was always
+leaky, and the port's constructor look-through made it reachable for host claims.
+
+**It landed exactly where the port's one untested invariant was.** `NameKeyedStateTests` did not port (it
+needs shadow-scope machinery postdating the tag), and the comment written in its place protects the KEEP half
+— `movedNames` must not be cleared — and is silent on the SCOPE half `localConstStrings` needs. **A shadow
+binder is not a rebind**, so `movedNames` never records it and the refusal never fires. An invariant asserted
+in prose is an invariant nobody checks.
+
+**Fixed without back-porting the shadow wave** (`eb1c76b`): `locatorNameIsStable` already runs a whole-body
+pre-pass, so it now refuses any name with more than one binder site in the unit, **parameters counted as
+binders** — the same conservatism `movedNames` applies to rebinds. Two refusal sites, and the second is the
+one that matters: refusing only the local entry hands the read to `moduleConstStrings`, so a function
+shadowing a module-level `let` answers with the MODULE's literal.
+
+**A second fabrication was in the ORIGINAL work on both lines** (`47f460f` on main, `2c90c8d` ported): an
+exec-side shadow binder claiming `/bin/phantom47` from a factory-produced handle. Main's own disposition note
+justified keeping it because "a rebind is already recorded in `movedNames`" — **true of a rebind, false of a
+shadow binder.** The note was wrong and is corrected alongside the code. On main the check is deliberately
+exec-only, because applying it to the host path there would delete measured reach the scope machinery already
+protects.
+
+Evidence: **pollen A/B zero losses, and the port's gain intact to the row** — 37 enlarged rows + 5 recovered
+units vs the tag, before AND after the fix. Same zero-loss on four corpora, 8.6k functions. main 501 tests +
+**four-way conformance OK (swift 75 cells, 0 FAIL)**; branch 304 tests. Three synthetic shapes do lose reach
+(sibling-branch bindings sharing a name, a closure parameter reusing the locator's name, the outer-literal
+shadow) — all pinned as tests so a later scope-aware refinement reads as a deliberate change.
+
+- [ ] **A THIRD fabrication of the same family, on BOTH lines, pre-existing — and it gates the 0.23
+      release.** A module-level `let apiBase = "https://…"` shadowed by a DYNAMIC local of the same name:
+      the binder scopes the local entry, `constValue` falls through to the module index, and the shadow
+      inherits the global's literal. **One binder, so neither the new refusal nor main's `ShadowSave`
+      touches it.** Fixture: `scratchpad/fixtures2/…/ModuleConst.swift` (`moduleConstShadowedByDynamic`,
+      positive control `moduleConstUsed`). **The v0.23.0 arm was NOT shown for this shape** — establish
+      whether it is reachable in the RELEASED artifact before deciding the release, because that is the
+      difference between "a known bug we are shipping a fix beside" and "a fabrication the patch leaves
+      live."
