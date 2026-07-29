@@ -5454,8 +5454,31 @@ units vs the tag, before AND after the fix. Same zero-loss on four corpora, 8.6k
 (sibling-branch bindings sharing a name, a closure parameter reusing the locator's name, the outer-literal
 shadow) — all pinned as tests so a later scope-aware refinement reads as a deliberate change.
 
-- [ ] **A THIRD fabrication of the same family, on BOTH lines, pre-existing — and it gates the 0.23
-      release.** A module-level `let apiBase = "https://…"` shadowed by a DYNAMIC local of the same name:
+- [x] **MEASURED 2026-07-30 — IT IS *NOT* PRE-EXISTING. THE PATCH INTRODUCES IT, AND THAT IS RELEASE-
+      BLOCKING.** The agent reported this shape as pre-existing on both lines. The `v0.23.0` arm — the one
+      it did not run, and the reason I insisted on it — says otherwise:
+
+          shape                          v0.23.0 (RELEASED)   release/0.23 + both fixes
+          moduleConstShadowedByDynamic   hosts=[]             hosts=['moduleconst.example.com']  ← NEW
+          moduleConstShadowedTwice       hosts=[]             hosts=[]                            (caught)
+          moduleConstUsed  (control)     hosts=[]             hosts=['moduleconst.example.com']   legit gain
+
+      **The released artifact extracts nothing here — including on the POSITIVE CONTROL** — because it
+      cannot see a module const through the URL constructor at all. So the module-const channel is opened
+      BY the port, exactly as the shadow-binder channel was: the constructor look-through makes a
+      previously-unreachable leaky map reachable for host claims. Same cause, third instance.
+      **Shipping the patch as it stands would introduce a fabrication that does not exist in 0.23 today.**
+      The multi-binder refusal already catches the two-binder form; the single-binder dynamic shadow needs
+      a poison marker at the binder so the read cannot fall through to `moduleConstStrings`.
+
+      **The durable lesson is about attribution, not about the bug.** "Pre-existing on both lines" was
+      inferred from two arms that happened to agree; both were post-port. A defect present in every tree
+      you have built is not thereby pre-existing — **the only arm that can tell you is the one you are
+      shipping against**, and it is the arm easiest to skip because building it proves nothing when the
+      answer comes back clean.
+
+- [ ] **(superseded framing, kept for the record) A third fabrication of the same family, on BOTH lines,
+      believed pre-existing —** A module-level `let apiBase = "https://…"` shadowed by a DYNAMIC local of the same name:
       the binder scopes the local entry, `constValue` falls through to the module index, and the shadow
       inherits the global's literal. **One binder, so neither the new refusal nor main's `ShadowSave`
       touches it.** Fixture: `scratchpad/fixtures2/…/ModuleConst.swift` (`moduleConstShadowedByDynamic`,
