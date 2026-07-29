@@ -437,7 +437,15 @@ fi
 NH_SW="/nonexistent"
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$W/nh/swift"
-  printf 'import Network\nfunc h() { _ = NWConnection(host: "api.example.com", port: 8080, using: .tcp) }\n' > "$W/nh/swift/cases.swift"
+  # ⟨0.24⟩ TWO IDIOMS, and the second is why this cell existed without covering anything. PART 4e's four
+  # cells are rust `TcpStream::connect`, java `URL(...).openConnection()`, ts `https.get(url)` — three
+  # URL-BASED forms — and swift's `NWConnection(host:port:)`, which takes the literal DIRECTLY. swift was
+  # the one engine whose cell exercised the shape that already worked, so its ENTIRE URLSession surface
+  # could be missing with this row green. Measured 2026-07-29: every `URLSession` form yielded NO hosts,
+  # so `deny Net[known-telemetry]` read GREEN over a real telemetry call on Apple-platform code, and
+  # `api.openai.com` never classified `Llm`. A single-idiom fixture standing in for a language's whole
+  # network surface is not coverage; it is a cell that cannot fail.
+  printf 'import Foundation\nimport Network\nfunc h() { _ = NWConnection(host: "api.example.com", port: 8080, using: .tcp) }\nfunc u() { _ = URLSession.shared.dataTask(with: URL(string: "http://api.example.com:8080/v1")!) }\n' > "$W/nh/swift/cases.swift"
   "$SW_BIN" "$W/nh/swift/cases.swift" --out "$W/nh/sw_out" >/dev/null 2>&1
   NH_SW=$(ls "$W"/nh/sw_out.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
   [ -n "$NH_SW" ] || NH_SW="/nonexistent"

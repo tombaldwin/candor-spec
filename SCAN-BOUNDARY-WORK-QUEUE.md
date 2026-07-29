@@ -5343,3 +5343,45 @@ implementing and reported rather than complying, which is the only reason it did
       four-way rung, not a bug. Its `ok` reads as a verdict and its `affected` set is computed over an
       incomplete universe.
 - [ ] **swift host/cmd extraction** (see above) — the largest open soundness item.
+
+## swift host/cmd extraction — CLOSED (`b27c3c9`, `f5be3e6`, `77b6bff`, `c611671`), the one defect live in the RELEASED line
+
+496 tests, conformance four-way OK, every swift cell MATCH. A/B over **4 corpora, 8,568 functions**:
+13 fns gained hosts, 12 gained cmds, 31 effect sets grew, +8 report entries — and the column that makes
+those credible: **0 lost, 0 shrank, 0 dropped.** Two real-world negative controls held (a parameterised
+`executableURL`, a file-scope handle). 19 fail-closed mirrors written BEFORE each mechanism, and the
+singleton-field mirror verified non-vacuous by removing its guard.
+
+**The A/B caught a fabrication in the agent's OWN mechanism that all 25 fixtures had passed.** A
+`SequenceExpr` is flat, so `p.launchPath = "/usr/bin/" + tool` parses as `[lhs, =, "/usr/bin/", +, tool]`
+— it read `"/usr/bin/"` and reported THAT as the program, which **`allow Exec /usr/bin/` would have
+certified for an entirely runtime command.** It surfaced only on a negative control written into the
+corpus, not on any fixture. That is [[feedback-fabrication-fixes-cause-misses]] in the relaxing direction,
+and it is the clearest case yet for the standing rule that **a fixture suite and a corpus A/B fail
+differently**: 25 fixtures agreeing is not evidence when the defect needs a concatenation nobody thought
+to write.
+
+**A FOURTH defect, out of scope, found by the A/B and isolated in its own commit:**
+`private let session = URLSession.shared` left the field **untyped**, so the call missed κ entirely and the
+function was **ABSENT FROM THE REPORT** — a ⟨0.21⟩ purity claim, a cardinal sin, and one no locator or
+gate work could ever reach. The same inference already existed for local bindings; only the field case was
+missing. 29 enlarged effect sets on one corpus alone, including a SwiftUI card → `MedicationStore.shared
+.log()` → `saveEntries()` → `defaults.set()`: **a real disk write reported as pure.**
+
+**Guard direction is inverted here BY DESIGN and the agent got it right:** mechanism 1 uses an **allowlist**
+of companion arguments, not a denylist, because the direction is RELAXING —
+`URL(string: "/v1/track", relativeTo: base)` would otherwise fabricate the host `/v1/track`. The family's
+denylist-over-allowlist rule is about widening a sound over-approximation; it inverts when the change
+narrows toward a confident claim.
+
+### PART 4e was a cell that could not fail, and that is why this survived (FIXED)
+
+Its four cells are rust `TcpStream::connect`, java `URL(...).openConnection()`, ts `https.get(url)` —
+**three URL-based forms** — and swift `NWConnection(host:port:)`, which takes the literal DIRECTLY. **swift
+was the one engine whose cell exercised the shape that already worked**, so an entire language's network
+surface could be absent with the row green. Now carries the `URLSession.shared.dataTask(with: URL(string:
+…))` idiom too, which would have failed before this work and passes after.
+
+**The general shape, which is worth more than the fix:** a differential row is only as good as the
+*idiom* each engine's cell instantiates. Four engines agreeing on four DIFFERENT shapes is not four-way
+coverage of one property — it is four one-way checks that happen to share a heading.
