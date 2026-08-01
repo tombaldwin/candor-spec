@@ -1090,6 +1090,13 @@ def row_r8(ws, pols):
             bad.append("the verdict document is not a JSON OBJECT (%r) — every content assertion below "
                        "would silently skip" % type(doc).__name__)
         if isinstance(doc, dict):
+            # ⟨0.24⟩ CHECK `ok` ON THE VIOLATING DOCUMENT. A review shimmed `ok: true` beside a NON-EMPTY
+            # violations list and this row stayed GREEN — a fabricated machine-channel all-clear over a
+            # certain violation, on the exact channel the rung exists to protect. The row read the
+            # violations and never the verdict beside them.
+            if doc.get("ok") is not False:
+                bad.append("the document says `ok`: %r beside a violation list — a machine consumer keying "
+                           "on `ok` reads an all-clear over a certain finding" % doc.get("ok"))
             vs = doc.get("violations")
             if not vs:
                 bad.append("the document carries NO violations — the certain `deny Fs` finding was "
@@ -1615,7 +1622,25 @@ def row_r11(ws, pols):
                 continue
             named = {h.get("fn") for h in (doc.get("unverified") or []) if isinstance(h, dict)}
             # The gate WITHHELD on this report iff it did not pass cleanly.
+            # ⟨0.24⟩ THE CLASS-FILTER PROBE WAS DEAD CODE. `gate_withheld = rc_g != 0` is false on the
+            # class-filtered fixture — the gate PASSES it, by design — so the assertion never executed and
+            # the row pinned only the answerability half. A review shimmed `unverified` to return `[]`
+            # under the narrowed rule and the suite stayed green, and the row's own clean output said
+            # "1 case(s)" where two were intended. **That is instance 2 of the three defects §3.2's law was
+            # written from, unpinned by the row that names the law.**
+            #
+            # The law is a CONTAINMENT, and it binds on the gate's PASS as well as its withholding: a
+            # function the gate passes WHILE IT CARRIES AN UNKNOWN is a hole, and `unverified` must name it.
+            # So the two cases assert different things and both must run.
             gate_withheld = rc_g != 0
+            if not gate_withheld:
+                hit = any(must_name in (n or "") for n in named)
+                if not hit:
+                    bad.append("%s: the gate PASSED `%s` while it carries an Unknown — that is a hole in "
+                               "exactly the sense this verb exists for — yet `unverified` does not name it "
+                               "(named: %s)" % (name, must_name, sorted(named) or "nothing"))
+                else:
+                    exercised += 1
             if gate_withheld:
                 exercised += 1
                 # Every entry is in play; the verb must not come back empty-handed while the gate could
