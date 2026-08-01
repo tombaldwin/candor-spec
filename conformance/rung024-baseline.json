@@ -37,16 +37,15 @@
     "all REAL divergences between shipped engines rather than harness faults. Each names the engine that must",
     "MOVE, which is not always the one the row flags: R9/R10 report the minority against a plurality, and on",
     "the `aliases` entry the minority is the one that is RIGHT. A waiver here is a statement that the defect",
-    "is understood and scheduled, not that the row is wrong."
+    "is understood and scheduled, not that the row is wrong.",
+    "",
+    "\u27e80.24\u27e9 2026-08-01 \u2014 the R9 ts `key-parity(opt)` waiver is DELETED, its defect fixed. It named ts as the",
+    "minority on `policyVocabulary.aliases` while recording that THE THREE were wrong, and all three moved:",
+    "rust and swift first, java last (`887c82c`). The waiver named its own exit condition, the fix met it, and",
+    "the ratchet reported it STALE before anyone thought to look \u2014 which is the whole point of failing on a",
+    "waiver that outlives its defect."
   ],
   "known": [
-    {
-      "row": "R9",
-      "engine": "ts",
-      "cell": "key-parity(opt)",
-      "kind": "FAIL",
-      "why": "`policyVocabulary.aliases` \u2014 ts emits the OBJECT {\"corp\":[\"reflect\"]}, rust/java/swift the ARRAY [\"corp\"]. THE THREE ARE WRONG, NOT TS: SPEC 3.1 (7f5b5ba) rules the object, because an alias NAME without its CLASSES fails this section's own test \u2014 `corp = reflect` and `corp = reflect,native` gate differently under one unchanged policy line, so a reader given only the name cannot tell which gate ran. ts argued it from the clause and won against three engines. FIX: rust, java and swift emit the object; this waiver then reads STALE and must be deleted."
-    },
     {
       "row": "R10",
       "engine": "java",
