@@ -5899,3 +5899,66 @@ an absence.*
       looks like on an advisory verb** — which `612b7d8` already noted has no ruled shape. ts reported
       rather than deciding, correctly. **This is the third time the missing refusal channel has surfaced;
       it should be ruled rather than re-noted.**
+
+## R11 CLOSED FOUR-WAY — suite green, 81 live cells, 2 waivers left (both R10 report-parity)
+
+rust `e406e09` · java `ed4dcda` · swift `71732ff` · ts `1c664a1`. All four R11 waivers deleted hours after
+being written; each named its own exit condition and every engine met it.
+
+### FOUR ENGINES, FOUR DIFFERENT MECHANISMS — the case for a comparison, proved
+
+    rust    the hole predicate REQUIRED `Unknown`, so a Net-only entry was never a candidate at all
+    java    two OPPOSITE conditions collapsing to one `false` — "the filter says a different class" and
+            "the field the filter reads is absent". *That collapse was the defect.*
+    swift   `unverified` only ever considered `Unknown`-carrying functions; the entry had NO CHANNEL
+    ts      a fallback derivation — **the only mechanism my clause actually described**
+
+**A rule phrased against any one of them would have missed the other three.** The clause named ts's
+mechanism because ts's is the one that had been measured, and rust corrected it within the day. This is the
+first law in the rung stated as an invariant rather than a behaviour, and it is the first to survive contact
+with three mechanisms nobody had seen.
+
+### It also corrected its own scope twice
+
+`fix` was not named in the ruling. **rust measured it as WORSE than `fix-gate`** (which already routed
+through the gate's firing decision and merely mis-set `ok`), and ts found it is *"the one the LSP code
+action and MCP tool run"* — the surface an agent acts on. Ninth instance of naming one verb and not its
+sibling; amended in `ad3ff08`.
+
+### The best implementations made the law true by CONSTRUCTION rather than by matching
+
+rust **deleted `reason_class_acc`**, the verb's private copy of the gate's fixpoint, so both advisory verbs
+now read the gate's own signature. swift routed `gate --report` itself through the new predicate, on the
+reasoning that *a law which is a comparison cannot be checked from two implementations of the thing
+compared.* Neither can drift back.
+
+### Standing bar 7p changed what the evidence WAS, on two engines
+
+- **rust**: its four usual corpora carry **0** entries of the shape (`net_classes_of` floors every one), so
+  their 440-run A/B "proves zero loss and nothing else". It measured value on **three real legacy reports
+  found on disk** (spec 0.8 and 0.5) — 726 functions newly named.
+- **swift**: pollen and its own `Sources` carry **0** reachable entries, because *this producer floors
+  `netClass` and records a reason beside every `Unknown`* — **a report this engine wrote cannot reach the
+  defect.** The reachable case is a report ANOTHER producer wrote, which is precisely what `gate --report`
+  exists for. The defect is structurally supply-chain-only for a self-producing engine.
+- **ts** swept 968 reports / 153,492 entries: **106 carry the exact shape**, all spec 0.4–0.15 — from before
+  the field existed.
+
+### Self-caught mirrors, both worth keeping
+
+swift's first cut withheld `fix`'s plan by answering `crossing: false` — **over a CERTAIN crossing whose only
+unadjudicable function is a hoist target, that turns a violation the gate charges into a non-finding.**
+`crossing` now states only what is known. And ts's mutant audit found deleting the withhold from
+`deniedLayer` was *invisible on the Net axis* but **live on the Unknown axis**, because `reasonClassesMatch`
+floors an empty set at `unresolved`; three rows added.
+
+- [ ] **⚠ UPGRADE NOTE for the 0.24 release.** The exit code is verdict-adjacent: a `--strict` CI step on
+      `unverified`/`fix-gate` that read GREEN over a report the gate refuses now exits 2. **That green was
+      the defect** — but it will present as a new failure to anyone upgrading, and the release notes must
+      say so plainly rather than let it look like a regression.
+- [ ] **ts found a PRODUCER defect while sweeping**: candor-ts's `interfaceUnion` synthetic entries never
+      get a `netClass`, so the engine **publishes entries its own gate cannot judge** — one current-spec
+      (0.23) instance in 153k. Back-filling a class for an entry whose hosts were never collected is its own
+      ruling.
+- [ ] **swift residual, stated not papered over**: when `fix-gate` withholds a plan it drops the *crossing*
+      with it — `remedies[]` has no shape for a crossing without a plan, where single-function `fix` does.

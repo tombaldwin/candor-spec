@@ -49,7 +49,14 @@
     "row that pins a RULING ahead of its implementations: the law is stated, the row measures it, all four",
     "engines fail it, and each waiver names its own exit condition. The alternative \u2014 writing the row after",
     "the engines comply \u2014 would have made it unfalsifiable at birth, which is how `coverage.modules` and the",
-    "policy-vocabulary field each reached three spellings before anyone noticed."
+    "policy-vocabulary field each reached three spellings before anyone noticed.",
+    "",
+    "\u27e80.24\u27e9 2026-08-01 \u2014 ALL FOUR R11 waivers DELETED, hours after being written. Each named its own exit",
+    "condition and every engine met it. Worth recording what the row proved: the four engines violated the law",
+    "through FOUR DIFFERENT MECHANISMS \u2014 a hole predicate requiring Unknown (rust), two opposite conditions",
+    "collapsing to one `false` (java), a verb with no channel for a Net-only entry (swift), and a fallback",
+    "derivation (ts, the only one my clause actually described). A rule phrased against any one of them would",
+    "have missed the other three, which is the whole case for stating the law as a COMPARISON."
   ],
   "known": [
     {
@@ -65,34 +72,6 @@
       "cell": "report-parity",
       "kind": "FAIL",
       "why": "report envelope: rust carries none of `declared`/`undeclared`/`overdeclared`/`unresolved` that the other three emit per entry. Note the review measured a SEMANTIC divergence underneath this one that R10 cannot see (java `undeclared:[\"Exec\",\"Fs\",\"Net\"]` vs ts/swift `undeclared:[]` for the SAME situation \u2014 opposite readings of 'no declaration'), so fixing the key set alone would produce agreement on shape over a disagreement on meaning. Settle the semantics FIRST."
-    },
-    {
-      "row": "R11",
-      "engine": "rust",
-      "cell": "advisory-bound",
-      "kind": "FAIL",
-      "why": "R11 \u27e80.24\u27e9 ADVISORY-VERB CONFIDENCE LAW (SPEC \u00a73.2, ruled `4fd140c`), not yet implemented in ANY engine. Over a report carrying `hosts` but no `netClass`, `gate --report` REFUSES on \u00a73.1 answerability while `unverified` answers from a FALLBACK DERIVATION and clears the function \u2014 the advisory verb more confident than the gate over identical bytes. Measured four-way the day the row was written. NOTE THE HISTORY: a weaker form of this row (gate-not-clean => the verb names SOMETHING) passed on all four engines, because the verb names a DIFFERENT hole; only the per-function form catches it. FIX: `unverified` names the function the gate could not judge, with the MISSING EVIDENCE as the reason and never the derived class; `fix-gate` offers no remedy premised on evidence the gate refused to read; both carry the gate's `unevaluated` shape; `--strict` exits 2."
-    },
-    {
-      "row": "R11",
-      "engine": "java",
-      "cell": "advisory-bound",
-      "kind": "FAIL",
-      "why": "R11 \u27e80.24\u27e9 ADVISORY-VERB CONFIDENCE LAW (SPEC \u00a73.2, ruled `4fd140c`), not yet implemented in ANY engine. Over a report carrying `hosts` but no `netClass`, `gate --report` REFUSES on \u00a73.1 answerability while `unverified` answers from a FALLBACK DERIVATION and clears the function \u2014 the advisory verb more confident than the gate over identical bytes. Measured four-way the day the row was written. NOTE THE HISTORY: a weaker form of this row (gate-not-clean => the verb names SOMETHING) passed on all four engines, because the verb names a DIFFERENT hole; only the per-function form catches it. FIX: `unverified` names the function the gate could not judge, with the MISSING EVIDENCE as the reason and never the derived class; `fix-gate` offers no remedy premised on evidence the gate refused to read; both carry the gate's `unevaluated` shape; `--strict` exits 2."
-    },
-    {
-      "row": "R11",
-      "engine": "ts",
-      "cell": "advisory-bound",
-      "kind": "FAIL",
-      "why": "R11 \u27e80.24\u27e9 ADVISORY-VERB CONFIDENCE LAW (SPEC \u00a73.2, ruled `4fd140c`), not yet implemented in ANY engine. Over a report carrying `hosts` but no `netClass`, `gate --report` REFUSES on \u00a73.1 answerability while `unverified` answers from a FALLBACK DERIVATION and clears the function \u2014 the advisory verb more confident than the gate over identical bytes. Measured four-way the day the row was written. NOTE THE HISTORY: a weaker form of this row (gate-not-clean => the verb names SOMETHING) passed on all four engines, because the verb names a DIFFERENT hole; only the per-function form catches it. FIX: `unverified` names the function the gate could not judge, with the MISSING EVIDENCE as the reason and never the derived class; `fix-gate` offers no remedy premised on evidence the gate refused to read; both carry the gate's `unevaluated` shape; `--strict` exits 2."
-    },
-    {
-      "row": "R11",
-      "engine": "swift",
-      "cell": "advisory-bound",
-      "kind": "FAIL",
-      "why": "R11 \u27e80.24\u27e9 ADVISORY-VERB CONFIDENCE LAW (SPEC \u00a73.2, ruled `4fd140c`), not yet implemented in ANY engine. Over a report carrying `hosts` but no `netClass`, `gate --report` REFUSES on \u00a73.1 answerability while `unverified` answers from a FALLBACK DERIVATION and clears the function \u2014 the advisory verb more confident than the gate over identical bytes. Measured four-way the day the row was written. NOTE THE HISTORY: a weaker form of this row (gate-not-clean => the verb names SOMETHING) passed on all four engines, because the verb names a DIFFERENT hole; only the per-function form catches it. FIX: `unverified` names the function the gate could not judge, with the MISSING EVIDENCE as the reason and never the derived class; `fix-gate` offers no remedy premised on evidence the gate refused to read; both carry the gate's `unevaluated` shape; `--strict` exits 2."
     }
   ]
 }
