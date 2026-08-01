@@ -5788,3 +5788,42 @@ proof.
 - [ ] **swift and ts now disagree on manifest ELEMENT leniency** (swift skips a member with no string
       `path`, ts counts any object). ts's reasoning is recorded above and is sound; rule it or converge it
       before a third engine invents a third answer.
+
+## java's netClasses/conditional round — a null result, a bigger defect than briefed, and a live measurement trap
+
+**ITEM 1 was a measured null result** (`e948ce0`). java's `classNarrowingFires` takes a **`GateInput`**, which
+carries `netClasses()`, rather than an effect set — so threading it into `unverifiedHoleRule`/`deniedLayer`
+last round covered the Net axis for free. My data-threading argument was right in general and **had already
+been paid** in java's shape.
+
+It proved the null the right way: A/B against a jar built from `acc6ee7^`, so the instrument was shown able
+to fail first, then the partition property at scale on **httpclient5-5.6.1** (2395 fns, 393 Net-bearing):
+
+    deny Net[known-telemetry]   PRE gate 0 + unv 114 ✗    HEAD gate 0 + unv 389 ✓
+    deny Net[unknown-host]      PRE gate 393 + unv 114 ✓  HEAD gate 393 + unv 114 ✓
+
+**And it explained why this axis went unmeasured while its sibling did not: candor-java's OWN report has ZERO
+Net-bearing functions**, so the Net axis is vacuous on the corpus the Unknown axis was measured on. *A
+self-scan is a corpus with a shape, and the shape decides which defects it can show you.*
+
+**ITEM 2's defect was bigger than "absent field"** (`8b98e09`). `whatif` **REBUILT** the rule from `scope`
+plus the effect asked about: `deny Unknown[reflect] app` → `deny Unknown app`, and `deny Net Db app` →
+`deny Net app` — **losing the operator's other denied effect entirely.** Both halves had to land together,
+which is what the SPEC text argues for itself. `narrowingCondition` is deliberately a SIBLING of
+`classNarrowingFires`, not a reuse: `unverified`/`fix-gate` read a signature that EXISTS, `whatif` does not.
+
+### THE MEASUREMENT TRAP, and it nearly confirmed the wrong answer
+
+I told java to read rust's actual JSON rather than my prose — correct, and load-bearing twice, because
+**`candor-query` ON THE PATH IS A STALE 2026-07-20 BUILD** that still shows the pre-fix behaviour.
+Confirmed: `~/.cargo/bin/candor-query` dated 2026-07-20 against `target/release` dated 2026-08-01. Reading
+the reference implementation through the PATH binary would have confirmed the OLD shape as normative.
+
+- [ ] **`~/.cargo/bin/candor-query` (and whatever `candor` dispatches to) is ~12 days behind the repo.**
+      Every "read the reference engine" instruction is only as good as which binary answers. Refresh the
+      local install, and consider whether `candor doctor` should compare the installed engine's build id
+      against the repo HEAD rather than only checking spec agreement between engines — **two stale engines
+      agree with each other perfectly.**
+
+Nothing in this session's own measurements was contaminated: the conformance suite rebuilds its engines, and
+every ad-hoc probe here used an explicit `~/git/…/target/release/` path. Verified, not assumed.
