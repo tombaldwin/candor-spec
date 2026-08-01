@@ -2093,8 +2093,15 @@ Two further MUSTs guard the verdict's integrity:
 
 - **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two
   exit-2 causes and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
-  unknown flag) — the gate could not be evaluated at all, so NO verdict is written (a fabricated verdict would
-  be a guess); **(b) an INCOMPLETE analysis** (a source file failed to read/parse — the target's own code was
+  unknown flag) — the gate could not be evaluated at all. ⟨0.24⟩ **SUPERSEDED: this said NO verdict is
+  written, and §3.1's refusal-document clause (`107755b`, generalised by `1503368`) now requires one on
+  EVERY exit-2 cause including this one.** All four engines follow the newer rule; this sentence is stale
+  prose that would lead an implementer to reintroduce the hazard it was written before — a refusal that
+  writes nothing leaves the PREVIOUS run's green document on disk, and a CI wrapper reading that path
+  unconditionally reads it as current. The document written here carries `ok: false` + `refused: true` and
+  **no `violations` key**, so it is fail-closed to a naive reader without asserting a finding. *A corrected
+  assertion outliving its correction in a second location is a defect class this document has now produced
+  three times; the release review that caught this one was reading for exactly that.* **(b) an INCOMPLETE analysis** (a source file failed to read/parse — the target's own code was
   not fully seen) — here the engine SHOULD write a machine-legible **incomplete verdict**
   `{ spec, ok: false, incomplete: true, unanalyzed: [ { path, reason } ], analyzed: { count } }` and exit 2.
   This is not a fabrication: `ok: false` is honest (the gate did not certify) and `incomplete: true` +
