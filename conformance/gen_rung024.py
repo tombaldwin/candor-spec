@@ -1542,6 +1542,24 @@ def row_r10(ws, pols):
             continue
         shapes[eng] = _report_shape(d)
 
+    # ⟨0.24⟩ A MAJORITY IS POPULATION-DEPENDENT, so this row cannot be evaluated on a SUBSET of the
+    # engines. Its known divergences are waived PER ENGINE — java and rust, the two that must move — and
+    # that waiver set is only correct while all four are present: with swift absent, ts becomes a minority
+    # of one and is flagged for being on the shape we consider CORRECT. Measured: green on the four-engine
+    # macOS leg, RED on the three-engine ubuntu leg, and **red there since the day this row was added**,
+    # because I ran it locally (where swift is present) and never read CI.
+    #
+    # Below full population the row goes VACUOUS rather than guessing. That is not a coverage loss: the
+    # four-engine leg exists precisely for the checks that need all four, and a parity verdict that changes
+    # with who turned up is worse than no verdict.
+    if len(shapes) < len(ENGINES):
+        for eng in sorted(shapes):
+            cells.append((eng, "report-parity", VACUOUS,
+                          "report parity needs ALL %d engines — %d present (%s). A majority over a subset "
+                          "is a different question, and the per-engine waivers are only correct at full "
+                          "population." % (len(ENGINES), len(shapes), ", ".join(sorted(shapes))),
+                          "all engines present"))
+        return cells
     if len(shapes) < 2:
         for eng in shapes:
             cells.append((eng, "report-parity", VACUOUS,
@@ -2174,6 +2192,17 @@ def main():
             if verdict in FAILING and w:
                 mark = "FAIL(waived)"
                 stale = [k for k in stale if k is not w]
+            elif verdict == VACUOUS:
+                # ⟨0.24⟩ A VACUOUS CELL DOES NOT RETIRE A WAIVER. Vacuous means the row learned NOTHING
+                # here, so it is no evidence the defect is gone — and treating it as such would delete the
+                # waiver on the leg that could not evaluate it, then fail the leg that can. Measured: R10
+                # goes vacuous on the three-engine CI leg (no swift toolchain on ubuntu), and its java/rust
+                # waivers were reported STALE there while being live and correct on the four-engine macOS
+                # leg. A waiver is retired by a PASS, never by an absence of measurement.
+                w2 = next((k for k in known if k["row"] == name and k["engine"] in ("*", eng)
+                           and k.get("cell", "*") in ("*", cell)), None)
+                if w2 is not None:
+                    stale = [k for k in stale if k is not w2]
             elif verdict in FAILING:
                 rc = 1
             note = got if got else ""
