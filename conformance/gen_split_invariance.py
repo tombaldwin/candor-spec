@@ -129,6 +129,23 @@ UNKNOWN = "Unknown"
 # =====================================================================================================
 
 # ---- local_call: a plain cross-package free function -------------------------------------------------
+
+# ⟨0.24⟩ KNOWN-VACUOUS SHAPES — the per-shape floor's ratchet. Measured 2026-08-01, the first run after the
+# floor existed. A shape listed here produced cells and ZERO live ones for that engine, so those cells prove
+# nothing today. Two different things live in this table and they MUST be told apart by triage, not by
+# assumption:
+#   * legitimately N/A for the language (a Rust `dyn` return has no Java analogue), where the honest fix is
+#     to stop EMITTING the cells rather than to waive them — a cell that cannot fire is not coverage;
+#   * a fixture that STOPPED TRIGGERING, which is a live defect wearing the same clothes.
+# Neither is distinguishable from the other by looking at the count, which is why this needs a reason per
+# row and why none is written yet. It ratchets: a shape going dead that is NOT listed fails the run.
+KNOWN_VACUOUS = {
+    "rust":  {"callback", "fn_returned_dyn"},
+    "java":  {"fn_returned_dyn"},
+    "swift": {"fn_returned_dyn"},
+    "ts":    {"callback", "fn_returned_dyn", "lazy_init"},
+}
+
 def s_local_call(eff, name, sfx):
     h = f"h_{sfx}_lc"
     return {
@@ -758,6 +775,7 @@ def main():
             if v not in (VACUOUS, REVERSE):
                 t[1] += 1
         dead = sorted(sp for sp, (tot, lv) in by_split.items() if tot and lv == 0)
+        dead = [d for d in dead if d not in KNOWN_VACUOUS.get(e, set())]
         if dead:
             print(f"  FAIL (per-shape vacuity floor): engine '{e}' has split shape(s) with cells but ZERO "
                   f"live: {', '.join(dead)}. A shape that stopped triggering tests nothing, and the total "

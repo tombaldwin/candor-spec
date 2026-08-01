@@ -111,6 +111,23 @@ LETTER = {OK: ".", VACUOUS: "v", REFUSED: "-", BROKEN: "!", DISC: "d", LOST: "X"
           GAINED: "f", APPEARED: "p"}
 
 
+
+# ⟨0.24⟩ KNOWN-VACUOUS SHAPES — the per-shape floor's ratchet. Measured 2026-08-01, the first run after the
+# floor existed. A shape listed here produced cells and ZERO live ones for that engine, so those cells prove
+# nothing today. Two different things live in this table and they MUST be told apart by triage, not by
+# assumption:
+#   * legitimately N/A for the language (a Rust `dyn` return has no Java analogue), where the honest fix is
+#     to stop EMITTING the cells rather than to waive them — a cell that cannot fire is not coverage;
+#   * a fixture that STOPPED TRIGGERING, which is a live defect wearing the same clothes.
+# Neither is distinguishable from the other by looking at the count, which is why this needs a reason per
+# row and why none is written yet. It ratchets: a shape going dead that is NOT listed fails the run.
+KNOWN_VACUOUS = {
+    "rust":  {"callback", "fn_returned_dyn"},
+    "java":  {"fn_returned_dyn"},
+    "swift": {"fn_returned_dyn"},
+    "ts":    {"callback", "fn_returned_dyn", "lazy_init"},
+}
+
 def judge(ref, arm):
     """ref/arm are leaf_info entries, or None when the fn is absent from that arm's report."""
     if ref is None and arm is None:
@@ -256,12 +273,13 @@ def main():
             # per-shape numbers were already printed and never asserted.
             by_split = {}
             for c in cells:
-                v = results.get(e, {}).get(d, {}).get(c["name"], (VACUOUS, None, None))[0]
+                v = results[e].get((c["name"], d), (VACUOUS, None, None))[0]
                 tt = by_split.setdefault(c.get("split", "?"), [0, 0])
                 tt[0] += 1
                 if v not in (VACUOUS, REFUSED):
                     tt[1] += 1
             dead = sorted(sp for sp, (tot, lv) in by_split.items() if tot and lv == 0)
+            dead = [d for d in dead if d not in KNOWN_VACUOUS.get(e, set())]
             if dead and t.get(REFUSED, 0) != len(cells):
                 print("  FAIL (per-shape vacuity floor): %s/%s has shape(s) with cells but ZERO live: %s"
                       % (e, d, ", ".join(dead)))
