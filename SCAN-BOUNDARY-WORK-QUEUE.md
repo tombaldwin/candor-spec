@@ -2547,6 +2547,46 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## Standing bar 7q — TWO CI BREAKS IN ONE DAY, BOTH MINE, BOTH INVISIBLE WHERE I VERIFIED (2026-08-01)
+
+Both were conventions I introduced *and* verified — on the only platform and population I happened to be
+standing in.
+
+**`XCTExpectFailure` is Darwin-XCTest only.** I chose it over `XCTSkip` for the three pinned module-const
+tests precisely because it is a BOTH-WAYS ratchet: it fails if the defect is ever fixed without removing the
+marker. Sound reasoning, and swift-corelibs-xctest on Linux does not ship the API — so candor-swift's Linux
+CI leg died at *compile*: `cannot find 'XCTExpectFailure' in scope` ×3, then `error: fatalError`. **My local
+`swift test` was green with 559 passing and could not have seen it**, and my first diagnosis (the
+type-checker timeouts in `Policy.swift` the editor had been reporting all session) was a red herring the
+agent correctly ignored in favour of reading the actual log. Fixed with `#if canImport(Darwin)` — the
+ratchet stays live where it can run and the Linux leg SAYS WHY it skips.
+
+**R10's majority is population-dependent.** Its known divergences are waived PER ENGINE (java and rust, the
+two that must move), which is only correct at full population. CI has two legs by design — ubuntu with three
+engines, macos-15 with four. On the three-engine leg no majority forms and **ts is flagged for being on the
+shape we consider CORRECT.** candor-spec CI had been red since the day R10 landed — three runs — and I never
+looked, because I ran the suite locally where swift is present. Now VACUOUS below full population; and
+fixing that exposed a second defect one layer down, where the vacuous cells reported their waivers STALE, so
+the leg that COULD NOT EVALUATE the row would have deleted the waivers the leg that can still needs. **A
+waiver is retired by a PASS, never by an absence of measurement.**
+
+**The shared shape:** *local green is a claim about local.* Both defects were in the verification apparatus
+rather than the analysers, both passed everything I ran, and both were caught only by a machine with a
+different toolchain or a different engine set. This is the same lesson as bar 7p (a corpus is a shape) one
+level out: **a test environment is a shape too, and the shape decides which failures it can show you.**
+
+**Corollary, and it cost three red runs:** after adding or changing a conformance row, READ THE CI RUN it
+lands in. The suite passing on the machine that wrote the row is the weakest evidence available about it.
+
+## Standing bar 7o(b) — the INVERSE of 7o: do not edit a repo an agent is already in
+
+7o records dispatching a second agent into a repo whose first agent had not finished. The mirror happened
+today: I bumped `candor-swift`'s `engineVersion` **after** dispatching an agent into that repo, leaving my
+uncommitted edit in its working tree. Benign here — one line, a different file, and the agent was told to
+stage by path — but a `git add -A` would have merged a release version bump into a CI-fix commit, so a
+revert of the fix would have silently reverted the bump. **The rule is symmetric: one writer per repo means
+the coordinator too.**
+
 ## THE STANDING BAR — applies to every item, no exceptions
 
 0. **A FABRICATION FIX IS WHERE UNDER-REPORTS GET INTRODUCED. Measured: four defects in five fixes.**
