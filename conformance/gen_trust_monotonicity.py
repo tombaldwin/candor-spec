@@ -287,6 +287,21 @@ def main():
                       % (e, n, "no cells were generated at all" if not cells else
                          "every trusted arm read the entry pure, so nothing was demanded of the degraded arm"))
                 rc = 2
+            # ⟨0.24⟩ PER-SHAPE FLOOR — see the sibling in gen_split_invariance.py. The arm floor above
+            # only sees an ENTIRE arm going dead; one split shape rotting to vacuous is invisible while the
+            # others carry the count, and the per-shape numbers were printed and never asserted.
+            by_split = {}
+            for c in cells:
+                v = results.get(e, {}).get(n, {}).get(c["name"], (VACUOUS, None, None))[0]
+                tt = by_split.setdefault(c.get("split", "?"), [0, 0])
+                tt[0] += 1
+                if v not in (VACUOUS, REFUSED):
+                    tt[1] += 1
+            dead = sorted(sp for sp, (tot, lv) in by_split.items() if tot and lv == 0)
+            if dead and t.get(REFUSED, 0) != len(cells):
+                print("  FAIL (per-shape vacuity floor): %s/%s has shape(s) with cells but ZERO live: %s"
+                      % (e, n, ", ".join(dead)))
+                rc = 2
             if armstate.get(e, {}).get(n) == "broken":
                 print("  FAIL: %s/%s produced NO report while exiting 0 -- the harness or the engine is "
                       "broken, and that must never read as a fail-closed refusal." % (e, n))

@@ -744,6 +744,25 @@ def main():
                    "every single-tree arm read the entry pure, so nothing was demanded of the chained arm")
             print(f"  FAIL (vacuity floor): engine '{e}' produced ZERO live cells -- {why}.")
             rc = 2
+        # ⟨0.24⟩ PER-SHAPE FLOOR. The total-only floor above trips at `live == 0` ACROSS ALL SPLITS, so a
+        # review neutered ONE split shape's sink in all four languages -- 8 cells per engine going dead --
+        # and the run stayed green, because the other shapes carried the total. In a full 10-shape run up to
+        # NINE could rot to vacuous with exit 0. The per-shape `live` counts were already PRINTED below and
+        # never ASSERTED, which is the recurring defect in this suite: the number a reader needs is on the
+        # screen and nothing fails when it goes wrong.
+        by_split = {}
+        for c in cells:
+            v = results[e].get(c["name"], (VACUOUS, None, None))[0]
+            t = by_split.setdefault(c["split"], [0, 0])
+            t[0] += 1
+            if v not in (VACUOUS, REVERSE):
+                t[1] += 1
+        dead = sorted(sp for sp, (tot, lv) in by_split.items() if tot and lv == 0)
+        if dead:
+            print(f"  FAIL (per-shape vacuity floor): engine '{e}' has split shape(s) with cells but ZERO "
+                  f"live: {', '.join(dead)}. A shape that stopped triggering tests nothing, and the total "
+                  f"floor cannot see it while other shapes carry the count.")
+            rc = 2
 
     print("\nDEP-HALF COVERAGE  (does the dependency's OWN report carry the witness? a dep report with no "
           "effects\n  means the loss is on the PRODUCER side, not at the join)")

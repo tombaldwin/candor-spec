@@ -1324,6 +1324,7 @@ def row_r9(ws, pols):
         if not present(eng):
             cells.append((eng, "key-parity", ABSENT, "", ""))
             cells.append((eng, "key-parity(opt)", ABSENT, "", ""))
+            cells.append((eng, "key-parity(uneval)", ABSENT, "", ""))
             continue
 
         # -- ARM 2: the OPTIONAL blocks, which arm 1 is structurally blind to --------------------
@@ -1380,6 +1381,49 @@ def row_r9(ws, pols):
         cells.append((eng, "key-parity", OK if not bad else FAIL,
                       "; ".join(bad) or "shape matches the other %d" % (len(shapes) - 1),
                       "the same situation produces the same keys"))
+    # ⟨0.24⟩ ARM 3 — `unevaluated`, the block pinned by SPEC §3.1 and compared by NOTHING until now.
+    # It is emitted only when a rule fires AND another cannot be evaluated, which no other arm arranges:
+    # arm 1's policy fires cleanly and arm 2's alias resolves. Measured before this arm existed, rust and
+    # swift put the disclosure on stderr ONLY, so a machine consumer of an exit-1 verdict could not see
+    # that any rule went unanswered — a finding that never reaches the consumer, which is the harm class
+    # the whole rung is about, arriving through the disclosure the rung added. R8 asserts the block's
+    # CONTENT on one engine at a time; this asserts the four SHAPES agree.
+    uneval_shapes = {}
+    for eng in ENGINES:
+        if not present(eng):
+            continue
+        locu = write_report(ws, eng, R8_REPORT)
+        gju = os.path.join(ws, "r9uneval.%s.json" % eng)
+        if os.path.exists(gju):
+            os.remove(gju)
+        rcu = q_gate(eng, locu, pols["r8_mixed"], gate_json=gju)
+        if rcu is None:
+            continue
+        if rcu != 1 or not os.path.exists(gju):
+            cells.append((eng, "key-parity(uneval)", ERROR,
+                          "firing + unanswerable -> exit %s with%s document; the `unevaluated` block is "
+                          "only emitted on that pairing, so the arm cannot form" % (rcu, "" if os.path.exists(gju) else "OUT"),
+                          "exit 1 + a document"))
+            continue
+        try:
+            du = json.load(open(gju))
+        except Exception as e:
+            cells.append((eng, "key-parity(uneval)", ERROR, "verdict did not parse: %s" % e, ""))
+            continue
+        if "unevaluated" not in du:
+            cells.append((eng, "key-parity(uneval)", FAIL,
+                          "no `unevaluated` key in the document — §3.1 requires the withheld rule be "
+                          "disclosed on the MACHINE channel, not only on stderr",
+                          "`unevaluated` present"))
+            continue
+        uneval_shapes[eng] = _shape(du)
+    if len(uneval_shapes) >= 2:
+        for eng, bad in sorted(_parity(uneval_shapes, second="violation-record").items()):
+            cells.append((eng, "key-parity(uneval)", OK if not bad else FAIL,
+                          "; ".join(bad) or "the `unevaluated` document shape matches the other %d"
+                          % (len(uneval_shapes) - 1),
+                          "the withheld-rule disclosure has one shape"))
+
     if len(alias_shapes) >= 2:
         for eng, bad in sorted(_parity(alias_shapes).items()):
             cells.append((eng, "key-parity(opt)", OK if not bad else FAIL,

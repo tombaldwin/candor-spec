@@ -250,6 +250,22 @@ def main():
                       % (e, d, "no cells were generated at all" if not cells else
                          "every reference arm read the entry pure, so nothing was demanded of the duplicate"))
                 rc = 2
+            # ⟨0.24⟩ PER-SHAPE FLOOR. The arm floor above trips only when an ENTIRE arm is dead; a
+            # single split shape going vacuous is invisible while the other shapes carry the count. A
+            # review neutered one shape's sink across all four languages and the run stayed green. The
+            # per-shape numbers were already printed and never asserted.
+            by_split = {}
+            for c in cells:
+                v = results.get(e, {}).get(d, {}).get(c["name"], (VACUOUS, None, None))[0]
+                tt = by_split.setdefault(c.get("split", "?"), [0, 0])
+                tt[0] += 1
+                if v not in (VACUOUS, REFUSED):
+                    tt[1] += 1
+            dead = sorted(sp for sp, (tot, lv) in by_split.items() if tot and lv == 0)
+            if dead and t.get(REFUSED, 0) != len(cells):
+                print("  FAIL (per-shape vacuity floor): %s/%s has shape(s) with cells but ZERO live: %s"
+                      % (e, d, ", ".join(dead)))
+                rc = 2
         st = armstate.get(e, {})
         for d in DUPS:
             if st.get(d) == "broken":
