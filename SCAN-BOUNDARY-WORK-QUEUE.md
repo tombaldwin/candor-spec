@@ -2547,6 +2547,32 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## OPEN — candor-swift's Linux CI leg skips 411 of its 496 tests (found 2026-08-01, NOT release-gating)
+
+From the last green Linux run, verbatim:
+
+    Executed 496 tests, with 411 tests skipped, 0 failures, in 4.761 seconds
+
+`ProcessHarness.binaryURL` derives the binary from `Bundle(for:).bundleURL.deletingLastPathComponent()`,
+which on Linux resolves to `.build/<triple>/` rather than `.build/<triple>/debug/`. The harness does not
+find the binary, so **every process-based suite `XCTSkip`s**. What remains is a compile gate plus ~85 unit
+tests. The leg reports a four-digit-looking test count while exercising about a fifth of the behaviour, and
+it does it in 4.7 seconds — a duration that should itself have been the tell.
+
+**This is why bar 7q's first defect could only surface as a BUILD failure**: the Linux leg has almost no
+behavioural surface left to fail on, so a compile error is very nearly the only signal it can still emit.
+The two findings are the same fact seen from opposite ends.
+
+Deliberately NOT fixed in the same commit as the CI unblock, and that scoping was right: un-skipping 411
+tests at once can surface real Linux-only failures, and a release-blocking CI fix is the worst possible
+place to discover them. Do it as its own change, after 0.24 ships, and expect it to find things.
+
+**The general form, worth more than the instance:** a skip that is CONDITIONAL ON THE ENVIRONMENT reports as
+a pass at the summary line. `0 failures` and `411 skipped` are the same green tick to anyone reading the
+dashboard. Every arm of this project that reports a count should be asked how many of that count actually
+RAN — this is the coverage-envelope discipline (κ travels with the report) applied to our own CI, which has
+never had it.
+
 ## Standing bar 7q — TWO CI BREAKS IN ONE DAY, BOTH MINE, BOTH INVISIBLE WHERE I VERIFIED (2026-08-01)
 
 Both were conventions I introduced *and* verified — on the only platform and population I happened to be
