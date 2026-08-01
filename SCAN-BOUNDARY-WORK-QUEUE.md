@@ -2547,6 +2547,42 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## Standing bar 7s — DISQUALIFY THE INSTRUMENT BEFORE REPORTING ITS NUMBER (2026-08-02)
+
+Sent to un-skip candor-swift's Linux tests, the investigation found the mechanism (`Bundle(for:) ===
+Bundle.main` is false on macOS and TRUE on Linux, so `.deletingLastPathComponent()` lands one directory too
+high) and then a genuine shipped defect: **`Process.waitUntilExit()` blocks forever on
+swift-corelibs-foundation once the child has already exited** — pipes at EOF, child reaped, `isRunning`
+still true. 10/10 hangs on aarch64 AND on emulated x86_64; `terminationHandler` + semaphore 0/10, 30/30
+correct. The shipped engine carried the same pattern, so **`candor-swift --workspace` hung forever on
+Linux** in 0.24.0 (`RC=124`, killed at 60s, nothing written; macOS exited 0 with a 630-byte report).
+Correctly classified as an AVAILABILITY defect, NOT the cardinal sin — it hangs rather than emitting a
+false all-clear, so no silent under-report was ever produced. Do not inflate an availability bug into a
+soundness one; the distinction is the whole vocabulary.
+
+**But the durable lesson is the number that was NOT reported.** Asked for the new Linux skip count, the
+answer was *"not measurable in this environment"*, backed by a control: `PolicyTests|SurfaceTests|FixTests`
+— 50 tests containing **zero `Process()` references** — hung 2 of 3 runs in Docker-on-macOS, while those
+same tests have been green on real Linux CI for months. That control disqualifies the instrument, so every
+hang-rate datapoint taken with it was retracted too, including ones that had already been reported.
+
+**The rule: when a control shows your instrument produces the failure you are measuring, you have no
+measurement — and the honest output is the disqualification, not a hedged number.** A figure from a
+disqualified instrument is worse than no figure, because it will be quoted later without its caveat. Same
+family as 7q and the oracle work: calibrate the instrument, never a copy of it.
+
+**Two supporting habits worth keeping:** a falsified theory was KEPT for its real but smaller merit (closing
+149 leaked pipe descriptors) with the commit stating plainly that it did **not** fix the hang it was written
+for — a fix that does not do what you hoped is still a fix, provided the message says so. And the engine
+change was isolated to a single `Sources/`-only commit so it reverts independently of the three test-side
+ones.
+
+**Correction to the record, and it is a clean instance of 7q:** commit `26d5a7f` cites *"Linux, `swift test
+--filter NetLocatorProvenanceProcessTests`: 41 tests, 0 failures, 0 unexpected"* as evidence the Linux leg
+was healthy. The harness could not locate the binary on Linux, so **all 41 were `XCTSkip`s** — zero failures
+out of zero executed rows. I wrote that green number into a commit message as proof of the very thing it
+could not measure, in the same session as the bar warning against exactly this.
+
 ## Standing bar 7r — A CLAIM RECORDED IN ONE PLACE, NEVER CHECKED AGAINST THE ARTIFACT IT NAMES (2026-08-01)
 
 The 0.24 release produced this same defect FOUR times in one hour, in four different components, and it is
