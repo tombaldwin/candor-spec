@@ -5634,3 +5634,53 @@ whole rung exists to refuse — and `release.yml`'s gates passing on a fabricati
 Not more engine fixes. The last three rounds each found more defects in the *instruments* than in the
 engines, and the 0.23.2 release shipped a fabrication through a green gate. **The suite is the bottleneck,
 not the analysers.**
+
+## Step 2 of the plan — java (`cd4bda9`…`1dafd51`) and swift (`bda49af`…`4fa329c`) landed
+
+R9 `key-parity(opt)` is **OK four-way** and its waiver is deleted (`d400cc2`) — **the ratchet reported it
+STALE before anyone thought to check**, which is the both-ways design earning its keep. java was the last
+engine on the array; rust and swift had already moved.
+
+**java corrected me twice.** My `errors[].kind` measurement was STALE — I reported seven values, four of
+which had been normalised at `74fd040`; the real remainder was two. And its test pins the closed set as a
+**membership list written out longhand rather than read from the engine**, because *a test deriving its
+admissible set from the code it checks cannot catch that code widening it* — the subject-and-oracle defect
+avoided by design rather than found by review.
+
+**Three java findings that were not in the brief:**
+- **`whatif` read only the callgraph SIDECAR and never opened the report**, so a corrupt report produced a
+  confident pre-edit all-clear from a file nothing had checked. Found only because reading the manifest was
+  the first time that verb ever needed the report.
+- **The prose channel made the same claim as the JSON.** Omitting `ok` while leaving `✓ within policy`
+  standing would have MOVED the false all-clear, not removed it.
+- **MCP `candor_where(effect="Net")` returned `{"directly":[],"inherited":[]}`** over a report whose
+  manifest named the Net-performing class as unread. *"Nobody performs Net"*, confidently. My brief said
+  "they shell out to the CLI, so there may be nothing to fix"; java's verdict on that reasoning is the
+  keeper: **"the shelling-out is what hid the second site"** — exit codes and JSON come through, the scan's
+  stderr does not.
+
+**swift: `unverified --strict` and `fix-gate --strict` returned `ok:true`, exit 0, over an incomplete
+report** — and `--strict` is how CI consumes both. Fixed with `whatif`'s shape rather than the gate's,
+correctly: these are ADVISORY, so `ok:false` beside an empty array would assert "a hole exists, here it is"
+— the fabrication mirror. `ok` omitted, manifest in its place, `--strict` exits 2.
+
+### swift found a four-way question and refused to half-fix it — the right call
+
+`DenyRule.unknownClasses` is parsed and populated, and **neither `deniedLayer` nor `unverifiedHoleRule`
+consults it.** Same policy `deny Unknown[reflect,unresolved] app`, same report whose only hole is
+`native:dlopen`:
+
+    gate               exit 0   correct — the class is excluded
+    fix-gate --strict  exit 1 + a remedy naming `app.nativeHole`   ← a red CI check for a boundary the
+                                                                     policy does not deny
+    unverified --strict  exit 0, ok:true                           ← THE MIRROR, and the worse half
+
+The second is the one that matters: the layer passes while carrying an `Unknown`, so it **is** a
+PASS-but-Unknown hole — and the verb whose entire job is *"not PROVABLY clean"* certifies it. Fixing only
+the `fix-gate` over-charge (which is what I briefed) would close the fabrication and leave its silent mirror
+open, which is [[feedback-fabrication-fixes-cause-misses]] exactly. Left whole for its own round with an A/B.
+
+- [ ] **FOUR-WAY: does `unverified`/`fix-gate` consult the rule's `Unknown[…]` class filter?** Measured
+      broken in swift; rust reported the same shape one layer down earlier this week (`unverified_hole_rule`
+      computing `violates` from `r.effects` alone). **Measure java and ts before fixing** — and fix both
+      halves together, since the over-charge and the under-report are one defect seen from two sides.
