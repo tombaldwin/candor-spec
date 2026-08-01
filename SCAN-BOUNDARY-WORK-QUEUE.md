@@ -5486,3 +5486,48 @@ shadow) — all pinned as tests so a later scope-aware refinement reads as a del
       whether it is reachable in the RELEASED artifact before deciding the release, because that is the
       difference between "a known bug we are shipping a fix beside" and "a fabrication the patch leaves
       live."
+
+## 0.23 RELEASE ATTEMPT (2026-08-01, 03:04 cron) — NOT SHIPPED, and two of the reasons were not in the brief
+
+**The brief's premise was wrong in a way that would have shipped a regression.** `release/0.23` was cut from
+`v0.23.0`, but **`v0.23.1` is the latest release** — the local clone simply had not fetched its tag, so
+`git describe` said 0.23.0 and everyone (me included) believed it. Shipping 0.23.2 from that base would have
+**silently reverted 0.23.1's perf hoist**. Rebased onto `v0.23.1`, clean, hoist verified present.
+*A branch point is a claim about what is released, and `git describe` on a stale clone is not evidence for it.*
+
+**The blocker itself is FIXED and the family is closed.** The single-binder shadow — a module-level const
+shadowed by a local bound once to something dynamic — answered with the MODULE's literal, because
+`multiplyBoundNames` only refuses names bound TWICE and `constValue` then fell through to
+`moduleConstStrings`. Mirror written first and confirmed failing; 305 tests pass; the positive control keeps
+its host. Verified against a build of the released tag, which reports nothing here — so this was introduced
+by the constructor look-through, third defect from that one cause. Swept for siblings: `globalReads` is a
+name set rather than a literal map, and there is no other local-to-global literal fallback, so `constValue`
+was the only channel.
+
+### It did not ship, and the A/B is why — but two of the three "losses" were the fix WORKING
+
+    lost surface                          verdict
+    runSweepMode    paths=preview.html    FABRICATION REMOVED — it binds its own `sweep-<stamp>.md`
+    runConvergenceMode  paths=…           FABRICATION REMOVED — its own `convergence-<stamp>.md`
+    <main>          paths=preview.html    REAL REGRESSION, and mine
+
+**The released engine was reporting a module const from an unrelated file as the path two functions write.**
+That is a fabrication nobody had looked for, found by reading the loss column instead of trusting it — the
+A/B's "losses" are not automatically losses, and treating them as such would have hidden a defect while
+blocking a good fix.
+
+The third is real: a multi-file package unions its per-file top-level code under one `<main>` unit, and in
+that merged form the gate fires where it must not, dropping a genuine `Fs` path. **An isolated two-file
+repro shows the intended behaviour** (`<main>` keeps its path, the shadowing function loses the fabricated
+one), so the defect is specific to the merged unit. Diagnosis solid, fix unverified.
+
+**Gate held: nothing pushed, no tag, no release.** Dropping a real filesystem path from a released engine is
+the cardinal sin, and 03:00 surgery on a released line to chase it is how the second one gets shipped.
+
+- [ ] **TO SHIP: fix the merged `<main>` case.** Per-file `<main>` FnInfos are built with `isTopLevel = true`
+      (`DeclCollector.swift:193`) and "union under the one `<main>` module-entry unit" — the union is where
+      the flag stops reaching the gate. Then re-run: pollen A/B loss column must be **zero after subtracting
+      the two proven fabrications**, the three-arm table, 305+ tests, and the release steps.
+- [ ] **`main` STILL FABRICATES on BOTH module-const shapes** (`moduleConstShadowedByDynamic` AND
+      `moduleConstShadowedTwice`) — measured this session, three-arm. The branch is now ahead of `main` on
+      soundness. `main` needs this same fix, and it was out of scope for a release brief.
