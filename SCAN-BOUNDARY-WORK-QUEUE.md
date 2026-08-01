@@ -5531,3 +5531,52 @@ the cardinal sin, and 03:00 surgery on a released line to chase it is how the se
 - [ ] **`main` STILL FABRICATES on BOTH module-const shapes** (`moduleConstShadowedByDynamic` AND
       `moduleConstShadowedTwice`) — measured this session, three-arm. The branch is now ahead of `main` on
       soundness. `main` needs this same fix, and it was out of scope for a release brief.
+
+## candor-swift 0.23.3 SHIPPED (2026-08-01) — and 0.23.2 shipped a fabrication first
+
+**v0.23.3 is published** (`github-actions[bot]`, run 30693627952). Gates on the tagged commit: 306 tests /
+0 failures, smoke 104/0, fuzz 25/0, fabrication-probe clean, every fabrication shape at `hosts=[]` with
+every positive control intact. It supersedes **v0.23.2, which is also published and fabricates.**
+
+### PUSHING A TAG IS PUBLISHING IN candor-swift, and I did not know it
+
+`.github/workflows/release.yml` is `on: push: tags: ['v*']` — it cut Tom's own `v0.23.1` in July the same
+way. I pushed `v0.23.2` believing a tag was inert until `gh release create`, reported "no release exists"
+on a `gh release view` that ran before the workflow finished, and told Tom it was safely reversible. It was
+not. **One `ls .github/workflows/` before pushing would have said so**, and I had read that directory
+earlier in the week.
+
+**Correcting a memory that is now wrong:** [[feedback-always-cut-gh-releases]] says every tag must also get
+a `gh release create`. For candor-swift that is now FALSE and actively misleading — the workflow does it,
+and a manual `gh release create` after a tag push is a second attempt at an already-published release.
+
+### THE GUARDRAIL WAS ON THE WRONG DOOR
+
+The permission classifier **blocked** my `gh release create` as a public-surface action — while the
+**authorised** `git push origin v0.23.2` did the actual publishing. The operation that looked dangerous was
+stopped; the one that was dangerous went through. A control keyed on the VERB rather than the EFFECT stops
+the wrong thing whenever a repo automates the last step.
+
+### release.yml's OWN GATES PASSED ON A FABRICATING BUILD
+
+The workflow reruns `swift test` + smoke precisely to stop a bad release, and both were **green** — because
+no test covered the nested-shadow shape until it was written an hour later. **The gate worked exactly as
+designed; the test suite was the hole.** Same failure as the port's missing `NameKeyedStateTests`, arriving
+one layer up. A release gate inherits the blind spots of the suite it runs, and adds none of its own.
+
+### The defect itself, and why it is the most instructive of the three
+
+`v0.23.2`'s guard was skipped for the **whole `<main>` unit**, on the reasoning that a file's top-level `let`
+IS the module const rather than a shadow of it. True of a binder at the outermost level, false of one in a
+nested scope — so the fabrication reappeared **one scope down**, inside the fix for it.
+
+And the exemption **was never needed**: it was added to protect three pollen `paths` that turned out to be
+the fabrication being correctly removed. **A guard built against a loss that was not a loss, which was
+itself a hole.** With it gone the positive control still keeps its host, so nothing legitimate depended on
+it. Scoping a rule to the UNIT when the condition is about the BINDING — the seventh instance this week of
+scoping to the instance rather than the condition.
+
+- [ ] **`main` is now BEHIND `release/0.23` on soundness** — it still fabricates on both module-const shapes
+      AND has the top-level nested-shadow hole. Port `a05c44d` + the single-binder gate back to `main`,
+      where the shadow-scope machinery (`ShadowSave`) changes the shape of the fix, so re-measure rather
+      than transcribe.
