@@ -1598,12 +1598,57 @@ R11_REPORT = {
 }
 
 
+# ⟨0.24⟩ THE SECOND CELL — the incompleteness trigger, on a fixture NO EXISTING ROW HAD AN ANALOGUE OF:
+# an incomplete report with **NO HOLES AT ALL** and a policy nothing violates. Every other fixture in this
+# suite pairs incompleteness with something to find, so the verb's behaviour on *"nothing to report, but I
+# could not see everything"* was never exercised — and that is exactly where rust and java printed
+# "PROVABLY clean ✓" over a report declaring source candor could not read, while ts and swift refused. A
+# release review found it by trying the shape; candor-rust then reproduced the same blind spot INSIDE its
+# own new test, where a mutant keeping the tick survived the first draft because the fixture never reached
+# the all-clear line.
+R11_INCOMPLETE = {
+    "candor": {"version": "handwritten", "spec": "0.23"},
+    "package": "app",
+    "analyzed": {"count": 1, "digest": "0"},
+    "unanalyzed": [{"path": "src/unreadable.x", "reason": "parse error"}],
+    "functions": [{"fn": "app.quiet", "inferred": []}],
+}
+
+
 def row_r11(ws, pols):
     cells = []
     for eng in ENGINES:
         if not present(eng):
             cells.append((eng, "advisory-bound", ABSENT, "", ""))
+            cells.append((eng, "advisory-incomplete", ABSENT, "", ""))
             continue
+        # -- the incompleteness trigger -------------------------------------------------------------
+        loci = write_report(ws, eng, R11_INCOMPLETE)
+        rc_gi = q_gate(eng, loci, pols["deny_net"])
+        di, rc_ui, erri = q_unverified(eng, loci, pols["deny_net"])
+        ibad = []
+        if rc_gi is None:
+            cells.append((eng, "advisory-incomplete", NOSURF, "no `gate --report` verb", ""))
+        elif rc_gi != 2:
+            cells.append((eng, "advisory-incomplete", ERROR,
+                          "gate exited %s over a report declaring `unanalyzed`, want 2 — the fixture does "
+                          "not set up the comparison" % rc_gi, "gate exit 2"))
+        elif di is None:
+            ibad.append("`unverified --json` gave no parseable output (%s)" % erri)
+        else:
+            if "ok" in di:
+                ibad.append("`ok` is PRESENT (%r) over a report the gate refuses — on an advisory verb "
+                            "`true` claims a set it cannot see and `false` asserts a hole nobody found, so "
+                            "the field is omitted" % di.get("ok"))
+            if di.get("incomplete") is not True:
+                ibad.append("no `incomplete: true`")
+            if not di.get("unanalyzed"):
+                ibad.append("no `unanalyzed` manifest — the verb is less pessimistic than the gate over "
+                            "identical bytes")
+        if rc_gi == 2 and di is not None:
+            cells.append((eng, "advisory-incomplete", OK if not ibad else FAIL,
+                          "; ".join(ibad) or "`ok` omitted, incomplete + manifest present",
+                          "advisory verb bounded by the gate on incompleteness"))
         loc = write_report(ws, eng, R11_REPORT)
         bad, exercised = [], 0
         # Each case names the function the gate CANNOT CLEAR, so the assertion is per-function rather
