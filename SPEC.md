@@ -1332,6 +1332,29 @@ implementing the "own entry" wording literally would withhold and refuse there. 
 by entries the report carries in the function's reachable closure*; "own entry" was the instance the
 measurement that prompted the clause happened to exercise.
 
+⟨0.24⟩ **`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not answer `true`, and it does not answer
+`false` either.** Measured independently by candor-rust AND candor-java, both of which reported it rather
+than deciding it: `whatif` returns `ok: true` over a report declaring `unanalyzed` units. Its `affected` set
+is computed over a universe it cannot see all of — a caller in an unparsed file is invisible — so `true` is
+a claim the input does not license. It is not a gate, but **its `ok` reads as one**, and this document's
+standing rule is that the naive read of a field must be the safe one.
+
+Neither boolean is honest here, which is why the answer is neither:
+
+- `ok: true` asserts "nothing this hypothetical touches is denied", over a set that is known to be partial.
+- `ok: false` would assert a VIOLATION the analysis never found — the fabrication mirror, and worse than
+  the thing it replaces.
+
+So the field is **omitted**, and `incomplete: true` plus the `unanalyzed` manifest take its place. A
+consumer writing `if (r.ok)` gets a falsy value and fails safe; one that looks further learns exactly what
+was unread. **This is deliberately NOT the refusal document's shape** (`ok: false` + `refused: true`,
+§3.1): there, `ok: false` is *true* — the gate did not pass — whereas here neither value is. **A shape is
+copied for its reasoning, not for its familiarity**, and the difference between the two cases is precisely
+whether a `false` would be a statement or an invention.
+
+The `affected` and `violations` arrays still ship: a partial answer that says it is partial is worth more
+than a refusal, and `whatif` is consulted BEFORE an edit, where the alternative is the operator guessing.
+
 ⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED:
 `"conditional": [ { "rule": "<the raw policy line>", "condition": "<the narrowing left unevaluated>" } ]`,
 omitted when empty.** `whatif` asks about an effect the code does not yet have. A narrowing filter
@@ -1839,6 +1862,7 @@ Their JSON shapes (the verdict + blast radius the conformance suite pins across 
 
 ```text
 whatif   { "of":[fn…], "effect", "affected":[fn…], "violations":[ { "fn", "rule" } ], "ok":bool }
+         ⟨0.24⟩ over an INCOMPLETE report: "incomplete":true, "unanalyzed":[…], and **`ok` OMITTED**
 rewire   { "dropped":[ { "caller", "no_longer_calls":[fn…] } ] }
 ```
 
