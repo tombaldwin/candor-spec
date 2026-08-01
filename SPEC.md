@@ -1355,6 +1355,42 @@ whether a `false` would be a statement or an invention.
 The `affected` and `violations` arrays still ship: a partial answer that says it is partial is worth more
 than a refusal, and `whatif` is consulted BEFORE an edit, where the alternative is the operator guessing.
 
+⟨0.24⟩ **THE GENERAL LAW: AN ADVISORY VERB MAY BE LESS CERTAIN THAN THE GATE, NEVER MORE.** Three separate
+measurements have now hit the same wall from three sides, and each was patched locally because the law was
+never stated:
+
+1. the manifest reader that skipped a malformed `unanalyzed` element, making the verb read a SHORTER
+   incompleteness list than the gate read from the same file (below);
+2. `unverified` / `fix-gate` computing from the effect set while the gate applied a class filter — the verb
+   answering a WIDER question than the gate asked;
+3. and this one: over a report carrying `hosts` but no `netClass`, **`gate --report` REFUSES (§3.1
+   answerability) while `fix-gate`/`unverified` answer from a FALLBACK DERIVATION** — the verb deriving
+   evidence the gate declined to invent, and then going silent on the function because its derivation
+   happened to clear it.
+
+All three are one defect: **the advisory verb was more confident than the gate over identical bytes.** The
+current code documents (3) as intentional — *"no refusal channel, so a hedge beats a hole"* — and the first
+half of that is true. **A hedge does beat a hole. But a DERIVATION is not a hedge; it is a second opinion,
+and it is the one opinion an advisory verb is not entitled to.**
+
+So, where the gate would refuse for want of evidence:
+
+- **`unverified` MUST NAME the function.** A function the gate COULD NOT JUDGE is an unverified hole in the
+  strongest sense the verb has — it is precisely *"your green gate is not provably green"*, and skipping it
+  because a fallback derivation cleared it is the verb contradicting its own purpose. The reason recorded is
+  **the missing evidence**, never the derived class.
+- **`fix-gate` MUST NOT offer a remedy premised on evidence the gate refused to read.** A hoist plan for a
+  boundary the gate could not adjudicate is a confident instruction resting on a guess.
+- **Both carry `unevaluated: [ { "rule", "why" } ]`** — the gate's own shape (§3.1), because it is the same
+  disclosure and inventing a second spelling is the mistake this document has made four times.
+- **`--strict` exits 2**, matching the gate.
+
+**Why this is a LAW and not a fourth patch:** the three instances differ in mechanism — a lenient reader, a
+missing conjunct, a fallback derivation — and share only the direction of the error. A rule stated over any
+one of them would not have caught the next two, which is exactly what happened. **The invariant is a
+COMPARISON, not a behaviour: for any report and policy, the advisory verb's confidence must be bounded above
+by the gate's.** An implementation can check that directly, and a conformance row can too.
+
 ⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME
 BYTES.** candor-swift and candor-ts implemented the manifest reader with different ELEMENT rules — swift
 skips a member with no string `path`, ts counts any object — and ts is right, for a reason that generalises
