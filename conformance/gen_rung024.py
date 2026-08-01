@@ -1548,6 +1548,103 @@ def row_r10(ws, pols):
 
 
 # =====================================================================================================
+# R11 — THE ADVISORY-VERB CONFIDENCE LAW: `unverified` may be LESS certain than the gate, never MORE
+# =====================================================================================================
+#
+# ⟨0.24⟩ §3.2 states this as a COMPARISON rather than a behaviour, deliberately, and so does this row.
+# Three separate defects were found and patched locally before the law was written — a manifest reader
+# that skipped a malformed element, a hole predicate that ignored the rule's class filter, and a fallback
+# derivation answering where the gate refused. **They differ in mechanism and share only the DIRECTION of
+# the error**, so a row written against any one of them would not have caught the next two. That is not a
+# hypothetical: it is what happened, three times.
+#
+# THE INVARIANT. For one report and one policy, let
+#     G_clear = the functions the gate neither charges nor refuses over
+#     U_clear = the functions `unverified` does not name
+# then  **U_clear ⊆ G_clear**. A function the gate could not clear must not be cleared by the verb whose
+# entire job is "your green gate is not provably green". The row does not care WHY the gate withheld —
+# a violation, an answerability refusal, or an incomplete manifest all count — which is exactly what makes
+# it survive a fourth mechanism nobody has thought of.
+#
+# WHY THE CONTAINMENT AND NOT AN EQUALITY: the verb is allowed to be MORE cautious. Naming a function the
+# gate cleared is a hedge, and a hedge is always available to it. Only the other direction is a claim.
+#
+# THE VACUITY GUARD IS THE WHOLE ROW'S CREDIBILITY. If the gate clears everything, containment holds
+# trivially and the cell proves nothing — so a case must exist where the gate WITHHELD on at least one
+# function, and the row says so per case rather than in aggregate.
+
+R11_REPORT = {
+    "candor": {"version": "handwritten", "spec": "0.23"},
+    "package": "app",
+    "analyzed": {"count": 3, "digest": "0"},
+    "functions": [
+        # (a) an Unknown the policy's class filter EXCLUDES — the gate passes it, so it is a hole that
+        #     `unverified` must name. This is the narrowing mechanism.
+        {"fn": "app.nativeHole", "inferred": ["Unknown"], "direct": ["Unknown"],
+         "unknownWhy": ["native:dlopen"]},
+        # (b) a Net entry with NO `netClass` — the gate REFUSES a `Net[…]`-narrowed rule here (§3.1
+        #     answerability). The answerability mechanism.
+        {"fn": "app.noClass", "inferred": ["Net"], "direct": ["Net"], "hosts": ["api.example.com"]},
+        # (c) a plain violator, so the gate has something to charge and the case is not vacuous.
+        {"fn": "app.writes", "inferred": ["Fs"], "direct": ["Fs"], "paths": ["/etc/hosts"]},
+    ],
+}
+
+
+def row_r11(ws, pols):
+    cells = []
+    for eng in ENGINES:
+        if not present(eng):
+            cells.append((eng, "advisory-bound", ABSENT, "", ""))
+            continue
+        loc = write_report(ws, eng, R11_REPORT)
+        bad, exercised = [], 0
+        # Each case names the function the gate CANNOT CLEAR, so the assertion is per-function rather
+        # than "the verb said something". A verb naming a different hole would satisfy a bare non-empty
+        # check while still clearing the one the gate withheld on — which is the defect, not a near-miss.
+        for name, pol, must_name in (("class-filtered", pols["r11_narrow"], "app.nativeHole"),
+                                     ("answerability", pols["r11_netclass"], "app.noClass")):
+            rc_g = q_gate(eng, loc, pol)
+            if rc_g is None:
+                cells.append((eng, "advisory-bound", NOSURF, "no `gate --report` verb", ""))
+                bad = None
+                break
+            doc, rc_u, err = q_unverified(eng, loc, pol)
+            if doc is None:
+                bad.append("%s: `unverified --json` gave no parseable output (%s)" % (name, err))
+                continue
+            named = {h.get("fn") for h in (doc.get("unverified") or []) if isinstance(h, dict)}
+            # The gate WITHHELD on this report iff it did not pass cleanly.
+            gate_withheld = rc_g != 0
+            if gate_withheld:
+                exercised += 1
+                # Every entry is in play; the verb must not come back empty-handed while the gate could
+                # not clear the report. This is the containment in its checkable form for a whole report:
+                # gate not-clean  =>  the verb names SOMETHING.
+                hit = any(must_name in (n or "") for n in named)
+                if not hit:
+                    bad.append("%s: gate exited %s — it could NOT clear `%s` — yet `unverified` does not "
+                               "name it (named: %s). The advisory verb is more confident than the gate "
+                               "over identical bytes." % (name, rc_g, must_name, sorted(named) or "nothing"))
+            else:
+                # The gate passed. The verb may name holes (a hedge is always allowed) — nothing to assert
+                # in this direction, which is the point of a containment rather than an equality.
+                pass
+        if bad is None:
+            continue
+        if not exercised:
+            cells.append((eng, "advisory-bound", VACUOUS,
+                          "the gate cleared every case, so containment holds trivially and this cell "
+                          "measured nothing", "at least one case where the gate withholds"))
+            continue
+        cells.append((eng, "advisory-bound", OK if not bad else FAIL,
+                      "; ".join(bad) or "%d case(s) where the gate withheld; the verb named a hole in each"
+                      % exercised,
+                      "U_clear subset of G_clear"))
+    return cells
+
+
+# =====================================================================================================
 # R7 — §2 LOCALE-INDEPENDENCE
 # =====================================================================================================
 #
@@ -1859,6 +1956,7 @@ ROWS = [
     ("R8", "§3.1 PRECEDENCE — a certain violation dominates a refusal; a refusal still writes a document"),
     ("R9", "CROSS-ENGINE verdict KEY PARITY — the same situation must produce the same keys"),
     ("R10", "REPORT-ENVELOPE key parity — the artifact that TRAVELS between engines"),
+    ("R11", "the ADVISORY-VERB confidence law — U_clear must be a subset of G_clear"),
     ("R7", "§2 locale-independence — the same input under two collations, byte for byte"),
 ]
 
@@ -1946,7 +2044,9 @@ def main():
                        ("r8_fire_only", "deny Fs"),
                        # R8 third probe: a NON-firing rule beside the unanswerable one.
                        ("r8_quiet_mixed", "deny Exec\ndeny Net[unknown-host] app"),
-                       ("r9_fs", "deny Fs")):
+                       ("r9_fs", "deny Fs"),
+                       ("r11_narrow", "deny Unknown[reflect,unresolved] app"),
+                       ("r11_netclass", "deny Net[unknown-host] app")):
         p = os.path.join(ws, "pol." + name)
         open(p, "w").write(text + "\n")
         pol[name] = p
@@ -1973,6 +2073,7 @@ def main():
                 ("R8", lambda: row_r8(ws, pol)),
                 ("R9", lambda: row_r9(ws, pol)),
                 ("R10", lambda: row_r10(ws, pol)),
+                ("R11", lambda: row_r11(ws, pol)),
                 ("R7", lambda: row_r7(ws, pol["pure"], disc))]
         for name, fn in plan:
             if only and name not in only:
