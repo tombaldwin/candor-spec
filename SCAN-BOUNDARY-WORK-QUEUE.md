@@ -2547,6 +2547,44 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## Standing bar 7r — A CLAIM RECORDED IN ONE PLACE, NEVER CHECKED AGAINST THE ARTIFACT IT NAMES (2026-08-01)
+
+The 0.24 release produced this same defect FOUR times in one hour, in four different components, and it is
+the exact error class the analyzers exist to catch:
+
+- **`release-preflight [3]` passed green over a 404.** It verified that `jbang-catalog.json` *said*
+  `v0.24.0`. The release that URL points at did not exist, so `candor update` and every jbang user got a
+  404 for the JVM engine. **A pin naming a URL is not the URL existing.**
+- **The `candor-agents` pin.** I changed a CORRECT `v0.23.1` to an older `v0.23.0` on my claim the tag was
+  never created, and announced it in the commit message as a repair. `gh release list` showed the tag and
+  its Release, both. I had run `git ls-remote --tags | grep` with a pattern that mangled its own input —
+  **a bad grep reports absence identically to real absence**, which is absence of evidence rendered as
+  evidence of absence.
+- **`candor-rust`'s GitHub release existed while crates.io sat at 0.23.1.** The repo looked shipped. Rust
+  users install from crates.io. **A release on the wrong surface reads as done.**
+- **Two CHANGELOGs had no entry for the version being cut**, the umbrella's stale by three rungs while
+  `ENGINE_PIN` moved beneath it. Checks 2 and 3 EXCLUDE changelogs from the stale-string sweep — correctly,
+  since a changelog is a history — but excluding it from the negative check left no positive one. Now
+  gated by preflight **[5]**, which was verified able to FAIL before being trusted.
+
+**The rule: resolve the artifact, never just the string.** `curl -o /dev/null -w '%{http_code}'` the
+download URLs; `gh release view --json assets`; `npm view`; `crates.io/api/v1`. A green check over a string
+that names a missing thing is worse than no check, because it converts an absence into a confident claim —
+which is the cardinal sin, wearing release-tooling clothes.
+
+**Corollary: the tooling existed and I bypassed it.** `bin/release.sh` builds the jar and cuts every
+release from each repo's CHANGELOG in one pass; `bin/release-verify.sh` checks the published surfaces
+afterwards. Hand-driving the steps lost three of them — including tagging candor-spec, the repo the rung is
+authored IN and therefore the one you never think to tag. `release-verify` found every miss, but only
+because it was eventually run. **A release is done when the verifier passes, not when the tags are pushed.**
+
+**Also worth keeping: three of my own verification probes cried wolf today** — `npm run build` on a package
+with no build script, `ERR_MODULE_NOT_FOUND` from an unpacked tarball with no deps installed, and reading
+`j.spec` at the wrong nesting depth. None were real defects. That trade is correct — a probe that cries
+wolf costs a minute, a probe that stays quiet over a real defect is the cardinal sin — but it means an
+ad-hoc probe is currently LESS reliable than the artifact it is inspecting, and should not be trusted over
+it without a second reading.
+
 ## OPEN — candor-swift's Linux CI leg skips 411 of its 496 tests (found 2026-08-01, NOT release-gating)
 
 From the last green Linux run, verbatim:
