@@ -2527,6 +2527,26 @@ content leaves the reader knowing they were affected and not how.
 Same shape of error twice in one session, mine both times: **a check whose fixture cannot reach the
 condition it is checking for.**
 
+## Standing bar 7p — A CORPUS IS A SHAPE, AND THE SHAPE DECIDES WHICH DEFECTS IT CAN SHOW YOU
+
+candor-java's `unknownClasses` defect was found on the `Unknown[…]` axis and missed on the `Net[…]` axis for
+one reason: **candor-java's own report has ZERO Net-bearing functions.** The engines are routinely measured
+against their own source, and a self-scan is not a neutral corpus — it is a corpus with a shape, and an axis
+the shape cannot exercise reads clean whatever the code does.
+
+**This is the per-shape vacuity floor again, one level out.** That floor exists because a conformance row
+whose fixture stopped triggering looks exactly like a passing one; a corpus that cannot exercise an axis
+looks exactly like an engine that handles it. Same failure, different instrument.
+
+**So: before measuring an axis, assert the corpus can EXERCISE it.** Count the entries that carry the thing
+under test — Net-bearing functions for a `Net[…]` filter, `Unknown`-bearing for a reason class — and say the
+number out loud in the report. `0` is not a passing measurement, it is the absence of one. java did exactly
+this once it noticed, moving to httpclient5-5.6.1 (2395 fns, 393 Net-bearing) rather than trusting a
+self-scan that could not answer.
+
+**Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
+code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
+
 ## THE STANDING BAR — applies to every item, no exceptions
 
 0. **A FABRICATION FIX IS WHERE UNDER-REPORTS GET INTRODUCED. Measured: four defects in five fixes.**
