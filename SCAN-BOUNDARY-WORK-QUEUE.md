@@ -5719,3 +5719,72 @@ spellings of it.
 - [ ] **`rewire` emits an `ok` key that §3.2's shape table does not list.** Found by rust in passing. Either
       the table is incomplete or the key is unspecified drift; it is the same unpinned-field class, so pin
       it before a second engine invents a meaning for it.
+
+## THE `unknownClasses` ROUND — present in 3 of 4, and the same adjacent defect fired in all four
+
+Suite green: exit 0, 77 live cells, 0 unwaived FAILs, 0 stale waivers, 0 per-shape vacuity.
+java `acc6ee7` · swift `9aa7552` · ts `caac688`+`612b7d8` · **rust: measured null result, already correct.**
+
+**The defect.** `deniedLayer` and `unverifiedHoleRule` computed from the effect SET alone and never consulted
+the rule's `Unknown[…]` / `Net[…]` class filter, which lived inlined inside the gate and nowhere else. Two
+halves of one bug: `fix-gate --strict` raised a red CI check and a hoist plan for a boundary the policy does
+not deny, while **`unverified --strict` — the verb that exists to say "your green gate is not provably
+green" — certified the same hole clean.**
+
+**Two measurements make the scale concrete, and both are on real code:**
+
+- java's PARTITION property. The gate and `unverified` must partition the `Unknown`-bearing set. On its own
+  407-function report, 72 such functions: `deny Unknown[dispatch,unresolved]` gave **gate 0 + unverified 0**
+  — *a wholly green gate over 72 unproven `Unknown`s with nothing said about any of them.* Gate verdicts
+  came out **byte-identical** across the fix, so it moves what is DISCLOSED and never what is DECIDED.
+- swift's count: up to **459 functions on pollen and 54 in its own sources were NEITHER a violation NOR a
+  disclosed hole** — silently certified. After: **0**, every policy. And zero real disclosure loss: the ~292
+  remedies that vanished were all for functions the gate charges ZERO violations on, so `--strict` had been
+  reddening CI on every one.
+
+### THE SAME ADJACENT DEFECT FIRED IN ALL FOUR ENGINES
+
+Making the predicate filter-aware is what first lets a NARROWED rule *be* the rule a hole is disclosed
+under — and every engine's upgrade path then dropped the bracket, printing the operator's
+`deny Unknown[reflect,unresolved] app` back as the wide rule and advising the nonsense
+**`deny Unknown Unknown app`**. On the Net sibling ts's advised `deny Net Unknown app`, **silently
+un-narrowing a rule scoped to one destination class.** Dormant in every engine until the fix reached it.
+
+**This is the fifth firing of the hazard on this rung, and the first where the lesson propagated instead of
+recurring**: rust had settled the shape in `736957b`, the queue recorded it, and **ts read that record and
+matched rust byte-for-byte rather than rediscovering it.** That is the first time this session a recorded
+lesson prevented a defect rather than explaining one after the fact.
+
+### rust's null result is the model for how to deliver one
+
+Already correct — `481269b` pointed BOTH consumers at one `rule_hits` decision in a single commit. But it
+did not stop at "I looked and it is fine": it **built the pre-`481269b` binary in a worktree and ran the
+identical 10-row matrix against it**, reproducing the defect on all 6 filtered rows and none of the 4
+unfiltered controls. *A null result is worthless without proof the measurement can fail*, and that is the
+proof.
+
+### Judgement calls worth keeping
+
+- swift: **an empty class set means NOT-forbidden**, and that one choice is the disclosing one for BOTH
+  callers. Which is why the matcher takes the **unfloored** map while `--class` keeps the **floored** one —
+  floor the empty set to `unresolved` and `deny Unknown[unresolved]` starts firing on functions nobody
+  classified, **re-fabricating in `fix-gate` and re-swallowing in `unverified` at once.** One principle,
+  two maps.
+- ts kept its OWN manifest element rule rather than copying swift's stricter one, because swift's would make
+  the advisory verb **less sensitive to incompleteness than the gate over the same bytes** — this rung's own
+  defect one layer down. A shape is copied for its reasoning, not its familiarity.
+- java declined to normalise effect-name ORDER while fixing the filter: that misquote names the same rule
+  and is what PART 12c compares four-way. **A filter is the case where reconstruction changes meaning; an
+  ordering is not.**
+
+- [ ] **`netClasses` has the identical shape and is NOT fixed** (swift measured it, correctly did not
+      attempt it): under `deny Net[external] app` a fn reaching only internal hosts passes the gate, and
+      `unverifiedHoleRule` still treats it as a real violation and returns nil — so an `Unknown`-carrying
+      passer goes unnamed. Unlike reason classes it **cannot be derived from the fields `FixFn`/
+      `UnverifiedFn` carry** (it needs the host surface plus the partner set), so it is a data-threading
+      job, not a conjunct. Four-way.
+- [ ] **`conditional` is one-engine.** Pinned in `6f30540`, implemented only by rust; java measured its own
+      absence. The pin got ahead of the implementations, which was the point — but three engines still owe it.
+- [ ] **swift and ts now disagree on manifest ELEMENT leniency** (swift skips a member with no string
+      `path`, ts counts any object). ts's reasoning is recorded above and is sound; rule it or converge it
+      before a third engine invents a third answer.
