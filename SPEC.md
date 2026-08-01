@@ -1364,9 +1364,15 @@ never stated:
 2. `unverified` / `fix-gate` computing from the effect set while the gate applied a class filter — the verb
    answering a WIDER question than the gate asked;
 3. and this one: over a report carrying `hosts` but no `netClass`, **`gate --report` REFUSES (§3.1
-   answerability) while `fix-gate`/`unverified` answer from a FALLBACK DERIVATION** — the verb deriving
-   evidence the gate declined to invent, and then going silent on the function because its derivation
-   happened to clear it.
+   answerability) while the advisory verbs answer anyway** — going silent on a function the gate could not
+   judge.
+
+⟨0.24⟩ *Instance 3 was first written here as "answer from a FALLBACK DERIVATION", which is candor-ts's
+mechanism and NOT candor-rust's — rust reads `netClass` verbatim and never derives it; there, the hole
+predicate simply required `Unknown`, so a `Net`-only entry was never a candidate for the disclosure at all.
+**Two engines, the same violation of the law, through mechanisms with nothing in common.** That is the
+argument for stating this as a comparison rather than a behaviour, arriving as evidence within a day of the
+clause being written: a rule phrased against the derivation would have missed rust entirely.*
 
 All three are one defect: **the advisory verb was more confident than the gate over identical bytes.** The
 current code documents (3) as intentional — *"no refusal channel, so a hedge beats a hole"* — and the first
@@ -1379,8 +1385,14 @@ So, where the gate would refuse for want of evidence:
   strongest sense the verb has — it is precisely *"your green gate is not provably green"*, and skipping it
   because a fallback derivation cleared it is the verb contradicting its own purpose. The reason recorded is
   **the missing evidence**, never the derived class.
-- **`fix-gate` MUST NOT offer a remedy premised on evidence the gate refused to read.** A hoist plan for a
-  boundary the gate could not adjudicate is a confident instruction resting on a guess.
+- **`fix-gate` AND `fix` MUST NOT offer a remedy premised on evidence the gate refused to read.** A hoist
+  plan for a boundary the gate could not adjudicate is a confident instruction resting on a guess.
+  ⟨0.24⟩ *This clause named only `fix-gate`, and candor-rust measured that **`fix` was the worse of the
+  two**: `fix-gate` already routed through the gate's own firing decision and merely mis-set `ok`, while
+  `fix` went through a filter-blind layer predicate and printed the complete confident refactoring
+  instruction this clause describes. Naming one verb and not its sibling is the same scoping error this
+  document has now made nine times; the law binds every verb that answers from a signature, and the list is
+  illustrative rather than exhaustive.*
 - **Both carry `unevaluated: [ { "rule", "why" } ]`** — the gate's own shape (§3.1), because it is the same
   disclosure and inventing a second spelling is the mistake this document has made four times.
 - **`--strict` exits 2**, matching the gate.
