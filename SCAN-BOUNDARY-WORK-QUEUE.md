@@ -5847,3 +5847,55 @@ the reference implementation through the PATH binary would have confirmed the OL
 
 Nothing in this session's own measurements was contaminated: the conformance suite rebuilds its engines, and
 every ad-hoc probe here used an explicit `~/git/…/target/release/` path. Verified, not assumed.
+
+## The netClasses/conditional round — CLOSED, suite green (77 live cells, 0 unwaived FAILs)
+
+**Two measured null results and two real fixes**, which is the right ratio for a round briefed from one
+engine's finding:
+
+- **rust** — already correct on both axes (verified last round with a pre-fix binary A/B).
+- **java** (`e948ce0`, `8b98e09`) — `netClasses` a NULL: `classNarrowingFires` takes a `GateInput` carrying
+  `netClasses()`, so last round's hoist paid for both axes at once. `conditional` implemented, and its
+  defect was bigger than absent-field: `whatif` **rebuilt** the rule from `scope` + the effect asked about,
+  so `deny Net Db app` printed as `deny Net app` — losing the operator's other denied effect.
+- **swift** (`1e20e34`, `40ae8b0`) — `netClasses` PRESENT and fixed. Zero-loss A/B: **+49 holes newly named
+  on pollen, 0 lost, 0 gate verdicts moved** (12/12 byte-identical). `conditional` measured N/A with an
+  argument rather than an absence — no swift verb asks a hypothetical, and after the fix a narrowed rule
+  over a real `Net` is *evaluated*, not deferred.
+- **ts** (2 commits) — `netClasses` a NULL (`classFilterExcludes` takes the effect as an argument and always
+  handled both axes), but it PINNED the scan route's Net half, which was the one place needing data
+  *threaded* rather than a conjunct. `conditional` implemented and now **14/14 differential rows byte-match
+  candor-rust's `violations` array.**
+
+**The upgrade defect fired a FIFTH time, and swift's Net-axis harm is the worst version yet:** under
+`deny Net[unknown-host] app` the tool offered `deny Net Unknown app` — **an edit that silently widens the
+denial from one destination class to ALL of them while presenting itself as one added token.** 408–410 rows
+per pollen run carried it.
+
+### Two false alarms, both from the same cause, both costing investigation time
+
+ts reported a `rust equivalence` FAIL; a clean run has it OK. It ran PART 27 while rust's binary was
+mid-rebuild. **java flagged the identical thing last week** ("cross-engine PARTs are unreliable right now
+because the sibling repos are moving under them"). Twice is a pattern:
+
+- [ ] **Cross-engine PARTs run against sibling repos that other agents are actively rebuilding.** The
+      failure looks exactly like a real divergence and is not. Either the generators should record each
+      engine's build id alongside its cells (so a reader can see the arms were not contemporaneous), or
+      parallel rounds should not run PART 27 per-agent at all and leave it to the coordinator's single run.
+
+### Two engines independently caught a control that lied
+
+ts's first pre-fix scan measurement showed "no note" — **because the worktree had no `node_modules` and the
+scan CRASHED.** Right headline, wrong reason. rust caught the same class last round (a stale scratch file
+injecting a phantom function). *An absence measured through a broken instrument is indistinguishable from
+an absence.*
+
+- [ ] **RULING OWED — the answerability gap on advisory verbs, now raised THREE times.** Over a report
+      carrying `hosts` but no `netClass`, `gate --report` REFUSES (exit 2, §3.1 answerability), while
+      `fix-gate`/`unverified` answer from a fallback derivation — so `unverified` is **silent on an
+      `Unknown`-carrying function the gate could not judge.** Same cardinal-sin shape as the narrowing
+      defect, but arising from ANSWERABILITY rather than narrowing. Currently documented as intentional
+      ("no refusal channel, so a hedge beats a hole"), and closing it needs a ruling on **what `unevaluated`
+      looks like on an advisory verb** — which `612b7d8` already noted has no ruled shape. ts reported
+      rather than deciding, correctly. **This is the third time the missing refusal channel has surfaced;
+      it should be ruled rather than re-noted.**
