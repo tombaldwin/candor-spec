@@ -1403,6 +1403,24 @@ one of them would not have caught the next two, which is exactly what happened. 
 COMPARISON, not a behaviour: for any report and policy, the advisory verb's confidence must be bounded above
 by the gate's.** An implementation can check that directly, and a conformance row can too.
 
+⟨0.24⟩ **"THE SAME BYTES" MEANS THE SAME REPORT SET, AND THAT WAS NOT TRUE.** candor-java measured the
+relation above and found the two sides were never reading the same input: **`gate --report <prefix>` reads
+the report SET the locator names, while every other verb read the ONE file the prefix expansion picked.**
+Two sibling reports under one prefix with the manifest in the second — gate exits 2, `unverified --strict`
+comes back clean. The verb was not less pessimistic than the gate; it was answering a different question and
+the comparison silently did not apply. **A relation between two readers is only a constraint while both
+read the same thing** — so the advisory verbs take the LOCATOR and union the envelope over the located set,
+exactly as the gate does.
+
+⟨0.24⟩ **AND `ok` IS OMITTED FOR THE WITHHELD-RULE TRIGGER TOO, not set to `false`.** `4fd140c` argued the
+`false` deliberately and that was wrong, by its own reasoning one paragraph earlier: on an advisory verb
+`ok: false` asserts *"a hole exists, here it is"* — and where a rule was WITHHELD, no hole was found; the
+question was declined. That is the fabrication mirror, which is precisely why `ec1a441` omits the field for
+incompleteness. **The two triggers are the same shape and take the same answer.** Measured, the family split
+two-against-two on it (rust and java `false`, ts and swift omitted) — the identical split this rung has just
+spent a round closing on the sibling trigger, and it exists because I ruled the two cases in two clauses a
+day apart instead of noticing they were one case.
+
 ⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME
 BYTES.** candor-swift and candor-ts implemented the manifest reader with different ELEMENT rules — swift
 skips a member with no string `path`, ts counts any object — and ts is right, for a reason that generalises
