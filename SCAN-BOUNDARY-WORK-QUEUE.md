@@ -5272,7 +5272,8 @@ exits 2 with no `violations` key; and — the one that matters — **the refused
 (a `deny Fs` beside the bad token must not fire), because otherwise *"could not read this policy"* silently
 becomes *"enforced it anyway"*.
 
-- [ ] **SOUNDNESS, OPEN — swift extracts a Net host ONLY from a direct string argument of
+- [x] **CLOSED — shipped as candor-swift v0.23.3 (2026-08-01), and ported to `main` except the
+      module-const half (pinned known-broken there). SOUNDNESS — swift extracted a Net host ONLY from a direct string argument of
       `NWConnection(host:port:)`, the one idiom PART 4e pins.** Measured, and worse than the review
       reported: **every `URLSession` form yields NO `hosts`** (the `URL(string:)` constructor interposes)
       and **every `Process` form yields NO `cmds`** (`launchPath`/`executableURL` are property WRITES;
@@ -5342,7 +5343,7 @@ implementing and reported rather than complying, which is the only reason it did
       declined to fix unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so it is a
       four-way rung, not a bug. Its `ok` reads as a verdict and its `affected` set is computed over an
       incomplete universe.
-- [ ] **swift host/cmd extraction** (see above) — the largest open soundness item.
+- [x] **CLOSED — v0.23.3.** swift host/cmd extraction, which was the largest open soundness item.
 
 ## swift host/cmd extraction — CLOSED (`b27c3c9`, `f5be3e6`, `77b6bff`, `c611671`), the one defect live in the RELEASED line
 
@@ -5477,8 +5478,7 @@ shadow) — all pinned as tests so a later scope-aware refinement reads as a del
       shipping against**, and it is the arm easiest to skip because building it proves nothing when the
       answer comes back clean.
 
-- [ ] **(superseded framing, kept for the record) A third fabrication of the same family, on BOTH lines,
-      believed pre-existing —** A module-level `let apiBase = "https://…"` shadowed by a DYNAMIC local of the same name:
+- [x] **(superseded framing, resolved: it was port-introduced, fixed in 0.23.3) A third fabrication —** A module-level `let apiBase = "https://…"` shadowed by a DYNAMIC local of the same name:
       the binder scopes the local entry, `constValue` falls through to the module index, and the shadow
       inherits the global's literal. **One binder, so neither the new refusal nor main's `ShadowSave`
       touches it.** Fixture: `scratchpad/fixtures2/…/ModuleConst.swift` (`moduleConstShadowedByDynamic`,
@@ -5524,11 +5524,13 @@ one), so the defect is specific to the merged unit. Diagnosis solid, fix unverif
 **Gate held: nothing pushed, no tag, no release.** Dropping a real filesystem path from a released engine is
 the cardinal sin, and 03:00 surgery on a released line to chase it is how the second one gets shipped.
 
-- [ ] **TO SHIP: fix the merged `<main>` case.** Per-file `<main>` FnInfos are built with `isTopLevel = true`
+- [x] **NOT A DEFECT — the merged `<main>` "loss" was the fabrication being removed** (`<main>` inherited
+      the fabricated path by calling the two functions that had it). No fix was needed. Former text: fix the merged `<main>` case. Per-file `<main>` FnInfos are built with `isTopLevel = true`
       (`DeclCollector.swift:193`) and "union under the one `<main>` module-entry unit" — the union is where
       the flag stops reaching the gate. Then re-run: pollen A/B loss column must be **zero after subtracting
       the two proven fabrications**, the three-arm table, 305+ tests, and the release steps.
-- [ ] **`main` STILL FABRICATES on BOTH module-const shapes** (`moduleConstShadowedByDynamic` AND
+- [→] **PINNED on `main` as three XCTExpectFailure tests (`f575f3f`) — the 0.23 fix does NOT port, see
+      below. `main` FABRICATES on BOTH module-const shapes** (`moduleConstShadowedByDynamic` AND
       `moduleConstShadowedTwice`) — measured this session, three-arm. The branch is now ahead of `main` on
       soundness. `main` needs this same fix, and it was out of scope for a release brief.
 
@@ -5580,3 +5582,55 @@ scoping to the instance rather than the condition.
       AND has the top-level nested-shadow hole. Port `a05c44d` + the single-binder gate back to `main`,
       where the shadow-scope machinery (`ShadowSave`) changes the shape of the fix, so re-measure rather
       than transcribe.
+
+## THE PLAN ON `main` (2026-08-01) — what stands between here and a 0.24 release
+
+`main` is green (505 tests, 0 failures) with three defects pinned as both-ways ratchets. 65 open items, but
+they are not equally weighted; this is the order and the reason.
+
+### 1. THE INSTRUMENT, BEFORE ANY MORE ENGINE WORK
+
+Everything else is measured with it, and it currently has two known holes:
+
+- **Per-shape vacuity ratchet in PARTs 24/25/26.** The floor trips only at `live == 0` in TOTAL, so a review
+  neutered one split shape (8 cells/engine) and the run stayed green. **Up to 9 of 10 shapes could rot with
+  exit 0.** The `live` column and the `0/0` witness count are PRINTED, never ASSERTED. This is the single
+  highest-leverage fix on the list: it is the difference between a suite that measures and a suite that
+  reports.
+- **R10's baseline.** The row is live and correct and has no waiver file, so three real divergences fail it
+  today. Record each with its reason and it ratchets from there. **One of the three has a semantic
+  disagreement underneath it** (java `undeclared:[…]` vs ts/swift `undeclared:[]` for the same situation) —
+  fixing the key set alone would produce agreement on shape over a disagreement on meaning, so settle the
+  semantics first.
+- **R9 needs an `unevaluated`-present arm.** The field is pinned and four-way implemented and no cell
+  compares it.
+
+### 2. THE FOUR-WAY CONVERGENCE THE ⟨0.24⟩ RUNG STILL OWES
+
+- java: normalise `errors[].kind` onto the pinned five (`forbid form`/`allow values` → `rule-form`).
+- rust/ts/swift: emit the `aliases` OBJECT (ruled `7f5b5ba`; ts already does).
+- `whatif` returns `ok:true` over a report declaring `unanalyzed` — measured by rust AND java, both correctly
+  declined to decide it unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so this is a
+  four-way rung, not a bug.
+- MCP incompleteness, measured four-way. ts fixed its own; the other three are unverified. **This is the
+  agent-facing surface, where a false all-clear is acted on with no human reading it.**
+
+### 3. `main`'s MODULE-CONST FABRICATION — design work, not a port
+
+Pinned as three `XCTExpectFailure` tests. The 0.23 fix is a whole-body `locallyBoundNames` gate; `main` has
+`ShadowSave`, which correctly restores an outer const past a shadow scope, so the blunt set over-refuses and
+costs two measured regressions. **`main` needs a SCOPE-AWARE set maintained by the same save/restore**, and
+`NameKeyedStateTests.disposition` is the file that must record what a rebind does to it — before the code,
+not after.
+
+### 4. ONLY THEN, THE 0.24 RELEASE
+
+Floor bump, four-way conformance green with the ratchets honest, per-engine CI, corpus test, preflight. **Do
+not cut it before (1)**: a release gated on a suite that can go green over dead fixtures is the shape this
+whole rung exists to refuse — and `release.yml`'s gates passing on a fabricating v0.23.2 is the live proof.
+
+### What NOT to do next
+
+Not more engine fixes. The last three rounds each found more defects in the *instruments* than in the
+engines, and the 0.23.2 release shipped a fabrication through a green gate. **The suite is the bottleneck,
+not the analysers.**
