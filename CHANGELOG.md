@@ -12,6 +12,31 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
+## 0.24 — current floor (contributes, ambiguity, and a gate that can now go red)
+
+⟨0.24, added 2026-08-01⟩ **CONTRIBUTES**, **`ambiguous:` as a fifth reason kind**, the frontier's
+**unanswerable-condition rule**, **`gate --report`**, **locale-independent ordering**, and **`--class`
+semantics**. Pinned four-way by conformance **PARTs 24–27**.
+
+**This is the first rung that can turn a GREEN GATE RED.** A `--strict` step on `unverified` or `fix-gate`
+that read green over a report `gate --report` refuses now exits 2. That green was the defect, not the fix:
+the advisory verb was reporting a cleaner answer than the gate would have given over the same evidence.
+Measured at 0 flips against trusted dependency reports and 36% against stale ones — so a green that flips
+red here is telling you the reports it read were stale, which is the thing it was always supposed to say.
+
+The governing law, §3.2: **an advisory verb may be LESS certain than the gate, never MORE.** It is stated as
+a containment (`U_clear ⊆ G_clear`) rather than a behaviour because the three defects that produced it
+differed entirely in mechanism and shared only the direction of the error.
+
+Also in this rung: an **unanswerable condition must be DISCLOSED, never scored as a failed one** — extended
+from PART 21's three-row rule to query outputs, after the `callers` dispatch frontier was found silently
+dropping every dot-free `dispatch:` reason, which is rust's dominant form.
+
+**Conformance additions:** PART 24 is the first **SELF-differential** — each engine against itself across a
+package split, so common-mode failure is excluded by construction. 320 live cells, zero vacuous. It found 5
+defects on its first run that 44 hand-written fixtures could not see, because every one of those fixtures had
+picked a single spelling.
+
 ## 0.23 — current floor (cross-package interface dispatch)
 
 ⟨0.23, added 2026-07-27, restated the same day⟩ **The type-hierarchy sidecar's extension point is a
