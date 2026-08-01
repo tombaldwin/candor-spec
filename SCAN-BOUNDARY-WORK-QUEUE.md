@@ -5684,3 +5684,38 @@ open, which is [[feedback-fabrication-fixes-cause-misses]] exactly. Left whole f
       broken in swift; rust reported the same shape one layer down earlier this week (`unverified_hole_rule`
       computing `violates` from `r.effects` alone). **Measure java and ts before fixing** — and fix both
       halves together, since the over-charge and the under-report are one defect seen from two sides.
+
+## STEP 2 COMPLETE — suite green, 77 live cells, 0 unwaived FAILs, 0 stale waivers
+
+rust (`270d30b`, `ff565ea`, `531c415`) closes the round. 449 tests, clippy clean, 54 byte-equal
+equivalence rows, PART 27 exit 0.
+
+**rust's mutant M8 is the finding of the round, and java found it independently.** It built a mutant that
+kept the ENTIRE JSON fix and deleted only the printed human line — **it survived the whole suite.**
+Absence-asserts on `ok` cannot see the other channel, and the ruling says "no disclosure on ANY channel".
+java hit the same thing from the other side: `✓ within policy` IS the prose `ok: true`, so removing the JSON
+field while leaving the sentence standing MOVES the false all-clear rather than removing it. **Two engines,
+two routes, one hole — and the suite was blind to it in both.** Ruled in `ec1a441`.
+
+**And I scoped `0075987` to `whatif` — the eighth instance.** swift and rust independently measured
+`unverified --strict` and `fix-gate --strict` returning `ok:true` over an incomplete report, with `--strict`
+being how CI consumes both. `unverified` is the sharpest case the family has: **the verb that exists to say
+"your green gate is not provably green" certifying a set it knows it cannot see all of.** Now bound for
+every advisory verb.
+
+The two engines' responses were opposite and BOTH right: **swift shipped the shape after reasoning to it
+unprompted; rust measured the same defect and DECLINED to invent one**, citing this document's own rule that
+an unspecified field becomes four guesses. The second is why the clause now exists rather than four
+spellings of it.
+
+### Process notes worth keeping, both from rust, both self-caught
+
+- A mutant harness whose `/tmp` backup **failed silently** contaminated four mutants with a fifth's
+  mutation. Redone with a git-based restore.
+- `git checkout -- .` inside that restore **destroyed an uncommitted test** before it was committed.
+  **A restore step in a measurement script is a destructive step** — [[feedback-evidence-dirs-are-sacred]]
+  in a new costume.
+
+- [ ] **`rewire` emits an `ok` key that §3.2's shape table does not list.** Found by rust in passing. Either
+      the table is incomplete or the key is unspecified drift; it is the same unpinned-field class, so pin
+      it before a second engine invents a meaning for it.
