@@ -1355,6 +1355,37 @@ whether a `false` would be a statement or an invention.
 The `affected` and `violations` arrays still ship: a partial answer that says it is partial is worth more
 than a refusal, and `whatif` is consulted BEFORE an edit, where the alternative is the operator guessing.
 
+⟨0.24⟩ **THE SAME RULE BINDS EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any
+later sibling.** `0075987` ruled it for `whatif` and I scoped it to `whatif`, which is the eighth time this
+document has been scoped to the verb its defect was found in. candor-swift and candor-rust then measured the
+siblings INDEPENDENTLY and found the same shape:
+
+    over a report declaring `unanalyzed`:
+      gate --report        exit 2, incomplete, manifest        ← correct
+      unverified --strict  exit 0, ok:true, no disclosure      ← and `--strict` is how CI consumes it
+      fix-gate  --strict   exit 0, ok:true, no disclosure
+
+`unverified` is the sharpest case in the family: **it is the verb that exists to say "your green gate is not
+provably green", certifying a set it knows it cannot see all of.** A function in an unparsed file is absent
+from `functions`, so it cannot be enumerated as an unverified pass — and its absence is exactly what the
+verb would have to report.
+
+So: an advisory verb over an incomplete report emits `incomplete: true` plus the `unanalyzed` manifest and
+**OMITS `ok`**, and `--strict` (the CI form) exits 2. **`ok: false` is wrong here for the same reason it is
+wrong in `whatif`**: on an advisory verb `false` asserts *"a hole exists, here it is"* beside an empty array
+— the fabrication mirror, and worse than the silence it replaces. candor-swift shipped this shape after
+reasoning to it unprompted; candor-rust measured the same defect and correctly DECLINED to invent a shape,
+citing this section's own rule that an unspecified field becomes four guesses. Both were right, and the
+second is why this clause exists.
+
+⟨0.24⟩ **AND THE DISCLOSURE MUST REACH EVERY CHANNEL THE VERB ANSWERS ON, WHICH ITS TESTS PROBABLY CANNOT
+SEE.** candor-rust built a mutant that kept the whole JSON fix and deleted only the printed human line —
+**it survived the entire suite**, because absence-asserts on `ok` cannot see the other channel. candor-java
+found the identical hole independently: `✓ within policy` is the prose `ok: true`, and removing the JSON
+field while leaving that sentence standing MOVES the false all-clear rather than removing it. A verb with
+two output channels needs the claim withdrawn from both, and a test that reads one channel is evidence
+about one channel.
+
 ⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED:
 `"conditional": [ { "rule": "<the raw policy line>", "condition": "<the narrowing left unevaluated>" } ]`,
 omitted when empty.** `whatif` asks about an effect the code does not yet have. A narrowing filter
