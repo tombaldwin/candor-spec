@@ -1355,6 +1355,19 @@ whether a `false` would be a statement or an invention.
 The `affected` and `violations` arrays still ship: a partial answer that says it is partial is worth more
 than a refusal, and `whatif` is consulted BEFORE an edit, where the alternative is the operator guessing.
 
+⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME
+BYTES.** candor-swift and candor-ts implemented the manifest reader with different ELEMENT rules — swift
+skips a member with no string `path`, ts counts any object — and ts is right, for a reason that generalises
+past this field. **Skipping a malformed element makes the advisory verb read a SHORTER `unanalyzed` list
+than the gate reads from the identical file**, so a report the gate calls incomplete gets a clean advisory
+answer. That is this section's own defect one layer down: a verb quietly disagreeing with the gate about
+what the evidence says.
+
+So the rule is a RELATION, not a shape: whatever leniency a reader applies, the advisory verb's
+incompleteness verdict must be **at least as pessimistic** as the gate's over the same bytes. An element
+that cannot be read is still an element that says something was not analysed — its unreadability is the
+disclosure, not a reason to drop it.
+
 ⟨0.24⟩ **THE SAME RULE BINDS EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any
 later sibling.** `0075987` ruled it for `whatif` and I scoped it to `whatif`, which is the eighth time this
 document has been scoped to the verb its defect was found in. candor-swift and candor-rust then measured the
