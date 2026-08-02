@@ -5502,17 +5502,25 @@ narrow in what it ADMITTED, and would have shipped a fail-CLOSED regression on w
 set is load-bearing in both directions and I had only been checking one. java measured it while
 implementing and reported rather than complying, which is the only reason it did not ship.
 
-## OPEN at the budget stop — what a release still needs
+## MOSTLY CLOSED (audited 2026-08-02) — what a release still needs
 
-- [ ] **java: normalise `errors[].kind` onto the pinned set** (`forbid form`/`allow values` → `rule-form`,
+**4 of 5 were already done and the list had not been updated.** A stale queue is the same defect as a stale
+changelog: a record that reads as current while describing a state that no longer exists (bar 7r). Audited
+by checking the CODE, not by trusting the checkboxes. The one genuinely open item is the `whatif` rung.
+
+- [x] **CLOSED — java: normalise `errors[].kind` onto the pinned set** (`rule-form` live in `Policy.java`) (`forbid form`/`allow values` → `rule-form`,
       added in `f735b16` after java's round began; it argued for exactly this member and was right).
-- [ ] **R10's baseline**: the row is live and correct but has no waiver file yet, so today's real
+- [x] **CLOSED — R10's baseline** (2 waivers recorded: java + rust report-parity; plus the population
+      gate, since a majority over a SUBSET of engines is a different question and CI's ubuntu leg has 3).
+      Original text: the row is live and correct but has no waiver file yet, so today's real
       divergences (java `packages`, rust's `incomplete` marker, omit-vs-empty) fail it. Measure once, record
       each with a reason, and it ratchets from there.
-- [ ] **Per-shape vacuity ratchet in PARTs 24/25/26** — the floor trips only at `live == 0` in TOTAL, so a
+- [x] **CLOSED — Per-shape vacuity ratchet in PARTs 24/25/26** (`KNOWN_VACUOUS` floor in all three
+      generators; the `live` column is now ASSERTED, not merely printed).
+      Original text: per-shape vacuity ratchet — the floor trips only at `live == 0` in TOTAL, so a
       review neutered one split shape (8 cells/engine) and the run stayed green. Up to 9 of 10 shapes could
       rot with exit 0. **The `live` column and the `0/0` witness count are PRINTED, never ASSERTED.**
-- [ ] **R9 needs an `unevaluated`-present arm** — the field is now pinned and four-way implemented, and no
+- [x] **CLOSED — R9's `unevaluated`-present arm** (live in `gen_rung024.py`) — the field is now pinned and four-way implemented, and no
       cell compares it.
 - [ ] **`whatif` returns `ok:true` over a report declaring `unanalyzed`** — measured by rust AND java, both
       declined to fix unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so it is a
