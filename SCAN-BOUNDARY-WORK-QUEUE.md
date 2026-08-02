@@ -2776,6 +2776,43 @@ Def 24's manifest granularity, the frontier differential's shared consumer, the 
 question, the `Net[…]` widening judgment, and the rulings owed. These age far better than defect reports
 and none of them was stale.
 
+## PART 29 EXTENDED: ROUTE x TRIGGER — 8 cells red, four-way (2026-08-02)
+
+The sweep's own conclusion, acted on: P5 shipped driving `scan --policy` with an unparseable-source
+trigger only, and **the two cells it tested were the two already fixed.** §3.1 puts the obligation on the
+READING, not on how the report arrived, so `gate --report` owes every clause the scan route owes. Added as
+a second route with three report-shaped triggers (no compilation, no tree — which is also why it was cheap
+to leave untested and expensive to have left untested).
+
+**8 cells red across all four engines**, on clauses the spec already states. The controls hold: `policy`
+and `baseline` stay clean four-way, and `report/declared` — a well-formed ⟨0.21⟩ manifest — is clean
+four-way too, which is what makes these findings about a TRIGGER rather than about the route.
+
+**EACH ENGINE IMPLEMENTS ONE HALF OF §3.3.1 AND BREAKS THE OTHER**, on a malformed manifest:
+
+    rust / ts / swift   exit 2, `violations: []`   clause 1 ✓  clause 2 ✗ — the finding is DELETED
+    java                exit 1, `violations: 1`    clause 2 ✓  clause 1 ✗ — never fails closed
+
+Neither is a subset of the other. **A fix that copies one engine to the others trades one half for the
+other**, which is why each cell is waived with its own reasoning rather than as a single row. rust/ts/swift
+additionally set neither `incomplete` nor `unanalyzed` on the refusal, so it is not machine-readable
+either.
+
+**`count0` is broken FOUR-WAY** and is the cheaper half: SPEC §2 ⟨0.24⟩ already rules that
+`analyzed.count == 0` is "I judged nothing" and MUST NOT read as full coverage. Note this is the **third
+surface** for one rule — the chained-report form is separately waived in `trust-monotonicity-baseline.json`
+(java/swift `empty_zero`), and now the direct `gate --report` form fails on all four. A rule that has to be
+implemented once per surface will be missed once per surface.
+
+Waived, not fixed: 8 pairs waived, 20 live, ratchet green, full suite 140 MATCH. The fix is 8 cells across
+four repos and the `count0` half is the better-specified place to start.
+
+**Also corrected in passing, because it is the defect this file keeps naming:** P5's summary line reported
+the FINDING count where it said "pair(s)" — one broken cell trips three findings at once, so it read as
+"19 of 20 pairs waived" when it was 8 of 20. And PART 29's success line in `run.sh` claimed every gate
+"failed closed AND still reported the violation" with 8 cells waived; it now says *outside the ratchet*,
+as the other five ratcheted PARTs do.
+
 ## Standing bar 7u — THE QUEUE ROTS BECAUSE A STALE ITEM COSTS NOTHING (2026-08-02)
 
 Audited on 2026-08-02, on the question "is any of this still true": **12 open items sampled, 11 already

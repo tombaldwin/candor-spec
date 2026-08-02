@@ -4559,7 +4559,7 @@ echo
 
 echo "PART 29 — incomplete-vs-violation dominance: a real violation survives an incomplete scan (SPEC §3.3.1, P5)"
 if [ "$P29_OK" = 0 ]; then
-  echo "  -> MATCH — every gate failed closed over unreadable code AND still reported the violation it found"
+  echo "  -> MATCH — every gate failed closed over unreadable code AND still reported the violation it found, outside the ratchet"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
