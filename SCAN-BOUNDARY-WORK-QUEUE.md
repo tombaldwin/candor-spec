@@ -2641,6 +2641,33 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## Standing bar 7t — RUN THE SUITE, NOT THE GENERATOR YOU JUST EDITED (2026-08-02)
+
+The entry-collision union touched the dep index. I retired PART 26's two `stale_beside` waivers, verified
+them by running `gen_trust_monotonicity.py` directly, wrote the result up, and pushed. **CI failed on PART
+25**: three stale `rust` waivers in `chain-idempotence-baseline.json` — `same_path`, `two_files`,
+`reserialised` — all cleared by the same union, none of them looked at.
+
+**This is not local-green-vs-CI-red (bar 7q). PART 25 never executed on my machine at all.** Running the
+one generator I had just edited told me nothing about the four sibling properties that share its subject,
+and a change to the dep index is exactly the change that touches all of them. The queue entry I was
+working from said it in as many words — *"PARTs 25 **and** 26 will go green on the engines the moment the
+union lands"* — so this was not even an inference I had to make.
+
+**THE RULE: after changing a shared subsystem, run `run.sh`. Not the part you edited; the suite.** The
+per-generator invocation is for the inner loop while a property is being written. It is not a
+verification, because the thing it cannot tell you is which OTHER property your change just moved — and
+the ratchet's stale-waiver direction is designed to fail loudly on exactly that, so skipping the suite
+converts a designed signal into a red build for the next person.
+
+**The waiver structure deserves the credit, and is worth copying.** The three duplication spellings were
+deliberately kept as SEPARATE waivers so a partial fix stays visible: dedup on the file PATH clears
+`same_path` and leaves `two_files`; dedup on BYTES clears both and leaves `reserialised`, which is the
+real-world duplicate (the same package scanned twice, not a `cp`). All three clearing at once is what only
+a root-cause fix does — so **the shape of the pass was itself evidence the union was the right fix rather
+than a spelling-specific patch.** Waivers split by mechanism pay for themselves at retirement, not just
+at filing.
+
 ## Standing bar 7s — DISQUALIFY THE INSTRUMENT BEFORE REPORTING ITS NUMBER (2026-08-02)
 
 Sent to un-skip candor-swift's Linux tests, the investigation found the mechanism (`Bundle(for:) ===
