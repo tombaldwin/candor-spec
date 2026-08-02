@@ -92,8 +92,35 @@ and immediately found the theory wrong twice.
      that could not have shown the gap.
    - Verified to catch: a seeded mutant in candor-scan (an unresolved call REPLACES concrete effects)
      gives exactly 16 `LOST_EFF` on rust — 8 effects × the 2 Unknown-introducing arms — other three clean.
-3. **rust's incomplete-vs-violation exit-code divergence** (§3b). rust exits 2 where java and swift exit 1;
-   a four-way ruling I owe, now pinned on BOTH routes since `gate --report` mirrors its own scan.
+3. ~~**rust's incomplete-vs-violation exit-code divergence** (§3b).~~ **CLOSED 2026-08-02** — and this
+   entry was HALF STALE and half pointing at the wrong site, which is the interesting part.
+   - **The POLICY gate was already fixed** (2026-07-28, the `had_parse_failure && v.is_empty()` guard).
+     Verified end to end rather than read off the comment: a crate with a real `deny Net` hit plus an
+     unparseable file exits **1** with the violation, `incomplete: true` AND `unanalyzed` all in one
+     document. Nothing to do.
+   - **Its SIBLING SITE — the AS-EFF-005 baseline guard — still had the defect**, and there it was worse:
+     the refusal ran BEFORE `check_baseline` was called at all, so the compare never happened.
+     Measured with a control both ways:
+
+     | | exit | violations in `--gate-json` |
+     |---|---|---|
+     | regression alone (control) | 1 | 1 — `AS-EFF-005` |
+     | regression + one unparseable file | **2** | **0 — the finding gone from the document** |
+
+     Fixed by moving the refusal AFTER the compare and gating it on `v.is_empty()`, exactly the policy
+     gate's shape. What licenses evaluating at all is an ASYMMETRY worth keeping: a parse failure makes
+     the scan see LESS and AS-EFF-005 fires on effects GAINED, so less evidence can only MASK a
+     regression, never manufacture one — the clean-compare refusal survives untouched, so this does not
+     trade a dropped finding for a fabricated all-clear. Test asserts all three rows; verified to catch.
+   - **The durable lesson is the one already in this file and it did not stick: two identical sequences,
+     one repaired.** The 2026-07-28 fix wrote its reasoning into the policy gate's comment and never
+     looked one screen up. Same shape as [[feedback-fabrication-fixes-cause-misses]], and the same check
+     that came back CLEAN for swift's pipe-descriptor leak an hour earlier came back DIRTY here — which
+     is why it is worth running rather than reasoning about.
+   - **And the queue entry itself had already self-corrected once**: filed as "a four-way ruling I owe",
+     then annotated *"I filed this as needing a four-way ruling and it is not one — §3.3.1 already says
+     it verbatim"*. Two engines agreeing with the spec and one disagreeing is not a tie. The correction
+     was right and the item still sat under a heading that said otherwise.
 4. **java's `blindspots` never lists a setup-only source** (§4). `UnknownReason.parse` returns null on a
    colon-free tag, so the UNFILTERED list is already wrong. Check the other three for the same
    colon-required parse.
