@@ -4442,6 +4442,64 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 28 — P4, SIGNATURE MONOTONICITY: ADDING A CALL MAY ONLY ADD                            [TIER 1]
+#
+# The fourth and last self-differential, and the only one that varies the PROGRAM rather than the input
+# reports (P2, P3) or the packaging (P1). Each unit is rendered twice — once bare, once with one more
+# call in its body — and the augmented arm must be a superset of the base in every channel:
+#
+#     effects(base) <= effects(base + a call)     reasons(base) <= reasons(base + a call)
+#     base present in `functions`  =>  the augmented unit is present too
+#
+# THE RELATION IS DIRECTIONAL AND RUNS THE OPPOSITE WAY FROM P3. Equality would be wrong and would fail
+# every honest engine: the added call is SUPPOSED to contribute. What is forbidden is LOSS. The presence
+# conjunct is the sharpest — under <0.21> an absent entry is a POSITIVE purity claim, so a unit that
+# drops out of `functions` when a call is added has started making a STRONGER claim on less evidence.
+#
+# THE DEFECT IT IS BUILT FOR is an engine that, meeting a call it cannot resolve, REPLACES a unit's
+# answer instead of widening it: `f(){fs_sink();}` -> ['Fs'] but `f(){fs_sink(); opaque();}` -> ['Unknown'],
+# the Fs silently gone. That is a cardinal sin reached by ADDING code, which is the direction real
+# programs move in, and the same shape hides behind every CHA fan-out bound in the family — whether
+# publishing `['Unknown']` past `CHA_FANOUT_LIMIT` (12 in ts and java) adds to the union or replaces it is
+# exactly what the `plus_fanout` arm asks.
+#
+# ARM ACTIVITY IS PRINTED EVERY RUN, and it is the guard that matters here. A cell counts as "live" when
+# its BASE claims something, which says NOTHING about whether the added call did — so an augmentation that
+# never changes any engine's answer cannot fail and passes for free. The three MUST_CHANGE arms
+# (plus_other, plus_opaque, plus_fanout) FAIL the run if they are inert; the three must-not arms
+# (plus_pure, plus_same, plus_recurse) reading 0 everywhere is the CORRECT outcome, and they are what
+# catches an engine that loses an effect on meeting a harmless call.
+#
+# WHAT IT FOUND ON HEAD: nothing in the engines — 48/48 live cells clean on all four. It found TWO
+# defects in ITSELF, both of the same kind and both caught by ARM ACTIVITY: a `plus_recurse` guard written
+# with Clock sinks (`System.nanoTime`, `Date.now`), so the arm measured its own guard and "changed" 5/5
+# cells on exactly the two engines whose spelling it used; and a `plus_fanout` arm rendered with exactly
+# CHA_FANOUT_LIMIT implementers, sitting on the boundary of the bound it existed to cross and changing
+# nothing anywhere. The first honest run reported OK on all four engines with both arms inert.
+#
+# VERIFIED TO CATCH: a seeded mutant in candor-scan making an unresolved call REPLACE a unit's concrete
+# effects produced exactly 16 LOST_EFF findings on rust (8 effects x the 2 Unknown-introducing arms) with
+# the other three engines clean, each naming the shape (`base=Fs arm=+Unknown`).
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_signature_monotonicity.py" ] || { echo "FAIL: gen_signature_monotonicity.py is missing"; exit 2; }
+[ -f "$HERE/signature-monotonicity-baseline.json" ] || { echo "FAIL: signature-monotonicity-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P28_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_signature_monotonicity.py" --baseline "$HERE/signature-monotonicity-baseline.json"
+) || P28_OK=1
+
+echo "PART 28 — signature monotonicity: adding a call may only ADD (SCAN-BOUNDARY-WORK-QUEUE.md §3, P4)"
+if [ "$P28_OK" = 0 ]; then
+  echo "  -> MATCH — every added call only widened, on every live cell, outside the ratchet"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # PART 27 — THE ⟨0.24⟩ RUNG'S BEHAVIOUR                                                      [TIER 1]
 #
 # WHY IT EXISTS. A whole rung of normative requirements shipped with NOTHING behind it: `grep -c` over
@@ -4513,7 +4571,7 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on

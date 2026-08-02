@@ -68,8 +68,30 @@ and immediately found the theory wrong twice.
 
 **THEN, in order:**
 
-2. **P4 — signature monotonicity** (§3). The last self-differential property. P1/P2/P3 found 8 defects
-   between them on first run; there is no reason to expect P4 differs.
+2. ~~**P4 — signature monotonicity** (§3).~~ **BUILT 2026-08-02, conformance PART 28**
+   (`gen_signature_monotonicity.py` + its baseline). The last self-differential. Relation is DIRECTIONAL
+   and runs the OPPOSITE way from P3: `effects(base) ⊆ effects(base + a call)`, same for reason tokens,
+   plus a presence conjunct (under ⟨0.21⟩ a unit that drops out of `functions` when a call is added has
+   started making a STRONGER claim on less evidence). Built for the engine that meets an unresolvable
+   call and REPLACES a unit's answer instead of widening it — a cardinal sin reached by ADDING code.
+   **It did NOT repeat P1/P2/P3's hit rate: 48/48 live cells clean on all four engines.** Filed as
+   blocked on `gate --report` "for the class half"; it is not — `unknownWhy` is on the wire per unit and
+   a token set is strictly finer than the §6.2 class projection it feeds, so the property catches a lost
+   reason one projection EARLIER and names the token rather than the thinner class.
+   - **Both defects it found on its first run were in ITSELF, and that is the transferable part.** The
+     `plus_recurse` guard was written with `System.nanoTime()` / `Date.now()` — **Clock sinks** — so the
+     arm added an effect and then observed that an effect had been added; it "changed" 5/5 cells on
+     exactly the two engines whose spelling it used, which reads like an engine difference. And
+     `plus_fanout` was rendered with exactly `CHA_FANOUT_LIMIT` (12) implementers — sitting ON the
+     boundary of the bound it existed to cross, changing nothing anywhere. **The first run reported OK on
+     all four engines with two of three MUST_CHANGE arms inert.**
+   - So the guard is now IN-BAND: an **ARM ACTIVITY** report prints every run and FAILS the suite if a
+     MUST_CHANGE arm never changes any engine's answer. A cell counts "live" when its BASE claims
+     something, which says nothing about whether the added call did — liveness of the base is not
+     liveness of the arm, and only the second is the property. Same shape as the `tr_TR` locale control
+     that could not have shown the gap.
+   - Verified to catch: a seeded mutant in candor-scan (an unresolved call REPLACES concrete effects)
+     gives exactly 16 `LOST_EFF` on rust — 8 effects × the 2 Unknown-introducing arms — other three clean.
 3. **rust's incomplete-vs-violation exit-code divergence** (§3b). rust exits 2 where java and swift exit 1;
    a four-way ruling I owe, now pinned on BOTH routes since `gate --report` mirrors its own scan.
 4. **java's `blindspots` never lists a setup-only source** (§4). `UnknownReason.parse` returns null on a

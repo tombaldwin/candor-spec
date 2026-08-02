@@ -1,0 +1,22 @@
+{
+  "_": [
+    "PART 28 (P4 — SIGNATURE MONOTONICITY) ratchet. `known` waives (engine, aug) pairs that are",
+    "known-broken, so a real regression elsewhere still fails the suite.",
+    "",
+    "IT RATCHETS BOTH WAYS. An unwaived failure fails the suite; a waiver whose cells now ALL pass also",
+    "fails it, so deleting the entry is part of the fix — a waiver that outlives its defect masks the",
+    "defect's return.",
+    "",
+    "`known` IS EMPTY, AND THAT IS A MEASUREMENT RATHER THAN AN OMISSION. All four engines passed every",
+    "live cell on the first honest run: 48/48 each, 0 vacuous. Two defects were found and fixed on that",
+    "run and BOTH WERE IN THIS HARNESS, not in the engines — a `plus_recurse` guard that used Clock sinks",
+    "(`System.nanoTime`, `Date.now`) and so measured itself, and a `plus_fanout` arm rendered with exactly",
+    "CHA_FANOUT_LIMIT implementers, which never crossed the bound it existed to cross. Both were caught by",
+    "the ARM ACTIVITY report, which is printed every run for that reason.",
+    "",
+    "The property is VERIFIED TO CATCH: a seeded mutant in candor-scan making an unresolved call REPLACE",
+    "a unit's concrete effects instead of widening them produced 16 LOST_EFF findings on rust (8 effects x",
+    "the 2 arms that introduce Unknown) while the other three engines stayed clean."
+  ],
+  "known": []
+}
