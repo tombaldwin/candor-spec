@@ -5907,7 +5907,7 @@ by checking the CODE, not by trusting the checkboxes. The one genuinely open ite
       rot with exit 0. **The `live` column and the `0/0` witness count are PRINTED, never ASSERTED.**
 - [x] **CLOSED — R9's `unevaluated`-present arm** (live in `gen_rung024.py`) — the field is now pinned and four-way implemented, and no
       cell compares it.
-- [ ] **`whatif` returns `ok:true` over a report declaring `unanalyzed`** — measured by rust AND java, both
+- [x] **STALE — VERIFIED 2026-08-02, and the earlier probe was the thing that was broken.** Measured with the invocation the verb actually takes (`whatif <fn> <Effect>` positionals, and a call-graph SIDECAR beside the report — two things the first two probes lacked, which is why they returned nothing and said nothing): over a report declaring `unanalyzed`, **rust, java and ts all omit `ok` and set `incomplete: true`**, which is §3.2's advisory-verb rule working. swift ships no `whatif`. The CONTROL discriminates: over the same report WITHOUT `unanalyzed`, `ok: true`. **`whatif` returns `ok:true` over a report declaring `unanalyzed`** — measured by rust AND java, both
       declined to fix unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so it is a
       four-way rung, not a bug. Its `ok` reads as a verdict and its `affected` set is computed over an
       incomplete universe.
@@ -6351,7 +6351,7 @@ proof.
       passer goes unnamed. Unlike reason classes it **cannot be derived from the fields `FixFn`/
       `UnverifiedFn` carry** (it needs the host surface plus the partner set), so it is a data-threading
       job, not a conjunct. Four-way.
-- [ ] **`conditional` is one-engine.** Pinned in `6f30540`, implemented only by rust; java measured its own
+- [ ] **STILL OPEN, but the PROBE REQUIREMENT is now known — 2026-08-02.** Two probes failed to reach it and neither was evidence: the first fed `conditional Net` as a POLICY LINE (it is not a rule kind at all — §3.2 defines it as a VERDICT FIELD, `"conditional": [{rule, condition}]`), and the second used `deny Net[unknown-host]` over an entry with no `netClass`, which produces a whole-policy REFUSAL (`refused: true`, `unevaluated: 1`) on all four engines and never reaches the conditional path. §3.2 places `conditional` on an answer that is *fail-closed BUT CONDITIONAL* — the gate DOES answer — so a correct probe needs a rule that FIRES on carried evidence while one of its narrowings stays unevaluated. **Not closed, and deliberately not guessed a third time.** **`conditional` is one-engine.** Pinned in `6f30540`, implemented only by rust; java measured its own
       absence. The pin got ahead of the implementations, which was the point — but three engines still owe it.
 - [ ] **swift and ts now disagree on manifest ELEMENT leniency** (swift skips a member with no string
       `path`, ts counts any object). ts's reasoning is recorded above and is sound; rule it or converge it
