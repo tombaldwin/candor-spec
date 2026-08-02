@@ -4500,6 +4500,71 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 29 — P5, INCOMPLETE-VS-VIOLATION DOMINANCE: OVER EVERY GATE                            [TIER 1]
+#
+# SPEC 3.3.1 has two clauses and only the first one had a test:
+#
+#     A configured gate over incompletely-analyzed code MUST fail closed (exit != 0);
+#     a real violation (exit 1) still dominates.
+#
+# The second is the one with a body count. candor-rust's AS-EFF-005 baseline guard shipped with it
+# inverted -- the incomplete refusal ran BEFORE the baseline compare, so a crate with a real regression
+# AND one unparseable file exited 2 and wrote `{ok:false, incomplete:true, violations: []}`. The finding
+# was not mis-coded, it was ABSENT FROM THE ARTIFACT a CI consumer reads. Its sibling, the POLICY gate,
+# had the identical defect and had been fixed a week earlier; the fix wrote its reasoning into the policy
+# gate's comment and never looked thirty lines up the same function. ONE CLAUSE, TWO GATES, ONE TESTED.
+#
+# So this enumerates the gates rather than testing the one the author had in mind. Three arms per
+# (engine, gate), and the relation is a SELF-DIFFERENTIAL -- no expected-value table:
+#
+#     violation_only    a real violation, everything parses          the CONTROL and the ORACLE
+#     incomplete_only   no violation, one unit that will not parse   must FAIL CLOSED
+#     both              the same violation plus that same unit       must answer like violation_only,
+#                                                                    AND disclose the incompleteness
+#
+# `violation_only` is the expectation for `both`: whatever an engine reports when it can see everything,
+# it must still report when one extra unit is unreadable. The CONTROL IS CHECKED FIRST and its failure is
+# reported as CONTROL-DEAD rather than OK -- a dead control makes the row below pass while measuring
+# nothing, which this suite has had to add a verdict for twice already.
+#
+# WHY THE DIRTY DIRECTION IS SOUND, which is what licenses demanding a verdict at all: a parse failure
+# makes the scan see LESS; `deny` fires on effects PRESENT and AS-EFF-005 on effects GAINED. Less evidence
+# can only MASK a violation, never manufacture one. So a violation found beside unreadable source is real,
+# while a CLEAN gate over unreadable source is the false-pure clause 1 forbids. Both are asserted, because
+# a "fix" that merely dropped the refusal satisfies one and breaks the other.
+#
+# WHAT IT FOUND ON HEAD: a gate-level CARDINAL SIN in candor-swift, on both gates. `Parser.parse` is
+# error-tolerant and never throws, so a file with a syntax error counted as fully analyzed; error recovery
+# folds the declarations after the bad token into the broken function's body, so the effect is
+# MISATTRIBUTED and its real owner vanishes from `functions` -- a <0.21> purity claim over a function that
+# performs Net. `deny Net Hidden` went exit 1 -> exit 0 with `ok: true` and nothing disclosed, from one
+# stray character. Fixed by consulting ParseDiagnosticsGenerator and recording `unanalyzed` while STILL
+# walking the recovered tree, so no effect is lost.
+#
+# TWO HARNESS DEFECTS WERE FIXED BEFORE ANY OF THAT WAS BELIEVED, both of which manufactured findings
+# about candor that were findings about the harness: the swift arm scanned `cases.swift` instead of the
+# directory (so the "incomplete" arms were not incomplete), and `find_report` excluded two of SPEC 2.2's
+# six reserved sidecar segments, so a `.locs.json` sidecar was handed to an engine as a BASELINE.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_incomplete_dominance.py" ] || { echo "FAIL: gen_incomplete_dominance.py is missing"; exit 2; }
+[ -f "$HERE/incomplete-dominance-baseline.json" ] || { echo "FAIL: incomplete-dominance-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P29_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_incomplete_dominance.py" --baseline "$HERE/incomplete-dominance-baseline.json"
+) || P29_OK=1
+
+echo "PART 29 — incomplete-vs-violation dominance: a real violation survives an incomplete scan (SPEC §3.3.1, P5)"
+if [ "$P29_OK" = 0 ]; then
+  echo "  -> MATCH — every gate failed closed over unreadable code AND still reported the violation it found"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # PART 27 — THE ⟨0.24⟩ RUNG'S BEHAVIOUR                                                      [TIER 1]
 #
 # WHY IT EXISTS. A whole rung of normative requirements shipped with NOTHING behind it: `grep -c` over
@@ -4571,7 +4636,7 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
