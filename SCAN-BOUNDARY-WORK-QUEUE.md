@@ -21,7 +21,69 @@ Everything below this section is the RECORD: the standing bar, the lessons, and 
 their measurements. It is chronological because it is a history. **This section is the queue.** A `- [ ]`
 further down is the original filing of something indexed here, not a separate job.
 
-### QUEUE REVIEW, 2026-07-28 — what is actually left
+### QUEUE REVIEW, 2026-08-02 — the priority list had no live items left
+
+**Read this first, and note what it replaces.** The previous review block (2026-07-28) listed four
+numbered priorities and **all four are now struck through**. A reader arriving cold got a list of
+completed work and no direction, which is the same failure as a stale item one level up: the document
+said "here is what matters" and named only finished things.
+
+**THE STATE, from the ratchets rather than from prose.** Four waivers remain across every baseline in
+`conformance/`, and they are the only machine-checked claims that an engine is knowingly wrong:
+
+    trust-monotonicity   java/empty_zero, swift/empty_zero   the count-0 chained-coverage rule (2 of 4)
+    rung024              java, rust                          R10 report-envelope shape (format, not soundness)
+
+Everything else that was waived this session was either fixed or retracted.
+
+**WHAT IS ACTUALLY NEXT, in order:**
+
+1. **SPEC 0.25 — and it is first because the CONTRACT is the thing that is wrong, not an engine.** §2
+   chaining rule 1 as published in 0.24 says an ambiguous key "is dropped, not picked from"; all four
+   engines now UNION, and conformance PARTs 25/26 pin the union — so **an engine conforming to the spec
+   text would fail the suite**, and a third party implementing to 0.24 would build the cardinal sin
+   deliberately. The replacement text is drafted in SPEC.md (`⟨0.25⟩`, `26bfbc8`). What remains is
+   mechanical and needs a ship decision, not design: the version header, four `SPEC_VERSION` pins, seven
+   CHANGELOGs, the floor. **The engines already ship the rung — 0.25 is the contract catching up.**
+
+2. **The count-0 chained-coverage rule in java and swift** (`empty_zero`). Specced at §2 ⟨0.24⟩ row 1 —
+   a `count: 0` report "has judged nothing" and MUST be treated as NOT COVERED — and it is a genuine
+   purity-claim defect: an empty chained report licensing purity claims for everything in the package.
+   **2 of 4, so bar 7v says the evidence is about those two engines**, and rust and ts are a working
+   reference. PART 26 prints `CONTROL SEPARATION`, which must go from INDISTINGUISHABLE to separated when
+   this lands — the negative control is already in place.
+
+3. **Per-type unanswerability in the §2.2 sidecar** (§2). The one DESIGN item the 2026-08-02 audit
+   confirmed genuinely live. A sidecar that is present and non-empty is trusted per-TYPE, and a type with
+   no entry is treated as having no supertypes — a positive claim the format cannot distinguish from "I
+   did not index this type". Probably needs the `analyzed`/`unanalyzed` treatment reports got at ⟨0.21⟩.
+   **MEASURE FIRST**; do not patch around it with a leaf-key guess.
+
+4. **The frontier differential's three arms and two independent consumers** (§2). A defect INSIDE the
+   instrument: the swift arm uses candor-swift as PRODUCER and rust's `candor-query` as CONSUMER, so a
+   common-mode defect in the rust consumer appears identically in two arms and reads as independent
+   agreement. That is §3's structural gap occurring inside the suite built to detect it — the concrete
+   artefact to point at when justifying self-differentials, rather than a hypothetical.
+
+5. **R10 report-envelope parity** (the two `rung024` waivers). Format divergences — java emits
+   `packages`/`entryPoint`/`fs` the others do not, rust omits
+   `declared`/`undeclared`/`overdeclared`/`unresolved`. Real, pinned, and NOT soundness; last because
+   every item above can hide a purity claim and this one cannot.
+
+**TWO OBSERVATIONS ABOUT THE DOCUMENT ITSELF, since a review that only re-ranks is half a review.**
+
+**It is 6,500 lines across 60 `##` sections, and its own numbering is declared not-priority.** The
+RECORD half has earned its keep — three of this session's fixes came from re-reading old filings — but the
+open work is now 59 items scattered through it, and the only way to find them is a grep for `- [ ]`. The
+next structural change worth making is to lift the open list OUT (the `## THE QUEUE` block already tries
+to be that) and leave the rest as an append-only record, rather than to keep both roles in one file.
+
+**Standing bar 7u prescribed a mechanism this file does not yet have.** It says an item whose claim is
+cheap to check should CARRY the check, so a stale one can be retired automatically — the property the
+waiver baselines have and this file does not. `clause_check.py` now does exactly that for properties and
+waivers. Nothing does it for queue items, and the 2026-08-02 audit (11 of 12 sampled items already done)
+is what that absence costs.
+
 
 The section numbering below is CHRONOLOGICAL (§1, §2, §2b, §2c, §2d, §3, §3b, §3c, §3d, §4…) because
 sections were opened as findings arrived. **It is no longer dependency order and should not be read as
@@ -32,6 +94,10 @@ components), and **FIVE four-way defects closed**: the scan-boundary `--class` f
 rung, `gate --report`, the empty-report cardinal sin, and the frontier rung. Conformance gained **PARTs
 24–27** (three self-differential properties + the rung's behaviour). The theory↔spec↔code loop is closed
 and immediately found the theory wrong twice.
+
+#### CLOSED — the 2026-07-28 priority list, kept for its measurements
+
+*These four were the priority block until 2026-08-02 and are all done. Retained because each carries the numbers that justified it and, in three cases, a CORRECTION to how it was filed — which is the part a future reader needs and a checkbox would have deleted. Not a priority list; the live one is above.*
 
 **THE ITEM THAT DOMINATED THIS LIST IS DONE (2026-08-02).**
 
