@@ -277,7 +277,7 @@ and probably the dot-free detail fix.
 Neither depends on the other or on (1). Both are the same failure: the spec is silent and the engines
 diverged, so a `deny` gate gives different verdicts per engine on identical input.
 
-- [ ] **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
+- [x] **SHIPPED FOUR-WAY 2026-08-02** (rust `0adb35b`, java `6f7ec94`, swift `612f6dc`; ts the reference). Both `stale_beside` waivers retired, PART 26 clean. **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
       (and a stale `{Unknown}` therefore erases a trusted effect — measured, `deny Fs` exit 1 → 0), ts
       UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`.
       **DECIDED 2026-07-27 (`b47c9ab`) — adopt ts's union.** The gating measurement (item 1, "what a union
@@ -298,7 +298,7 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
         30/37/273, `calls` 57/120/326). Rust discards all of it at once.
       - Item 2 (surfaces) recorded as **UNDER-POWERED, not answered** — my first pass produced a flattering
         zero by comparing absent keys to absent keys. Real sample is 0-9 keys.
-      - [ ] **IMPLEMENT four-way**, behind the decision: rust stops withdrawing, java stops last-non-empty,
+      - [x] **DONE 2026-08-02** (rust `0adb35b`, java `6f7ec94`, swift `612f6dc`; ts unchanged as the reference, verified by reading it). **IMPLEMENT four-way**, behind the decision: rust stops withdrawing, java stops last-non-empty,
             swift's trust-level-first rule reconciled with the union (doc item 4, still open), ts unchanged
             as the reference. Plus a conformance PART verified-to-catch per engine, with a row that FAILS
             for an engine that withdraws or picks. Do NOT start while the four frontier agents hold the
@@ -603,7 +603,7 @@ no reference implementation, no second opinion, no spec interpretation in the lo
       ORIGINAL — P3, trust monotonicity. An untrusted or incomplete report can only REDUCE what a consumer
       claims, never increase it. Would have caught the coverage door in all four engines, and java's
       stale-`{Unknown}`-erasing-a-trusted-effect (`deny Fs` exit 1 → 0).
-- [ ] **P4 — SIGNATURE MONOTONICITY.** Adding a call cannot remove an effect or a reason class. Would have
+- [x] **BUILT 2026-08-02 as conformance PART 28** — and NOT blocked on `gate --report` after all: `unknownWhy` is on the wire per unit, and a token set is finer than the §6.2 class projection. **P4 — SIGNATURE MONOTONICITY.** Adding a call cannot remove an effect or a reason class. Would have
       caught the Lemma 2 violation. **Blocked on the gate-a-report verb below** for the class half.
 
 **What this will NOT catch, and it is the right thing to leave out:** the classifier. If candor does not
@@ -943,7 +943,7 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
       wrote: `scan` exit 0 with a verdict, `gate --report` **exit 2 and no document written**. ~7–10% of
       real dep reports. `ci/gate-equivalence.sh`'s 90 rows cannot reach it — every corpus crate has
       functions. **Fix per the corrected §3.1** (`0744d29`): caveat on stderr, exit and document unmoved.
-- [ ] **rust: incomplete analysis SWALLOWS the violation and the verdict DROPS it.** `gate.rs:558-565`
+- [x] **STALE — VERIFIED FIXED 2026-08-02.** Measured on the named route: `gate --report` over a report carrying a `deny Net` hit AND `unanalyzed` exits **1** with `violations: 1`, `incomplete: true`, `unanalyzed: 1`. The `gate.rs` comment records the rewrite. **rust: incomplete analysis SWALLOWS the violation and the verdict DROPS it.** `gate.rs:558-565`
       writes `&mut []` before violations are recorded → exit 2, `violations: []`, **a real finding absent
       from the artifact**. §3.3 settles it: *"a real violation (exit 1) still dominates."* java/swift/ts
       right, rust wrong on BOTH routes.
@@ -958,7 +958,7 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
       a refusal. Every engine tests answerability on the in-scope function's own post-fixpoint set, so a
       hole one edge away is tolerated. **Fix: propagate "contributed nothing determinable" through the
       fixpoint; refuse on an INCOMPLETE set, not only an empty one.**
-- [ ] **swift: `analyzed: {count: true}` reads as JUDGED** — Foundation bridges `NSNumber(bool:)` through
+- [x] **STALE — VERIFIED 2026-08-02: fixed, and pinned by `testAnAbsentOrGarbledAnalyzedManifestIsReadAsAClaimOnlyWhenItIsOne`.** **swift: `analyzed: {count: true}` reads as JUDGED** — Foundation bridges `NSNumber(bool:)` through
       `as? Int`. Byte-identical to `count: 2`; the caller drops out of `functions`. **Specced `18fb770`.**
 - [ ] **rust: a malformed `unanalyzed` manifest is silently dropped** (`.ok()…unwrap_or_default()`) →
       exit 0 where the other three exit 2. `unanalyzed` non-emptiness IS the fail-closed trigger.
@@ -1196,7 +1196,7 @@ meaning would be the one place a consumer could tell the routes apart.
       completeness marker "does not ride the wire" — rust emits a per-entry `incomplete` field §2 names, so
       it COULD answer. It refuses anyway, and its reason is better than mine: **an engine that answers a
       question its three siblings refuse has SPLIT THE VERB.**
-- [ ] **rust DEFECT against an EXISTING MUST — I filed this as "needs a four-way ruling" and it is not one.**
+- [x] **CLOSED 2026-08-02 (rust `a256e72`)** — the POLICY gate was already right; the live half was the AS-EFF-005 BASELINE guard, a site this entry never named. **rust DEFECT against an EXISTING MUST — I filed this as "needs a four-way ruling" and it is not one.**
       §3.3.1 already says it, verbatim: *"A configured gate over incompletely-analyzed code MUST fail closed
       (exit ≠ 0); **a real violation (exit 1) still dominates.**"* java and swift are right; **rust is
       wrong** — `had_parse_failure` returns 2 *before* recording violations, so a real violation found
@@ -1523,7 +1523,7 @@ the only verdict-changing one — do not bundle them.
         **Two of its own gate fixtures were the comment-that-lies defect** (fifth today): they read
         `// INHERITED, no calls` while the helper wrote `direct: ["Unknown"]`, so they were asserting the
         CONTRIBUTES case, not the inherited one.
-- [ ] **NEW, pre-existing, and a SILENT UNDER-REPORT IN THE SOURCE VIEW — found by java while routing
+- [x] **CLOSED 2026-08-02 (java `0f5761a`)**; sweep of the other three came back CLEAN — they classify from the RAW string, so there was no parse to fail. **NEW, pre-existing, and a SILENT UNDER-REPORT IN THE SOURCE VIEW — found by java while routing
       AROUND it.** `UnknownReason.parse` returns null for a **colon-free** tag, so `ReportJson.parseEntries`
       **silently drops** `missing-config` from `Effector.unknownWhy()`. Consequence: **`blindspots` never
       lists a setup-only source at all** — 2 sources where there are 3 on the setup fixture, and
@@ -2606,7 +2606,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         trivially — the test loses its power there, not its correctness.
 
 ### Release-shape, needs Tom
-- [ ] **candor-ts is at build 0.23.2, the family at 0.23.1.** Legitimate — its module-unit wire key moved
+- [x] **STALE — VERIFIED 2026-08-02: every engine is at 0.24.0.** **candor-ts is at build 0.23.2, the family at 0.23.1.** Legitimate — its module-unit wire key moved
       and §2.1's staleness gate keys on the per-engine build id. `release-preflight` check [4] was relaxed
       to report rather than fail (`candor` `b5e2cb0`), and its `WANT_VER` arm still catches a genuine lag
       exactly. The release set is a decision, not a defect.
@@ -2731,6 +2731,41 @@ second refusal site survived a week after its sibling was fixed.
 Each carries a VACUITY FLOOR (tree findable, source non-trivial, anchors present). The `== 0` assertion is
 the one that matters most and the one a rename satisfies by accident, and **a vacuous census is worse than
 none, because it reads as a guard.**
+
+## Standing bar 7u — THE QUEUE ROTS BECAUSE A STALE ITEM COSTS NOTHING (2026-08-02)
+
+Audited on 2026-08-02, on the question "is any of this still true": **12 open items sampled, 11 already
+done.** Six were closed by that day's own work and never flipped in the record; three were fixed in an
+engine by somebody who never came back here; two were operational and had self-resolved (a version skew,
+a stale installed binary). One was genuinely live. 71 open → 60 after stamping the verified-stale ones
+with their measurement.
+
+**THE ASYMMETRY IS THE WHOLE EXPLANATION, and it is worth stating as a rule rather than a complaint. The
+waiver baselines do not rot, because a waiver that outlives its defect FAILS THE SUITE** — that direction
+of the ratchet fired twice today and both times it was right. Nothing anywhere makes a stale QUEUE item
+cost anything, so the only force acting on this file is entropy.
+
+**And staleness is not the expensive half.** Of the four items worked that day, **three carried diagnoses
+that were WRONG rather than merely old**: item 3 named a site that was already fixed while the live defect
+sat thirty lines away; the rust `stale_beside` waiver explained a symptom by a mechanism that was not
+running; the return-index lead named a `#[cfg]` collision when the cause was a generic return type. All
+three were plausible, specific, and written by someone who had just measured something adjacent — which is
+exactly what makes them expensive. **A precise wrong cause reads as diagnosed and stops the next person
+looking; an unexplained symptom gets investigated.** An empty backlog would have cost less than those
+three entries did.
+
+THE RULES THAT FOLLOW:
+- **Before working an item, re-measure its PREMISE, not just its remedy.** Every one of the three above
+  survived because the reader trusted the diagnosis and went looking for the fix.
+- **Close an item WITH ITS MEASUREMENT**, not with a checkbox — "VERIFIED FIXED: `gate --report` over a
+  report carrying both exits 1 with `violations: 1`" is auditable later; `- [x]` is not.
+- **An item whose claim is cheap to check should carry the check.** The ones that rotted fastest here are
+  exactly the ones a one-line command settles (a version, a byte count, an exit code). Where an item can
+  name a repro, it should — a claim that can be re-run is a claim that can be retired automatically, which
+  is the property the waiver baselines have and this file does not.
+- **Prefer a conformance PART to a queue entry** wherever the item is a behaviour rather than a decision.
+  PARTs 24-29 cannot go stale silently: they fail when the defect returns AND when the waiver outlives it.
+  The queue's job is decisions and leads, not regression tracking.
 
 ## Standing bar 7t — RUN THE SUITE, NOT THE GENERATOR YOU JUST EDITED (2026-08-02)
 
@@ -5413,7 +5448,7 @@ spurious-refusal machine — **pinned by a control row**, so the scope decision 
 over 4166 real entries**, and ukri-tfs exits 1 so the check is non-vacuous. That is the control that makes
 "refuse on corrupt input" safe to ship: the fear with a new refusal is that it fires on healthy code.
 
-- [ ] **NEW — MCP `candor_gate` implements NO ⟨0.21⟩ incompleteness rule at all.** It returns `{ok:true}`
+- [x] **STALE — VERIFIED 2026-08-02: implemented; `mcp.mjs` documents `{incomplete:true, unanalyzed}` and its own comment is past-tense.** **NEW — MCP `candor_gate` implements NO ⟨0.21⟩ incompleteness rule at all.** It returns `{ok:true}`
       over a report declaring `unanalyzed` units where the CLI exits 2. Reported not fixed: it needs a
       tool-result shape decision (`incomplete`/`unanalyzed` keys). **The agent-facing surface is the one
       where a false all-clear is acted on without a human reading it.** Check the LSP surface too, and the
@@ -5511,7 +5546,7 @@ even when you are looking for it, because exit 1 with no output is what a genuin
 step, not controlled. The tell was available: 14 files each containing a NUL is implausible for hand-written
 Java, and I had a second tool (python) that took ten seconds to disagree.
 
-- [ ] Replace the literal NUL in `Policy.java:363` with the `\0` ESCAPE — byte-identical semantics,
+- [x] **STALE — VERIFIED 2026-08-02: `Policy.java` holds ZERO raw NUL bytes**, and `SourceHygieneTest.noMainSourceFileHoldsARawNulByte` now guards the whole main tree. Replace the literal NUL in `Policy.java:363` with the `\0` ESCAPE — byte-identical semantics,
       searchable file. Also: `unverified` over an unhonourable policy prints "— no fix computed" (shares
       `loadPolicyOrDie` with `fix`/`fix-gate`): right posture, wrong noun.
 
@@ -6214,7 +6249,7 @@ I told java to read rust's actual JSON rather than my prose — correct, and loa
 Confirmed: `~/.cargo/bin/candor-query` dated 2026-07-20 against `target/release` dated 2026-08-01. Reading
 the reference implementation through the PATH binary would have confirmed the OLD shape as normative.
 
-- [ ] **`~/.cargo/bin/candor-query` (and whatever `candor` dispatches to) is ~12 days behind the repo.**
+- [x] **STALE — VERIFIED 2026-08-02: installed and repo both `candor-query 0.24.0 (spec 0.24)`.** **`~/.cargo/bin/candor-query` (and whatever `candor` dispatches to) is ~12 days behind the repo.**
       Every "read the reference engine" instruction is only as good as which binary answers. Refresh the
       local install, and consider whether `candor doctor` should compare the installed engine's build id
       against the repo HEAD rather than only checking spec agreement between engines — **two stale engines
