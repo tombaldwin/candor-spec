@@ -709,7 +709,34 @@ with four concrete instances rather than an argument.
             `String` (7), local modules — not one a real dependency. Of the 95 gains: **0** have no chained
             marker, **0** are backed only by an unchained one. `chrono` and `serde_yml` are chained with
             substantial reports (191 and 337 fns). **None is the false-uncertainty shape.**
-      - [ ] **NEW LEAD, and it is better than a denylist — `6f2210c`'s rule, one index over.** Chasing WHY
+      - [x] **CLOSED 2026-08-02 (rust `4656d48`) — AND THE DIAGNOSIS BELOW IS WRONG. It is not a
+            collision.** The missing `Utc::now` return type has nothing to do with the `#[cfg]`
+            duplication: a `#[cfg]`-duplicated NON-generic return publishes fine, and chrono's entry never
+            reached the never-guess rule at all (`bound_returns=0` for it — nothing to collide). The cause
+            is that `bound_return_type` refused ANY path carrying a type argument, so `DateTime<Utc>` was
+            never bound. Isolated on three one-line variants: `Plain` binds, `DateTime<Utc>` does not,
+            `DateTime<u8>` does not. **The generic was the whole cause; the duplication was a coincidence
+            of the crate that surfaced it.**
+            The refusal conflated two cases and only one needed refusing — a WRAPPER (`Result<Conn,E>`,
+            where the binding holds a Result and keying to `Conn` is the reverted attempt's fabrication)
+            and a generic INSTANTIATION (`DateTime<Utc>`, where the binding holds a DateTime and
+            DateTime's methods ARE its methods). Keying on the OUTER path is right for both and is the
+            exact opposite of unwrapping. Strictly additive: `None` → `Some` only.
+            Measured — chrono `bound_returns` 245 → 758, published 45 → 108, `Utc::now` →
+            `chrono#datetime::DateTime`; end-to-end a consumer goes `['Clock','Unknown']` →
+            `['Clock','Fs']`, determination replacing disclosure.
+            **THE CORPUS A/B CHANGED NOTHING, and the projection below is not observable.** ebman with
+            chrono's report regenerated per arm and every other input constant: 0 recovered / lost /
+            shrank / grew, and 0 functions whose `unknownWhy` moved. Nameable reason: every effectful
+            `DateTime` member in chrono carries ONLY `Unknown` (24 Unknown-only, 16 pure), so typing the
+            receiver turns an UNDETERMINED Unknown into a DETERMINED one and the effect set is identical.
+            The ">half of ebman's chained untyped markers" claim is withdrawn.
+            **Third misdiagnosed filing this week** (queue item 3 pointed at the wrong site; the rust
+            `stale_beside` waiver named the wrong cause; this named the wrong mechanism). All three were
+            plausible, specific, and written by someone who had just measured something adjacent — which
+            is exactly what makes them expensive: a precise wrong cause reads as diagnosed and stops the
+            next person looking. ORIGINAL FILING BELOW, kept for that reason.
+      - [→] **ORIGINAL (WRONG) — `6f2210c`'s rule, one index over.** Chasing WHY
             the chained markers miss: of ebman's 73, 10 resolve, 6 miss on a module-qualification mismatch,
             and **57 are genuinely absent from the published surface — of which 37 are chrono's `Utc::now`
             alone, and its absence is a SPURIOUS COLLISION.** chrono declares `pub fn now() -> DateTime<Utc>`
