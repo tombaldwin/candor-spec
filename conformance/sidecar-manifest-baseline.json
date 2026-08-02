@@ -1,0 +1,4 @@
+{
+  "_": "PART 30 (P6, sidecar manifest fidelity) — the both-ways ratchet. A waiver records an engine as VIOLATING the contract, so its `why` MUST cite the section it violates (clause_check.py enforces that). A waiver that no longer fires is STALE and FAILS the run, so this file cannot outlive the defect it documents.",
+  "waivers": []
+}

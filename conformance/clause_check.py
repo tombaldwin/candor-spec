@@ -58,6 +58,7 @@ GENERATORS = [
     "gen_trust_monotonicity.py",
     "gen_signature_monotonicity.py",
     "gen_incomplete_dominance.py",
+    "gen_sidecar_manifest.py",
 ]
 
 BASELINES = [
@@ -66,6 +67,7 @@ BASELINES = [
     "trust-monotonicity-baseline.json",
     "signature-monotonicity-baseline.json",
     "incomplete-dominance-baseline.json",
+    "sidecar-manifest-baseline.json",
 ]
 
 

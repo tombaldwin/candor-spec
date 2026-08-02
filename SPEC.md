@@ -874,6 +874,52 @@ storing the candidate edges bounded-CHA deliberately dropped. That precise subty
 simple-name match without it). It carries no provenance of its own and is read with its report. A language
 with no class/protocol dispatch (the Rust scanner) has nothing to populate it and MAY omit it entirely.
 
+⟨0.26⟩ **THE KEY SET IS THE MANIFEST: an absent type is UNANSWERABLE, never "has no supertypes".**
+
+A producer MUST emit a key for **every type it indexed**, carrying `[]` when that type has no supertypes —
+which is what the example above has always shown (`"app.Base": []`). A consumer MUST therefore read the key
+set as the closed set of types the pass can answer for, and treat a type **absent** from a present sidecar
+as **unanswerable**: the subtype test MUST NOT resolve to `false`, and a query depending on it MUST
+disclose rather than drop. Same trigger as §3.1's dot-free `dispatch:` detail and §2's unreadable manifest —
+*disclose, do not drop*.
+
+**Why this is a rung and not a clarification: absence carried two meanings and the format could not tell
+them apart.** A type with no supertypes was omitted, and so was a type the pass never looked at — an
+out-of-scan reacher being the ordinary case. A consumer asking `isSubtypeOf(t, owner)` about an unindexed
+`t` got `false`, indistinguishable from a true negative, and the ⟨0.24⟩ per-FILE ruling cannot reach it
+because the file is present and non-empty.
+
+**Measured, and the shape is the argument.** On the `callers --include-unknown` frontier fixture (13
+implementors past the fan-out bound, one reaching the sink, a dispatcher dispatching on the base), scanned
+for real and then only the sidecar doctored:
+
+| sidecar | java frontier | ts frontier |
+|---|---|---|
+| intact | `[Dispatcher.run]` | `[Dispatcher.run]` |
+| the REACHING implementor's entry removed | **`[]`** | **`[]`** |
+| a NON-reaching implementor's entry removed | `[Dispatcher.run]` | — |
+| **wholly absent** | `[Dispatcher.run]` | — |
+
+Removing MORE information — the whole sidecar — yields a SAFER answer than removing ONE entry. That
+non-monotonicity is the defect. The third row is what makes the second attributable: removing an irrelevant
+type changes nothing. Both engines that ship the verb behave identically, which is evidence about the
+FORMAT rather than either engine — neither had a third answer available.
+
+⟨0.26⟩ **`@unanalyzed` — types the pass TRIED and could not index.** Reserved keys are `@`-prefixed, so they
+cannot collide with a type name (the convention `@superclass` already establishes):
+
+```json
+{ "@unanalyzed": [ { "type": "app.Broken", "reason": "class file failed to parse" } ],
+  "app.Impl7": ["app.Base"], "app.Base": [] }
+```
+
+OPTIONAL; its absence means only that the producer records no such failures. It changes no verdict — an
+unindexed type is unanswerable whether or not the sidecar says why — but it is the difference between a
+consumer reporting *"the hierarchy cannot answer for `app.Broken`"* and *"…for a type I cannot name."*
+The asymmetry with §2's report manifest is deliberate: a report's unanalyzed set is ENUMERABLE (the files
+it failed to read), while a sidecar's complement is every type in the world. So the positive key set is the
+manifest, and `@unanalyzed` is a diagnostic rather than the closed set.
+
 ⟨0.24⟩ **EVERY ORDERING — in a report and in a query output — MUST be locale-INDEPENDENT.** Sort by
 Unicode code point (equivalently UTF-8 byte order). A **locale-sensitive** comparator is forbidden:
 JavaScript's `String.prototype.localeCompare` and `Intl.Collator`, ICU collation, `strcoll`, and anything
