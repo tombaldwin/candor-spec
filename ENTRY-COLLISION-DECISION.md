@@ -1,10 +1,50 @@
 # Two chained reports, one key, different answers — what should an engine do?
 
-**Status: DECIDED 2026-07-27 — adopt the union. The gating measurement (item 1 below, "what a union does
-to rust's corpus") is done and is at the foot of this note. It changed the reasoning as well as confirming
-the recommendation: the objection this note treated as the real cost does not describe anything in the
-corpus, and the cost of withdrawing is larger than "effects". No engine has changed yet; the four-way
-implementation is queued behind this decision so it is made once rather than four times by accident.**
+**Status: SHIPPED FOUR-WAY 2026-08-02.** rust `0adb35b` (withdrawal → union), java `6f7ec94`
+(last-non-empty-wins → union), swift `612f6dc` (the trust ladder → union), ts unchanged as the reference —
+verified by reading it rather than assumed, `crossDeps.get(hash) ?? new Set()` then `.add()`, including
+`stale ? ["Unknown"] : e.inferred` **into the same cell**, which is the across-trust-level union in the
+reference engine all along. Pinned by conformance **PART 26** (`stale_beside`, the BESIDE arm), which was
+already written against this note and carried a waiver per broken engine; **both waivers are now retired**
+and the arm is 0 erasures on all four. Decided 2026-07-27; the gating measurement is at the foot of this
+note and changed the reasoning as well as confirming it.
+
+**Three things the implementation found that the decision did not.**
+
+1. **Item 4 is answered: the trust ladder is REPLACED, not composed with.** swift preferred a trusted entry
+   over a stale one, arguing §2.1 had already ranked the producers so preferring the trusted one is not a
+   guess. Sound about which report to BELIEVE, wrong about what to do with the other — two reports collide
+   under one key precisely BECAUSE the package name spans two versions and both bodies are in the build, so
+   the stale report is the only thing that knows a second, unverifiable version is present. Preferring the
+   trusted entry deletes exactly that and the consumer reads `[]` as a purity claim. The old invariant
+   ("adding an untrusted report changes the consumer's report by nothing at all") is deliberately broken;
+   what replaces it is **order-independence**, which a union has and a ladder cannot.
+2. **The WITHIN-report leaf collision is the same defect, and this note's evidence did not cover it.** The
+   corpus measurement is about collisions ACROSS reports (version pairs). Two different functions sharing a
+   leaf INSIDE one report is the other population — the one this note reserved as the union's real cost.
+   Measured on the binary: a consumer calling an unresolvable `deplib::fetch()` was **absent from
+   `functions` entirely**, no `Unknown`, no `invisible`, no hedge, while one candidate does `Net`. Same
+   cardinal sin, so the same rule. It is not the fabrication mirror: the caller genuinely may reach that
+   body, and a consumer that CAN name its target uses the full qual and still gets the precise answer.
+3. **A/B on the three real corpora, which the decision projected but never ran end to end:**
+
+   | corpus | fns before → after | RECOVERED | LOST | SHRANK | grew | grew w/ CONCRETE effect |
+   |---|---|---|---|---|---|---|
+   | candor-rust | 245 → 250 | 5 | 0 | 0 | 14 | **0** |
+   | pgman | 205 → 205 | 0 | 0 | 0 | 21 | **0** |
+   | ebman | 550 → 556 | 6 | 0 | 0 | 30 | **0** |
+
+   RECOVERED = was absent (a purity claim), now discloses. **All 65 added effect-items are `Unknown`; not
+   one concrete effect was charged to a function that did not have it.** The fabrication objection — the
+   only argument against the union — has zero instances across three corpora. It also reframes the
+   "12–20% disclosure increase" this note recorded as the union's price: those functions did not become
+   less certain, their uncertainty stopped being spelled as absence.
+
+   *The first run of this A/B was vacuous and said so:* chaining the corpora as they sit gives
+   byte-identical output, because all 259 dep reports were produced by an older build and §2.1 had already
+   downgraded every entry to `{Unknown}` — so every collision agreed and union was indistinguishable from
+   withdrawal. Numbers above are against reports re-stamped to the binary under test, in a copy under
+   scratch.
 
 ## Why it is live
 
