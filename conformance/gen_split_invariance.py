@@ -102,6 +102,15 @@ the bottom of this file for why a waiver list is not an expected-value table.
 Engine resolution is inherited from gen_differential.py (CANDOR / CANDOR_JAVA / CANDOR_TS / CANDOR_SWIFT,
 and the *_BIN / *_JAR overrides), and so is the EFFECTS table — the effect vocabulary stays in ONE place.
 """
+
+# NO NORMATIVE CLAUSES, AND THAT IS THE HONEST DECLARATION. P1 is a pure self-differential: its oracle is
+# the engine's OWN other arm, not the spec — which is what "there is NO EXPECTED-VALUE TABLE and there must
+# never be one" means above. SPEC.md nowhere states that a split+chained scan must agree with the
+# single-tree one; that is a property OF an engine, not a MUST the contract imposes. Declared EMPTY rather
+# than omitted so that "enforces nothing normative" and "somebody forgot to cite" stay distinguishable
+# (clause_check.py).
+SPEC_CLAUSES = []
+
 import json
 import os
 import shutil

@@ -70,6 +70,12 @@ USAGE
     python3 gen_chain_idempotence.py --keep
     python3 gen_chain_idempotence.py --baseline chain-idempotence-baseline.json   # the ratchet (PART 25)
 """
+# NO NORMATIVE CLAUSES — a pure self-differential, like P1. The arm that chains once IS the oracle for the
+# arm that chains twice; nothing in SPEC.md states idempotence as a MUST. (SPEC §2 rule 1 ⟨0.25⟩ now
+# observes that the entry union makes chaining twice unobservable, but that is a consequence of the union,
+# not the obligation this property tests — it held before that text and would hold without it.)
+SPEC_CLAUSES = []
+
 import json
 import os
 import shutil

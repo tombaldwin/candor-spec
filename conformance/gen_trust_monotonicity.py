@@ -73,6 +73,15 @@ USAGE
     python3 gen_trust_monotonicity.py --keep
     python3 gen_trust_monotonicity.py --baseline trust-monotonicity-baseline.json   # the ratchet (PART 26)
 """
+# THE CONTRACT THIS PROPERTY ENFORCES, quoted so clause_check.py can prove SPEC.md still says it. Unlike
+# P1/P2/P4 this one is NOT a pure self-differential: its two reference arms bracket a rule the spec states
+# — a distrusted report contributes `Unknown` rather than its claims, and coverage is what turns a
+# report's silence into a purity claim.
+SPEC_CLAUSES = [
+    ("§2 rule 2", "Stale reports are not trusted"),
+    ("§2 rule 3", "A chained package is COVERED, not blind, including its silence."),
+]
+
 import json
 import os
 import shutil

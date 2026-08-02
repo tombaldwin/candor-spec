@@ -2819,6 +2819,57 @@ The procedural fix is cheap and was skipped: **read the clause the property clai
 waiving anything against it.** The eight waivers took ten minutes to write and the clauses took two
 minutes to read.
 
+## Standing bar 7v — A MISMATCH IS EVIDENCE ABOUT THE PAIR, AND THE PRIOR IS LOPSIDED (2026-08-02)
+
+Asked, after a run of these: *you keep making mistakes like this, how do we prevent them?* The honest
+characterisation is that they are not varied. They are one mistake with two faces, and both were on
+display in a single day:
+
+**INSTRUMENT-SHAPED** — the probe is wrong and its output is shaped like a finding. A `--baseline` flag
+that does not exist (exit 2 read as a defect); a swift arm scanning `cases.swift` instead of the directory,
+so the "incomplete" arms were not incomplete and it MANUFACTURED a FALSE-GREEN; `find_report` excluding two
+of §2.2's six reserved segments, handing a `.locs.json` sidecar to an engine as a BASELINE; P4's recursion
+guard built from Clock sinks, so the arm measured its own guard; P4's fan-out arm sitting exactly ON
+`CHA_FANOUT_LIMIT`; a corpus A/B where every dep report was stale, so every collision trivially agreed.
+
+**CONTRACT-SHAPED** — the expectation is not licensed. Eight waivers recording four CONFORMING engines as
+known-broken, against two MUSTs the spec explicitly refuses.
+
+**THE COMMON STRUCTURE: a mismatch between an expectation and an observation is evidence about the PAIR,
+and it gets attributed to the system.** The prior is lopsided and runs the other way — the engines carry
+months of review, a 140-part suite and a corpus; the expectation is minutes old. *When a fresh instrument
+disagrees with mature code, the instrument is the suspect.*
+
+**WHAT ALREADY WORKS HERE IS ONE SHAPE, AND IT IS WORTH NAMING** because the answer is more of it rather
+than more care: the both-ways waiver ratchet (caught the stale PART 25 waivers), the in-band ARM ACTIVITY
+report (caught P4's two inert arms), the vacuity floors, the negative controls, verified-to-catch. Every
+one makes **the instrument prove itself IN-BAND before its findings are read**. That is why the
+instrument-shaped errors were mostly caught and the contract-shaped one was not: nothing made a property
+demonstrate that the MUST it enforces exists.
+
+**THE MECHANISM: `conformance/clause_check.py`, run as a PRECONDITION before any property.**
+- every generator declares `SPEC_CLAUSES` — (anchor, verbatim fragment) — and each fragment must appear
+  in SPEC.md, whitespace-normalised;
+- every baseline waiver's `why` must cite a `§`.
+**The act of finding the quote IS the check**: writing the citation for the bad trigger requires opening
+the clause that contradicts it. Verified to catch on both halves. It also fails when a clause is later
+REWORDED, which is the other way a property drifts from the contract it claims to test.
+
+An empty `SPEC_CLAUSES` is a legitimate and required declaration — P1, P2 and P4 enforce nothing normative
+(their oracle is the engine's own other arm) and say so, which keeps "enforces no MUST" distinguishable
+from "forgot to cite".
+
+**THE READING RULE that costs nothing: a new property failing ALL engines is evidence about the PROPERTY;
+failing ONE is evidence about the ENGINE.** Today `count0` failed 4 of 4 (the property was wrong) and the
+impeached-document row was 3-vs-1 — and the 1, java, was the real defect. Not proof either way: PART 26's
+coverage door was genuinely four-way. But unanimity should force the clause check before a single waiver
+is written, and it is the cheapest available signal.
+
+**AND WHY A WRONG WAIVER IS THE EXPENSIVE FORM.** A wrong queue entry stops the next person looking. A
+wrong waiver does that, records a conforming engine as broken in the file whose whole job is to be trusted
+later, AND makes the suite go green over the accusation. It is a wrong diagnosis with an expiry date
+attached. The eight took ten minutes to write; the clauses they contradict took two minutes to read.
+
 ## Standing bar 7u — THE QUEUE ROTS BECAUSE A STALE ITEM COSTS NOTHING (2026-08-02)
 
 Audited on 2026-08-02, on the question "is any of this still true": **12 open items sampled, 11 already

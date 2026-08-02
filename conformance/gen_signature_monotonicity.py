@@ -67,6 +67,11 @@ USAGE
     python3 gen_signature_monotonicity.py --keep
     python3 gen_signature_monotonicity.py --baseline signature-monotonicity-baseline.json   # PART 28
 """
+# NO NORMATIVE CLAUSES — a pure self-differential. The base arm is the expectation; the spec does not state
+# "adding a call may only add" as a MUST, and this property would be wrong to claim it does. Declared
+# empty rather than omitted, so a missing declaration still fails clause_check.py.
+SPEC_CLAUSES = []
+
 import json
 import os
 import shutil
