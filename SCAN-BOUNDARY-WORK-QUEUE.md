@@ -2641,6 +2641,70 @@ self-scan that could not answer.
 **Corollary for A/B evidence generally:** a zero-loss column over a corpus that never reaches the changed
 code is not evidence of safety. State what the corpus exercises, not just what it did not lose.
 
+## P5 / PART 29 — INCOMPLETE-VS-VIOLATION DOMINANCE, and the swift cardinal sin it found (2026-08-02)
+
+Built after the queue's item 3 turned out to be one spec clause with TWO gates and only one of them
+tested. SPEC §3.3.1: *"A configured gate over incompletely-analyzed code MUST fail closed (exit ≠ 0);
+**a real violation (exit 1) still dominates.**"* Three arms per (engine, gate) — `violation_only` is the
+ORACLE for `both` — over the policy gate AND the AS-EFF-005 baseline guard, 8 live pairs.
+
+**IT FOUND A GATE-LEVEL CARDINAL SIN IN candor-swift ON ITS FIRST HONEST RUN, and not the defect it was
+built for.** `Parser.parse` is error-tolerant and never throws, so a file with a syntax error counted as
+fully analyzed. Error recovery folds the declarations after the bad token into the broken function's
+body, so:
+
+    well-formed        functions: [Hidden.leak -> Net]    `deny Net Hidden`   exit 1
+    one syntax error   functions: [nope -> Net]           `deny Net Hidden`   exit 0, ok: true
+
+The effect is **MISATTRIBUTED, not lost** — which is why nothing caught it. A bare `deny Net` still
+fires. What disappears is `Hidden.leak`, absent from `functions`, which under ⟨0.21⟩ is a positive claim
+of purity over a function that performs Net; every scoped rule then reads green with nothing disclosed in
+any channel. One stray character. And a syntax error is ORDINARY for this engine — it analyses source
+without building, so it meets files a compiler never would (mid-edit, a merge-conflict marker, a future
+syntax). Fixed `ab49f8b` via `ParseDiagnosticsGenerator`, recording `unanalyzed` while STILL walking the
+recovered tree, so the misattributed Net is not lost either — additive, the ⟨0.21⟩ incomplete-report
+treatment applied to source.
+
+**The known-limitation comment is the transferable part.** `Driver.swift` had said for a long time that
+`Parser.parse` never throws "so the practical swift `unanalyzed` case is an unreadable file, NOT a parse
+failure". Every clause of that is true except the conclusion: it reasons from a fact about the PARSER to a
+claim about the WORLD, and nobody measured the second. **A documented limitation is not a measured one** —
+it reads as considered, which is exactly what stops it being checked.
+
+**TWO HARNESS DEFECTS WERE FOUND AND FIXED BEFORE ANY OF THAT WAS BELIEVED**, and both would have been
+findings about candor that were findings about the harness (bar 7s):
+- the swift arm passed `cases.swift` instead of the directory, so `broken.swift` was never scanned and the
+  "incomplete" arms were not incomplete — it MANUFACTURED a FALSE-GREEN swift had not committed;
+- `find_report` excluded two of SPEC §2.2's SIX reserved sidecar segments, so the ts baseline snapshot
+  resolved to `<prefix>.locs.json` — a sidecar handed to an engine as a BASELINE, printing as
+  `ts/baseline CONTROL-DEAD`. **That rule has now been re-derived wrongly three times** (rust by segment
+  count, java's earlier two-suffix list, and this harness in Python), which is what the java census test
+  below now pins.
+
+Verified to catch in TWO shapes, and the distinction matters because they are different severities:
+swift's real `FALSE-GREEN`, and a re-seeded rust ordering defect giving `NOT-DOMINANT` while
+`rust/policy` stayed clean. Mis-coded and deleted-from-the-artifact are reported separately.
+
+## CENSUS TESTS — the shape guards for invariants no behavioural test can enumerate (2026-08-02)
+
+Three, generalising rust's `coverage_has_exactly_one_anchor_and_exactly_one_consumer`:
+- **rust** `every_incomplete_refusal_is_gated_on_having_nothing_to_report` — the bare
+  `if had_parse_failure {` form must appear ZERO times, the guarded form exactly twice.
+- **java** `crossDepsHasExactlyOneWriter` — a second raw `put` is last-writer-wins by construction and
+  silently undoes the entry union for the keys it touches.
+- **java** `theReservedSidecarSegmentsAreListedExactlyOnce` — plus ≥3 `isSidecarName` references, because
+  a single list nobody consults is not a single rule.
+
+**Why a shape test rather than another behavioural one, which is the whole argument: the defect is the
+ABSENCE of a conjunct or a call, and absence is what no behavioural test can enumerate.** The live
+behaviours are pinned already — by the rust regression test and by PART 29 four-way — but both test the
+gates that EXIST. Neither can fail for a gate nobody wrote a test for, which is precisely how rust's
+second refusal site survived a week after its sibling was fixed.
+
+Each carries a VACUITY FLOOR (tree findable, source non-trivial, anchors present). The `== 0` assertion is
+the one that matters most and the one a rename satisfies by accident, and **a vacuous census is worse than
+none, because it reads as a guard.**
+
 ## Standing bar 7t — RUN THE SUITE, NOT THE GENERATOR YOU JUST EDITED (2026-08-02)
 
 The entry-collision union touched the dep index. I retired PART 26's two `stale_beside` waivers, verified
