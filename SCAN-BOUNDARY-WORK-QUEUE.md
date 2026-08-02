@@ -46,12 +46,26 @@ Everything else that was waived this session was either fixed or retracted.
    mechanical and needs a ship decision, not design: the version header, four `SPEC_VERSION` pins, seven
    CHANGELOGs, the floor. **The engines already ship the rung — 0.25 is the contract catching up.**
 
-2. **The count-0 chained-coverage rule in java and swift** (`empty_zero`). Specced at §2 ⟨0.24⟩ row 1 —
-   a `count: 0` report "has judged nothing" and MUST be treated as NOT COVERED — and it is a genuine
-   purity-claim defect: an empty chained report licensing purity claims for everything in the package.
-   **2 of 4, so bar 7v says the evidence is about those two engines**, and rust and ts are a working
-   reference. PART 26 prints `CONTROL SEPARATION`, which must go from INDISTINGUISHABLE to separated when
-   this lands — the negative control is already in place.
+2. ~~The count-0 chained-coverage rule in java and swift.~~ **MISNAMED BY ME, corrected 2026-08-02 —
+   THE COUNT-0 DOOR IS CLOSED. The real item is the κ-REACH / per-function `invisible` ATTRIBUTION GAP.**
+   Measured: `CONTROL SEPARATION` reports **all four engines SEPARATED** (rust 64/80, java 56/80, ts 64/80,
+   swift 16/80) — every engine distinguishes `count: 0` from a produced count, which is the ⟨0.24⟩ rule
+   working. Removing the two `empty_zero` waivers puts NEW DEBT on exactly the shapes their bodies name:
+
+       java/empty_zero    implicit_conv, lazy_init                                 16 cells
+       swift/empty_zero   field, implicit_conv, lazy_init, loop_elem, method_recv  40 cells
+
+   and both waiver bodies already say why: *"every one reading `unchained=(ABSENT)` — a separate
+   pre-existing per-function `invisible` attribution gap, NOT this door."* The residual is that on those
+   SHAPES the engine does not attribute the blind spot to the calling function at all, in the UNCHAINED arm
+   too — so it is a κ-ledger reach problem, not a chaining or trust problem, and fixing the count-0 rule
+   further cannot touch it.
+
+   **How I got it wrong is the transferable part: I built the priority list from the waiver KEYS
+   (engine + arm) without reading the `why` bodies, which say "not this door" in as many words.** A waiver
+   is keyed by where it fails and explains why in prose; ranking by the key alone re-files a closed defect
+   as open. Fourth misdiagnosis this session, and the only one that survived into a document I had just
+   rewritten to fix exactly this class.
 
 3. **Per-type unanswerability in the §2.2 sidecar** (§2). The one DESIGN item the 2026-08-02 audit
    confirmed genuinely live. A sidecar that is present and non-empty is trusted per-TYPE, and a type with
