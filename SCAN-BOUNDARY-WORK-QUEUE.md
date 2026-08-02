@@ -33,15 +33,38 @@ rung, `gate --report`, the empty-report cardinal sin, and the frontier rung. Con
 24–27** (three self-differential properties + the rung's behaviour). The theory↔spec↔code loop is closed
 and immediately found the theory wrong twice.
 
-**ONE ITEM DOMINATES, and it is a decision already made:**
+**THE ITEM THAT DOMINATED THIS LIST IS DONE (2026-08-02).**
 
-1. **The ENTRY-COLLISION UNION (§2).** Decided 2026-07-27 with measurements (`b47c9ab`), still
-   unimplemented. It is now the **only** thing behind BOTH remaining `stale_beside` waivers, and each of
-   those records a measured cardinal sin — java's stale `{Unknown}` erasing a trusted `Fs` (`deny Fs`
-   exit 1 → 0), and rust withdrawing a key when a distrusted copy sits beside the trusted original. It also
-   **dissolves rust's deliberate conflict-case divergence**, which exists ONLY to compensate for the
-   withdraw behaviour the union replaces. *Two waivers retired, two cardinal sins closed, one divergence
-   dissolved, zero new decisions required.* Nothing else open has that ratio.
+1. ~~**The ENTRY-COLLISION UNION (§2).**~~ **SHIPPED FOUR-WAY** — rust `0adb35b`, java `6f7ec94`, swift
+   `612f6dc`, ts unchanged as the reference (verified by reading it, not assumed). **Both `stale_beside`
+   waivers are RETIRED** and PART 26's BESIDE arm is 0 erasures on all four engines, where it was java
+   72/72 and rust 64/72 ERASED. The predicted ratio held. Three things the implementation found that the
+   decision had not — all written up in ENTRY-COLLISION-DECISION.md:
+   - **Item 4 answered: the trust ladder is REPLACED, not composed with.** Preferring a trusted entry over
+     a stale one deletes the only evidence that a second, unverifiable crate version is in the build, and
+     the consumer then reads `[]` as a purity claim. swift's stated invariant ("adding an untrusted report
+     changes the consumer's report by nothing at all") is deliberately broken; **order-independence**
+     replaces it, which a union has and a trust ladder cannot.
+   - **The WITHIN-report leaf collision is the same defect, and the decision's evidence did not cover it** —
+     that corpus is about collisions ACROSS reports (version pairs). Measured on the binary: a consumer
+     calling an unresolvable `deplib::fetch()` was absent from `functions` entirely, no `Unknown`, no
+     `invisible`, no hedge of any kind.
+   - **A/B on three real corpora: 11 purity claims closed, 0 lost, 0 shrank, and all 65 added effect-items
+     are `Unknown` — not one concrete effect fabricated.** The only argument against the union has zero
+     instances. (The first run of that A/B was VACUOUS — every dep report was stale, so §2.1 had already
+     flattened every entry to `{Unknown}` and every collision trivially agreed. Recorded rather than
+     quietly re-run.)
+
+1b. **NEW, found while retiring the rust waiver — and the waiver had named the WRONG CAUSE.** rust
+   `9d1d679`: SPEC §3.4 defines `CANDOR_DEPS` as *whitespace-separated* paths and rust split on `:` alone,
+   so PART 26's `stale_beside` arm — which passes `"<trusted> <stale>"` — had been measuring
+   **rust-with-nothing-chained** since it was written. The waiver read "the key is withdrawn, the effect is
+   gone and the package is re-declared uncovered": a precise description of a mechanism that was not
+   running. Not the cardinal sin (the skip prints on stderr and the package is disclosed `invisible`), but
+   the lesson is sharper than the bug — **a wrong diagnosis in a waiver is worse than no waiver, because an
+   unexplained red gets investigated and an explained one does not.** The only reason it surfaced: the union
+   was supposed to close that arm, the arm stayed red, and the union was verified working on the same
+   fixture with a colon. Standing bar 7r, one layer in.
 
 **THEN, in order:**
 
