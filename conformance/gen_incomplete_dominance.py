@@ -305,6 +305,95 @@ def find_report(prefix_dir, prefix):
     return cands[0] if cands else None
 
 
+# =====================================================================================================
+# THE SECOND ROUTE: `gate --report`. §3.1 makes the obligation a property of the READING, not of how the
+# report arrived, so every clause the scan route owes, this one owes identically.
+#
+# ADDED AFTER A SWEEP FOUND A LIVE DEFECT THE FIRST VERSION COULD NOT SEE. P5 shipped driving
+# `scan --policy` with an unparseable-source trigger only — two cells of a matrix that is really
+# ROUTE x TRIGGER, and the two it tested were the two already fixed. Handed a report carrying a real `Net`
+# violation AND a malformed `unanalyzed`, three engines exited 2 with `violations: []` while java exited 1
+# with the finding: the same machine-consumer under-report, one route over.
+#
+# THE TRIGGERS ARE REPORT SHAPES, so this route needs no compilation and no tree — which is also why it
+# was cheap to leave untested and expensive to have left untested.
+REPORT_TRIGGERS = {
+    # the report DECLARES source it could not analyze — the ⟨0.21⟩ manifest, well-formed
+    "declared": {"unanalyzed": [{"path": "src/x", "reason": "failed to parse"}]},
+    # the manifest is PRESENT but UNREADABLE. Not a claim of completeness — fail closed (SPEC §2 ⟨0.24⟩'s
+    # denylist-of-proven-safe-shapes rule). This is the cell the sweep found broken in three engines.
+    "malformed": {"unanalyzed": "not-an-array"},
+    # ⟨0.24⟩ "I judged nothing": `analyzed.count == 0` MUST NOT read as full coverage (SPEC §2).
+    "count0": {"analyzed": {"count": 0, "digest": "d"}},
+}
+
+
+def write_report(path, violating, trigger):
+    """A hand-written report: the violation is an entry, the incompleteness is an envelope shape."""
+    doc = {
+        "candor": {"version": "scan-0.24.0", "toolchain": "conformance", "spec": "0.24"},
+        "package": "p5",
+        "analyzed": {"count": 3, "digest": "d"},
+        "functions": [],
+    }
+    if violating:
+        doc["functions"].append({"fn": "hits", "inferred": ["Net"], "direct": ["Net"], "hash": "p5#hits"})
+    if trigger:
+        doc.update(REPORT_TRIGGERS[trigger])
+    with open(path, "w") as f:
+        json.dump(doc, f)
+    return path
+
+
+def measure_report_route(eng, go_report, ws, trigger):
+    """The same three arms, over `gate --report`. `violation_only` is again the ORACLE for `both`."""
+    res = {}
+    pol = os.path.join(ws, "policy.txt")
+    with open(pol, "w") as f:
+        f.write("deny Net\n")
+    for arm in ARMS:
+        violating = arm in ("violation_only", "both")
+        incomplete = arm in ("incomplete_only", "both")
+        rep = write_report(os.path.join(ws, f"report.{arm}.scan.json"), violating,
+                           trigger if incomplete else None)
+        verdict = os.path.join(ws, f"{eng}.{trigger}.{arm}.verdict.json")
+        if os.path.exists(verdict):
+            os.remove(verdict)
+        rc, _o, _e = go_report(rep, pol, verdict)
+        res[arm] = (rc, verdict_of(verdict))
+    return res
+
+
+def report_invoker(eng):
+    """(invoker, err) for the `gate --report` verb — a QUERY binary on rust/ts, the same jar/binary else."""
+    if eng == "rust":
+        b = os.environ.get("CANDOR_QUERY_BIN") or os.path.join(gd.CANDOR, "target", "debug", "candor-query")
+        if not os.path.exists(b):
+            return None, "no candor-query"
+        return (lambda r, p, v: run([b, "gate", "--report", r, "--policy", p, "--gate-json", v])), None
+    if eng == "java":
+        jar = os.environ.get("CANDOR_JAVA_JAR")
+        if not jar:
+            c = gd._glob(os.path.join(gd.CANDOR_JAVA, "build", "libs"), "-all.jar")
+            jar = max(c, key=os.path.getmtime) if c else None
+        if not jar or not os.path.exists(jar):
+            return None, "no candor-java jar"
+        return (lambda r, p, v: run(["java", "-jar", jar, "gate", "--report", r, "--policy", p,
+                                     "--gate-json", v])), None
+    if eng == "ts":
+        q = os.path.join(gd.CANDOR_TS, "query.mjs")
+        if not shutil.which("node") or not os.path.exists(q):
+            return None, "no node / query.mjs"
+        return (lambda r, p, v: run(["node", q, "gate", "--report", r, "--policy", p,
+                                     "--gate-json", v])), None
+    if eng == "swift":
+        b = os.path.join(gd.CANDOR_SWIFT, ".build", "debug", "candor-swift")
+        if not os.path.exists(b):
+            return None, "no candor-swift"
+        return (lambda r, p, v: run([b, "gate", "--report", r, "--policy", p, "--gate-json", v])), None
+    return None, "unknown engine"
+
+
 def measure(eng, go, ws, gate):
     """Run the three arms for one (engine, gate). Returns {arm: (rc, doc)}."""
     res = {}
@@ -416,16 +505,36 @@ def main():
                 else:
                     shutil.rmtree(ws, ignore_errors=True)
 
-    print(f"\n  {'engine':<8}{'gate':<10}{'status':<14}{'findings':>9}")
+        # THE SECOND ROUTE. §3.1 puts the obligation on the READING, so `gate --report` owes every clause
+        # `scan --policy` owes — and the sweep that added this found three engines breaking one of them.
+        go_report, rerr = report_invoker(eng)
+        if go_report is None:
+            absent.append((f"{eng} (report)", rerr))
+        else:
+            for trig in REPORT_TRIGGERS:
+                ws = tempfile.mkdtemp(prefix=f"candor-p5-{eng}-report-{trig}-")
+                try:
+                    res = measure_report_route(eng, go_report, ws, trig)
+                    ok, fs = judge(res)
+                    rows.append((eng, f"report/{trig}", "live" if ok else "control-dead", len(fs)))
+                    for kind, why in fs:
+                        findings.append((eng, f"report/{trig}", kind, why))
+                finally:
+                    if keep:
+                        print(f"    kept: {ws}")
+                    else:
+                        shutil.rmtree(ws, ignore_errors=True)
+
+    print(f"\n  {'engine':<8}{'gate':<18}{'status':<14}{'findings':>9}")
     for eng, gate, status, n in rows:
-        print(f"  {eng:<8}{gate:<10}{status:<14}{n:>9}")
+        print(f"  {eng:<8}{gate:<18}{status:<14}{n:>9}")
     for eng, err in absent:
         print(f"  {eng:<8}{'—':<10}ABSENT — {err}")
 
     if findings:
         print(f"\n{len(findings)} VIOLATION(S) of §3.3.1:")
         for eng, gate, kind, why in findings:
-            print(f"  {eng:<6} {gate:<9} {kind:<13} {why}")
+            print(f"  {eng:<6} {gate:<17} {kind:<13} {why}")
 
     dead = [(e, g) for e, g, s, _ in rows if s != "live"]
     if not rows:
@@ -438,7 +547,11 @@ def main():
         known = {(k["engine"], k["gate"]) for k in bl.get("known", [])}
         hit = {(e, g) for e, g, _k, _w in findings}
         stale = known - hit
-        waived = len([1 for e, g, _k, _w in findings if (e, g) in known])
+        # COUNT CELLS, NOT FINDINGS. One broken cell yields several findings (a malformed-manifest cell
+        # trips UNDISCLOSED, NOT-DOMINANT and DROPPED at once), and reporting the finding count beside a
+        # cell count in the same sentence reads as "19 of 20 pairs waived" when it is 8 of 20.
+        waived = len(known & hit)
+        waived_findings = len([1 for e, g, _k, _w in findings if (e, g) in known])
         findings = [f for f in findings if (f[0], f[1]) not in known]
         print(f"\nRATCHET  (baseline: {baseline})")
         for e, g in sorted(known):
@@ -453,7 +566,8 @@ def main():
     print(f"\nP5 INCOMPLETE-VS-VIOLATION DOMINANCE: "
           + ("FAILED — see above." if bad else
              f"OK — {n_live} (engine, gate) pair(s): a violation survived an incomplete scan in every one"
-             + (f" (except {waived} waived)" if waived else "")))
+             + (f" — {waived} pair(s) waived by the ratchet, {waived_findings} finding(s)"
+                if waived else "")))
     return 1 if bad else 0
 
 
