@@ -67,11 +67,17 @@ Everything else that was waived this session was either fixed or retracted.
    as open. Fourth misdiagnosis this session, and the only one that survived into a document I had just
    rewritten to fix exactly this class.
 
-3. **Per-type unanswerability in the §2.2 sidecar** (§2). The one DESIGN item the 2026-08-02 audit
-   confirmed genuinely live. A sidecar that is present and non-empty is trusted per-TYPE, and a type with
-   no entry is treated as having no supertypes — a positive claim the format cannot distinguish from "I
-   did not index this type". Probably needs the `analyzed`/`unanalyzed` treatment reports got at ⟨0.21⟩.
-   **MEASURE FIRST**; do not patch around it with a leaf-key guess.
+3. ~~**Per-type unanswerability in the §2.2 sidecar** (§2).~~ **CLOSED 2026-08-02 as SPEC §2.2 ⟨0.26⟩,
+   four-way, pinned by conformance PART 30 (P6).** The guess above was right about the shape — it did need
+   the `analyzed`/`unanalyzed` treatment reports got at ⟨0.21⟩ — but the landed form is smaller: the
+   POSITIVE KEY SET is the manifest, and `@unanalyzed` is a diagnostic beside it, because a report's
+   unanalyzed set is enumerable while a sidecar's complement is every type in the world.
+   **"MEASURE FIRST" earned its place twice.** The measurement that made it a format change rather than a
+   consumer patch was that a PARTIAL sidecar answered WORSE than an ABSENT one, identically in java and
+   ts — two engines with no third answer available, which is evidence about the FORMAT rather than either
+   engine. And the swift half turned out to be a bigger hole than filed: protocols were absent from that
+   engine's sidecar ENTIRELY, as keys and as edges, so every `Impl: Mid`/`Mid: Base` chain dead-ended.
+   Engines: java `78aad6d`, ts `caeda66`, swift `ea3de21`, rust `4cae735`.
 
 4. **The frontier differential's three arms and two independent consumers** (§2). A defect INSIDE the
    instrument: the swift arm uses candor-swift as PRODUCER and rust's `candor-query` as CONSUMER, so a
@@ -716,6 +722,35 @@ no reference implementation, no second opinion, no spec interpretation in the lo
       stale-`{Unknown}`-erasing-a-trusted-effect (`deny Fs` exit 1 → 0).
 - [x] **BUILT 2026-08-02 as conformance PART 28** — and NOT blocked on `gate --report` after all: `unknownWhy` is on the wire per unit, and a token set is finer than the §6.2 class projection. **P4 — SIGNATURE MONOTONICITY.** Adding a call cannot remove an effect or a reason class. Would have
       caught the Lemma 2 violation. **Blocked on the gate-a-report verb below** for the class half.
+
+- [x] **P6 — SIDECAR MANIFEST FIDELITY. BUILT 2026-08-02 as conformance PART 30**
+      (`conformance/gen_sidecar_manifest.py`). **The family's structural gap, and the reason it is worth
+      naming: P2 and P3 degrade the chained DEP REPORT, and nothing degraded a SIDECAR.** A sidecar is not
+      a dep report — it is a second, differently-shaped input that no property varied — so the ⟨0.26⟩
+      defect sat in that gap for as long as the sidecar has existed. The gap was not found by reasoning
+      about coverage; it was found by tripping over the defect and then asking which property SHOULD have
+      caught it.
+      **Two conjuncts, so every engine carries at least one live cell.**
+      **A. CONSUMER MONOTONICITY** (java, ts, rust — the engines with a `callers --include-unknown` verb):
+      `frontier(full) ≤ frontier(full minus one key) ≤ frontier(no sidecar)`. Both bounds are load-bearing
+      and run opposite ways; the RIGHT one is what the defect broke. **A PARTIAL sidecar was worse than an
+      ABSENT one** — removing MORE information gave a SAFER answer — which is not something a consumer can
+      patch around, and is exactly why the repair had to be a format change.
+      **B. PRODUCER MANIFEST CLOSURE** (java, ts, swift — the engines that WRITE one): every declaring type
+      of a unit in the engine's OWN callgraph must have a sidecar key. Both sides are the same engine's own
+      output for one scan, so there is no expected-value table.
+      **Counts: 12 live cells, 0 vacuous, 0 waivers.** NOT-APPLICABLE cells are structural facts, printed
+      as such: swift ships no `callers` verb; candor-scan writes no sidecar — which is precisely why rust's
+      consumer arm matters, since every hierarchy it walks was produced by another engine.
+      **VERIFIED TO CATCH on all four**, by reverting each engine's own ⟨0.26⟩ commit: ts fails both
+      conjuncts, java both, rust A, swift B.
+      **Two harness lessons, both paid for.** (a) The rust and java revert runs FIRST CAME BACK GREEN, and
+      both were STALE ARTIFACTS — a root `cargo build` does not rebuild `candor-query`, and `shadowJar`
+      left the old jar in place. **Deleting the binary before measuring is the only reliable form of that
+      control**, and this is item 7f arriving a third time. (b) Conjunct B first flagged `Cases` on a
+      CONFORMING engine: that is ts's ⟨0.14⟩ top-level initializer unit `Cases.<module>`, whose prefix is a
+      FILE. Demanding a key for it is the modules-counted-as-types error. Found by reading the callgraph,
+      not by anticipating it — bracketed synthetic members are now excluded.
 
 **What this will NOT catch, and it is the right thing to leave out:** the classifier. If candor does not
 know `Foo.bar()` performs `Net`, single-tree and chained agree on the same wrong answer and no property

@@ -440,7 +440,13 @@ R2_REPORT = {
     ],
 }
 R2_CG = {e["fn"]: e.get("calls", []) for e in R2_REPORT["functions"]}
-R2_HIER = {"app.Impl": ["app.Base", "app.Other"], "app.Zed": ["app.Base"]}
+# ⟨0.26⟩ COMPLETE: `app.Base` and `app.Other` carry their own (empty) keys. §2.2 makes the KEY SET the
+# manifest, so a root is not optional bookkeeping — without it a walk up from `app.Impl` runs off the
+# indexed set, every question becomes UNANSWERABLE, and this fixture's answerable-NO rows stop being
+# answerable at all. (That is what a PRE-RUNG sidecar now costs; it is the safe direction, but it is not
+# what this part is measuring.)
+R2_HIER = {"app.Impl": ["app.Base", "app.Other"], "app.Zed": ["app.Base"],
+           "app.Base": [], "app.Other": []}
 R2_EXPECT = {"app.Mixed.go": "run,untyped cross-package receiver,write", "app.Dedup.go": "run"}
 FRONTIER_ENGINES = ["rust", "java", "ts"]   # swift ships no `callers` verb, by design
 
@@ -521,7 +527,7 @@ R3_REPORT = {
     ],
 }
 R3_CG = {e["fn"]: e.get("calls", []) for e in R3_REPORT["functions"]}
-R3_HIER = {"app.Impl": ["app.Base"]}
+R3_HIER = {"app.Impl": ["app.Base"], "app.Base": []}   # ⟨0.26⟩ COMPLETE — see R2_HIER's note
 DOTFREE_VERBATIM = {"app.Phrase.go": "untyped cross-package receiver",
                     "app.EqQual.go": "bare_reacher"}
 ARM_EQ_ONLY = "app.EqSimple.go"

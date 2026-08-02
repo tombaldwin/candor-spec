@@ -4657,9 +4657,71 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 30 — P6, SIDECAR MANIFEST FIDELITY: DEGRADING A SIDECAR MAY ONLY WIDEN                 [TIER 1]
+#
+# The self-differential family's structural gap, closed. P2 and P3 degrade the chained DEP REPORT; nothing
+# degraded a SIDECAR, and a sidecar is not a dep report — it is a second, differently-shaped input that no
+# property varied. The ⟨0.26⟩ defect lived in that gap for as long as the sidecar has existed.
+#
+# TWO CONJUNCTS, and between them every engine carries at least one:
+#   A. CONSUMER MONOTONICITY (java, ts, rust — the engines with a `callers --include-unknown` verb)
+#          frontier(full) <= frontier(full minus one key) <= frontier(no sidecar)
+#      Both bounds matter and they run opposite ways. The LEFT: degrading an input may not buy CONFIDENCE.
+#      The RIGHT: a PARTIAL sidecar may not out-claim an ABSENT one — the bound the defect broke, and the
+#      reason the repair had to be a FORMAT change. With no sidecar the frontier falls back to a documented
+#      over-listing simple-name match; with ONE key missing it went confidently silent. Removing MORE
+#      information gave a SAFER answer. No consumer can patch around that alone: without a manifest it
+#      cannot tell a producer's silence from its answer.
+#   B. PRODUCER MANIFEST CLOSURE (java, ts, swift — the engines that WRITE a sidecar)
+#          { declaring type of u : u a unit in the engine's OWN callgraph } <= sidecar key set
+#      Both sides are the same engine's own output for one scan, so there is no expected-value table and
+#      none may ever be added. A callgraph KEY is a unit whose body the engine walked, so its declaring
+#      type was indexed — and an indexed type must carry a key. Callee VALUES are excluded (a callee may be
+#      an external type never indexed), as are BRACKETED synthetic members: `Cases.<module>` is ts's ⟨0.14⟩
+#      top-level initializer unit whose prefix is a FILE, and demanding a key for it would be the
+#      modules-counted-as-types error. That exclusion was found by reading a callgraph after this conjunct
+#      flagged a CONFORMING engine — not by anticipating it.
+#
+# The NOT-APPLICABLE cells are structural facts, not waivers, and are printed as such: candor-swift ships
+# no `callers` verb (no conjunct A); candor-scan writes no hierarchy sidecar (no conjunct B) — which is
+# exactly why rust's consumer arm matters, since every hierarchy it walks was produced by another engine.
+#
+# VERIFIED TO CATCH, per engine, by reverting each engine's own ⟨0.26⟩ commit and re-running: ts fails both
+# conjuncts, java fails both, rust fails A, swift fails B. The rust and java runs first came back GREEN
+# while reverted — both were STALE ARTIFACTS (a root `cargo build` does not rebuild candor-query; the jar
+# was not deleted before `shadowJar`). Deleting the binary first is the only reliable form of that control.
+#
+# Note which arms fire: `minus:mod.Sub` and `minus:mod.Mid` do, `minus:mod.Base` does not — removing the
+# OWNER's own key changes nothing, because the walk matches it directly before any lookup. That is the same
+# fact that makes a FLAT fixture blind to this defect, showing up per-arm.
+#
+# FLOORS: vacuity is computed from the engine's own output (an empty `full` frontier demands nothing); a
+# conjunct with no live cell on ANY engine fails the run; a reference arm producing nothing is reported as
+# the harness broken rather than as engine behaviour; and the same both-ways ratchet in
+# `sidecar-manifest-baseline.json`.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_sidecar_manifest.py" ] || { echo "FAIL: gen_sidecar_manifest.py is missing"; exit 2; }
+[ -f "$HERE/sidecar-manifest-baseline.json" ] || { echo "FAIL: sidecar-manifest-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P30_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_sidecar_manifest.py" --baseline "$HERE/sidecar-manifest-baseline.json"
+) || P30_OK=1
+
+echo "PART 30 — sidecar manifest fidelity: degrading a sidecar may only WIDEN a disclosure (SPEC §2.2 ⟨0.26⟩, P6)"
+if [ "$P30_OK" = 0 ]; then
+  echo "  -> MATCH — every degraded sidecar sat between the full and absent arms, and every walked type carries a key"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
