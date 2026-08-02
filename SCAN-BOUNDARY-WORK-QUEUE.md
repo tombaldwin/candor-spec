@@ -2621,7 +2621,22 @@ wolf costs a minute, a probe that stays quiet over a real defect is the cardinal
 ad-hoc probe is currently LESS reliable than the artifact it is inspecting, and should not be trusted over
 it without a second reading.
 
-## OPEN — candor-swift's Linux CI leg skips 411 of its 496 tests (found 2026-08-01, NOT release-gating)
+## CLOSED 2026-08-02 — candor-swift's Linux CI leg skipped 474 of its 559 tests (found 2026-08-01)
+
+**RESULT: 474 skips → 4, all four NAMED, 0 failures, on CI's own ubuntu-24.04 x86_64 leg.** 470 tests ran on
+Linux for the first time and every one passed. The remaining four are three macOS-only `XCTExpectFailure`
+ratchets and one arm that is untestable as root (root reads through `0000` permissions). Linux completes in
+27.3s against the new 15-minute hang bound.
+
+**The most informative result is the absence:** a Linux/macOS divergence in effect reporting would have been
+the cardinal sin, invisible for as long as these rows never ran. It did not materialise — and that is now
+MEASURED rather than assumed, which it had never been. Getting there required fixing a real shipped defect
+first: `Process.waitUntilExit()` blocks forever on swift-corelibs-foundation after the child exits, which
+made `candor-swift --workspace` hang forever on Linux in 0.24.0 (availability, not soundness — see 7s).
+
+Original entry follows.
+
+### (original entry) — candor-swift's Linux CI leg skips 411 of its 496 tests (found 2026-08-01, NOT release-gating)
 
 From the last green Linux run, verbatim:
 
