@@ -12,7 +12,35 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.25 — current floor (an ambiguous join key is UNIONED, not dropped)
+## 0.26 — current floor (a sidecar's KEY SET is its manifest)
+
+⟨0.26, 2026-08-02⟩ **§2.2 — an absent type in the hierarchy sidecar is UNANSWERABLE, never "has no
+supertypes".** A producer MUST emit a key for every type it indexed, `[]` included; a consumer MUST read
+the key set as the closed set of types it can answer for, and a type absent from a present sidecar MUST
+disclose rather than drop. Adds the optional `@unanalyzed` diagnostic key beside it.
+
+**Why a rung and not a clarification: absence carried two meanings and the format could not tell them
+apart.** A type with no supertypes was omitted, and so was a type the pass never looked at. A consumer
+asking `isSubtypeOf(t, owner)` about an unindexed `t` got `false` — indistinguishable from a true
+negative, and a positive claim about a type nobody analysed.
+
+**The measurement that made it a format change.** On a real scan with only the sidecar doctored, removing
+ONE entry dropped the dispatching function from `callers --include-unknown` (`[]` where the control gives
+it), while removing the sidecar ENTIRELY left the answer correct. A PARTIAL sidecar was worse than an
+ABSENT one — and no consumer can patch around that alone, because without a manifest it cannot tell a
+producer's silence from its answer. java and ts behaved identically, which is evidence about the format
+rather than either engine: neither had a third answer available.
+
+**Engine work in all four**, unlike 0.25. java `78aad6d`, ts `caeda66`, swift `ea3de21`, rust `4cae735`.
+swift's half was larger than filed — protocols were absent from its sidecar entirely, as keys AND as
+edges, so every `Impl: Mid` / `Mid: Base` chain dead-ended at the middle. rust is consumer-only
+(candor-scan writes no sidecar), which is precisely why its tri-state matters: every hierarchy it walks
+was produced by another engine.
+
+Pinned by conformance **PART 30 (P6, sidecar manifest fidelity)** — the property the self-differential
+family was missing, since P2 and P3 degrade the chained dep REPORT and nothing degraded a SIDECAR.
+
+## 0.25 — (an ambiguous join key is UNIONED, not dropped)
 
 ⟨0.25, 2026-08-02⟩ **§2 chaining rule 1 is REVERSED, and this is a correction rather than a preference.**
 Through 0.24 the rule read: *"An ambiguous key (two dep functions sharing it) is dropped, not picked

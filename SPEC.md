@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.25** — all code engines declare `0.24`; the floor is conformance-pinned. How versions
+**Version 0.26** — all code engines declare `0.26`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -260,7 +260,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.25" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.26" },
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -3131,6 +3131,28 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.26 (all code engines declare `0.26`; conformance-pinned four-way)** — a **tier-1 additive** rung:
+  **§2.2, the hierarchy sidecar's KEY SET is its MANIFEST.** A producer MUST emit a key for every type it
+  indexed (`[]` included); a consumer MUST treat a type ABSENT from a present sidecar as UNANSWERABLE and
+  disclose rather than drop. Adds the optional `@unanalyzed` diagnostic key.
+
+  Absence carried two meanings and the format could not tell them apart — a supertypeless type and a type
+  the pass never looked at were spelled identically — so `isSubtypeOf` over an unindexed type answered
+  `false`, a positive claim about a type nobody analysed. MEASURED with only the sidecar doctored on a real
+  scan: removing ONE entry dropped a reacher from `callers --include-unknown`, while removing the sidecar
+  ENTIRELY left it correct. **A partial sidecar answered worse than an absent one**, identically in java and
+  ts — which is evidence about the FORMAT, since neither engine had a third answer available.
+
+  Engine work in all four. Pinned by conformance **PART 30** (P6, sidecar manifest fidelity: degrading a
+  sidecar may only WIDEN a disclosure, and every type an engine walked carries a key), which also closes the
+  self-differential family's structural gap — P2 and P3 degrade the chained dep REPORT, and nothing
+  degraded a SIDECAR.
+
+- **0.25 (conformance-pinned four-way)** — a **correction** rung, no engine work required at the contract
+  level: **§2 chaining rule 1 is REVERSED.** Two dep-report entries colliding on one join key are UNIONED,
+  never withdrawn and never picked between; trust levels do not rank. Dropping the key turned a disclosed
+  ambiguity into silence, which is the cardinal sin wearing a tidy-looking rule.
 
 - **0.24 (all code engines declare `0.24`; conformance-pinned four-way)** — a **tier-1** rung, and the
   first one whose primary change can **turn a currently-green gate RED**. Read the verdict note below
