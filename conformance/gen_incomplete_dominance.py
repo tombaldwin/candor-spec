@@ -73,6 +73,18 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_differential as gd
 
+# THE CONTRACT THIS PROPERTY ENFORCES, quoted so `clause_check.py` can prove it still says this.
+#
+# Every fragment below MUST appear verbatim in SPEC.md. That is not bookkeeping: this file once asserted
+# two MUSTs the spec explicitly REFUSES (that a judged-nothing report must not exit 0 from `gate --report`,
+# and that a violation read out of an IMPEACHED document must still dominate), failed all four engines on
+# them, and waived four conforming engines as known-broken. Writing the citation would have required
+# opening the clause that contradicts the assertion.
+SPEC_CLAUSES = [
+    ("§3.3.1", "A configured gate over incompletely-analyzed code MUST fail closed"),
+    ("§3.3.1", "a real violation (exit 1) still dominates"),
+]
+
 ARMS = ("violation_only", "incomplete_only", "both")
 
 

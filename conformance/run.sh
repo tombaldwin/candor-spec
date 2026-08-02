@@ -4257,6 +4257,29 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# CLAUSE CHECK — before any property runs, prove each one still quotes a contract that exists  [TIER 1]
+#
+# A property enforces a MUST. This asserts that the MUST is IN SPEC.md, verbatim, and that every waiver
+# naming an engine as known-broken cites the sentence it violates.
+#
+# WHY IT IS A PRECONDITION RATHER THAN A PART. PART 29 was once extended with two triggers asserting MUSTs
+# the spec explicitly REFUSES — that a judged-nothing report must not exit 0 from `gate --report` (§2 binds
+# that rule "AS A DISCLOSURE, NOT AS AN EXIT CODE": *"the exit code and the verdict document are
+# UNCHANGED"*), and that a violation read out of an IMPEACHED document must still dominate (§2: *"One
+# unreadable among them means the document's claim cannot be trusted … Refuse."*). It failed all four
+# engines on those and they were WAIVED as engine defects. Every one was conforming.
+#
+# The act of finding the quote is the check: writing the citation for that trigger requires opening the
+# clause that contradicts it. And a wrong WAIVER is worse than a wrong queue entry — it records a
+# conforming engine as broken, in the file whose job is to be trusted later, and makes the suite go GREEN
+# over the accusation. Running it first means a property cannot report on engines before it has shown its
+# premise is real.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/clause_check.py" ] || { echo "FAIL: clause_check.py is missing — properties would run without their premises checked"; exit 2; }
+echo
+python3 "$HERE/clause_check.py" || { echo "  -> a property is enforcing something SPEC.md does not say, or a waiver accuses an engine without citing a clause"; rc=1; }
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # PART 24 — P1, SPLIT-INVARIANCE: EACH ENGINE AGAINST ITSELF                                [TIER 1]
 #
 # PARTs 18-22 are five hand-written instances of ONE property:

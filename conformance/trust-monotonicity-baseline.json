@@ -29,7 +29,7 @@
       "engine": "swift",
       "arm": "empty_zero",
       "split": "*",
-      "why": "⟨0.24⟩ FIXED in candor-swift `b41b1df` — the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` — the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
+      "why": "§2 ⟨0.24⟩: `analyzed.count == 0` IS \"I JUDGED NOTHING\", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE — the row-1 obligation is to treat the package as NOT COVERED. ⟨0.24⟩ FIXED in candor-swift `b41b1df` — the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` — the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
       "repro": [
         "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
       ]
