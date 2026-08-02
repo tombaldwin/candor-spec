@@ -320,11 +320,40 @@ def find_report(prefix_dir, prefix):
 REPORT_TRIGGERS = {
     # the report DECLARES source it could not analyze — the ⟨0.21⟩ manifest, well-formed
     "declared": {"unanalyzed": [{"path": "src/x", "reason": "failed to parse"}]},
-    # the manifest is PRESENT but UNREADABLE. Not a claim of completeness — fail closed (SPEC §2 ⟨0.24⟩'s
-    # denylist-of-proven-safe-shapes rule). This is the cell the sweep found broken in three engines.
-    "malformed": {"unanalyzed": "not-an-array"},
-    # ⟨0.24⟩ "I judged nothing": `analyzed.count == 0` MUST NOT read as full coverage (SPEC §2).
-    "count0": {"analyzed": {"count": 0, "digest": "d"}},
+    # NO `malformed` TRIGGER EITHER, and its removal is the same correction twice over.
+    #
+    # A first version carried one (`"unanalyzed": "not-an-array"`) and reported rust/ts/swift as DROPPED +
+    # NOT-DOMINANT + UNDISCLOSED. All three were artifacts of applying SCAN-ROUTE semantics to a route
+    # with different ones. SPEC §2 ⟨0.24⟩ rules an unreadable SIGNATURE key — and `unanalyzed` is named as
+    # one — this way: *"One unreadable among them means the document's claim cannot be trusted, whatever
+    # this particular policy happens to ask. Refuse."*
+    #
+    # So the document is IMPEACHED, and the "violation" this property wanted to see dominate is read FROM
+    # the impeached document. §3.3.1's *a real violation still dominates* is about incompletely-analyzed
+    # CODE, where the violation is the ENGINE'S OWN finding beside source it could not read; it does not
+    # license repeating a claim from a document just refused. Refusing with `ok:false, refused:true` and no
+    # `violations` key is the §3.1 refusal shape, which is exactly what those three engines emit.
+    #
+    # DOCUMENT IMPEACHMENT IS A DIFFERENT RULE FROM DOMINANCE, and belongs to the corrupt-report PART, not
+    # here. What survives is one genuine finding, filed there rather than waived here: **java does not
+    # refuse at all** on this shape (`incomplete_only` exits 0), which the signature-key rule forbids.
+    # NO `count0` TRIGGER — AND ITS ABSENCE IS A CORRECTION, NOT AN OVERSIGHT.
+    #
+    # A first version of this file carried one, asserting that a `count: 0` report ("I judged nothing")
+    # handed to `gate --report` must not exit 0. It failed all four engines, and all four engines were
+    # RIGHT. SPEC §2 ⟨0.24⟩ binds that rule to the verb "AS A DISCLOSURE, NOT AS AN EXIT CODE": *"The exit
+    # code and the verdict document are UNCHANGED … Refusing with exit 2 is not an available reading —
+    # §3.3 enumerates exactly two exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the
+    # target's own code) and a judged-nothing DEPENDENCY is neither, so an engine that refuses here has
+    # minted a third cause and SPLIT THE VERB."* The clause even records that it first said the opposite
+    # and was corrected, because forbidding exit 0 contradicted §3.1's byte-equality MUST.
+    #
+    # So the obligation there is a stderr ADVISORY, and this property is the wrong instrument for it: P5
+    # judges exit codes and verdict documents, which is exactly what that rule leaves untouched. Coverage
+    # of the disclosure belongs to PART 26/27. **A property whose expectation is stricter than the
+    # contract manufactures findings shaped exactly like real defects** — four of them here, waived as
+    # engine bugs before the clause was read. Check which side the contract is on before blaming an
+    # engine; the standing bar exists because this is the second time.
 }
 
 
