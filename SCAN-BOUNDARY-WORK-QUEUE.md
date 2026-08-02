@@ -121,9 +121,31 @@ and immediately found the theory wrong twice.
      then annotated *"I filed this as needing a four-way ruling and it is not one — §3.3.1 already says
      it verbatim"*. Two engines agreeing with the spec and one disagreeing is not a tie. The correction
      was right and the item still sat under a heading that said otherwise.
-4. **java's `blindspots` never lists a setup-only source** (§4). `UnknownReason.parse` returns null on a
-   colon-free tag, so the UNFILTERED list is already wrong. Check the other three for the same
-   colon-required parse.
+4. ~~**java's `blindspots` never lists a setup-only source** (§4).~~ **CLOSED 2026-08-02 (java
+   `0f5761a`), and the SWEEP came back CLEAN with a reason worth keeping.** `UnknownReason.parse`
+   returned null for any colon-free tag and `ReportJson.parseEntries` drops the nulls, so §6.2's
+   detail-less tokens were deleted on the way in. Measured on a three-source fixture, jar rebuilt
+   between:
+
+   | | BEFORE | AFTER |
+   |---|---|---|
+   | `blindspots` unfiltered | 2 sources | **3** — `missing-config` listed |
+   | `blindspots --class setup` | "no Unknown sources" | **1** |
+   | `--class dynamic` (control) | 2 | 2 — still EXCLUDES setup per §6.2 |
+
+   Fixed by parsing a colon-free tag to an empty DETAIL, plus `format()` emitting the bare prefix —
+   without that second half it would round-trip `missing-config:` and corrupt the wire, since
+   `ReportJson` writes `format()` straight back out.
+   - **The other three are clean, and WHY is the transferable part: rust, ts and swift all classify from
+     the RAW string with prefix matching, so there was never a parse to fail** (swift ships no
+     `blindspots` at all). **java was the only engine that TYPES the tag** — and having the richer model
+     is exactly what made it possible to drop a token the others merely passed through. A more precise
+     representation is a new place for something to fall out of. Verified behaviourally on the same
+     fixture rather than by reading: rust and ts both list 3 and both answer `--class setup`.
+   - The shape, restated because it generalises past this token: **a parser that models `kind:detail`
+     drops the token that has no detail**, and the vocabulary it was written for contains exactly such
+     tokens. The doc comment asserted the wrong model in so many words ("null only if there is no colon
+     — not a tag"), and the round-trip test asserted it too.
 
 **FILED WITH MEASUREMENTS, NOT STARTED** — each has a number attached and none is blocking: the manifest
 that cannot cross a trust boundary (§2b); the return-index collision lead (§3c — recovers >half of one
