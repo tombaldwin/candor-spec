@@ -2732,6 +2732,50 @@ Each carries a VACUITY FLOOR (tree findable, source non-trivial, anchors present
 the one that matters most and the one a rename satisfies by accident, and **a vacuous census is worse than
 none, because it reads as a guard.**
 
+## THE SWEEP, 2026-08-02 — 60 items triaged, and it found a LIVE three-engine defect
+
+Ran after the audit above closed 11 verified-stale items. Every remaining item that is a BEHAVIOUR claim
+(rather than a decision or a ruling owed) was probed against the engines. Results, with the probes:
+
+**NEW AND LIVE — three engines DROP a real violation from the verdict document.** A report carrying a
+`Net` violation AND a malformed `unanalyzed` (`"not-an-array"`), through `gate --report --policy 'deny Net'`:
+
+    java    exit 1   violations: 1                 <- correct
+    rust    exit 2   violations: 0  refused: true  <- the finding is DELETED from the artifact
+    ts      exit 2   violations: 0  refused: true
+    swift   exit 2   violations: 0  refused: true
+
+§3.3.1 is explicit — *"a real violation (exit 1) still dominates"* — so **java is right and the other
+three are wrong.** This is the SAME machine-consumer under-report closed in candor-rust's `scan` route
+that morning (`a256e72`), on a different ROUTE (`gate --report`) with a different TRIGGER (a malformed
+manifest rather than a parse failure). It corrects item [14], which recorded rust as the sole offender
+with the opposite polarity ("rust silently drops → exit 0 where the other three exit 2"): rust now exits
+2, and the divergence that remains is about the DOCUMENT, not the exit code.
+
+**PART 29 (P5) DOES NOT COVER IT, and that is the actionable part.** P5 drives `scan --policy` only, with
+an unparseable-source trigger only. The route × trigger matrix is where these keep hiding — one clause,
+now FOUR places to obey it (scan/policy, scan/baseline, gate --report/parse-failure, gate --report/
+malformed-manifest) and P5 tests two. Extending its axes is worth more than fixing the three engines by
+hand, per bar 7u's last rule.
+
+**CORRECTED, and broader than filed:** items [12] and [21] recorded a count-0 report handed to
+`gate --report` as a java+swift defect. Measured, **all four exit 0** on it. Four-way, not two.
+
+**CONFIRMED LIVE:** item [47] — a policy line whose rule KIND is unrecognised is dropped with a warning in
+all four (`candor: ignoring policy rule (unknown rule kind ...)`). Item [45]'s wording that three engines
+"silently drop the token" is inaccurate: every engine warns. The drop is real; the silence is not.
+
+**PROBE INCONCLUSIVE, recorded rather than guessed:** item [48] (`whatif` over a report declaring
+`unanalyzed`) — the invocation did not reach the verb on any engine, so this says nothing about the
+claim. Item [54] (`conditional` implemented only by rust) — all four rejected `conditional Net` as an
+unknown rule kind, which contradicts the filing, but the probe may not be the specced syntax. Both need a
+better probe before anyone acts on them; neither is closed.
+
+**STILL OPEN AND LEGITIMATELY SO:** the design items — the per-type §2.2 sidecar unanswerability, PAPER3
+Def 24's manifest granularity, the frontier differential's shared consumer, the networked-DB classifier
+question, the `Net[…]` widening judgment, and the rulings owed. These age far better than defect reports
+and none of them was stale.
+
 ## Standing bar 7u — THE QUEUE ROTS BECAUSE A STALE ITEM COSTS NOTHING (2026-08-02)
 
 Audited on 2026-08-02, on the question "is any of this still true": **12 open items sampled, 11 already
