@@ -2912,3 +2912,27 @@ only that test.
 
 Fix: candor-java `9f8e71c` (walks) + `c583da7` (merge). 512 tests, `check`, 392-case smoke and
 four-way conformance all green. Unpushed.
+
+2026-08-02 (⟨0.26⟩, the sidecar manifest): a SILENT UNDER-REPORT in the `callers --include-unknown`
+frontier, in all three engines that ship the verb. The §2.2 hierarchy sidecar spelled "this type has
+no supertypes" and "this type was never indexed" the same way — absence — so a subtype walk that ran
+off the indexed set answered `false`, a positive claim about a type nobody analysed, and the reacher
+disappeared from the disclosure with no diagnostic.
+
+MEASURED on a real scan with only the sidecar doctored: removing the REACHING implementor's entry gave
+`[]` where the control gives `[Dispatcher.run]`, while removing the sidecar ENTIRELY left the answer
+correct. **A partial sidecar was worse than an absent one.** That non-monotonicity is what made this a
+FORMAT change rather than a consumer patch: without a manifest a consumer cannot tell a producer's
+silence from its answer. java and ts behaved identically — evidence about the format, since neither had
+a third answer available.
+
+Fixed four-way: java `78aad6d`, ts `caeda66`, swift `ea3de21` (producer; protocols were missing from
+its sidecar ENTIRELY, as keys and as edges, so every two-level chain dead-ended), rust `4cae735`
+(consumer-only — candor-scan writes no sidecar, so every hierarchy it walks came from another engine).
+Pinned by conformance PART 30 (P6), 12 live cells, verified to catch on all four by reverting each
+engine's own commit.
+
+THE STRUCTURAL LESSON, which is the durable part: P2 and P3 degrade the chained dep REPORT, and nothing
+degraded a SIDECAR. The defect sat in that gap for as long as the sidecar has existed. It was not found
+by auditing coverage — it was found by tripping over the defect and then asking which property should
+have caught it. **A second input shape needs its own degradation property; it does not inherit one.**
