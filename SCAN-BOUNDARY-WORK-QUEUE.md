@@ -414,8 +414,39 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       **This is the three-row rule applied to the sidecar, and unlike symptom 3 it probably DOES need a
       format rung** — the sidecar would need the `analyzed`/`unanalyzed` treatment that reports got at spec
       0.21 ([[candor-completeness-manifest]]). Do not patch around it with a leaf-key guess.
-      MEASURE FIRST, and not while the four frontier agents are live — running a shared rust binary during
-      someone else's edits is standing-bar item 7f, which produced a phantom finding once already.
+      **MEASURED 2026-08-02 — CONFIRMED, in BOTH engines that ship the verb, with a discriminating
+      control.** Using the frontier differential's own scenario (13 impls > fan-out, `Impl7.op` reaches
+      `Sink.touch`, a `Dispatcher` dispatching `Base.op`), scanning for real and then doctoring only the
+      sidecar:
+
+          arm                                   java frontier            ts frontier
+          intact sidecar (CONTROL)              [Dispatcher.run]         [Dispatcher.run]
+          remove `Impl7` (the REACHING impl)    []   <-- SILENT DROP     []   <-- SILENT DROP
+          remove `Impl3` (a NON-reaching impl)  [Dispatcher.run]         —
+          sidecar WHOLLY ABSENT                 [Dispatcher.run]         —
+
+      **The third row is what makes the second attributable**: removing an irrelevant type changes nothing,
+      so the drop is caused by the missing type and not by "the sidecar was edited". **The fourth row is
+      the finding**: removing MORE information — the entire sidecar — gives a SAFER answer than removing
+      ONE entry. The ⟨0.24⟩ per-file ruling works exactly as specified, and a partially-interpretable
+      sidecar walks straight past it.
+
+      That non-monotonicity is P3's shape (a degraded input may only ADD hedges) applied to the SIDECAR
+      rather than the report, and no property covers it: PART 26 degrades dep REPORTS, and the sidecar is
+      not one.
+
+      **TWO ENGINES AGREEING IS EVIDENCE ABOUT THE FORMAT, NOT THE ENGINES** (bar 7v, in the direction that
+      exonerates them). java and ts resolve the ambiguity identically because the format gives them no
+      third answer: `{"fr.Impl7": ["fr.Base"]}` present vs absent is the ONLY distinction available, and
+      "absent" has to mean both *"this type has no supertypes"* and *"I never indexed this type"*.
+
+      **FIX OPTIONS, none taken — this needs a ruling, and probably a rung.**
+      (a) give the sidecar the ⟨0.21⟩ `analyzed`/`unanalyzed` treatment so it can say which types it
+          indexed — the honest fix, a FORMAT change, so a floor bump;
+      (b) have the consumer over-list when the reaching type is absent from a present sidecar — no format
+          change, but it makes every genuinely-supertypeless type over-list, and the cost is unmeasured;
+      (c) leave it and document the hazard, which is what the ⟨0.24⟩ per-file ruling implicitly did.
+      Do NOT patch around it with a leaf-key guess. Measurement done; the ruling is open.
 
 - [x] **CLOSED `94de3b0` + SPEC §2.2 ⟨0.24⟩ `5652ce6` — and it was not cosmetic, and it needed no sweep.**
       Filed as a spurious warning; measured as **three real losses**, each against a sidecar-removed control:
