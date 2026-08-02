@@ -12,6 +12,36 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
+## 0.25 — current floor (an ambiguous join key is UNIONED, not dropped)
+
+⟨0.25, 2026-08-02⟩ **§2 chaining rule 1 is REVERSED, and this is a correction rather than a preference.**
+Through 0.24 the rule read: *"An ambiguous key (two dep functions sharing it) is dropped, not picked
+from — §4's under-report-don't-fabricate rule, applied at the join."* All four engines now UNION such a
+key, and conformance PARTs 25/26 pin the union — so an engine conforming to the 0.24 TEXT would fail the
+suite, and a third party implementing to it would build the cardinal sin deliberately.
+
+**What the old rule cost.** A dropped key resolves to nothing, so the CALLING function leaves `functions`
+entirely — and under ⟨0.21⟩ an absent entry is a *positive claim of purity*. It prescribed silence over a
+call whose target the engine had just declared itself unable to name, and cited §4 to license the one
+thing §4 forbids. Named live instance, on one of the most-depended-upon crates there is:
+`hyper#client::conn::http1::Builder::handshake` = `['Log']` @0.14.32 vs `[]` @1.9.0 — both in the build,
+key withdrawn, consumer reads it absent = pure.
+
+**The union is measured, not argued.** Across candor-rust/pgman/ebman every one of the 123 colliding keys
+whose entries disagreed is one function at two VERSIONS of one package. Cost: 7 effect-items to close 123
+purity claims; on the consumer side 11 functions recovered, 0 lost, 0 narrowed, and **every one of the 65
+added effect-items was `Unknown`** — no concrete effect charged to a function that did not have it.
+
+**Also normative:** trust levels do NOT rank at the join (a §2.1-downgraded entry joins the union rather
+than being discarded under a trusted one — the distrusted report is the only evidence a second,
+unverifiable version is present), and the observable invariant is **order-independence**, which
+withdrawal and trust-ranking both fail.
+
+**The prohibition on PICKING is unchanged.** Only the prescription to DROP is reversed.
+
+**No engine work.** All four already ship the rung; 0.25 is the contract catching up with the
+implementations, so adoption is a floor bump and nothing else.
+
 ## 0.24 — current floor (contributes, ambiguity, and a gate that can now go red)
 
 ⟨0.24, added 2026-08-01⟩ **CONTRIBUTES**, **`ambiguous:` as a fifth reason kind**, the frontier's
