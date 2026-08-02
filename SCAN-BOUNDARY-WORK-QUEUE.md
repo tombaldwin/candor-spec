@@ -2776,42 +2776,48 @@ Def 24's manifest granularity, the frontier differential's shared consumer, the 
 question, the `Net[…]` widening judgment, and the rulings owed. These age far better than defect reports
 and none of them was stale.
 
-## PART 29 EXTENDED: ROUTE x TRIGGER — 8 cells red, four-way (2026-08-02)
+## PART 29 EXTENDED: ROUTE x TRIGGER — and 8 of its 8 "findings" were MY PROPERTY, not the engines
 
-The sweep's own conclusion, acted on: P5 shipped driving `scan --policy` with an unparseable-source
-trigger only, and **the two cells it tested were the two already fixed.** §3.1 puts the obligation on the
-READING, not on how the report arrived, so `gate --report` owes every clause the scan route owes. Added as
-a second route with three report-shaped triggers (no compilation, no tree — which is also why it was cheap
-to leave untested and expensive to have left untested).
+**RETRACTED IN FULL, same day, and the retraction is the entry.** An earlier version of this section
+reported "8 cells red across all four engines" and concluded that "each engine implements one half of
+§3.3.1 and breaks the other". **That conclusion was wrong. All eight came from the property being
+STRICTER THAN THE CONTRACT**, and they were waived as engine defects before the clauses were read.
 
-**8 cells red across all four engines**, on clauses the spec already states. The controls hold: `policy`
-and `baseline` stay clean four-way, and `report/declared` — a well-formed ⟨0.21⟩ manifest — is clean
-four-way too, which is what makes these findings about a TRIGGER rather than about the route.
+    count0      SPEC §2 ⟨0.24⟩ binds the count-0 rule to `gate --report` **as a DISCLOSURE, not as an
+                exit code**: *"The exit code and the verdict document are UNCHANGED"*, and *"refusing with
+                exit 2 is not an available reading"* — §3.3 enumerates two exit-2 causes and a
+                judged-nothing dependency is neither, so an engine that refuses there has SPLIT THE VERB.
+                The clause even records that it first said the opposite and was corrected because
+                forbidding exit 0 contradicted §3.1's byte-equality MUST. **All four engines were right.**
 
-**EACH ENGINE IMPLEMENTS ONE HALF OF §3.3.1 AND BREAKS THE OTHER**, on a malformed manifest:
+    malformed   An unreadable SIGNATURE key — and `unanalyzed` is named as one — impeaches the DOCUMENT:
+                *"One unreadable among them means the document's claim cannot be trusted, whatever this
+                particular policy happens to ask. Refuse."* The violation the property wanted to see
+                dominate is read FROM the impeached document. §3.3.1's dominance rule is about
+                incompletely-analyzed CODE, where the violation is the ENGINE'S OWN finding beside source
+                it could not read; it does not license repeating a claim from a document just refused.
+                **rust/ts/swift emit the §3.1 refusal shape and are right.**
 
-    rust / ts / swift   exit 2, `violations: []`   clause 1 ✓  clause 2 ✗ — the finding is DELETED
-    java                exit 1, `violations: 1`    clause 2 ✓  clause 1 ✗ — never fails closed
+Both triggers are removed. What survives is `report/declared` — a well-formed ⟨0.21⟩ manifest declaring
+unanalyzed source, which IS the §3.3.1 case on this route — and **all four engines are clean on it**.
+PART 29 is now 12 pairs, zero waivers.
 
-Neither is a subset of the other. **A fix that copies one engine to the others trades one half for the
-other**, which is why each cell is waived with its own reasoning rather than as a single row. rust/ts/swift
-additionally set neither `incomplete` nor `unanalyzed` on the refusal, so it is not machine-readable
-either.
+**ONE REAL FINDING SURVIVED, and it is the opposite of what was reported.** Not "each engine breaks a
+half" but **java alone**: over a document impeached by a malformed `unanalyzed`, with nothing else to
+report, java exits **0** where rust, ts and swift refuse (exit 2). Measured directly. Filed for the
+corrupt-report PART, which owns document impeachment; it is not a dominance question and does not belong
+in P5.
 
-**`count0` is broken FOUR-WAY** and is the cheaper half: SPEC §2 ⟨0.24⟩ already rules that
-`analyzed.count == 0` is "I judged nothing" and MUST NOT read as full coverage. Note this is the **third
-surface** for one rule — the chained-report form is separately waived in `trust-monotonicity-baseline.json`
-(java/swift `empty_zero`), and now the direct `gate --report` form fails on all four. A rule that has to be
-implemented once per surface will be missed once per surface.
+**THE STANDING HAZARD, and this is the second time it has been recorded** (see
+[[candor-theory-spec-verification]]: *a theory wrong in the STRICT direction produces a finding shaped
+exactly like a real code defect*). What makes it expensive here is the RATCHET: waiving those cells wrote
+"known-broken" against four conforming engines, in a file whose whole job is to be trusted later. **A
+wrong waiver is a wrong diagnosis with an expiry date attached** — worse than the queue entries this
+session spent all day correcting, because it also makes the suite go green.
 
-Waived, not fixed: 8 pairs waived, 20 live, ratchet green, full suite 140 MATCH. The fix is 8 cells across
-four repos and the `count0` half is the better-specified place to start.
-
-**Also corrected in passing, because it is the defect this file keeps naming:** P5's summary line reported
-the FINDING count where it said "pair(s)" — one broken cell trips three findings at once, so it read as
-"19 of 20 pairs waived" when it was 8 of 20. And PART 29's success line in `run.sh` claimed every gate
-"failed closed AND still reported the violation" with 8 cells waived; it now says *outside the ratchet*,
-as the other five ratcheted PARTs do.
+The procedural fix is cheap and was skipped: **read the clause the property claims to test, before
+waiving anything against it.** The eight waivers took ten minutes to write and the clauses took two
+minutes to read.
 
 ## Standing bar 7u — THE QUEUE ROTS BECAUSE A STALE ITEM COSTS NOTHING (2026-08-02)
 
