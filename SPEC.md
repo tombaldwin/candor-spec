@@ -618,8 +618,52 @@ make the chain trustworthy:
 
 1. **Joins never guess.** The `hash` key must identify the target the way the *consumer's* view of
    the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference:
-   per-language, but derivable from both sides). An ambiguous key (two dep functions sharing it) is
-   dropped, not picked from — §4's under-report-don't-fabricate rule, applied at the join.
+   per-language, but derivable from both sides).
+
+   ⟨0.25⟩ **An ambiguous key — two entries sharing it — MUST be UNIONED. It MUST NOT be picked from,
+   and it MUST NOT be dropped.** The consumer inherits the union of every colliding entry's effects,
+   literal surfaces, coverage ledger and reason tags.
+
+   **This REVERSES ⟨0.24⟩ and earlier, which said such a key "is dropped, not picked from — §4's
+   under-report-don't-fabricate rule, applied at the join". The prohibition on PICKING was right and is
+   unchanged. The prescription to DROP was the cardinal sin, and it invoked §4 to license the very thing
+   §4 forbids:** a dropped key resolves to nothing, so the calling function leaves `functions` entirely,
+   and under ⟨0.21⟩ an absent entry is a *positive claim of purity*. The rule mandated silence over a call
+   whose target the engine had just declared itself unable to name. Any implementation still conforming to
+   the ⟨0.24⟩ text is emitting a silent under-report; this is a correction, not a preference.
+
+   **The union is not a hedge, and that is measured rather than argued.** Across three real `.candor/deps`
+   trees (candor-rust, pgman, ebman) every one of the 123 colliding keys whose entries disagreed was **one
+   function at two VERSIONS of one package** — cargo and npm both permit semver-major duplicates, and the
+   package-scoped key cannot express which copy a given caller resolves to. Both bodies are in the build,
+   the runtime may execute either, and their union is therefore simply *what the key means*. Cost of the
+   union across all three: **seven effect-items**, to close 123 purity claims. On the consumer side: 11
+   previously-absent functions recovered, **0 lost, 0 narrowed, and every one of the 65 added effect-items
+   was `Unknown`** — no concrete effect was charged to a function that did not have it.
+
+   **The collision the drop rule was written for — two UNRELATED functions sharing an imprecise key — is
+   real, and the union is still correct for it.** It does not arise between reports (the corpus above
+   contains none) but it does arise WITHIN one, wherever an engine keys an entry by a leaf or a tail as
+   well as by its full qualification: `sync::Client::fetch` performing `Net` and a pure
+   `mock::Client::fetch` share the key `fetch`. Union charges `Net` to that key — and that is the honest
+   answer, because the key is only ever consulted by a consumer that could NOT name its target. A consumer
+   that CAN asks the fully-qualified key and still gets the precise entry, so precision is preserved by the
+   KEY SCHEME rather than by withdrawal. Dropping it was measured on a real engine as the caller vanishing
+   from `functions` with no `Unknown`, no coverage note and no hedge of any kind — the same silence, over a
+   call that may genuinely reach the effectful body.
+
+   **TRUST LEVELS DO NOT RANK HERE.** A §2.1-downgraded entry (rule 2) joins the union like any other; an
+   implementation MUST NOT prefer a trusted entry and discard an untrusted one. The collision exists
+   *because* one package name spans two versions, so the distrusted report is the only evidence that a
+   second, unverifiable copy is present — preferring the trusted entry deletes exactly that, and the
+   consumer reads the surviving version's `[]` as a purity claim over a call that may reach the other.
+   The observable invariant is **order-independence**: the joined result MUST NOT depend on the order
+   reports are loaded or walked in. Union is commutative, associative and idempotent; withdrawal and
+   trust-ranking are none of the three, and both were observed to make the answer depend on a *filename*.
+
+   Chaining one report twice is therefore not observable (conformance PART 25), and an untrusted report
+   beside a trusted one may only ADD (PART 26). Rationale and the full measurement:
+   `ENTRY-COLLISION-DECISION.md`.
 2. **Stale reports are not trusted**: §2.1's version-trust rule applies at the join, and a
    report whose producing version is MISSING is as unverifiable as a mismatched one: downgrade to
    `Unknown`. (§2.1 is the single normative statement; this rule only locates where it bites.)
