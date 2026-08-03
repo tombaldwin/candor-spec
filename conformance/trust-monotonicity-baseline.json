@@ -17,16 +17,6 @@
  ],
  "known": [
   {
-   "engine": "java",
-   "arm": "empty_zero",
-   "split": "*",
-   "why": "⟨0.24⟩ FIXED in candor-java `110bec5` — the count-0 rule lands as a third conjunct on the COVERED set beside §2.1 stale and ⟨0.21⟩ incomplete. NARROWED AGAIN 2026-08-03: the residual is now 8 cells over [implicit_conv] ALONE — `lazy_init`'s 8 closed, because a STATIC FIELD READ forcing an unseen `<clinit>` now records a κ blind spot (candor-java, `clinitEdge` → `kappaBlindOwner`), so the unchained reference arm is no longer itself ABSENT. MEASURED CORRECTION to this entry's earlier wording: java's per-function `invisible` attribution is NOT missing — a direct call into an unscanned package has always carried it. The two shapes were invisible to the κ ledger because neither is a CALL INSTRUCTION (`lazy_init` is a GETSTATIC, `implicit_conv` compiles to `String.valueOf(Object)` + an invokedynamic). `implicit_conv` remains open: the reentry site is the `String.valueOf` call, whose argument is a method PARAMETER, and `ProvValue.declType` is null for parameters — so the site can name no type to attribute the blind spot to. Populating declType for parameters would also NARROW `reentryTargets`' current null-type behaviour, which is the fabrication-fix-causes-misses hazard, so it needs its own measurement.",
-   "repro": [
-    "implicit_conv only. App-only scan, dep class absent: `String f(dep.W w){ return \"v=\"+w; }` is omitted from `functions` entirely (a ⟨0.21⟩ purity claim) while `w.doThing()` and `w.toString()` in the same class both carry invisible:[dep]. Same reach, disclosed or not by whether it is spelled as a call.",
-    "lazy_init: CLOSED — `Object o = dep.Cls.V` now carries invisible:[dep]."
-   ]
-  },
-  {
    "engine": "swift",
    "arm": "empty_zero",
    "split": "*",
