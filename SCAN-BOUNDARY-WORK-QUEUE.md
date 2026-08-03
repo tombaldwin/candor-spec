@@ -38,13 +38,13 @@ Everything else that was waived this session was either fixed or retracted.
 
 **WHAT IS ACTUALLY NEXT, in order:**
 
-1. **SPEC 0.25 — and it is first because the CONTRACT is the thing that is wrong, not an engine.** §2
-   chaining rule 1 as published in 0.24 says an ambiguous key "is dropped, not picked from"; all four
-   engines now UNION, and conformance PARTs 25/26 pin the union — so **an engine conforming to the spec
-   text would fail the suite**, and a third party implementing to 0.24 would build the cardinal sin
-   deliberately. The replacement text is drafted in SPEC.md (`⟨0.25⟩`, `26bfbc8`). What remains is
-   mechanical and needs a ship decision, not design: the version header, four `SPEC_VERSION` pins, seven
-   CHANGELOGs, the floor. **The engines already ship the rung — 0.25 is the contract catching up.**
+1. ~~**SPEC 0.25 — the CONTRACT was the thing that was wrong, not an engine.**~~ **SHIPPED 2026-08-02**
+   (`release-verify: OK — spec 0.25 / v0.25.0 live everywhere`). §2 chaining rule 1 was reversed: an
+   ambiguous join key is UNIONED, not dropped — the published text had mandated the cardinal sin while all
+   four engines already unioned. **SUPERSEDED by 0.26** (the §2.2 sidecar manifest), which is BUILT,
+   floor-bumped in all seven repos and conformance-pinned by PART 30, but **NOT PUBLISHED** — engine build
+   versions and the umbrella `ENGINE_PIN` deliberately stay at 0.25.0. Publishing is a ship decision, not
+   design work.
 
 2. ~~The count-0 chained-coverage rule in java and swift.~~ ~~The κ-REACH / per-function `invisible`
    ATTRIBUTION GAP.~~ **MISNAMED TWICE, corrected AGAIN 2026-08-03 by measuring it. IT IS NOT AN
