@@ -12,6 +12,11 @@ name: lean-model
 # `conformance/probe_check.py` exists to remove one level down. A Lean version bump, or an edit that
 # weakens a proof, would otherwise sit undetected until the next person happened to build it.
 #
+# WHY THE FILTER INCLUDES `reference/`. check.sh ends by differentialling the Lean model against
+# `reference/policy_model.py` — the hand transcription conformance PART 23 judges the engines against. If
+# the filter named only `lean/**`, an edit to the Python side would skip the one check that guards it,
+# which is the same defect as a property that cannot fail.
+#
 # WHAT IT CANNOT CHECK, stated so the green tick is not read as more than it is: the PAPER is not in this
 # repo (it is deliberately local-only), so CI can prove the model still type-checks and that its theorems
 # still hold — it cannot prove the transcription still MATCHES the paper. Model↔paper drift remains a
@@ -20,9 +25,9 @@ name: lean-model
 on:
   push:
     branches: [main]
-    paths: ['lean/**', '.github/workflows/lean.yml']
+    paths: ['lean/**', 'reference/**', '.github/workflows/lean.yml']
   pull_request:
-    paths: ['lean/**', '.github/workflows/lean.yml']
+    paths: ['lean/**', 'reference/**', '.github/workflows/lean.yml']
   workflow_dispatch:
 
 concurrency:
@@ -53,6 +58,11 @@ jobs:
       # check.sh asserts MORE than `lake build`: no `sorry`, and every headline theorem depends on NO
       # axioms. A proof closed with `sorry` type-checks and proves nothing — the Lean-shaped version of a
       # conformance property that cannot fail — so the build succeeding is necessary and not sufficient.
-      - name: Build + verify the model (no sorry, no axioms)
+      # check.sh asserts, in order: the build; no `sorry`; tier-A theorems with NO axioms and tier-B
+      # bridge lemmas with at most Lean's core axioms (never sorryAx or Classical.choice); and finally the
+      # 147k-row differential against reference/policy_model.py. Each of those four has been verified to
+      # FAIL under a planted fault — the axiom tiers were both probed, and the differential was probed with
+      # all four transcription errors the model has historically had or could have.
+      - name: Build + verify the model, and differential it against reference/policy_model.py
         working-directory: lean
         run: bash check.sh
