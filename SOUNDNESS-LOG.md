@@ -2936,3 +2936,28 @@ THE STRUCTURAL LESSON, which is the durable part: P2 and P3 degrade the chained 
 degraded a SIDECAR. The defect sat in that gap for as long as the sidecar has existed. It was not found
 by auditing coverage — it was found by tripping over the defect and then asking which property should
 have caught it. **A second input shape needs its own degradation property; it does not inherit one.**
+
+2026-08-03 (swift, `super.` across the scan boundary): a GATE-LEVEL false all-clear. `class Sub: DepBase
+{ override func load() { super.load() } }` with `DepBase` in a CHAINED dependency: one package gives
+`Sub.load -> ['Fs']`, the split arm dropped it from `functions` entirely and `deny Fs` exited 0 with
+"policy ✓" on identical source.
+
+Mechanism: the driver's super branch resolves on the supertype chain against PROJECT units only, and the
+generic §2 dep join keys on `call.extOwner` — which for a `super.` call is the literal `<super>` MARKER,
+not a type. The key it built could never match anything, in silence. The dep's report carried the answer
+under exactly the key computable at that site. Fixed candor-swift `69df1f1`, union over the chain,
+pinned by ScanBoundaryVeinProcessTests with a one-package control, the gate flip, and an unchained
+no-fabrication control.
+
+HOW IT WAS FOUND is the durable part: instrumenting `Call.extOwner` for an UNRELATED question (the
+κ-attribution corpus study, which refuted its own hypothesis) and noticing `<super>` in the value
+distribution — 21 records, inert in that corpus. **A marker leaking into a field documented as a resolved
+type is worth one fixture when that field is a JOIN KEY, because a key that cannot match fails silently.**
+The study that produced this finding produced no engine change of its own; the by-catch was worth more
+than the hypothesis.
+
+2026-08-03 (rust, ⟨0.26⟩ deserialization): `#[serde(default)]` over the §5 trio turned an ABSENT key back
+into `vec![]` on the way in, collapsing "no conformance pass ran" into "the pass ran and found nothing" —
+the same claim the producer had just carefully omitted. Now `Option<Vec<String>>`; the stable scanner
+writes None and the deep lint writes Some, which is two honest answers from one type. candor-rust
+`296d11b`.
