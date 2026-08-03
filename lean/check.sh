@@ -25,7 +25,8 @@ echo "✔ no \`sorry\`"
 # case analysis on inductive types. They depend on NO axioms at all, not even `propext`. That is a real
 # property worth pinning: a new axiom appearing here means the argument quietly changed shape.
 TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny lemma2_denyUnknown
-        lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined"
+        lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined
+        Generic.gfires_mono Generic.gLemma2_deny Generic.gLemma2_denyUnknown Generic.gLemma2_pure"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
@@ -33,7 +34,7 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
 # every non-trivial proof and NOT evidence of anything. What is forbidden here is `sorryAx` (a placeholder
 # that proves nothing) and `Classical.choice` (these arguments are constructive; needing choice would mean
 # something is being asserted rather than computed).
-TIER_B="refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
+TIER_B="Effect.all_complete Reason.all_complete refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
 CORE_OK="propext|Quot.sound"
 
 axioms_of() { { echo "import CandorModel"; echo "open Candor"; for t in $1; do echo "#print axioms $t"; done; } > /tmp/candor-axioms.lean; lake env lean /tmp/candor-axioms.lean 2>&1; }
@@ -47,7 +48,7 @@ echo "✔ tier A: $n headline theorem(s) proved with NO axiom dependencies"
 out="$(axioms_of "$TIER_B")"
 # Anything that is neither "no axioms" nor a line whose axiom list is drawn only from the core set.
 bad="$(printf '%s\n' "$out" | grep -v "does not depend on any axioms" \
-        | grep -vE "^'Candor\.[A-Za-z_]+' depends on axioms: \[($CORE_OK)(, ($CORE_OK))*\]$" || true)"
+        | grep -vE "^'Candor\.[A-Za-z_.]+' depends on axioms: \[($CORE_OK)(, ($CORE_OK))*\]$" || true)"
 [ -n "$bad" ] && { echo "✘ tier B: a bridge lemma depends on more than Lean's core axioms:"; printf '%s\n' "$bad"; exit 1; }
 m=$(printf '%s\n' "$out" | grep -c "Candor\.")
 echo "✔ tier B: $m bridge lemma(s) proved from at most [$CORE_OK] — no sorryAx, no Classical.choice"

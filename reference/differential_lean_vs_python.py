@@ -92,10 +92,13 @@ def main():
         print("DIFFERENTIAL: the Lean side emitted NO rows — nothing was compared.", file=sys.stderr)
         return 2
 
-    disagree = []
-    seen_verbs = {}
+    # PRE-PASS: the vocabularies are reconciled BEFORE any row is compared. Not a stylistic choice —
+    # `policy_model.Sig` asserts `S ⊆ E` in its constructor, so a Lean-only effect raises an AssertionError
+    # from inside the model on the first row that mentions it. That IS a failure, but it reports as a stack
+    # trace from a helper rather than as the drift it is, and a confusing failure is one somebody explains
+    # away. Check the thing you mean to check, in the words you mean to say it.
+    parsed = []
     seen_effects, seen_reasons = set(), set()
-
     for i, ln in enumerate(rows, 1):
         parts = ln.split("\t")
         if len(parts) != 6:
@@ -108,6 +111,23 @@ def main():
             seen_effects.add(arg)
         seen_reasons.update(C)
         seen_reasons.update(D)
+        parsed.append((i, verb, arg, C, S, D, verdict_s))
+
+    py_only = (set(pm.E) - seen_effects) | (set(pm.R) - seen_reasons)
+    lean_only = (seen_effects - set(pm.E)) | (seen_reasons - set(pm.R))
+    if py_only or lean_only:
+        if py_only:
+            print(f"DIFFERENTIAL: policy_model names {sorted(py_only)}, which the Lean side never "
+                  f"emitted — the vocabularies have drifted apart.", file=sys.stderr)
+        if lean_only:
+            print(f"DIFFERENTIAL: the Lean side emitted {sorted(lean_only)}, which policy_model does not "
+                  f"name — every row mentioning it would agree only because `refines` is False on an "
+                  f"unknown string, not because the models match.", file=sys.stderr)
+        return 2
+
+    disagree = []
+    seen_verbs = {}
+    for (i, verb, arg, C, S, D, verdict_s) in parsed:
         lean = {"true": True, "false": False}[verdict_s.strip().lower()]
 
         sig = pm.Sig(frozenset(S), frozenset(D))
@@ -124,15 +144,6 @@ def main():
 
         if py != lean:
             disagree.append((i, verb, arg, C, S, D, lean, py))
-
-    # A vocabulary the Lean side never mentions would make the row count look healthy while leaving a
-    # whole channel uncompared — the "flat total" failure mode, one level up.
-    missing_e = set(pm.E) - seen_effects
-    missing_r = set(pm.R) - seen_reasons
-    if missing_e or missing_r:
-        print(f"DIFFERENTIAL: the Lean side never mentioned {sorted(missing_e) + sorted(missing_r)} — "
-              f"the two vocabularies have drifted apart.", file=sys.stderr)
-        return 2
 
     print("DIFFERENTIAL — Lean model (proved) vs reference/policy_model.py (hand transcription)")
     print(f"  rows compared : {len(rows)}")
