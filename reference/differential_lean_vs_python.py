@@ -101,17 +101,17 @@ def main():
     seen_effects, seen_reasons = set(), set()
     for i, ln in enumerate(rows, 1):
         parts = ln.split("\t")
-        if len(parts) != 6:
-            print(f"DIFFERENTIAL: row {i} has {len(parts)} columns, expected 6: {ln!r}", file=sys.stderr)
+        if len(parts) != 7:
+            print(f"DIFFERENTIAL: row {i} has {len(parts)} columns, expected 7: {ln!r}", file=sys.stderr)
             return 2
-        verb, arg, cs, ss, ds, verdict_s = parts
+        verb, arg, cs, ss, ds, verdict_s, reach_s = parts
         C, S, D = parse_set(cs), parse_set(ss), parse_set(ds)
         seen_effects.update(S)
         if arg:
             seen_effects.add(arg)
         seen_reasons.update(C)
         seen_reasons.update(D)
-        parsed.append((i, verb, arg, C, S, D, verdict_s))
+        parsed.append((i, verb, arg, C, S, D, verdict_s, reach_s))
 
     py_only = (set(pm.E) - seen_effects) | (set(pm.R) - seen_reasons)
     lean_only = (seen_effects - set(pm.E)) | (seen_reasons - set(pm.R))
@@ -126,9 +126,14 @@ def main():
         return 2
 
     disagree = []
+    reach_disagree = []
+    spec_reading_off = []      # deny rows where SPEC §4.0's `e ∈ S` differs from PAPER3's `⊑` reading
+    spec_reading_off_reachable = []
+    n_reachable = 0
     seen_verbs = {}
-    for (i, verb, arg, C, S, D, verdict_s) in parsed:
+    for (i, verb, arg, C, S, D, verdict_s, reach_s) in parsed:
         lean = {"true": True, "false": False}[verdict_s.strip().lower()]
+        lean_reach = {"true": True, "false": False}[reach_s.strip().lower()]
 
         sig = pm.Sig(frozenset(S), frozenset(D))
         if verb == "pure":
@@ -145,12 +150,56 @@ def main():
         if py != lean:
             disagree.append((i, verb, arg, C, S, D, lean, py))
 
+        # ARM 2 — the reachability predicate itself. `coemit` in Lean and `CO_EMIT` here are independent
+        # copies of the same DATA, and a refinement rung edits both. If they drift, arm 3 below silently
+        # partitions the domain along the wrong line.
+        if pm.is_reachable(sig) != lean_reach:
+            reach_disagree.append((i, S, lean_reach))
+        if lean_reach:
+            n_reachable += 1
+
+        # ARM 3 — SPEC §4.0's table reads `deny e` as plain membership `e ∈ S`; PAPER3 Def 4 reads it as
+        # firing over the refinement preorder. Lean PROVES these coincide on reachable signatures
+        # (`fires_iff_mem_of_reachable`). This is the executable side of that theorem, and it is also what
+        # stops "restrict to the reachable lattice" from being a way to make a disagreement go away: the
+        # two readings MUST agree everywhere reachable, and MUST differ somewhere unreachable.
+        if verb == "deny":
+            if (arg in sig.S) != lean:
+                spec_reading_off.append(i)
+                if lean_reach:
+                    spec_reading_off_reachable.append((i, arg, S))
+
     print("DIFFERENTIAL — Lean model (proved) vs reference/policy_model.py (hand transcription)")
     print(f"  rows compared : {len(rows)}")
     for v, n in sorted(seen_verbs.items()):
         print(f"    {v:<14} {n}")
     print(f"  vocabulary    : {len(seen_effects)} effects, {len(seen_reasons)} reasons "
           f"(policy_model: {len(pm.E)}, {len(pm.R)})")
+    print(f"  reachable     : {n_reachable} / {len(rows)} "
+          f"({len(rows) - n_reachable} excluded by co-emission {dict(pm.CO_EMIT)})")
+    print(f"  SPEC §4.0 `e ∈ S` vs PAPER3 `⊑` on deny: {len(spec_reading_off)} differ over the full "
+          f"lattice, {len(spec_reading_off_reachable)} over the reachable part")
+
+    if reach_disagree:
+        print(f"\n  REACHABILITY DISAGREEMENTS: {len(reach_disagree)} — Lean's `coemit` and "
+              f"policy_model's CO_EMIT have drifted apart.")
+        for (i, S, lr) in reach_disagree[:10]:
+            print(f"    row {i}: S={set(S) or '∅'} — Lean reachable={lr}, policy_model={not lr}")
+        return 1
+
+    if spec_reading_off_reachable:
+        print(f"\n  SPEC/PAPER RECONCILIATION BROKEN: {len(spec_reading_off_reachable)} REACHABLE rows "
+              f"where `e ∈ S` and the refinement reading disagree. Lean proves this set is empty "
+              f"(`fires_iff_mem_of_reachable`), so one of the two models no longer matches its proof.")
+        for (i, arg, S) in spec_reading_off_reachable[:10]:
+            print(f"    row {i}: deny {arg} on S={set(S) or '∅'}")
+        return 1
+
+    if not spec_reading_off:
+        print("\n  VACUOUS: the two readings of `deny e` never differ ANYWHERE, so restricting to the "
+              "reachable lattice tests nothing. Expected them to differ on unreachable signatures — "
+              "the refinement pair has gone missing from one of the models.")
+        return 1
 
     if disagree:
         print(f"\n  DISAGREEMENTS: {len(disagree)}")
