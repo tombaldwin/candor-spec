@@ -25,10 +25,47 @@ defect this exists to remove.
 | — (executable twins of Defs 4, 30–32) | `Exec.lean` `refinesB`/`firesB`/`reject*B` | transcribed + **bridged to the `Prop` model by proof** |
 | — (the enumerations are exhaustive) | `Effect.all_complete`, `Reason.all_complete` | **proved** |
 | SPEC §4.0's `deny e` table ≡ Def 4 | `fires_iff_mem_of_reachable` | **proved**, over any co-emission map |
+| §4.0 transitive set = least fixpoint | `Chain.T_fixpoint_le/_ge`, `Chain.T_least` | **proved** |
+| — (chaining is idempotent; `T` is graph-monotone) | `Chain.T_rechain_le/_ge`, `Chain.T_mono` | **proved** |
+| §2.2 rule 1 ⟨0.25⟩ (ambiguous key is unioned) | `Chain.drop_only_loosens` + `Chain.Witness.*` | **proved**, with a counterexample to ⟨0.24⟩ |
 | — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
 
-**Not covered**, and not excused: §2's signatures and transitive rule, §3's honesty invariant, §4's
-Theorem 1 and its A0–A3 antecedents, §5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
+## The transitive rule, and ⟨0.25⟩ as a proof
+
+`Chain.lean` is the first part of this development that reaches the **report** layer rather than the gate
+algebra — which matters because the last three rungs all lived there (⟨0.24⟩ CONTRIBUTES, ⟨0.25⟩ the join
+key, ⟨0.26⟩ the sidecar manifest) and none of them is a statement about `Reject`.
+
+SPEC §4.0 asserts the transitive effect set is *"the least fixpoint of the monotone componentwise join over
+this finite lattice (Knaster–Tarski)"*. Nothing proved it. `T_fixpoint_le`/`_ge` and `T_least` now do — and
+`T_least` is the half that makes "least" mean something, since without it the top signature satisfies the
+fixpoint equation too and an engine could discharge the rule by charging every function with every effect.
+
+**⟨0.25⟩'s correction is now a theorem.** §2.2 rule 1 admits three responses to an ambiguous join key:
+
+| | | sound against fabrication | sound against silence |
+|---|---|---|---|
+| **union** | resolve to every colliding entry | ✔ | ✔ |
+| **pick** | resolve to one | ✘ | ✔ |
+| **drop** | resolve to nothing — ⟨0.24⟩'s rule | ✔ | **✘** |
+
+`drop_only_loosens` proves the general statement, for *every* verb at once: composing `drop_le_union` with
+Lemma 2, a violation found under the drop rule is still one under the union — dropping never invents a
+violation, it only loses them. `Witness.deny_passes_under_drop_fires_under_union` then exhibits a two-node
+graph where the loss is real: one graph, one gate, two verdicts, decided entirely by which text the
+implementation follows. Under ⟨0.21⟩ the caller is not merely missing from the report, it is *claimed pure*.
+
+That is why the drop rule survived two rungs looking conservative — it fails in the silence direction only,
+and every fabrication check passes.
+
+**What these theorems do not do.** Conformance PARTs 25 and 26 check the four **engines** are idempotent
+and monotone. These check the **rule** is. An engine can implement a sound rule incorrectly, and a correct
+engine can implement an unsound rule faithfully — different failures, different fixes, and neither
+instrument sees the other's. Before `Chain.lean` the second kind had no instrument at all, which is how
+⟨0.24⟩'s drop rule reached four conforming implementations.
+
+**Not covered**, and not excused: §3's honesty invariant, §4's Theorem 1 and its A0–A3 antecedents,
+§5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
 transcribed only as far as the order — the paper itself notes "only monotonicity and completeness are used
 below; the Boolean structure is free", and monotonicity is what Lemma 2 needs.
 
