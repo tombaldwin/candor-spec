@@ -1,38 +1,39 @@
 {
-  "_": [
-    "P3 TRUST MONOTONICITY — the ratchet (conformance PART 26, gen_trust_monotonicity.py).",
-    "",
-    "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an effect should",
-    "be: the engine's own `trusted` and `unchained` arms remain the only oracles. Each entry says only",
-    "'this (engine, degraded-arm, shape) is known-broken today, and here is how to reproduce it without the",
-    "generator'.",
-    "",
-    "IT RATCHETS BOTH WAYS. An unwaived failure fails the suite; a waiver whose cells now all pass ALSO",
-    "fails it, so deleting the entry is part of the fix. `split: \"*\"` waives every shape for an",
-    "(engine, arm) pair — a trust defect is a property of the JOIN, not of the call shape — and the failing",
-    "shape list prints on every run so a shrinking defect stays visible.",
-    "",
-    "Every entry was found by the generator and then RE-DERIVED from a hand-written two-package fixture",
-    "with HAND-WRITTEN dep reports, so no waiver rests on the generator being right."
-  ],
-  "known": [
-    {
-      "engine": "java",
-      "arm": "empty_zero",
-      "split": "*",
-      "why": "⟨0.24⟩ FIXED in candor-java `110bec5` — the count-0 rule lands as a third conjunct on the COVERED set beside §2.1 stale and ⟨0.21⟩ incomplete. This waiver is NARROWED, not retired: 16 residual cells over [implicit_conv, lazy_init] where the UNCHAINED REFERENCE ARM IS ALSO ABSENT — a separate pre-existing κ-reach gap, not this door. CONTROL SEPARATION now SEPARATED on 56/80.",
-      "repro": [
-        "implicit_conv / lazy_init only: the unchained arm is itself ABSENT, so the property has no reference to compare against — the residual is the κ-reach gap, filed separately."
-      ]
-    },
-    {
-      "engine": "swift",
-      "arm": "empty_zero",
-      "split": "*",
-      "why": "§2 ⟨0.24⟩: `analyzed.count == 0` IS \"I JUDGED NOTHING\", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE — the row-1 obligation is to treat the package as NOT COVERED. ⟨0.24⟩ FIXED in candor-swift `b41b1df` — the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` — the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
-      "repro": [
-        "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
-      ]
-    }
-  ]
+ "_": [
+  "P3 TRUST MONOTONICITY — the ratchet (conformance PART 26, gen_trust_monotonicity.py).",
+  "",
+  "THIS FILE RECORDS DEFECTS, NOT EXPECTED ANSWERS. Nothing here tells the property what an effect should",
+  "be: the engine's own `trusted` and `unchained` arms remain the only oracles. Each entry says only",
+  "'this (engine, degraded-arm, shape) is known-broken today, and here is how to reproduce it without the",
+  "generator'.",
+  "",
+  "IT RATCHETS BOTH WAYS. An unwaived failure fails the suite; a waiver whose cells now all pass ALSO",
+  "fails it, so deleting the entry is part of the fix. `split: \"*\"` waives every shape for an",
+  "(engine, arm) pair — a trust defect is a property of the JOIN, not of the call shape — and the failing",
+  "shape list prints on every run so a shrinking defect stays visible.",
+  "",
+  "Every entry was found by the generator and then RE-DERIVED from a hand-written two-package fixture",
+  "with HAND-WRITTEN dep reports, so no waiver rests on the generator being right."
+ ],
+ "known": [
+  {
+   "engine": "java",
+   "arm": "empty_zero",
+   "split": "*",
+   "why": "⟨0.24⟩ FIXED in candor-java `110bec5` — the count-0 rule lands as a third conjunct on the COVERED set beside §2.1 stale and ⟨0.21⟩ incomplete. NARROWED AGAIN 2026-08-03: the residual is now 8 cells over [implicit_conv] ALONE — `lazy_init`'s 8 closed, because a STATIC FIELD READ forcing an unseen `<clinit>` now records a κ blind spot (candor-java, `clinitEdge` → `kappaBlindOwner`), so the unchained reference arm is no longer itself ABSENT. MEASURED CORRECTION to this entry's earlier wording: java's per-function `invisible` attribution is NOT missing — a direct call into an unscanned package has always carried it. The two shapes were invisible to the κ ledger because neither is a CALL INSTRUCTION (`lazy_init` is a GETSTATIC, `implicit_conv` compiles to `String.valueOf(Object)` + an invokedynamic). `implicit_conv` remains open: the reentry site is the `String.valueOf` call, whose argument is a method PARAMETER, and `ProvValue.declType` is null for parameters — so the site can name no type to attribute the blind spot to. Populating declType for parameters would also NARROW `reentryTargets`' current null-type behaviour, which is the fabrication-fix-causes-misses hazard, so it needs its own measurement.",
+   "repro": [
+    "implicit_conv only. App-only scan, dep class absent: `String f(dep.W w){ return \"v=\"+w; }` is omitted from `functions` entirely (a ⟨0.21⟩ purity claim) while `w.doThing()` and `w.toString()` in the same class both carry invisible:[dep]. Same reach, disclosed or not by whether it is spelled as a call.",
+    "lazy_init: CLOSED — `Object o = dep.Cls.V` now carries invisible:[dep]."
+   ]
+  },
+  {
+   "engine": "swift",
+   "arm": "empty_zero",
+   "split": "*",
+   "why": "§2 ⟨0.24⟩: `analyzed.count == 0` IS \"I JUDGED NOTHING\", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE — the row-1 obligation is to treat the package as NOT COVERED. ⟨0.24⟩ FIXED in candor-swift `b41b1df` — the count-0 rule lands in `Deps.swift`'s `loadDepReports`, consumer-side coverage bookkeeping. NARROWED, not retired: 40 residual cells over [field, implicit_conv, lazy_init, loop_elem, method_recv], every one reading `unchained=(ABSENT)` — the same pre-existing per-function `invisible` attribution gap java has two of. CONTROL SEPARATION now SEPARATED on 24/80.",
+   "repro": [
+    "the five shapes above only: swift attributes no per-fn `invisible` there, so the unchained baseline is equally silent and PART 26 cannot credit the fix. Not the empty-report door."
+   ]
+  }
+ ]
 }
