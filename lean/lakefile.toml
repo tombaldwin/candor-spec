@@ -1,0 +1,5 @@
+name = "candorModel"
+defaultTargets = ["CandorModel"]
+
+[[lean_lib]]
+name = "CandorModel"
