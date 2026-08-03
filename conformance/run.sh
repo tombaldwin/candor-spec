@@ -2171,6 +2171,13 @@ echo
 # present engines AGREE: the dispatcher is disclosed in possibleViaUnknownDispatch via dispatch on `op`
 # (resolved against the hierarchy sidecar), with Impl7.op confirmed. Makes the frontier a verified
 # contract, not just a per-engine feature (the [10] check pins only the vocabulary + dispatch shape).
+#
+# NOW A PRODUCER x CONSUMER MATRIX (2026-08-03), because it was three arms with only TWO independent
+# consumers: candor-swift ships no `callers` verb, so its arm read swift's report with candor-rust's
+# `candor-query` — unlabelled. A common-mode defect in the rust consumer would have shown up in the swift
+# arm alone and read as a PRODUCER disagreement. Every producer's report now goes through every consumer:
+# a red ROW is a consumer defect, a red COLUMN is a producer defect, a single red cell is a genuine
+# pairwise disagreement. Verified to discriminate by injecting one of each. 9 pairs, 3 consumers.
 [ -f "$HERE/frontier_differential.py" ] || { echo "FAIL: frontier_differential.py is missing"; exit 2; }
 echo
 (

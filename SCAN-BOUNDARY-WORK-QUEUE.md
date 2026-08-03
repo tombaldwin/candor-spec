@@ -134,11 +134,19 @@ Everything else that was waived this session was either fixed or retracted.
    engine's sidecar ENTIRELY, as keys and as edges, so every `Impl: Mid`/`Mid: Base` chain dead-ended.
    Engines: java `78aad6d`, ts `caeda66`, swift `ea3de21`, rust `4cae735`.
 
-4. **The frontier differential's three arms and two independent consumers** (§2). A defect INSIDE the
-   instrument: the swift arm uses candor-swift as PRODUCER and rust's `candor-query` as CONSUMER, so a
-   common-mode defect in the rust consumer appears identically in two arms and reads as independent
-   agreement. That is §3's structural gap occurring inside the suite built to detect it — the concrete
-   artefact to point at when justifying self-differentials, rather than a hypothetical.
+4. ~~**The frontier differential's three arms and two independent consumers**~~ **CLOSED 2026-08-03 —
+   it is now a PRODUCER x CONSUMER MATRIX.** The defect was real and inside the instrument: candor-swift
+   ships no `callers` verb, so the "swift arm" read swift's report with candor-rust's `candor-query`,
+   unlabelled. Three arms, TWO independent consumers — and a common-mode defect in the rust consumer would
+   have surfaced in the swift arm ALONE and read as a PRODUCER disagreement.
+   Every producer's report is now fed to every consumer (java, ts, rust — the three shipping the verb), so
+   **a red ROW is a consumer defect, a red COLUMN is a producer defect, and a single red cell is a genuine
+   pairwise disagreement.** None of those three is distinguishable in a diagonal-only run, which is what
+   this was. 9 pairs, 3 independent consumers, all green.
+   VERIFIED TO DISCRIMINATE by injecting one of each: a forced consumer failure prints
+   `ROW RED — consumer 'rust' fails on EVERY producer's report`, a forced producer failure prints
+   `COLUMN RED — every consumer fails on 'swift'\'s report`. Reports are normalised into each consumer's
+   file layout by COPY AND RENAME only — no cell can pass because the harness repaired its input.
 
 5. **R10 report-envelope parity** (the two `rung024` waivers). Format divergences — java emits
    `packages`/`entryPoint`/`fs` the others do not, rust omits

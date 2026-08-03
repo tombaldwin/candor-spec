@@ -1,18 +1,45 @@
 #!/usr/bin/env python3
-"""Cross-engine DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩, `callers --include-unknown`).
+"""Cross-engine DISPATCH-FRONTIER differential (SPEC §3.1/§4 ⟨0.7⟩, `callers --include-unknown`),
+run as a PRODUCER x CONSUMER MATRIX.
 
-The frontier is a class/protocol-dispatch concept, so this covers the three class/protocol engines
-(java, ts, swift); rust has no `dispatch:` (its indeterminacy is callback/native) — its frontier is
-empty by language model and it is excluded here.
+THE SCENARIO. One shared program per producer: a `Base.op()` with >CHA_FANOUT_LIMIT (13) implementors,
+exactly one of which (`Impl7.op`) reaches an effectful sink `Sink.touch`; a `Dispatcher` that dispatches
+`Base.op` on a `Base`-typed value. The dispatch is over too many impls, so each engine discloses it as
+`dispatch:<Base>.op` (Unknown) and drops the edges — the dispatcher is NOT a confirmed caller of
+`Sink.touch`. `callers Sink.touch --include-unknown` must therefore surface it in
+`possibleViaUnknownDispatch` via dispatch on `op`, resolved against the §2.2 hierarchy sidecar.
 
-One shared scenario per engine: a `Base.op()` with >CHA_FANOUT_LIMIT (13) implementors, exactly one of
-which (`Impl7.op`) reaches an effectful sink `Sink.touch`; a `Dispatcher` that dispatches `Base.op` on a
-`Base`-typed value. Because the dispatch is over too many impls, each engine discloses it as
-`dispatch:<Base>.op` (Unknown) and drops the edges — so the dispatcher is NOT a confirmed caller of
-`Sink.touch`. `callers Sink.touch --include-unknown` must therefore surface the dispatcher in
-`possibleViaUnknownDispatch` (via dispatch on `op`), resolved against the hierarchy sidecar — and all
-three engines must AGREE on that (the dispatcher, via `op`, the one frontier entry). Confirmed callers
-include `Impl7.op`. This is what makes the frontier a verified contract, not just a per-engine feature.
+WHY A MATRIX, AND THIS IS A DEFECT THAT WAS INSIDE THE INSTRUMENT
+------------------------------------------------------------------
+This ran as three arms — java, ts, swift — and printed "java, ts, swift agree". They were not three
+independent observations. java's arm queried candor-java's own report with candor-java's consumer, ts's
+likewise; but **candor-swift ships no `callers` verb, so the swift arm read its report with candor-rust's
+`candor-query`**. Three arms, TWO independent consumers. A common-mode defect in the rust consumer would
+have appeared in the swift arm alone and read as "swift disagrees" — attributing a consumer bug to a
+producer — and a rust consumer that agreed with a WRONG answer would have counted as a third vote for it.
+
+That is precisely §3's structural gap (four engines can share one wrong model) occurring INSIDE the suite
+built to detect it. It is worth pointing at when justifying self-differentials, because it is not
+hypothetical: it was here, in the file that prints the word "agree".
+
+So the cross is now DESIGNED rather than accidental. Every producer's report is fed to every available
+consumer, and the result is a grid:
+
+    a whole ROW red     -> the CONSUMER is wrong (it fails on reports from every producer)
+    a whole COLUMN red  -> the PRODUCER is wrong (every consumer fails on its report)
+    one CELL red        -> a genuine pairwise disagreement, which is the interesting case
+
+Neither shape is distinguishable from the other in a diagonal-only run, which is what this was.
+
+CONSUMERS are java, ts and rust — the three engines shipping `callers --include-unknown`. rust is a
+consumer here even though it is NOT a producer: it emits no `dispatch:` (its indeterminacy is
+callback/native) and writes no §2.2 sidecar, so its own frontier is empty by language model. That
+asymmetry is the reason it was doing double duty unlabelled before.
+
+Each producer's report is NORMALISED into the file layout each consumer discovers sidecars by — java and
+ts read `<stem>.json` + `<stem>.callgraph.json` + `<stem>.hierarchy.json`; rust globs a prefix. The
+normalisation copies bytes and renames; it never edits a report, so no cell can pass because the harness
+repaired its input.
 """
 import json, os, shutil, subprocess, sys, tempfile
 
@@ -58,73 +85,160 @@ def swift_src():
             "protocol Base { func op() }\n" + impls + "\n"
             "final class Dispatcher { func run(_ b: Base) { b.op() } }\n")
 
-def frontier_java(ws):
+# =====================================================================================================
+# PRODUCERS. Each scans its own rendering of the scenario and returns
+# (report, callgraph, hierarchy, target-fn) — or None when the engine is not present.
+# =====================================================================================================
+def produce_java(ws):
     jar = os.environ.get("CANDOR_JAVA_JAR") or newest(os.path.join(CANDOR_JAVA, "build", "libs"), "-all.jar")
     if not jar or not shutil.which("javac"): return None
-    d = os.path.join(ws, "java"); os.makedirs(os.path.join(d, "fr"), exist_ok=True)
+    d = os.path.join(ws, "p_java"); os.makedirs(os.path.join(d, "fr"), exist_ok=True)
     open(os.path.join(d, "fr", "Cases.java"), "w").write(java_src())
     cls = os.path.join(d, "out")
     if run(["javac", "-d", cls, os.path.join(d, "fr", "Cases.java")]).returncode: return None
     rep = os.path.join(d, "r.json")
     run(["java", "-jar", jar, cls, "--json", rep])
-    out = run(["java", "-jar", jar, "callers", rep, "fr.Sink.touch", "--json", "--include-unknown"])
-    return json.loads(out.stdout or b"{}")
+    stem = rep[:-5]
+    return (rep, stem + ".callgraph.json", stem + ".hierarchy.json", "fr.Sink.touch")
 
-def frontier_ts(ws):
+def produce_ts(ws):
     if not os.path.exists(os.path.join(CANDOR_TS, "scan.mjs")) or not shutil.which("node"): return None
-    d = os.path.join(ws, "ts"); os.makedirs(d, exist_ok=True)
+    d = os.path.join(ws, "p_ts"); os.makedirs(d, exist_ok=True)
     open(os.path.join(d, "Cases.ts"), "w").write(ts_src())
     open(os.path.join(d, "package.json"), "w").write('{"name":"fr","version":"0.0.0"}')
     pfx = os.path.join(d, "r")
     run(["node", os.path.join(CANDOR_TS, "scan.mjs"), os.path.join(d, "Cases.ts"), pfx])
-    out = run(["node", os.path.join(CANDOR_TS, "query.mjs"), "callers", pfx, "Sink.touch", "1", "--include-unknown"])
-    return json.loads(out.stdout or b"{}")
+    return (pfx + ".json", pfx + ".callgraph.json", pfx + ".hierarchy.json", "Cases.Sink.touch")
 
-def frontier_swift(ws):
+def produce_swift(ws):
     if not shutil.which("swift") or not os.path.exists(os.path.join(CANDOR_SWIFT, "Package.swift")): return None
     swbin = os.path.join(CANDOR_SWIFT, ".build", "debug", "candor-swift")
     if not os.path.exists(swbin) and run(["swift", "build"], cwd=CANDOR_SWIFT).returncode: return None
-    qbin = os.environ.get("CANDOR_QUERY_BIN") or os.path.join(CANDOR, "target", "debug", "candor-query")
-    if not os.path.exists(qbin) and run(["cargo", "build", "-q", "-p", "candor-query",
-                                         "--manifest-path", os.path.join(CANDOR, "Cargo.toml")]).returncode: return None
-    d = os.path.join(ws, "swift"); os.makedirs(d, exist_ok=True)
+    d = os.path.join(ws, "p_swift"); os.makedirs(d, exist_ok=True)
     src = os.path.join(d, "cases.swift"); open(src, "w").write(swift_src())
     pfx = os.path.join(d, "r")
     run([swbin, src, "--out", pfx])
-    out = run([qbin, "callers", pfx, "Sink.touch", "1", "--include-unknown"])
+    rep = newest(d, ".Swift.json")
+    if not rep: return None
+    stem = rep[:-5]
+    return (rep, stem + ".callgraph.json", stem + ".hierarchy.json", "Sink.touch")
+
+PRODUCERS = [("java", produce_java), ("ts", produce_ts), ("swift", produce_swift)]
+
+
+# =====================================================================================================
+# CONSUMERS. Each takes the producer's three files, lays them out the way THIS consumer discovers
+# sidecars, and runs `callers --include-unknown`. Copy-and-rename only: a cell must never pass because
+# the harness edited the report it was handed.
+# =====================================================================================================
+def _lay(dst, kind, files):
+    rep, cg, hier = files
+    os.makedirs(dst, exist_ok=True)
+    # rust globs `<prefix>.*`; java and ts strip `.json` off the report path and append the suffixes.
+    names = ({"rep": "r.app.scan.json", "cg": "r.app.scan.callgraph.json", "hier": "r.app.hierarchy.json"}
+             if kind == "rust" else
+             {"rep": "r.json", "cg": "r.callgraph.json", "hier": "r.hierarchy.json"})
+    shutil.copyfile(rep, os.path.join(dst, names["rep"]))
+    for src, key in ((cg, "cg"), (hier, "hier")):
+        if src and os.path.exists(src): shutil.copyfile(src, os.path.join(dst, names[key]))
+    return os.path.join(dst, "r") if kind == "rust" else os.path.join(dst, names["rep"])
+
+def consume_java(dst, files, target):
+    jar = os.environ.get("CANDOR_JAVA_JAR") or newest(os.path.join(CANDOR_JAVA, "build", "libs"), "-all.jar")
+    if not jar: return None
+    loc = _lay(dst, "java", files)
+    out = run(["java", "-jar", jar, "callers", target, "--report", loc, "--include-unknown", "--json"])
     return json.loads(out.stdout or b"{}")
+
+def consume_ts(dst, files, target):
+    q = os.path.join(CANDOR_TS, "query.mjs")
+    if not shutil.which("node") or not os.path.exists(q): return None
+    loc = _lay(dst, "ts", files)
+    out = run(["node", q, "callers", target, "--report", loc, "--include-unknown"])
+    return json.loads(out.stdout or b"{}")
+
+def consume_rust(dst, files, target):
+    qbin = os.environ.get("CANDOR_QUERY_BIN") or os.path.join(CANDOR, "target", "debug", "candor-query")
+    if not os.path.exists(qbin): return None
+    pfx = _lay(dst, "rust", files)
+    out = run([qbin, "callers", pfx, target, "1", "--include-unknown"])
+    return json.loads(out.stdout or b"{}")
+
+CONSUMERS = [("java", consume_java), ("ts", consume_ts), ("rust", consume_rust)]
+
 
 def leaf(fn): return fn.split("(")[0].split(".")[-1]
 
-def check(engine, res):
-    """The frontier must surface exactly the dispatcher (via dispatch on `op`); Impl7.op confirmed."""
-    if res is None:
-        print(f"  {engine:6} not present — SKIPPED"); return None
+def verdict(res):
+    """The frontier must surface exactly the dispatcher (via dispatch on `op`), with Impl7.op confirmed."""
+    if res is None: return None, "absent"
     pv = res.get("possibleViaUnknownDispatch", [])
-    confirmed_ok = any(leaf(f) == "op" for f in res.get("transitive", []))  # Impl7.op reaches the sink
-    disp = [p for p in pv if leaf(p["fn"]) in ("run", "Dispatcher") and "op" in p["viaDispatchOn"]]
-    ok = confirmed_ok and len(pv) == 1 and len(disp) == 1
-    mark = "ok" if ok else "DIVERGE"
-    print(f"  {engine:6} possibleViaUnknownDispatch={[p['fn'] + ' via ' + p['viaDispatchOn'] for p in pv]} "
-          f"confirmed(Impl7.op)={confirmed_ok} -> {mark}")
-    return ok
+    confirmed = any(leaf(f) == "op" for f in res.get("transitive", []))
+    disp = [p for p in pv if leaf(p["fn"]) in ("run", "Dispatcher") and "op" in p.get("viaDispatchOn", "")]
+    ok = confirmed and len(pv) == 1 and len(disp) == 1
+    return ok, ("ok" if ok else "pv=%s confirmed=%s" % ([p["fn"] + " via " + p.get("viaDispatchOn", "?") for p in pv], confirmed))
+
 
 def main():
-    print("DISPATCH-FRONTIER differential (callers --include-unknown, 0.7) — class/protocol engines")
+    print("DISPATCH-FRONTIER differential (callers --include-unknown, 0.7) — PRODUCER x CONSUMER matrix")
     print(f"  scenario: Base.op with {N} impls (>fan-out), Impl{REACH}.op reaches Sink.touch; Dispatcher dispatches Base.op")
+    print("  rust is a CONSUMER only — it emits no `dispatch:` and writes no §2.2 sidecar, so it has no")
+    print("  frontier of its own. That asymmetry is what made the old swift ARM secretly a rust-consumer arm.")
     ws = tempfile.mkdtemp(prefix="candor-frontier-")
+    grid, notes = {}, {}
     try:
-        results = {"java": check("java", frontier_java(ws)),
-                   "ts": check("ts", frontier_ts(ws)),
-                   "swift": check("swift", frontier_swift(ws))}
+        made = {}
+        for pname, mk in PRODUCERS:
+            got = mk(ws)
+            if got is None:
+                print(f"  producer {pname:6} not present — SKIPPED"); continue
+            made[pname] = got
+        if not made:
+            print("  no producer present — SKIPPED"); return 0
+        for pname, (rep, cg, hier, target) in made.items():
+            for cname, fn in CONSUMERS:
+                dst = os.path.join(ws, f"x_{pname}_{cname}")
+                try:
+                    res = fn(dst, (rep, cg, hier), target)
+                except Exception as e:               # a consumer that THROWS is the harness, not a verdict
+                    grid[(pname, cname)], notes[(pname, cname)] = None, "harness: %s" % e
+                    continue
+                ok, why = verdict(res)
+                grid[(pname, cname)] = ok
+                notes[(pname, cname)] = why
     finally:
         shutil.rmtree(ws, ignore_errors=True)
-    present = {k: v for k, v in results.items() if v is not None}
-    if not present:
-        print("  no class/protocol engine present — SKIPPED"); return 0
-    if all(present.values()):
-        print(f"  FRONTIER DIFFERENTIAL: OK — {', '.join(present)} agree: the dispatcher is disclosed via dispatch on `op`, Impl{REACH}.op confirmed.")
+
+    cons = [c for c, _ in CONSUMERS]
+    print("\n  producer \\ consumer   " + "".join(f"{c:>10}" for c in cons))
+    for pname, _ in PRODUCERS:
+        if not any((pname, c) in grid for c in cons): continue
+        cells = []
+        for c in cons:
+            v = grid.get((pname, c))
+            cells.append("  -  " if v is None else (" ok  " if v else "DIVERG"))
+        print(f"  {pname:20} " + "".join(f"{x:>10}" for x in cells))
+
+    live = {k: v for k, v in grid.items() if v is not None}
+    bad = [k for k, v in live.items() if not v]
+    if not live:
+        print("  no (producer, consumer) pair ran — SKIPPED"); return 0
+    # A property with no live cell must never print as a pass; and a whole row/column red is a louder
+    # finding than a cell, so name the shape rather than leaving it to be eyeballed.
+    for c in cons:
+        col = [k for k in live if k[1] == c]
+        if col and all(not live[k] for k in col):
+            print(f"  ROW RED — consumer `{c}` fails on EVERY producer's report: a CONSUMER defect, not a producer one.")
+    for p, _ in PRODUCERS:
+        row = [k for k in live if k[0] == p]
+        if row and all(not live[k] for k in row):
+            print(f"  COLUMN RED — every consumer fails on `{p}`'s report: a PRODUCER defect.")
+    if not bad:
+        print(f"  FRONTIER DIFFERENTIAL: OK — {len(live)} (producer, consumer) pairs agree: the dispatcher is")
+        print(f"  disclosed via dispatch on `op`, Impl{REACH}.op confirmed. Independent consumers: {len({k[1] for k in live})}.")
         return 0
+    for k in sorted(bad):
+        print(f"  DIVERGE  producer={k[0]} consumer={k[1]}: {notes[k]}")
     print("  FRONTIER DIFFERENTIAL: FAILED"); return 1
 
 sys.exit(main())
