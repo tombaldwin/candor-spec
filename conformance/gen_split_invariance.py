@@ -640,11 +640,30 @@ REVERSE = "REVERSE"        # ... and yet the CHAINED arm found an effect: the si
 FAILING = (CARDINAL, ABSENT, SWAPPED)
 
 
+# ── PROBE MODE (CANDOR_PROBE_FAULT) — does this property still DISCRIMINATE? ────────────────────────
+# "Verified to catch" has always been a habit applied ONCE, by hand, when a property is written, and never
+# re-run. A property that quietly stops discriminating therefore passes forever, and the suite reports a
+# green that means nothing. On 2026-08-03 alone three waivers were found accusing CONFORMING engines, a
+# row was found demanding fields the spec marks OPTIONAL, and a property was found falsely accusing swift
+# — every one an instrument that had stopped meaning what it claimed, each found by accident.
+#
+# With the env var set, the FIRST live cell has its chained arm replaced by a total, undisclosed loss —
+# the textbook cardinal sin this property exists to catch. The run MUST then fail. `probe_check.py` runs
+# each registered generator this way and fails the suite if any of them still passes.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
 def judge(single, chained):
     """single/chained are frozensets, or None when the fn is ABSENT from that arm's report.
     ABSENT is NOT the same as pure for the chained arm (it is still a purity claim) but IS the same as
     pure for the single-tree arm (nothing to demand)."""
     s = frozenset() if single is None else single
+    if _PROBE_FAULT and not _probe_fired and (s - {UNKNOWN}):
+        # inject: the chained arm loses everything and discloses nothing → must judge CARDINAL
+        _probe_fired.append(True)
+        print("  PROBE: injected a total undisclosed loss into one live cell — this run MUST fail")
+        chained = frozenset()
     if not s:
         return REVERSE if (chained and (chained - {UNKNOWN})) else VACUOUS
     if chained is None:

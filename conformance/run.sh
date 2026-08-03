@@ -4708,6 +4708,20 @@ fi
 # the harness broken rather than as engine behaviour; and the same both-ways ratchet in
 # `sidecar-manifest-baseline.json`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# ── PRECONDITION: EVERY REGISTERED PROPERTY MUST STILL BE ABLE TO FAIL ─────────────────────────────
+# "Verified to catch" was a habit applied ONCE at authoring time and never re-run, so a property that
+# quietly stopped discriminating would print MATCH forever. `probe_check.py` runs each registered
+# generator with `CANDOR_PROBE_FAULT` — corrupting its first live cell in the direction its own property
+# forbids — and fails if the property survives. Coverage is partial and the uncovered generators are
+# PRINTED with reasons rather than implied. Runs before the parts, because a suite whose instruments
+# cannot fail has nothing to say about the engines.
+[ -f "$HERE/probe_check.py" ] || { echo "FAIL: probe_check.py is missing"; exit 2; }
+echo
+( export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/probe_check.py" ) || { echo "conformance: a property cannot fail — see PROBE CHECK above"; rc=1; }
+
 [ -f "$HERE/gen_sidecar_manifest.py" ] || { echo "FAIL: gen_sidecar_manifest.py is missing"; exit 2; }
 [ -f "$HERE/sidecar-manifest-baseline.json" ] || { echo "FAIL: sidecar-manifest-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
 P30_OK=0

@@ -307,8 +307,19 @@ ENGINES = [("rust", _rust), ("java", _java), ("ts", _ts), ("swift", _swift)]
 # =====================================================================================================
 # the verdict for ONE (effect, augmentation) cell against its base.
 # =====================================================================================================
+# PROBE MODE — see gen_split_invariance.py for why "verified to catch" must be a GATE and not a
+# habit applied once at authoring time. `probe_check.py` runs this generator with the fault set and
+# fails the suite if the property still passes.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
 def verdict(base, arm):
     """base/arm are `leaf_info` records, or None when the unit is absent from `functions`."""
+    if _PROBE_FAULT and not _probe_fired and base:
+        _probe_fired.append(True)
+        print("  PROBE: injected a LOSS into one augmented arm — this run MUST fail")
+        arm = None
     if base is None:
         return "VACUOUS"                       # nothing claimed, nothing demanded (earned, not asserted)
     b_eff, b_why = base["eff"], base["why"]
