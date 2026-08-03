@@ -69,6 +69,17 @@ USAGE
     python3 gen_rung024.py --only R2,R3 --keep
     python3 gen_rung024.py --baseline rung024-baseline.json      # the ratchet (PART 27)
 """
+# THE CONTRACT THESE ROWS ENFORCE, quoted so clause_check.py can prove SPEC.md still says it. This
+# generator carries the ⟨0.24⟩ rung's behavioural rows plus R10/R12, several of which assert a normative
+# MUST — and it was NOT registered with clause_check until 2026-08-03, so nothing checked that its
+# assertions still matched the text. That gap is exactly what clause_check was built for: R10 spent its
+# whole life demanding fields §2 marks OPTIONAL, and reading the clause is what would have caught it.
+SPEC_CLAUSES = [
+    ("§2 ⟨0.26⟩", "An engine that does not run one MUST OMIT all three."),
+    ("§2 ⟨0.26⟩", "a consumer MUST read their ABSENCE as"),
+    ("§2", "An engine MAY add extension fields"),
+]
+
 import json
 import locale as _locale
 import os
@@ -1652,6 +1663,81 @@ def row_r10(ws, pols):
 
 
 # =====================================================================================================
+# R12 — THE §5 RECONCILIATION TRIO IS PRESENT-OR-ABSENT, NEVER EMPTY-AS-A-CLAIM (SPEC §2 ⟨0.26⟩)
+# =====================================================================================================
+#
+# `declared`/`undeclared`/`overdeclared` are the §5 capability-reconciliation outputs. An engine that runs
+# that pass emits them; one that does not MUST OMIT them. `[]` is forbidden, because an empty set is a
+# POSITIVE CLAIM: `undeclared: []` reads as "this function performs no undeclared effect" — an AS-EFF-001
+# all-clear from a check that never ran.
+#
+# THE FIXTURE IS THE FALSIFIER. One function performs an effect and declares NOTHING, so:
+#     ran the pass      -> `undeclared` is NON-EMPTY (the effect is undeclared, and that is the finding)
+#     did not run it    -> the three keys are ABSENT
+#     `undeclared: []`  -> the defect: a conformance answer nobody computed
+# The third case is unreachable for a correct engine, which is what makes this a falsifiable row rather
+# than a description. Measured before the rule: java non-empty, rust absent, ts and swift `[]`.
+#
+# WHY THIS ROW EXISTS AT ALL: R10 (schema parity) is what PRODUCED the defect. candor-swift's own source
+# said so — "kept in the wire shape for cross-engine schema parity". A parity check over an OPTIONAL field
+# manufactures agreement on shape purchased with an unbacked claim, so R10 no longer requires these three
+# and R12 rejects the constant instead. The pair is deliberate: one row stopped asking, the other checks
+# that nobody answers anyway.
+def row_r12(ws, pols):
+    cells = []
+    for eng in ENGINES:
+        if not present(eng):
+            cells.append((eng, "decl-trio", ABSENT, "", ""))
+            continue
+        scan = {"rust": _rust_scan, "java": _java_scan, "ts": _ts_scan, "swift": _swift_scan}[eng]
+        gj = os.path.join(ws, "r12.%s.gate.json" % eng)
+        if os.path.exists(gj):
+            os.remove(gj)          # never let a previous row's file be read as this one's answer
+        rep, rc = scan(ws, pols["pure"], gj)
+        if rep is None:
+            cells.append((eng, "decl-trio", ERROR, "the scan produced no report (harness/toolchain)",
+                          "a report on disk"))
+            continue
+        path = rep
+        if not os.path.isfile(path):
+            import glob as _glob
+            cand = sorted(c for c in _glob.glob(rep + "*.json") if "callgraph" not in c
+                          and "hierarchy" not in c and "locs" not in c)
+            if not cand:
+                cells.append((eng, "decl-trio", ERROR, "no report file at locator %r" % rep, ""))
+                continue
+            path = cand[0]
+        try:
+            d = json.load(open(path))
+        except Exception as e:
+            cells.append((eng, "decl-trio", ERROR, "report did not parse: %s" % e, ""))
+            continue
+        fns = [f for f in (d.get("functions") or []) if isinstance(f, dict)]
+        # VACUITY: the row needs at least one EFFECTFUL entry, else "declares nothing" is not a question.
+        eff = [f for f in fns if (f.get("inferred") or [])]
+        if not eff:
+            cells.append((eng, "decl-trio", VACUOUS,
+                          "no effectful entry — nothing could be undeclared", "one effectful entry"))
+            continue
+        empty_claim = [f["fn"] for f in eff
+                       if any(k in f for k in ("declared", "undeclared", "overdeclared"))
+                       and not (f.get("undeclared") or [])]
+        if empty_claim:
+            cells.append((eng, "decl-trio", FAIL,
+                          "emits the §5 trio with an EMPTY `undeclared` on %d effectful entr%s (e.g. %s) — "
+                          "an AS-EFF-001 all-clear from a pass that did not run; omit the three instead"
+                          % (len(empty_claim), "y" if len(empty_claim) == 1 else "ies", empty_claim[0]),
+                          "either a NON-EMPTY `undeclared`, or the three keys ABSENT"))
+            continue
+        has = any("undeclared" in f for f in eff)
+        cells.append((eng, "decl-trio", OK,
+                      "runs a §5 pass and reports a non-empty `undeclared`" if has
+                      else "runs no §5 pass and OMITS the trio — absence, not a claim",
+                      "either a NON-EMPTY `undeclared`, or the three keys ABSENT"))
+    return cells
+
+
+# =====================================================================================================
 # R11 — THE ADVISORY-VERB CONFIDENCE LAW: `unverified` may be LESS certain than the gate, never MORE
 # =====================================================================================================
 #
@@ -2124,6 +2210,7 @@ ROWS = [
     ("R9", "CROSS-ENGINE verdict KEY PARITY — the same situation must produce the same keys"),
     ("R10", "REPORT-ENVELOPE key parity — the artifact that TRAVELS between engines"),
     ("R11", "the ADVISORY-VERB confidence law — U_clear must be a subset of G_clear"),
+    ("R12", "the §5 reconciliation trio is present-or-absent, never EMPTY-as-a-claim"),
     ("R7", "§2 locale-independence — the same input under two collations, byte for byte"),
 ]
 
@@ -2240,6 +2327,7 @@ def main():
                 ("R8", lambda: row_r8(ws, pol)),
                 ("R9", lambda: row_r9(ws, pol)),
                 ("R10", lambda: row_r10(ws, pol)),
+                ("R12", lambda: row_r12(ws, pol)),
                 ("R11", lambda: row_r11(ws, pol)),
                 ("R7", lambda: row_r7(ws, pol["pure"], disc))]
         for name, fn in plan:

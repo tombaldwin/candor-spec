@@ -59,6 +59,7 @@ GENERATORS = [
     "gen_signature_monotonicity.py",
     "gen_incomplete_dominance.py",
     "gen_sidecar_manifest.py",
+    "gen_rung024.py",
 ]
 
 BASELINES = [
@@ -68,6 +69,7 @@ BASELINES = [
     "signature-monotonicity-baseline.json",
     "incomplete-dominance-baseline.json",
     "sidecar-manifest-baseline.json",
+    "rung024-baseline.json",
 ]
 
 
