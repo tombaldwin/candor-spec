@@ -144,9 +144,14 @@ def _triple(d, kind, sidecar):
 
 def _frontier_cmd(kind, locator):
     if kind == "rust":
-        binp = os.environ.get("CANDOR_SCAN_BIN")
-        qbin = (os.path.join(os.path.dirname(binp), "candor-query") if binp
-                else os.path.join(gd.CANDOR, "target", "debug", "candor-query"))
+        # CANDOR_QUERY_BIN FIRST. run.sh resolves SCAN and QUERY independently (either may be overridden
+        # alone), so deriving the query binary from the scanner's dirname is wrong whenever they differ —
+        # and it failed SILENTLY, because a missing binary used to downgrade the engine to NOT APPLICABLE.
+        qbin = os.environ.get("CANDOR_QUERY_BIN")
+        if not qbin:
+            binp = os.environ.get("CANDOR_SCAN_BIN")
+            qbin = (os.path.join(os.path.dirname(binp), "candor-query") if binp
+                    else os.path.join(gd.CANDOR, "target", "debug", "candor-query"))
         if not os.path.exists(qbin):
             return None, "no candor-query at %s" % qbin
         return ([qbin, "callers", locator, QUERY, "1", "--include-unknown"], None), None
@@ -188,14 +193,30 @@ def frontier(kind, d, sidecar):
 # =====================================================================================================
 # CONJUNCT A — consumer monotonicity under per-key sidecar degradation.
 # =====================================================================================================
+# Engines that SHIP `callers --include-unknown`. candor-swift is absent by design, not by accident.
+#
+# The distinction is load-bearing: without it a MIS-INVOCATION (a wrong binary path, an engine that errors)
+# printed "NOT APPLICABLE" and the suite stayed green, so a broken harness read as a structural fact about
+# the engine. run.sh states the rule for its own TS arm in as many words — "a present-but-broken engine
+# must FAIL the suite, never read as 'not present — SKIPPED'" — and this generator did not follow it.
+FRONTIER_ENGINES = ("rust", "java", "ts")
+
+
 def conjunct_a(kind, root):
     out = {"applicable": True, "cells": [], "note": None}
     base = os.path.join(root, "A_" + kind)
+    expected = kind in FRONTIER_ENGINES
 
     full_d = os.path.join(base, "full")
     os.makedirs(full_d, exist_ok=True)
     full, err = frontier(kind, full_d, SIDECAR)
     if full is None:
+        if expected:
+            # NOT a structural N/A: this engine ships the verb, so failing to run it is the harness broken.
+            out["cells"].append({"arm": "reference:full", "verdict": "HARNESS",
+                                 "note": "engine ships `callers --include-unknown` but produced no "
+                                         "frontier: %s" % err})
+            return out
         out["applicable"] = False
         out["note"] = err
         return out
@@ -204,7 +225,12 @@ def conjunct_a(kind, root):
     os.makedirs(absent_d, exist_ok=True)
     absent, err = frontier(kind, absent_d, None)
     if absent is None:
-        # A REFERENCE arm that produces nothing is the oracle missing, not a finding about the engine.
+        # A REFERENCE arm that produces nothing is the ORACLE missing. For an engine that ships the verb
+        # that is the harness broken and must fail; for one that does not, it is structural.
+        if expected:
+            out["cells"].append({"arm": "reference:absent", "verdict": "HARNESS",
+                                 "note": "reference arm `absent` produced nothing: %s" % err})
+            return out
         out["applicable"] = False
         out["note"] = "reference arm `absent` produced nothing: %s" % err
         return out
@@ -259,6 +285,26 @@ protocol Mid: Base {}
 struct Impl: Mid { func op() { _ = try? String(contentsOfFile: "/etc/hosts") } }
 struct Loner { func idle() {} }
 """
+
+
+# The type names each conjunct-B fixture DECLARES. The conjunct demands a key only for these.
+#
+# WHY IT IS NOT "every declaring type in the callgraph", which is what this first asserted: a callgraph
+# unit's declaring type is not always a type the engine INDEXED. `extension Process { func helper() }` is
+# ordinary Swift and puts `Process.helper` in the callgraph, but candor-swift never declared `Process` and
+# cannot see a platform type's supertypes — so OMITTING it is the CORRECT answer (absence = unanswerable),
+# and demanding a key would accuse a conforming engine. MEASURED on exactly that two-line package: the
+# first version of this conjunct reported `MISSING: ['Process']`.
+#
+# That is the failure `clause_check.py` exists to prevent — a property STRICTER than the contract — and it
+# was latent rather than firing only because this fixture happens not to contain the shape. The harness
+# WRITES these fixtures, so it may legitimately name what they declare; that is not an expected-VALUE
+# table (no effect, verdict or hierarchy is predicted), it is the harness knowing its own input.
+DECLARED_TYPES = {
+    "java":  {"app.Base", "app.Mid", "app.Impl", "app.Loner"},
+    "ts":    {"Cases.Base", "Cases.Mid", "Cases.Impl", "Cases.Loner"},
+    "swift": {"Base", "Mid", "Impl", "Loner"},
+}
 
 
 def _declaring_types(callgraph, sep):
@@ -362,7 +408,10 @@ def conjunct_b(kind, root):
         return out
     hier = json.load(open(hpath))
     cg = json.load(open(cpath))
-    types = _declaring_types(cg, sep)
+    # Intersected with what the fixture DECLARES — see DECLARED_TYPES. A declaring type outside that set
+    # is one the engine may legitimately never have indexed, and demanding a key for it accuses a
+    # conforming engine.
+    types = _declaring_types(cg, sep) & DECLARED_TYPES[kind]
     keys = {k for k in hier if not k.startswith("@")}   # `@`-prefixed keys are metadata, not types
     missing = sorted(types - keys)
     cell = {"arm": "closure", "declaringTypes": sorted(types), "keys": sorted(keys)}
