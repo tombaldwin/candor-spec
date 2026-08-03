@@ -58,17 +58,5 @@
   "derivation (ts, the only one my clause actually described). A rule phrased against any one of them would",
   "have missed the other three, which is the whole case for stating the law as a COMPARISON."
  ],
- "known": [
-  {
-   "row": "R10",
-   "engine": "rust",
-   "cell": "report-parity",
-   "kind": "FAIL",
-   "why": "report envelope: rust carries none of `declared`/`undeclared`/`overdeclared`/`unresolved`, which §2 defines WITHOUT an OPTIONAL marker (unlike `entryPoint`/`fs`/`calls`/…). This is the row's only real signal: R10 was rewritten 2026-08-03 to flag a MISSING REQUIRED field rather than compare every key against a majority, because the old form recorded candor-java as broken for `packages` (§2 blesses it in the same sentence as `package`, 'the JVM shape') and for `entryPoint`/`fs` (both marked OPTIONAL, and `entryPoint`'s own note anticipates the divergence). An EXTRA key can never be a divergence — §2 forward compatibility permits extension fields explicitly. THE SEMANTICS STILL COME FIRST, and they are now MEASURED rather than asserted. One function with an Fs effect and NO declaration anywhere: java emits `undeclared:[\"Fs\"]` (reading absence-of-declaration as declared-empty, so every effect is a violation); ts and swift emit `undeclared:[]` (reading it as not participating); rust omits the field. So java is the OUTLIER 3-to-1 with rust abstaining, and §2's own gloss — 'inferred − declared (violations); empty in audit' — carries both readings at once. Adding the four keys to rust before settling that sentence would buy agreement on SHAPE over a live disagreement on MEANING. Measured as report-level only: java's gate answered 'no violations' on that fixture, so no verdict rides on it today.",
-   "repro": [
-    "One fn, one Fs effect, no declaration: java `undeclared:[\"Fs\"]`, ts `[]`, swift `[]`, rust omits the field. Same input, three answers.",
-    "R10 itself: java/swift/ts now OK, rust FAIL on the four missing required entry fields."
-   ]
-  }
- ]
+ "known": []
 }

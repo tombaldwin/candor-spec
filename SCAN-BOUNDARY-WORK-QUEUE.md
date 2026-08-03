@@ -166,8 +166,39 @@ Everything else that was waived this session was either fixed or retracted.
    audit"* — carries both readings at once. Adding four keys to rust before settling that sentence buys
    agreement on SHAPE over a live disagreement on MEANING. Report-level only today: java's gate answered
    "no violations" on that fixture, so no verdict rides on it.
-   NEXT: adjudicate the sentence in §2 (does a function with NO declaration have an empty declaration, or
-   no declaration contract?), converge java, then give rust the four fields.
+   **THEN THE ADJUDICATION INVERTED IT, and this is the part worth keeping.** I reported java as "the
+   outlier 3-to-1". That was WRONG, and wrong by counting SILENCE AS A VOTE. Grepping all four engines:
+   **only candor-java implements AS-EFF-001/002/004 at all** — the §5 capability-conformance pass. ts,
+   swift and rust ship the analysis- and policy-side codes (003/005/006/008/009/010) and none of the
+   conformance ones. So ts and swift are not *reading* `undeclared` differently; they never compute it:
+
+       ts     hardcodes `declared: [], undeclared: [], overdeclared: []` (scan.mjs)
+       swift  the same, and says so — "candor-swift is analyze-only, so declared/undeclared/overdeclared
+              are always empty (no DI-conformance pass) — KEPT IN THE WIRE SHAPE FOR CROSS-ENGINE SCHEMA
+              PARITY"
+       rust   omits them
+       java   computes them (and fires AS-EFF-001 under CANDOR_STRICT)
+
+   **THE REAL DEFECT, and R10 was obscuring it: an empty set is a CLAIM.** `undeclared: []` reads as "this
+   function performs no undeclared effect", so a consumer taking conformance off a ts or swift report gets
+   a green answer from a pass that never ran — the ⟨0.21⟩ absence-is-a-claim rule one layer up, and the
+   same distinction ⟨0.26⟩ drew for the sidecar. **rust's OMISSION is the honest state.** swift's comment
+   is an admission that a SHAPE CHECK bought the unsound behaviour, and R10's first rewrite would have
+   applied the same pressure to rust.
+
+   RULING TO DRAFT (spec): an engine with no §5 conformance pass **MUST OMIT** `declared`/`undeclared`/
+   `overdeclared` rather than emit `[]` — present means answered, absent means not computed. Then ts and
+   swift drop the constants, java is already correct, rust is already correct, and a conformance row can
+   pin it. Note java also does not vary these by MODE (identical under CANDOR_STRICT and without), while
+   §2 glosses `undeclared` as "empty in audit" — decide whether that gloss survives at all, since a report
+   is an interchange artifact and a field whose meaning depends on the producer's mode is not interchangeable.
+
+   R10 itself is now CLEAN four-way and **both its waivers are retracted**: they were artifacts of a
+   comparison stricter than the contract. Its required set is the fields every engine genuinely computes
+   and a consumer cannot reconstruct — `fn`, `loc`, `inferred`, `direct`, `hash` — verified to still catch
+   a real omission (stripping `inferred` from ts turns that cell FAIL). `unresolved` is excluded on its own
+   evidence: rust emits it when TRUE (measured on a `callback:` hole) and elides the false default, so the
+   old flag was reporting a property of the fixture.
 
 **TWO OBSERVATIONS ABOUT THE DOCUMENT ITSELF, since a review that only re-ranks is half a review.**
 
