@@ -27,6 +27,12 @@ than against another engine's opinion.
 
 THIS FILE IS NOT A GATE. It computes no effects and reads no report. It is a reference for `Reject`
 alone — the part that is small, pure, total, and provable.
+
+NOT ONLY A HAND TRANSCRIPTION ANY MORE. `lean/` states the same definitions in Lean 4 and proves the
+properties the two amendments claim; `differential_lean_vs_python.py` (run by `lean/check.sh`, and in CI)
+recomputes every row of the Lean model's emitted decision table with THIS file and fails on any
+disagreement — 147 400 rows, every verb, the whole vocabulary. Edit a definition here and that check is
+what will tell you whether the two readings still match.
 """
 
 from itertools import combinations, chain

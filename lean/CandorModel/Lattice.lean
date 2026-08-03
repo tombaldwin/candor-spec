@@ -27,7 +27,7 @@ namespace Candor
 /-- **Definition 1 (Capability effects).** Coarse, named world-interactions. Finite by construction here;
     the paper's `…` is closed off at the vocabulary the spec actually ships. -/
 inductive Effect where
-  | Net | Fs | Exec | Db | Env | Clock | Llm
+  | Clipboard | Clock | Db | Env | Exec | Fs | Ipc | Llm | Log | Net | Rand
   deriving DecidableEq, Repr
 
 /-- **Definition 5 (Disclosure reasons).** The causes an analyzer can fail to resolve. -/
