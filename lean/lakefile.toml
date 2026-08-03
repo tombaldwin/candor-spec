@@ -1,5 +1,9 @@
 name = "candorModel"
-defaultTargets = ["CandorModel"]
+defaultTargets = ["CandorModel", "emit"]
 
 [[lean_lib]]
 name = "CandorModel"
+
+[[lean_exe]]
+name = "emit"
+root = "Main"

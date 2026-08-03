@@ -19,15 +19,47 @@ if grep -rn "sorry" CandorModel/ >/dev/null 2>&1; then
 fi
 echo "✔ no \`sorry\`"
 
-THEOREMS="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny lemma2_denyUnknown
-          lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined"
-{ echo "import CandorModel.Lattice"; echo "open Candor"; for t in $THEOREMS; do echo "#print axioms $t"; done; } > /tmp/candor-axioms.lean
-out="$(lake env lean /tmp/candor-axioms.lean 2>&1)"
-if printf '%s' "$out" | grep -qv "does not depend on any axioms"; then
-  bad="$(printf '%s\n' "$out" | grep -v "does not depend on any axioms" || true)"
-  [ -n "$bad" ] && { echo "✘ a theorem depends on axioms (or failed to print):"; printf '%s\n' "$bad"; exit 1; }
-fi
+# TWO TIERS, because they earn different bars and collapsing them would weaken the strong one.
+#
+# TIER A — the model's headline theorems. These live in `Lattice.lean`, are pure `Prop`, and are proved by
+# case analysis on inductive types. They depend on NO axioms at all, not even `propext`. That is a real
+# property worth pinning: a new axiom appearing here means the argument quietly changed shape.
+TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny lemma2_denyUnknown
+        lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined"
+#
+# TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
+# a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
+# and the `List` lemmas pull in `propext` and `Quot.sound` — Lean's own core axioms, present in essentially
+# every non-trivial proof and NOT evidence of anything. What is forbidden here is `sorryAx` (a placeholder
+# that proves nothing) and `Classical.choice` (these arguments are constructive; needing choice would mean
+# something is being asserted rather than computed).
+TIER_B="refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
+CORE_OK="propext|Quot.sound"
+
+axioms_of() { { echo "import CandorModel"; echo "open Candor"; for t in $1; do echo "#print axioms $t"; done; } > /tmp/candor-axioms.lean; lake env lean /tmp/candor-axioms.lean 2>&1; }
+
+out="$(axioms_of "$TIER_A")"
+bad="$(printf '%s\n' "$out" | grep -v "does not depend on any axioms" || true)"
+[ -n "$bad" ] && { echo "✘ tier A: a headline theorem depends on axioms (or failed to print):"; printf '%s\n' "$bad"; exit 1; }
 n=$(printf '%s\n' "$out" | grep -c "does not depend on any axioms")
-echo "✔ $n theorem(s) proved with no axiom dependencies"
+echo "✔ tier A: $n headline theorem(s) proved with NO axiom dependencies"
+
+out="$(axioms_of "$TIER_B")"
+# Anything that is neither "no axioms" nor a line whose axiom list is drawn only from the core set.
+bad="$(printf '%s\n' "$out" | grep -v "does not depend on any axioms" \
+        | grep -vE "^'Candor\.[A-Za-z_]+' depends on axioms: \[($CORE_OK)(, ($CORE_OK))*\]$" || true)"
+[ -n "$bad" ] && { echo "✘ tier B: a bridge lemma depends on more than Lean's core axioms:"; printf '%s\n' "$bad"; exit 1; }
+m=$(printf '%s\n' "$out" | grep -c "Candor\.")
+echo "✔ tier B: $m bridge lemma(s) proved from at most [$CORE_OK] — no sorryAx, no Classical.choice"
+
+# The proofs above say the Lean model is internally sound. They say NOTHING about the OTHER transcription
+# of the same definitions — `reference/policy_model.py`, which conformance PART 23 judges the four engines
+# against and which nobody has ever checked. Both errors the model has actually had lived there. So run
+# the two against each other on every row before calling this OK.
+echo
+if ! python3 ../reference/differential_lean_vs_python.py; then
+  echo "✘ the Lean model and reference/policy_model.py DISAGREE"; exit 1
+fi
+
 echo
 echo "lean model: OK"
