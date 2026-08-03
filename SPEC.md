@@ -509,9 +509,12 @@ Each entry:
   "loc":          "<file:line:col>",
   "inferred":     ["Net", "Fs", "..."],  // FULL TRANSITIVE effect set (this fn + everything it calls)
   "direct":       ["Fs"],                // effects performed in this fn's own body only
-  "declared":     [],                    // effects the signature declares it may perform (§5)
-  "undeclared":   [],                    // inferred − declared (violations); empty in audit
-  "overdeclared": [],                    // declared − inferred (unused declarations)
+  "declared":     [],                    // OPTIONAL ⟨0.26⟩ — effects the signature declares it may
+                                         // perform (§5). PRESENT means a §5 reconciliation pass RAN;
+                                         // ABSENT means it did not. See the rule below: an engine that
+                                         // does not run one MUST OMIT all three, never emit `[]`.
+  "undeclared":   [],                    // OPTIONAL ⟨0.26⟩ — inferred − declared (the AS-EFF-001 set)
+  "overdeclared": [],                    // OPTIONAL ⟨0.26⟩ — declared − inferred (unused declarations)
   "unresolved":   true,                  // true if `inferred` may be incomplete (contains Unknown)
   "entryPoint":   false,                  // OPTIONAL: true if the RUNTIME invokes this fn, not (only)
                                          // project code — a reachability ROOT. The language/framework
@@ -919,6 +922,35 @@ consumer reporting *"the hierarchy cannot answer for `app.Broken`"* and *"…for
 The asymmetry with §2's report manifest is deliberate: a report's unanalyzed set is ENUMERABLE (the files
 it failed to read), while a sidecar's complement is every type in the world. So the positive key set is the
 manifest, and `@unanalyzed` is a diagnostic rather than the closed set.
+
+⟨0.26⟩ **THE §5 RECONCILIATION TRIO IS PRESENT-OR-ABSENT, NEVER EMPTY-AS-A-CLAIM.**
+
+`declared` / `undeclared` / `overdeclared` are the outputs of the §5 capability-reconciliation pass. An
+engine that runs one emits all three. **An engine that does not run one MUST OMIT all three. Emitting
+`[]` is forbidden**, and a consumer MUST read their ABSENCE as *"no declaration contract was computed"* —
+never as *"this function declares nothing and violates nothing"*.
+
+This is §2.2 ⟨0.26⟩'s rule one layer up, and ⟨0.21⟩'s before that: **an empty set is a positive claim.**
+`undeclared: []` says *no function performs an undeclared effect* — an AS-EFF-001 all-clear. An engine
+with no §5 pass has not established that and must not assert it.
+
+**Measured, and the shape is the argument.** Only one engine implements the §5 codes (AS-EFF-001/002/004)
+at all; the others implement the analysis- and policy-side codes and no conformance pass. On one function
+performing `Fs` while declaring nothing, the reference engine reports `undeclared: ["Fs"]` and raises
+AS-EFF-001 under `strict`, while two engines emitted a hardcoded `undeclared: []` — a green conformance
+answer from a check that never ran. One of them said so in a source comment: *"analyze-only … no
+DI-conformance pass — kept in the wire shape for cross-engine schema parity."*
+
+**That admission is the load-bearing part, and it indicts a CHECK rather than an engine.** A schema-parity
+comparison is what made emitting the constant look like the conforming thing to do. A parity check over an
+OPTIONAL field manufactures exactly this: agreement on shape purchased with a claim nobody computed. So a
+conformance suite MUST NOT require these three of an engine, and MUST reject `[]` from an engine that
+computed nothing — which is the falsifiable form of this rule.
+
+**Deserialization is half the contract.** A reader that defaults an absent array to `[]` destroys the
+distinction the producer just made, so *"absent"* must survive into the consumer's own model (an
+`Option`/nullable, not a defaulted empty vector). A producer omitting the field and a reader defaulting it
+back is the same claim with extra steps.
 
 ⟨0.24⟩ **EVERY ORDERING — in a report and in a query output — MUST be locale-INDEPENDENT.** Sort by
 Unicode code point (equivalently UTF-8 byte order). A **locale-sensitive** comparator is forbidden:

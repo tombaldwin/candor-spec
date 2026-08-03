@@ -186,10 +186,23 @@ Everything else that was waived this session was either fixed or retracted.
    is an admission that a SHAPE CHECK bought the unsound behaviour, and R10's first rewrite would have
    applied the same pressure to rust.
 
-   RULING TO DRAFT (spec): an engine with no §5 conformance pass **MUST OMIT** `declared`/`undeclared`/
-   `overdeclared` rather than emit `[]` — present means answered, absent means not computed. Then ts and
-   swift drop the constants, java is already correct, rust is already correct, and a conformance row can
-   pin it. Note java also does not vary these by MODE (identical under CANDOR_STRICT and without), while
+   **RULING LANDED 2026-08-03 — SPEC §2 ⟨0.26⟩, engines converged, conformance R12.** An engine with no §5
+   pass MUST OMIT `declared`/`undeclared`/`overdeclared` rather than emit `[]`; a consumer MUST read their
+   absence as "no declaration contract was computed", never as "declares nothing and violates nothing".
+   ts `1aeb44c` and swift `200a0df` dropped the constants; java and rust were already correct.
+   **The spec rule carries a second half that is easy to miss: DESERIALIZATION.** A reader that defaults an
+   absent array back to `[]` destroys the distinction the producer just made, so "absent" has to survive
+   into the consumer's model (an Option/nullable, not a defaulted empty vector). candor-rust's
+   `#[serde(default)]` on the trio does exactly that defaulting today — harmless while nothing cross-reads
+   them, and the one loose end of this rung.
+   **R12 is the falsifiable form** and its fixture is the falsifier: one function performs an effect and
+   declares nothing, so a pass that RAN yields a NON-EMPTY `undeclared`, one that did not yields ABSENT
+   keys, and `[]` is unreachable for a correct engine. Verified to catch (restoring ts's constant turns
+   that cell FAIL). R10 and R12 are a deliberate pair: R10 stopped ASKING for the trio, R12 checks nobody
+   ANSWERS anyway — because R10 is what produced the defect in the first place.
+   Also closed in passing: **`gen_rung024.py` was never registered with `clause_check.py`**, so the largest
+   rung-behaviour generator asserted normative MUSTs that nothing checked against the text. Registered, and
+   R10's whole career of demanding OPTIONAL fields is what that check exists to catch. Note java also does not vary these by MODE (identical under CANDOR_STRICT and without), while
    §2 glosses `undeclared` as "empty in audit" — decide whether that gloss survives at all, since a report
    is an interchange artifact and a field whose meaning depends on the producer's mode is not interchangeable.
 
