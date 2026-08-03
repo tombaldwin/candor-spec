@@ -61,7 +61,22 @@ Everything else that was waived this session was either fixed or retracted.
    plus a call, and counting both moved the pinned completeness threshold (it put two tests red). The
    package joins the ledger's LIST instead; `calls` keeps meaning call volume.
 
-   **STILL OPEN — `implicit_conv`, and the reason it is not a five-minute repeat of the above.** The
+   **CLOSED 2026-08-03, java `272d05f` — AND THE REASON I FILED IT AS BLOCKED WAS WRONG.** The reentry
+   sites now record a κ blind spot when they resolve nothing, exactly as `clinitEdge` does. java's
+   `empty_zero` waiver went STALE and is deleted: **java's κ-reach residual is 16 → 8 → 0**, and
+   trust-monotonicity is down to ONE waiver (swift's).
+
+   **What the filing got wrong is the transferable part.** It said `ProvValue.declType` is null for method
+   parameters, so the site could name no type, and that populating it would NARROW a null path the in-scan
+   arm is sound through. Both halves false — because I INSTRUMENTED THE WRONG SITE. I measured the concat
+   INDY, whose operands are post-`String.valueOf` Strings, and generalised "parameters have no declType"
+   from it. At the REAL site (the `valueOf` call) `declType` is `dep/Dep$W` in both arms, and the in-scan
+   callgraph even carries the edge `viaImplicitToString -> dep.Dep$W.toString` — which is what should have
+   told me my story was wrong, since a mechanism that "resolves nothing" cannot produce an edge. **A
+   measurement at the wrong site is not weak evidence, it is evidence about a different question**, and it
+   propagated into a queue entry that would have deterred the next person from a 20-line fix.
+
+   ~~The old filing:~~ **STILL OPEN — `implicit_conv`, and the reason it is not a five-minute repeat.** The
    reentry site is the `String.valueOf` CALL, not the concat indy (I patched the indy first and it
    changed nothing — javac emits `valueOf` *before* the indy, which is how I found out). Its argument is
    a method PARAMETER, and `ProvValue.declType` is NULL for parameters, so the site can name no type to
