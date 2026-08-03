@@ -109,13 +109,44 @@ Everything else that was waived this session was either fixed or retracted.
    `WRecv`, a name no local declaration and no κ table explains. **`Call.extOwner` already carries exactly
    that resolved receiver type** — it is currently consulted only when it happens to be a MODULE name.
 
-   **WHY IT IS NOT A CHEAP REPEAT OF THE JAVA FIX, and this is the part to not forget:** the guard needs
-   "is this type explained by the platform?", and **swift has no type-level κ table** — only
-   `PLATFORM_MODULES`/`KAPPA_MODULES` (module granularity) and `localTypes`. Gating on `!localTypes.contains`
-   alone admits `String`, `Array`, `Int` and reproduces the exact sweep-[33]/[36] flood. So it needs a
-   curated platform-TYPE denylist (carve out proven-safe, per the family rule) sized against a real corpus
-   BEFORE it lands — false uncertainty is the measured failure mode here, and it is the fabrication mirror
-   of the thing being fixed.
+   **THE CORPUS STUDY WAS RUN 2026-08-03 AND IT REFUTES THE DESIGN.** I proposed keying the attribution on
+   `Call.extOwner` (the resolved receiver type) instead of the call form, gated by "not a local type and
+   not platform". Instrumented candor-swift to dump `extOwner` for every unresolved member call and ran it
+   over **swift-syntax** (a real ~2k-file package):
+
+       451 unresolved member calls, 71 distinct receiver names — and `localTypes` classifies
+       ONE HUNDRED PERCENT of them as NONLOCAL. Not one LOCAL.
+
+           other (typealias / module / project-ish)   193  (42.8%)
+           stdlib                                     113  (25.1%)
+           marker — `Self`, candor's own `<super>`      63  (14.0%)
+           generic parameter — T, S, Target, Buffer     50  (11.1%)
+           macro/constant-ish                           32  ( 7.1%)
+
+   So the gate would fire on EVERY unresolved member call — the sweep-[33]/[36] flood in full, not a
+   residue of it. Three findings kill the design rather than merely sizing a denylist:
+
+   1. **`localTypes` is not an "is this ours" oracle: it misses TYPEALIASES.** The single largest bucket is
+      `RawSyntaxBuffer` at 108 records (24% on its own) — swift-syntax's own typealias, read as NONLOCAL.
+      The denominator is wrong before any denylist question is asked.
+   2. **Generic parameters cannot be denylisted.** `T`, `S`, `Target`, `Buffer` are bound PER DECLARATION,
+      not drawn from a fixed set. No static list can classify them; excluding them means reading the
+      enclosing declaration's generic-parameter clause — structural work, not curation.
+   3. **candor's own `<super>` marker reaches `extOwner`** (21 records). Inert today because
+      `blindModules.contains("<super>")` is false, but it would have been attributed under the new rule.
+
+   A viable design needs FOUR prerequisites, three of them structural: typealias resolution into
+   `localTypes` (which is independently correct and fixes the largest bucket), generic-parameter exclusion,
+   marker exclusion, and only THEN a curated stdlib denylist for the remaining quarter.
+
+   **And the deeper reason to stop: for a SYNTACTIC engine a member call's receiver type cannot be
+   attributed to a SPECIFIC blind module without scanning that module.** The existing guard is not a lazy
+   approximation — it selects exactly the two cases where the target IS identifiable (an unqualified call
+   is bounded by the file's imports; a module-qualified one names the module in the text). rust manages the
+   per-function attribution because it has type resolution, not because its rule is better.
+   The remedy candor already gives is the right one: scan the dependency (the §3 scan-completeness nudge),
+   which dissolves the question instead of guessing at it.
+   **Status: the swift/empty_zero waiver stays, now on measured grounds rather than a plan.**
 
    ~~The old framing, kept because the correction is the useful part:~~
    Measured: `CONTROL SEPARATION` reports **all four engines SEPARATED** (rust 64/80, java 56/80, ts 64/80,
