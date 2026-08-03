@@ -202,6 +202,12 @@ def frontier(kind, d, sidecar):
 FRONTIER_ENGINES = ("rust", "java", "ts")
 
 
+# PROBE MODE — see gen_split_invariance.py. `probe_check.py` runs this with the fault set and fails the
+# suite if the property still passes.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
 def conjunct_a(kind, root):
     out = {"applicable": True, "cells": [], "note": None}
     base = os.path.join(root, "A_" + kind)
@@ -240,6 +246,12 @@ def conjunct_a(kind, root):
         d = os.path.join(base, "minus_" + key.replace(".", "_"))
         os.makedirs(d, exist_ok=True)
         got, err = frontier(kind, d, degraded)
+        if _PROBE_FAULT and not _probe_fired and full and got is not None:
+            # inject: the degraded arm loses the disclosure the full sidecar made — the exact
+            # non-monotonicity this property exists to catch.
+            _probe_fired.append(True)
+            print("  PROBE: injected a LOST disclosure into one degraded arm — this run MUST fail")
+            got = []
         cell = {"arm": "minus:" + key, "full": full, "degraded": got, "absent": absent}
         if got is None:
             cell["verdict"] = "HARNESS"

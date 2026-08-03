@@ -134,8 +134,19 @@ KNOWN_VACUOUS = {
     "ts":    {"callback", "fn_returned_dyn", "lazy_init"},
 }
 
+# PROBE MODE — see gen_split_invariance.py for why "verified to catch" must be a GATE and not a
+# habit applied once at authoring time. `probe_check.py` runs this generator with the fault set and
+# fails the suite if the property still passes.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
 def judge(ref, arm):
     """ref/arm are leaf_info entries, or None when the fn is absent from that arm's report."""
+    if _PROBE_FAULT and not _probe_fired and ref:
+        _probe_fired.append(True)
+        print("  PROBE: injected a dropped arm into one live cell — this run MUST fail")
+        arm = None
     if ref is None and arm is None:
         return VACUOUS
     if ref is None:
