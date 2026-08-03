@@ -1,0 +1,95 @@
+/-
+  LEMMA 2, PROVED WITHOUT THE VOCABULARY.
+
+  `Lattice.lean` proves monotone denial for candor's eleven effects and six reasons. That is the statement
+  the engines are judged against — but it is not the statement the paper is making, and the difference
+  matters in a specific, practical way.
+
+  Every rung that adds a channel adds a constructor to `Effect`. `Llm` did (⟨0.13⟩). The privacy work
+  queues `Health` and `Motion`. A `Db`-precedent refinement adds an edge to `⊑ₑ`. If Lemma 2 is proved
+  about a fixed eleven-element type, each of those changes re-opens the question, and re-opening a question
+  is exactly how a property quietly stops being true while its proof still compiles — because the proof was
+  about the OLD type.
+
+  So this file proves the lemma about an ARBITRARY effect type, an ARBITRARY reason type, and — this is the
+  part that surprised me — an ARBITRARY relation. Not an arbitrary preorder: an arbitrary relation. Nothing
+  below uses reflexivity or transitivity of `⊑ₑ`. The paper says "only monotonicity and completeness are
+  used below; the Boolean structure is free"; the mechanisation says something slightly stronger, which is
+  that the ORDER AXIOMS are free too. Lemma 2 holds because `fires` is an existential over `S` and `⊑`
+  grows `S` — the preorder is carried along and never consulted.
+
+  That is worth having as a machine-checked fact rather than an observation, because it converts "will
+  adding Health break monotone denial?" from a question into an instantiation. `Lattice.lean` now derives
+  its three concrete Lemma 2s from these, so there is ONE argument, not two that could drift apart.
+-/
+
+namespace Candor.Generic
+
+variable {E R : Type}
+
+/-- **Definition 6**, with the vocabulary abstracted away. -/
+structure GSig (E R : Type) where
+  S : E → Prop
+  D : R → Prop
+
+/-- Pointwise implication — the paper's "plain subset". Def 3's scope note insists on it for every
+    containment except the observation side, and reading it modulo `⊑ₑ` is what Proposition 6 proves
+    breaks upward-closure. Keeping it plain, and generic, keeps that mistake unavailable here. -/
+def gsub {α : Type} (A B : α → Prop) : Prop := ∀ x, A x → B x
+
+/-- **Definition 7 (product order)**, abstractly. -/
+def GSig.le (a b : GSig E R) : Prop := gsub a.S b.S ∧ gsub a.D b.D
+
+/-- **Definition 4 (firing)**, over an arbitrary relation `ref`. Note it is never assumed to be a preorder;
+    see the header. -/
+def gfires (ref : E → E → Prop) (e : E) (S : E → Prop) : Prop := ∃ e', S e' ∧ ref e' e
+
+def GUpwardClosed (Reject : GSig E R → Prop) : Prop :=
+  ∀ a b : GSig E R, GSig.le a b → Reject a → Reject b
+
+/-- The whole engine of Lemma 2, in three lines and with no hypothesis on `ref`: firing is an existential
+    over `S`, and a larger `S` can only make an existential easier to satisfy. -/
+theorem gfires_mono {ref : E → E → Prop} {e : E} {A B : E → Prop} (h : gsub A B) :
+    gfires ref e A → gfires ref e B := by
+  rintro ⟨e', hmem, href⟩
+  exact ⟨e', h e' hmem, href⟩
+
+/-- **Lemma 2** for `deny e`, for any vocabulary and any refinement relation. -/
+theorem gLemma2_deny (ref : E → E → Prop) (e : E) :
+    GUpwardClosed (R := R) (fun σ => gfires ref e σ.S) := by
+  rintro a b ⟨hS, _⟩ h
+  exact gfires_mono hS h
+
+/-- **Lemma 2** for `deny e Unknown[C]`, for any vocabulary, any relation, and any reason-scope. -/
+theorem gLemma2_denyUnknown (ref : E → E → Prop) (e : E) (C : R → Prop) :
+    GUpwardClosed (fun σ : GSig E R => gfires ref e σ.S ∨ ∃ r, σ.D r ∧ C r) := by
+  rintro a b ⟨hS, hD⟩ h
+  cases h with
+  | inl hf => exact Or.inl (gfires_mono hS hf)
+  | inr hr => obtain ⟨r, hrD, hrC⟩ := hr
+              exact Or.inr ⟨r, hD r hrD, hrC⟩
+
+/-- **Lemma 2** for `pure`, for any vocabulary. Neither `ref` nor `R` appears — `pure` does not consult
+    the refinement relation at all, which is the mechanised form of the ⟨Def 32⟩ amendment's point that a
+    disclosure alone does not fail it. -/
+theorem gLemma2_pure : GUpwardClosed (fun σ : GSig E R => ∃ e, σ.S e) := by
+  rintro a b ⟨hS, _⟩ ⟨e, he⟩
+  exact ⟨e, hS e he⟩
+
+/-! ## What genericity buys, stated as a check rather than a claim
+
+    A vocabulary rung is now an INSTANTIATION. The type below is candor's eleven plus the two channels the
+    privacy work queues; the three Lemma 2s hold of it with no new proof, because they never mentioned the
+    old type. If a future rung DID break monotone denial, it would have to do so by changing the shape of a
+    verb — not by adding a channel — and that change would land in `Lattice.lean` where it is visible. -/
+
+private inductive EffectPlus where
+  | Clipboard | Clock | Db | Env | Exec | Fs | Ipc | Llm | Log | Net | Rand
+  | Health | Motion
+
+private example (ref : EffectPlus → EffectPlus → Prop) (e : EffectPlus) :
+    GUpwardClosed (R := Unit) (fun σ => gfires ref e σ.S) := gLemma2_deny ref e
+
+private example : GUpwardClosed (fun σ : GSig EffectPlus Unit => ∃ e, σ.S e) := gLemma2_pure
+
+end Candor.Generic

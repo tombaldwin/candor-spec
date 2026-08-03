@@ -22,6 +22,8 @@
   not know Mathlib.
 -/
 
+import CandorModel.Generic
+
 namespace Candor
 
 /-- **Definition 1 (Capability effects).** Coarse, named world-interactions. Finite by construction here;
@@ -56,14 +58,12 @@ infix:50 " ⊑ₑ " => Refines
 abbrev ESet := Effect → Prop
 abbrev RSet := Reason → Prop
 
-def subE (A B : ESet) : Prop := ∀ e, A e → B e
-def subR (A B : RSet) : Prop := ∀ r, A r → B r
+def subE (A B : ESet) : Prop := Generic.gsub A B
+def subR (A B : RSet) : Prop := Generic.gsub A B
 
 /-- **Definition 6 (Effect signature).** `S` determined, `D` the reasons the determination is incomplete.
     `D = ∅` is sound-complete; `D ≠ ∅` carries `Unknown`, tagged with exactly the reasons `D`. -/
-structure Sig where
-  S : ESet
-  D : RSet
+abbrev Sig := Generic.GSig Effect Reason
 
 /-- **Definition 7 (Product order).** Componentwise plain subset. -/
 def Sig.le (a b : Sig) : Prop := subE a.S b.S ∧ subR a.D b.D
@@ -72,7 +72,7 @@ infix:50 " ⊑ " => Sig.le
 
 /-- **Definition 4 (Firing; gate side).** A denial of `e` fires on `S` iff `S` contains a *refinement* of
     `e`. Note the direction: down-closure of `{e}`, not of `S`. -/
-def fires (e : Effect) (S : ESet) : Prop := ∃ e', S e' ∧ e' ⊑ₑ e
+def fires (e : Effect) (S : ESet) : Prop := Generic.gfires Refines e S
 
 /-- **Definition 3 (Covering; observation side).** An observed `e` is covered by `S` iff `e` refines some
     member. The *opposite* reading of the same preorder — covering is generous to the analyzer, denial to
@@ -126,27 +126,25 @@ def UpwardClosed (Reject : Sig → Prop) : Prop :=
   ∀ a b : Sig, a ⊑ b → Reject a → Reject b
 
 /-- `fires` is monotone in `S`: the engine of Lemma 2 for both deny verbs. -/
-theorem fires_mono {e : Effect} {A B : ESet} (h : subE A B) : fires e A → fires e B := by
-  rintro ⟨e', hmem, href⟩
-  exact ⟨e', h e' hmem, href⟩
+theorem fires_mono {e : Effect} {A B : ESet} (h : subE A B) : fires e A → fires e B :=
+  Generic.gfires_mono h
+
+/-! The three Lemma 2s are the GENERIC ones instantiated at candor's vocabulary, not re-proved here.
+    Deliberately: two proofs of the same statement can drift apart, and the whole point of
+    `Generic.lean` is that the argument never mentions the vocabulary. If a future rung adds an effect,
+    these three do not need revisiting — that is the claim, and this is what makes it checkable. -/
 
 /-- **Lemma 2** for `deny e`. -/
-theorem lemma2_deny (e : Effect) : UpwardClosed (rejectDeny e) := by
-  rintro a b ⟨hS, _⟩ h
-  exact fires_mono hS h
+theorem lemma2_deny (e : Effect) : UpwardClosed (rejectDeny e) :=
+  Generic.gLemma2_deny Refines e
 
 /-- **Lemma 2** for `deny e Unknown[C]`. -/
-theorem lemma2_denyUnknown (e : Effect) (C : RSet) : UpwardClosed (rejectDenyUnknown e C) := by
-  rintro a b ⟨hS, hD⟩ h
-  cases h with
-  | inl hf => exact Or.inl (fires_mono hS hf)
-  | inr hr => obtain ⟨r, hrD, hrC⟩ := hr
-              exact Or.inr ⟨r, hD r hrD, hrC⟩
+theorem lemma2_denyUnknown (e : Effect) (C : RSet) : UpwardClosed (rejectDenyUnknown e C) :=
+  Generic.gLemma2_denyUnknown Refines e C
 
 /-- **Lemma 2** for `pure`. -/
-theorem lemma2_pure : UpwardClosed rejectPure := by
-  rintro a b ⟨hS, _⟩ ⟨e, he⟩
-  exact ⟨e, hS e he⟩
+theorem lemma2_pure : UpwardClosed rejectPure :=
+  Generic.gLemma2_pure
 
 /-- **Lemma 2's corollary**, the one a shipped engine violated: a newly-determined effect or a
     newly-disclosed blind spot can only move a verdict from green toward red — never back. Stated as the

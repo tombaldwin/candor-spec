@@ -19,9 +19,11 @@ defect this exists to remove.
 | Def 30 (`deny e`) | `rejectDeny` | transcribed |
 | Def 31 (`deny e Unknown[C]`) | `rejectDenyUnknown` | transcribed |
 | Def 32 (`pure`, **amended**) | `rejectPure` | transcribed + the amendment **proved** |
-| **Lemma 2 (monotone denial)** | `lemma2_deny/_denyUnknown/_pure` | **proved, for all three shipped verbs** |
+| **Lemma 2 (monotone denial)** | `lemma2_deny/_denyUnknown/_pure` | **proved generically, then instantiated** |
 | Lemma 2's corollary | `lemma2_corollary_deny` | **proved** |
+| — (Lemma 2 over an arbitrary vocabulary) | `Generic.lean` `gLemma2_*` | **proved**; `Lattice`'s three are instantiations |
 | — (executable twins of Defs 4, 30–32) | `Exec.lean` `refinesB`/`firesB`/`reject*B` | transcribed + **bridged to the `Prop` model by proof** |
+| — (the enumerations are exhaustive) | `Effect.all_complete`, `Reason.all_complete` | **proved** |
 
 **Not covered**, and not excused: §2's signatures and transitive rule, §3's honesty invariant, §4's
 Theorem 1 and its A0–A3 antecedents, §5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
@@ -48,6 +50,27 @@ have been wrong in ways only a differential caught:
 Neither was found by a proof. Both were found by running the model against real engines and being
 surprised. This artifact does not replace that — it removes the *transcription* from the trusted base.
 
+## Lemma 2 is proved without the vocabulary
+
+`Generic.lean` proves monotone denial over an **arbitrary** effect type, an **arbitrary** reason type, and
+an **arbitrary relation** — not an arbitrary preorder. Nothing in the proof uses reflexivity or
+transitivity of `⊑ₑ`. The paper says "only monotonicity and completeness are used below; the Boolean
+structure is free"; the mechanisation says the *order axioms* are free too, because firing is an
+existential over `S` and `⊑` only grows `S`.
+
+`Lattice.lean`'s three concrete Lemma 2s are those generic ones **instantiated**, not re-proved. That is
+deliberate: two proofs of one statement can drift apart, and the claim being made is precisely that the
+argument never mentions the vocabulary. So a rung that adds a channel — `Llm` did at ⟨0.13⟩; the privacy
+work queues `Health` and `Motion` — is an instantiation, not a re-opened question.
+
+**Measured, because "it should still work" is not a result.** Adding a constructor to `Effect` breaks the
+build in exactly one place: `Effect.name`'s match goes non-exhaustive. No proof breaks. But the
+enumeration `Effect.all` is a *list literal*, and a list literal is happy to be short — so a new channel
+could enter the vocabulary, force a one-line name edit, and never appear in a single emitted row while the
+differential kept reporting OK. `Effect.all_complete` and `Reason.all_complete` make that a compile error.
+That gap is not hypothetical: this model shipped with **seven** effects while the engines were judged in
+**eleven**, and nothing said so.
+
 ## The differential, and why the Bool twins exist
 
 A second transcription is only worth having if the two are **checked against each other**; otherwise there
@@ -64,7 +87,9 @@ rows compared : 147400     deny 16214 · deny_unknown 129712 · pure 1474
 vocabulary    : 11 effects, 6 reasons        DIFFERENTIAL: OK
 ```
 
-The `C` axis of `deny e Unknown[C]` is enumerated rather than fixed at `R`, because a differential that
+The vocabularies are reconciled in **both** directions before any row is compared. A Lean-only name would
+not raise on its own — `refines` is False on an unknown string, so the two sides would agree by *accident*
+on every row mentioning it. The `C` axis of `deny e Unknown[C]` is enumerated rather than fixed at `R`, because a differential that
 only ever passed the full reason set would agree with a `ψ` that ignored its argument entirely — and
 reason-scoping is the ⟨0.19⟩ rung.
 

@@ -25,6 +25,22 @@ def Effect.all : List Effect :=
 def Reason.all : List Reason :=
   [.reflect, .dispatch, .indirect, .native, .unresolved, .setup]
 
+/-- THE ENUMERATIONS ARE PROVED COMPLETE, not trusted to be.
+
+    Measured: adding a constructor to `Effect` breaks the build in exactly one place — `Effect.name`'s
+    match goes non-exhaustive. It does NOT break these two list literals, because a list literal is happy
+    to be short. So without these theorems a new channel could enter the vocabulary, force a one-line name
+    edit, and never appear in a single emitted row — the differential would keep reporting OK over a table
+    that silently omitted it.
+
+    That is not hypothetical: this model shipped with SEVEN effects while the engines were judged in
+    ELEVEN, and nothing said so. `decide` turns the omission into a compile error. -/
+theorem Effect.all_complete : ∀ e : Effect, e ∈ Effect.all := by
+  intro e; cases e <;> decide
+
+theorem Reason.all_complete : ∀ r : Reason, r ∈ Reason.all := by
+  intro r; cases r <;> decide
+
 /-- Definition 2, computably. Reflexive, plus the single genuine refinement. -/
 def refinesB (a b : Effect) : Bool :=
   (a == b) || (a == Effect.Llm && b == Effect.Net)
