@@ -1505,8 +1505,35 @@ def row_r9(ws, pols):
 # The rule now: an EXTRA key is never a divergence (the spec permits extensions); a MISSING REQUIRED key
 # is. That leaves exactly the real signal — candor-rust omits four fields §2 defines without an OPTIONAL
 # marker.
-R10_REQUIRED_ENTRY = {"fn", "loc", "inferred", "direct", "declared", "undeclared",
-                      "overdeclared", "unresolved", "hash"}
+# `declared`/`undeclared`/`overdeclared` are deliberately NOT here, and that is a correction to this
+# row's first rewrite an hour earlier. They are the §5 CONFORMANCE outputs, and only candor-java runs a
+# §5 pass — it is the sole engine implementing AS-EFF-001/002/004 at all. The other three do not compute
+# them:
+#     ts     hardcodes `declared: [], undeclared: [], overdeclared: []` (scan.mjs)
+#     swift  the same, and its own comment says why: "candor-swift is analyze-only, so
+#            declared/undeclared/overdeclared are always empty (no DI-conformance pass) — KEPT IN THE
+#            WIRE SHAPE FOR CROSS-ENGINE SCHEMA PARITY"
+#     rust   omits them
+#
+# So demanding them here would demand a CLAIM the engine cannot back. Under the family's own ⟨0.21⟩ logic
+# an empty set is a positive claim — `undeclared: []` says "no function performs an undeclared effect" —
+# and a consumer reading conformance off a ts or swift report gets a green answer nothing computed. That
+# makes rust's OMISSION the honest state and swift's comment an admission that a shape check bought the
+# unsound behaviour: a parity row is exactly what pressured two engines into emitting the constant.
+#
+# This row will not apply that pressure to the third. The open question is a SPEC ruling (an engine with
+# no §5 pass MUST OMIT these rather than emit `[]`), filed in SCAN-BOUNDARY-WORK-QUEUE.md §5; until it is
+# settled the row demands only the fields every engine genuinely computes.
+# `unresolved` is out too, and for a THIRD distinct reason — worth separating, because these three
+# exclusions are not one rule. It is a boolean with a spec-defined default (`true` if `inferred` may be
+# incomplete), and candor-scan elides it when false. MEASURED: on a function with a `callback:` hole rust
+# emits `"unresolved": true` correctly; it elides only the default. So R10's flag on it was an artifact of
+# THIS FIXTURE having no unresolved entry — the row was reporting a property of its own input.
+#
+# What is left is the set every engine emits unconditionally and a consumer cannot reconstruct: the
+# identity (`fn`, `hash`), the location, and the two effect sets. A row that cannot fail is worthless, so
+# this is verified to catch: deleting `inferred` from one engine's entries turns that cell FAIL.
+R10_REQUIRED_ENTRY = {"fn", "loc", "inferred", "direct", "hash"}
 R10_REQUIRED_ENVELOPE = {"candor", "functions", "analyzed"}
 
 
