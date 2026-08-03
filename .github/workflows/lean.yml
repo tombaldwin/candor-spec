@@ -1,0 +1,58 @@
+name: lean-model
+
+# Machine-check the formal model (lean/) on every change to it.
+#
+# WHY IT IS A SEPARATE WORKFLOW. `conformance.yml` runs the cross-impl differential and needs four engine
+# toolchains; this needs one Lean toolchain and nothing else. Keeping them apart means the Lean check does
+# not lengthen every conformance run, and a Lean-toolchain problem cannot be mistaken for an engine
+# divergence.
+#
+# WHY IT IS WORTH RUNNING AT ALL. Without CI the model is checked only when someone remembers to run
+# `lean/check.sh` — which is precisely the "verified once at authoring time, never re-run" property that
+# `conformance/probe_check.py` exists to remove one level down. A Lean version bump, or an edit that
+# weakens a proof, would otherwise sit undetected until the next person happened to build it.
+#
+# WHAT IT CANNOT CHECK, stated so the green tick is not read as more than it is: the PAPER is not in this
+# repo (it is deliberately local-only), so CI can prove the model still type-checks and that its theorems
+# still hold — it cannot prove the transcription still MATCHES the paper. Model↔paper drift remains a
+# human check, and that is the residual this workflow does not close.
+
+on:
+  push:
+    branches: [main]
+    paths: ['lean/**', '.github/workflows/lean.yml']
+  pull_request:
+    paths: ['lean/**', '.github/workflows/lean.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: lean-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned by `lean/lean-toolchain`, which elan reads — so the CI toolchain and the local one cannot
+      # drift apart silently. A proof that holds under one Lean and not another is a finding, not noise,
+      # and pinning is what makes that distinction meaningful.
+      - name: Install elan (Lean toolchain manager)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          sh elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain versions (from lean/lean-toolchain)
+        working-directory: lean
+        run: |
+          elan show
+          lean --version
+
+      # check.sh asserts MORE than `lake build`: no `sorry`, and every headline theorem depends on NO
+      # axioms. A proof closed with `sorry` type-checks and proves nothing — the Lean-shaped version of a
+      # conformance property that cannot fail — so the build succeeding is necessary and not sufficient.
+      - name: Build + verify the model (no sorry, no axioms)
+        working-directory: lean
+        run: bash check.sh
