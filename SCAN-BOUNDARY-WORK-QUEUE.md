@@ -46,8 +46,33 @@ Everything else that was waived this session was either fixed or retracted.
    mechanical and needs a ship decision, not design: the version header, four `SPEC_VERSION` pins, seven
    CHANGELOGs, the floor. **The engines already ship the rung — 0.25 is the contract catching up.**
 
-2. ~~The count-0 chained-coverage rule in java and swift.~~ **MISNAMED BY ME, corrected 2026-08-02 —
-   THE COUNT-0 DOOR IS CLOSED. The real item is the κ-REACH / per-function `invisible` ATTRIBUTION GAP.**
+2. ~~The count-0 chained-coverage rule in java and swift.~~ ~~The κ-REACH / per-function `invisible`
+   ATTRIBUTION GAP.~~ **MISNAMED TWICE, corrected AGAIN 2026-08-03 by measuring it. IT IS NOT AN
+   ATTRIBUTION GAP: java's per-function `invisible` has always worked — a direct call into an unscanned
+   package carries it. The shapes are invisible to the κ ledger because `kappaLedger` is driven from a
+   CALL INSTRUCTION and NONE OF THEM IS ONE.** `lazy_init` is a GETSTATIC; `implicit_conv` compiles to
+   `String.valueOf(Object)` + an invokedynamic. Measured on a 3-line fixture, app-only, dep absent:
+   `w.doThing()` and `w.toString()` both carry `invisible:[dep]`, while `dep.Cls.V` and `"v="+w` are
+   omitted from `functions` entirely — the same reach, disclosed or not by how it happens to be spelled.
+
+   **HALF CLOSED, java `c0fd974`:** a static read that resolves nothing now records a κ blind spot, so
+   `lazy_init`'s 8 residual cells are gone (java's PART 26 residual: 16 → 8, `[implicit_conv]` alone).
+   The tally is deliberately NOT incremented — `Cls.INSTANCE.m()` is one reach compiled as a GETSTATIC
+   plus a call, and counting both moved the pinned completeness threshold (it put two tests red). The
+   package joins the ledger's LIST instead; `calls` keeps meaning call volume.
+
+   **STILL OPEN — `implicit_conv`, and the reason it is not a five-minute repeat of the above.** The
+   reentry site is the `String.valueOf` CALL, not the concat indy (I patched the indy first and it
+   changed nothing — javac emits `valueOf` *before* the indy, which is how I found out). Its argument is
+   a method PARAMETER, and `ProvValue.declType` is NULL for parameters, so the site can name no type to
+   attribute a blind spot to. The obvious fix — populate `declType` for parameters from the enclosing
+   descriptor — would also make `reentryTargets` resolve PRECISELY where it currently receives null, and
+   the in-scan arm is sound TODAY through that null path. Narrowing it is the
+   fabrication-fix-causes-misses hazard exactly: measure the in-scan arm BEFORE and AFTER, not just the
+   unchained one. **swift has the same family of shapes (5 of them, still all open) and rust is the
+   in-family precedent — its unchained arm carries `invisible:["deplib"]` on every one.**
+
+   ~~The old framing, kept because the correction is the useful part:~~
    Measured: `CONTROL SEPARATION` reports **all four engines SEPARATED** (rust 64/80, java 56/80, ts 64/80,
    swift 16/80) — every engine distinguishes `count: 0` from a produced count, which is the ⟨0.24⟩ rule
    working. Removing the two `empty_zero` waivers puts NEW DEBT on exactly the shapes their bodies name:
