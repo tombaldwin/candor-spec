@@ -1485,6 +1485,47 @@ def row_r9(ws, pols):
 # what it catches. (The semantic inversion above is therefore reported by the review, not by this row —
 # a limit worth stating rather than pretending away.)
 
+# The §2 entry fields the document DEFINES without an OPTIONAL marker, and the envelope keys ⟨0.21⟩
+# requires. Everything else an engine emits is either explicitly OPTIONAL, explicitly CONDITIONAL
+# (`unknownWhy` is "REQUIRED when this fn introduces Unknown DIRECTLY … absent if purely inherited"), or
+# an extension field the forward-compatibility clause expressly permits: *"An engine MAY add extension
+# fields … the fields this document defines are the interchange contract, not a closed schema."*
+#
+# R10 USED TO COMPARE EVERY KEY AGAINST A MAJORITY, which made it stricter than the contract in two ways
+# at once, and both of its waivers were partly or wholly wrong because of it:
+#   · it flagged candor-java for `entryPoint` and `fs` — both marked OPTIONAL in §2, and `entryPoint`'s own
+#     note says "Population is runtime-specific — far richer on a reflection/framework runtime than on
+#     Rust", i.e. the divergence is ANTICIPATED;
+#   · it flagged candor-java for `packages` (list) where others emit `package` (str), which §2 blesses in
+#     the same sentence: `"package": "<name>"` (or `"packages": [...]` where one compilation unit
+#     genuinely spans several, the JVM shape).
+# So the row recorded a CONFORMING engine as known-broken — the failure `clause_check.py` exists to
+# prevent, in a row that predates it.
+#
+# The rule now: an EXTRA key is never a divergence (the spec permits extensions); a MISSING REQUIRED key
+# is. That leaves exactly the real signal — candor-rust omits four fields §2 defines without an OPTIONAL
+# marker.
+R10_REQUIRED_ENTRY = {"fn", "loc", "inferred", "direct", "declared", "undeclared",
+                      "overdeclared", "unresolved", "hash"}
+R10_REQUIRED_ENVELOPE = {"candor", "functions", "analyzed"}
+
+
+def _r10_shape(rep):
+    """(missing required envelope keys, missing required entry keys) for ONE engine's report.
+
+    `package` and `packages` are the SAME requirement spelled two ways (§2), so they are folded before
+    the comparison rather than counted as a divergence."""
+    env = set(rep.keys())
+    if "package" in env or "packages" in env:
+        env.add("package-or-packages")
+    missing_env = sorted((R10_REQUIRED_ENVELOPE | {"package-or-packages"}) - env)
+    seen = set()
+    for f in (rep.get("functions") or []):
+        if isinstance(f, dict):
+            seen |= set(f.keys())
+    return missing_env, sorted(R10_REQUIRED_ENTRY - seen)
+
+
 def _report_shape(rep):
     """Envelope key paths + types, and the UNION of per-function entry key paths."""
     top = set()
@@ -1546,7 +1587,7 @@ def row_r10(ws, pols):
                           "the scan produced a report with NO functions — nothing to compare",
                           "at least one entry"))
             continue
-        shapes[eng] = _report_shape(d)
+        shapes[eng] = _r10_shape(d)
 
     # ⟨0.24⟩ A MAJORITY IS POPULATION-DEPENDENT, so this row cannot be evaluated on a SUBSET of the
     # engines. Its known divergences are waived PER ENGINE — java and rust, the two that must move — and
@@ -1571,10 +1612,15 @@ def row_r10(ws, pols):
             cells.append((eng, "report-parity", VACUOUS,
                           "only one engine produced a comparable report — parity needs two", "two or more"))
         return cells
-    for eng, bad in sorted(_parity(shapes, second="report-entry").items()):
+    for eng in sorted(shapes):
+        menv, ment = shapes[eng]
+        bad = []
+        if menv: bad.append("envelope MISSING required %s" % menv)
+        if ment: bad.append("entries MISSING required %s" % ment)
         cells.append((eng, "report-parity", OK if not bad else FAIL,
-                      "; ".join(bad) or "envelope + entry shape match the other %d" % (len(shapes) - 1),
-                      "the same situation produces the same report shape"))
+                      "; ".join(bad) or "carries every §2-required envelope and entry field "
+                                        "(extras are permitted — §2 forward compatibility)",
+                      "every §2-REQUIRED field present; extras and OPTIONAL fields are not divergences"))
     return cells
 
 

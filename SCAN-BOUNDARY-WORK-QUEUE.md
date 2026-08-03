@@ -148,10 +148,26 @@ Everything else that was waived this session was either fixed or retracted.
    `COLUMN RED — every consumer fails on 'swift'\'s report`. Reports are normalised into each consumer's
    file layout by COPY AND RENAME only — no cell can pass because the harness repaired its input.
 
-5. **R10 report-envelope parity** (the two `rung024` waivers). Format divergences — java emits
-   `packages`/`entryPoint`/`fs` the others do not, rust omits
-   `declared`/`undeclared`/`overdeclared`/`unresolved`. Real, pinned, and NOT soundness; last because
-   every item above can hide a purity claim and this one cannot.
+5. **R10 report-envelope parity.** **HALF RETRACTED 2026-08-03 — the java waiver was accusing a
+   CONFORMING ENGINE, and the row itself was the defect.** R10 compared every emitted key against a
+   MAJORITY, which is stricter than the contract in two ways: §2 blesses `packages` in the same sentence
+   as `package` ("where one compilation unit genuinely spans several, the JVM shape"), and `entryPoint`
+   and `fs` are both marked OPTIONAL — `entryPoint`'s own note even says its population is
+   "runtime-specific — far richer on a reflection/framework runtime than on Rust", i.e. the divergence is
+   ANTICIPATED. On top of that §2's forward-compatibility clause permits extension fields outright, so an
+   EXTRA key can never be a divergence at all.
+   R10 now flags a MISSING REQUIRED field instead. java/ts/swift OK; **rust FAIL on
+   `declared`/`undeclared`/`overdeclared`/`unresolved`, which §2 defines with no OPTIONAL marker** — the
+   row's one real signal, and the rust waiver is kept for it.
+   **THE SEMANTICS STILL COME FIRST, and are now MEASURED.** One function, one Fs effect, NO declaration
+   anywhere: java `undeclared:["Fs"]` (absence-of-declaration read as declared-empty, so every effect is
+   a violation), ts `[]`, swift `[]` (read as not participating), rust omits the field. **java is the
+   outlier 3-to-1 with rust abstaining**, and §2's gloss — *"inferred − declared (violations); empty in
+   audit"* — carries both readings at once. Adding four keys to rust before settling that sentence buys
+   agreement on SHAPE over a live disagreement on MEANING. Report-level only today: java's gate answered
+   "no violations" on that fixture, so no verdict rides on it.
+   NEXT: adjudicate the sentence in §2 (does a function with NO declaration have an empty declaration, or
+   no declaration contract?), converge java, then give rust the four fields.
 
 **TWO OBSERVATIONS ABOUT THE DOCUMENT ITSELF, since a review that only re-ranks is half a review.**
 
