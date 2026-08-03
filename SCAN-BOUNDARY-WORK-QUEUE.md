@@ -72,6 +72,36 @@ Everything else that was waived this session was either fixed or retracted.
    unchained one. **swift has the same family of shapes (5 of them, still all open) and rust is the
    in-family precedent — its unchained arm carries `invisible:["deplib"]` on every one.**
 
+   **SWIFT, MEASURED 2026-08-03 — the same family, and the mechanism is DIFFERENT from java's.** Its
+   per-function `invisible` works too (a free call into a blind module carries it), and the residual is
+   not about call instructions: swift attributes on the CALL FORM. `Driver.swift` only credits an
+   UNQUALIFIED call (`depCall()`) or a MODULE-qualified one (`SomeSDK.doThing()`); a bare member call
+   attributes nothing. Two-package fixture, app scanned alone:
+
+       viaDirectCall     invisible: ['DepLib']      ← free call, credited
+       viaMethodRecv     ABSENT  (w.go(), w: WRecv from DepLib)
+       viaField          ABSENT
+       viaLazyInit       ABSENT
+       viaImplicitConv   ABSENT
+
+   Note `viaMethodRecv`: a plain METHOD CALL on a dep-typed receiver, which java credits. So swift's gap
+   is wider than the four filed shapes.
+
+   **The guard that causes it is deliberate and its reason is real** — the code says counting bare member
+   calls "tagged every function touching a stdlib method in a blind-importing file (rampant false
+   uncertainty, sweep [33]/[36])". But it discriminates on the wrong thing: the signal is the RECEIVER'S
+   TYPE, not the call's form. `str.uppercased()` has receiver type `String`; `w.go()` has receiver type
+   `WRecv`, a name no local declaration and no κ table explains. **`Call.extOwner` already carries exactly
+   that resolved receiver type** — it is currently consulted only when it happens to be a MODULE name.
+
+   **WHY IT IS NOT A CHEAP REPEAT OF THE JAVA FIX, and this is the part to not forget:** the guard needs
+   "is this type explained by the platform?", and **swift has no type-level κ table** — only
+   `PLATFORM_MODULES`/`KAPPA_MODULES` (module granularity) and `localTypes`. Gating on `!localTypes.contains`
+   alone admits `String`, `Array`, `Int` and reproduces the exact sweep-[33]/[36] flood. So it needs a
+   curated platform-TYPE denylist (carve out proven-safe, per the family rule) sized against a real corpus
+   BEFORE it lands — false uncertainty is the measured failure mode here, and it is the fabrication mirror
+   of the thing being fixed.
+
    ~~The old framing, kept because the correction is the useful part:~~
    Measured: `CONTROL SEPARATION` reports **all four engines SEPARATED** (rust 64/80, java 56/80, ts 64/80,
    swift 16/80) — every engine distinguishes `count: 0` from a produced count, which is the ⟨0.24⟩ rule
