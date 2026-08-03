@@ -76,6 +76,50 @@ theorem gLemma2_pure : GUpwardClosed (fun σ : GSig E R => ∃ e, σ.S e) := by
   rintro a b ⟨hS, _⟩ ⟨e, he⟩
   exact ⟨e, hS e he⟩
 
+/-! ## Reachability, and why `deny e` can be read two different ways and be right both times
+
+    SPEC §4.0's table says `deny e` fires iff **`e ∈ S`**. PAPER3 Def 4 says it fires iff **some member of
+    `S` refines `e`**. Those are different predicates and they disagree on 220 of the emitted `deny` rows —
+    every one of them a signature with `Llm ∈ S` and `Net ∉ S`.
+
+    No engine can produce such a signature. All four CO-EMIT `Llm` and `Net` at a model-provider call site,
+    which is the very fact that makes the refinement hold. So the two readings coincide exactly where it
+    matters, and the spec's table is correct — CONDITIONALLY, on a hypothesis the table does not state.
+
+    That condition is not a detail. Stated as a standing rule in SPEC §2.2: *a model quantifying over all of
+    `L` will fire correctly on points that do not exist.* It cost 100 spurious disagreements on candor-swift
+    before anyone noticed, and it is what PAPER1's well-formedness condition (W) was reaching for and
+    mis-stated — (W) read `Unknown ∈ S ⇒ D ≠ ∅`, whose antecedent is unsatisfiable because `Unknown ∉ E`, so
+    it constrained nothing at all.
+
+    Below it is a hypothesis you cannot forget, because the theorem does not typecheck without it. -/
+
+/-- A signature is REACHABLE when no refined channel appears without the base channel it co-emits with.
+    `coemit` is data, not structure: `Llm ↦ Net` today, and whatever a future refinement rung adds. -/
+def GReachable (coemit : E → Option E) (S : E → Prop) : Prop :=
+  ∀ e b, S e → coemit e = some b → S b
+
+/-- **THE RECONCILIATION.** On reachable signatures, firing over the refinement preorder and plain
+    membership are the SAME PREDICATE — so SPEC §4.0's table and PAPER3's Def 4 are two spellings of one
+    rule, not two rules.
+
+    The hypotheses say only that `ref` is reflexive and that its non-trivial edges are co-emission edges.
+    Nothing here is specific to `Llm`/`Net`, so a future refinement rung inherits this the moment it is
+    added to `coemit` — which is the whole reason it is stated generically. -/
+theorem gfires_iff_mem_of_reachable
+    (coemit : E → Option E) (ref : E → E → Prop)
+    (hrefl : ∀ x, ref x x)
+    (hgen : ∀ a b, ref a b → a = b ∨ coemit a = some b)
+    {S : E → Prop} (hR : GReachable coemit S) (e : E) :
+    gfires ref e S ↔ S e := by
+  constructor
+  · rintro ⟨e', hmem, href⟩
+    rcases hgen e' e href with rfl | h
+    · exact hmem
+    · exact hR e' e hmem h
+  · intro h
+    exact ⟨e, h, hrefl e⟩
+
 /-! ## What genericity buys, stated as a check rather than a claim
 
     A vocabulary rung is now an INSTANTIATION. The type below is candor's eleven plus the two channels the

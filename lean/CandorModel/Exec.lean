@@ -75,6 +75,27 @@ theorem firesB_iff (e : Effect) (S : List Effect) :
 def psiB (C D : List Reason) : Bool :=
   D.any (fun r => C.contains r)
 
+/-- Reachability, computably. `coemit` is consulted, never hard-coded, so this tracks a future rung. -/
+def reachableB (S : List Effect) : Bool :=
+  S.all (fun e => match coemit e with
+                  | none => true
+                  | some b => decide (b ∈ S))
+
+theorem reachableB_iff (S : List Effect) :
+    reachableB S = true ↔ Generic.GReachable coemit (fun x => x ∈ S) := by
+  constructor
+  · intro h e b he hc
+    have hx := List.all_eq_true.mp h e he
+    rw [reachableB] at h
+    simp only [hc] at hx
+    exact of_decide_eq_true hx
+  · intro h
+    refine List.all_eq_true.mpr ?_
+    intro e he
+    cases hc : coemit e with
+    | none => simp [hc]
+    | some b => simp only [hc]; exact decide_eq_true (h e b he hc)
+
 /-! ## The three shipped verbs, computably -/
 
 def rejectDenyB (e : Effect) (S : List Effect) : Bool := firesB e S
@@ -123,8 +144,12 @@ def Reason.name : Reason → String
   | .reflect => "reflect" | .dispatch => "dispatch" | .indirect => "indirect"
   | .native => "native" | .unresolved => "unresolved" | .setup => "setup"
 
-/-- A row of the decision table: verb, its effect argument, the verb's reason-scope `C`, then the
-    signature `(S, D)` and the verdict. Emitted as TSV for the differential against
+/-- A row of the decision table: verb, its effect argument, the verb's reason-scope `C`, the signature
+    `(S, D)`, the verdict, and whether the signature is REACHABLE.
+
+    Unreachable rows are emitted rather than filtered, deliberately. The consumer needs them: dropping 15%
+    of the domain is only a precondition if you can show the dropped part is exactly the part that could not
+    exist, and you cannot show that from a table it was already removed from. Emitted as TSV for the differential against
     `reference/policy_model.py`. An empty column is the empty set — no name is ever the empty string.
 
     The `C` axis is emitted rather than fixed at `R`, because `deny e Unknown[C]` with a PROPER `C` is the
@@ -140,12 +165,13 @@ def emitRows : List String := Id.run do
     for D in rsnSubsets do
       let sName := String.intercalate "," (S.map Effect.name)
       let dName := String.intercalate "," (D.map Reason.name)
-      out := s!"pure\t\t\t{sName}\t{dName}\t{rejectPureB S}" :: out
+      let rch := reachableB S
+      out := s!"pure\t\t\t{sName}\t{dName}\t{rejectPureB S}\t{rch}" :: out
       for e in Effect.all do
-        out := s!"deny\t{e.name}\t\t{sName}\t{dName}\t{rejectDenyB e S}" :: out
+        out := s!"deny\t{e.name}\t\t{sName}\t{dName}\t{rejectDenyB e S}\t{rch}" :: out
         for C in cScopes do
           let cName := String.intercalate "," (C.map Reason.name)
-          out := s!"deny_unknown\t{e.name}\t{cName}\t{sName}\t{dName}\t{rejectDenyUnknownB e C S D}" :: out
+          out := s!"deny_unknown\t{e.name}\t{cName}\t{sName}\t{dName}\t{rejectDenyUnknownB e C S D}\t{rch}" :: out
   return out.reverse
 
 end Candor

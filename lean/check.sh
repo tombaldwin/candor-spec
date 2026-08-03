@@ -26,7 +26,9 @@ echo "✔ no \`sorry\`"
 # property worth pinning: a new axiom appearing here means the argument quietly changed shape.
 TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny lemma2_denyUnknown
         lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined
-        Generic.gfires_mono Generic.gLemma2_deny Generic.gLemma2_denyUnknown Generic.gLemma2_pure"
+        Generic.gfires_mono Generic.gLemma2_deny Generic.gLemma2_denyUnknown Generic.gLemma2_pure
+        Generic.gfires_iff_mem_of_reachable refines_gen fires_iff_mem_of_reachable
+        fires_ne_mem_off_reachable llm_without_net_unreachable"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
@@ -34,7 +36,7 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
 # every non-trivial proof and NOT evidence of anything. What is forbidden here is `sorryAx` (a placeholder
 # that proves nothing) and `Classical.choice` (these arguments are constructive; needing choice would mean
 # something is being asserted rather than computed).
-TIER_B="Effect.all_complete Reason.all_complete refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
+TIER_B="reachableB_iff Effect.all_complete Reason.all_complete refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
 CORE_OK="propext|Quot.sound"
 
 axioms_of() { { echo "import CandorModel"; echo "open Candor"; for t in $1; do echo "#print axioms $t"; done; } > /tmp/candor-axioms.lean; lake env lean /tmp/candor-axioms.lean 2>&1; }

@@ -94,6 +94,52 @@ theorem no_fires_net_of_db : ¬ fires Effect.Net (fun e => e = Effect.Db) := by
   rintro ⟨e', rfl, h⟩
   cases h
 
+/-! ## Reachability — the hypothesis SPEC §4.0's table does not state -/
+
+/-- Co-emission, as DATA. Every engine emits `Net` alongside `Llm` at a model-provider call site, which is
+    the fact that makes the refinement hold in the first place. A future refinement rung adds a line here
+    and inherits every theorem below, because none of them mentions `Llm`.
+
+    ENUMERATED, NOT WILDCARDED, for two reasons that turned out to be the same reason. Written
+    `| _ => none` this pulls `propext` into every downstream proof, because Lean compiles overlapping
+    patterns through equation lemmas that need it. It also makes a new refined channel default SILENTLY to
+    "co-emits with nothing" — which widens the reachable lattice, and a wider reachable lattice is a weaker
+    precondition on every differential that quantifies over it. Spelling the cases out makes the next
+    vocabulary rung a compile error in the one place it must be a decision. -/
+def coemit : Effect → Option Effect
+  | .Llm => some .Net
+  | .Clipboard => none | .Clock => none | .Db => none | .Env => none | .Exec => none
+  | .Fs => none | .Ipc => none | .Log => none | .Net => none | .Rand => none
+
+/-- A signature an engine could actually produce. -/
+def Reachable (σ : Sig) : Prop := Generic.GReachable coemit σ.S
+
+/-- Exactly the two edges of `Refines`, in the form the reconciliation needs. -/
+theorem refines_gen : ∀ a b : Effect, a ⊑ₑ b → a = b ∨ coemit a = some b
+  | _, _, Refines.refl _ => Or.inl rfl
+  | _, _, Refines.llmNet => Or.inr rfl
+
+/-- **SPEC §4.0's `deny e` table and PAPER3's Definition 4 are the same rule.** Over reachable signatures,
+    firing over the preorder and plain membership coincide. This is the first statement in this development
+    that is about the SPEC rather than about the paper, and it is the one that lets both texts be right. -/
+theorem fires_iff_mem_of_reachable (e : Effect) {σ : Sig} (h : Reachable σ) :
+    fires e σ.S ↔ σ.S e :=
+  Generic.gfires_iff_mem_of_reachable coemit Refines Refines.refl refines_gen h e
+
+/-- **The hypothesis is doing work.** Drop reachability and the two readings come apart: `{Llm}` without
+    `Net` fires `deny Net` under Def 4 and does not contain `Net`. That is the entire 220-row family the
+    differential sees over the full lattice — and every one of those points is a signature no engine can
+    emit. Stated as a theorem so that "restrict to the reachable lattice" reads as a precondition rather
+    than as a convenient way to make a disagreement go away. -/
+theorem fires_ne_mem_off_reachable :
+    fires Effect.Net (fun x => x = Effect.Llm) ∧ ¬ (Effect.Net = Effect.Llm) :=
+  ⟨⟨Effect.Llm, rfl, Refines.llmNet⟩, by intro h; cases h⟩
+
+/-- …and that witness is exactly the shape reachability excludes. -/
+theorem llm_without_net_unreachable :
+    ¬ Reachable ⟨fun x => x = Effect.Llm, fun _ => False⟩ :=
+  fun h => nomatch h Effect.Llm Effect.Net rfl rfl
+
 /-! ## Policy verbs (Definitions 30–32) -/
 
 /-- **Definition 30 (`deny e`).** A non-empty `D` does not fire it — the analysis cannot assert `e` — but

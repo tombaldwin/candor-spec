@@ -24,6 +24,8 @@ defect this exists to remove.
 | — (Lemma 2 over an arbitrary vocabulary) | `Generic.lean` `gLemma2_*` | **proved**; `Lattice`'s three are instantiations |
 | — (executable twins of Defs 4, 30–32) | `Exec.lean` `refinesB`/`firesB`/`reject*B` | transcribed + **bridged to the `Prop` model by proof** |
 | — (the enumerations are exhaustive) | `Effect.all_complete`, `Reason.all_complete` | **proved** |
+| SPEC §4.0's `deny e` table ≡ Def 4 | `fires_iff_mem_of_reachable` | **proved**, over any co-emission map |
+| — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
 
 **Not covered**, and not excused: §2's signatures and transitive rule, §3's honesty invariant, §4's
 Theorem 1 and its A0–A3 antecedents, §5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
@@ -71,6 +73,26 @@ differential kept reporting OK. `Effect.all_complete` and `Reason.all_complete` 
 That gap is not hypothetical: this model shipped with **seven** effects while the engines were judged in
 **eleven**, and nothing said so.
 
+## Reachability — the hypothesis SPEC §4.0's table does not state
+
+SPEC §4.0 says `deny e` fires iff **`e ∈ S`**. PAPER3 Def 4 says it fires iff **some member of `S` refines
+`e`**. Those are different predicates, and over the full lattice they disagree on **220** of the emitted
+`deny` rows — every one a signature with `Llm ∈ S` and `Net ∉ S`.
+
+No engine can produce such a signature: all four **co-emit** `Llm` and `Net` at a model-provider call site,
+which is the fact that makes the refinement hold in the first place. So both texts are right, and
+`fires_iff_mem_of_reachable` proves it — over any `coemit` map, so a future refinement rung inherits it.
+
+`fires_ne_mem_off_reachable` and `llm_without_net_unreachable` prove the hypothesis is load-bearing: drop
+it and the two readings come apart on exactly the excluded shape. Without those, "restrict to the reachable
+lattice" would read as a convenient way to make a disagreement go away rather than as a precondition.
+
+**`coemit` is enumerated, not wildcarded.** Written `| _ => none` it pulls `propext` into every downstream
+proof *and* makes a new refined channel default silently to "co-emits with nothing" — which widens the
+reachable lattice, and a wider reachable lattice is a weaker precondition on every differential quantifying
+over it. Spelling out all eleven cases makes the next vocabulary rung a compile error in the one place it
+has to be a decision.
+
 ## The differential, and why the Bool twins exist
 
 A second transcription is only worth having if the two are **checked against each other**; otherwise there
@@ -84,8 +106,17 @@ executable that disagreed with the model would fail to compile.
 
 ```
 rows compared : 147400     deny 16214 · deny_unknown 129712 · pure 1474
-vocabulary    : 11 effects, 6 reasons        DIFFERENTIAL: OK
+vocabulary    : 11 effects, 6 reasons
+reachable     : 125400 / 147400  (22000 excluded by co-emission {'Llm': 'Net'})
+SPEC §4.0 `e ∈ S` vs PAPER3 `⊑` on deny: 220 differ over the full lattice, 0 over the reachable part
+DIFFERENTIAL: OK
 ```
+
+Three arms, not one. **(1)** the verdicts agree on every row; **(2)** Lean's `coemit` and `policy_model`'s
+`CO_EMIT` — independent copies of the same data — agree on which signatures are reachable; **(3)** the two
+readings of `deny e` agree everywhere reachable *and* differ somewhere unreachable. Arm 3's second half is
+the anti-vacuity clause: a domain restriction that excludes nothing interesting is not a precondition, it
+is a narrower test wearing one's clothes.
 
 The vocabularies are reconciled in **both** directions before any row is compared. A Lean-only name would
 not raise on its own — `refines` is False on an unknown string, so the two sides would agree by *accident*
