@@ -32,6 +32,9 @@ defect this exists to remove.
 | **Theorem 1 (conditional transitive soundness)** | `Soundness.thm1_i`, `thm1_ii` | **proved from (A2), (A3)** |
 | Def 24 (A0) — "true but hollow" without it | `Soundness.A0Witness.*` | **proved** |
 | — ((A3) is load-bearing; the theorem is not vacuous) | `Soundness.Control.*` | **proved** |
+| **Def 21 (honesty invariant H), Def 22 (violation)** | `Honesty.H`, `Honesty.Violation` | transcribed |
+| H⁺ ⇒ H; (A2)+(A3) ⇒ H | `Honesty.H_of_Hplus`, `H_of_A2_A3` | **proved** |
+| Remarks 4(i), 5; Defs 16, 21's analyzed restriction | `Honesty.Boundaries.*` | **four witnesses** |
 | Prop 6 (containment modulo `⊑ₑ` breaks Lemma 2) | `Counterexample.lemma2_fails_under_leModulo` | **counterexample** |
 | §4.0 (the flat carrier is only a preorder) | `Counterexample.flat_not_antisymm` + `sig_le_antisymm` | **counterexample** |
 | — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
@@ -61,6 +64,41 @@ trivially is not a guarantee.
 
 **(A1) is absent on purpose**, and its absence is checkable by reading the hypotheses: Remark 7 states it
 does not enter the proof. Its job is to make `D = ∅` honestly *achievable*.
+
+## The honesty invariant, and the four things it is not
+
+H is the cardinal sin as a property: *for every executed analyzed `f`, if `D = ∅` then `obs(f) ⊆ S`.* One
+line — and almost everything that matters about it is a boundary. `Hplus_of_A2_A3` closes the loop from §4
+back to §3: the antecedents are individually checkable, and between them they buy the property the family
+actually sells.
+
+The four boundaries are mechanised as objects rather than left as remarks, because each reads like a caveat
+and functions as a design constraint:
+
+- **H alone is worthless** (Remark 4(i)). An analyzer answering `(∅, {r})` everywhere satisfies it
+  trivially. `H_is_trivial_under_total_disclosure` exhibits exactly that — every frame issuing `Net`, H
+  green. So the object of interest is H *jointly* with the determined axis: the `D = ∅` fraction of a run
+  and the precision of `S` there. Same shape as the (A0) hollowness witness.
+- **The analyzed restriction is not cosmetic.** Unrestricted, H asserts `obs(f) ⊆ ∅` of a library primitive
+  that genuinely issues an effect — false for every program that calls a library.
+- **The per-reason-class residual is real** (Remark 5). A frame disclosing only a benign reason while hiding
+  an undisclosed `dispatch` site that reaches `Net` passes H *and* passes `deny Net Unknown[dispatch]`. Two
+  gates green over an undisclosed `Net`; the model does not close this.
+- **Fabrication is outside H** (Def 16). A report charging every function with every effect over a run that
+  does nothing satisfies H perfectly. Not an oversight — by Lemma 2 a fabrication is a false-*alarm* hazard,
+  a different failure needing a different instrument (the A/B against real code, not this).
+
+**One modelling assumption, stated rather than buried.** Def 19a's covered-reached relation (analyzed *or*
+modelled frames between) is not Def 27's single-hop collapse (modelled only), and the paper warns that
+substituting one for the other "would reduce Theorem 1(ii) to depth one and make transitive soundness
+non-transitive". `ExecReaches` is the reflexive *transitive* closure of the collapsed edge, which recovers
+covered-reached between analyzed frames — decompose a covered chain at each analyzed frame and every
+consecutive pair has only modelled frames between it. That decomposition is an argument about stacks, which
+this development does not model. It is an assumption, not a theorem.
+
+**`no_violation_of_H` is stated one way only.** The converse needs excluded middle and would be the single
+theorem here depending on `Classical.choice`, while carrying nothing: a violation is *defined* as a witness
+to H's failure, so the converse is unfolding.
 
 ## Two counterexamples — the mistakes a careful reader makes
 
@@ -112,7 +150,9 @@ engine can implement an unsound rule faithfully — different failures, differen
 instrument sees the other's. Before `Chain.lean` the second kind had no instrument at all, which is how
 ⟨0.24⟩'s drop rule reached four conforming implementations.
 
-**Not covered**, and not excused: §3's honesty invariant, §5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
+**Not covered**, and not excused: §5 blame, §8 escapes, and §3's runs-and-frames transition system
+(Definitions 16a–16c) — `ExecReaches` abstracts it, and the abstraction is a stated modelling assumption
+rather than a theorem. See the note below. Proposition 1's Boolean-lattice structure is
 transcribed only as far as the order — the paper itself notes "only monotonicity and completeness are used
 below; the Boolean structure is free", and monotonicity is what Lemma 2 needs.
 

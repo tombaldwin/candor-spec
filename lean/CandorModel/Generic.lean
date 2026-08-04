@@ -44,6 +44,24 @@ def GSig.le (a b : GSig E R) : Prop := gsub a.S b.S ∧ gsub a.D b.D
     see the header. -/
 def gfires (ref : E → E → Prop) (e : E) (S : E → Prop) : Prop := ∃ e', S e' ∧ ref e' e
 
+/-- **Definition 3 (covering; observation side)**, generically. An observed `e` is covered by `S` when it
+    REFINES some member — the opposite reading of the same preorder from `gfires`, and the reading PAPER3's
+    Definition 3 scope note mandates for `obs(f) ⊆ S(f)`, `charged(f) ⊆ S(f)`, H, Definition 22 and
+    **Theorem 1**. Every other containment in the paper is plain subset. -/
+def gcovered (ref : E → E → Prop) (e : E) (S : E → Prop) : Prop := ∃ e', S e' ∧ ref e e'
+
+theorem gcovered_mono {ref : E → E → Prop} {A B : E → Prop} (h : gsub A B) {e : E} :
+    gcovered ref e A → gcovered ref e B := by
+  rintro ⟨e', hm, hr⟩
+  exact ⟨e', h e' hm, hr⟩
+
+/-- Plain membership implies the modulo reading — the paper's "plain-`⊆` steps compose with modulo-`⊑ₑ`
+    steps in the sound direction, since `⊑ₑ` is a preorder and plain containment implies the modulo
+    form". The converse fails, which is why stating a theorem in the plain form is stating a DIFFERENT
+    theorem and not a tidier one. -/
+theorem gcovered_of_mem {ref : E → E → Prop} (hrefl : ∀ x, ref x x) {S : E → Prop} {e : E} (h : S e) :
+    gcovered ref e S := ⟨e, h, hrefl e⟩
+
 def GUpwardClosed (Reject : GSig E R → Prop) : Prop :=
   ∀ a b : GSig E R, GSig.le a b → Reject a → Reject b
 

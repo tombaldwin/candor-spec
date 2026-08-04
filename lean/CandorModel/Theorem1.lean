@@ -74,9 +74,15 @@ def Dempty (g : Graph V E R) (v : V) : Prop := ∀ r, ¬ (T g v).D r
 /-- **(A2) direct soundness** (PAPER3 Definition 26). Note the restriction to own-body-complete frames:
     stated over EVERY executed `f`, this would be falsified by a perfectly honest engine, since a correctly
     disclosed unresolved site whose runtime dispatch reaches a modelled effect puts that effect in `obs(f)`
-    while `direct(f).S` rightly excludes it. The restricted form is exactly what Theorem 1 consumes. -/
-def A2 (g : Graph V E R) (ρ : Run V E R) : Prop :=
-  ∀ h, ρ.analyzed h → (∀ r, ¬ (g.direct h).D r) → ∀ e, ρ.obs h e → (g.direct h).S e
+    while `direct(f).S` rightly excludes it. The restricted form is exactly what Theorem 1 consumes.
+
+    THE CONTAINMENT IS `gcovered`, NOT MEMBERSHIP. Definition 3's scope note names `obs(f) ⊆ direct(f).S`
+    and Theorem 1 explicitly among the containments read MODULO `⊑ₑ`. My first pass here used plain
+    membership, which is not a tidier statement of the same theorem — it is a different one, with a
+    stronger hypothesis and a stronger conclusion, and neither implies the paper's. An observed `Llm`
+    against a declared `Net` satisfies the paper and fails the plain reading. -/
+def A2 (ref : E → E → Prop) (g : Graph V E R) (ρ : Run V E R) : Prop :=
+  ∀ h, ρ.analyzed h → (∀ r, ¬ (g.direct h).D r) → ∀ e, ρ.obs h e → gcovered ref e (g.direct h).S
 
 /-- **(A3) call-graph soundness modulo disclosure** (PAPER3 Definition 27). Either the edge is in the
     report's call graph, or a reason was contributed — the disjunction IS the disclosure discipline. -/
@@ -109,12 +115,14 @@ theorem thm1_i (g : Graph V E R) (ρ : Run V E R) (hA3 : A3 g ρ) :
     `Dᵈ(h) ⊆ D(h)` — the step the paper spells out — is here the reflexive case of reachability: `h`'s own
     direct disclosure is part of its transitive one, so `D(h) = ∅` forces `Dᵈ(h) = ∅`, which is precisely
     the class of frames (A2) quantifies over. -/
-theorem thm1_ii (g : Graph V E R) (ρ : Run V E R) (hA2 : A2 g ρ) (hA3 : A3 g ρ)
+theorem thm1_ii (ref : E → E → Prop) (g : Graph V E R) (ρ : Run V E R)
+    (hA2 : A2 ref g ρ) (hA3 : A3 g ρ)
     {f h : V} (hD : Dempty g f) (hr : ExecReaches ρ f h) (hh : ρ.analyzed h)
-    {e : E} (ho : ρ.obs h e) : (T g f).S e := by
+    {e : E} (ho : ρ.obs h e) : gcovered ref e (T g f).S := by
   obtain ⟨hDh, hsub⟩ := thm1_i g ρ hA3 hr hD
   have hdd : ∀ r, ¬ (g.direct h).D r := fun r hrd => hDh r ⟨h, Reaches.refl h, hrd⟩
-  exact hsub e ⟨h, Reaches.refl h, hA2 h hh hdd e ho⟩
+  have hdirect : gsub (g.direct h).S (T g h).S := fun x hx => ⟨h, Reaches.refl h, hx⟩
+  exact gcovered_mono hsub (gcovered_mono hdirect (hA2 h hh hdd e ho))
 
 end Candor.Soundness
 
@@ -159,13 +167,14 @@ private def ρ : Run U Effect Reason where
     precondition on the analyzed set rather than a runtime hypothesis, and why discharging it needs a
     completeness manifest at FUNCTION granularity — a `{count, digest}` manifest cannot see this. -/
 theorem thm1_holds_but_is_hollow_without_A0 :
-    A2 g ρ
+    A2 Refines g ρ
     ∧ A3 g ρ
     ∧ Dempty g U.caller
-    ∧ (∀ h : U, ∀ e : Effect, ExecReaches ρ U.caller h → ρ.analyzed h → ρ.obs h e → (T g U.caller).S e)
+    ∧ (∀ h : U, ∀ e : Effect, ExecReaches ρ U.caller h → ρ.analyzed h → ρ.obs h e →
+        gcovered Refines e (T g U.caller).S)
     ∧ RawReaches ρ U.caller U.sink
     ∧ ρ.obs U.sink Effect.Net
-    ∧ ¬ (T g U.caller).S Effect.Net := by
+    ∧ ¬ gcovered Refines Effect.Net (T g U.caller).S := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro h hh _ e ho
     -- the only analyzed frame is `caller`, and `caller` observes nothing
@@ -183,7 +192,7 @@ theorem thm1_holds_but_is_hollow_without_A0 :
     | step hc _ => exact hc.elim
   · exact RawReaches.step (Or.inl ⟨rfl, rfl⟩) (RawReaches.step (Or.inr ⟨rfl, rfl⟩) (RawReaches.refl _))
   · exact ⟨rfl, rfl⟩
-  · rintro ⟨w, _, hs⟩
+  · rintro ⟨e', ⟨w, _, hs⟩, _⟩
     exact hs
 
 end Candor.Soundness.A0Witness
@@ -227,24 +236,26 @@ private def run : Run W Effect Reason where
     and Theorem 1(ii) then puts the observed `Net` in `caller`'s transitive set — where it belongs. Without
     this the two theorems above would be compatible with a model in which nothing is ever reached. -/
 theorem thm1_is_not_vacuous :
-    A2 gOk run ∧ A3 gOk run ∧ Dempty gOk W.caller
+    A2 Refines gOk run ∧ A3 gOk run ∧ Dempty gOk W.caller
       ∧ ExecReaches run W.caller W.callee
       ∧ run.obs W.callee Effect.Net
-      ∧ (T gOk W.caller).S Effect.Net := by
+      ∧ gcovered Refines Effect.Net (T gOk W.caller).S := by
   have hexec : ExecReaches run W.caller W.callee :=
     ExecReaches.step ⟨rfl, rfl⟩ (ExecReaches.refl _)
   refine ⟨?_, ?_, ?_, hexec, ⟨rfl, rfl⟩, ?_⟩
   · intro h _ _ e ho
     rcases ho with ⟨hs, he⟩
-    subst hs; subst he; rfl
+    subst hs; subst he
+    exact ⟨Effect.Net, rfl, Refines.refl _⟩
   · intro _ _ hc
     exact Or.inl hc
   · rintro r ⟨w, _, hd⟩
     cases w <;> exact hd
-  · exact thm1_ii gOk run (by
+  · exact thm1_ii Refines gOk run (by
       intro h _ _ e ho
       rcases ho with ⟨hs, he⟩
-      subst hs; subst he; rfl) (fun _ _ hc => Or.inl hc)
+      subst hs; subst he
+      exact ⟨Effect.Net, rfl, Refines.refl _⟩) (fun _ _ hc => Or.inl hc)
       (by rintro r ⟨w, _, hd⟩; cases w <;> exact hd) hexec trivial ⟨rfl, rfl⟩
 
 /-- **(A3) IS LOAD-BEARING.** The same run against an engine that missed the edge and disclosed nothing.
@@ -257,7 +268,7 @@ theorem A3_is_load_bearing :
     ¬ A3 gMiss run
       ∧ Dempty gMiss W.caller
       ∧ run.obs W.callee Effect.Net
-      ∧ ¬ (T gMiss W.caller).S Effect.Net := by
+      ∧ ¬ gcovered Refines Effect.Net (T gMiss W.caller).S := by
   have hDe : Dempty gMiss W.caller := by
     rintro r ⟨w, hr, hd⟩
     cases hr with
@@ -268,7 +279,7 @@ theorem A3_is_load_bearing :
     rcases hA3 W.caller W.callee ⟨rfl, rfl⟩ with hc | hn
     · exact hc
     · exact hn hDe
-  · rintro ⟨w, hr, hs⟩
+  · rintro ⟨e', ⟨w, hr, hs⟩, _⟩
     cases hr with
     | refl _ => exact hs
     | step hc _ => exact hc
