@@ -32,7 +32,14 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
         Chain.T_fixpoint_le Chain.T_fixpoint_ge Chain.T_least Chain.T_rechain_le Chain.T_rechain_ge
         Chain.T_mono Chain.drop_le_union Chain.drop_only_loosens
         Chain.Witness.union_fires Chain.Witness.drop_passes
-        Chain.Witness.deny_passes_under_drop_fires_under_union"
+        Chain.Witness.deny_passes_under_drop_fires_under_union Chain.T_callee_le
+        Counterexample.llm_leModulo_net Counterexample.lemma2_fails_under_leModulo
+        Counterexample.llm_not_le_net Counterexample.flat_le_both_ways
+        Counterexample.flat_not_antisymm Counterexample.sig_le_antisymm
+        Counterexample.flat_confusion_is_observable
+        Soundness.thm1_i Soundness.thm1_ii
+        Soundness.A0Witness.thm1_holds_but_is_hollow_without_A0
+        Soundness.Control.thm1_is_not_vacuous Soundness.Control.A3_is_load_bearing"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
