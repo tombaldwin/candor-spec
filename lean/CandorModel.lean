@@ -5,3 +5,6 @@ import CandorModel.Chain
 import CandorModel.Counterexamples
 import CandorModel.Theorem1
 import CandorModel.Honesty
+import CandorModel.Escapes
+import CandorModel.Blame
+import CandorModel.Frames

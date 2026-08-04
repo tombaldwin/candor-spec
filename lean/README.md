@@ -37,6 +37,12 @@ defect this exists to remove.
 | Remarks 4(i), 5; Defs 16, 21's analyzed restriction | `Honesty.Boundaries.*` | **four witnesses** |
 | Prop 6 (containment modulo `⊑ₑ` breaks Lemma 2) | `Counterexample.lemma2_fails_under_leModulo` | **counterexample** |
 | §4.0 (the flat carrier is only a preorder) | `Counterexample.flat_not_antisymm` + `sig_le_antisymm` | **counterexample** |
+| **Cor 1 (blame), Cases 1 and 2** | `Blame.violation_refutes_A2_at`, `Blame.locate_A3_failure` | **proved**, edge returned |
+| Def 17–18 (coverage classes, charging) | `Frames.Class`, `Frames.chargeTo` | transcribed |
+| **Prop 4 (direct charging is functional)** | `Frames.chargeTo_spec`, `Frames.nearest_unique` | **proved** |
+| Def 19a (covered-reached = closure of the collapse) | `Frames.decomposes_of_allCovered` + converse | **proved** |
+| **§8 Escapes 1–4** | `Escapes.escape1…escape4` | **four witnesses** |
+| Prop 6 (as PAPER3 states it) | `Escapes.prop6_llm`, `prop6_db_witness_is_dead` | **proved + a defect found** |
 | — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
 
 ## Theorem 1, and the antecedent that carries it
@@ -88,17 +94,59 @@ and functions as a design constraint:
   does nothing satisfies H perfectly. Not an oversight — by Lemma 2 a fabrication is a false-*alarm* hazard,
   a different failure needing a different instrument (the A/B against real code, not this).
 
-**One modelling assumption, stated rather than buried.** Def 19a's covered-reached relation (analyzed *or*
-modelled frames between) is not Def 27's single-hop collapse (modelled only), and the paper warns that
-substituting one for the other "would reduce Theorem 1(ii) to depth one and make transitive soundness
-non-transitive". `ExecReaches` is the reflexive *transitive* closure of the collapsed edge, which recovers
-covered-reached between analyzed frames — decompose a covered chain at each analyzed frame and every
-consecutive pair has only modelled frames between it. That decomposition is an argument about stacks, which
-this development does not model. It is an assumption, not a theorem.
+**The one modelling assumption here has since been discharged.** Def 19a's covered-reached relation
+(analyzed *or* modelled frames between) is not Def 27's single-hop collapse (modelled only), and the paper
+warns that substituting one for the other "would reduce Theorem 1(ii) to depth one and make transitive
+soundness non-transitive". `ExecReaches` is the reflexive *transitive* closure of the collapsed edge, and
+that this recovers covered-reached rested on a decomposition argument about stacks the model did not
+contain. `Frames.decomposes_of_allCovered` is now that argument, with its converse: a segment with no
+uncovered frame splits into modelled-only runs separated by analyzed frames, and nothing else. What remains
+is a definition rather than an assumption — by Def 16b an executed call pushes the callee directly onto a
+frame of the caller, so stack adjacency *is* the call relation.
 
 **`no_violation_of_H` is stated one way only.** The converse needs excluded middle and would be the single
 theorem here depending on `Classical.choice`, while carrying nothing: a violation is *defined* as a witness
 to H's failure, so the converse is unfolding.
+
+## Blame — a violation names a site
+
+Corollary 1 is Theorem 1's contrapositive with an address. `violation_refutes_A2_at` locates Case 1 at the
+frame; `locate_A3_failure` is Case 2's least-index walk as an induction that **returns the offending edge**,
+carrying the `D = ∅` that makes it undisclosed. The induction *is* the paper's minimality argument — it
+visits the chain in order, so minimality is not a side condition it could forget.
+
+One hypothesis the paper does not need and this does: the call graph must be **decidable**. Locating an edge
+means deciding `(f_k, f_{k+1}) ∈ call` at each step, which is free classically and not constructively. It is
+honest rather than limiting — `call` is a finite computed artifact a consumer literally decides membership
+in — and taking it as a hypothesis keeps the file free of `Classical.choice`.
+
+`transitive_failure_with_A2_intact_locates_A3` is stated on `charged(f) ⊄ S(f)`, **not** `obs(f) ⊄ S(f)`.
+My first version used the latter, which is vacuous: by Case 1 a violation at `f` already refutes (A2), so
+"(A2) intact *and* a violation at `f`" is a contradictory hypothesis and the theorem would have proved
+anything. Case 2's whole point is the run where every frame's own account is correct and the transitive sum
+still escapes.
+
+## §8's escapes, and two defects they turned up
+
+The four escapes are the moves the signature order cannot see — H-sound changes that no oracle run catches
+and only a ratchet can. Each is mechanised as incomparability + a gate relaxing + which channel (if any)
+still fires. Transcribing them surfaced two problems, both the same root cause: **Definition 2's amendment
+(`Db ⋢ₑ Net`) did not propagate into §8.**
+
+- **Proposition 6's proof is dead as written.** It reads "Under that order `({Db},∅) ≤ ({Net},∅)`, since
+  every element of `{Db}` refines an element of `{Net}`" — false under the amended Definition 2, which says
+  `Db ⋢ₑ Net` in as many words. `prop6_llm` proves the proposition survives on the surviving refinement
+  pair; `prop6_db_witness_is_dead` proves the witness in its proof does not.
+- **Escape 2 has no realizable instance in the shipped vocabulary**, and it takes both halves to see why.
+  With `Db` the move is no longer H-sound — an observed `Db` is not covered by a declared `Net`, so H
+  catches it and it is not an escape. With `Llm`, the only surviving refinement, engines *co-emit* `Llm` and
+  `Net`, so any reachable signature determining `Llm` determines `Net` too and declassifying to bare
+  `{Net}` is a plain `⊑`-**decrease** — comparable, and a baseline ratchet reads the loss.
+
+  Note what closed it: **reachability**. The same co-emission constraint that reconciles SPEC §4.0's table
+  with Def 4 removes this escape's instance. The escape's *structure* remains live on the destination-class
+  axis (⟨0.20⟩) — a class is not a member of `E`, so H cannot see a class coarsening by construction — and
+  that axis is outside this model and not claimed here.
 
 ## Two counterexamples — the mistakes a careful reader makes
 
@@ -150,9 +198,12 @@ engine can implement an unsound rule faithfully — different failures, differen
 instrument sees the other's. Before `Chain.lean` the second kind had no instrument at all, which is how
 ⟨0.24⟩'s drop rule reached four conforming implementations.
 
-**Not covered**, and not excused: §5 blame, §8 escapes, and §3's runs-and-frames transition system
-(Definitions 16a–16c) — `ExecReaches` abstracts it, and the abstraction is a stated modelling assumption
-rather than a theorem. See the note below. Proposition 1's Boolean-lattice structure is
+**Not covered**, and not excused: Definition 16b's *labelled transition system* itself (call/ret/spawn/
+issue/exit steps and the per-thread state map). `Frames.lean` models the enclosing chain — the structure
+Definitions 18–20 and Proposition 4 actually consume — but not the step relation that produces it, so the
+cross-thread boundary of Definition 19 and Remark 6's thread-pool limit are outside this development.
+Definition 28's (A4) report fidelity is also absent by design: it is a serialization property checked by a
+different instrument. Proposition 1's Boolean-lattice structure is
 transcribed only as far as the order — the paper itself notes "only monotonicity and completeness are used
 below; the Boolean structure is free", and monotonicity is what Lemma 2 needs.
 
