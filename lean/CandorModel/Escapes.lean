@@ -47,7 +47,7 @@ open Candor Candor.Generic Candor.Chain
     under it, which is why Definition 7 is plain subset and why Escape 2 is the price of that choice. -/
 
 /-- The Hoare lifting of `⊑ₑ` to effect sets: every member of `A` refines some member of `B`. -/
-def hoareLe (A B : ESet) : Prop := ∀ e, A e → ∃ e', B e' ∧ e ⊑ₑ e'
+abbrev hoareLe (A B : ESet) : Prop := Generic.gsubModulo Refines A B
 
 /-- The two signatures Proposition 6 is stated on, and both are REACHABLE. -/
 private def llmNetSig : Sig := ⟨fun e => e = Effect.Llm ∨ e = Effect.Net, fun _ => False⟩
@@ -105,23 +105,34 @@ theorem prop6_db_witness_is_dead :
 def gateFires {V E R : Type} (enum : V → Prop) (Reject : GSig E R → Prop) (g : Graph V E R) : Prop :=
   ∃ v, enum v ∧ Reject (T g v)
 
-private inductive One where
-  | f
+private inductive Two where
+  | eff | pure
   deriving DecidableEq
 
-private def gNet : Graph One Effect Reason :=
-  ⟨fun _ => ⟨fun e => e = Effect.Net, fun _ => False⟩, fun _ _ => False⟩
+private def gTwo : Graph Two Effect Reason :=
+  ⟨fun v => match v with
+            | Two.eff => ⟨fun e => e = Effect.Net, fun _ => False⟩
+            | Two.pure => ⟨fun _ => False, fun _ => False⟩,
+   fun _ _ => False⟩
 
-/-- **The same report, the same signature, two verdicts.** Drop `f` from the enumeration and `deny Net`
-    goes green — with no `D`-shrink, no `⊑`-move, and nothing for a per-function ratchet to compare
-    against, because the function it would compare is gone. Only an enumeration ratchet sees this, which is
-    the function-granularity completeness manifest. -/
+/-- **The same report, the same signatures, two verdicts.** Drop the effectful function from the enumeration
+    and `deny Net` goes green — with no `D`-shrink, no `⊑`-move, and nothing for a per-function ratchet to
+    compare against, because the function it would compare is gone. Only an enumeration ratchet sees this,
+    which is the function-granularity completeness manifest.
+
+    The second enumeration keeps `pure` — deliberately, and my first version did not. Dropping EVERY
+    function makes the theorem read "an empty report fires no gate", which is trivially true and is not the
+    escape. The escape is that a report still containing functions, still passing every other check, has
+    quietly stopped containing the one that mattered. -/
 theorem escape1_enumeration :
-    gateFires (fun _ => True) (rejectDeny Effect.Net) gNet
-    ∧ ¬ gateFires (fun _ => False) (rejectDeny Effect.Net) gNet := by
-  refine ⟨⟨One.f, trivial, ⟨Effect.Net, ⟨One.f, Reaches.refl _, rfl⟩, Refines.refl _⟩⟩, ?_⟩
-  rintro ⟨v, hv, _⟩
-  exact hv
+    gateFires (fun _ => True) (rejectDeny Effect.Net) gTwo
+    ∧ ¬ gateFires (fun v => v = Two.pure) (rejectDeny Effect.Net) gTwo := by
+  refine ⟨⟨Two.eff, trivial, ⟨Effect.Net, ⟨Two.eff, Reaches.refl _, rfl⟩, Refines.refl _⟩⟩, ?_⟩
+  rintro ⟨v, hv, ⟨e, ⟨w, hr, hs⟩, _⟩⟩
+  subst hv
+  cases hr with
+  | refl _ => exact hs
+  | step hc _ => exact hc
 
 /-! ## Escape 2 — the refinement dual, and why it has no instance today -/
 

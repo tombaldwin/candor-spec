@@ -131,6 +131,18 @@ theorem chargeTo_none_no_nearest (cls : V → Class) :
           | here ha => exact absurd (ha.symm.trans hx) (by decide)
           | skip hm _ => exact absurd (hm.symm.trans hx) (by decide)
 
+/-- **Proposition 4, assembled.** The three results above compose into the statement the paper makes:
+    charging is a total function on covered-reached events and picks out exactly the nearest analyzed
+    encloser. Stated because "derivable from the pieces" is how a claim ends up believed and unchecked —
+    the whole point of `chargeTo_spec` and `nearest_unique` is this conjunction, and leaving the reader to
+    assemble it is leaving it unasserted. -/
+theorem charging_is_functional (cls : V → Class) (chain : List (Frame V)) (fr : Frame V)
+    (h : NearestAnalyzed cls chain fr) :
+    chargeTo cls chain = some fr := by
+  cases hc : chargeTo cls chain with
+  | none => exact absurd h (chargeTo_none_no_nearest cls chain hc fr)
+  | some x => exact congrArg some (nearest_unique cls (chargeTo_spec cls chain x hc) h)
+
 /-! ## The decomposition lemma
 
     This is the one that discharges `Honesty.lean`'s stated assumption. -/

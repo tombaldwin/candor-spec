@@ -31,7 +31,7 @@ open Candor Candor.Generic
 
 /-- Containment read MODULO the refinement preorder — Definition 3's `covered`, lifted to sets. Every
     member of `A` is covered by some member of `B`. This is the correct reading on the observation side. -/
-def subModulo (A B : ESet) : Prop := ∀ e, A e → ∃ e', B e' ∧ e ⊑ₑ e'
+abbrev subModulo (A B : ESet) : Prop := Generic.gsubModulo Refines A B
 
 /-- …and the order you get by using it for the `S` component of the product order too. -/
 def leModulo (a b : Sig) : Prop := subModulo a.S b.S ∧ subR a.D b.D

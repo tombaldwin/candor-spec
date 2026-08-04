@@ -46,6 +46,18 @@ variable {V E R : Type}
 def charged (ρ : Run V E R) (f : V) (e : E) : Prop :=
   ∃ h, ExecReaches ρ f h ∧ ρ.analyzed h ∧ ρ.obs h e
 
+/-! **ONE CONDITION OF DEFINITION 20 IS NOT CARRIED HERE**, and saying so is cheaper than the alternative.
+    Definition 20 collects the `obs` of frames reached from `f` *and executed within `f`'s PER-THREAD
+    dynamic extent* (Definition 19): an effect issued on a different thread `f` spawned or handed a task to
+    is OUTSIDE the extent. This model has no threads, so `execCall` is assumed intra-thread and `charged`
+    inherits the assumption silently.
+
+    It is an assumption rather than a bug: with no `spawn` label in the model there is no cross-thread edge
+    to include. But a `Run` whose `execCall` crossed threads would be one the paper does not sanction, and
+    nothing here would object. Remark 6 records what the per-thread restriction costs — the thread-pool
+    handoff, where the submitting frame's stack never contained the task body — and that is exactly the
+    boundary this omission sits on. -/
+
 theorem obs_sub_charged (ρ : Run V E R) (f : V) (hf : ρ.analyzed f) :
     gsub (ρ.obs f) (charged ρ f) :=
   fun _ ho => ⟨f, ExecReaches.refl f, hf, ho⟩

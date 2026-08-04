@@ -27,7 +27,8 @@ echo "✔ no \`sorry\`"
 TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny lemma2_denyUnknown
         lemma2_pure lemma2_corollary_deny determined_not_below_undetermined undetermined_not_below_determined
         Generic.gfires_mono Generic.gLemma2_deny Generic.gLemma2_denyUnknown Generic.gLemma2_pure
-        Generic.gfires_iff_mem_of_reachable refines_gen fires_iff_mem_of_reachable
+        Generic.gfires_iff_mem_of_reachable Generic.gcovered_mono Generic.gcovered_of_mem
+        fires_mono refines_gen fires_iff_mem_of_reachable
         fires_ne_mem_off_reachable llm_without_net_unreachable
         Chain.T_fixpoint_le Chain.T_fixpoint_ge Chain.T_least Chain.T_rechain_le Chain.T_rechain_ge
         Chain.T_mono Chain.drop_le_union Chain.drop_only_loosens
@@ -54,7 +55,8 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
         Blame.located_edge_refutes_A3 Blame.transitive_failure_with_A2_intact_locates_A3
         Blame.Witness.blame_names_the_site
         Frames.chargeTo_spec Frames.nearest_unique Frames.chargeTo_none_no_nearest
-        Frames.mem_append_cases Frames.decomposes_of_allCovered Frames.allCovered_of_decomposes"
+        Frames.mem_append_cases Frames.decomposes_of_allCovered Frames.allCovered_of_decomposes
+        Frames.charging_is_functional"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
@@ -80,6 +82,27 @@ bad="$(printf '%s\n' "$out" | grep -v "does not depend on any axioms" \
 [ -n "$bad" ] && { echo "✘ tier B: a bridge lemma depends on more than Lean's core axioms:"; printf '%s\n' "$bad"; exit 1; }
 m=$(printf '%s\n' "$out" | grep -c "Candor\.")
 echo "✔ tier B: $m bridge lemma(s) proved from at most [$CORE_OK] — no sorryAx, no Classical.choice"
+
+# THE REGISTRY MUST BE COMPLETE, or the two tiers above check whatever someone remembered to list. A
+# theorem no registered theorem depends on is otherwise never axiom-checked at all — which is how
+# `fires_mono` sat unchecked from the moment Lattice's Lemma 2s were rewired to the generic ones and
+# stopped using it. Found by auditing, which is precisely the thing that does not happen twice.
+python3 - "$TIER_A" "$TIER_B" <<'PY' || exit 1
+import re, sys, os
+raw = re.findall(r"[\w.]+", sys.argv[1] + " " + sys.argv[2])
+listed = set(raw) | {n.split(".")[-1] for n in raw}   # names are registered with a namespace prefix
+missing = []
+for f in sorted(os.listdir("CandorModel")):
+    for m in re.finditer(r"^(?:private )?theorem ([\w.]+)", open(f"CandorModel/{f}").read(), re.M):
+        n = m.group(1)
+        if n not in listed and n.split(".")[-1] not in listed:
+            missing.append(f"{f}: {n}")
+if missing:
+    print("\u2718 check.sh's theorem registry is INCOMPLETE — these are never axiom-checked:")
+    for x in missing: print(f"    {x}")
+    sys.exit(1)
+print("\u2714 registry complete: every theorem in CandorModel/ is named in a tier")
+PY
 
 # The proofs above say the Lean model is internally sound. They say NOTHING about the OTHER transcription
 # of the same definitions — `reference/policy_model.py`, which conformance PART 23 judges the four engines
