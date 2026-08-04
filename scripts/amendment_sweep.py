@@ -28,8 +28,11 @@ defect it exists to catch.
 VERIFIED TO CATCH, against the six sites as they actually read before they were fixed: reconstructing
 Definition 3's example, its scope note, Definition 22, Proposition 6's proof, Escape 2 and PAPER1's
 preorder, the sweep flags every one as LIVE (`observed \`Db\` is covered by a declared \`Net\`` alone
-returns 3). Run against the CORRECTED documents it returns one row, and that row is past-tense narrative —
-which is the accuracy this can have, and why it prints its guess rather than filtering silently.
+returns 3). Run against the CORRECTED documents it returns zero LIVE rows — the last one, a past-tense
+narrative in MANUSCRIPT.md, dropped out when that file gained its SUPERSEDED banner. Do not read zero as
+proof: the split is a guess from nearby wording, which is why it prints its guess rather than filtering
+silently. It DOES refuse outright when it read no files at all, which is a different thing from a clean
+sweep and must never print like one.
 
     python3 amendment_sweep.py 'Db ⊑ₑ Net' [--dir ~/candor-paper] [--dir .]
 
@@ -84,6 +87,7 @@ def main():
     exts = tuple(a.ext.split(","))
 
     live, noted, superseded = [], [], set()
+    swept = 0
     for d in dirs:
         d = os.path.expanduser(d)
         if not os.path.isdir(d):
@@ -102,6 +106,7 @@ def main():
                     lines = open(p, encoding="utf-8", errors="replace").read().splitlines()
                 except Exception:
                     continue
+                swept += 1
                 # A doc that has ALREADY been marked superseded is not a live site; flagging it every run
                 # trains the reader to skim. Reported separately at the end instead.
                 if any("SUPERSEDED" in x for x in lines[:40]):
@@ -112,8 +117,19 @@ def main():
                         rec = (p, i + 1, ln.strip()[:118])
                         (noted if classify(lines, i) == "amended-note" else live).append(rec)
 
+    # A sweep that read NOTHING must not print a clean bill. `--dir ~/candor-paper` points OUTSIDE this
+    # repo by design (the papers are local-only), so a typo, a different machine, or a moved checkout all
+    # produce zero files read — and the report below would have said "LIVE mentions (0)" and exited 0.
+    # That is the same shape as the defect this script exists to find: an absent answer read as a negative
+    # one. field_audit.py in this same family already refuses an empty table; this now matches it.
+    if not swept:
+        print(f"AMENDMENT SWEEP — {a.text!r}\n  swept: {', '.join(dirs)}", file=sys.stderr)
+        print("  REFUSING: not one file was read. This is not a clean sweep, it is no sweep — check the\n"
+              "  --dir paths and the --ext list.", file=sys.stderr)
+        return 2
+
     print(f"AMENDMENT SWEEP — {a.text!r}")
-    print(f"  swept: {', '.join(dirs)}")
+    print(f"  swept: {', '.join(dirs)}  ({swept} files read)")
     print(f"\n  LIVE mentions ({len(live)}) — prose that may still be REASONING from the retracted form:")
     if not live:
         print("    (none)")
