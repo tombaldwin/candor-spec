@@ -46,6 +46,7 @@ COVERED = {
     "gen_chain_idempotence.py":       ["--only", "local_call"],
     "gen_signature_monotonicity.py":  [],
     "gen_sidecar_manifest.py":        [],
+    "gen_fs_kind.py":                 [],
 }
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.

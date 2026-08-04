@@ -4740,9 +4740,55 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 31 — SPEC §2 `fs`: THE READ/WRITE REFINEMENT ANSWERS THE SAME WAY EVERYWHERE          [TIER 1]
+#
+# `fs` has been in §2 for a long time and was pinned by NOTHING. What that bought, measured 2026-08-04:
+# candor-swift had no such field; candor-ts emitted none; candor-rust had `pub fs: Vec<String>` in the wire
+# model with `fs: Vec::new()` hardcoded at the construction site — never populated, which is WORSE than
+# absent, because a present-but-always-empty field says "kind undetermined" on every function forever while
+# wearing a schema that implies support. Only candor-java emitted it. §2's own omit-rather-than-guess rule
+# is exactly what hid all three: every empty answer looked legitimate.
+#
+# FIVE ROWS, and the last two ARE the property:
+#   reads_only / writes_only / copies   the vocabulary agrees
+#   reaches_writer -> ["write"]         kinds TRAVEL — a caller that transitively only writes IS a writer
+#   mixed          -> ABSENT            one contributor with no determined kind suppresses the WHOLE field
+#
+# An engine can fail two opposite ways: propagate nothing (row 4 empty, under-informative) or propagate
+# without the undetermined guard (row 5 non-empty — the partial claim §2 forbids in as many words).
+#
+# ON ITS FIRST RUN IT FOUND ALL FOUR ENGINES WRONG, in both directions. rust/ts/swift propagated nothing.
+# candor-java propagated correctly but injected its FS_UNKNOWN poison only for CROSS-JAR Fs — a LOCAL call
+# whose verb is mode-dependent (`new RandomAccessFile(p,"rw")`) recorded nothing, so a caller of one writer
+# and one undetermined-kind callee reported fs=["write"]: "writes but never reads" about a function that
+# may do both. That is the reference engine making the exact claim the spec forbids.
+#
+# VACUITY FLOOR: every row must carry `Fs` in `inferred` on every engine, else the cell is reported as a
+# broken fixture rather than a pass. WHAT IT DOES NOT PIN: whether a producer implements `fs` AT ALL —
+# absence is overloaded between "undetermined" and "unimplemented", which is a FORMAT gap needing a
+# positive capability declaration in the envelope, not a conformance row.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_fs_kind.py" ] || { echo "FAIL: gen_fs_kind.py is missing"; exit 2; }
+P31_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_fs_kind.py"
+) || P31_OK=1
+
+echo "PART 31 — SPEC §2 \`fs\`: the read/write refinement answers the same way in every engine"
+if [ "$P31_OK" = 0 ]; then
+  echo "  -> MATCH — kinds travel the call graph, and an undetermined contributor suppresses the field"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
