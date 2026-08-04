@@ -49,15 +49,34 @@ open Candor Candor.Generic Candor.Chain
 /-- The Hoare lifting of `⊑ₑ` to effect sets: every member of `A` refines some member of `B`. -/
 def hoareLe (A B : ESet) : Prop := ∀ e, A e → ∃ e', B e' ∧ e ⊑ₑ e'
 
-/-- **Proposition 6, on the surviving refinement pair.** `{Llm}` is Hoare-below `{Net}`, `deny Llm` fires on
-    the first and not the second: the rejection set is not upward-closed in that order. -/
+/-- The two signatures Proposition 6 is stated on, and both are REACHABLE. -/
+private def llmNetSig : Sig := ⟨fun e => e = Effect.Llm ∨ e = Effect.Net, fun _ => False⟩
+private def netSig : Sig := ⟨fun e => e = Effect.Net, fun _ => False⟩
+
+/-- **Proposition 6, on the surviving refinement pair — and on signatures an engine can actually emit.**
+    `{Llm, Net}` is Hoare-below `{Net}`, `deny Llm` fires on the first and not the second: the rejection set
+    is not upward-closed in that order.
+
+    THE REACHABILITY IS NOT DECORATION. My first version of this used bare `{Llm}`, which is Hoare-below
+    `{Net}` and makes the same point — but is a signature no implementation can produce, because engines
+    co-emit `Llm` and `Net`. A counterexample on an unreachable point establishes nothing about a deployed
+    gate, which is the standing rule this development mechanised two files ago and which I then walked
+    straight into. `{Llm, Net}` is reachable and works identically. -/
 theorem prop6_llm :
-    hoareLe (fun e => e = Effect.Llm) (fun e => e = Effect.Net)
-    ∧ rejectDeny Effect.Llm ⟨fun e => e = Effect.Llm, fun _ => False⟩
-    ∧ ¬ rejectDeny Effect.Llm ⟨fun e => e = Effect.Net, fun _ => False⟩ := by
-  refine ⟨?_, ⟨Effect.Llm, rfl, Refines.refl _⟩, ?_⟩
-  · intro e he
-    exact ⟨Effect.Net, rfl, by rw [he]; exact Refines.llmNet⟩
+    Reachable llmNetSig ∧ Reachable netSig
+    ∧ hoareLe llmNetSig.S netSig.S
+    ∧ rejectDeny Effect.Llm llmNetSig
+    ∧ ¬ rejectDeny Effect.Llm netSig := by
+  refine ⟨?_, ?_, ?_, ⟨Effect.Llm, Or.inl rfl, Refines.refl _⟩, ?_⟩
+  · intro e b he hc
+    cases e <;> (try cases hc)
+    exact Or.inr rfl
+  · intro e b he hc
+    cases e <;> (try cases hc)
+    exact absurd he (by rintro (h : Effect.Llm = Effect.Net); cases h)
+  · rintro e (he | he)
+    · exact ⟨Effect.Net, rfl, by rw [he]; exact Refines.llmNet⟩
+    · exact ⟨Effect.Net, rfl, by rw [he]; exact Refines.refl _⟩
   · rintro ⟨e', he, hr⟩
     rw [he] at hr
     cases hr
