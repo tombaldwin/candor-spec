@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.26** — all code engines declare `0.26`; the floor is conformance-pinned. How versions
+**Version 0.27** — all code engines declare `0.27`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -260,7 +260,8 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.26" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.27" },
+  "resolves":  ["fs"],                                          // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -689,6 +690,11 @@ report, §2.1, that carried no `fs`, so no read/write is locally observable), th
 but never writes"), which is the §4 trust contract's forbidden direction (under-claiming an effect).
 Omission says "`Fs`, kind undetermined"; a present `fs` is an affirmative read/write classification.
 
+⟨0.27⟩ `fs` is the first surface named by the envelope's **`resolves`** array (§2.1). Read the two
+together: `resolves` containing `fs` is what makes an absent `fs` mean "reached, kind undetermined" rather
+than "this engine does not track kinds". Without the declaration the omission is unreadable, which is how
+the field came to be emitted by one engine of four with nobody noticing.
+
 `hosts` refines the `Net` effect with the endpoint(s) a call talks to, but **only the statically
 decidable subset**: a string-*literal* address or URL (`connect("rates.internal:7070")`,
 `get("https://api.example.com/v1")`) yields a host (`host[:port]`, scheme and path stripped); a
@@ -776,6 +782,52 @@ The Rust implementation additionally embeds `version` in the dylib itself (so a 
 *true* build version without running the engine) and mirrors `version`/`toolchain` into its
 `<prefix>.calibrated.json` sidecar; for a **legacy v0.1 bare-array** report that has no header, an
 implementation MAY fall back to that sidecar for provenance.
+
+⟨0.27⟩ **`resolves` — WHICH OPTIONAL REFINEMENTS THIS PRODUCER COMPUTES.** A top-level array beside
+`extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
+
+```json
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.27" },
+  "resolves": ["fs"],
+  "functions": [ … ] }
+```
+
+**Why it exists: without it, the absence of an optional field is OVERLOADED and a consumer cannot read it.**
+An absent `fs` means either *"this producer does not compute kinds"* or *"it computed and could not
+determine one"*. Those are different facts — the second is information, the first is nothing — and the
+whole value of the omit-rather-than-guess rule depends on knowing which you are looking at.
+
+That overloading is not hypothetical and it is what motivated this rung. `fs` had been in this document for
+a long time; on 2026-08-04 it was found to be emitted by ONE of four engines. One had no such field at all,
+one emitted nothing, and one carried the field in its wire model with a hardcoded empty value — **never
+populated**, which is worse than absent, because a present-but-always-empty field asserts "kind
+undetermined" on every function forever while wearing a schema that implies support. Nobody noticed for as
+long as the field had existed, precisely because every empty answer was individually defensible. **A field
+whose absence is always excusable is a field nobody checks.**
+
+The rules:
+
+- A producer **MUST NOT** list a surface it does not compute. Doing so converts "unimplemented" into a
+  false "undetermined", which is the exact inversion this field exists to prevent, and is worse than
+  omitting `resolves` entirely.
+- A producer that computes a surface **SHOULD** list it. Omitting the declaration is safe but lossy: it
+  makes every one of that engine's omissions unreadable.
+- A consumer **MUST NOT** read an absent optional field as "the producer looked and could not tell" unless
+  that surface is named in `resolves`. Absent `resolves`, an absent field carries no information at all.
+- `resolves` says nothing about *per-function* completeness. It is a statement about the PRODUCER, not
+  about any function's answer — exactly as `extensions` is.
+
+**Eligible surfaces are those whose PRESENCE is a positive claim.** `fs` is: a present `fs` is an
+affirmative read/write classification, so its absence had to mean something. `hosts`/`cmds`/`paths`/
+`tables` are explicitly *never* completeness claims (an absent or partial `hosts` means "these are the
+endpoints I could see"), so their absence already means nothing and they need no declaration. The initial
+vocabulary is therefore `["fs"]`; the mechanism is general and a later rung adding an optional surface with
+claim-bearing presence adds its name here rather than inventing a second channel.
+
+**Relationship to `extensions`.** Same shape, different scope: `extensions` declares an ecosystem surface
+led by one engine (`privacy/2`), `resolves` declares an optional refinement of the shared floor. Both are
+*positive declarations of what is active*, which is the only construction under which optional structure is
+safe — the alternative, inferring capability from absence, is the defect above.
 
 ### 2.2 The call-graph sidecar
 
@@ -3163,6 +3215,23 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.27 (all code engines declare `0.27`; conformance-pinned four-way, PART 31)** — a **tier-1 additive**
+  rung: the envelope's **`resolves`** array (§2.1) declares which optional per-function refinement surfaces
+  a producer actually computes.
+
+  **Motivated by a measurement, not a design taste.** `fs` (read/write, §2) had been in this document for a
+  long time; on 2026-08-04 it was found emitted by ONE engine of four. One had no such field, one emitted
+  none, and one carried it in its wire model with a hardcoded empty value — never populated, which is worse
+  than absent because a present-but-always-empty field asserts "kind undetermined" on every function forever
+  while wearing a schema that implies support. Nobody had noticed for as long as the field existed, because
+  §2's omit-rather-than-guess rule made every individual omission defensible. **A field whose absence is
+  always excusable is a field nobody checks.**
+
+  Note what a MUST on the field would NOT have fixed: a hardcoded empty value satisfies a mandatory field
+  and declares nothing. Only a positive declaration separates "I compute this and could not determine it"
+  from "I do not compute this" — the same construction as `extensions`, and the same one ⟨0.26⟩ used for the
+  sidecar key set.
 
 - **0.26 (all code engines declare `0.26`; conformance-pinned four-way)** — a **tier-1 additive** rung:
   **§2.2, the hierarchy sidecar's KEY SET is its MANIFEST.** A producer MUST emit a key for every type it
