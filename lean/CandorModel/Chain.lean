@@ -129,6 +129,16 @@ theorem T_least (g : Graph V E R) (f : V → GSig E R)
       | step hc _ ih => exact fun h => (hclosed _ _ hc).2 r (ih h)
     exact this hr ((hdirect w).2 r hd)
 
+/-- **PAPER3's Lemma 1**, in the form Theorem 1 consumes: a callee's transitive signature sits below its
+    caller's. Immediate from `T` being reachability — everything the callee reaches, the caller reaches
+    through it — but it is the step the whole conditional-soundness induction turns on. -/
+theorem T_callee_le (g : Graph V E R) {u v : V} (h : g.calls u v) : GSig.le (T g v) (T g u) := by
+  constructor
+  · rintro e ⟨w, hr, hs⟩
+    exact ⟨w, Reaches.step h hr, hs⟩
+  · rintro r ⟨w, hr, hd⟩
+    exact ⟨w, Reaches.step h hr, hd⟩
+
 /-! ## Idempotence
 
     Chaining consumes dependency reports whose entries ALREADY carry transitive signatures, so the operator

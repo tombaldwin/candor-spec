@@ -28,7 +28,55 @@ defect this exists to remove.
 | §4.0 transitive set = least fixpoint | `Chain.T_fixpoint_le/_ge`, `Chain.T_least` | **proved** |
 | — (chaining is idempotent; `T` is graph-monotone) | `Chain.T_rechain_le/_ge`, `Chain.T_mono` | **proved** |
 | §2.2 rule 1 ⟨0.25⟩ (ambiguous key is unioned) | `Chain.drop_only_loosens` + `Chain.Witness.*` | **proved**, with a counterexample to ⟨0.24⟩ |
+| Lemma 1 (callee ⊑ caller) | `Chain.T_callee_le` | **proved** |
+| **Theorem 1 (conditional transitive soundness)** | `Soundness.thm1_i`, `thm1_ii` | **proved from (A2), (A3)** |
+| Def 24 (A0) — "true but hollow" without it | `Soundness.A0Witness.*` | **proved** |
+| — ((A3) is load-bearing; the theorem is not vacuous) | `Soundness.Control.*` | **proved** |
+| Prop 6 (containment modulo `⊑ₑ` breaks Lemma 2) | `Counterexample.lemma2_fails_under_leModulo` | **counterexample** |
+| §4.0 (the flat carrier is only a preorder) | `Counterexample.flat_not_antisymm` + `sig_le_antisymm` | **counterexample** |
 | — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
+
+## Theorem 1, and the antecedent that carries it
+
+The algebra of Theorem 1 is elementary, and the paper says so: *"Granted (A2)–(A3) the inequality is
+elementary; the content of Theorem 1 is the **decomposition** into individually checkable and individually
+attackable hypotheses."* The record agrees — every cardinal sin this family has fixed was an (A0)–(A3)
+violation, and none was an error in the inequality. So mechanising it buys confidence in the *decomposition*,
+not in the proof: the guarantee becomes unstatable without its antecedents, and the usual misuse (quoting
+the conclusion where (A0) does not hold) stops typechecking.
+
+**The (A0) witness is the point.** PAPER3's proof says in prose: *"Without it the theorem is true but
+hollow… (i)–(ii) hold over a scope the engine itself chose by omission."*
+`thm1_holds_but_is_hollow_without_A0` is that sentence as an object — a run where (A2) and (A3) hold,
+`D(f) = ∅`, Theorem 1's conclusion holds in full, and a `Net` occurs inside `f`'s dynamic extent while `f`'s
+signature is empty. Nothing is violated. **That is the cardinal sin, licensed by a true theorem** — which is
+why (A0) is a precondition on the analyzed set, and why discharging it needs a completeness manifest at
+*function* granularity rather than `{count, digest}`.
+
+Because that witness satisfies the hypotheses with an *empty* call tree, two controls sit beside it:
+`thm1_is_not_vacuous` (a live edge, a live observation, and a conclusion with content) and
+`A3_is_load_bearing` (the same run against an engine that missed the edge and disclosed nothing — (A3)
+false, `D` still empty, effect not in the set). A conditional whose hypotheses are only ever satisfied
+trivially is not a guarantee.
+
+**(A1) is absent on purpose**, and its absence is checkable by reading the hypotheses: Remark 7 states it
+does not enter the proof. Its job is to make `D = ∅` honestly *achievable*.
+
+## Two counterexamples — the mistakes a careful reader makes
+
+Everything else here proves the model is right; `Counterexamples.lean` proves two nearby models are wrong,
+which for a specification is the more useful statement. Both are reached by reasoning that feels like
+tidying up.
+
+- **Reading containment modulo `⊑ₑ` everywhere.** Def 3 restricts the preorder to the observation side and
+  the instinct is to make the order uniform. `lemma2_fails_under_leModulo`: `{Llm}` sits below `{Net}` under
+  the uniform reading, `deny Llm` fires on the first and not the second — Lemma 2 gone, and with it the
+  guarantee that a better analysis never turns a red gate green. Under the plain order the two are simply
+  incomparable, so the counterexample is *manufactured by the tidying*.
+- **The flat carrier.** `flat_not_antisymm`: `{Net, Unknown}` and `{Unknown}` sit below each other and are
+  not equal, so the order §4.0 warns about is a preorder, never partial. `sig_le_antisymm` shows the pair
+  carrier is antisymmetric, and `flat_confusion_is_observable` shows the two confused points are separated
+  by a shipped gate — so the pair is the carrier, not a presentational choice.
 
 ## The transitive rule, and ⟨0.25⟩ as a proof
 
@@ -64,8 +112,7 @@ engine can implement an unsound rule faithfully — different failures, differen
 instrument sees the other's. Before `Chain.lean` the second kind had no instrument at all, which is how
 ⟨0.24⟩'s drop rule reached four conforming implementations.
 
-**Not covered**, and not excused: §3's honesty invariant, §4's Theorem 1 and its A0–A3 antecedents,
-§5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
+**Not covered**, and not excused: §3's honesty invariant, §5 blame, §8 escapes. Proposition 1's Boolean-lattice structure is
 transcribed only as far as the order — the paper itself notes "only monotonicity and completeness are used
 below; the Boolean structure is free", and monotonicity is what Lemma 2 needs.
 
