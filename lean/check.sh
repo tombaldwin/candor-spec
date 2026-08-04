@@ -45,7 +45,16 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
         Honesty.Boundaries.H_is_trivial_under_total_disclosure
         Honesty.Boundaries.analyzed_restriction_is_load_bearing
         Honesty.Boundaries.per_reason_class_residual
-        Honesty.Boundaries.fabrication_satisfies_H"
+        Honesty.Boundaries.fabrication_satisfies_H
+        Escapes.prop6_llm Escapes.prop6_db_witness_is_dead Escapes.escape1_enumeration
+        Escapes.escape2_db_is_caught_by_H Escapes.escape2_llm_is_comparable_under_reachability
+        Escapes.escape3_determined_to_disclosed Escapes.escape4_reason_class
+        Escapes.escapes_are_not_le_moves
+        Blame.violation_refutes_A2_at Blame.violation_refutes_A2 Blame.locate_A3_failure
+        Blame.located_edge_refutes_A3 Blame.transitive_failure_with_A2_intact_locates_A3
+        Blame.Witness.blame_names_the_site
+        Frames.chargeTo_spec Frames.nearest_unique Frames.chargeTo_none_no_nearest
+        Frames.mem_append_cases Frames.decomposes_of_allCovered Frames.allCovered_of_decomposes"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
