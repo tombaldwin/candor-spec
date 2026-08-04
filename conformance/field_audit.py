@@ -89,7 +89,7 @@ def run(cmd, **kw):
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kw)
 
 
-def _glob(d, sfx):
+def _glob(d):
     return [os.path.join(d, f) for f in os.listdir(d)] if os.path.isdir(d) else []
 
 
@@ -132,7 +132,7 @@ def main():
         open(os.path.join(d, "q", "E.java"), "w").write("package q;\npublic class E {\n" + JAVA + "}\n")
         cls = os.path.join(d, "classes"); os.makedirs(cls, exist_ok=True)
         jar = os.environ.get("CANDOR_JAVA_JAR") or next(
-            (p for p in _glob(os.path.join(CANDOR_JAVA, "build", "libs"), "") if p.endswith("-all.jar")), None)
+            (p for p in _glob(os.path.join(CANDOR_JAVA, "build", "libs")) if p.endswith("-all.jar")), None)
         if jar and shutil.which("javac") and run(["javac", "-d", cls, os.path.join(d, "q", "E.java")]).returncode == 0:
             run(["java", "-jar", jar, cls, "--json", os.path.join(d, "r.json")]); results["java"] = read_report(d)
 
@@ -178,8 +178,7 @@ def main():
     print("  a prompt to ask why a column is empty — the `fs` gap looked exactly like a legitimate `·` for")
     print("  as long as it existed. The fixture does NOT provoke `hosts` or `tables`, so those rows say")
     print("  nothing at all.")
-    for e in live:
-        skipped = [x for x in ("rust", "java", "ts", "swift") if x not in live]
+    skipped = [x for x in ("rust", "java", "ts", "swift") if x not in live]
     if skipped:
         print(f"\n  NOT RUN (reported, never implied): {', '.join(skipped)}")
     return 0
