@@ -62,6 +62,12 @@ theorem gcovered_mono {ref : E → E → Prop} {A B : E → Prop} (h : gsub A B)
 theorem gcovered_of_mem {ref : E → E → Prop} (hrefl : ∀ x, ref x x) {S : E → Prop} {e : E} (h : S e) :
     gcovered ref e S := ⟨e, h, hrefl e⟩
 
+/-- Covering lifted to SETS — the Hoare order induced by `ref`. The single definition of a notion this
+    development had spelled out three times: `Counterexamples.subModulo` and `Escapes.hoareLe` were
+    byte-identical to each other and to this, which is a drift hazard in precisely the layer whose job is to
+    stop drift. Both now abbreviate it. -/
+def gsubModulo (ref : E → E → Prop) (A B : E → Prop) : Prop := ∀ e, A e → gcovered ref e B
+
 def GUpwardClosed (Reject : GSig E R → Prop) : Prop :=
   ∀ a b : GSig E R, GSig.le a b → Reject a → Reject b
 
