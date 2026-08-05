@@ -12,7 +12,22 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
-## 0.26 — current floor (a sidecar's KEY SET is its manifest)
+## 0.27 — current floor (a producer declares which refinements it computes)
+
+⟨0.27, 2026-08-05⟩ **§2.1 — `resolves`: a top-level envelope array naming the optional per-function
+refinement surfaces this producer actually computes.** §2's optional fields are omitted when the answer
+is undetermined, so absence carried two meanings a consumer could not separate — *"I looked, and it is
+undetermined"* versus *"I do not compute this at all"* — and only the first licenses reading the absence
+as an answer. A producer MUST NOT list a surface it does not compute; a consumer MUST NOT read an absent
+field as "undetermined" unless the surface is declared. Same construction as `extensions`, different
+scope: `extensions` declares an ecosystem surface, `resolves` declares a refinement of a floor field.
+
+Also in this rung: **§2 `fs` kinds now TRAVEL the call graph**, with an undetermined contributor
+suppressing the whole field rather than emitting a partial one (a partial `fs` reads as the positive
+claim "reads but never writes"). Pinned four-way by conformance **PART 31**, which found all four engines
+wrong on its first run.
+
+## 0.26 (a sidecar's KEY SET is its manifest)
 
 ⟨0.26, 2026-08-02⟩ **§2.2 — an absent type in the hierarchy sidecar is UNANSWERABLE, never "has no
 supertypes".** A producer MUST emit a key for every type it indexed, `[]` included; a consumer MUST read
