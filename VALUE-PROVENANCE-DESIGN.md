@@ -48,6 +48,22 @@ an interface; a delegate stream wrapped N deep. All are "created over there, use
 - **The `invisible` / `coverage` envelope** (⟨0.15⟩) — the *orthogonal* boundary (an effect inside an
   unmodelled package). Value provenance does not subsume it; see "What this is NOT".
 
+## The other axis (added 2026-08-05)
+
+This document recovers a value's **concrete TYPE** — which `newType` reaches a call, so a factory return
+or field read resolves to the class whose method actually runs. That is the primitive for *dispatch*.
+
+A second question turned out to be load-bearing and is **not** covered here: **which CONSTANT is this** —
+which string literal or enum case reaches an argument. A `String` is a `String` whichever folder it
+names, so the type axis is uninformative by construction, and two unrelated features are blocked on it:
+five of Apple's remaining privacy keys (the folder keys — the same `FileManager` call needs a different
+key depending on a path) and the whole consumer half of Android's permission mapping (the same
+`ContentResolver.query` needs a different permission depending on a URI).
+
+See [CONSTANT-PROVENANCE-DESIGN.md](CONSTANT-PROVENANCE-DESIGN.md). The two share machinery — both are
+bounded backward dataflow to an origin, both must fail to a disclosed `Unknown` — and should share an
+implementation, but they are different lattices and the distinction is worth keeping sharp.
+
 ## The design
 
 Extend provenance from intra- to **inter**-procedural along three edges, keeping the existing `ProvValue`
