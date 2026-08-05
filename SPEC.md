@@ -2328,12 +2328,19 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `engine` | — | ⟨0.28 PROPOSED⟩ `[<impl>] <version>` — the engine build this repo's committed artifacts were produced with; a different build FAILS (exit 2). No env var: a pin an environment can override is not a pin |
 
 ⟨0.28 PROPOSED⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than
-hoped for.** The committed `baseline` is a snapshot of what one engine build reported. A newer engine
-that resolves more dispatch legitimately reports more effects, so the AS-EFF-005 ratchet fires on
-functions nobody touched — and the reflex, under CI pressure, is to regenerate the baseline, which
-re-blesses whatever else moved with it. Until now the engine version lived in the consumer's CI
-configuration, decoupled from the baseline it is married to, and nothing enforced *"regenerate the
-baseline when you bump the engine"*.
+hoped for.** The committed `baseline` is a snapshot of what one engine build reported, and an engine
+swap is baseline-invalidating. Engines already refuse a baseline whose §2.1 provenance **build id**
+differs from the running one — but that id is a build hash, which a consumer cannot *declare*: the
+version lived in CI configuration, decoupled from the baseline it is married to, and a mismatch was
+discovered only after running the wrong engine. A pin is declarative, so it also tells tooling which
+engine to FETCH, and it applies to runs with **no baseline configured at all**, where the existing
+refusal — which lives inside the baseline comparison — cannot reach.
+
+**Scope.** This applies where a producer analyses code and emits a report or a verdict from that
+analysis. It does NOT apply to a verb that only reads an EXISTING report (`gate --report`, the §3.1
+queries): there the running engine is an evaluator, not the producer, and its version says nothing
+about the artifact being read. The comparison that matters there is between the artifacts' own
+recorded provenance, which §2.1 already governs.
 
 A producer implementing this MUST compare the pin against its own release version and, on a difference,
 FAIL with **exit 2** — the run is *unevaluable*, not violating, and a machine consumer must not read

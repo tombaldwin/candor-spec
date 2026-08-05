@@ -15,10 +15,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 ## Unreleased
 
 ⟨0.28 PROPOSED, 2026-08-05⟩ **§3.4 — `engine [<impl>] <version>`: the engine↔baseline coupling becomes
-a tool-enforced invariant.** The committed `baseline` records what one engine build saw; a newer engine
-resolves more dispatch and legitimately reports more, so the AS-EFF-005 ratchet fires on functions
-nobody touched — and the reflex under CI pressure is to regenerate, re-blessing whatever else moved.
-The version lived in the consumer's CI configuration, decoupled from the baseline it is married to.
+a tool-enforced invariant.** Engines already refuse a baseline whose §2.1 provenance BUILD ID differs
+from the running one — but a build hash is not something a consumer can DECLARE, so the version lived
+in CI configuration, decoupled from the baseline it is married to, and a mismatch was found only after
+running the wrong engine. A pin is declarative (so tooling can also read it to FETCH the right engine)
+and it reaches the case the existing refusal cannot: a run with NO baseline configured, since that
+refusal lives inside the baseline comparison. Scope is stated: this binds a producer that ANALYSES
+code, never a verb that merely reads an existing report, where the running engine is an evaluator and
+its version says nothing about the artifact.
 A mismatch now exits **2** (unevaluable, never 1 — a machine consumer must not read "I could not trust
 this" as "your code broke a rule"), as does an unreadable pin: this is the one place §6.2's warn-and-skip
 inverts, because skipping a PIN hands the operator a guard they believe is on. **Two answers must NOT
