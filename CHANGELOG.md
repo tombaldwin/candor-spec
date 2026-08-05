@@ -46,6 +46,16 @@ is disclosure, not refusal: a zero-match rule is legitimate when one policy is s
 and a layer exists in only some. candor-swift implements it; the other three now have a contract to build
 against rather than three independently-invented shapes, and no conformance PART pins it yet.
 
+**Conformance PART 13b ran no engine, for its entire existence.** It located the scan target by shifting
+the other arguments away, so the probe executed the target DIRECTORY instead of the engine, got
+`env: /path: Permission denied`, and matched that against `unknown config key '<k>'` — which it can never
+contain. Both checks passed unconditionally and all four engines were reported clean, always. This is the
+part written *after* the `net-partner` false disclosure, and it could not have caught it. Repaired; the
+repair then reported seven failures that were all false (an engine *honouring* `policy` says `policy ✓`,
+which the bare-name match read as a malformed disclosure), so it now matches the quoted `config key '<k>'`
+form that every engine uses for a diagnostic about a key. Verified able to fail before being believed.
+`engine` is pinned there in the asymmetric state it ships.
+
 Repo tooling in this cut, both about gates that could not fail:
 
 - **`scripts/check_agents_vs_engine.py`** — the AGENTS.md drift direction nothing covered. The existing
