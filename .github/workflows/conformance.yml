@@ -170,6 +170,19 @@ jobs:
           CANDOR_SWIFT="$GITHUB_WORKSPACE/candor-swift" \
             bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
 
+      # THE OTHER DRIFT DIRECTION. `agents-doc-drift` (above) pins each AGENTS.md against SPEC.md --
+      # document vs document -- and cannot see a doc that contradicts the ENGINE. candor-swift's
+      # contract described the `privacy/1` extension while the engine emitted `privacy/2`, and both
+      # copies of the doc agreed with each other perfectly the whole time. This runs the built engines
+      # and compares what they EMIT (spec, extensions, resolves) against what their contract claims.
+      # It lives on this leg because it needs the engines this leg has already built.
+      - name: AGENTS.md vs what the engines emit
+        run: |
+          CANDOR="$GITHUB_WORKSPACE/candor" \
+          CANDOR_TS="$GITHUB_WORKSPACE/candor-ts" \
+          CANDOR_SWIFT="$GITHUB_WORKSPACE/candor-swift" \
+            python3 "$GITHUB_WORKSPACE/candor-spec/scripts/check_agents_vs_engine.py"
+
   # The floor where CONSUMERS live: the latest RELEASED candor-java jar + the crates.io
   # candor-scan/candor-query, weekly. Tip-vs-tip agreement (the jobs above) never proves the
   # released artifacts still meet the floor — this does, for the two channels that ship
