@@ -12,6 +12,32 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
+## Unreleased
+
+⟨0.28 PROPOSED, 2026-08-05⟩ **§4 — a policy rule whose SCOPE matches no function is UNANSWERABLE, and
+MUST be disclosed rather than scored as satisfied.** A `deny`/`forbid` naming a layer that binds nothing
+was evaluated and bound nothing, so it cannot have caught anything — yet every engine scored it as
+passing, which makes a one-character typo in a layer name a permanently green gate. Measured in three
+engines: `deny Net orders` exits 1 on a real violation, `deny Net ordrs` exits 0 with `policy ✓`, and
+`unverified` then calls the layer *"PROVABLY clean"*. The asymmetry is the tell — a typo'd **effect**
+token already exits 2 naming the accepted vocabulary, while a typo'd **layer** token passes. The remedy
+is disclosure, not refusal: a zero-match rule is legitimate when one policy is shared across repositories
+and a layer exists in only some. candor-swift implements it; the other three now have a contract to build
+against rather than three independently-invented shapes, and no conformance PART pins it yet.
+
+Repo tooling in this cut, both about gates that could not fail:
+
+- **`scripts/check_agents_vs_engine.py`** — the AGENTS.md drift direction nothing covered. The existing
+  gate compares A DOCUMENT TO A DOCUMENT, so a claim stale in the file is stale in the embedded copy too
+  and the two agree perfectly while both are wrong. This one RUNS each engine on a fixture and reads the
+  facts the engine states about itself: `spec`, `extensions`, `resolves`. Found by hand first —
+  candor-swift's contract taught `privacy/1` while the engine had emitted `privacy/2` for weeks. An
+  earlier design comparing DOCUMENTED FLAGS against accepted ones is kept in the header as a rejected
+  one: it reported 20 phantoms, of which zero were real and two were `git`'s.
+- **Its own spec row was vacuous on the first run**, and the amendment sweep before it printed a clean
+  bill after reading no files. A bare `\b0.27\b` search matched the build version `candor-swift-0.27.0`
+  carried by every contract, so the row could not fail however stale the claim was.
+
 ## 0.27 — current floor (a producer declares which refinements it computes)
 
 ⟨0.27, 2026-08-05⟩ **§2.1 — `resolves`: a top-level envelope array naming the optional per-function
