@@ -153,7 +153,12 @@ def main():
 
             spec = (env.get("candor") or env.get("meta") or {}).get("spec")
             if spec:
-                if re.search(r"\b" + re.escape(str(spec)) + r"\b", doc):
+                # IN A SPEC CONTEXT, not anywhere. A bare `\b0.27\b` search was VACUOUS: every AGENTS.md
+                # carries a build version like `candor-swift-0.27.0`, whose `0.27` satisfies the word
+                # boundary, so the row could never fail no matter how stale the spec claim was. The three
+                # forms below are how the contracts actually write it: `"spec": "0.27"`, `spec 0.27`, `⟨0.27⟩`.
+                v = re.escape(str(spec))
+                if re.search(rf'"spec"\s*:\s*"{v}"|spec\s+{v}\b|⟨{v}⟩', doc):
                     print(f"    ✔ spec {spec} — the contract teaches this version")
                 else:
                     errors.append(f"{engine}: emits spec {spec}, and AGENTS.md never mentions it")
