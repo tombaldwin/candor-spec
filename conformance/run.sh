@@ -2868,32 +2868,70 @@ VOCW="$W/cfgvocab"; mkdir -p "$VOCW"
 cp -r "$GDIR/rust" "$VOCW/rust"; cp -r "$GDIR/ts" "$VOCW/ts"; cp -r "$GDIR/swift" "$VOCW/swift"
 mkdir -p "$VOCW/java"; javac -d "$VOCW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
 # The shared family vocabulary (candor-spec §config). A key here is RECOGNIZED by every engine.
-VOCAB="policy baseline strict no-ambient closed-world taint deps unknown-alias net-partner unknown-ratchet"
+#
+# `engine` (⟨0.28 PROPOSED⟩ §3.4) is here from the release that introduces it, and that timing is the
+# point. It ships ASYMMETRIC — candor-java enforces the pin, the other four accept the key and disclose
+# it as inert — which is the ladder working as designed, but it is also exactly the shape that produced
+# the `net-partner` false disclosure: a key reported as ignored while a sibling engine honoured it. An
+# asymmetry nothing pins is an asymmetry nobody can tell from a defect, so it is pinned in the state it
+# actually ships rather than when the ladder finishes.
+VOCAB="policy baseline strict no-ambient closed-world taint deps unknown-alias net-partner unknown-ratchet engine"
 # Keys that carry a VALUE the parser needs; the rest are booleans/flags. Values are inert for this part
 # (nothing is enforced — we read stderr only), they just have to parse.
+#
+# `engine`'s value is QUALIFIED FOR AN IMPLEMENTATION NONE OF THE PROBED ENGINES ARE. candor-java is the
+# one engine that acts on this key, and a pin naming a version it is not would exit 2 — turning a
+# vocabulary probe into an enforcement test and failing the part for the wrong reason. `agents` is a
+# real §3.4 implementation name, so the line PARSES as a pin (this still exercises the parse path) while
+# resolving to "not mine" for all four probed engines. Version-independent by construction: no build
+# number can drift into or out of agreement with it.
 vocab_val() { case "$1" in policy|baseline) echo "$GPOL";; deps) echo "$VOCW";; unknown-alias) echo "blind=dispatch";;
-                           net-partner) echo "partner.example";; *) echo "true";; esac; }
+                           net-partner) echo "partner.example";; engine) echo "agents v0.0.1";;
+                           *) echo "true";; esac; }
 vocab_probe() { # $1 engine label, then the scan command (target LAST)
   local label=$1; shift
   local bad=0 k out cfgdir
-  cfgdir=$1; while [ $# -gt 1 ]; do shift; cfgdir=$1; done   # target is the last arg
+  # THIS PART RAN NO ENGINE FOR ITS ENTIRE EXISTENCE. Finding the target used to be
+  #     cfgdir=$1; while [ $# -gt 1 ]; do shift; cfgdir=$1; done
+  # which locates the last argument by SHIFTING THE OTHERS AWAY — so by the time the probe reached
+  # `env … "$@"`, `$@` held only the target directory and the engine command was gone. Every run
+  # therefore executed the DIRECTORY, got `env: /path: Permission denied`, and matched that string
+  # against `*"unknown config key '<k>'"*` and `*"<k>"*`. Neither can ever match, so both checks passed
+  # unconditionally and every engine was reported `vocabulary=clean inert-disclosure=well-formed`.
+  #
+  # This is the part written after the `net-partner` false disclosure — a key reported as ignored while
+  # it was being honoured — and its whole job is to pin that a recognized key is never called unknown
+  # and never silently dropped. It could not have caught that defect, or any other.
+  #
+  # Found by adding `engine` to VOCAB and then trying to make the new row FAIL: removing `engine` from
+  # candor-ts's vocabulary (verified applied) changed nothing. A row that cannot fail is worth nothing,
+  # which is exactly why the negative control is run before the addition is believed.
+  local cmd=( "$@" )
+  cfgdir="${cmd[$(( ${#cmd[@]} - 1 ))]}"     # last element, WITHOUT destroying the command
   mkdir -p "$cfgdir/.candor"
   for k in $VOCAB; do
     printf '%s %s\n' "$k" "$(vocab_val "$k")" > "$cfgdir/.candor/config"
-    out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG "$@" 2>&1 >/dev/null)
+    out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG "${cmd[@]}" 2>&1 >/dev/null)
     # (a) a RECOGNIZED key must never be called unknown — the false-disclosure class.
     case "$out" in
-      *"unknown config key '$k'"*) echo "     FAIL $label: '$k' is family vocabulary but reported UNKNOWN"; bad=1;;
+      *"unknown config key '$k'"*)
+        echo "     FAIL $label: '$k' is family vocabulary but reported UNKNOWN"; bad=1; continue;;
     esac
-    # (b) if the engine does NOT act on the key it must disclose it, never stay mute. We cannot observe
-    # "acts on it" from stderr alone, so we assert the weaker checkable half: the engine either says
-    # NOTHING about the key (it is wired, PART 13 covers that path) or it discloses it as unimplemented.
-    # A mention that is neither is a malformed disclosure.
+    # (b) a CONFIG DIAGNOSTIC about this key must be the sanctioned inert disclosure.
+    #
+    # MATCHED ON THE QUOTED FORM, `config key '<k>'`, not on the bare key name. The bare form was the
+    # rule until this part was repaired and actually ran the engines — at which point it reported seven
+    # failures, all false: an engine that HONOURS `policy` says `policy ✓`, and one that honours
+    # `baseline` names it in the guard's own message. Those are the key WORKING, and flagging them as
+    # malformed disclosures would have made the repaired part unusable on its first green run.
+    # The quoted form is what every engine's config layer uses for a diagnostic ABOUT a key
+    # (`config key 'strict' is recognized … not implemented by candor-scan`), so it separates "the
+    # engine is talking about this config key" from "the engine is doing what the key asked".
     case "$out" in
-      *"$k"*)
+      *"config key '$k'"*)
         case "$out" in
           *"not implemented by"*) : ;;                       # the sanctioned inert disclosure
-          *) echo "     FAIL $label: '$k' mentioned on stderr but not as the sanctioned disclosure"; bad=1;;
+          *) echo "     FAIL $label: '$k' drew a config diagnostic that is not the sanctioned disclosure"; bad=1;;
         esac;;
     esac
   done
