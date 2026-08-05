@@ -2028,6 +2028,26 @@ override. This is a **disclosed lower-bound expansion, never an assertion**: it 
 `<fn>` through a dispatch I could not resolve," and reports only the frontier dispatch-source functions (the
 smaller, more informative set), not their transitive cones.
 
+⟨0.28 PROPOSED⟩ **A rule whose SCOPE matches no function is UNANSWERABLE, and MUST be disclosed rather
+than scored as satisfied.** A `deny`/`forbid` rule naming a layer that binds nothing was evaluated and
+bound nothing, so it cannot have caught anything — yet every engine scores it as passing, which makes a
+one-character typo in a layer name a permanently green gate. Measured 2026-08-05 in candor-rust,
+candor-swift and candor-ts: `deny Net orders` exits 1 on a real violation and `deny Net ordrs` exits 0
+with `policy ✓`, and `unverified` then reports the layer as *"PROVABLY clean"*.
+
+The asymmetry is the tell: a typo'd **effect** token already exits 2 naming the accepted vocabulary,
+while a typo'd **layer** token binds nothing and passes. Same file, same rule, opposite treatment.
+
+The remedy is DISCLOSURE, not refusal. Exit 2 would be wrong: a zero-match rule is legitimate when one
+policy is shared across repositories or modules and a layer exists in only some of them. So a producer
+MUST report each such rule — verbatim, so the reader can see the typo — and MUST NOT change the verdict
+on account of it. The `--gate-json` verdict SHOULD carry the same list, or a machine consumer is left in
+the position the human was.
+
+**Status: candor-swift implements this; candor-java, candor-rust and candor-ts do not yet, and no
+conformance PART pins it.** It is written here first so the three have a contract to implement against
+rather than three independently-invented shapes.
+
 ⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
 unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
 unresolved dispatch where the engine could not form an owner type at all. Condition (3) asks whether a
