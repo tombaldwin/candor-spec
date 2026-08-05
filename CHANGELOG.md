@@ -14,6 +14,23 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+⟨0.28 PROPOSED, 2026-08-05⟩ **§3.4 — `engine [<impl>] <version>`: the engine↔baseline coupling becomes
+a tool-enforced invariant.** The committed `baseline` records what one engine build saw; a newer engine
+resolves more dispatch and legitimately reports more, so the AS-EFF-005 ratchet fires on functions
+nobody touched — and the reflex under CI pressure is to regenerate, re-blessing whatever else moved.
+The version lived in the consumer's CI configuration, decoupled from the baseline it is married to.
+A mismatch now exits **2** (unevaluable, never 1 — a machine consumer must not read "I could not trust
+this" as "your code broke a rule"), as does an unreadable pin: this is the one place §6.2's warn-and-skip
+inverts, because skipping a PIN hands the operator a guard they believe is on. **Two answers must NOT
+change the exit code** — an absent pin (opt-in by construction) and a pin a SOURCE BUILD cannot check,
+which is §3.1's unanswerable-condition rule applied to configuration: disclosed, never scored, including
+as satisfied. The qualified form exists because the family versions as a ladder, so a bare pin in a
+polyglot repo would fail whichever engine had not yet caught up. No `CANDOR_ENGINE` env var and no
+`--ignore` escape: an assertion an ambient environment can switch off is not one. candor-java enforces
+it; the other four accept `engine` as a known key and disclose it as inert — a key this spec defines must
+never be reported as an *unknown* one, which would tell an operator their pin was ignored while a
+sibling engine enforced it.
+
 ⟨0.28 PROPOSED, 2026-08-05⟩ **§4 — a policy rule whose SCOPE matches no function is UNANSWERABLE, and
 MUST be disclosed rather than scored as satisfied.** A `deny`/`forbid` naming a layer that binds nothing
 was evaluated and bound nothing, so it cannot have caught anything — yet every engine scored it as
