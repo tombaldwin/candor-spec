@@ -2325,6 +2325,50 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `taint` | `CANDOR_TAINT` | boolean — enables the §3 **risk** mode (AS-EFF-007; two names, one mode) |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
 | `unknown-ratchet` | `CANDOR_UNKNOWN_RATCHET` | boolean — with a `baseline`, a **newly-introduced** `Unknown` fails AS-EFF-005 (default: Unknown-only gains are advisory) |
+| `engine` | — | ⟨0.28 PROPOSED⟩ `[<impl>] <version>` — the engine build this repo's committed artifacts were produced with; a different build FAILS (exit 2). No env var: a pin an environment can override is not a pin |
+
+⟨0.28 PROPOSED⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than
+hoped for.** The committed `baseline` is a snapshot of what one engine build reported. A newer engine
+that resolves more dispatch legitimately reports more effects, so the AS-EFF-005 ratchet fires on
+functions nobody touched — and the reflex, under CI pressure, is to regenerate the baseline, which
+re-blesses whatever else moved with it. Until now the engine version lived in the consumer's CI
+configuration, decoupled from the baseline it is married to, and nothing enforced *"regenerate the
+baseline when you bump the engine"*.
+
+A producer implementing this MUST compare the pin against its own release version and, on a difference,
+FAIL with **exit 2** — the run is *unevaluable*, not violating, and a machine consumer must not read
+"I could not trust this result" as "your code broke a rule". **Two of the five answers MUST NOT change
+the exit code**, and they are the load-bearing part:
+
+- **No pin, or a pin naming another implementation** — unchanged behaviour. The key is opt-in by
+  construction: a config with no `engine` line behaves exactly as it did before.
+- **The pin is well-formed and the producer cannot determine its OWN version** (a source build rather
+  than a published artifact). The condition is UNANSWERABLE, and §3.1's rule applies unchanged: an
+  unanswerable condition MUST be disclosed, never scored — *including* as satisfied. Failing here would
+  break every developer on a source build; passing silently would delete the pin exactly where nobody is
+  watching for it. So the producer says so, once, and leaves the verdict alone.
+
+A pin that is present but **unreadable** (`engine latest`, a bare `engine`, anything that is not a
+version) MUST fail with exit 2 rather than being skipped as a malformed line. This is the one place the
+§6.2 warn-and-skip posture inverts: skipping a key that ADDS something costs that key's contribution,
+while skipping a PIN hands the operator a guard they believe is on.
+
+**The qualified form exists because the family versions as a LADDER, not in lockstep** (§2 versioning
+policy): one engine may lead a rung, so a bare version in a polyglot repo would fail whichever engine had
+not yet caught up. `engine java v0.27.0` pins one implementation; an unqualified `engine v0.27.0` applies
+to whichever engine reads it; a qualified pin takes precedence over an unqualified one. An implementation
+MUST ignore a pin qualified for a different implementation — one config serves the whole family.
+
+There is deliberately **no `CANDOR_ENGINE` environment variable**, breaking the 1:1 key↔env mapping the
+rest of this table keeps. Every other key configures what the run *does*; this one asserts what the run
+*is*, and an assertion an ambient environment can silently switch off is not one. For the same reason
+there is no `--ignore-engine-pin` escape: the deliberate act is editing the pin, in the same change that
+regenerates the baseline, which is exactly the discipline being enforced.
+
+**Status: candor-java implements this. Every other engine MUST at minimum accept `engine` as a known
+key** — a key that IS in this vocabulary must never be reported as an unknown one, which would tell an
+operator their pin was ignored while a sibling engine was enforcing it — **and disclose it as inert
+under the rule below until it enforces it.**
 
 **`unknown-ratchet`** (opt-in, default off) makes `deny E Unknown` adoptable on legacy DI/reflection-heavy
 code. Ordinarily an `Unknown`-only gain vs the `baseline` is *advisory* (resolution noise dominates on version
