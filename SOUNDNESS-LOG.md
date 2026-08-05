@@ -2961,3 +2961,45 @@ into `vec![]` on the way in, collapsing "no conformance pass ran" into "the pass
 the same claim the producer had just carefully omitted. Now `Option<Vec<String>>`; the stable scanner
 writes None and the deep lint writes Some, which is two honest answers from one type. candor-rust
 `296d11b`.
+
+### 2026-08-05 — a partial scan claiming the whole package's identity: real in swift, checked and ABSENT in rust/ts
+
+candor-swift grew `--target <name>`, scoping a scan to one product of a multi-target package. The feature
+itself is a soundness improvement — it removes a verdict about code the product never compiles — but the
+first cut opened a cardinal-sin channel one level down, and it was found by asking what a **machine**
+consumer sees rather than what the terminal prints.
+
+**The find.** A scoped report was byte-shaped exactly like a whole-package one: same `package` field, same
+`hash` key namespace (`MultiTarget#…`), just fewer functions. The scope was disclosed only on stderr,
+which is not in the artifact anyone chains. Under ⟨0.21⟩ absence from `functions` is a positive purity
+claim, so a consumer chaining that report as `MultiTarget` reads every function in the targets it never
+scanned as pure.
+
+**The fix, with no format change.** A scoped scan qualifies the key: `MultiTarget/MacApp#…`. A consumer
+looking for `MultiTarget#…` then simply misses, and a miss resolves to DISCLOSED (unresolved / invisible)
+rather than to a purity claim — failing in the safe direction instead of being right in the dangerous one.
+
+**A wrong first fix, recorded because the failure mode is the interesting part.** The same change
+initially put the target in the report FILENAME too, so a package's scoped reports could coexist. That
+read as a bonus until discovery had to choose between three files in one `.candor/`: after
+`--target MacApp` the privacy verb reported the microphone, a sensor only the iOS target reaches. A
+silently wrong answer is worse than the overwrite it replaced. The scope belongs where a consumer reads
+it, not where discovery trips over it.
+
+**THE VEIN WAS THEN CHECKED IN THE OTHER ENGINES AND IS NOT THERE.** Scanning a subdirectory of a package:
+
+| engine | whole scan | partial scan | joinable as the package? |
+|---|---|---|---|
+| candor-rust | `partialpkg#a::writes` | `crate#writes` | **no** — no manifest under the subdir, so it falls back |
+| candor-ts | `partialpkg#writes` | `a#writes` | **no** — falls back to the directory name |
+| candor-swift (`--target`) | `MultiTarget#…` | `MultiTarget#…` *(before the fix)* | **yes** — the bug |
+
+The asymmetry has a cause worth keeping: rust and ts are handed a subdirectory, so the manifest is simply
+not found and the package identity is never claimed. `--target` is different in kind — it stands at the
+package ROOT, where the manifest *is* found, and scopes what gets read underneath. **A flag that narrows
+what a scan reads without moving where it stands is the shape that produces this**, and it is the thing to
+look for if candor-ts or candor-rust ever grows a per-workspace-member or per-crate scoping flag.
+
+Gates: two properties pinned in `TargetScopeProcessTests` — a scoped key must not be joinable as the
+package's, and a scoped scan must leave exactly ONE report in `.candor/`. 593 swift tests + 108 smoke;
+four-way conformance green.
