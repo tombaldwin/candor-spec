@@ -2028,7 +2028,7 @@ override. This is a **disclosed lower-bound expansion, never an assertion**: it 
 `<fn>` through a dispatch I could not resolve," and reports only the frontier dispatch-source functions (the
 smaller, more informative set), not their transitive cones.
 
-⟨0.28 PROPOSED⟩ **A rule whose SCOPE matches no function is UNANSWERABLE, and MUST be disclosed rather
+⟨0.27⟩ **A rule whose SCOPE matches no function is UNANSWERABLE, and MUST be disclosed rather
 than scored as satisfied.** A `deny`/`forbid` rule naming a layer that binds nothing was evaluated and
 bound nothing, so it cannot have caught anything — yet every engine scores it as passing, which makes a
 one-character typo in a layer name a permanently green gate. Measured 2026-08-05 in candor-rust,
@@ -2044,9 +2044,10 @@ MUST report each such rule — verbatim, so the reader can see the typo — and 
 on account of it. The `--gate-json` verdict SHOULD carry the same list, or a machine consumer is left in
 the position the human was.
 
-**Status: candor-swift implements this; candor-java, candor-rust and candor-ts do not yet, and no
-conformance PART pins it.** It is written here first so the three have a contract to implement against
-rather than three independently-invented shapes.
+**Status: implemented four-way** (candor-swift led it; candor-java, candor-rust and candor-ts followed),
+pinned by conformance **PART 32** — which pins the disclosure, that the verdict and exit code are
+UNCHANGED by it, and that a SCOPELESS `deny` is exempt (it binds every function by construction, so it
+can never be this kind of typo).
 
 ⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
 unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
@@ -2325,9 +2326,9 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `taint` | `CANDOR_TAINT` | boolean — enables the §3 **risk** mode (AS-EFF-007; two names, one mode) |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
 | `unknown-ratchet` | `CANDOR_UNKNOWN_RATCHET` | boolean — with a `baseline`, a **newly-introduced** `Unknown` fails AS-EFF-005 (default: Unknown-only gains are advisory) |
-| `engine` | — | ⟨0.28 PROPOSED⟩ `[<impl>] <version>` — the engine build this repo's committed artifacts were produced with; a different build FAILS (exit 2). No env var: a pin an environment can override is not a pin |
+| `engine` | — | ⟨0.27⟩ `[<impl>] <version>` — the engine build this repo's committed artifacts were produced with; a different build FAILS (exit 2). No env var: a pin an environment can override is not a pin |
 
-⟨0.28 PROPOSED⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than
+⟨0.27⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than
 hoped for.** The committed `baseline` is a snapshot of what one engine build reported, and an engine
 swap is baseline-invalidating. Engines already refuse a baseline whose §2.1 provenance **build id**
 differs from the running one — but that id is a build hash, which a consumer cannot *declare*: the
@@ -2372,10 +2373,10 @@ rest of this table keeps. Every other key configures what the run *does*; this o
 there is no `--ignore-engine-pin` escape: the deliberate act is editing the pin, in the same change that
 regenerates the baseline, which is exactly the discipline being enforced.
 
-**Status: candor-java implements this. Every other engine MUST at minimum accept `engine` as a known
-key** — a key that IS in this vocabulary must never be reported as an unknown one, which would tell an
-operator their pin was ignored while a sibling engine was enforcing it — **and disclose it as inert
-under the rule below until it enforces it.**
+**Status: implemented and enforced identically by candor-java, candor-rust, candor-ts, candor-swift and
+candor-agents**, pinned by conformance **PART 33** (a holding pin is silent and changes no exit code; a
+mismatched or unreadable pin is exit 2; a pin qualified for another implementation is ignored) and by
+**PART 13b**, which pins that the key is recognized rather than reported unknown.
 
 **`unknown-ratchet`** (opt-in, default off) makes `deny E Unknown` adoptable on legacy DI/reflection-heavy
 code. Ordinarily an `Unknown`-only gain vs the `baseline` is *advisory* (resolution noise dominates on version

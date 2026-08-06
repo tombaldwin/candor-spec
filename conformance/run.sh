@@ -2888,6 +2888,20 @@ VOCAB="policy baseline strict no-ambient closed-world taint deps unknown-alias n
 vocab_val() { case "$1" in policy|baseline) echo "$GPOL";; deps) echo "$VOCW";; unknown-alias) echo "blind=dispatch";;
                            net-partner) echo "partner.example";; engine) echo "agents v0.0.1";;
                            *) echo "true";; esac; }
+# WHICH ENGINE IMPLEMENTS WHICH KEY — the fact check (c) below cannot observe from stderr. `label:key`
+# pairs, using the same padded labels the probes are called with. Every engine implements `policy`,
+# `baseline`, `deps`, `unknown-ratchet` and (since ⟨0.27⟩) `engine`; `unknown-alias` and `net-partner` are
+# multi-value keys read straight off the config TEXT, so they never reach the single-value loop and are
+# listed here for the same reason. The remainder (`strict`, `no-ambient`, `closed-world`, `taint`) are
+# java-only gates and MUST be disclosed as inert everywhere else.
+IMPLEMENTED_BY=""
+for _e in "candor-java " "candor-scan " "candor-ts   " "candor-swift"; do
+  for _k in policy baseline deps unknown-ratchet engine unknown-alias net-partner; do
+    IMPLEMENTED_BY="$IMPLEMENTED_BY $_e:$_k"
+  done
+done
+for _k in strict no-ambient closed-world taint; do IMPLEMENTED_BY="$IMPLEMENTED_BY candor-java :$_k"; done
+
 vocab_probe() { # $1 engine label, then the scan command (target LAST)
   local label=$1; shift
   local bad=0 k out cfgdir
@@ -2932,6 +2946,22 @@ vocab_probe() { # $1 engine label, then the scan command (target LAST)
         case "$out" in
           *"not implemented by"*) : ;;                       # the sanctioned inert disclosure
           *) echo "     FAIL $label: '$k' drew a config diagnostic that is not the sanctioned disclosure"; bad=1;;
+        esac;;
+      *)
+        # (c) SILENCE IS NOT A PASS. This was the hole left when the part was repaired: an engine that
+        # neither honours a key nor discloses it said nothing, and saying nothing matched no case, so
+        # it passed as "wired". That reading is only safe for a key the engine really does implement —
+        # which is a fact the suite cannot see from stderr, so it is supplied here per engine.
+        #
+        # Kept as a DENYLIST of the keys each engine implements, so a NEW family key defaults to
+        # "must disclose": forgetting to add a key is then loud, which is the direction this project
+        # takes everywhere else. An engine that starts implementing a key and forgets to move it here
+        # fails too, and that is right — its inert disclosure would then be a false one.
+        case " $IMPLEMENTED_BY " in
+          *" $label:$k "*) : ;;                              # implemented here → silence is correct
+          *) echo "     FAIL $label: '$k' is family vocabulary, is not implemented here, and drew NO"
+             echo "          disclosure at all — silence reads as 'wired' and is how an inert gate stays believed"
+             bad=1;;
         esac;;
     esac
   done
@@ -4824,9 +4854,149 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ====================================================================================================
+# PART 32 — SPEC §4: A RULE THAT BINDS NOTHING IS DISCLOSED, NEVER SCORED AS SATISFIED      [TIER 1]
+#
+# THE DEFECT, measured 2026-08-05 in candor-java, candor-rust and candor-ts (candor-swift had already
+# been fixed): a package `app.orders` performing `Fs`, and
+#
+#     deny Fs orders   -> exit 1   the violation
+#     deny Fs ordrs    -> exit 0   IN SILENCE
+#
+# A one-character typo in a layer name is a permanently green gate, and `unverified` then reports the
+# layer as "PROVABLY clean". The asymmetry is the tell: a typo'd EFFECT token already exits 2 naming the
+# accepted vocabulary, while a typo'd LAYER token binds nothing and passes. Same file, same rule,
+# opposite treatment — and the passing half is the one that fails open.
+#
+# THE REMEDY IS DISCLOSURE, NOT REFUSAL, so this part pins BOTH halves. Exit 2 would be wrong: a
+# zero-match rule is legitimate when one policy is shared across repositories and a layer exists in only
+# some of them, so a refusing engine would make a shared policy unusable.
+#
+# THREE ROWS, and the second is the one that stops this becoming a new way to fail a build:
+#   (a) a scope that matches nothing        -> DISCLOSED on stderr
+#   (b) …and the exit code is UNCHANGED     -> compared against the same run with the rule removed
+#   (c) a SCOPELESS `deny` is never reported -> it binds every function by construction, so it can never
+#                                              be this kind of typo; reporting it would be a false alarm
+#                                              on the commonest rule in the vocabulary
+#
+# FIXTURE-INDEPENDENT BY CONSTRUCTION: `zzz_no_such_layer` cannot match in any language, so no row
+# depends on how an engine qualifies names. Row (c) doubles as the VACUITY FLOOR — it asserts the
+# scopeless rule still GATES (exit 1), so a fixture that stopped violating would fail the part rather
+# than passing it silently.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[32] ZERO-MATCH RULE DISCLOSURE  (SPEC §4 — a rule that bound nothing cannot have caught anything)"
+ZM_OK=0
+ZMW="$W/zeromatch"; mkdir -p "$ZMW"
+printf 'deny Fs zzz_no_such_layer\n' > "$ZMW/miss.policy"   # (a)+(b): binds nothing, in every language
+printf 'deny Fs\n'                   > "$ZMW/hit.policy"    # (c): scopeless — binds everything
+zm_probe() { # $1 label ; then the scan command WITHOUT a --policy flag
+  local label=$1; shift
+  local cmd=( "$@" ) miss_out miss_rc hit_out hit_rc base_rc bad=0
+  miss_out=$( "${cmd[@]}" --policy "$ZMW/miss.policy" 2>&1 >/dev/null ); miss_rc=$?
+  hit_out=$(  "${cmd[@]}" --policy "$ZMW/hit.policy"  2>&1 >/dev/null ); hit_rc=$?
+  "${cmd[@]}" >/dev/null 2>&1; base_rc=$?          # the same run with NO policy at all
+  case "$miss_out" in
+    *"matched NO function"*) : ;;
+    *) echo "     FAIL $label: a rule binding NO function was not disclosed — a typo'd layer name is a green gate"; bad=1;;
+  esac
+  [ "$miss_rc" = "$base_rc" ] || { echo "     FAIL $label: the zero-match disclosure CHANGED the verdict (exit $miss_rc vs $base_rc with no policy)"; bad=1; }
+  case "$hit_out" in
+    *"matched NO function"*) echo "     FAIL $label: a SCOPELESS deny was reported as zero-match — it binds every function"; bad=1;;
+  esac
+  [ "$hit_rc" = 1 ] || { echo "     FAIL $label: the fixture no longer violates a scopeless \`deny Fs\` (exit $hit_rc) — this part would be vacuous"; bad=1; }
+  [ "$bad" = 0 ] && { echo "  $label disclosed=yes verdict-unchanged=yes scopeless-exempt=yes"; return 0; }
+  return 1
+}
+zm_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZM_OK=1
+zm_probe "candor-scan " "$SCAN" "$GDIR/rust" --out "$ZMW/r" || ZM_OK=1
+[ -n "$TS_OK" ] && { zm_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$ZMW/t" || ZM_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { zm_probe "candor-swift" "$SW_BIN" "$GDIR/swift" --out "$ZMW/s" || ZM_OK=1; }
+echo "PART 32 — SPEC §4: a rule whose scope binds no function is disclosed, and the verdict is untouched"
+if [ "$ZM_OK" = 0 ]; then
+  echo "  -> MATCH — every engine discloses a zero-match rule, exempts a scopeless deny, and leaves the exit code alone"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ====================================================================================================
+# PART 33 — SPEC §3.4 `engine`: THE PIN IS ENFORCED THE SAME WAY IN EVERY ENGINE            [TIER 1]
+#
+# PART 13b pins that `engine` is RECOGNIZED (never reported unknown, never silently dropped). That is a
+# vocabulary property and it passes on an engine that does nothing with the key. This pins the BEHAVIOUR.
+#
+# WHY IT MATTERS THAT ALL FIVE AGREE: one `.candor/config` serves a polyglot repo, so a pin the operator
+# writes once must mean the same thing to every engine that reads it. An engine enforcing while another
+# silently ignores is the shape that makes an operator trust a guard that is only half on.
+#
+# FOUR ROWS, and the two that must NOT fail are the design:
+#   matching pin        -> exit UNCHANGED and SILENT   (a pin that holds costs nothing)
+#   mismatched pin      -> exit 2                       (UNEVALUABLE — never 1, which means "violation")
+#   unreadable pin      -> exit 2                       (`engine latest`: skipping it would hand the
+#                                                        enforcement site "absent", and absent PASSES)
+#   pin for ANOTHER impl-> exit UNCHANGED               (the family versions as a LADDER; one engine may
+#                                                        lead a rung, so a qualified pin is not ours)
+#
+# The mismatched/unreadable rows must be exit 2 SPECIFICALLY: a machine consumer that separates 1 from 2
+# must not read "I could not trust this result" as "your code broke a rule".
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[33] ENGINE PIN ENFORCEMENT  (SPEC §3.4 — one config, one meaning, in every engine)"
+EP_OK=0
+EPW="$W/enginepin"; mkdir -p "$EPW"
+ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; then the scan command (target LAST)
+  local label=$1 impl=$2 running=$3; shift 3
+  local cmd=( "$@" ) cfgdir bad=0 rc base
+  cfgdir="${cmd[$(( ${#cmd[@]} - 1 ))]}"
+  mkdir -p "$cfgdir/.candor"
+  : > "$cfgdir/.candor/config";           "${cmd[@]}" >/dev/null 2>&1; base=$?
+  printf 'engine v%s\n' "$running" > "$cfgdir/.candor/config"
+  local out; out=$( "${cmd[@]}" 2>&1 >/dev/null ); rc=$?
+  [ "$rc" = "$base" ] || { echo "     FAIL $label: a MATCHING pin changed the exit code ($rc vs $base with no pin)"; bad=1; }
+  case "$out" in *"pins engine"*) echo "     FAIL $label: a matching pin said something — a pin that holds must cost nothing"; bad=1;; esac
+  printf 'engine v0.0.1\n' > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label: a MISMATCHED pin exited $rc, not 2 (unevaluable, never 1)"; bad=1; }
+  printf 'engine latest\n' > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label: an UNREADABLE pin exited $rc, not 2 — skipping it hands the check 'absent', and absent PASSES"; bad=1; }
+  # A qualified pin for an implementation this engine is NOT. `agents` is used for the four code
+  # engines and `java` for candor-agents, so no row is ever self-referential.
+  local other=java; [ "$impl" = java ] && other=agents
+  printf 'engine %s v0.0.1\n' "$other" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = "$base" ] || { echo "     FAIL $label: a pin qualified for \`$other\` changed this engine's exit ($rc vs $base)"; bad=1; }
+  rm -f "$cfgdir/.candor/config"
+  [ "$bad" = 0 ] && { echo "  $label match=silent mismatch=2 unreadable=2 other-impl=ignored"; return 0; }
+  return 1
+}
+EP_JV=$(java -jar "$JAR" --version 2>/dev/null | head -1 | awk '{print $2}')
+EP_RV=$("$SCAN" --version 2>/dev/null | head -1 | awk '{print $2}')
+mkdir -p "$EPW/java" "$EPW/rust"
+cp -r "$GDIR/rust/." "$EPW/rust/" 2>/dev/null
+javac -d "$EPW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
+ep_probe "candor-java " java "$EP_JV" java -jar "$JAR" "$EPW/java" || EP_OK=1
+ep_probe "candor-scan " rust "$EP_RV" "$SCAN" "$EPW/rust" || EP_OK=1
+if [ -n "$TS_OK" ]; then
+  EP_TV=$(node "$TS_DIR/scan.mjs" --version 2>/dev/null | head -1 | awk '{print $2}')
+  mkdir -p "$EPW/ts"; cp -r "$GDIR/ts/." "$EPW/ts/" 2>/dev/null
+  ep_probe "candor-ts   " ts "$EP_TV" node "$TS_DIR/scan.mjs" "$EPW/ts" || EP_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  EP_SV=$("$SW_BIN" --version 2>/dev/null | head -1 | awk '{print $2}')
+  mkdir -p "$EPW/swift"; cp -r "$GDIR/swift/." "$EPW/swift/" 2>/dev/null
+  ep_probe "candor-swift" swift "$EP_SV" "$SW_BIN" "$EPW/swift" || EP_OK=1
+fi
+echo "PART 33 — SPEC §3.4: the engine pin is enforced identically in every engine"
+if [ "$EP_OK" = 0 ]; then
+  echo "  -> MATCH — a holding pin is silent, a broken one is exit 2 (never 1), another impl's pin is not ours"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
