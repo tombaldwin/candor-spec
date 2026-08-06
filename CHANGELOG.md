@@ -14,7 +14,10 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
-⟨0.28 PROPOSED, 2026-08-05⟩ **§3.4 — `engine [<impl>] <version>`: the engine↔baseline coupling becomes
+
+## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
+
+⟨0.27, 2026-08-06⟩ **§3.4 — `engine [<impl>] <version>`: the engine↔baseline coupling becomes
 a tool-enforced invariant.** Engines already refuse a baseline whose §2.1 provenance BUILD ID differs
 from the running one — but a build hash is not something a consumer can DECLARE, so the version lived
 in CI configuration, decoupled from the baseline it is married to, and a mismatch was found only after
@@ -30,12 +33,12 @@ change the exit code** — an absent pin (opt-in by construction) and a pin a SO
 which is §3.1's unanswerable-condition rule applied to configuration: disclosed, never scored, including
 as satisfied. The qualified form exists because the family versions as a ladder, so a bare pin in a
 polyglot repo would fail whichever engine had not yet caught up. No `CANDOR_ENGINE` env var and no
-`--ignore` escape: an assertion an ambient environment can switch off is not one. candor-java enforces
-it; the other four accept `engine` as a known key and disclose it as inert — a key this spec defines must
-never be reported as an *unknown* one, which would tell an operator their pin was ignored while a
-sibling engine enforced it.
+`--ignore` escape: an assertion an ambient environment can switch off is not one. Implemented and enforced identically by ALL FIVE engines,
+pinned by conformance **PART 33**; **PART 13b** separately pins that the key is recognized rather than
+reported unknown — a key this spec defines must never be called unknown, which would tell an operator
+their pin was ignored while a sibling engine enforced it.
 
-⟨0.28 PROPOSED, 2026-08-05⟩ **§4 — a policy rule whose SCOPE matches no function is UNANSWERABLE, and
+⟨0.27, 2026-08-06⟩ **§4 — a policy rule whose SCOPE matches no function is UNANSWERABLE, and
 MUST be disclosed rather than scored as satisfied.** A `deny`/`forbid` naming a layer that binds nothing
 was evaluated and bound nothing, so it cannot have caught anything — yet every engine scored it as
 passing, which makes a one-character typo in a layer name a permanently green gate. Measured in three
@@ -43,8 +46,10 @@ engines: `deny Net orders` exits 1 on a real violation, `deny Net ordrs` exits 0
 `unverified` then calls the layer *"PROVABLY clean"*. The asymmetry is the tell — a typo'd **effect**
 token already exits 2 naming the accepted vocabulary, while a typo'd **layer** token passes. The remedy
 is disclosure, not refusal: a zero-match rule is legitimate when one policy is shared across repositories
-and a layer exists in only some. candor-swift implements it; the other three now have a contract to build
-against rather than three independently-invented shapes, and no conformance PART pins it yet.
+and a layer exists in only some. Implemented FOUR-WAY (candor-swift led it; java, rust and ts
+followed) and pinned by conformance **PART 32**, which pins the disclosure, that the verdict and exit
+code are unchanged by it, and that a scopeless `deny` is exempt — it binds every function by
+construction, so it can never be this kind of typo.
 
 **Conformance PART 13b ran no engine, for its entire existence.** It located the scan target by shifting
 the other arguments away, so the probe executed the target DIRECTORY instead of the engine, got
@@ -68,8 +73,6 @@ Repo tooling in this cut, both about gates that could not fail:
 - **Its own spec row was vacuous on the first run**, and the amendment sweep before it printed a clean
   bill after reading no files. A bare `\b0.27\b` search matched the build version `candor-swift-0.27.0`
   carried by every contract, so the row could not fail however stale the claim was.
-
-## 0.27 — current floor (a producer declares which refinements it computes)
 
 ⟨0.27, 2026-08-05⟩ **§2.1 — `resolves`: a top-level envelope array naming the optional per-function
 refinement surfaces this producer actually computes.** §2's optional fields are omitted when the answer
