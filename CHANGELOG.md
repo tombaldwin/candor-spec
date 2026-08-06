@@ -14,6 +14,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
+
 - **Panel review: SPEC §3.4 gains the ruling for a collision two MUSTs created.** "Ignore a pin
   qualified for another implementation" and "an unreadable pin exits 2" disagree on
   `engine swift 0.99.0 junk`, and a differential found the family split three ways on it. The skip is
@@ -23,8 +25,6 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   lacked**: every row compared against the no-pin baseline, so an engine that always exited 2 would
   have passed the whole part. PART 32 had a floor; this one did not until a review said so.
 
-
-## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
 ⟨0.27, 2026-08-06⟩ **§3.4 — `engine [<impl>] <version>`: the engine↔baseline coupling becomes
 a tool-enforced invariant.** Engines already refuse a baseline whose §2.1 provenance BUILD ID differs
