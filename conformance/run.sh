@@ -5024,6 +5024,18 @@ ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; 
   printf 'engine v%s\r\n' "$running" > "$cfgdir/.candor/config"
   "${cmd[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" = "$base" ] || { echo "     FAIL $label: a CRLF config broke a MATCHING pin (exit $rc vs $base)"; bad=1; }
+  # A VERSION IS ASCII DIGITS. `Character.isNumber` (Swift) and `str.isdigit()` (Python) are both
+  # Unicode-wide, so `engine ٣.٣` (Arabic-Indic) NORMALISED as a version in two engines. That made it a
+  # MISMATCH rather than MALFORMED, and the difference is load-bearing: the "an unreadable unqualified
+  # line is not hidden by a qualified pin" rule keys on the normaliser REFUSING, so a line that is not a
+  # version but parses as one was handed to the qualified pin and the run passed at exit 0 while three
+  # engines exited 2. Beside a good qualified pin is the shape that hides it — alone, every engine
+  # already refused, which is why this went unnoticed.
+  for junk in "٣.٣" "².0" "½.0"; do
+    printf 'engine %s\nengine %s v%s\n' "$junk" "$impl" "$running" > "$cfgdir/.candor/config"
+    "${cmd[@]}" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 2 ] || { echo "     FAIL $label: non-ASCII digits \`engine $junk\` parsed AS A VERSION and were hidden by a qualified pin (exit $rc, want 2)"; bad=1; }
+  done
   # UNICODE WHITESPACE SEPARATES THE KEY FROM ITS VALUE. A NO-BREAK SPACE (U+00A0) is what you get by
   # pasting a config out of a rendered doc, and two engines split only on ASCII space/tab: the line
   # became the single token `engine\u00A0`, which is not the key `engine`, so it was reported as an

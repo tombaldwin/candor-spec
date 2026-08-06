@@ -14,6 +14,13 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Conformance PART 33 gains an ASCII-digit row.** `Character.isNumber` (Swift) and `str.isdigit()`
+  (Python) are Unicode-wide, so `engine ٣.٣` NORMALISED as a version in two engines — a MISMATCH rather
+  than MALFORMED, which is the difference that decides whether the "unreadable unqualified line is not
+  hidden by a qualified pin" rule fires. Beside a good qualified pin the run passed at exit 0 while three
+  engines exited 2. ALONE it was already refused everywhere, so only the PAIRED shape is diagnostic —
+  the row uses it.
+
 - **§3.3.1 — WHEN the gate sink is armed, and the one thing never written to it.** The refusal rule said
   WHAT to write and never said WHEN, and every engine got the timing wrong differently. Two MUSTs now:
   arm at the instant `--gate-json <path>` is accepted and before any other exit (engines armed after the
