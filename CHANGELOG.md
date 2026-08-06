@@ -14,6 +14,30 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **§3.3.1 — WHEN the gate sink is armed, and the one thing never written to it.** The refusal rule said
+  WHAT to write and never said WHEN, and every engine got the timing wrong differently. Two MUSTs now:
+  arm at the instant `--gate-json <path>` is accepted and before any other exit (engines armed after the
+  config load, after pin resolution, and — in the reference engine — mid-flag-loop, which made the
+  contract depend on argv ORDER); and refuse, writing nothing, a sink that names an INPUT of this run.
+  `--policy P --gate-json P` armed over the policy, which then parsed as zero rules, and a gate that
+  exits 1 exited 0 with `"ok": true`. That refusal is the only exempt cause and it is not a carve-out:
+  the path was never a sink, so no verdict at it can go stale. Sameness is resolved as ARTIFACTS, not
+  strings — the engine that already had this guard was defeated by `./P` against an absolute `--policy`.
+- **The §3.3 flag table still carried a reading ⟨0.24⟩ superseded** — "on exit 2 it writes a verdict only
+  for an INCOMPLETE analysis, never for a broken gate config" — 2000 lines from the note recording the
+  supersession, so the stale rule was still there to be implemented, and one engine implemented it. The
+  paragraph making that correction observes the defect class had "now been produced three times"; this
+  was the fourth, in the table the first three were about.
+- **Conformance PART 34 (new): the gate sink is armed, and never armed over an input.** A release review
+  found a machine-readable false all-clear in four engines and this suite would have passed every one —
+  nothing in it had ever seeded a stale document or pointed `--gate-json` at a file the run reads. Five
+  rows, every one seeding a green document first, plus the control that stops an engine passing by
+  arming and never disarming.
+- **Conformance PART 33 gains a Unicode-whitespace row.** Two of five engines split config lines on
+  ASCII space/tab only, so a NO-BREAK SPACE between `engine` and its version made the line an unknown
+  key: a false disclosure over a silently unenforced pin, with a MISMATCHED version passing at exit 0.
+  The part's own comment says a row that pins one spelling pins one spelling.
+
 ## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
 - **PART 33 pinned one spelling of its own rule.** The malformed-unqualified row used a two-token junk
