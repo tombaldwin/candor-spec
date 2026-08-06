@@ -1799,6 +1799,36 @@ The `ok: false` is not ceremony: a consumer keying only on `ok` must land on FAI
 `refused` learns why. This is the same reasoning as the empty-report rung — the naive read of a document
 this format emits must be the safe one, because the naive read is the one that ships.
 
+⟨0.27⟩ **WHEN, EXACTLY, THE SINK IS ARMED — and the one thing that must never be written to it.** The rule
+above says *what* to write; it did not say *when*, and every engine got the timing wrong in a different
+way. Two MUSTs settle it:
+
+**(1) Arm at the instant the sink is known, and before anything else can exit.** The implementation MUST
+write the fail-closed refusal to the path as soon as `--gate-json <path>` has been parsed and accepted —
+before loading config, before resolving the pin, before validating any other flag, before touching the
+target. Every subsequent exit then leaves a refusal behind unless it is replaced by a real verdict. Arming
+*later* than this is a stale green with a window: measured, engines armed after config load (where an
+unreadable config exits 2), after pin resolution, and — in the reference engine — mid-flag-loop, which
+made the behaviour depend on **argv order**: `--gate-json G --frobnicate` wrote a refusal into `G` and
+`--frobnicate --gate-json G` left yesterday's verdict untouched. Nothing about the operator's intent
+changed between those two spellings.
+
+**(2) A `--gate-json` path that names an INPUT of this run is refused, and NOTHING is written.** The sink
+is opened for writing before the run knows its own answer, so if it is the same artifact as the policy
+file, the discovered `.candor/config`, a report being read (`gate --report`), or a chained dependency
+report, arming **destroys the input**. Measured across four engines: `--policy P --gate-json P` armed over
+`P`, the now-JSON policy parsed as zero rules, and a gate that exits 1 on the same code exited **0 with
+`"ok": true`** — a machine-readable all-clear produced by deleting the question. The implementation MUST
+detect this and exit 2 with a diagnostic naming both flags, having written nothing. This is the *only*
+exempt cause in (1), and it is exempt for a reason that is not a carve-out: the path was never a sink, so
+there is no verdict at it to go stale, and the alternative is destroying the operator's policy.
+
+Sameness here is a question about **artifacts, not strings**. `--policy /w/P --gate-json ./P` from `/w` is
+the same file, and a comparison of path spellings says it is not — an engine that had this check still
+failed to the spelling. Implementations MUST resolve both sides (symlinks included; device+inode where the
+platform offers it) before comparing, and for a sink that does not exist yet, resolve its parent directory.
+The rule that catches the release verifier catches this: *resolve the artifact, not just the string.*
+
 ⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING
 A CERTAIN VIOLATION — and that is a BOUNDARY, not a carve-out.** The distinction is load-bearing and the
 two look identical from the exit code:
@@ -2181,7 +2211,7 @@ engine identically. Every implementation's scanner MUST accept:
 | `<target>` (positional) | what to scan — a directory, a built artifact, or a source file, as the language dictates. |
 | `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (never silently gate-pass). MUST also honour a `CANDOR_POLICY` environment variable when the flag is absent; the flag takes precedence. |
 | `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to stdout). stdout MUST then be *pure JSON* — any human/progress output goes to stderr, so the report pipes cleanly. An engine MAY additionally accept `--json <file>` to write the report to a file. |
-| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. On **exit 2** it writes a verdict only for an INCOMPLETE analysis (the ⟨0.21⟩ machine-legible incomplete verdict, §3.3.1) — never for a broken gate config. Does not change the exit code. |
+| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of the `AS-EFF` console lines, from the SAME check that sets the exit code. Written whenever the FLAG is given: with a gate active it re-emits that gate's verdict; with no gate configured it writes the clean verdict `{ ok: true, violations: [] }`. On **exit 2** it writes a **fail-closed document for EVERY cause** ⟨0.24⟩ — the `ok:false` + `refused:true` refusal for a broken gate config (unreadable policy, invalid baseline, **unknown flag**), or the ⟨0.21⟩ machine-legible incomplete verdict (§3.3.1) for an incomplete analysis. *This entry read "never for a broken gate config" until ⟨0.27⟩ — the reading §3.1 superseded, surviving in a second location. A carve-out here is a fail-open path: a refusal that writes nothing leaves the previous run's green document on disk.* The one case that writes nothing is a `--gate-json` path that **cannot be honoured as a sink** — no value given, or the same artifact as an INPUT this run must read (§3.3.1). Does not change the exit code. |
 | `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope `spec`), on the same or an adjacent line. |
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
