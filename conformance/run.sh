@@ -5034,6 +5034,25 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   mkdir -p "$EPW/swift"; cp -r "$GDIR/swift/." "$EPW/swift/" 2>/dev/null
   ep_probe "candor-swift" swift "$EP_SV" "$SW_BIN" "$EPW/swift" || EP_OK=1
 fi
+# candor-agents IS PROBED TOO, and it was not: the part's headline says "every engine" and the spec
+# CHANGELOG says "ALL FIVE now enforce it (PART 33 pins that)" — a claim the suite did not test. agents
+# was also one of the two engines whose version normaliser accepted `vv0.27.0`, so the row written about
+# that defect never ran for one of the engines that had it. It is a domain engine over a `.claude/` fleet
+# rather than code, so it gets a fleet fixture; the probe is otherwise identical.
+if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
+  EPA="$W/enginepin/agents"; mkdir -p "$EPA/.claude"
+  EP_AV=$(python3 -c "import sys; sys.path.insert(0,'$HERE/../../candor-agents'); from candor_agents.scan import RELEASE; print(RELEASE)" 2>/dev/null)
+  if [ -n "$EP_AV" ]; then
+    ep_probe "candor-agents" agents "$EP_AV" python3 -c "
+import sys; sys.path.insert(0,'$HERE/../../candor-agents')
+from candor_agents.scan import load_candor_config
+try: load_candor_config(sys.argv[1])
+except SystemExit as e: sys.exit(e.code)
+" "$EPA" || EP_OK=1
+  else
+    echo "     FAIL candor-agents: could not read its RELEASE — the row would be vacuous"; EP_OK=1
+  fi
+fi
 echo "PART 33 — SPEC §3.4: the engine pin is enforced identically in every engine"
 if [ "$EP_OK" = 0 ]; then
   echo "  -> MATCH — a holding pin is silent, a broken one is exit 2 (never 1), another impl's pin is not ours"
