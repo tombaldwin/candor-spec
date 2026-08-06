@@ -16,6 +16,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
+- **PART 33 pinned one spelling of its own rule.** The malformed-unqualified row used a two-token junk
+  value, which every engine catches by arity — so it was green five-way while the one-token spelling
+  split the family four-against-java, silently. Both spellings run now. The candor-agents checkout also
+  went to one of two differential legs, turning the strict one red.
+
 - **PART 33's candor-agents row certified what CI never ran.** candor-spec's conformance workflow never
   checked the engine out, and the row was guarded by a bare `if` that vanished when the repo was absent —
   so CI printed "the engine pin is enforced identically in EVERY engine" over four. The checkout is now
