@@ -5000,6 +5000,14 @@ ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; 
   printf 'engine %s 0.99.0 junk\n' "$other" > "$cfgdir/.candor/config"
   "${cmd[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" = "$base" ] || { echo "     FAIL $label: a JUNKED line qualified for \`$other\` killed this engine's run ($rc vs $base)"; bad=1; }
+  # A MALFORMED UNQUALIFIED LINE IS STILL YOURS TO READ, even beside a qualified pin that applies. The
+  # reference engine was the sole non-conformer here — `engine 0.26.0 oops` plus `engine <impl> <good>`
+  # exited 0 in java and 2 in the other four, because its precedence returned the qualified pin without
+  # ever looking at the unreadable line. Precedence decides which VERSION applies, not whether a line you
+  # were supposed to read parses.
+  printf 'engine 0.26.0 oops\nengine %s v%s\n' "$impl" "$running" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label: an unreadable UNQUALIFIED line was hidden by a qualified pin (exit $rc, want 2)"; bad=1; }
   # AT MOST ONE LEADING `v`. Two engines stripped every one, so `vv0.27.0` was a valid pin to them and
   # MALFORMED to the other three — the family disagreeing on what counts as a version.
   printf 'engine vv%s\n' "$running" > "$cfgdir/.candor/config"
@@ -5039,7 +5047,13 @@ fi
 # was also one of the two engines whose version normaliser accepted `vv0.27.0`, so the row written about
 # that defect never ran for one of the engines that had it. It is a domain engine over a `.claude/` fleet
 # rather than code, so it gets a fleet fixture; the probe is otherwise identical.
-if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
+# A MISSING candor-agents is REPORTED, never a silent skip. The row was guarded by a bare `if` that
+# vanished when the repo was absent — which is exactly what happened in candor-spec CI, where the
+# checkout did not exist, so PART 33 printed "every engine" over four. Absence is now named.
+if [ ! -d "$HERE/../../candor-agents" ]; then
+  echo "  · candor-agents NOT CHECKED (repo absent) — this row did not run; PART 33 covers 4 engines here"
+  [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; EP_OK=1; }
+elif command -v python3 >/dev/null 2>&1; then
   EPA="$W/enginepin/agents"; mkdir -p "$EPA/.claude"
   EP_AV=$(python3 -c "import sys; sys.path.insert(0,'$HERE/../../candor-agents'); from candor_agents.scan import RELEASE; print(RELEASE)" 2>/dev/null)
   if [ -n "$EP_AV" ]; then
