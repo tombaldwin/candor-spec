@@ -139,6 +139,14 @@ jobs:
         with:
           repository: tombaldwin/candor-ts
           path: candor-ts
+
+      # PART 33 probes candor-agents. Added to BOTH differential legs: the previous commit added it to
+      # one, and this leg runs with CONFORMANCE_REQUIRE_ALL=1, so a missing checkout turns it RED.
+      - name: Checkout candor-agents (fleet engine — PART 33)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-agents
+          path: candor-agents
       - name: Checkout candor-swift (Swift engine)
         uses: actions/checkout@v6
         with:
