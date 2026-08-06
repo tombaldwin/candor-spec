@@ -14,6 +14,15 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Panel review: SPEC §3.4 gains the ruling for a collision two MUSTs created.** "Ignore a pin
+  qualified for another implementation" and "an unreadable pin exits 2" disagree on
+  `engine swift 0.99.0 junk`, and a differential found the family split three ways on it. The skip is
+  now WHOLE-LINE and takes precedence: read the qualifier first, and a malformed line naming another
+  engine is that engine's problem. Also stated: a version carries AT MOST ONE leading `v`, and config
+  parsing must tolerate CRLF. **Conformance PART 33 gains a row for each — plus the VACUITY FLOOR it
+  lacked**: every row compared against the no-pin baseline, so an engine that always exited 2 would
+  have passed the whole part. PART 32 had a floor; this one did not until a review said so.
+
 
 ## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
