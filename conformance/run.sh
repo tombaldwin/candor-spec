@@ -5005,9 +5005,15 @@ ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; 
   # exited 0 in java and 2 in the other four, because its precedence returned the qualified pin without
   # ever looking at the unreadable line. Precedence decides which VERSION applies, not whether a line you
   # were supposed to read parses.
-  printf 'engine 0.26.0 oops\nengine %s v%s\n' "$impl" "$running" > "$cfgdir/.candor/config"
-  "${cmd[@]}" >/dev/null 2>&1; rc=$?
-  [ "$rc" = 2 ] || { echo "     FAIL $label: an unreadable UNQUALIFIED line was hidden by a qualified pin (exit $rc, want 2)"; bad=1; }
+  # BOTH SPELLINGS. The row shipped with only the two-token form, which every engine caught by ARITY —
+  # so it was green five-way while the ONE-TOKEN form (`engine garbage`) split the family four against
+  # java, silently. A row that pins one spelling of a rule pins one spelling of a rule; this is the
+  # split-invariance lesson (44 fixtures, one spelling each) arriving in a hand-written part.
+  for junk in "0.26.0 oops" "garbage"; do
+    printf 'engine %s\nengine %s v%s\n' "$junk" "$impl" "$running" > "$cfgdir/.candor/config"
+    "${cmd[@]}" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 2 ] || { echo "     FAIL $label: unreadable UNQUALIFIED line \`engine $junk\` hidden by a qualified pin (exit $rc, want 2)"; bad=1; }
+  done
   # AT MOST ONE LEADING `v`. Two engines stripped every one, so `vv0.27.0` was a valid pin to them and
   # MALFORMED to the other three — the family disagreeing on what counts as a version.
   printf 'engine vv%s\n' "$running" > "$cfgdir/.candor/config"
