@@ -2366,6 +2366,20 @@ policy): one engine may lead a rung, so a bare version in a polyglot repo would 
 not yet caught up. `engine java v0.27.0` pins one implementation; an unqualified `engine v0.27.0` applies
 to whichever engine reads it; a qualified pin takes precedence over an unqualified one. An implementation
 MUST ignore a pin qualified for a different implementation — one config serves the whole family.
+**That skip is WHOLE-LINE and takes precedence over the unreadable-pin rule above.** The two clauses
+collide on a line like `engine swift 0.99.0 junk`, and a cross-engine differential found the family split
+three ways on it: one engine ignored it, three refused their OWN run over a line naming an engine they are
+not, and the engine it actually names refused (correctly). A malformed line qualified for another
+implementation is THAT implementation's problem, and it will refuse on it; killing every other engine's
+run as well turns one typo into a family-wide outage. So read the qualifier FIRST: if it names a known
+implementation that is not yours, the line is not yours, whatever follows it. A line that is unqualified,
+qualified for YOU, or whose qualifier is not a known implementation at all (`engine kotlin v1`) is yours
+to read, and MUST be MALFORMED if it is unreadable.
+
+**A version token carries AT MOST ONE leading `v`.** `vv0.27.0` is not a version; two engines accepted it
+as one by stripping every leading `v`, so the same bytes were a valid pin to two implementations and
+MALFORMED to three. Config parsing MUST also tolerate CRLF: a trailing `\r` is whitespace, not part of
+the version — one engine refused a MATCHING pin on a repository checked out on Windows.
 
 There is deliberately **no `CANDOR_ENGINE` environment variable**, breaking the 1:1 key↔env mapping the
 rest of this table keeps. Every other key configures what the run *does*; this one asserts what the run

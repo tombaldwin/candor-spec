@@ -4966,6 +4966,26 @@ ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; 
   printf 'engine %s v0.0.1\n' "$other" > "$cfgdir/.candor/config"
   "${cmd[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" = "$base" ] || { echo "     FAIL $label: a pin qualified for \`$other\` changed this engine's exit ($rc vs $base)"; bad=1; }
+  # …AND A MALFORMED LINE QUALIFIED FOR ANOTHER IMPLEMENTATION IS STILL NOT OURS. A differential split the
+  # family three ways on `engine swift 0.99.0 junk`: one engine ignored it, three killed their OWN run over
+  # a line naming an engine they are not, and the engine it names refused (correctly). SPEC §3.4 rules the
+  # skip WHOLE-LINE — otherwise one typo is a family-wide outage.
+  printf 'engine %s 0.99.0 junk\n' "$other" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = "$base" ] || { echo "     FAIL $label: a JUNKED line qualified for \`$other\` killed this engine's run ($rc vs $base)"; bad=1; }
+  # AT MOST ONE LEADING `v`. Two engines stripped every one, so `vv0.27.0` was a valid pin to them and
+  # MALFORMED to the other three — the family disagreeing on what counts as a version.
+  printf 'engine vv%s\n' "$running" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label: \`vv$running\` was accepted as a version (exit $rc, want 2)"; bad=1; }
+  # CRLF. `\r` is whitespace, not part of the version — one engine refused a MATCHING pin on a repository
+  # checked out on Windows, which is "same file, two meanings" verbatim.
+  printf 'engine v%s\r\n' "$running" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = "$base" ] || { echo "     FAIL $label: a CRLF config broke a MATCHING pin (exit $rc vs $base)"; bad=1; }
+  # THE VACUITY FLOOR. Every row above compares against \$base, so an engine that ALWAYS exits 2 would
+  # pass the whole part. PART 32 got a floor; this one did not until a review pointed it out.
+  [ "$base" != 2 ] || { echo "     FAIL $label: the no-pin baseline is itself exit 2 — every row here would be vacuous"; bad=1; }
   rm -f "$cfgdir/.candor/config"
   [ "$bad" = 0 ] && { echo "  $label match=silent mismatch=2 unreadable=2 other-impl=ignored"; return 0; }
   return 1
