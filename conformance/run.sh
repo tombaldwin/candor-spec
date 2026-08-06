@@ -5182,17 +5182,41 @@ ar_probe() { # $1 label ; then the scan command with the TARGET LAST
   [ "$rc" = 2 ] || { echo "     FAIL $label (c): --gate-json naming the --policy exited $rc, not 2"; bad=1; }
   [ "$before" = "$after" ] || { echo "     FAIL $label (c): the run DESTROYED its own policy — the gate then runs over zero rules and reads green"; bad=1; }
   # …and by SPELLING, not by string: `./P` from P's own directory is the same file.
-  ( cd "$ARW" && "${cmd[@]}" --policy "$P" --gate-json "./gate.policy" >/dev/null 2>&1 )
+  ( cd "$ARW" && "${cmd[@]}" --policy "$P" --gate-json "./gate.policy" >/dev/null 2>&1 ); rc=$?
   after=$(cksum < "$P")
   [ "$before" = "$after" ] || { echo "     FAIL $label (c): a different SPELLING of the same file defeated the guard — resolve the artifact, not the string"; bad=1; }
+  # …and the EXIT CODE, not only the bytes: an engine that silently exits 0 on the relative spelling
+  # leaves the policy untouched and still tells CI the gate passed.
+  [ "$rc" = 2 ] || { echo "     FAIL $label (c): the relative-spelling collision exited $rc, not 2 — the policy survived but the run reported a verdict it never computed"; bad=1; }
 
-  # (d) the sink names a .candor/config.
-  mkdir -p "$tgt/.candor"; printf '# conformance\n' > "$tgt/.candor/config"
-  before=$(cksum < "$tgt/.candor/config")
-  "${cmd[@]}" --gate-json "$tgt/.candor/config" >/dev/null 2>&1; rc=$?
-  after=$(cksum < "$tgt/.candor/config")
+  # (d) the sink names a .candor/config. Written under $ARW, NOT into the shared fixture tree: the check
+  # is on the SHAPE (a file named `config` inside a `.candor` directory), so any such path exercises it,
+  # and an interrupted run must not leave a `.candor/config` in $GDIR — PART 13 copies those fixtures,
+  # so a leftover from here would silently become another part's input.
+  mkdir -p "$ARW/decoy/.candor"; printf '# conformance\n' > "$ARW/decoy/.candor/config"
+  before=$(cksum < "$ARW/decoy/.candor/config")
+  "${cmd[@]}" --gate-json "$ARW/decoy/.candor/config" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$ARW/decoy/.candor/config")
   [ "$rc" = 2 ] || { echo "     FAIL $label (d): --gate-json naming a .candor/config exited $rc, not 2"; bad=1; }
   [ "$before" = "$after" ] || { echo "     FAIL $label (d): the run DESTROYED the config that configures it"; bad=1; }
+
+  # (f) THE POLICY CAME FROM `.candor/config`, WHICH IS THE FORM CI ACTUALLY USES. The first version of
+  # this guard keyed on the `--policy` FLAG, so a policy declared by the checked-in config was invisible
+  # to it and `--gate-json <that policy>` destroyed it and exited 0 with `"ok": true` in ALL FOUR
+  # ENGINES — after rows (a)-(e) were already green. A policy does not change what it is according to
+  # how the operator handed it over.
+  # This one MUST live in the scan target — the whole point is that the engine DISCOVERS it — so it is
+  # removed on the way out below, and the suite's own workspace is torn down per run.
+  mkdir -p "$tgt/.candor"; printf 'policy %s\n' "$P" > "$tgt/.candor/config"
+  before=$(cksum < "$P")
+  "${cmd[@]}" --gate-json "$P" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$P")
+  [ "$rc" = 2 ] || { echo "     FAIL $label (f): a sink naming the CONFIG-DECLARED policy exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label (f): the run destroyed a policy it reached through .candor/config — the guard keyed on the flag"; bad=1; }
+  # …and the CONTROL for (f): with the config-declared policy intact and a sink of its own, the gate
+  # still fires. Without this the row above passes on an engine that stopped reading configs at all.
+  "${cmd[@]}" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label (f-control): the config-declared policy did not GATE (exit $rc, want 1) — row (f) would be vacuous"; bad=1; }
   rm -f "$tgt/.candor/config"
 
   # (e) THE CONTROL and the vacuity floor.
@@ -5205,10 +5229,59 @@ ar_probe() { # $1 label ; then the scan command with the TARGET LAST
   [ "$bad" = 0 ] && { echo "  $label armed=yes order-independent=yes input-safe=yes verdict-replaces=yes"; return 0; }
   return 1
 }
+# THE `gate` QUERY VERB TOO. PART 34 shipped covering only the four SCAN CLIs, and the reference
+# engine's `gate` verb — the SUPPLY-CHAIN surface, the one a consumer points at a report someone else
+# produced — had none of the guard: `gate --report R --policy P --gate-json P` exited 0 with
+# `"ok": true` after overwriting P, while the same engine's scan route refused. A part that pins a rule
+# on one route pins it on one route.
+ar_gate_probe() { # $1 label ; $2 report path ; then the gate command (…gate)
+  local label=$1 rep=$2; shift 2
+  local cmd=( "$@" ) bad=0 rc before after
+  [ -f "$rep" ] || { echo "     FAIL $label gate: no report at $rep — the row would be vacuous"; return 1; }
+  local G="$ARW/qverdict.json" P="$ARW/qgate.policy"
+  printf 'deny Fs\n' > "$P"
+  # the control: this policy really does fire on this report
+  "${cmd[@]}" --report "$rep" --policy "$P" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label gate (control): the policy did not fire on this report (exit $rc, want 1) — every row below would be vacuous"; bad=1; }
+  # the sink names the policy
+  before=$(cksum < "$P")
+  "${cmd[@]}" --report "$rep" --policy "$P" --gate-json "$P" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$P")
+  [ "$rc" = 2 ] || { echo "     FAIL $label gate: --gate-json naming the --policy exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label gate: the run DESTROYED its own policy and reported a verdict over the wreckage"; bad=1; }
+  # the sink names the REPORT being read — §3.3.1 names this input explicitly
+  before=$(cksum < "$rep")
+  "${cmd[@]}" --report "$rep" --policy "$P" --gate-json "$rep" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$rep")
+  [ "$rc" = 2 ] || { echo "     FAIL $label gate: --gate-json naming the --report exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label gate: the run DESTROYED the report it was asked to judge"; bad=1; }
+  # argv order: an unknown flag BEFORE the sink must still leave a refusal
+  printf '%s\n' "$AR_STALE" > "$G"
+  "${cmd[@]}" --zzz-not-a-flag --report "$rep" --policy "$P" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label gate: an unknown flag exited $rc, not 2"; bad=1; }
+  ar_is_refusal "$G" || { echo "     FAIL $label gate: an unknown flag BEFORE --gate-json left the stale green — the contract depends on argv ORDER"; bad=1; }
+  rm -f "$G" "$P"
+  [ "$bad" = 0 ] && { echo "  $label gate  input-safe=yes report-safe=yes order-independent=yes"; return 0; }
+  return 1
+}
+
 ar_probe "candor-java " java -jar "$JAR" "$W/g_java" || AR_OK=1
 ar_probe "candor-scan " "$SCAN" "$GDIR/rust" || AR_OK=1
 [ -n "$TS_OK" ] && { ar_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || AR_OK=1; }
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { ar_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || AR_OK=1; }
+ARR="$ARW/reports"; mkdir -p "$ARR"
+java -jar "$JAR" "$W/g_java" --json "$ARR/java.json" >/dev/null 2>&1
+ar_gate_probe "candor-java " "$ARR/java.json" java -jar "$JAR" gate || AR_OK=1
+"$SCAN" "$GDIR/rust" --out "$ARR/rust" >/dev/null 2>&1
+ar_gate_probe "candor-scan " "$(ls "$ARR"/rust*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" "$QUERY" gate || AR_OK=1
+if [ -n "$TS_OK" ]; then
+  node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$ARR/ts" >/dev/null 2>&1
+  ar_gate_probe "candor-ts   " "$(ls "$ARR"/ts*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" node "$TS_DIR/query.mjs" gate || AR_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  "$SW_BIN" "$GDIR/swift" --out "$ARR/sw" >/dev/null 2>&1
+  ar_gate_probe "candor-swift" "$(ls "$ARR"/sw*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" "$SW_BIN" gate || AR_OK=1
+fi
 echo "PART 34 — SPEC §3.3.1: the sink is armed before every exit, and never armed over an input"
 if [ "$AR_OK" = 0 ]; then
   echo "  -> MATCH — a refusal never leaves a stale green, and --gate-json cannot destroy the policy or the config"

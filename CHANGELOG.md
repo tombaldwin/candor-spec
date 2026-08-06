@@ -14,6 +14,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Conformance PART 34 grows the rows that would have caught this round.** As shipped it probed the four
+  SCAN CLIs with a `--policy` FLAG, and a review then found two cardinal sins it was blind to by
+  construction: the reference engine's `gate` VERB had none of the guard (`gate --report R --policy P
+  --gate-json P` → exit 0, `"ok": true`, policy destroyed), and in ALL FOUR engines a policy declared by
+  `.candor/config` — the checked-in form CI uses — was invisible to a guard that keyed on the flag. Two
+  new row groups: the config-declared-policy channel with its own control, and the `gate` verb on four
+  engines, including the sink naming the `--report` (which §3.3.1 lists as an input and no engine
+  checked). The report rows immediately failed rust and ts. Row (c) now also asserts the EXIT CODE on the
+  relative-spelling retry, not just the policy's bytes.
+
 - **Conformance PART 33 gains an ASCII-digit row.** `Character.isNumber` (Swift) and `str.isdigit()`
   (Python) are Unicode-wide, so `engine ٣.٣` NORMALISED as a version in two engines — a MISMATCH rather
   than MALFORMED, which is the difference that decides whether the "unreadable unqualified line is not
