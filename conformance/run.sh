@@ -5024,6 +5024,19 @@ ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; 
   printf 'engine v%s\r\n' "$running" > "$cfgdir/.candor/config"
   "${cmd[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" = "$base" ] || { echo "     FAIL $label: a CRLF config broke a MATCHING pin (exit $rc vs $base)"; bad=1; }
+  # UNICODE WHITESPACE SEPARATES THE KEY FROM ITS VALUE. A NO-BREAK SPACE (U+00A0) is what you get by
+  # pasting a config out of a rendered doc, and two engines split only on ASCII space/tab: the line
+  # became the single token `engine\u00A0`, which is not the key `engine`, so it was reported as an
+  # "ignoring unknown config key 'engine '" — a FALSE disclosure, because the pin it names went
+  # SILENTLY UNENFORCED and a MISMATCHED pin passed at exit 0. Two of five fail-open, and the reference
+  # engine was one of them. Both directions are pinned: the mismatch must refuse, and a MATCHING pin
+  # separated the same way must still hold, so an engine cannot pass by rejecting the whole line.
+  printf 'engine\xc2\xa00.0.1\n' > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label: a MISMATCHED pin separated by U+00A0 exited $rc, not 2 — the key was not recognised and the pin went unenforced"; bad=1; }
+  printf 'engine\xc2\xa0v%s\n' "$running" > "$cfgdir/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = "$base" ] || { echo "     FAIL $label: a MATCHING pin separated by U+00A0 changed the exit ($rc vs $base)"; bad=1; }
   # THE VACUITY FLOOR. Every row above compares against \$base, so an engine that ALWAYS exits 2 would
   # pass the whole part. PART 32 got a floor; this one did not until a review pointed it out.
   [ "$base" != 2 ] || { echo "     FAIL $label: the no-pin baseline is itself exit 2 — every row here would be vacuous"; bad=1; }
@@ -5080,9 +5093,121 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 34 — SPEC §3.3.1: THE GATE SINK IS ARMED, AND NEVER ARMED OVER AN INPUT             [TIER 1]
+#
+# WHY THIS PART EXISTS. A release review found a machine-readable FALSE ALL-CLEAR in FOUR engines at
+# once, and this entire suite would have passed every one of them: nothing here had ever seeded a stale
+# document, and nothing had ever pointed `--gate-json` at a file the run itself reads. The defect is
+# invisible to a suite that only checks the verdict of a run that COMPLETES.
+#
+# The hazard is the CI wrapper that reads the artifact rather than the exit code. A refusal that writes
+# nothing leaves the PREVIOUS run's document on disk, and a green file from yesterday's clean run is how
+# a refusal becomes an all-clear. Every row below therefore SEEDS a green document first — asserting
+# about a fresh path proves nothing, because the failure mode IS the stale one.
+#
+# FIVE ROWS:
+#   (a) an unknown flag beside `--gate-json` -> exit 2 AND the stale green is REPLACED by a refusal.
+#       §3.3 names an unknown flag as a broken-gate-config exit-2 cause; §3.1 requires a document on
+#       EVERY exit-2 cause and calls a carve-out "a fail-open path with a reason attached".
+#   (b) …with the flags in the OTHER ORDER -> identical. Arming inside the flag loop made the contract
+#       depend on argv order in three engines: one spelling wrote a refusal, the other left yesterday's
+#       verdict, and nothing about the operator's intent differed between them.
+#   (c) `--policy P --gate-json P` -> exit 2, NOTHING written, P byte-identical. Measured: the armed
+#       JSON replaced the policy, every line of it then parsed as an unknown rule, and a gate that exits
+#       1 on the same code exited 0 with `"ok": true`. An all-clear produced by deleting the question.
+#   (d) `--gate-json <target>/.candor/config` -> exit 2, config intact. The config is DISCOVERED by
+#       walking up from the target, so a path-comparison guard cannot see it until arming has already
+#       destroyed it; this has to be a check on the SHAPE.
+#   (e) THE CONTROL and the vacuity floor: a real violating run still exits 1 and REPLACES the armed
+#       document with a verdict carrying `violations`. Without it an engine that armed and never wrote
+#       anything again would pass (a)-(d) perfectly.
+#
+# Row (c) also pins the ARTIFACT rule: the collision is retried as `./P` against an absolute `--policy`,
+# the spelling that defeated the one engine which already had this guard.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[34] GATE SINK ARMING  (SPEC §3.3.1 — a refusal must not leave yesterday's green on disk)"
+AR_OK=0
+ARW="$W/arming"; mkdir -p "$ARW"
+AR_STALE='{"spec":"0.0","ok":true,"violations":[]}'
+# A fail-closed refusal is ok:false + refused:true and NO `violations` key (§3.1: the gate is making no
+# claim about violations, and an empty array there is precisely the claim it cannot make).
+AR_PY_REFUSAL='import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(1)
+sys.exit(0 if d.get("ok") is False and d.get("refused") is True and "violations" not in d else 1)'
+AR_PY_HASVIOL='import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(1)
+sys.exit(0 if "violations" in d else 1)'
+ar_is_refusal()    { python3 -c "$AR_PY_REFUSAL" "$1" 2>/dev/null; }
+ar_has_violations(){ python3 -c "$AR_PY_HASVIOL" "$1" 2>/dev/null; }
+
+ar_probe() { # $1 label ; then the scan command with the TARGET LAST
+  local label=$1; shift
+  local cmd=( "$@" ) tgt bad=0 rc before after
+  tgt="${cmd[$(( ${#cmd[@]} - 1 ))]}"
+  local G="$ARW/verdict.json" P="$ARW/gate.policy"
+  printf 'deny Fs\n' > "$P"
+
+  # (a) unknown flag AFTER --gate-json
+  printf '%s\n' "$AR_STALE" > "$G"
+  "${cmd[@]}" --gate-json "$G" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (a): an unknown flag exited $rc, not 2"; bad=1; }
+  ar_is_refusal "$G" || { echo "     FAIL $label (a): an unknown flag left the STALE GREEN at --gate-json — a wrapper reading that path sees a pass"; bad=1; }
+
+  # (b) …the other way round. Same command, same intent; three engines answered differently.
+  printf '%s\n' "$AR_STALE" > "$G"
+  "${cmd[@]}" --zzz-not-a-flag --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (b): an unknown flag BEFORE --gate-json exited $rc, not 2"; bad=1; }
+  ar_is_refusal "$G" || { echo "     FAIL $label (b): the contract depends on ARGV ORDER — the same mistake spelled the other way left the stale green"; bad=1; }
+
+  # (c) the sink names the policy. Nothing may be written, and the policy must survive.
+  before=$(cksum < "$P")
+  "${cmd[@]}" --policy "$P" --gate-json "$P" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$P")
+  [ "$rc" = 2 ] || { echo "     FAIL $label (c): --gate-json naming the --policy exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label (c): the run DESTROYED its own policy — the gate then runs over zero rules and reads green"; bad=1; }
+  # …and by SPELLING, not by string: `./P` from P's own directory is the same file.
+  ( cd "$ARW" && "${cmd[@]}" --policy "$P" --gate-json "./gate.policy" >/dev/null 2>&1 )
+  after=$(cksum < "$P")
+  [ "$before" = "$after" ] || { echo "     FAIL $label (c): a different SPELLING of the same file defeated the guard — resolve the artifact, not the string"; bad=1; }
+
+  # (d) the sink names a .candor/config.
+  mkdir -p "$tgt/.candor"; printf '# conformance\n' > "$tgt/.candor/config"
+  before=$(cksum < "$tgt/.candor/config")
+  "${cmd[@]}" --gate-json "$tgt/.candor/config" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$tgt/.candor/config")
+  [ "$rc" = 2 ] || { echo "     FAIL $label (d): --gate-json naming a .candor/config exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label (d): the run DESTROYED the config that configures it"; bad=1; }
+  rm -f "$tgt/.candor/config"
+
+  # (e) THE CONTROL and the vacuity floor.
+  printf '%s\n' "$AR_STALE" > "$G"
+  "${cmd[@]}" --policy "$P" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label (e): the fixture no longer violates \`deny Fs\` (exit $rc) — every row above would be vacuous"; bad=1; }
+  ar_has_violations "$G" || { echo "     FAIL $label (e): a real verdict did not replace the armed document — the engine arms and never disarms"; bad=1; }
+
+  rm -f "$G" "$P"
+  [ "$bad" = 0 ] && { echo "  $label armed=yes order-independent=yes input-safe=yes verdict-replaces=yes"; return 0; }
+  return 1
+}
+ar_probe "candor-java " java -jar "$JAR" "$W/g_java" || AR_OK=1
+ar_probe "candor-scan " "$SCAN" "$GDIR/rust" || AR_OK=1
+[ -n "$TS_OK" ] && { ar_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || AR_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { ar_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || AR_OK=1; }
+echo "PART 34 — SPEC §3.3.1: the sink is armed before every exit, and never armed over an input"
+if [ "$AR_OK" = 0 ]; then
+  echo "  -> MATCH — a refusal never leaves a stale green, and --gate-json cannot destroy the policy or the config"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
