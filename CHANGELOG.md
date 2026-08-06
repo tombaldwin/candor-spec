@@ -16,6 +16,12 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
+- **PART 33's candor-agents row certified what CI never ran.** candor-spec's conformance workflow never
+  checked the engine out, and the row was guarded by a bare `if` that vanished when the repo was absent —
+  so CI printed "the engine pin is enforced identically in EVERY engine" over four. The checkout is now
+  fatal like the other three, and an absent repo is reported rather than skipped. A new row also pins the
+  malformed-unqualified case the reference engine was getting wrong.
+
 - **Conformance PART 33 now probes candor-agents.** Its headline said "every engine" and the changelog
   said "ALL FIVE now enforce it (PART 33 pins that)" while it tested four — and agents was one of the two
   engines whose normaliser accepted `vv0.27.0`, so the row written about that defect never ran for one of
