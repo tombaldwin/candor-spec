@@ -2870,11 +2870,12 @@ mkdir -p "$VOCW/java"; javac -d "$VOCW/java" $(find "$GDIR/java" -name '*.java')
 # The shared family vocabulary (candor-spec §config). A key here is RECOGNIZED by every engine.
 #
 # `engine` (⟨0.28 PROPOSED⟩ §3.4) is here from the release that introduces it, and that timing is the
-# point. It ships ASYMMETRIC — candor-java enforces the pin, the other four accept the key and disclose
-# it as inert — which is the ladder working as designed, but it is also exactly the shape that produced
-# the `net-partner` false disclosure: a key reported as ignored while a sibling engine honoured it. An
-# asymmetry nothing pins is an asymmetry nobody can tell from a defect, so it is pinned in the state it
-# actually ships rather than when the ladder finishes.
+# point. It shipped ASYMMETRIC for a few hours — java enforcing, the rest disclosing it as inert — which
+# is exactly the shape that produced the `net-partner` false disclosure: a key reported as ignored while
+# a sibling engine honoured it. ALL FIVE now enforce it (PART 33 pins that), so this row's job is the
+# narrower one it was always for: the key is RECOGNIZED, never reported unknown. The probe value stays
+# qualified for an implementation none of the probed engines are, so it exercises the parse without
+# becoming an enforcement test — that belongs to PART 33.
 VOCAB="policy baseline strict no-ambient closed-world taint deps unknown-alias net-partner unknown-ratchet engine"
 # Keys that carry a VALUE the parser needs; the rest are booleans/flags. Values are inert for this part
 # (nothing is enforced — we read stderr only), they just have to parse.
@@ -4912,6 +4913,32 @@ zm_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZM_OK=1
 zm_probe "candor-scan " "$SCAN" "$GDIR/rust" --out "$ZMW/r" || ZM_OK=1
 [ -n "$TS_OK" ] && { zm_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$ZMW/t" || ZM_OK=1; }
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { zm_probe "candor-swift" "$SW_BIN" "$GDIR/swift" --out "$ZMW/s" || ZM_OK=1; }
+# THE `gate --report` ROUTE TOO. §4's MUST carries no route qualifier, and a differential found java and
+# swift disclosing there while rust and ts stayed silent — so on the SUPPLY-CHAIN gate, the surface a
+# consumer points at a report someone else produced, a typo'd layer was still scored as satisfied by half
+# the family. PART 32 pinned the scan route only, which is why the split survived it.
+zm_gate_probe() { # $1 label ; $2 report path ; then the gate command (…gate --report <r> --policy <p>)
+  local label=$1 rep=$2; shift 2
+  [ -f "$rep" ] || { echo "     FAIL $label: no report at $rep — the gate row would be vacuous"; return 1; }
+  local out; out=$( "$@" --report "$rep" --policy "$ZMW/miss.policy" 2>&1 >/dev/null )
+  case "$out" in
+    *"matched NO function"*) echo "  $label gate --report: disclosed"; return 0 ;;
+    *) echo "     FAIL $label: gate --report scored a zero-match rule as satisfied, in silence"; return 1 ;;
+  esac
+}
+ZMR="$ZMW/reports"; mkdir -p "$ZMR"
+java -jar "$JAR" "$W/g_java" --json "$ZMR/java.json" >/dev/null 2>&1
+zm_gate_probe "candor-java " "$ZMR/java.json" java -jar "$JAR" gate || ZM_OK=1
+"$SCAN" "$GDIR/rust" --out "$ZMR/rust" >/dev/null 2>&1
+zm_gate_probe "candor-scan " "$(ls "$ZMR"/rust*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" "$QUERY" gate || ZM_OK=1
+if [ -n "$TS_OK" ]; then
+  node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$ZMR/ts" >/dev/null 2>&1
+  zm_gate_probe "candor-ts   " "$(ls "$ZMR"/ts*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" node "$TS_DIR/query.mjs" gate || ZM_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  "$SW_BIN" "$GDIR/swift" --out "$ZMR/sw" >/dev/null 2>&1
+  zm_gate_probe "candor-swift" "$(ls "$ZMR"/sw*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" "$SW_BIN" gate || ZM_OK=1
+fi
 echo "PART 32 — SPEC §4: a rule whose scope binds no function is disclosed, and the verdict is untouched"
 if [ "$ZM_OK" = 0 ]; then
   echo "  -> MATCH — every engine discloses a zero-match rule, exempts a scopeless deny, and leaves the exit code alone"
