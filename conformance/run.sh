@@ -5418,10 +5418,242 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 36 — SPEC §3.1/§4 ⟨0.27⟩: THE VERDICT DOCUMENT'S THREE UNPINNED CELLS                [TIER 1]
+#
+# WHY THIS PART EXISTS. A cross-engine review found three cells in the ONE machine artifact a CI
+# wrapper reads — the `--gate-json` document — where the engines agreed on the exit code and diverged
+# on the DOCUMENT, which is the worse half: the exit code is one bit, the document is the evidence.
+# Measured before the fixes:
+#
+#   (a) THE COMPOSED DOCUMENT (a certain AS-EFF-005 baseline regression beside a policy token that
+#       cannot be honoured): FOUR spellings. java and rust put `refused: true` beside `violations` —
+#       but `refused` is the refusal document's DISCRIMINATOR, whose pinned meaning ("the gate is
+#       making no claim about violations") contradicts a document that carries them. swift omitted
+#       `unevaluated` entirely; ts listed only the offending line, so `deny Fs`, absent from the
+#       list on an exit-1 document, read as evaluated-and-passed — a per-rule false all-clear.
+#       The ruling (§3.1's composed-document clause): a violations-bearing document is a VERDICT,
+#       never carries `refused`/`reason`, and discloses the refusal as `unevaluated` — one entry
+#       PER RULE of the refused policy, raw line verbatim.
+#   (b) THE STREAM SINK (`--gate-json -` on an exit-2 cause): answered or EMPTY by CAUSE. An
+#       unhonourable policy wrote the refusal to stdout in all engines; an unknown flag wrote it in
+#       ONE of five and left stdout empty in the rest — the same operator mistake, answered or not
+#       according to which early exit fired. §3.1's stream-sink clause: the fail-closed document is
+#       written to stdout on EVERY exit-2 cause, as the stream's only content (a stream cannot be
+#       armed, so the write-at-exit IS the whole mechanism).
+#   (c) `zeroMatch` (§4): the zero-match list was stderr-only in ALL FIVE engines, so a machine
+#       consumer could not see that a rule bound nothing — the typo'd-scope silently-green gate,
+#       one channel over from the blindness PART 32 closed on the console.
+#
+# VACUITY FLOORS, one per group, because each assertion above has a degenerate pass:
+#   (a0) the no-policy control must exit 1 with AS-EFF-005 in the document — else every (a) row is
+#        asserting about a baseline fixture that no longer regresses;
+#   (a5) the SOLE-refusal control must still produce `refused: true` + NO `violations` key — else
+#        "no `refused` on the composed document" is satisfied by an engine that never emits the key;
+#   (b3) a VIOLATING run on the stream must put a violations-bearing verdict on stdout — else (b)
+#        is satisfied by an engine that writes a refusal to stdout unconditionally;
+#   (c3) a firing scopeless rule must exit 1 with NO `zeroMatch` key — else (c1) is satisfied by an
+#        engine that emits `zeroMatch` for every rule, and the fixture is proven to actually bind.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[36] VERDICT-DOCUMENT CELLS  (SPEC §3.1/§4 ⟨0.27⟩ — composed shape, stream sink, zeroMatch)"
+VD_OK=0
+VDW="$W/vd"; mkdir -p "$VDW"
+printf 'deny Clock\ndeny Frobnicate\n' > "$VDW/bad.policy"    # one honourable no-match line + one bad token
+
+# One checker for every row: reads a JSON document (a file or captured stdout) and asserts the
+# properties a row names. Property vocabulary: ok0 (ok is false), refused (refused:true + NO
+# violations key), norefused (no `refused`/`reason` key), viol (non-empty violations), v005
+# (violations name AS-EFF-005), unev:<raw;raw> (unevaluated rules EQUAL this ;-list, verbatim),
+# zm:<raw> (zeroMatch EQUALS [raw]), nozm (no zeroMatch key), okt (ok is true).
+VD_PY='import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception as e: print(f"  unparseable document: {e}"); sys.exit(1)
+bad=[]
+for want in sys.argv[2:]:
+    if want=="ok0" and d.get("ok") is not False: bad.append("ok is not false")
+    if want=="okt" and d.get("ok") is not True: bad.append("ok is not true")
+    if want=="refused" and not (d.get("refused") is True and "violations" not in d): bad.append("not a refusal document (refused:true + NO violations key)")
+    if want=="norefused" and ("refused" in d or "reason" in d): bad.append("carries the refusal document discriminator (`refused`/`reason`) beside violations")
+    if want=="viol" and not d.get("violations"): bad.append("violations empty/absent")
+    if want=="v005" and not any(v.get("rule")=="AS-EFF-005" for v in d.get("violations",[])): bad.append("AS-EFF-005 not in violations")
+    if want.startswith("unev:"):
+        got=[u.get("rule") for u in d.get("unevaluated",[])]
+        exp=want[5:].split(";")
+        if sorted(got)!=sorted(exp): bad.append(f"unevaluated rules {got} != {exp}")
+    if want.startswith("zm:"):
+        got=d.get("zeroMatch")
+        if got!=[want[3:]]: bad.append(f"zeroMatch {got!r} != [{want[3:]!r}]")
+    if want=="nozm" and "zeroMatch" in d: bad.append("zeroMatch present on a fully-binding verdict")
+for b in bad: print(f"  {b}")
+sys.exit(1 if bad else 0)'
+vd_doc() { python3 -c "$VD_PY" "$@"; }
+
+# ── fixtures: a BEFORE (Fs) and AFTER (Fs+Net) per engine, baselines recorded in-run ──────────────
+mkdir -p "$VDW/jb/q" "$VDW/ja/q" "$VDW/rb/src" "$VDW/ra/src" "$VDW/tb" "$VDW/ta" "$VDW/swb/gd" "$VDW/swa/gd"
+printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); } }\n' > "$VDW/jb/q/G.java"
+printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); new java.net.Socket("h", 80); } }\n' > "$VDW/ja/q/G.java"
+javac -d "$VDW/jbc" "$VDW/jb/q/G.java" 2>/dev/null && javac -d "$VDW/jac" "$VDW/ja/q/G.java" 2>/dev/null || { echo "FAIL: javac on the PART 36 fixtures"; exit 2; }
+printf '[package]\nname = "vd"\nversion = "0.0.0"\nedition = "2021"\n' | tee "$VDW/rb/Cargo.toml" > "$VDW/ra/Cargo.toml"
+printf 'pub fn entry() { let _ = std::fs::read("/x"); }\n' > "$VDW/rb/src/lib.rs"
+printf 'pub fn entry() { let _ = std::fs::read("/x"); let _ = std::net::TcpStream::connect("h:80"); }\n' > "$VDW/ra/src/lib.rs"
+printf 'import * as fsm from "node:fs";\nexport function entry(): string { return fsm.readFileSync("/x", "utf8"); }\n' > "$VDW/tb/vd.ts"
+printf 'import * as fsm from "node:fs";\nimport * as netm from "node:net";\nexport function entry(): string { netm.connect(80, "h"); return fsm.readFileSync("/x", "utf8"); }\n' > "$VDW/ta/vd.ts"
+printf 'import Foundation\nfunc entry() { _ = FileManager.default.contents(atPath: "/x") }\n' > "$VDW/swb/gd/a.swift"
+printf 'import Foundation\nimport Network\nfunc entry() { _ = FileManager.default.contents(atPath: "/x"); _ = NWConnection(host: "h", port: 80, using: .tcp) }\n' > "$VDW/swa/gd/a.swift"
+java -jar "$JAR" "$VDW/jbc" --json "$VDW/jbase.json" >/dev/null 2>&1 || { echo "FAIL: java PART 36 baseline scan"; exit 2; }
+"$SCAN" "$VDW/rb" >/dev/null 2>&1 || { echo "FAIL: rust PART 36 baseline scan"; exit 2; }
+cp "$(ls "$VDW"/rb/.candor/report.*.scan.json | grep -v callgraph | head -1)" "$VDW/rbase.json"
+[ -n "$TS_OK" ] && { node "$TS_DIR/scan.mjs" "$VDW/tb/vd.ts" "$VDW/tbase" >/dev/null 2>&1; [ -s "$VDW/tbase.json" ] || { echo "FAIL: ts PART 36 baseline scan"; exit 2; }; }
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  "$SW_BIN" "$VDW/swb/gd" --out "$VDW/sbase" >/dev/null 2>&1
+  [ -s "$VDW/sbase.gd.Swift.json" ] || { echo "FAIL: swift PART 36 baseline scan"; exit 2; }
+fi
+
+# $1 label  $2 baseline  $3 firing-rule ("deny Fs")  — then the AFTER-scan command, TARGET INCLUDED,
+# to which rows append their own --policy/--gate-json flags. `swift_a4=skip` (env) skips row (a4).
+vd_probe() {
+  local label=$1 base=$2 fire=$3; shift 3
+  local cmd=( "$@" ) bad=0 rc
+  local G="$VDW/${label// /}"
+  printf '%s\n' "$fire" > "$G.fire.policy"
+
+  # (a0) THE CONTROL: baseline alone → exit 1, AS-EFF-005 in the document.
+  rm -f "$G.a0.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${cmd[@]}" --gate-json "$G.a0.json" >/dev/null 2>&1; rc=$?
+  { [ "$rc" = 1 ] && vd_doc "$G.a0.json" ok0 v005; } || { echo "     FAIL $label (a0): the baseline control did not produce exit 1 + AS-EFF-005 (exit $rc) — every composed row below would be vacuous"; bad=1; }
+
+  # (a1-a4) THE COMPOSED DOCUMENT: regression + unhonourable policy → exit 1; violations WITHOUT the
+  # refusal discriminator; the refusal as `unevaluated`, one entry PER RULE, raw lines verbatim.
+  rm -f "$G.a.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${cmd[@]}" --policy "$VDW/bad.policy" --gate-json "$G.a.json" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label (a1): a certain regression beside a refused policy exited $rc, not 1 — the violation is deleted from the exit code"; bad=1; }
+  vd_doc "$G.a.json" ok0 v005 || { echo "     FAIL $label (a2): the certain AS-EFF-005 is not in the composed document"; bad=1; }
+  vd_doc "$G.a.json" norefused || { echo "     FAIL $label (a3): \`refused\`/\`reason\` beside \`violations\` — one key carrying two contradictory readings (SPEC §3.1's composed-document clause)"; bad=1; }
+  vd_doc "$G.a.json" "unev:deny Clock;deny Frobnicate" || { echo "     FAIL $label (a4): \`unevaluated\` must list EVERY rule of the refused policy verbatim — a rule absent from the list on an exit-1 document reads as evaluated-and-passed"; bad=1; }
+
+  # (a5) THE SOLE-REFUSAL CONTROL: no baseline → the refusal document, discriminator intact.
+  rm -f "$G.a5.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$VDW/bad.policy" --gate-json "$G.a5.json" >/dev/null 2>&1; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.a5.json" ok0 refused; } || { echo "     FAIL $label (a5): a sole refusal must still be exit 2 + {refused:true, NO violations key} (exit $rc) — without this row, (a3) is satisfied by an engine that never emits \`refused\` at all"; bad=1; }
+
+  # (b1) an unknown flag beside `--gate-json -` → exit 2 AND stdout is the refusal document.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --gate-json - --zzz-not-a-flag > "$G.b1.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b1.stdout" ok0 refused; } || { echo "     FAIL $label (b1): an unknown flag with the STREAM sink exited $rc leaving stdout without a refusal document — the consumer of the stream is thrown back to scraping stderr"; bad=1; }
+
+  # (b2) an unreadable policy + `--gate-json -` → the same document, different cause. The split this
+  # group closes was BY CAUSE, so one cause alone would not pin the rule.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$VDW/does-not-exist.policy" --gate-json - > "$G.b2.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b2.stdout" ok0 refused; } || { echo "     FAIL $label (b2): an unreadable policy with the STREAM sink exited $rc without a stdout refusal document"; bad=1; }
+
+  # (b3) THE CONTROL and vacuity floor: a violating run on the stream carries a real verdict.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json - > "$G.b3.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 1 ] && vd_doc "$G.b3.stdout" ok0 viol; } || { echo "     FAIL $label (b3): a violating run must put a violations-bearing verdict on stdout (exit $rc) — without this row (b1)/(b2) pass on an engine that streams a refusal unconditionally"; bad=1; }
+
+  # (c1) a zero-match scoped rule rides the document as `zeroMatch`, raw line verbatim, verdict untouched.
+  printf 'deny Fs zzz.nomatch\n' > "$G.zm.policy"
+  rm -f "$G.c1.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.zm.policy" --gate-json "$G.c1.json" >/dev/null 2>&1; rc=$?
+  { [ "$rc" = 0 ] && vd_doc "$G.c1.json" okt "zm:deny Fs zzz.nomatch"; } || { echo "     FAIL $label (c1): a rule that bound nothing must ride the VERDICT as \`zeroMatch\` (verbatim) with ok/exit untouched (exit $rc) — stderr is not the machine channel"; bad=1; }
+
+  # (c3) the floor: a firing scopeless rule → exit 1, violations, NO zeroMatch key.
+  rm -f "$G.c3.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json "$G.c3.json" >/dev/null 2>&1; rc=$?
+  { [ "$rc" = 1 ] && vd_doc "$G.c3.json" viol nozm; } || { echo "     FAIL $label (c3): a firing run must carry NO \`zeroMatch\` key (exit $rc) — without this row (c1) passes on an engine that emits it for every rule, and the fixture is not proven to bind"; bad=1; }
+
+  [ "$bad" = 0 ] && { echo "  $label composed=verdict+unevaluated stream=refusal-on-every-cause zeroMatch=in-document"; return 0; }
+  return 1
+}
+
+# $1 label  $2 report  $3 gate-verb command… — the `gate --report` half of (c): §3.1's byte-equality
+# MUST forces the two routes to carry `zeroMatch` identically, so pinning the scan route alone would
+# re-open the very split PART 34's gate group records ("a part that pins a rule on one route pins it
+# on one route").
+vd_gate_probe() {
+  local label=$1 rep=$2; shift 2
+  local cmd=( "$@" ) bad=0 rc
+  local G="$VDW/q${label// /}"
+  [ -f "$rep" ] || { echo "     FAIL $label (c4): no report at $rep — the row would be vacuous"; return 1; }
+  printf 'deny Fs zzz.nomatch\n' > "$G.zm.policy"
+  rm -f "$G.c4.json"
+  "${cmd[@]}" --report "$rep" --policy "$G.zm.policy" --gate-json "$G.c4.json" >/dev/null 2>&1; rc=$?
+  { [ "$rc" = 0 ] && vd_doc "$G.c4.json" okt "zm:deny Fs zzz.nomatch"; } || { echo "     FAIL $label (c4): \`gate --report\` must carry the same \`zeroMatch\` the scan route does (exit $rc) — one report and one policy must give one document everywhere"; bad=1; }
+  [ "$bad" = 0 ] && { echo "  $label gate --report zeroMatch=in-document"; return 0; }
+  return 1
+}
+
+vd_probe "candor-java " "$VDW/jbase.json" "deny Fs" java -jar "$JAR" "$VDW/jac" || VD_OK=1
+vd_probe "candor-scan " "$VDW/rbase.json" "deny Fs" "$SCAN" "$VDW/ra" || VD_OK=1
+[ -n "$TS_OK" ] && { vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
+
+# candor-agents: groups (b) and (c) — it has no AS-EFF-005 baseline producer, so group (a)'s composed
+# state is unreachable there by construction (said here so absence reads as N/A, not as a skipped row).
+# Its firing rule is fleet-shaped, like PART 34's AR_POLICY. Row (b2b) is the UNHONOURABLE-token cause,
+# which this engine used to answer with exit 0 and `policy ✓` (a silently rewritten policy — the very
+# fail-open §6.2 ⟨0.24⟩ closes); it is a separate row from (b2)'s unreadable file because the two travel
+# different code paths and only one of them was broken.
+if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
+  AGVD="$VDW/agents"; mkdir -p "$AGVD"
+  cp -R "$HERE/../../candor-agents/fixture/." "$AGVD/" 2>/dev/null || true
+  cat > "$VDW/agrun.py" <<'PYRUN'
+import sys
+sys.path.insert(0, sys.argv[1])
+sys.argv = ['candor-agents'] + sys.argv[2:]
+from candor_agents.scan import main
+sys.exit(main())
+PYRUN
+  AGCMD=( python3 "$VDW/agrun.py" "$HERE/../../candor-agents" "$AGVD" --out "$AGVD/report" )
+  AG_OKROW=0
+  # `agrc`, NOT `rc` — this block runs at top level, and capturing into `rc` here CLOBBERS the suite's
+  # own verdict variable: an expected exit-1 row (c3) left rc=1 behind and the whole run printed
+  # "conformance: FAILED" under all-MATCH parts. Found by running this part standalone before wiring
+  # it in — the suite-harness version of the stale-artifact lesson: measure the instrument first.
+  printf 'deny Exec orchestrator\n' > "$VDW/ag.fire.policy"
+  printf 'deny Exec zzz.nomatch\n' > "$VDW/ag.zm.policy"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --gate-json - --zzz-not-a-flag > "$VDW/ag.b1.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b1.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b1): an unknown flag with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/does-not-exist.policy" --gate-json - > "$VDW/ag.b2.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b2.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b2): an unreadable policy with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/bad.policy" --gate-json - > "$VDW/ag.b2b.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b2b.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b2b): a policy that cannot be honoured AS WRITTEN must REFUSE (exit 2 + refusal document), never be rewritten into a weaker policy that passes (exit $agrc)"; AG_OKROW=1; }
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" --gate-json - > "$VDW/ag.b3.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 1 ] && vd_doc "$VDW/ag.b3.stdout" ok0 viol; } || { echo "     FAIL candor-agents (b3): a violating run must put a violations-bearing verdict on stdout (exit $agrc)"; AG_OKROW=1; }
+  rm -f "$VDW/ag.c1.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.zm.policy" --gate-json "$VDW/ag.c1.json" >/dev/null 2>&1; agrc=$?
+  { [ "$agrc" = 0 ] && vd_doc "$VDW/ag.c1.json" okt "zm:deny Exec zzz.nomatch"; } || { echo "     FAIL candor-agents (c1): the zero-match rule must ride the verdict as \`zeroMatch\` (exit $agrc)"; AG_OKROW=1; }
+  rm -f "$VDW/ag.c3.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" --gate-json "$VDW/ag.c3.json" >/dev/null 2>&1; agrc=$?
+  { [ "$agrc" = 1 ] && vd_doc "$VDW/ag.c3.json" viol nozm; } || { echo "     FAIL candor-agents (c3): a firing run must carry NO \`zeroMatch\` key (exit $agrc)"; AG_OKROW=1; }
+  [ "$AG_OKROW" = 0 ] && echo "  candor-agents stream=refusal-on-every-cause zeroMatch=in-document (group (a) N/A — no baseline producer)" || VD_OK=1
+else
+  echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 36 covers 4 engines here"
+  [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; VD_OK=1; }
+fi
+
+# (c4) the `gate --report` route, on the four engines that expose the verb — over each engine's OWN
+# report of the AFTER fixture, so the zero-match scope is zero-match on this route too.
+VDR="$VDW/reports"; mkdir -p "$VDR"
+java -jar "$JAR" "$VDW/jac" --json "$VDR/java.json" >/dev/null 2>&1
+vd_gate_probe "candor-java " "$VDR/java.json" java -jar "$JAR" gate || VD_OK=1
+vd_gate_probe "candor-scan " "$(ls "$VDW"/ra/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)" "$QUERY" gate || VD_OK=1
+if [ -n "$TS_OK" ]; then
+  vd_gate_probe "candor-ts   " "$VDW/t_out.json" node "$TS_DIR/query.mjs" gate || VD_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  vd_gate_probe "candor-swift" "$VDW/s_out.gd.Swift.json" "$SW_BIN" gate || VD_OK=1
+fi
+echo "PART 36 — SPEC §3.1/§4 ⟨0.27⟩: the composed verdict, the stream sink, and the zeroMatch key"
+if [ "$VD_OK" = 0 ]; then
+  echo "  -> MATCH — one input means one document: the composed verdict carries no refusal discriminator, the stream is never left empty on exit 2, and a rule that bound nothing reaches the machine channel"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on

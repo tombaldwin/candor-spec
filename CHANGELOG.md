@@ -14,6 +14,19 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **§3.1/§4 ⟨0.27⟩ THREE VERDICT-DOCUMENT CELLS PINNED, five-way (conformance PART 36).** A cross-engine
+  review found three cells where the engines agreed on the exit code and diverged on the `--gate-json`
+  DOCUMENT — the artifact a CI wrapper actually reads. (1) **The composed document** (a certain
+  AS-EFF-005 regression beside an unhonourable policy) had FOUR spellings; ruled: it is a VERDICT —
+  `refused`/`reason` are the refusal document's discriminator and MUST NOT ride beside `violations`; the
+  refusal travels as `unevaluated`, one entry PER RULE of the refused policy (an unreadable policy gets
+  one entry naming the whole file). (2) **The stream sink**: `--gate-json -` cannot be armed, so the
+  fail-closed document is written to stdout on EVERY exit-2 cause — measured, engines answered or left
+  the stream EMPTY according to which early exit fired. (3) **`zeroMatch`**: §4's zero-match list was
+  stderr-only in all five engines; it now rides the verdict document (raw lines, code-point sorted,
+  deduplicated, omitted when empty, both routes), never the refusal document. PART 36 carries four
+  vacuity floors; run against the pre-fix engines it fails on every group.
+
 - **§2 ⟨0.27⟩ RULING: a configured dep that cannot be read is UNEVALUABLE, not reduced coverage.** java
   and swift refused; rust and ts continued at exit 0. Both postures were internally coherent, which is
   why it needed a ruling — and one `.candor/config` meaning two things is the defect whichever way it
