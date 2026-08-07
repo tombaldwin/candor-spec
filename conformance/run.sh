@@ -5137,6 +5137,62 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 35 — SPEC §2 ⟨0.27⟩: A CONFIGURED DEP THAT CANNOT BE READ IS UNEVALUABLE            [TIER 1]
+#
+# WHY IT EXISTS. Measured on the same input: java and swift refused (exit 2); rust and ts continued at
+# exit 0 — rust qualifying the omission with a coverage line, ts with only a "skipped" note. Both
+# postures were internally coherent, which is why this took a RULING rather than a bug report, and one
+# `.candor/config` meaning two things is what made it a defect whichever way the ruling went.
+#
+# WHAT DECIDED IT is where the answer LANDS. With a real dependency chained, the caller reads
+# `inferred: ["Fs"]`; with the same config and the report missing, a continuing run publishes
+# `inferred: []` — a ⟨0.21⟩ purity claim, in the REPORT, about a function whose dependency the operator
+# configured precisely so it would not be one. The coverage note travels on stderr; the claim travels in
+# the artifact a chained consumer and `gate --report` read. A note in a channel the consumer cannot see
+# is not a qualification.
+#
+# THREE ROWS, and the last two are what stop this becoming a new way to fail a build:
+#   (a) a configured dep that is NOT THERE      -> exit 2 in every engine
+#   (b) …the same config with the dep PRESENT   -> exit 0   (so (a) is about the dep, not the key)
+#   (c) NO `deps` key at all                    -> exit 0   (absence is a complete answer about what
+#                                                            was seen; this rung binds only the
+#                                                            CONFIGURED case)
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[35] CONFIGURED DEP THAT CANNOT BE READ  (SPEC §2 ⟨0.27⟩ — not reduced coverage, unevaluable)"
+DP_OK=0
+DPW="$W/depcfg"; mkdir -p "$DPW"
+printf '{"functions":[]}\n' > "$DPW/present.json"
+dp_probe() { # $1 label ; then the scan command with the TARGET LAST
+  local label=$1; shift
+  local cmd=( "$@" ) tgt bad=0 rc
+  tgt="${cmd[$(( ${#cmd[@]} - 1 ))]}"
+  mkdir -p "$tgt/.candor"
+  printf 'deps %s/does-not-exist.json\n' "$DPW" > "$tgt/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (a): a configured dep that is NOT THERE exited $rc, not 2 — its callers publish \`inferred: []\`, a purity claim about code this scan never saw"; bad=1; }
+  printf 'deps %s/present.json\n' "$DPW" > "$tgt/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 0 ] || { echo "     FAIL $label (b): the SAME key with the dep PRESENT exited $rc, not 0 — row (a) would be about the key rather than the dep"; bad=1; }
+  : > "$tgt/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 0 ] || { echo "     FAIL $label (c): NO \`deps\` key exited $rc, not 0 — an unchained scan is a complete answer about what it saw"; bad=1; }
+  rm -f "$tgt/.candor/config"
+  [ "$bad" = 0 ] && { echo "  $label missing=refused present=ok absent-key=ok"; return 0; }
+  return 1
+}
+dp_probe "candor-java " java -jar "$JAR" "$W/g_java" || DP_OK=1
+dp_probe "candor-scan " "$SCAN" "$GDIR/rust" || DP_OK=1
+[ -n "$TS_OK" ] && { dp_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || DP_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { dp_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || DP_OK=1; }
+echo "PART 35 — SPEC §2 ⟨0.27⟩: a configured dep that cannot be read is unevaluable, not reduced coverage"
+if [ "$DP_OK" = 0 ]; then
+  echo "  -> MATCH — every engine refuses a dep it was told to chain and cannot read"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 # PART 34 — SPEC §3.3.1: THE GATE SINK IS ARMED, AND NEVER ARMED OVER AN INPUT             [TIER 1]
 #
 # WHY THIS PART EXISTS. A release review found a machine-readable FALSE ALL-CLEAR in FOUR engines at
@@ -5365,7 +5421,7 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
