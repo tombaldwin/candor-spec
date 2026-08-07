@@ -24,7 +24,14 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANDOR="${CANDOR:-$HERE/../../candor-rust}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
-W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+W="$(mktemp -d)"
+# The scratch tree AND anything a part writes into the TRACKED fixtures. PART 34 row (f) has to put a
+# `.candor/config` inside the scan target — the point of the row is that the engine DISCOVERS it — and a
+# review showed what an interrupt in that window costs: a leftover config declaring a dangling policy
+# makes a later run's flagless rows exit 2 for the wrong reason, so a defective engine passes them. That
+# is the stale-artifact-fakes-a-green-control failure a third time, so it gets a trap rather than a
+# tidy-up line that only runs when nothing goes wrong.
+trap 'rm -rf "$W"; rm -f "$HERE"/gate/*/.candor/config' EXIT INT TERM
 
 # A CHECKER CRASH MUST NOT MASQUERADE AS AN ENGINE DISAGREEMENT.
 #
@@ -5255,6 +5262,26 @@ ar_gate_probe() { # $1 label ; $2 report path ; then the gate command (…gate)
   after=$(cksum < "$rep")
   [ "$rc" = 2 ] || { echo "     FAIL $label gate: --gate-json naming the --report exited $rc, not 2"; bad=1; }
   [ "$before" = "$after" ] || { echo "     FAIL $label gate: the run DESTROYED the report it was asked to judge"; bad=1; }
+  # THE CONFIG-DECLARED POLICY, ON THIS ROUTE TOO. The scan group's row (f) closed this channel on the
+  # scan route and this group pinned the FLAG channel on the gate route, so the config×gate cell was
+  # empty — and defective in three engines: `gate --report R --gate-json <config-declared policy>`
+  # overwrote the policy and exited 0 with `"ok": true`, on a report that violates it. "A part that pins
+  # a rule on one route pins it on one route" recursed once.
+  #
+  # Run from a directory whose `.candor/config` declares the policy, with NO --policy flag: this verb's
+  # ladder discovers it, so the guard must see it the same way.
+  local qdir="$ARW/qcfg"; mkdir -p "$qdir/.candor"
+  printf 'deny Fs\n' > "$qdir/gate.policy"
+  printf 'policy %s/gate.policy\n' "$qdir" > "$qdir/.candor/config"
+  before=$(cksum < "$qdir/gate.policy")
+  ( cd "$qdir" && "${cmd[@]}" --report "$rep" --gate-json "$G" >/dev/null 2>&1 ); rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label gate (config-control): the config-declared policy did not GATE (exit $rc, want 1) — the row below would be vacuous"; bad=1; }
+  ( cd "$qdir" && "${cmd[@]}" --report "$rep" --gate-json "$qdir/gate.policy" >/dev/null 2>&1 ); rc=$?
+  after=$(cksum < "$qdir/gate.policy")
+  [ "$rc" = 2 ] || { echo "     FAIL $label gate: a sink naming the CONFIG-DECLARED policy exited $rc, not 2"; bad=1; }
+  [ "$before" = "$after" ] || { echo "     FAIL $label gate: the run destroyed a policy it reached through .candor/config — the guard keyed on the flag"; bad=1; }
+  rm -rf "$qdir"
+
   # argv order: an unknown flag BEFORE the sink must still leave a refusal
   printf '%s\n' "$AR_STALE" > "$G"
   "${cmd[@]}" --zzz-not-a-flag --report "$rep" --policy "$P" --gate-json "$G" >/dev/null 2>&1; rc=$?
