@@ -14,6 +14,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **§2 ⟨0.27⟩ RULING: a configured dep that cannot be read is UNEVALUABLE, not reduced coverage.** java
+  and swift refused; rust and ts continued at exit 0. Both postures were internally coherent, which is
+  why it needed a ruling — and one `.candor/config` meaning two things is the defect whichever way it
+  goes. What decides it is where the answer LANDS: with the dep chained a caller reads
+  `inferred: ["Fs"]`; with the same config and the report missing, a continuing run publishes
+  `inferred: []` — a ⟨0.21⟩ purity claim, in the artifact, about a function whose dependency the operator
+  configured precisely so it would not be one. The coverage note travels on stderr, which the consumer
+  does not read. Pinned by new conformance **PART 35**, whose (b) and (c) rows keep it about the DEP
+  rather than the key: absence of `deps` is still a complete answer about what was seen.
+
 - **PARTs 32 and 34 cover candor-agents now, and it failed both on the first run.** Each part ran four
   engines while candor-agents declares the same `spec 0.27` and exposes the same `--policy` and
   `--gate-json` — so it shipped the ⟨0.27⟩ rung's own false all-clear (`--policy P --gate-json P`

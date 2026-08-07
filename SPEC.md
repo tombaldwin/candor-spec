@@ -620,6 +620,32 @@ and an unresolved/unclassified call into a package one of them covers inherits t
 recorded transitive effects AND its literal surfaces (`hosts`/`cmds`/`paths`/`tables`). Three rules
 make the chain trustworthy:
 
+⟨0.27⟩ **A CONFIGURED DEP THAT CANNOT BE READ IS UNEVALUABLE (exit 2), NOT REDUCED COVERAGE.** Measured
+across four engines on the same input: java and swift refuse; rust and ts continued at exit 0, rust
+qualifying the omission with a coverage line and ts with only a "skipped" note. One `.candor/config`,
+two meanings, on a condition CI meets routinely — a dep not yet scanned, a path that moved.
+
+Both postures were internally coherent, which is why this needed a ruling rather than a bug report. The
+continuing arm reads a missing dep as reduced COVERAGE, which is exactly what the ⟨0.15⟩ envelope exists
+to qualify. **What decides it is where the answer LANDS.** Measured with a real path dependency:
+
+    dep report chained    → caller `inferred: ["Fs"]`
+    same config, report missing, run continues → caller `inferred: []`
+
+`[]` is a ⟨0.21⟩ purity claim, and it travels in the REPORT — the artifact a chained consumer and a
+`gate --report` both read. The coverage disclosure travels on stderr, which they do not read. So the
+continuing arm publishes an unqualified purity claim about a function whose dependency the operator
+explicitly configured precisely so it would not be one. That is the cardinal sin with a note attached
+somewhere else, and a note in a channel the consumer cannot see is not a qualification.
+
+It is also the §6.2 posture the family already applies to a *policy* that cannot be read: configured-
+but-unusable fails loud, because a silently-dropped config is a silently-dropped guard. A dep is
+configured the same way and for the same reason.
+
+So: a dep path named by `deps`/`CANDOR_DEPS` that does not exist or cannot be read MUST exit 2, naming
+it. Genuine ABSENCE of the key is unaffected — an unchained scan is a complete answer about what it
+saw, and its uncovered calls are Unknown and disclosed. This binds the configured case only.
+
 1. **Joins never guess.** The `hash` key must identify the target the way the *consumer's* view of
    the call names it (a `package#LocalName`, a `crate#qual` tail, a full method reference:
    per-language, but derivable from both sides).
