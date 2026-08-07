@@ -14,6 +14,28 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Conformance PART 34 gains the config×gate cell, and it was empty and defective.** The scan group's
+  row (f) pinned the config channel on the scan route; the gate group pinned the FLAG channel on the gate
+  route; the cell where they cross had no row — and `gate --report R --gate-json <config-declared
+  policy>` overwrote the policy at exit 0 in rust, ts and swift, while java refused for the opposite
+  reason (its gate verb never read the config at all — a 3-vs-1 split). "A part that pins a rule on one
+  route pins it on one route" recursed once. The new row asserts the config-declared policy GATES before
+  asserting anything about the sink, and that control is what caught java.
+- **The suite now cleans up after itself on an interrupt.** PART 34 row (f) must write a `.candor/config`
+  INTO the scan target — the point of the row is that the engine discovers it — and the target for three
+  engines is the TRACKED `conformance/gate/` tree. A review measured what an interrupt in that window
+  costs: a leftover config declaring a dangling policy makes a later run's flagless rows exit 2 for the
+  wrong reason, so a defective engine passes them. Now an `EXIT INT TERM` trap, not a tidy-up line that
+  only runs when nothing goes wrong.
+- **`conformance/differential/` (new): generative grammar differentials.** Every config-layer defect
+  found this week was found by hand, one spelling at a time, and they are all instances of one property:
+  the engines must read the same config the same way. 2546 generated configs and 61 generated policies,
+  compared on exit code with no expected-value table. Both are CALIBRATED against real regressions — a
+  pre-fix candor-agents (27 rows light up) and a candor-ts with its unrecognised-token error swallowed
+  (14 rows) — because a differential that has never failed is not evidence. The README records the two
+  traps the harness itself fell into: a shared target directory measures the harness, and a differential
+  is only about the thing you vary.
+
 - **Conformance PART 34 grows the rows that would have caught this round.** As shipped it probed the four
   SCAN CLIs with a `--policy` FLAG, and a review then found two cardinal sins it was blind to by
   construction: the reference engine's `gate` VERB had none of the guard (`gate --report R --policy P
