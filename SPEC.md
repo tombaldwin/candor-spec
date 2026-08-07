@@ -1855,6 +1855,23 @@ failed to the spelling. Implementations MUST resolve both sides (symlinks includ
 platform offers it) before comparing, and for a sink that does not exist yet, resolve its parent directory.
 The rule that catches the release verifier catches this: *resolve the artifact, not just the string.*
 
+⟨0.27⟩ **THE STREAM SINK: `-` IS NOT ARMED, AND IT IS NOT EXEMPT.** `--gate-json -` (and §3.1's `--json`,
+which IS `--gate-json -` on the gate verbs) names a stream, and both halves of the arming rule change
+shape there. Arming does not apply: a stream has no previous document to go stale, and a placeholder would
+put TWO documents in a consumer's pipe. But the document-on-every-exit rule applies IN FULL: **if the sink
+is `-` and the run exits 2 for ANY cause, the fail-closed document — the refusal or the ⟨0.21⟩ incomplete
+verdict — is written to stdout, exactly once, as the stream's only content.** Measured, the engines had
+quietly re-created the write-nothing carve-out on this sink, selected by CAUSE: an unhonourable policy
+wrote the refusal to stdout in all four, while an unknown flag wrote it in ONE of four (swift) and left
+stdout EMPTY in the rest — the same operator mistake, answered or not according to which early exit
+happened to fire. A consumer of the stream is exactly the wrapper the file rule protects, minus the
+staleness: it cannot re-read yesterday's document, but an empty stream throws it back to scraping stderr,
+which is the distinction that made the incomplete-analysis defect a defect. The one honest gap is a run
+that dies before it can write anything (a crash, a kill): the stream is then EMPTY, which a JSON consumer
+reads as a parse failure — fail-closed by construction, and the reason arming is unnecessary here rather
+than merely impossible. An engine MUST NOT print anything else to a stdout that carries a verdict (§3.3's
+pure-JSON rule), which is also why the refusal replaces the placeholder strategy instead of joining it.
+
 ⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING
 A CERTAIN VIOLATION — and that is a BOUNDARY, not a carve-out.** The distinction is load-bearing and the
 two look identical from the exit code:
@@ -1973,6 +1990,46 @@ policy could not be read at all.
 condition that makes it true.** A carve-out in a fail-closed rule is a fail-open path with a reason attached
 — and in each of these two the reason was only ever "the measurement that prompted the clause did not
 happen to cover this case".
+
+⟨0.27⟩ **THE COMPOSED DOCUMENT: `refused` AND `violations` ARE MUTUALLY EXCLUSIVE, AND THE COMPOSED SHAPE
+IS A VERDICT.** The precedence rulings above say a certain violation dominates a refusal (exit 1) and MUST
+appear in the document, and the refusal-document clause says what a refusal writes — but neither said what
+the ONE document looks like when both outcomes are live, and measured on the same input (a baseline
+regression beside a policy token that cannot be honoured, `--gate-json G`) the four engines wrote FOUR
+spellings of it:
+
+    java    refused:true + reason + violations + unevaluated
+    rust    refused:true + reason + violations               — no unevaluated
+    ts      violations + unevaluated                         — the correct shape
+    swift   violations only                                  — the refusal vanishes from the machine channel
+
+The rule: **a document that carries `violations` is a VERDICT, never a refusal document, and it MUST NOT
+carry `refused`.** `refused: true` is the refusal document's discriminator, and its meaning to a consumer
+is pinned three clauses up: *the gate is making no claim about violations* — which is precisely the claim
+a violations-bearing document IS making. A document carrying both keys gives one key two contradictory
+readings, and a consumer keying on `refused` (which the refusal-document clause invites) files a certain
+violation under "no claim about violations". The two shapes MUST stay disjoint on `refused`; that
+disjointness is what makes keying on it safe.
+
+**The refusal is disclosed in `unevaluated`, and on a whole-policy refusal that list carries EVERY rule of
+the refused policy** — one entry per rule, the RAW line verbatim: the unhonourable line(s) with their
+specific cause, and each remaining rule with a `why` naming the whole-policy refusal. Not only the
+offending line: a consumer that finds `deny Fs` absent from `unevaluated` on an exit-1 document reads it as
+*enforced and passed*, which is a per-rule false all-clear arriving through the disclosure — measured in
+candor-ts, which listed only the bad token's line. Where the policy has no lines to name (the file itself
+unreadable), the list carries ONE entry naming the whole policy — candor-ts's spelling, `(entire policy
+<locator> — unreadable, no rules parsed)`, is the model; the wording is engine-natural, the non-emptiness
+is not, because an exit-1 document with `violations` and no `unevaluated` claims the policy ran and passed.
+Nothing here weakens the SOLE-refusal case: with no established
+violation the run still exits 2 with the refusal document, on both routes — a bad token establishes nothing
+from the policy itself, so `gate --report` with a firing `deny Fs` beside a bad token correctly refuses
+whole-policy (the answerability refusals, which leave the parsed rules trustworthy, are the exit-1 +
+`unevaluated` case).
+
+⟨0.27⟩ **A rule whose SCOPE binds nothing rides the verdict document as `zeroMatch` — see §3.1's
+zero-match clause for the shape; it is named here only because it is the third disclosure list a composed
+verdict can carry** (`violations`, `unevaluated`, `zeroMatch`), and the three answer different questions:
+what fired, what could not be decided, and what was decided over nothing.
 
 ⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope
 function REACHES, not over the in-scope entry's own class set. Adding a scope currently RE-OPENS the
@@ -2097,13 +2154,31 @@ while a typo'd **layer** token binds nothing and passes. Same file, same rule, o
 The remedy is DISCLOSURE, not refusal. Exit 2 would be wrong: a zero-match rule is legitimate when one
 policy is shared across repositories or modules and a layer exists in only some of them. So a producer
 MUST report each such rule — verbatim, so the reader can see the typo — and MUST NOT change the verdict
-on account of it. The `--gate-json` verdict SHOULD carry the same list, or a machine consumer is left in
-the position the human was.
+on account of it.
 
-**Status: implemented four-way** (candor-swift led it; candor-java, candor-rust and candor-ts followed),
-pinned by conformance **PART 32** — which pins the disclosure, that the verdict and exit code are
-UNCHANGED by it, and that a SCOPELESS `deny` is exempt (it binds every function by construction, so it
-can never be this kind of typo).
+⟨0.27⟩ **…and the `--gate-json` VERDICT CARRIES THE SAME LIST, under the pinned key `zeroMatch`.** This
+sentence read "SHOULD carry the same list" and named no key — the same unpinned state that produced the
+`--class` divergence — and measured on all FIVE engines the list was stderr-only: a machine consumer
+could not see that a rule bound nothing, which is the very blindness this clause exists to close (a CI
+wrapper reads the document, and a typo'd scope was invisible in it — the silently green gate, one channel
+over). The shape:
+
+    "zeroMatch": [ "<the RAW rule line, verbatim>", … ]
+
+sorted by Unicode code point and deduplicated (the `viaDispatchOn` collation, for the same reason: a
+field no consumer re-parses must not be able to differ between engines), OMITTED when empty so every
+fully-binding verdict is byte-identical to a pre-⟨0.27⟩ one. It rides **VERDICT documents only** — the
+exit-0/1 shape, on BOTH routes (`scan --policy` and `gate --report`, which §3.1's byte-equality MUST
+forces to agree here) — and never the refusal document: a refused run evaluated nothing, so it is not
+entitled to the claim "this rule was evaluated and bound nothing". It MUST NOT change `ok` or the exit
+code — it is the third disclosure list a verdict can carry, beside `violations` (what fired) and
+`unevaluated` (what could not be decided): this one is what was decided over nothing.
+
+**Status: the console disclosure is implemented four-way** (candor-swift led it; candor-java, candor-rust
+and candor-ts followed), pinned by conformance **PART 32** — which pins the disclosure, that the verdict
+and exit code are UNCHANGED by it, and that a SCOPELESS `deny` is exempt (it binds every function by
+construction, so it can never be this kind of typo). ⟨0.27⟩ The `zeroMatch` verdict key is pinned by
+conformance **PART 36** on all five engines, both routes.
 
 ⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
 unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
@@ -3374,6 +3449,14 @@ declare it via the envelope's `spec`.
   and declares nothing. Only a positive declaration separates "I compute this and could not determine it"
   from "I do not compute this" — the same construction as `extensions`, and the same one ⟨0.26⟩ used for the
   sidecar key set.
+
+  ⟨0.27⟩ also closes three unpinned cells in the **verdict document**, found by one cross-engine review
+  and pinned by conformance **PART 36**: the **composed document** (`refused` and `violations` are
+  mutually exclusive; the refusal beside a dominating violation travels as `unevaluated`, one entry per
+  rule of the refused policy — §3.1, measured as FOUR spellings across four engines); the **stream sink**
+  (`--gate-json -` writes the fail-closed document to stdout on EVERY exit-2 cause — §3.1, measured
+  answered-or-empty by CAUSE); and the **`zeroMatch` verdict key** (§3.1's zero-match list reaches the
+  machine channel, both routes, five engines — it was stderr-only in all five).
 
 - **0.26 (all code engines declare `0.26`; conformance-pinned four-way)** — a **tier-1 additive** rung:
   **§2.2, the hierarchy sidecar's KEY SET is its MANIFEST.** A producer MUST emit a key for every type it
