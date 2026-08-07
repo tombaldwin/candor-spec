@@ -4898,19 +4898,26 @@ ZM_OK=0
 ZMW="$W/zeromatch"; mkdir -p "$ZMW"
 printf 'deny Fs zzz_no_such_layer\n' > "$ZMW/miss.policy"   # (a)+(b): binds nothing, in every language
 printf 'deny Fs\n'                   > "$ZMW/hit.policy"    # (c): scopeless — binds everything
+# A fleet's units are agents, so its scopeless firing rule is a different effect; the MISS policy is
+# fixture-independent by construction and needs no variant.
+printf 'deny Exec\n'                 > "$ZMW/hit.agents.policy"
 zm_probe() { # $1 label ; then the scan command WITHOUT a --policy flag
   local label=$1; shift
   local cmd=( "$@" ) miss_out miss_rc hit_out hit_rc base_rc bad=0
+  local hitpol="${ZM_HIT:-$ZMW/hit.policy}"
   miss_out=$( "${cmd[@]}" --policy "$ZMW/miss.policy" 2>&1 >/dev/null ); miss_rc=$?
-  hit_out=$(  "${cmd[@]}" --policy "$ZMW/hit.policy"  2>&1 >/dev/null ); hit_rc=$?
+  hit_out=$(  "${cmd[@]}" --policy "$hitpol"  2>&1 >/dev/null ); hit_rc=$?
   "${cmd[@]}" >/dev/null 2>&1; base_rc=$?          # the same run with NO policy at all
+  # "function" OR "unit": a FLEET's units are agents, not functions, and candor-agents says so
+  # throughout its output. The property being pinned is that the rule's zero match is DISCLOSED; forcing
+  # one engine to describe its own domain in another's nouns would buy nothing and cost accuracy.
   case "$miss_out" in
-    *"matched NO function"*) : ;;
-    *) echo "     FAIL $label: a rule binding NO function was not disclosed — a typo'd layer name is a green gate"; bad=1;;
+    *"matched NO function"*|*"matched NO unit"*) : ;;
+    *) echo "     FAIL $label: a rule binding NOTHING was not disclosed — a typo'd scope is a green gate"; bad=1;;
   esac
   [ "$miss_rc" = "$base_rc" ] || { echo "     FAIL $label: the zero-match disclosure CHANGED the verdict (exit $miss_rc vs $base_rc with no policy)"; bad=1; }
   case "$hit_out" in
-    *"matched NO function"*) echo "     FAIL $label: a SCOPELESS deny was reported as zero-match — it binds every function"; bad=1;;
+    *"matched NO function"*|*"matched NO unit"*) echo "     FAIL $label: a SCOPELESS deny was reported as zero-match — it binds everything"; bad=1;;
   esac
   [ "$hit_rc" = 1 ] || { echo "     FAIL $label: the fixture no longer violates a scopeless \`deny Fs\` (exit $hit_rc) — this part would be vacuous"; bad=1; }
   [ "$bad" = 0 ] && { echo "  $label disclosed=yes verdict-unchanged=yes scopeless-exempt=yes"; return 0; }
@@ -4920,6 +4927,23 @@ zm_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZM_OK=1
 zm_probe "candor-scan " "$SCAN" "$GDIR/rust" --out "$ZMW/r" || ZM_OK=1
 [ -n "$TS_OK" ] && { zm_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" --out "$ZMW/t" || ZM_OK=1; }
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { zm_probe "candor-swift" "$SW_BIN" "$GDIR/swift" --out "$ZMW/s" || ZM_OK=1; }
+# candor-agents: same rule, same reason it went missing — §4 carries no engine qualifier, and a typo'd
+# AGENT name binds nothing and passes exactly as a typo'd layer name does.
+if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
+  ZMA="$ZMW/agents"; mkdir -p "$ZMA"
+  cp -R "$HERE/../../candor-agents/fixture/." "$ZMA/" 2>/dev/null || true
+  cat > "$ZMW/agrun.py" <<'PYRUN2'
+import sys
+sys.path.insert(0, sys.argv[1])
+sys.argv = ['candor-agents'] + sys.argv[2:]
+from candor_agents.scan import main
+sys.exit(main())
+PYRUN2
+  ZM_HIT="$ZMW/hit.agents.policy" zm_probe "candor-agents" python3 "$ZMW/agrun.py" "$HERE/../../candor-agents" "$ZMA" || ZM_OK=1
+else
+  echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 32 covers 4 engines here"
+  [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; ZM_OK=1; }
+fi
 # THE `gate --report` ROUTE TOO. §4's MUST carries no route qualifier, and a differential found java and
 # swift disclosing there while rust and ts stayed silent — so on the SUPPLY-CHAIN gate, the surface a
 # consumer points at a report someone else produced, a typo'd layer was still scored as satisfied by half
@@ -5168,7 +5192,9 @@ ar_probe() { # $1 label ; then the scan command with the TARGET LAST
   local cmd=( "$@" ) tgt bad=0 rc before after
   tgt="${cmd[$(( ${#cmd[@]} - 1 ))]}"
   local G="$ARW/verdict.json" P="$ARW/gate.policy"
-  printf 'deny Fs\n' > "$P"
+  # The FIRING rule for this engine's fixture. A fleet's units are agents, not functions, so `deny Fs`
+  # binds nothing there and every row below would be vacuous — which the (e) floor correctly said.
+  printf '%s\n' "${AR_POLICY:-deny Fs}" > "$P"
 
   # (a) unknown flag AFTER --gate-json
   printf '%s\n' "$AR_STALE" > "$G"
@@ -5271,7 +5297,7 @@ ar_gate_probe() { # $1 label ; $2 report path ; then the gate command (…gate)
   # Run from a directory whose `.candor/config` declares the policy, with NO --policy flag: this verb's
   # ladder discovers it, so the guard must see it the same way.
   local qdir="$ARW/qcfg"; mkdir -p "$qdir/.candor"
-  printf 'deny Fs\n' > "$qdir/gate.policy"
+  printf '%s\n' "${AR_POLICY:-deny Fs}" > "$qdir/gate.policy"
   printf 'policy %s/gate.policy\n' "$qdir" > "$qdir/.candor/config"
   before=$(cksum < "$qdir/gate.policy")
   ( cd "$qdir" && "${cmd[@]}" --report "$rep" --gate-json "$G" >/dev/null 2>&1 ); rc=$?
@@ -5296,6 +5322,26 @@ ar_probe "candor-java " java -jar "$JAR" "$W/g_java" || AR_OK=1
 ar_probe "candor-scan " "$SCAN" "$GDIR/rust" || AR_OK=1
 [ -n "$TS_OK" ] && { ar_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || AR_OK=1; }
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { ar_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || AR_OK=1; }
+# candor-agents TOO. It declares `spec 0.27` and exposes `--policy`/`--gate-json`, so §3.3.1 binds it —
+# and it shipped NONE of the layer: an unknown flag left the previous run's green at the sink, and
+# `--policy P --gate-json P` destroyed P so the very next run of the same command exited 0 on a fleet
+# that violates. Four engines gained the guard in this release and the fifth declared the same contract
+# without it, because this part ran four engines. A part that covers four engines covers four engines.
+if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
+  AGW="$ARW/agents"; mkdir -p "$AGW"
+  cp -R "$HERE/../../candor-agents/fixture/." "$AGW/" 2>/dev/null || true
+  cat > "$ARW/agrun.py" <<'PYRUN'
+import sys
+sys.path.insert(0, sys.argv[1])
+sys.argv = ['candor-agents'] + sys.argv[2:]
+from candor_agents.scan import main
+sys.exit(main())
+PYRUN
+  AR_POLICY='deny Exec orchestrator' ar_probe "candor-agents" python3 "$ARW/agrun.py" "$HERE/../../candor-agents" "$AGW" || AR_OK=1
+else
+  echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 34 covers 4 engines here"
+  [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; AR_OK=1; }
+fi
 ARR="$ARW/reports"; mkdir -p "$ARR"
 java -jar "$JAR" "$W/g_java" --json "$ARR/java.json" >/dev/null 2>&1
 ar_gate_probe "candor-java " "$ARR/java.json" java -jar "$JAR" gate || AR_OK=1

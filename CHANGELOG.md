@@ -14,6 +14,20 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PARTs 32 and 34 cover candor-agents now, and it failed both on the first run.** Each part ran four
+  engines while candor-agents declares the same `spec 0.27` and exposes the same `--policy` and
+  `--gate-json` — so it shipped the ⟨0.27⟩ rung's own false all-clear (`--policy P --gate-json P`
+  destroyed the policy and the next run went green on a violating fleet) and scored a zero-match rule as
+  satisfied. A part that covers four engines covers four engines; the fifth's claim to the contract was
+  taken on trust.
+- **The shared probes now take the FIRING rule as a parameter.** They hardcoded `deny Fs`, which binds
+  nothing in a fleet whose units are agents — so the agents arm's vacuity floors fired correctly and said
+  so, rather than passing over a rule that could never match. And the zero-match assertion accepts
+  "matched NO function" or "matched NO unit": the property is that the zero match is DISCLOSED, and
+  making a domain engine describe agents in another engine's nouns would cost accuracy for nothing.
+
+## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
+
 - **Conformance PART 34 gains the config×gate cell, and it was empty and defective.** The scan group's
   row (f) pinned the config channel on the scan route; the gate group pinned the FLAG channel on the gate
   route; the cell where they cross had no row — and `gate --report R --gate-json <config-declared
@@ -77,7 +91,6 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   key: a false disclosure over a silently unenforced pin, with a MISMATCHED version passing at exit 0.
   The part's own comment says a row that pins one spelling pins one spelling.
 
-## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
 - **PART 33 pinned one spelling of its own rule.** The malformed-unqualified row used a two-token junk
   value, which every engine catches by arity — so it was green five-way while the one-token spelling
