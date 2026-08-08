@@ -2167,7 +2167,10 @@ over). The shape:
 
 sorted by Unicode code point and deduplicated (the `viaDispatchOn` collation, for the same reason: a
 field no consumer re-parses must not be able to differ between engines), OMITTED when empty so every
-fully-binding verdict is byte-identical to a pre-⟨0.27⟩ one. It rides **VERDICT documents only** — the
+fully-binding verdict gains NO key from this clause. (Not literally byte-identical to a pre-⟨0.27⟩
+document — the envelope's `spec` moves with the floor either way — but a consumer diffing verdicts across
+the upgrade sees no new field on any input where every rule bound something.) It rides **VERDICT
+documents only** — the
 exit-0/1 shape, on BOTH routes (`scan --policy` and `gate --report`, which §3.1's byte-equality MUST
 forces to agree here) — and never the refusal document: a refused run evaluated nothing, so it is not
 entitled to the claim "this rule was evaluated and bound nothing". It MUST NOT change `ok` or the exit

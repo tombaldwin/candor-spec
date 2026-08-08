@@ -4939,7 +4939,12 @@ sys.argv = ['candor-agents'] + sys.argv[2:]
 from candor_agents.scan import main
 sys.exit(main())
 PYRUN2
-  ZM_HIT="$ZMW/hit.agents.policy" zm_probe "candor-agents" python3 "$ZMW/agrun.py" "$HERE/../../candor-agents" "$ZMA" || ZM_OK=1
+  # `--out` INTO THE SCRATCH DIR, like every other arm. Without it candor-agents writes its report to
+  # the CURRENT directory — which is this repo when the suite is run the documented way — leaving two
+  # untracked `report.agents.Fleet*.json` files behind. That is not merely untidy: `bin/release.sh`
+  # step 0 refuses on a dirty tree, so the suite you MUST run before a release was making the release
+  # refuse to start. Found by a release-mechanics review, 2026-08-08.
+  ZM_HIT="$ZMW/hit.agents.policy" zm_probe "candor-agents" python3 "$ZMW/agrun.py" "$HERE/../../candor-agents" "$ZMA" --out "$ZMA/report" || ZM_OK=1
 else
   echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 32 covers 4 engines here"
   [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; ZM_OK=1; }
