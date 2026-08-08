@@ -14,11 +14,23 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
-- **The conformance suite was dirtying the repo it lives in.** PART 32's candor-agents arm ran the scan
-  with no `--out`, so it wrote `report.agents.Fleet*.json` into the CURRENT directory — this repo, when
-  the suite is run the documented way. Not merely untidy: `bin/release.sh` step 0 refuses a dirty tree,
-  so the suite you MUST run before a release was making the release refuse to start. Found by a
-  release-mechanics review; the arm now writes into the scratch dir like every other one.
+- **The conformance suite was dirtying the repo it lives in — and my first fix was to the wrong arm.**
+  An engine arm that runs a scan with no `--out` writes its report into the CURRENT directory, which is
+  this repo when the suite is run the documented way. Not untidy: `bin/release.sh` step 0 refuses a dirty
+  tree, so the suite you MUST run before a release was making the release refuse to start.
+
+  I put `--out` on PART 32's candor-agents arm, saw a clean run, and moved on. The files came back on the
+  next run: the real site was PART 34's, which I had not looked for because I fixed the instance I had
+  rather than sweeping for the class. PART 34 resisted `--out` — its probe drives several invocations and
+  some read the report back from its DEFAULT location, so redirecting the output made four assertions
+  vacuous. Moving the WORKING DIRECTORY instead leaves every default intact and simply stops "the current
+  directory" being this repo.
+
+  **The durable part is that the suite now checks ITSELF**: it snapshots `git status --porcelain` at the
+  start, compares at exit, and FAILS naming any new entry. Grepping for the class does not work — every
+  engine invocation looks alike — and I could not have found the second site by reading. Validated the
+  only way an instrument can be: a deliberate stray write planted right after the snapshot, which it
+  caught and named. A tree that was already dirty when you started stays your business.
 - **§4's zeroMatch clause claimed too much.** "Byte-identical to a pre-⟨0.27⟩ verdict" is not true — the
   envelope's `spec` moves with the floor either way. The claim worth making is that no input where every
   rule bound something gains a field, and that is what it now says.

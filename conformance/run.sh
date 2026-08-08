@@ -25,6 +25,15 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANDOR="${CANDOR:-$HERE/../../candor-rust}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
 W="$(mktemp -d)"
+# ── THE SUITE MUST NOT DIRTY THE REPO IT LIVES IN ────────────────────────────────────────────────
+# Twice now an engine arm ran without `--out` and wrote its report into the CURRENT directory — which is
+# this repo, when the suite is run the documented way. That is not untidy, it is a release blocker:
+# `bin/release.sh` step 0 refuses a dirty tree, so the suite you MUST run before a release was making the
+# release refuse to start. The first fix caught one arm; the second arm was found the same way, by
+# noticing the files again. Grepping for the class does not work (every engine invocation looks alike),
+# so the suite checks ITSELF: snapshot the porcelain now, compare at exit, fail on anything NEW. A tree
+# that was already dirty when you started stays your business.
+REPO_BEFORE="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
 # The scratch tree AND anything a part writes into the TRACKED fixtures. PART 34 row (f) has to put a
 # `.candor/config` inside the scan target — the point of the row is that the engine DISCOVERS it — and a
 # review showed what an interrupt in that window costs: a leftover config declaring a dangling policy
@@ -5398,7 +5407,16 @@ sys.argv = ['candor-agents'] + sys.argv[2:]
 from candor_agents.scan import main
 sys.exit(main())
 PYRUN
-  AR_POLICY='deny Exec orchestrator' ar_probe "candor-agents" python3 "$ARW/agrun.py" "$HERE/../../candor-agents" "$AGW" || AR_OK=1
+  # SECOND SITE OF THE SAME DEFECT: PART 32's arm was fixed and this one was not, because I fixed the
+  # instance I had rather than sweeping for the class. Both wrote `report.agents.Fleet*.json` into the
+  # CURRENT directory — this repo — and `bin/release.sh` step 0 refuses a dirty tree, so the suite you
+  # must run before a release was making the release refuse to start.
+  #
+  # A SUBSHELL `cd`, NOT `--out`. This probe drives several invocations and some of them read the report
+  # back from its DEFAULT location, so redirecting the output broke four assertions (rows (e)/(f) went
+  # vacuous). Moving the WORKING DIRECTORY instead leaves every default intact and simply stops "the
+  # current directory" being this repo — the smallest change that fixes the actual complaint.
+  ( cd "$ARW" && AR_POLICY='deny Exec orchestrator' ar_probe "candor-agents" python3 "$ARW/agrun.py" "$HERE/../../candor-agents" "$AGW" ) || AR_OK=1
 else
   echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 34 covers 4 engines here"
   [ -z "${CONFORMANCE_REQUIRE_ALL:-}" ] || { echo "     FAIL candor-agents: required by CONFORMANCE_REQUIRE_ALL"; AR_OK=1; }
@@ -5679,4 +5697,15 @@ if [ "$rc" -ne 0 ]; then
       | head -1 | sed 's/^/    /'
   fi
 fi
+# ── did this run leave anything behind? (see REPO_BEFORE) ───────────────────────────────────────
+REPO_AFTER="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
+if [ "$REPO_BEFORE" != "$REPO_AFTER" ]; then
+  echo
+  echo "conformance: THIS RUN LEFT FILES IN THE REPO — an engine arm is missing its --out."
+  echo "  A scan with no --out writes its report to the CURRENT directory, and release.sh step 0"
+  echo "  refuses a dirty tree, so this makes the release refuse to start. New entries:"
+  diff <(printf '%s\n' "$REPO_BEFORE") <(printf '%s\n' "$REPO_AFTER") | grep '^>' | sed 's/^> /    /'
+  rc=1
+fi
+
 exit "$rc"
