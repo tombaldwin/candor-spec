@@ -14,6 +14,15 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **The conformance suite was dirtying the repo it lives in.** PART 32's candor-agents arm ran the scan
+  with no `--out`, so it wrote `report.agents.Fleet*.json` into the CURRENT directory — this repo, when
+  the suite is run the documented way. Not merely untidy: `bin/release.sh` step 0 refuses a dirty tree,
+  so the suite you MUST run before a release was making the release refuse to start. Found by a
+  release-mechanics review; the arm now writes into the scratch dir like every other one.
+- **§4's zeroMatch clause claimed too much.** "Byte-identical to a pre-⟨0.27⟩ verdict" is not true — the
+  envelope's `spec` moves with the floor either way. The claim worth making is that no input where every
+  rule bound something gains a field, and that is what it now says.
+
 - **§3.1/§4 ⟨0.27⟩ THREE VERDICT-DOCUMENT CELLS PINNED, five-way (conformance PART 36).** A cross-engine
   review found three cells where the engines agreed on the exit code and diverged on the `--gate-json`
   DOCUMENT — the artifact a CI wrapper actually reads. (1) **The composed document** (a certain
