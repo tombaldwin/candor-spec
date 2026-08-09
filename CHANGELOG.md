@@ -18,6 +18,9 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 (b13): a gate-adjacent flag with NO VALUE.** §3.1 names this cause beside the unknown flag,
+  and (b1) posed only the unknown one — so an engine could route that and leave this raw. One had.
 - **PART 36 (b12): the nonexistent-target cause, posed at last.** It was written once, found unposeable
   with the shared probe's calling convention — the slice removed the OUT-DIR for two engines, which then
   scanned a VALID tree and "passed" at exit 0 — removed, and named as uncovered in a comment. `VD_BAD`
