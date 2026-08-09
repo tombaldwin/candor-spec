@@ -5687,6 +5687,13 @@ vd_probe() {
   fi
   chmod 644 "$G.badcfg" 2>/dev/null
 
+  # (b13) A GATE-ADJACENT FLAG GIVEN NO VALUE. §3.1 names this cause explicitly alongside an unknown
+  # flag, and (b1) poses only the unknown one — so an engine could route that and leave this raw, which
+  # one did, in the engine reviewed most. Found by sweeping the causes a user can TRIGGER rather than
+  # by reading exit sites; two engines already answered it.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy --gate-json - > "$G.b13.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b13.stdout" ok0 refused; } || { echo "     FAIL $label (b13): \`--policy\` with NO VALUE exited $rc without a refusal document on the stream — §3.1 names a valueless gate-adjacent flag beside the unknown flag (b1) poses"; bad=1; }
+
   # (b3) THE CONTROL and vacuity floor: a violating run on the stream carries a real verdict.
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json - > "$G.b3.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 1 ] && vd_doc "$G.b3.stdout" ok0 viol; } || { echo "     FAIL $label (b3): a violating run must put a violations-bearing verdict on stdout (exit $rc) — without this row (b1)/(b2) pass on an engine that streams a refusal unconditionally"; bad=1; }
