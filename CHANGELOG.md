@@ -14,6 +14,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+
+- **PART 35 rows (d)/(e) and PART 36 rows (b4)-(b6) — the cells that were missing.** PART 35s title
+  is "a configured dep that cannot be read" and its rows only ever tested a dep that was NOT THERE; two
+  engines shipped the wrong answer for the other clause of §2s disjunction, straight through a green
+  suite. PART 36s stream rows all ran the SCAN route, so three engines left stdout empty on the `gate`
+  verb and passed; row (b5) then caught a DOUBLE document that (b4) could not see, because an unknown
+  flag dies before the second sink registration, and (b6) caught `--json --gate-json -` naming one sink
+  twice. Every row was written after the defect it catches was measured.
 - **The conformance suite was dirtying the repo it lives in — and my first fix was to the wrong arm.**
   An engine arm that runs a scan with no `--out` writes its report into the CURRENT directory, which is
   this repo when the suite is run the documented way. Not untidy: `bin/release.sh` step 0 refuses a dirty
