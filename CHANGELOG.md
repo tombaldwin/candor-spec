@@ -17,6 +17,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 (b12): the nonexistent-target cause, posed at last.** It was written once, found unposeable
+  with the shared probe's calling convention — the slice removed the OUT-DIR for two engines, which then
+  scanned a VALID tree and "passed" at exit 0 — removed, and named as uncovered in a comment. `VD_BAD`
+  poses it properly: the engine's own invocation, supplied by the caller who knows its argument shape.
+  An engine that supplies none now says so AT RUN TIME rather than in a source comment, because a cause
+  disclosed only to someone reading the generator is disclosed to nobody running the suite. Green
+  four-way.
 - **PART 36 rows (b9)/(b10)/(b11) — the cells every earlier stream row skipped.** (b1)/(b2)/(b5)/(b6)/(b8)
   all pose REFUSAL causes, so an engine could dedupe its refusal writer and leave the VERDICT writer
   writing per-flag: one did, for a round, and a refusal-path row cannot see it. (b9) poses a CLEAN
