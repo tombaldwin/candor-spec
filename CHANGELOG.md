@@ -13,6 +13,8 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
 ## Unreleased
+## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
+
 
 
 
@@ -122,7 +124,6 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   "matched NO function" or "matched NO unit": the property is that the zero match is DISCLOSED, and
   making a domain engine describe agents in another engine's nouns would cost accuracy for nothing.
 
-## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
 - **Conformance PART 34 gains the config×gate cell, and it was empty and defective.** The scan group's
   row (f) pinned the config channel on the scan route; the gate group pinned the FLAG channel on the gate
