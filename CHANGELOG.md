@@ -15,6 +15,15 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 ## Unreleased
 
 
+
+- **PART 36 rows (b5)/(b6)/(b8), and a cause named as UNCOVERED rather than left green.** (b5) poses a
+  post-parse refusal on the `gate` verb — (b4)'s unknown flag dies inside the flag loop, a different path,
+  and the difference caught a DOUBLE document. (b6) poses `--json --gate-json -`, one artifact named
+  twice. (b8) poses the configured-dep cause on the machine channel, and found three engines refusing
+  correctly while leaving the stream empty. A row for a nonexistent TARGET path was written, found
+  unposeable with this probe's calling convention — it sliced the OUT-DIR for two engines, which then
+  scanned a valid tree and passed at exit 0 — and removed in favour of a comment naming the gap. A row
+  that cannot pose its condition is worse than no row.
 - **PART 35 rows (d)/(e) and PART 36 rows (b4)-(b6) — the cells that were missing.** PART 35s title
   is "a configured dep that cannot be read" and its rows only ever tested a dep that was NOT THERE; two
   engines shipped the wrong answer for the other clause of §2s disjunction, straight through a green
