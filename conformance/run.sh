@@ -5687,6 +5687,22 @@ vd_probe() {
   fi
   chmod 644 "$G.badcfg" 2>/dev/null
 
+  # (b14) A SINK INSIDE A DEP *DIRECTORY*. §3.3.1's guard compares the sink against each INPUT, and
+  # `deps` accepts a directory — `--workspace`/`--deps` writes `.candor/deps/` and hands that back, so
+  # it is the common spelling. The loader then walks it and reads each `*.json` inside: files the guard
+  # never named. Measured in ALL FOUR engines before this row existed — `--gate-json <depdir>/lib.json`
+  # destroyed the operator's dep report, the run chained the wreckage and exited 0 with `ok: true`
+  # written over the input. The FILE spelling of this channel had been guarded for a release; the
+  # directory spelling had not, and no row posed it.
+  mkdir -p "$G.depdir"
+  printf '{"candor":{"version":"x"},"functions":[]}\n' > "$G.depdir/lib.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE CANDOR_DEPS="$G.depdir" "${cmd[@]}" --gate-json "$G.depdir/lib.json" >/dev/null 2>&1; rc=$?
+  if [ "$rc" != 2 ]; then
+    echo "     FAIL $label (b14): \`--gate-json\` naming a file INSIDE a CANDOR_DEPS directory exited $rc, not 2 — the sink is one of the reports the loader reads"; bad=1
+  elif ! grep -q '"candor"' "$G.depdir/lib.json" 2>/dev/null; then
+    echo "     FAIL $label (b14): the run refused but the dep report was already DESTROYED — §3.3.1 requires nothing be written"; bad=1
+  fi
+
   # (b13) A GATE-ADJACENT FLAG GIVEN NO VALUE. §3.1 names this cause explicitly alongside an unknown
   # flag, and (b1) poses only the unknown one — so an engine could route that and leave this raw, which
   # one did, in the engine reviewed most. Found by sweeping the causes a user can TRIGGER rather than
