@@ -5630,6 +5630,21 @@ vd_probe() {
     echo "     note $label (b4): no gate-verb command given — the gate route is UNTESTED for this engine"
   fi
 
+  # NOT POSED HERE: a target path that does not exist. Every engine's probe command ends with a
+  # different argument (an out-dir for ts and swift, the target for java and rust), so substituting the
+  # target generically is not possible with this calling convention — a first attempt sliced off the
+  # OUT-DIR for two engines, which then scanned a valid tree and "passed" at exit 0. A row that cannot
+  # pose its condition is worse than no row, so it is named as uncovered rather than left looking green.
+  # It wants a per-engine bad-target command, like VD_GATE.
+
+  # (b8) …and the configured-dep cause, which PART 35 pins for its EXIT CODE only. An engine can refuse
+  # correctly and still leave the machine channel empty — rust did, through a raw process exit that
+  # bypassed its own sink helper.
+  mkdir -p "$G.depw"
+  printf 'deps %s/no-such-dep.json\n' "$G.depw" > "$G.depcfg"
+  env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.depcfg" "${cmd[@]}" --gate-json - > "$G.b8.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b8.stdout" ok0 refused; } || { echo "     FAIL $label (b8): a CONFIGURED DEP that cannot be read exited $rc without a refusal document on the stream — PART 35 pins the exit code, this pins the machine channel"; bad=1; }
+
   # (b3) THE CONTROL and vacuity floor: a violating run on the stream carries a real verdict.
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json - > "$G.b3.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 1 ] && vd_doc "$G.b3.stdout" ok0 viol; } || { echo "     FAIL $label (b3): a violating run must put a violations-bearing verdict on stdout (exit $rc) — without this row (b1)/(b2) pass on an engine that streams a refusal unconditionally"; bad=1; }
