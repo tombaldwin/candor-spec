@@ -5645,6 +5645,36 @@ vd_probe() {
   env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.depcfg" "${cmd[@]}" --gate-json - > "$G.b8.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 2 ] && vd_doc "$G.b8.stdout" ok0 refused; } || { echo "     FAIL $label (b8): a CONFIGURED DEP that cannot be read exited $rc without a refusal document on the stream — PART 35 pins the exit code, this pins the machine channel"; bad=1; }
 
+  # (b9)/(b10) THE VERDICT PATHS, which every stream row until now skipped. (b1)/(b2)/(b5)/(b6)/(b8) all
+  # pose REFUSAL causes, so an engine could dedupe its refusal writer and leave the VERDICT writer
+  # writing per-flag — and one did, for a whole round. `--json` IS `--gate-json -` (§3.1), so naming
+  # both is one artifact named twice; two concatenated JSON objects parse as neither.
+  #
+  # Both outcomes, because they are different writers: a clean verdict (exit 0) and a firing one
+  # (exit 1). A row that poses only one leaves the other exactly as exposed as the refusal-only rows
+  # left these.
+  if [ "${#VD_GATE[@]}" -gt 0 ]; then
+    printf 'deny Fs zzz.matches.nothing\n' > "$G.nofire.policy"
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$G.nofire.policy" --json --gate-json - > "$G.b9.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 0 ] && vd_doc "$G.b9.stdout" norefused; } || { echo "     FAIL $label (b9): a CLEAN gate verdict with \`--json --gate-json -\` must be exactly ONE parseable document (exit $rc)"; bad=1; }
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$G.fire.policy" --json --gate-json - > "$G.b10.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 1 ] && vd_doc "$G.b10.stdout" viol norefused; } || { echo "     FAIL $label (b10): a FIRING gate verdict with \`--json --gate-json -\` must be exactly ONE parseable document carrying violations (exit $rc)"; bad=1; }
+  fi
+
+  # (b11) THE CONFIG ITSELF AS THE EXIT-2 CAUSE. Every stream row above poses a cause the engine meets
+  # AFTER it has read its config — an unknown flag, a policy, a dep. An unreadable CONFIG is earlier
+  # than all of them, and it is the cause where the sink is most likely not yet armed: two engines were
+  # measured exiting 2 with an EMPTY stream on exactly this input while three wrote the refusal.
+  printf 'policy /nonexistent.policy\n' > "$G.badcfg"
+  chmod 000 "$G.badcfg"
+  if [ -r "$G.badcfg" ]; then
+    echo "     SKIP $label (b11): $G.badcfg is still readable (root? mode-less fs?) — row not posed"
+  else
+    env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.badcfg" "${cmd[@]}" --gate-json - > "$G.b11.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 2 ] && vd_doc "$G.b11.stdout" ok0 refused; } || { echo "     FAIL $label (b11): an UNREADABLE CONFIG exited $rc without a refusal document on the stream — the earliest exit-2 cause, and the one the sink is least likely to be armed for"; bad=1; }
+  fi
+  chmod 644 "$G.badcfg" 2>/dev/null
+
   # (b3) THE CONTROL and vacuity floor: a violating run on the stream carries a real verdict.
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json - > "$G.b3.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 1 ] && vd_doc "$G.b3.stdout" ok0 viol; } || { echo "     FAIL $label (b3): a violating run must put a violations-bearing verdict on stdout (exit $rc) — without this row (b1)/(b2) pass on an engine that streams a refusal unconditionally"; bad=1; }
