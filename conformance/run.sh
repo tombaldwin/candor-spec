@@ -5171,12 +5171,21 @@ fi
 #   (c) NO `deps` key at all                    -> exit 0   (absence is a complete answer about what
 #                                                            was seen; this rung binds only the
 #                                                            CONFIGURED case)
+#   (d) a dep that EXISTS but cannot be OPENED  -> exit 2   ⟨added 2026-08-09⟩
+#   (e) a dep holding INVALID JSON              -> exit 2   ⟨added 2026-08-09⟩
+#
+# (d) and (e) were missing, and that is how two engines shipped the wrong answer. §2 binds "does not
+# exist OR CANNOT BE READ" in ONE sentence; rows (a)-(c) tested only the first clause, so rust and ts
+# skipping an unreadable report at exit 0 sailed through a part whose own title says "cannot be read".
+# Found by a release go/no-go panel that tested the engines' CHANGELOG CLAIMS rather than the suite.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[35] CONFIGURED DEP THAT CANNOT BE READ  (SPEC §2 ⟨0.27⟩ — not reduced coverage, unevaluable)"
 DP_OK=0
 DPW="$W/depcfg"; mkdir -p "$DPW"
 printf '{"functions":[]}\n' > "$DPW/present.json"
+printf '{"functions":[]}\n' > "$DPW/unreadable.json"; chmod 000 "$DPW/unreadable.json"
+printf 'this is not json {\n' > "$DPW/malformed.json"
 dp_probe() { # $1 label ; then the scan command with the TARGET LAST
   local label=$1; shift
   local cmd=( "$@" ) tgt bad=0 rc
@@ -5191,8 +5200,26 @@ dp_probe() { # $1 label ; then the scan command with the TARGET LAST
   : > "$tgt/.candor/config"
   "${cmd[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" = 0 ] || { echo "     FAIL $label (c): NO \`deps\` key exited $rc, not 0 — an unchained scan is a complete answer about what it saw"; bad=1; }
+  # (d) and (e) — THE HALF THIS PART DID NOT TEST, and that omission is why two engines shipped the
+  # wrong answer for a release. §2 binds "does not exist OR CANNOT BE READ" in one sentence; rows (a)
+  # to (c) only ever exercised "does not exist". Measured at the 0.27 go/no-go: rust and ts SKIPPED an
+  # unreadable and a malformed report at exit 0 while java and swift refused — a 2-v-2 family split on
+  # a MUST, under changelogs in both repos claiming the refusal. A property that tests one half of a
+  # disjunction reads as though it tests the whole of it.
+  printf 'deps %s/unreadable.json\n' "$DPW" > "$tgt/.candor/config"
+  if [ -r "$DPW/unreadable.json" ]; then
+    # Running as root, or a filesystem that ignores the mode bit: the row cannot be posed, so say so
+    # rather than pass. A probe that cannot fail is not evidence.
+    echo "     SKIP $label (d): $DPW/unreadable.json is still readable (root? mode-less fs?) — row not posed"
+  else
+    "${cmd[@]}" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 2 ] || { echo "     FAIL $label (d): a configured dep that EXISTS but cannot be OPENED exited $rc, not 2 — SPEC §2 binds 'does not exist or cannot be read' with one MUST"; bad=1; }
+  fi
+  printf 'deps %s/malformed.json\n' "$DPW" > "$tgt/.candor/config"
+  "${cmd[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (e): a configured dep holding INVALID JSON exited $rc, not 2 — a report that cannot be parsed makes no claim, and continuing publishes one"; bad=1; }
   rm -f "$tgt/.candor/config"
-  [ "$bad" = 0 ] && { echo "  $label missing=refused present=ok absent-key=ok"; return 0; }
+  [ "$bad" = 0 ] && { echo "  $label missing=refused present=ok absent-key=ok unreadable=refused malformed=refused"; return 0; }
   return 1
 }
 dp_probe "candor-java " java -jar "$JAR" "$W/g_java" || DP_OK=1
@@ -5535,6 +5562,9 @@ fi
 
 # $1 label  $2 baseline  $3 firing-rule ("deny Fs")  — then the AFTER-scan command, TARGET INCLUDED,
 # to which rows append their own --policy/--gate-json flags. `swift_a4=skip` (env) skips row (a4).
+# VD_GATE — the engine's `gate` verb invocation, set by the caller before each vd_probe. Empty means
+# the gate route goes untested and the probe SAYS so rather than passing quietly.
+VD_GATE=()
 vd_probe() {
   local label=$1 base=$2 fire=$3; shift 3
   local cmd=( "$@" ) bad=0 rc
@@ -5568,6 +5598,24 @@ vd_probe() {
   # group closes was BY CAUSE, so one cause alone would not pin the rule.
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$VDW/does-not-exist.policy" --gate-json - > "$G.b2.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 2 ] && vd_doc "$G.b2.stdout" ok0 refused; } || { echo "     FAIL $label (b2): an unreadable policy with the STREAM sink exited $rc without a stdout refusal document"; bad=1; }
+
+  # (b4) THE SAME RULE ON THE `gate` VERB, which rows (b1)-(b3) never reached: every one of them runs
+  # the SCAN route, so an engine could arm the stream there and nowhere else and still pass this part.
+  # One did. Measured at the 0.27 go/no-go, candor-java, same flag, both exit 2:
+  #
+  #     gate --report R --policy P --gate-json - --zzz-not-a-flag    0 bytes on stdout
+  #     gate --report R --policy <missing> --gate-json -           164 bytes, the refusal
+  #
+  # The second worked because `gate()` is reached and refuses from inside; the first is rejected during
+  # argument parsing, before any of that runs. A machine consumer reading an empty stream after exit 2
+  # has nothing to tell it apart from a clean gate — the exact channel §3.3.1 arming exists to close,
+  # left open on the SUPPLY-CHAIN surface, which is the one a consumer actually points at a dependency.
+  if [ "${#VD_GATE[@]}" -gt 0 ]; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$G.fire.policy" --gate-json - --zzz-not-a-flag > "$G.b4.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 2 ] && vd_doc "$G.b4.stdout" ok0 refused; } || { echo "     FAIL $label (b4): the GATE VERB with the stream sink exited $rc leaving stdout without a refusal document — rows (b1)-(b3) only ever ran the scan route"; bad=1; }
+  else
+    echo "     note $label (b4): no gate-verb command given — the gate route is UNTESTED for this engine"
+  fi
 
   # (b3) THE CONTROL and vacuity floor: a violating run on the stream carries a real verdict.
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" --gate-json - > "$G.b3.stdout" 2>/dev/null; rc=$?
@@ -5605,10 +5653,14 @@ vd_gate_probe() {
   return 1
 }
 
+VD_GATE=( java -jar "$JAR" gate )
 vd_probe "candor-java " "$VDW/jbase.json" "deny Fs" java -jar "$JAR" "$VDW/jac" || VD_OK=1
+VD_GATE=( "$QUERY" gate )
 vd_probe "candor-scan " "$VDW/rbase.json" "deny Fs" "$SCAN" "$VDW/ra" || VD_OK=1
-[ -n "$TS_OK" ] && { vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
-[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
+[ -n "$TS_OK" ] && { VD_GATE=( node "$TS_DIR/query.mjs" gate )
+vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
+[ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { VD_GATE=( "$SW_BIN" gate )
+vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
 
 # candor-agents: groups (b) and (c) — it has no AS-EFF-005 baseline producer, so group (a)'s composed
 # state is unreachable there by construction (said here so absence reads as N/A, not as a skipped row).
