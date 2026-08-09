@@ -16,6 +16,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 rows (b9)/(b10)/(b11) — the cells every earlier stream row skipped.** (b1)/(b2)/(b5)/(b6)/(b8)
+  all pose REFUSAL causes, so an engine could dedupe its refusal writer and leave the VERDICT writer
+  writing per-flag: one did, for a round, and a refusal-path row cannot see it. (b9) poses a CLEAN
+  verdict and (b10) a FIRING one, both with `--json --gate-json -` — one artifact named twice, which
+  §3.1 says must still be exactly one document. (b11) poses an UNREADABLE CONFIG, the earliest exit-2
+  cause and the one the sink is least likely to be armed for; it found the last engine still leaving
+  that stream empty. All three were written BEFORE the fixes they now hold.
 - **PART 36 rows (b5)/(b6)/(b8), and a cause named as UNCOVERED rather than left green.** (b5) poses a
   post-parse refusal on the `gate` verb — (b4)'s unknown flag dies inside the flag loop, a different path,
   and the difference caught a DOUBLE document. (b6) poses `--json --gate-json -`, one artifact named
