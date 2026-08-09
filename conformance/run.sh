@@ -5703,6 +5703,26 @@ vd_probe() {
     echo "     FAIL $label (b14): the run refused but the dep report was already DESTROYED — §3.3.1 requires nothing be written"; bad=1
   fi
 
+  # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
+  # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
+  # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
+  # correctly for an UNREADABLE config while leaving a previous run's `ok: true` on disk, which is the
+  # stale green the whole arming mechanism exists to prevent. Two spellings of one cause, and only one
+  # was posed.
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.stale.json"
+  chmod 000 "$G.badcfg2" 2>/dev/null; printf 'policy /nonexistent.policy\n' > "$G.badcfg2"; chmod 000 "$G.badcfg2"
+  if [ -r "$G.badcfg2" ]; then
+    echo "     SKIP $label (b15): $G.badcfg2 is still readable (root? mode-less fs?) — row not posed"
+  else
+    env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.badcfg2" "${cmd[@]}" --gate-json "$G.stale.json" >/dev/null 2>&1; rc=$?
+    if [ "$rc" != 2 ]; then
+      echo "     FAIL $label (b15): an unreadable config with a FILE sink exited $rc, not 2"; bad=1
+    elif python3 -c "import json,sys; d=json.load(open('$G.stale.json')); sys.exit(0 if d.get('ok') is True else 1)" 2>/dev/null; then
+      echo "     FAIL $label (b15): the run refused but the FILE sink still holds the PREVIOUS run's \`ok: true\` — the stale green arming exists to replace"; bad=1
+    fi
+  fi
+  chmod 644 "$G.badcfg2" 2>/dev/null
+
   # (b13) A GATE-ADJACENT FLAG GIVEN NO VALUE. §3.1 names this cause explicitly alongside an unknown
   # flag, and (b1) poses only the unknown one — so an engine could route that and leave this raw, which
   # one did, in the engine reviewed most. Found by sweeping the causes a user can TRIGGER rather than

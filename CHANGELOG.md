@@ -20,6 +20,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 (b15): the FILE sink's form of the config cause.** Every stream row poses stdout; the file
+  sink has a different property — arming leaves a placeholder and the refusal must REPLACE it — and an
+  engine can satisfy one form while failing the other. One did: it streamed the refusal for an
+  unreadable config and left a previous run's `ok: true` on disk.
 - **PART 36 (b14): a sink inside a dep DIRECTORY.** The guard registered the directory token; the loader
   reads the files inside it. No row posed the directory spelling, so all four engines destroyed the
   operator's dep report and exited 0 with `ok: true` over it, while the FILE spelling of the same
