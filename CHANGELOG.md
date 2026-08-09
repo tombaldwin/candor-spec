@@ -19,6 +19,12 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 (b14): a sink inside a dep DIRECTORY.** The guard registered the directory token; the loader
+  reads the files inside it. No row posed the directory spelling, so all four engines destroyed the
+  operator's dep report and exited 0 with `ok: true` over it, while the FILE spelling of the same
+  channel had been guarded for a release. The row asserts both the refusal AND that nothing was written
+  — a refusal that arrives after the input is already gone is not a refusal.
 - **PART 36 (b13): a gate-adjacent flag with NO VALUE.** §3.1 names this cause beside the unknown flag,
   and (b1) posed only the unknown one — so an engine could route that and leave this raw. One had.
 - **PART 36 (b12): the nonexistent-target cause, posed at last.** It was written once, found unposeable
