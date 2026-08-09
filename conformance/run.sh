@@ -5565,6 +5565,10 @@ fi
 # VD_GATE — the engine's `gate` verb invocation, set by the caller before each vd_probe. Empty means
 # the gate route goes untested and the probe SAYS so rather than passing quietly.
 VD_GATE=()
+# VD_BAD — the engine's invocation against a target that does not exist, set by the caller before each
+# vd_probe. Empty means that cause goes UNTESTED and the probe says so at run time rather than passing
+# quietly: a cause disclosed only in a source comment is disclosed to nobody running the suite.
+VD_BAD=()
 vd_probe() {
   local label=$1 base=$2 fire=$3; shift 3
   local cmd=( "$@" ) bad=0 rc
@@ -5630,12 +5634,20 @@ vd_probe() {
     echo "     note $label (b4): no gate-verb command given — the gate route is UNTESTED for this engine"
   fi
 
-  # NOT POSED HERE: a target path that does not exist. Every engine's probe command ends with a
-  # different argument (an out-dir for ts and swift, the target for java and rust), so substituting the
-  # target generically is not possible with this calling convention — a first attempt sliced off the
-  # OUT-DIR for two engines, which then scanned a valid tree and "passed" at exit 0. A row that cannot
-  # pose its condition is worse than no row, so it is named as uncovered rather than left looking green.
-  # It wants a per-engine bad-target command, like VD_GATE.
+  # (b12) A TARGET PATH THAT DOES NOT EXIST — posed at last, through a per-engine command.
+  #
+  # A first attempt tried to substitute the target into the shared probe command generically. That
+  # cannot work: each engine's command ends with a different argument (an out-dir for ts and swift, the
+  # target for java and rust), so the slice removed the OUT-DIR for two of them, which then scanned a
+  # VALID tree and "passed" at exit 0 — a vacuous green dressed as a row. It was removed and the cause
+  # named as uncovered until it could be posed properly. `VD_BAD` is that: the engine's own invocation
+  # against a path that is not there, supplied by the caller who knows the shape.
+  if [ "${#VD_BAD[@]}" -gt 0 ]; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_BAD[@]}" --gate-json - > "$G.b12.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 2 ] && vd_doc "$G.b12.stdout" ok0 refused; } || { echo "     FAIL $label (b12): a target path that does not exist exited $rc without a refusal document on the stream"; bad=1; }
+  else
+    echo "     note $label (b12): no bad-target command given — the nonexistent-target cause is UNTESTED here"
+  fi
 
   # (b8) …and the configured-dep cause, which PART 35 pins for its EXIT CODE only. An engine can refuse
   # correctly and still leave the machine channel empty — rust did, through a raw process exit that
@@ -5712,12 +5724,16 @@ vd_gate_probe() {
 }
 
 VD_GATE=( java -jar "$JAR" gate )
+VD_BAD=( java -jar "$JAR" "$VDW/no-such-target-java" )
 vd_probe "candor-java " "$VDW/jbase.json" "deny Fs" java -jar "$JAR" "$VDW/jac" || VD_OK=1
 VD_GATE=( "$QUERY" gate )
+VD_BAD=( "$SCAN" "$VDW/no-such-target-rust" )
 vd_probe "candor-scan " "$VDW/rbase.json" "deny Fs" "$SCAN" "$VDW/ra" || VD_OK=1
 [ -n "$TS_OK" ] && { VD_GATE=( node "$TS_DIR/query.mjs" gate )
+VD_BAD=( node "$TS_DIR/scan.mjs" "$VDW/no-such-target-ts" )
 vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { VD_GATE=( "$SW_BIN" gate )
+VD_BAD=( "$SW_BIN" "$VDW/no-such-target-swift" )
 vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
 
 # candor-agents: groups (b) and (c) — it has no AS-EFF-005 baseline producer, so group (a)'s composed
