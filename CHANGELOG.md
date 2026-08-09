@@ -21,6 +21,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 
 
+
+- **PART 36 (b16)/(b17): an engine pin the build does not satisfy, and an empty scan.** Both are
+  ordinary CI accidents and §3.1 exempts no cause; neither had a row, and both left the stream empty in
+  at least one engine. (b16) also caught a fix that emitted TWO documents where one was intended — a
+  byte count had made it look right.
 - **PART 36 (b15): the FILE sink's form of the config cause.** Every stream row poses stdout; the file
   sink has a different property — arming leaves a placeholder and the refusal must REPLACE it — and an
   engine can satisfy one form while failing the other. One did: it streamed the refusal for an

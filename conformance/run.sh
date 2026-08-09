@@ -5703,6 +5703,24 @@ vd_probe() {
     echo "     FAIL $label (b14): the run refused but the dep report was already DESTROYED — §3.3.1 requires nothing be written"; bad=1
   fi
 
+  # (b16)/(b17) TWO MORE CAUSES A USER TRIGGERS ROUTINELY. An ENGINE PIN the build does not satisfy and
+  # an EMPTY SCAN are both exit-2 causes §3.1 exempts no more than the others, and both are ordinary CI
+  # accidents — a pin bumped ahead of the installed engine, a source path that moved. Neither had a row,
+  # and measured before these existed: ts left the stream empty on BOTH, swift on the empty scan.
+  printf 'engine 9.9.9\n' > "$G.pincfg"
+  env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.pincfg" "${cmd[@]}" --gate-json - > "$G.b16.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b16.stdout" ok0 refused; } || { echo "     FAIL $label (b16): an ENGINE PIN this build does not satisfy exited $rc without a refusal document on the stream"; bad=1; }
+
+  # (b17) uses each engine's own bad-target command shape against an EMPTY directory, since the probe's
+  # trailing argument differs per engine — the same reason (b12) needs VD_BAD.
+  if [ "${#VD_BAD[@]}" -gt 0 ]; then
+    mkdir -p "$G.empty"
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_BAD[@]%/*}" "$G.empty" --gate-json - > "$G.b17.stdout" 2>/dev/null; rc=$?
+    if [ "$rc" = 2 ]; then
+      vd_doc "$G.b17.stdout" ok0 refused || { echo "     FAIL $label (b17): an EMPTY SCAN exited 2 without a refusal document on the stream"; bad=1; }
+    fi
+  fi
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
