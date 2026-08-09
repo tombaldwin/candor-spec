@@ -5613,6 +5613,19 @@ vd_probe() {
   if [ "${#VD_GATE[@]}" -gt 0 ]; then
     env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$G.fire.policy" --gate-json - --zzz-not-a-flag > "$G.b4.stdout" 2>/dev/null; rc=$?
     { [ "$rc" = 2 ] && vd_doc "$G.b4.stdout" ok0 refused; } || { echo "     FAIL $label (b4): the GATE VERB with the stream sink exited $rc leaving stdout without a refusal document — rows (b1)-(b3) only ever ran the scan route"; bad=1; }
+    # (b5) A POST-PARSE refusal cause on the gate verb. (b4)'s unknown flag dies INSIDE the flag loop,
+    # which is a different code path from a refusal raised after parsing succeeds — and the difference
+    # is not academic: a fix that registered the stream sink in the pre-pass made swift write the
+    # refusal document TWICE for this cause (the flag loop registered it again), and (b4) could not see
+    # it because it never got that far. Two concatenated JSON objects are not a document.
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$VDW/does-not-exist.policy" --gate-json - > "$G.b5.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 2 ] && vd_doc "$G.b5.stdout" ok0 refused; } || { echo "     FAIL $label (b5): the GATE VERB refusing AFTER argument parsing must leave exactly ONE refusal document on the stream (exit $rc)"; bad=1; }
+
+    # (b6) `--json --gate-json -` NAMES ONE ARTIFACT TWICE. SPEC §3.1 says `--json` IS `--gate-json -`,
+    # so an engine writing both puts two documents on one stream. java did, on both the refusal and the
+    # verdict path, and every row above missed it because none of them spells the sink twice.
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" --policy "$VDW/does-not-exist.policy" --json --gate-json - > "$G.b6.stdout" 2>/dev/null; rc=$?
+    { [ "$rc" = 2 ] && vd_doc "$G.b6.stdout" ok0 refused; } || { echo "     FAIL $label (b6): \`--json --gate-json -\` names ONE sink twice — the stream must still carry exactly one document (exit $rc)"; bad=1; }
   else
     echo "     note $label (b4): no gate-verb command given — the gate route is UNTESTED for this engine"
   fi
