@@ -14,6 +14,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.28⟩ `--json` beside `--gate-json -` on the SCAN route is refused.** On the gate verbs `--json` IS
+  `--gate-json -` (one artifact, named twice); on a scan `--json` writes the REPORT to stdout, so asking
+  for both puts a report and a verdict on one stream. Measured: four engines concatenated them, so
+  `json.load()` on stdout over violating code returned `Extra data` and no verdict at all; the fifth
+  refused but only after the report had gone out. Now exit 2 with the fail-closed document as the stream's
+  only content, decided before the report is written. `--json <file>` beside `--gate-json -` is unaffected
+  — two artifacts in two places is what the operator asked for.
+
 - **⚠ ⟨0.28⟩ The artifact rule was implemented in the COMPARISON and not in the WRITE.** With a SINGLE
   `--gate-json` pointed at a symlink — one `artifacts/verdict.json` linked into a shared directory, an
   ordinary CI layout — two engines published by temp-and-rename, replacing the link instead of following
