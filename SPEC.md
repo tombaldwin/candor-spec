@@ -1895,6 +1895,20 @@ reads as a parse failure — fail-closed by construction, and the reason arming 
 than merely impossible. An engine MUST NOT print anything else to a stdout that carries a verdict (§3.3's
 pure-JSON rule), which is also why the refusal replaces the placeholder strategy instead of joining it.
 
+⟨0.28⟩ **TWO ARTIFACTS CANNOT SHARE ONE STREAM: `--json` BESIDE `--gate-json -` ON THE SCAN ROUTE IS
+REFUSED.** On the gate verbs `--json` IS `--gate-json -` — one artifact named twice, and evaluated as such.
+On the SCAN route `--json` means something else: write the REPORT to stdout. Asking for both puts a report
+AND a verdict on one stream, and measured before this clause, four engines simply concatenated them: a
+consumer calling `json.load()` on stdout over violating code got `Extra data` and therefore **no verdict at
+all**, while the fifth refused. Four engines had settled on a reading the text above does not license.
+
+The implementation MUST exit 2 with a diagnostic naming both flags, and the fail-closed document is the
+stream's only content — so the refusal is decided BEFORE the report is written, not after. This is the same
+answer as the repeated-sink rule directly below and for the same reason: when an instruction names one
+destination for two different documents, the contract says so rather than picking an order and hoping the
+reader stream-decodes. `--json <file>` beside `--gate-json -` is NOT this case — those are two artifacts
+in two places, which is exactly what the operator asked for.
+
 ⟨0.28⟩ **ONE RUN NAMES ONE SINK. A REPEATED `--gate-json` IS REFUSED, AND EVERY PATH NAMED GETS THE
 REFUSAL.** `--gate-json A --gate-json B` in a single invocation is a broken gate configuration, which §3.3
 already treats as an exit-2 cause: the operator has stated where the verdict goes, twice, and the two

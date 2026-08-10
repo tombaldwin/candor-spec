@@ -5900,6 +5900,22 @@ vd_probe() {
     echo "     SKIP $label (b25b): this filesystem does not support symlinks — row not posed"
   fi
 
+  # (b26) ⟨0.28⟩ `--json` BESIDE `--gate-json -` ON THE SCAN ROUTE — two artifacts, one stream.
+  #
+  # On the GATE verbs `--json` IS `--gate-json -`, one artifact named twice, and (b6)/(b9)/(b10) pin that.
+  # On the SCAN route `--json` writes the REPORT to stdout, so asking for both puts a report AND a verdict
+  # on one stream. Measured before this row: java, rust, ts and swift concatenated them — `json.load()`
+  # over violating code raised `Extra data`, so a consumer reading stdout for the verdict got NO VERDICT AT
+  # ALL — while candor-agents refused, but only after the report had already gone out.
+  #
+  # The refusal must therefore be decided BEFORE the report is written: exit 2 with the fail-closed
+  # document as the stream's ONLY content. `--json <file>` beside `--gate-json -` is a different thing
+  # entirely (two artifacts, two places) and its control is below.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" \
+      --json --gate-json - > "$G.b26.stdout" 2>/dev/null; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (b26a): \`--json --gate-json -\` on the scan route exited $rc, not 2 — a report and a verdict cannot share one stream"; bad=1; }
+  vd_doc "$G.b26.stdout" ok0 refused || { echo "     FAIL $label (b26b): stdout is not exactly ONE refusal document — a consumer calling json.load() here gets \`Extra data\` and therefore no verdict at all"; bad=1; }
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
