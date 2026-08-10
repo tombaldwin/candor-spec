@@ -13,6 +13,22 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
 ## Unreleased
+
+- **⟨0.28⟩ One run names one sink: a repeated `--gate-json` is refused, and every path named gets the
+  refusal** (§3.3.1). `--gate-json A --gate-json B` is a broken gate configuration — the operator has said
+  where the verdict goes, twice, and both statements cannot be honoured — so the run exits 2 and the
+  refusal document is written to *each* path given.
+
+  Writing to each is the load-bearing half. Measured across all four code engines before this rung: three
+  took the last path and wrote the verdict there, one refused, and **all four left the first path exactly
+  as they found it**. Pre-seed `A` with a previous run's `{"ok": true}`, run a gate that fires, and `A`
+  still reports the code clean — the ⟨0.27⟩ stale green reached by a spelling nobody had considered, and
+  worse than the case that motivated it: the run did not fail, the gate *did* fire, and the operator's own
+  command named the path that lies. A CI wrapper appending `--gate-json artifacts/verdict.json` to an
+  already-configured command produces it on every run.
+
+  Two identical spellings of one path are ONE sink and are not refused — the §3.3.1 artifact rule applies
+  here too. Conformance PART 36; no report-schema change, so a 0.27 consumer is unaffected.
 ## 0.27 — current floor (the engine pin, the zero-match rule, and a producer's declared refinements)
 
 

@@ -1872,6 +1872,29 @@ reads as a parse failure — fail-closed by construction, and the reason arming 
 than merely impossible. An engine MUST NOT print anything else to a stdout that carries a verdict (§3.3's
 pure-JSON rule), which is also why the refusal replaces the placeholder strategy instead of joining it.
 
+⟨0.28⟩ **ONE RUN NAMES ONE SINK. A REPEATED `--gate-json` IS REFUSED, AND EVERY PATH NAMED GETS THE
+REFUSAL.** `--gate-json A --gate-json B` in a single invocation is a broken gate configuration, which §3.3
+already treats as an exit-2 cause: the operator has stated where the verdict goes, twice, and the two
+statements cannot both be honoured. The implementation MUST exit 2 with a diagnostic naming every path
+given, and MUST write the refusal document to **each** of them (the stream, if `-` is among them, under
+the stream rule above).
+
+Writing to *each* is the load-bearing half, and it is not symmetry for its own sake. Measured across all
+four code engines before this rung: three took the LAST path and wrote the verdict there, one refused —
+and **all four left the first path exactly as they found it**. Pre-seed `A` with a previous run's
+`{"ok": true}`, run a gate that fires, and `A` still says the code is clean. That is the stale green of
+(1) reached by a spelling nobody had considered, and it is worse than the refusal case that motivated (1):
+the run did not fail, the gate *did* fire, and the operator's own command named the path that lies. A CI
+wrapper that appends `--gate-json artifacts/verdict.json` to a command a user has already configured with
+one produces this on every run.
+
+The choice of refusal over last-wins follows from the same place as (2): when an instruction is ambiguous,
+this contract's answer is to say so, not to pick. Last-wins is defensible for a flag that names a
+preference; it is not defensible for a flag that names where the answer is published, because the reader
+of the losing path has no way to learn that it lost. Two identical spellings of one path are ONE sink, not
+two — the artifact rule from (2) applies here as well, so `--gate-json P --gate-json ./P` from `P`'s own
+directory is a single sink and is not refused.
+
 ⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING
 A CERTAIN VIOLATION — and that is a BOUNDARY, not a carve-out.** The distinction is load-bearing and the
 two look identical from the exit code:
