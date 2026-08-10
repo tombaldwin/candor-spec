@@ -387,6 +387,12 @@ def main():
             absent.append((eng, err))
             continue
         info, _unc = sa.leaf_info(got[0], got[1])
+        # ⟨0.28⟩ leaf_info returns (None, None) on an armed placeholder — the ⟨0.21⟩ Row-1 fail-closed
+        # shape a scan writes when it fails to complete. Treat that as an ABSENT arm rather than let
+        # `info.get(...)` below crash: the placeholder makes no claim, so this arm answers nothing.
+        if info is None:
+            absent.append((eng, "arm returned an armed placeholder (⟨0.28⟩ ⟨0.21⟩ Row-1 fail-closed)"))
+            continue
         live = vac = ok = 0
         counts = {k: 0 for k in CARDINAL + GATEVIS}
         act = {a: 0 for a, _ in AUGMENTATIONS if a != "base"}
