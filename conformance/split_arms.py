@@ -76,10 +76,23 @@ def split_ids(only=None):
 # one and not the other, so a move from Unknown to kappa is a gate-visible weakening worth counting.
 # =====================================================================================================
 def leaf_info(path, seps):
-    """{leaf-fn-name -> {eff, unknown, invisible, why}} plus a report-level ('' key) coverage summary."""
+    """{leaf-fn-name -> {eff, unknown, invisible, why}} plus a report-level ('' key) coverage summary.
+
+    ⟨0.28⟩ Returns (None, None) on a ⟨0.21⟩ Row-1 fail-closed manifest-carrying empty at `path` — the
+    shape ⟨0.28⟩ arming leaves at a `--json <file>` sink when the scan exits before producing a real
+    report. Before that rung, a failed scan left NO file and the caller keyed on `os.path.exists`; with
+    arming, the file always exists and the caller has to key on the content. Row 1 pins the reading:
+    `analyzed.count == 0` + `functions == []` is *nothing was judged*, not *nothing to judge*, and a
+    consumer that reads it as a real report is exactly the fabrication mirror this rung exists to close.
+    """
     with open(path) as f:
         d = json.load(f)
     fns = d["functions"] if isinstance(d, dict) else d
+    if isinstance(d, dict):
+        analyzed = d.get("analyzed") or {}
+        count = analyzed.get("count")
+        if isinstance(count, int) and count == 0 and not fns and (d.get("unanalyzed") or []):
+            return None, None
     out = {}
     for e in fns:
         n = e["fn"]
