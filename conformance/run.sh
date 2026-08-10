@@ -5844,12 +5844,22 @@ vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa
 if [ -d "$HERE/../../candor-agents" ] && command -v python3 >/dev/null 2>&1; then
   AGVD="$VDW/agents"; mkdir -p "$AGVD"
   cp -R "$HERE/../../candor-agents/fixture/." "$AGVD/" 2>/dev/null || true
+  # THE SHIM MUST CALL THE ENTRY THE USER CALLS. This imported `main` directly, while the installed CLI
+  # runs `_main_streaming_verdict` — the wrapper that guarantees the STREAM sink carries a document on
+  # every exit-2 path. So the rows below were exercising a different program than anyone ships, and a
+  # cause fixed in the CLI would still have failed here (or, worse, the reverse). It falls back to `main`
+  # only for a checkout old enough not to have the wrapper, and says so rather than silently testing less.
   cat > "$VDW/agrun.py" <<'PYRUN'
 import sys
 sys.path.insert(0, sys.argv[1])
 sys.argv = ['candor-agents'] + sys.argv[2:]
-from candor_agents.scan import main
-sys.exit(main())
+import candor_agents.scan as _s
+entry = getattr(_s, "_main_streaming_verdict", None)
+if entry is None:
+    print("candor-agents checkout predates _main_streaming_verdict — rows run against main()",
+          file=sys.stderr)
+    entry = _s.main
+sys.exit(entry())
 PYRUN
   AGCMD=( python3 "$VDW/agrun.py" "$HERE/../../candor-agents" "$AGVD" --out "$AGVD/report" )
   AG_OKROW=0
@@ -5865,6 +5875,33 @@ PYRUN
   { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b2.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b2): an unreadable policy with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
   env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/bad.policy" --gate-json - > "$VDW/ag.b2b.stdout" 2>/dev/null; agrc=$?
   { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b2b.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b2b): a policy that cannot be honoured AS WRITTEN must REFUSE (exit 2 + refusal document), never be rewritten into a weaker policy that passes (exit $agrc)"; AG_OKROW=1; }
+  # (b4)/(b5)/(b6) THE CAUSES THAT ARE NOT USAGE ERRORS. Rows (b1)/(b2)/(b2b) all exit from the argument
+  # parse or the policy load, and this engine wrote the stream refusal at exactly one site — the parse.
+  # Everything met afterwards left through a bare `sys.exit(2)`. Measured before the fix, against
+  # `--gate-json -`: a nonexistent fleet path, an unreadable `.candor/config` and an unsatisfied engine
+  # pin each exited 2 with ZERO bytes while the other four engines wrote a document on the same inputs.
+  # The fix is one wrapper at the entry rather than three patched sites, so these rows are also the
+  # regression test for causes nobody has enumerated yet.
+  # A DEDICATED COMMAND, not a suffix-stripped AGCMD. `"${AGCMD[@]%--out*}"` applies the removal to each
+  # ELEMENT, so it leaves an empty argument and keeps both `--out`'s value and the VALID target as the
+  # first positional — the nonexistent path then arrived as an EXTRA POSITIONAL and the row passed by
+  # posing a different cause entirely. The same class of mistake as the naive last-argv substitution this
+  # suite's probe notes warn about, caught by expanding the array and reading it rather than trusting it.
+  AGBAD=( python3 "$VDW/agrun.py" "$HERE/../../candor-agents" "$VDW/ag-no-such-fleet" )
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGBAD[@]}" --gate-json - > "$VDW/ag.b4.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b4.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b4): a NONEXISTENT FLEET PATH with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  printf 'policy /nonexistent.policy\n' > "$VDW/ag.badcfg"
+  chmod 000 "$VDW/ag.badcfg"
+  if [ -r "$VDW/ag.badcfg" ]; then
+    echo "     SKIP candor-agents (b5): $VDW/ag.badcfg is still readable (root? mode-less fs?) — row not posed"
+  else
+    env -u CANDOR_POLICY CANDOR_CONFIG="$VDW/ag.badcfg" "${AGCMD[@]}" --gate-json - > "$VDW/ag.b5.stdout" 2>/dev/null; agrc=$?
+    { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b5.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b5): an UNREADABLE CONFIG with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  fi
+  chmod 644 "$VDW/ag.badcfg" 2>/dev/null
+  printf 'engine 9.9.9\n' > "$VDW/ag.pincfg"
+  env -u CANDOR_POLICY CANDOR_CONFIG="$VDW/ag.pincfg" "${AGCMD[@]}" --gate-json - > "$VDW/ag.b6.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b6.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b6): an ENGINE PIN this build does not satisfy exited $agrc without a stdout refusal document"; AG_OKROW=1; }
   env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" --gate-json - > "$VDW/ag.b3.stdout" 2>/dev/null; agrc=$?
   { [ "$agrc" = 1 ] && vd_doc "$VDW/ag.b3.stdout" ok0 viol; } || { echo "     FAIL candor-agents (b3): a violating run must put a violations-bearing verdict on stdout (exit $agrc)"; AG_OKROW=1; }
   rm -f "$VDW/ag.c1.json"
