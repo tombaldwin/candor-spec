@@ -3107,6 +3107,44 @@ whose wrapper reports its own code) — it MUST NOT proceed gateless. A typo'd p
 that runs green is a gate that silently passes everything, the exact failure a gate exists to
 prevent. (Found live in a code engine: loud on stderr, but exit 0 — a CI gate that never bit.)
 
+⟨0.28⟩ **AND A CONFIGURED POLICY THAT YIELDS ZERO RULES IS THE SAME FAILURE, REACHED THROUGH A READABLE
+FILE.** The clause above keys on *cannot be read*; measured four-way 2026-08-10, the harm it names arrives
+just as easily through a file that reads perfectly. Point `--policy` at a README — the wrong path in a CI
+script, the commonest spelling of this mistake — and every engine writes
+
+    { "ok": true, "violations": [] }
+
+and exits 0. That is **byte-identical to the verdict of a gate that ran and found nothing**, and also
+byte-identical to the no-gate-configured verdict (§3.3), so the one consumer this format exists for cannot
+tell *your code is clean* from *your gate had no rules*. The human channel is fine, which is why it went
+unnoticed: all four warn per ignored line. The verdict document is silent. Measured on the `gate --report`
+verb too — a route is not covered by its sibling.
+
+So: **when a policy is CONFIGURED and parsing yields NO RULES AT ALL, the run MUST refuse — exit 2 with
+the fail-closed refusal document (§3.1)**, exactly as for an unreadable file. The `unevaluated` list
+carries one entry naming the whole policy, the shape §3.1 already pins for a policy with no lines to name.
+
+**Three things make this forced rather than chosen.** First, it is the clause above stated over the
+CONDITION that makes it true rather than over the instance it was found in — the same correction ⟨0.24⟩
+made twice in §3.1, and the harm ("a gate that silently passes everything") is quoted from the clause
+above, not invented here. Second, **there is already a way to say "I am not gating": do not configure a
+policy.** A configured policy yielding zero rules is therefore never a legitimate expression of intent —
+it is always either a wrong path or a file the engine could not understand, and an engine that cannot
+tell those apart from a real gate must not answer as though it ran one. Third, it is ⟨0.24⟩ §4's
+zero-match ruling one level up: a RULE whose scope binds nothing is disclosed rather than scored as
+satisfied, and a POLICY that contains no rules is the same shape and the stronger case.
+
+**The line-level leniency above is UNCHANGED and still correct.** An unrecognized or malformed line stays
+ignored-with-a-warning — silent reinterpretation remains the one thing a security gate must not do, and an
+engine meeting a rule kind from a newer spec rung must not refuse the whole file over it. This rung is
+about what that leniency COMPOSES TO: every line ignored is a gate, and it asked nothing.
+
+**The refusal covers the empty file and the all-comments file too**, and that is deliberate rather than
+incidental: the operator who commits a placeholder policy and the operator who typo'd a path have written
+the same thing, and `ok: true` is a claim about the CODE that neither run is entitled to make. An engine
+adopting this rung on a codebase that has such a placeholder will start refusing — correctly, and the
+remedy is one line (`# no rules yet` is still zero rules; remove the `policy` key instead).
+
 **An unrecognized command-line FLAG is the same failure class.** A CLI MUST reject an unknown
 leading-dash argument with a non-zero exit (the code engines use `2`), never silently ignore
 it nor read it as a positional path. The same gateless-green hazard applies: a typo'd `--policy`/
