@@ -1849,6 +1849,29 @@ detect this and exit 2 with a diagnostic naming both flags, having written nothi
 exempt cause in (1), and it is exempt for a reason that is not a carve-out: the path was never a sink, so
 there is no verdict at it to go stale, and the alternative is destroying the operator's policy.
 
+⟨0.28⟩ **AND THE WRITE MUST LAND ON THE SAME ARTIFACT THE COMPARISON RESOLVED.** The rule above is stated
+about identity, and every engine implemented it in the COMPARISON while leaving the WRITE to whatever its
+serializer did. Measured with a SINGLE `--gate-json` pointed at a symlink — an ordinary CI layout, one
+`artifacts/verdict.json` linked into a shared directory:
+
+- two engines published by temp-file-and-rename, which REPLACES the link instead of following it, so the
+  real artifact kept a previous run's `{"ok": true}` while the gate FIRED and exit was 1;
+- a third wrote the right document but still severed the link, so the next run's reader was pointed
+  somewhere else;
+- only one followed the link.
+
+A stale green through a single flag, with no operator mistake at all. An implementation MUST resolve the
+sink to its final artifact before writing and write THERE, leaving the link in place. Arming, the refusal
+document and the verdict are all the same write and all bound by this.
+
+⟨0.28⟩ **DEVICE+INODE IS NOT OPTIONAL WHERE THE PLATFORM OFFERS IT.** The parenthetical below was read as
+advisory: measured, `--gate-json h1 --gate-json h2` over two HARDLINKS to one inode was refused as two
+sinks by three engines and correctly gated as one by the fourth, and a duplicate naming a DANGLING symlink
+beside its target split the other way. Both are one artifact and one verdict, so refusing is a FALSE
+refusal of a legal command — the mirror of the stale green, and the reason the rule is about artifacts.
+Implementations MUST compare device+inode when the platform exposes it, and MUST resolve a symlink to its
+target even when the target does not exist yet.
+
 Sameness here is a question about **artifacts, not strings**. `--policy /w/P --gate-json ./P` from `/w` is
 the same file, and a comparison of path spellings says it is not — an engine that had this check still
 failed to the spelling. Implementations MUST resolve both sides (symlinks included; device+inode where the
