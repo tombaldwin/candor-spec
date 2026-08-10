@@ -6149,10 +6149,111 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 37 — SPEC §3.3.1 ⟨0.28⟩: THE REPORT SINK IS ARMED, AND THE FAIL-CLOSED SHAPE          [TIER 1]
+#
+# PART 34 pinned the arming rule for the VERDICT sink (`--gate-json`). ⟨0.28⟩ extends the same rule to
+# the REPORT sink — `--json <file>` and `--json` alone (stdout). Measured 2026-08-10 on all four code
+# engines with an unknown flag beside `--json`: the file sink stayed byte-identical to the previous run
+# (rust 502 bytes, java 648, ts 423, swift 517 — same md5) and the stream sink was 0 bytes on stdout.
+# A downstream `gate --report <that>` then reads a green report the failed run never produced. Same
+# defect ⟨0.27⟩ closed for the verdict sink, on the report sink one hop upstream.
+#
+# THIS PART IS REFERENCE-LED. A no-op engine (previous behaviour: stale report) prints SKIP, not FAIL,
+# so the suite stays green until an engine wires ⟨0.28⟩ up. Once an engine implements arming, its row
+# either PASSes (sink carries the ⟨0.21⟩ Row-1 fail-closed shape) or FAILs (arming happened but the
+# document has the wrong shape).
+#
+# TWO ROWS:
+#   (a) FILE SINK: seed a green report at `--json <path>`, run scan with unknown flag; the file MUST
+#       either be REPLACED by an ⟨0.21⟩ Row-1 manifest-carrying empty (analyzed.count==0 AND
+#       functions==[] AND unanalyzed non-empty), or the row SKIPs.
+#   (b) STREAM SINK: `--json` alone, unknown flag; stdout MUST either carry the fail-closed report as
+#       its only content, or the row SKIPs.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[37] REPORT SINK ARMING  (SPEC §3.3.1 ⟨0.28⟩ — the stale-report defect PART 34 doesn't reach)"
+RS_OK=0
+RSW="$W/report-arming"; mkdir -p "$RSW"
+RS_STALE='{"candor":{"spec":"0.27"},"package":"prev","functions":[{"fn":"leftover","hash":"h","effects":{"fs":["read"]}}]}'
+RS_PY_FAILCLOSED='import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(1)
+ok = (d.get("functions") == []
+      and (d.get("analyzed") or {}).get("count") == 0
+      and bool(d.get("unanalyzed")))
+sys.exit(0 if ok else 1)'
+RS_PY_STREAM_FAILCLOSED='import json,sys
+b=sys.stdin.buffer.read()
+if not b: sys.exit(2)
+try: d=json.loads(b)
+except Exception: sys.exit(1)
+ok = (d.get("functions") == []
+      and (d.get("analyzed") or {}).get("count") == 0
+      and bool(d.get("unanalyzed")))
+sys.exit(0 if ok else 1)'
+
+rs_probe() {  # $1 label ; then the scan command with the TARGET LAST
+  local label=$1; shift
+  local cmd=( "$@" ) bad=0 rc before after
+  local J="$RSW/report.json"
+
+  # (a) FILE SINK: seed a green report, run with unknown flag, examine
+  printf '%s\n' "$RS_STALE" > "$J"
+  before=$(cksum < "$J")
+  "${cmd[@]}" --json "$J" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$J")
+  if [ "$rc" != 2 ]; then
+    echo "     FAIL $label (a): an unknown flag exited $rc, not 2"; bad=1
+  elif [ "$before" = "$after" ]; then
+    echo "  $label (a) SKIP — sink still holds the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
+  elif python3 -c "$RS_PY_FAILCLOSED" "$J" 2>/dev/null; then
+    echo "  $label (a) PASS — armed sink carries the ⟨0.21⟩ Row-1 fail-closed shape"
+  else
+    echo "     FAIL $label (a): the sink was replaced but not with a manifest-carrying empty — need \`analyzed.count == 0 AND functions == [] AND unanalyzed non-empty\`"; bad=1
+  fi
+
+  # (b) STREAM SINK: --json alone, unknown flag; stdout carries the fail-closed report as its only content
+  local S="$RSW/stream.out"
+  "${cmd[@]}" --json --zzz-not-a-flag > "$S" 2>/dev/null; rc=$?
+  if [ "$rc" != 2 ]; then
+    echo "     FAIL $label (b): --json (stream) with unknown flag exited $rc, not 2"; bad=1
+  elif [ ! -s "$S" ]; then
+    echo "  $label (b) SKIP — stdout was empty on exit-2 (engine has not implemented the ⟨0.28⟩ stream-form fail-closed report)"
+  elif python3 -c "$RS_PY_STREAM_FAILCLOSED" < "$S" 2>/dev/null; then
+    echo "  $label (b) PASS — stream carries the ⟨0.21⟩ Row-1 fail-closed shape"
+  else
+    echo "     FAIL $label (b): stdout has content but not the manifest-carrying-empty shape"; bad=1
+  fi
+
+  [ "$bad" = 0 ] && return 0 || return 1
+}
+
+# Every engine reuses the fixtures PART 34 built ($GDIR/<engine>, $W/g_java). SKIP the engine if its
+# fixture isn't available; this part is downstream of PART 34's setup.
+if [ -d "$GDIR/rust" ]; then
+  rs_probe "candor-scan " "$SCAN" "$GDIR/rust" || RS_OK=1
+fi
+if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
+  rs_probe "candor-java " java -jar "$JAR" "$W/g_java" || RS_OK=1
+fi
+if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
+  rs_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
+  rs_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || RS_OK=1
+fi
+echo "PART 37 — SPEC §3.3.1 ⟨0.28⟩: the report sink is armed on exit-2, and the fail-closed shape is a manifest-carrying empty"
+if [ "$RS_OK" = 0 ]; then
+  echo "  -> MATCH — every engine that has implemented ⟨0.28⟩ report-sink arming carries the fail-closed shape; the rest print SKIP (reference-led rung until 0.28 ships)"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
