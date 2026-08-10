@@ -1714,6 +1714,60 @@ over its *causes* and I did not think to generalise it over its *paths*. **On an
 output path the invocation requested is written fail-closed, or is not left holding a previous run's
 answer.**
 
+⟨0.28⟩ **AND HERE IS THE MUST FOR THE REPORT SINK, WITH A SHAPE.** The ⟨0.24⟩ clause above generalised the
+*what* over paths; it did not settle the *when* or the *document*, and no engine implemented either.
+Measured 2026-08-10 across all four code engines with the simplest exit-2 trigger, an unknown flag beside
+`--json <file>`: candor-scan wrote 502 bytes of report on the clean run and the same 502 bytes remained on
+exit 2; candor-java wrote 648 and the same 648 remained; candor-ts (423) and candor-swift (517) behaved the
+same, byte-identical, MD5 unchanged. A downstream `gate --report <that>` then reads a green report the
+failed run never produced. ⟨0.27⟩ closed exactly this defect on `--gate-json` and left the report sink one
+hop upstream.
+
+**(1) THE ARMING RULE, RESTATED FOR THE REPORT SINK.** As soon as `--json <path>` has been parsed and
+accepted, the implementation MUST write the fail-closed report (shape below) to `<path>`. Every subsequent
+exit then leaves that document in place unless a real report replaces it. Arming later — after config load,
+after target discovery — is the stale green with a window ⟨0.27⟩ closed for `--gate-json`, reopening through
+a different sink.
+
+**(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer
+already reads as *nothing was judged, no purity licence*:
+
+    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.28" },
+      "functions":  [],
+      "analyzed":   { "count": 0 },
+      "unanalyzed": [ { "path": "<what the run could not analyze>", "reason": "<why>" } ] }
+
+Row 1 of the ⟨0.24⟩ table pins the reading: `analyzed.count: 0` + `functions: []` is *nothing was judged*,
+not *nothing to judge*. A ⟨0.21⟩ chain grants no purity licence, `gate --report` records the file
+`invisible` in the coverage ledger, and a downstream verdict discloses it — the machine-consumer channel
+the stale defect was silently deleting is restored. This IS a PARTIAL artifact, and the ⟨0.26⟩ lesson
+(partial answered worse than absent) is answered specifically by keying on `count: 0` — the one integer
+⟨0.24⟩ Row 1 READS as "no claim". The `unanalyzed[].reason` string uses the same vocabulary as the §3.3
+incomplete verdict — `unknown-flag`, `unreadable-config`, `refused-policy`, `target-missing`.
+
+**(3) THE INPUT EXEMPTION FROM ⟨0.27⟩ (2) COVERS THE PATH, NOT THE RUN.** A `--json` path naming an INPUT
+of this run (the target's own source tree, the discovered `.candor/config`, the policy file, a chained dep
+report) is refused with exit 2 having written NOTHING to that path — arming would destroy the input.
+Sameness is a question about ARTIFACTS not strings — the ⟨0.28⟩ device+inode rule for the verdict sink
+below applies here as well.
+
+**(4) `--json` ON STDOUT IS THE STREAM FORM.** Arming does not apply (no previous document to go stale);
+the document-on-every-exit rule applies IN FULL. On any exit-2 the fail-closed report is written to stdout,
+exactly once, as the stream's only content. Measured across all four engines on the same unknown-flag
+trigger, **stdout was 0 bytes on exit 2** in every one — the same defect ⟨0.27⟩ closed on the verdict
+stream, arriving through the report sink because that rule was written for the verdict sink and no engine
+extended it. A JSON consumer keying on stdout throws a parse error and is thrown back to scraping stderr,
+which is the distinction that made the incomplete-analysis defect a defect (§3.3).
+
+**(5) EVERY ROUTE AND EVERY ENGINE THAT WRITES A REPORT.** The rule is about the SINK, not one CLI. Surface
+as of this rung: `candor-scan --json`, `candor-java --json`, `candor-ts --json`, `candor-swift --json`, and
+the agent-fleet's **`observe --json` alongside its `scan`**. `observe` publishes the same §2 shape and its
+stale reports poison chains identically; a route is not covered by its sibling. `--out <prefix>` presents
+the same defect for the file-SET case and is deferred to the next rung: the arming shape for a set of report
+files has two candidate answers (a `<prefix>.__failed.json` marker, or per-package placeholders) and the
+⟨0.26⟩ lesson requires the choice to be MEASURED before it is pinned. The single-file rule above IS the
+four-way operator hazard measured today.
+
 ⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
 `policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
 engine needed — without specifying its shape, and three of the four had produced a live cross-engine
