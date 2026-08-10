@@ -1344,6 +1344,15 @@ qual() { # $1 label ; $2… command — output must qualify with the RIGHT count
     *"nothing hidden"*) p4l "$1: printed the FALSE 'nothing hidden' over a ⅔-Unknown graph";;
     # Pin the COUNTS (2 Unknown of 3 effectful), not just the shape — an engine miscounting the Unknown
     # fraction would still qualify-with-wrong-numbers and pass a shape-only check (Fable-review finding F5).
+    # …AND THE CAUSE IT NAMES MUST BE ONE THIS ROUTE COULD KNOW. `tour --report R` reads a report someone
+    # else produced: it never saw the project, so "missing project config" / "tsconfig" is a guess about a
+    # build it did not run — and the report it IS holding records a reason per Unknown. All four engines
+    # printed the guess unconditionally for four engine-versions, and this part did not notice because it
+    # pinned the COUNTS only. A disclosure naming a cause the run can rule out is the class this family
+    # treats as worse than silence (PART 13b: `net-partner` reported "ignoring unknown config key" WHILE
+    # BEING HONOURED). Checked BEFORE the count arm so a right-count/wrong-cause answer cannot pass.
+    *"project config"*|*"tsconfig"*)
+        p4l "$1: the QUERY route named a build cause it cannot know (it read a report, not the project): ${out:0:110}";;
     *"2 of 3"*"are Unknown"*blindspots*) ;;              # OK — qualified with the right counts
     *"are Unknown"*blindspots*) p4l "$1: qualified but with the WRONG counts (want '2 of 3'), got: ${out:0:80}";;
     *) p4l "$1: did not qualify (want '2 of 3 … are Unknown … blindspots'), got: ${out:0:70}";;
