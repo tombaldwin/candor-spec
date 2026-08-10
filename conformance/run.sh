@@ -5793,12 +5793,64 @@ vd_probe() {
   ( cd "$(dirname "$G.dup.c.json")" && env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE \
       "${cmd[@]}" --policy "$G.fire.policy" --gate-json "$G.dup.c.json" --gate-json "./$(basename "$G.dup.c.json")" >/dev/null 2>&1 ); rc=$?
   [ "$rc" = 1 ] || { echo "     FAIL $label (b20c): two SPELLINGS of one path are ONE sink (the §3.3.1 artifact rule) and must gate normally — exited $rc, want 1"; bad=1; }
+  # …and ONE document at it. The exit code alone would pass an engine that deduped the refusal but wrote
+  # the VERDICT once per spelling — two concatenated documents at the sink, which is the failure (b6)/(b9)
+  # /(b10) exist to catch, reached through the artifact rule instead of the flag.
+  vd_doc "$G.dup.c.json" viol || { echo "     FAIL $label (b20c): the deduped sink does not hold exactly one violations-bearing document — one sink means one verdict"; bad=1; }
   cp "$G.fire.policy" "$G.dup.pol"
   dupbefore=$(cksum < "$G.dup.pol")
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.dup.pol" \
       --gate-json "$G.dup.pol" --gate-json "$G.dup.b.json" >/dev/null 2>&1; rc=$?
   [ "$rc" = 2 ] || { echo "     FAIL $label (b20d): a sink that is the POLICY exited $rc, not 2"; bad=1; }
   [ "$dupbefore" = "$(cksum < "$G.dup.pol")" ] || { echo "     FAIL $label (b20d): the duplicate-sink refusal DESTROYED the policy — the input exemption outranks it, and nothing may be written"; bad=1; }
+
+  # (b21) ⟨0.28⟩ ON THE `gate` VERB ROUTE — the sibling (b20) never posed.
+  #
+  # (b20) drives `"${cmd[@]}"`, the SCAN command. So the rung shipped, the row went green, and the verb a
+  # CI job uses when it scans once and gates many times kept the pre-rung behaviour verbatim: measured in
+  # all four engines, `gate --report R --policy <fires> --gate-json A --gate-json B` exited 1, wrote the
+  # red verdict to B, and left A holding a pre-seeded `{"ok": true}`. The gate FIRED and the operator's
+  # first named path published green.
+  #
+  # This is (b19)'s lesson, one row down and one release later: A ROUTE IS NOT COVERED BY ITS SIBLING.
+  # (b19) was written the same day, for the same reason, about the same verb.
+  if [ "${#VD_GATE[@]}" -gt 0 ]; then
+    printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.gdup.a.json"
+    rm -f "$G.gdup.b.json"
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" \
+        --policy "$G.fire.policy" --gate-json "$G.gdup.a.json" --gate-json "$G.gdup.b.json" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 2 ] || { echo "     FAIL $label (b21a): two --gate-json sinks on the \`gate\` VERB route exited $rc, not 2 — the rung is implemented on the scan CLI only"; bad=1; }
+    vd_doc "$G.gdup.a.json" ok0 refused || { echo "     FAIL $label (b21b): the losing sink on the \`gate\` VERB route still holds what it held before — a gate that FIRED published the previous run's green"; bad=1; }
+    vd_doc "$G.gdup.b.json" ok0 refused || { echo "     FAIL $label (b21b): the second sink on the \`gate\` VERB route did not get the refusal"; bad=1; }
+    # …and the control, so the row cannot pass by the verb being broken in some other way: ONE sink on
+    # the same command replaces a seeded green with a real verdict.
+    printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.gdup.c.json"
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${VD_GATE[@]}" --report "$base" \
+        --policy "$G.fire.policy" --gate-json "$G.gdup.c.json" >/dev/null 2>&1; rc=$?
+    { [ "$rc" = 1 ] && vd_doc "$G.gdup.c.json" viol; } || { echo "     FAIL $label (b21-control): a SINGLE sink on the \`gate\` verb did not produce a firing verdict (exit $rc) — (b21) above would be vacuous"; bad=1; }
+  fi
+
+  # (b22) ⟨0.28⟩ THE INPUT EXEMPTION MUST NOT SILENCE THE OTHER SINKS. §3.3.1 (2) says a sink naming an
+  # INPUT is refused having written NOTHING, and that outranks the duplicate refusal — but it exempts THAT
+  # PATH, not the run. Measured in all five engines: `--gate-json <the policy> --gate-json B` exits 2 with
+  # the policy correctly intact and B still holding a pre-seeded `{"ok": true}`, and with `-` as the other
+  # sink stdout gets ZERO bytes. The operator asked for the verdict at B, the run refused, and B says the
+  # code is clean.
+  #
+  # (b20d) cannot catch this: it never asserts on its second sink, and that path already holds a refusal
+  # written by (b20a) — so the assertion would have passed on a stale artifact. A FRESH seeded path is the
+  # whole point.
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.dupx.b.json"
+  cp "$G.fire.policy" "$G.dupx.pol"
+  dupxbefore=$(cksum < "$G.dupx.pol")
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.dupx.pol" \
+      --gate-json "$G.dupx.pol" --gate-json "$G.dupx.b.json" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (b22a): a sink that is the POLICY beside a second sink exited $rc, not 2"; bad=1; }
+  [ "$dupxbefore" = "$(cksum < "$G.dupx.pol")" ] || { echo "     FAIL $label (b22b): the policy was DESTROYED — the input exemption must outrank the duplicate refusal"; bad=1; }
+  vd_doc "$G.dupx.b.json" ok0 refused || { echo "     FAIL $label (b22c): the INNOCENT second sink kept its stale green — the exemption covers the input's path, not the whole run, and its reader is told the code is clean"; bad=1; }
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.dupx.pol" \
+      --gate-json - --gate-json "$G.dupx.pol" > "$G.b22.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b22.stdout" ok0 refused; } || { echo "     FAIL $label (b22d): the STREAM was left empty by the input exemption — a stream has nothing to destroy, so the exemption cannot apply to it (exit $rc)"; bad=1; }
 
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
@@ -5869,9 +5921,11 @@ vd_probe "candor-java " "$VDW/jbase.json" "deny Fs" java -jar "$JAR" "$VDW/jac" 
 VD_GATE=( "$QUERY" gate )
 VD_BAD=( "$SCAN" "$VDW/no-such-target-rust" )
 vd_probe "candor-scan " "$VDW/rbase.json" "deny Fs" "$SCAN" "$VDW/ra" || VD_OK=1
+[ -n "$TS_OK" ] || echo "  · candor-ts NOT CHECKED (engine absent, or its smoke scan failed) — PART 36 covers the engines named below, not four by default"
 [ -n "$TS_OK" ] && { VD_GATE=( node "$TS_DIR/query.mjs" gate )
 VD_BAD=( node "$TS_DIR/scan.mjs" "$VDW/no-such-target-ts" )
 vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
+{ [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; } || echo "  · candor-swift NOT CHECKED (engine absent — the documented CI shape on ubuntu) — PART 36 covers the engines named below"
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { VD_GATE=( "$SW_BIN" gate )
 VD_BAD=( "$SW_BIN" "$VDW/no-such-target-swift" )
 vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
@@ -5897,9 +5951,20 @@ sys.argv = ['candor-agents'] + sys.argv[2:]
 import candor_agents.scan as _s
 entry = getattr(_s, "_main_streaming_verdict", None)
 if entry is None:
-    print("candor-agents checkout predates _main_streaming_verdict — rows run against main()",
-          file=sys.stderr)
-    entry = _s.main
+    # REFUSE rather than fall back. This used to print a notice to stderr and run `main()` instead — and
+    # every agents row redirects 2>/dev/null, so the notice reached nobody and the rows failed with their
+    # explanation suppressed. A checkout without the wrapper cannot be measured by these rows at all.
+    sys.exit("candor-agents checkout predates _main_streaming_verdict — these rows cannot measure it")
+sys.exit(entry())
+PYRUN
+  cat > "$VDW/agrun_observe.py" <<'PYRUN'
+import sys
+sys.path.insert(0, sys.argv[1])
+sys.argv = ['candor-agents'] + sys.argv[2:]
+import candor_agents.observe as _o
+entry = getattr(_o, "_main_streaming_verdict", None)
+if entry is None:
+    sys.exit("candor-agents checkout predates observe's _main_streaming_verdict — row cannot measure it")
 sys.exit(entry())
 PYRUN
   AGCMD=( python3 "$VDW/agrun.py" "$HERE/../../candor-agents" "$AGVD" --out "$AGVD/report" )
@@ -5930,7 +5995,12 @@ PYRUN
   # suite's probe notes warn about, caught by expanding the array and reading it rather than trusting it.
   AGBAD=( python3 "$VDW/agrun.py" "$HERE/../../candor-agents" "$VDW/ag-no-such-fleet" )
   env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGBAD[@]}" --gate-json - > "$VDW/ag.b4.stdout" 2>/dev/null; agrc=$?
-  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b4.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b4): a NONEXISTENT FLEET PATH with the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b4.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b4): a fleet path with NOTHING TO ANALYZE and the STREAM sink exited $agrc without a stdout refusal document"; AG_OKROW=1; }
+  # NAMED FOR THE CAUSE IT POSES. This row was called "a nonexistent fleet path", and it is not: this
+  # engine never tests path existence — an absent directory and an EMPTY one produce byte-identical
+  # output and the same exit 2 ("no agent definitions … nothing to analyze"). So it poses the EMPTY-SCAN
+  # cause, the one the four-engine probe files separately as (b17), and (b12)'s cause has no agents cell.
+  # That is the row's SECOND mis-posing; the note above `AGBAD` records the first.
   printf 'policy /nonexistent.policy\n' > "$VDW/ag.badcfg"
   chmod 000 "$VDW/ag.badcfg"
   if [ -r "$VDW/ag.badcfg" ]; then
@@ -5951,6 +6021,45 @@ PYRUN
   rm -f "$VDW/ag.c3.json"
   env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" --gate-json "$VDW/ag.c3.json" >/dev/null 2>&1; agrc=$?
   { [ "$agrc" = 1 ] && vd_doc "$VDW/ag.c3.json" viol nozm; } || { echo "     FAIL candor-agents (c3): a firing run must carry NO \`zeroMatch\` key (exit $agrc)"; AG_OKROW=1; }
+  # ⟨0.28⟩ THE DUPLICATE-SINK RUNG, ON THE FIFTH ENGINE. It was implemented here on the same day as the
+  # other four and pinned on none of them-but-four: `vd_probe` carries (b18)/(b20)/(b21)/(b22) and is
+  # invoked only for java/rust/ts/swift, while this engine has its own hand-written row list. Five commit
+  # messages and a BACKLOG entry claimed "five-way". The behaviour was right; the pin was absent, which is
+  # the "considered, therefore not measured" shape.
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$VDW/ag.dup.a.json"
+  rm -f "$VDW/ag.dup.b.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" \
+      --gate-json "$VDW/ag.dup.a.json" --gate-json "$VDW/ag.dup.b.json" >/dev/null 2>&1; agrc=$?
+  [ "$agrc" = 2 ] || { echo "     FAIL candor-agents (b20a): two --gate-json sinks exited $agrc, not 2"; AG_OKROW=1; }
+  vd_doc "$VDW/ag.dup.a.json" ok0 refused || { echo "     FAIL candor-agents (b20b): the losing sink kept what it held — a gate that FIRED published the previous run's green"; AG_OKROW=1; }
+  vd_doc "$VDW/ag.dup.b.json" ok0 refused || { echo "     FAIL candor-agents (b20b): the second sink did not get the refusal"; AG_OKROW=1; }
+  # (b22) the input exemption covers the PATH, not the run — the innocent sink still gets the refusal.
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$VDW/ag.dupx.b.json"
+  cp "$VDW/ag.fire.policy" "$VDW/ag.dupx.pol"
+  agbefore=$(cksum < "$VDW/ag.dupx.pol")
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.dupx.pol" \
+      --gate-json "$VDW/ag.dupx.pol" --gate-json "$VDW/ag.dupx.b.json" >/dev/null 2>&1; agrc=$?
+  [ "$agrc" = 2 ] || { echo "     FAIL candor-agents (b22a): a sink that is the POLICY beside a second sink exited $agrc, not 2"; AG_OKROW=1; }
+  [ "$agbefore" = "$(cksum < "$VDW/ag.dupx.pol")" ] || { echo "     FAIL candor-agents (b22b): the duplicate-sink refusal DESTROYED the policy"; AG_OKROW=1; }
+  vd_doc "$VDW/ag.dupx.b.json" ok0 refused || { echo "     FAIL candor-agents (b22c): the INNOCENT second sink kept its stale green"; AG_OKROW=1; }
+  # (b18) an extra positional after an armed stream sink.
+  env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --gate-json - "$VDW/ag-extra-positional" > "$VDW/ag.b18.stdout" 2>/dev/null; agrc=$?
+  { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.b18.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b18): an EXTRA POSITIONAL after an armed stream sink exited $agrc without a refusal document on the stream"; AG_OKROW=1; }
+  # THE `observe` ROUTE. It is a first-class gate surface — `--policy` and `--gate-json` are in its CLI —
+  # and it had NONE of the §3.3.1 sink layer: no arming, no input guard, no duplicate rule, no stream
+  # guarantee. Measured: a FIRING gate wrote red to the last sink and left the first holding a pre-seeded
+  # `{"ok": true}`, and `--gate-json <the policy>` overwrote the policy at exit 0. Same engine, sibling
+  # route, and nothing here had ever run it.
+  if [ -d "$AGVD/.claude" ] || [ -d "$AGVD/.claude/agents" ]; then
+    AGOBS=( python3 "$VDW/agrun_observe.py" "$HERE/../../candor-agents" "$AGVD" --out "$AGVD/obs" )
+    printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$VDW/ag.obs.a.json"
+    env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGOBS[@]}" --gate-json "$VDW/ag.obs.a.json" --zzz-not-a-flag >/dev/null 2>&1; agrc=$?
+    [ "$agrc" = 2 ] || { echo "     FAIL candor-agents (b23-observe): an unknown flag on the observe route exited $agrc, not 2"; AG_OKROW=1; }
+    vd_doc "$VDW/ag.obs.a.json" ok0 refused || { echo "     FAIL candor-agents (b23-observe): the observe route left a pre-seeded GREEN at its sink — it never armed"; AG_OKROW=1; }
+    env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGOBS[@]}" --gate-json - --zzz-not-a-flag > "$VDW/ag.obs.stdout" 2>/dev/null; agrc=$?
+    { [ "$agrc" = 2 ] && vd_doc "$VDW/ag.obs.stdout" ok0 refused; } || { echo "     FAIL candor-agents (b23-observe): the observe route left the STREAM empty on exit 2 (exit $agrc)"; AG_OKROW=1; }
+  fi
+
   [ "$AG_OKROW" = 0 ] && echo "  candor-agents stream=refusal-on-every-cause zeroMatch=in-document (group (a) N/A — no baseline producer)" || VD_OK=1
 else
   echo "  · candor-agents NOT CHECKED (repo or python3 absent) — PART 36 covers 4 engines here"
