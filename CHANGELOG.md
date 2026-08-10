@@ -14,6 +14,22 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Conformance: PART 36 grows (b18)/(b19)/(b20), PART 4l pins the CAUSE, and the agents shim runs the
+  entry users run.** (b18) an extra positional after an armed stream sink — the first row here that came
+  out of a GENERATED argv sweep rather than a hand-written cause list. (b19) the same unreadable-config
+  cause on the `gate` VERB route, which had no cell for any refusal cause at all. (b20a–d) the ⟨0.28⟩
+  two-sink rung. PART 4l had pinned the Unknown COUNTS but never the cause sentence, which is exactly
+  where all four engines drifted for four engine-versions. And the candor-agents shim imported
+  `scan.main` while the CLI runs a wrapper around it — so those rows were exercising a different program
+  than anyone ships.
+- **`conformance/part.sh`** — run ONE part in ~6s instead of the suite's 476s (measured: the shared
+  preamble is 8s and each part builds its own fixtures). Boundaries come from the markers the suite
+  PRINTS, not from its comment headers, which are not a grammar; every slice is checked to carry exactly
+  one part and to parse (`--check`, ~10s). A filtered run refuses to print `conformance: OK`, and a part
+  that dies on state an earlier part built exits 2 as INCONCLUSIVE — a filtered run can manufacture a
+  false RED as easily as a vacuous green.
+
+
 - **⟨0.28⟩ One run names one sink: a repeated `--gate-json` is refused, and every path named gets the
   refusal** (§3.3.1). `--gate-json A --gate-json B` is a broken gate configuration — the operator has said
   where the verdict goes, twice, and both statements cannot be honoured — so the run exits 2 and the
