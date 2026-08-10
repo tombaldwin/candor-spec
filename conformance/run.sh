@@ -5721,6 +5721,21 @@ vd_probe() {
     fi
   fi
 
+  # (b18) A SECOND POSITIONAL — the first cause here that NOBODY ENUMERATED. Every row above poses a
+  # cause a person thought of; this one came out of an argv COMBINATION sweep (candor/bin/probe-causes.sh
+  # with CANDOR_SWEEP=1), which poses ordered pairs from a small token alphabet and asserts exactly this
+  # property over all of them. It is the argument for GENERATING the argv rather than listing it: the
+  # hand-written cause list in that same script had twelve entries and this was not one of them.
+  #
+  # Measured when found: for the identical argv candor-scan wrote a 106-byte refusal and candor-swift
+  # wrote ZERO bytes. The sink was registered — `--gate-json -` came first — and then the extra-positional
+  # arm exited raw, one arm BELOW an unknown-flag arm that routed through the refusal writer. One usage
+  # error, two spellings, and only the spelling someone had thought about was closed. Same shape as
+  # (b15)'s two spellings and PART 34's (a)/(b), which is why it earns a row and not just a fix.
+  mkdir -p "$G.extradir"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --gate-json - "$G.extradir" > "$G.b18.stdout" 2>/dev/null; rc=$?
+  { [ "$rc" = 2 ] && vd_doc "$G.b18.stdout" ok0 refused; } || { echo "     FAIL $label (b18): an EXTRA POSITIONAL after an armed stream sink exited $rc without a refusal document on the stream — a usage error the engine diagnoses on stderr and hides from the machine channel"; bad=1; }
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
