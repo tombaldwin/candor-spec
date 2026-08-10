@@ -5852,6 +5852,54 @@ vd_probe() {
       --gate-json - --gate-json "$G.dupx.pol" > "$G.b22.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 2 ] && vd_doc "$G.b22.stdout" ok0 refused; } || { echo "     FAIL $label (b22d): the STREAM was left empty by the input exemption — a stream has nothing to destroy, so the exemption cannot apply to it (exit $rc)"; bad=1; }
 
+  # (b24) ⟨0.28⟩ THE WRITE MUST LAND ON THE ARTIFACT THE COMPARISON RESOLVED.
+  #
+  # ONE `--gate-json`, pointed at a SYMLINK — one `artifacts/verdict.json` linked into a shared directory,
+  # which is an ordinary CI layout and not an operator mistake. Measured before this row: two engines
+  # published by temp-file-and-rename, which REPLACES the link rather than following it, so the real
+  # artifact still said `{"ok": true}` while the gate FIRED at exit 1. A third wrote the right document
+  # and still severed the link. Only one followed it.
+  #
+  # This is the ⟨0.28⟩ stale green reached with a SINGLE flag. The artifact rule was implemented in the
+  # COMPARISON — `sameArtifact` and its siblings — and nowhere in the WRITE.
+  mkdir -p "$G.lnk"
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.lnk/real.json"
+  rm -f "$G.lnk/link.json"
+  if ln -s "$G.lnk/real.json" "$G.lnk/link.json" 2>/dev/null; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" \
+        --gate-json "$G.lnk/link.json" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 1 ] || { echo "     FAIL $label (b24-control): the firing gate did not exit 1 through a symlinked sink (exit $rc) — the rows below would be vacuous"; bad=1; }
+    vd_doc "$G.lnk/real.json" viol || { echo "     FAIL $label (b24a): the gate FIRED but the artifact the link points at still holds what it held before — a single \`--gate-json\` at a symlink publishes a stale green"; bad=1; }
+    [ -L "$G.lnk/link.json" ] || { echo "     FAIL $label (b24b): the sink SEVERED the symlink (it is now a regular file) — the next run's reader is pointed somewhere else than the operator wired up"; bad=1; }
+  else
+    echo "     SKIP $label (b24): this filesystem does not support symlinks — row not posed"
+  fi
+
+  # (b25) ⟨0.28⟩ ARTIFACT IDENTITY: device+inode, and a symlink whose target does not exist yet.
+  #
+  # Two HARDLINKS to one inode are ONE sink and ONE verdict; refusing them is a FALSE refusal of a legal
+  # command — the mirror of the stale green, and measured 1-vs-3 across the engines. Same for a duplicate
+  # naming a DANGLING symlink beside its target, which split the other way. §3.3.1 asks for device+inode
+  # "where the platform offers it", and that was read as advisory.
+  rm -f "$G.h1.json" "$G.h2.json"
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.h1.json"
+  if ln "$G.h1.json" "$G.h2.json" 2>/dev/null; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" \
+        --gate-json "$G.h1.json" --gate-json "$G.h2.json" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 1 ] || { echo "     FAIL $label (b25a): two HARDLINKS to one inode are ONE sink and must gate normally — exited $rc, want 1 (a false refusal of a legal command)"; bad=1; }
+    vd_doc "$G.h1.json" viol || { echo "     FAIL $label (b25a): the deduped hardlink sink does not hold the firing verdict"; bad=1; }
+  else
+    echo "     SKIP $label (b25a): this filesystem does not support hard links — row not posed"
+  fi
+  rm -f "$G.dang.json" "$G.dangtarget.json"
+  if ln -s "$G.dangtarget.json" "$G.dang.json" 2>/dev/null; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" \
+        --gate-json "$G.dang.json" --gate-json "$G.dangtarget.json" >/dev/null 2>&1; rc=$?
+    [ "$rc" = 1 ] || { echo "     FAIL $label (b25b): a DANGLING symlink and its target are ONE artifact and must gate normally — exited $rc, want 1"; bad=1; }
+  else
+    echo "     SKIP $label (b25b): this filesystem does not support symlinks — row not posed"
+  fi
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal

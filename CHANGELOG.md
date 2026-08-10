@@ -14,6 +14,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⚠ ⟨0.28⟩ The artifact rule was implemented in the COMPARISON and not in the WRITE.** With a SINGLE
+  `--gate-json` pointed at a symlink — one `artifacts/verdict.json` linked into a shared directory, an
+  ordinary CI layout — two engines published by temp-and-rename, replacing the link instead of following
+  it, so the real artifact kept a previous run's `{"ok": true}` while the gate FIRED. A stale green with
+  no duplicate and no operator mistake. The sink is now resolved to its final artifact before writing.
+- **⟨0.28⟩ Device+inode is not optional where the platform offers it.** Two HARDLINKS to one inode were
+  refused as two sinks by three engines and gated as one by the fourth; a dangling symlink beside its
+  target split the other way. Both are one artifact, so refusing is a FALSE refusal of a legal command —
+  the mirror of the stale green.
+
 - **Conformance: PART 36 grows (b18)/(b19)/(b20), PART 4l pins the CAUSE, and the agents shim runs the
   entry users run.** (b18) an extra positional after an armed stream sink — the first row here that came
   out of a GENERATED argv sweep rather than a hand-written cause list. (b19) the same unreadable-config
