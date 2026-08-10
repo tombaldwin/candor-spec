@@ -5736,6 +5736,29 @@ vd_probe() {
   env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --gate-json - "$G.extradir" > "$G.b18.stdout" 2>/dev/null; rc=$?
   { [ "$rc" = 2 ] && vd_doc "$G.b18.stdout" ok0 refused; } || { echo "     FAIL $label (b18): an EXTRA POSITIONAL after an armed stream sink exited $rc without a refusal document on the stream — a usage error the engine diagnoses on stderr and hides from the machine channel"; bad=1; }
 
+  # (b19) THE SAME CAUSE ON THE OTHER ROUTE. (b11) poses an unreadable config against the SCAN CLI. A CI
+  # job that scans once and gates many times meets every one of these causes through the `gate` VERB
+  # instead, and §3.3.1 exempts neither route — but every stream row here except (b9)/(b10) runs the scan
+  # CLI, so the verb route had no cell for any refusal cause at all.
+  #
+  # Measured when this row was written: candor-java and candor-swift wrote the refusal, candor-scan and
+  # candor-ts exited 2 with an EMPTY stream. Both had the same mechanism one language apart — the config
+  # is read by a SHARED loader that sits below the verb's sink and exits on its own, so the fix in each
+  # was to let that loader reach the sink rather than to add a second copy of the config rule. And in
+  # both, the FILE sink was already covered: an armed placeholder survives an exit that writes nothing,
+  # which is exactly why a route can look correct until the stream is asked.
+  if [ "${#VD_GATE[@]}" -gt 0 ]; then
+    printf 'policy /nonexistent.policy\n' > "$G.badcfg3"
+    chmod 000 "$G.badcfg3"
+    if [ -r "$G.badcfg3" ]; then
+      echo "     SKIP $label (b19): $G.badcfg3 is still readable (root? mode-less fs?) — row not posed"
+    else
+      env -u CANDOR_POLICY -u CANDOR_BASELINE CANDOR_CONFIG="$G.badcfg3" "${VD_GATE[@]}" --report "$base" --policy "$G.fire.policy" --gate-json - > "$G.b19.stdout" 2>/dev/null; rc=$?
+      { [ "$rc" = 2 ] && vd_doc "$G.b19.stdout" ok0 refused; } || { echo "     FAIL $label (b19): an UNREADABLE CONFIG on the \`gate\` VERB route exited $rc without a refusal document on the stream — (b11) pins this cause for the scan CLI only, and a route is not covered by its sibling"; bad=1; }
+    fi
+    chmod 644 "$G.badcfg3" 2>/dev/null
+  fi
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
