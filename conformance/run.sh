@@ -5759,6 +5759,38 @@ vd_probe() {
     chmod 644 "$G.badcfg3" 2>/dev/null
   fi
 
+  # (b20) ⟨0.28⟩ TWO SINKS IN ONE ARGV. Refused, and EVERY path named gets the refusal.
+  #
+  # This was an open spec question for a release — named in the umbrella BACKLOG and deliberately excluded
+  # from probe-causes' token alphabet so it could not be answered by accident. What settled it was the
+  # measurement: three engines took the LAST path and wrote the verdict there, one refused, and ALL FOUR
+  # left the first path exactly as they found it. Pre-seed A with a previous run's `{"ok": true}`, run a
+  # gate that FIRES, and A still says the code is clean — the ⟨0.27⟩ stale green reached by a spelling
+  # nobody considered, and worse than the case arming was built for: the run did not fail, the gate did
+  # fire, and the operator's own command named the path that lies.
+  #
+  # (b20a) the refusal and the exit code · (b20b) the stale green at the LOSING sink is replaced ·
+  # (b20c) two spellings of ONE path are one sink, not a duplicate — the §3.3.1 artifact rule ·
+  # (b20d) a sink that is an INPUT is still refused having written NOTHING: that exemption outranks this
+  #        refusal, and one engine's first draft wrote over the policy here (measured, ts).
+  printf '{"spec":"0.27","ok":true,"violations":[]}\n' > "$G.dup.a.json"
+  rm -f "$G.dup.b.json"
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.fire.policy" \
+      --gate-json "$G.dup.a.json" --gate-json "$G.dup.b.json" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (b20a): two --gate-json sinks exited $rc, not 2 — a run publishes one verdict to one sink"; bad=1; }
+  vd_doc "$G.dup.a.json" ok0 refused || { echo "     FAIL $label (b20b): the FIRST sink still holds what it held before — its reader cannot tell it lost, so a previous run's green is published as this run's answer"; bad=1; }
+  vd_doc "$G.dup.b.json" ok0 refused || { echo "     FAIL $label (b20b): the second sink did not get the refusal either"; bad=1; }
+  rm -f "$G.dup.c.json"
+  ( cd "$(dirname "$G.dup.c.json")" && env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE \
+      "${cmd[@]}" --policy "$G.fire.policy" --gate-json "$G.dup.c.json" --gate-json "./$(basename "$G.dup.c.json")" >/dev/null 2>&1 ); rc=$?
+  [ "$rc" = 1 ] || { echo "     FAIL $label (b20c): two SPELLINGS of one path are ONE sink (the §3.3.1 artifact rule) and must gate normally — exited $rc, want 1"; bad=1; }
+  cp "$G.fire.policy" "$G.dup.pol"
+  dupbefore=$(cksum < "$G.dup.pol")
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.dup.pol" \
+      --gate-json "$G.dup.pol" --gate-json "$G.dup.b.json" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 2 ] || { echo "     FAIL $label (b20d): a sink that is the POLICY exited $rc, not 2"; bad=1; }
+  [ "$dupbefore" = "$(cksum < "$G.dup.pol")" ] || { echo "     FAIL $label (b20d): the duplicate-sink refusal DESTROYED the policy — the input exemption outranks it, and nothing may be written"; bad=1; }
+
   # (b15) THE FILE SINK'S OWN FORM OF THE CONFIG CAUSE. Every row above tests the STREAM. The file sink
   # has a different property — arming leaves a fail-closed placeholder and the refusal must REPLACE it —
   # and an engine can satisfy one form while failing the other: measured, swift streamed the refusal
