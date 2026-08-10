@@ -35,9 +35,12 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   where the verdict goes, twice, and both statements cannot be honoured — so the run exits 2 and the
   refusal document is written to *each* path given.
 
-  Writing to each is the load-bearing half. Measured across all four code engines before this rung: three
-  took the last path and wrote the verdict there, one refused, and **all four left the first path exactly
-  as they found it**. Pre-seed `A` with a previous run's `{"ok": true}`, run a gate that fires, and `A`
+  Writing to each is the load-bearing half. Measured across all four code engines before this rung: **every
+  one took the last path, wrote the verdict there, and left the first exactly as it found it**. (An earlier
+  draft said one engine refused; that came from a contaminated measurement — it had been handed a second
+  POSITIONAL, and its extra-argument refusal was recorded as a duplicate-sink one. Re-measured against a
+  pre-rung build.) The rung binds EVERY route that accepts `--gate-json`, and the (2) input exemption
+  covers the offending PATH, not the run. Pre-seed `A` with a previous run's `{"ok": true}`, run a gate that fires, and `A`
   still reports the code clean — the ⟨0.27⟩ stale green reached by a spelling nobody had considered, and
   worse than the case that motivated it: the run did not fail, the gate *did* fire, and the operator's own
   command named the path that lies. A CI wrapper appending `--gate-json artifacts/verdict.json` to an

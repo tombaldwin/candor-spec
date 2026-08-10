@@ -11,7 +11,7 @@
 # on them sliced at the wrong line and mislabelled a section — so boundaries come instead from the two
 # markers that are unambiguous because the suite PRINTS them:
 #
-#   echo "[35] …"        a part's OPENING header   (24 of these)
+#   echo "[35] …"        a part's OPENING header   (25 of these)
 #   echo "PART 35 — …"   a part's CLOSING verdict  (19 of these; 5 parts have both)
 #
 # A part runs from the end of the previous part's block to its own last marker. Every slice is then
@@ -31,7 +31,7 @@
 # Usage:   conformance/part.sh 36   · conformance/part.sh 24 25   · --list   · --check
 # Exit:    the extracted run's rc · 2 if a part could not be located or its slice failed the check
 #
-# `--check` extracts EVERY part and syntax-checks it without running anything (about a second). Run it
+# `--check` extracts EVERY part and syntax-checks it without running anything (~10s). Run it
 # after editing run.sh: it is what catches a new section whose shape this file's boundary rules miss,
 # before the miss shows up as a filtered run that quietly tested less than it claimed.
 set -uo pipefail
@@ -50,11 +50,16 @@ OUT="$HERE/.part-run.$$.sh"
 trap 'rm -f "$OUT"' EXIT INT TERM
 
 if [ "$1" = "--check" ]; then
-  ids=$("$0" --list | sed -n '3p')
+  # "$HERE/part.sh", NOT "$0". Invoked as `bash part.sh --check` from this directory, `$0` is the bare
+  # name, which is not on PATH — so `ids` came back EMPTY, the loop never ran, and this printed
+  # "all 0 slices resolve to exactly one part and parse" at exit 0. A checker that reports success having
+  # checked nothing is the exact vacuity this file exists to prevent, in the file itself.
+  ids=$("$HERE/part.sh" --list | sed -n '3p')
+  [ -n "$ids" ] || { echo "part.sh --check: could not enumerate the parts — refusing to report a result" >&2; exit 2; }
   bad=0; n=0
   for id in $ids; do
     n=$((n+1))
-    if ! out=$("$0" --extract-only "$id" 2>&1); then
+    if ! out=$("$HERE/part.sh" --extract-only "$id" 2>&1); then
       printf "  %-6s ✘ %s\n" "$id" "$(printf '%s' "$out" | head -1)"; bad=1
     fi
   done
@@ -156,6 +161,13 @@ for pid in sorted(want):
 
 # CHECK, do not trust: a slice must carry markers for exactly one id.
 for pid, s, e in chosen:
+    # A SET cannot see a DUPLICATE. `sorted({…})` deduped, so an id appearing twice in run.sh produced two
+    # slices that each looked clean, `--check` said "all 40 slices resolve to exactly one part", and
+    # asking for that id extracted BOTH ranges — a neighbouring part's body scored under the wrong name,
+    # which is verbatim what the header of this file says the check prevents.
+    if sum(1 for p2, _, _ in sections if p2 == pid) != 1:
+        sys.exit(f"part.sh: run.sh names part {pid} more than once — a filtered run would extract every "
+                 f"one of them and score a neighbour under this name. Fix the duplicate id.")
     inside = sorted({p for i, p, _ in marks if s <= i <= e})
     if inside != [pid]:
         sys.exit(f"part.sh: the slice computed for part {pid} carries markers for {inside} — refusing to "

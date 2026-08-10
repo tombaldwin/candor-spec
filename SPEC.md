@@ -1880,13 +1880,32 @@ given, and MUST write the refusal document to **each** of them (the stream, if `
 the stream rule above).
 
 Writing to *each* is the load-bearing half, and it is not symmetry for its own sake. Measured across all
-four code engines before this rung: three took the LAST path and wrote the verdict there, one refused —
-and **all four left the first path exactly as they found it**. Pre-seed `A` with a previous run's
-`{"ok": true}`, run a gate that fires, and `A` still says the code is clean. That is the stale green of
+four code engines before this rung: **every one of them took the LAST path, wrote the verdict there, and
+left the first exactly as it found it**. Pre-seed `A` with a previous run's `{"ok": true}`, run a gate
+that fires, and `A` still says the code is clean.
+
+(An earlier draft of this paragraph said one engine refused. It did not: that reading came from a
+contaminated measurement — the engine in question was handed a second POSITIONAL, and what was recorded
+as a duplicate-sink refusal was its extra-argument refusal. Corrected here because the pre-state is the
+evidence this rung's choice rests on, and re-measured against a build from before the rung landed.) That is the stale green of
 (1) reached by a spelling nobody had considered, and it is worse than the refusal case that motivated (1):
 the run did not fail, the gate *did* fire, and the operator's own command named the path that lies. A CI
 wrapper that appends `--gate-json artifacts/verdict.json` to a command a user has already configured with
 one produces this on every run.
+
+**EVERY ROUTE THAT ACCEPTS `--gate-json`.** The rule is about a RUN, not about one CLI. An engine that
+exposes the gate through both a scan command and a `gate --report` verb MUST apply it on both — measured,
+the rung was first implemented on the scan route in four engines while the verb route kept last-wins, so
+`gate --report R --policy <fires> --gate-json A --gate-json B` exited 1 and published a previous run's
+green at `A`. A route is not covered by its sibling.
+
+**THE INPUT EXEMPTION COVERS THE PATH, NOT THE RUN.** Rule (2) says a sink naming an input of this run is
+refused having written NOTHING, and it outranks this refusal — for *that path*. Every OTHER path named in
+the same argv still gets the refusal document, and a `-` among them always does: a stream has no input to
+destroy, so (2)'s justification cannot reach it. Measured in all five engines before this clause:
+`--gate-json <the policy> --gate-json B` exited 2 with the policy correctly intact and `B` still holding a
+pre-seeded `{"ok": true}`, and with `-` in place of `B` stdout was left EMPTY. The operator named `B` as
+where the verdict goes, the run declined to produce one, and `B` went on saying the code was clean.
 
 The choice of refusal over last-wins follows from the same place as (2): when an instruction is ambiguous,
 this contract's answer is to say so, not to pick. Last-wins is defensible for a flag that names a
