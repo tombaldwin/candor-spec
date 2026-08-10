@@ -2,3 +2,4 @@
 **/.candor/
 **/out/
 *.class
+.part-run.*.sh
