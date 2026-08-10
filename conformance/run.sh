@@ -6250,6 +6250,87 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 38 — SPEC §6.2 ⟨0.28⟩: A CONFIGURED POLICY THAT YIELDS ZERO RULES REFUSES              [TIER 1]
+#
+# §6.2 already says an unreadable policy FILE is a failure, not an absent gate, because "a typo'd policy
+# path that runs green is a gate that silently passes everything". Measured four-way 2026-08-10, the same
+# harm arrives through a file that reads PERFECTLY: `--policy <a README>` writes `{"ok":true,
+# "violations":[]}` and exits 0 on rust, java, ts and swift — byte-identical to a gate that ran and found
+# nothing, AND byte-identical to the no-gate-configured verdict. The human channel warns per ignored line;
+# the machine channel, which is the one this format exists for, says the code is clean.
+#
+# THE CONTROL IS THE LOAD-BEARING ROW. "No policy configured" MUST stay green — the operator did not ask
+# for a gate, and that is the honest way to express not-gating. A fix that refuses both has not implemented
+# the rule, it has broken the no-gate case; this is the ⟨0.24⟩ count-0 CONTROL SEPARATION lesson, where the
+# plausible-but-wrong fix withdrew 104 real claims to catch 6.
+#
+# REFERENCE-LED, like PART 37: an engine still exiting 0 prints SKIP, not FAIL, so the suite stays green
+# until an engine ships the rung. A PASS requires exit 2 AND the fail-closed refusal document.
+#
+# FOUR ROWS:
+#   (a) --policy <a README> (every line ignored)     -> exit 2 + refusal document, or SKIP
+#   (b) --policy <empty file>                        -> same
+#   (c) --policy <all comments>                      -> same
+#   (d) CONTROL: no --policy at all                  -> MUST exit 0 (a FAIL here is never a SKIP)
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[38] ZERO-RULE POLICY REFUSES  (SPEC §6.2 ⟨0.28⟩ — a gate that asked nothing is not a clean gate)"
+ZR_OK=0
+ZRW="$W/zerorule"; mkdir -p "$ZRW"
+printf '# Project README\n\nThis is documentation, not a policy file.\nSomeone pointed --policy at it by mistake.\n' > "$ZRW/readme.md"
+: > "$ZRW/empty.policy"
+printf '# just a comment\n\n# another\n' > "$ZRW/comments.policy"
+
+zr_probe() { # $1 label ; then the scan command with the TARGET LAST
+  local label=$1; shift
+  local cmd=( "$@" ) bad=0 rc
+  local G="$ZRW/verdict.json"
+
+  for form in readme.md empty.policy comments.policy; do
+    rm -f "$G"
+    "${cmd[@]}" --policy "$ZRW/$form" --gate-json "$G" >/dev/null 2>&1; rc=$?
+    if [ "$rc" = 2 ]; then
+      if ar_is_refusal "$G"; then
+        echo "  $label ($form) PASS — refused with the fail-closed document"
+      else
+        echo "     FAIL $label ($form): exited 2 but the sink does not carry a fail-closed refusal (want ok:false + refused:true + NO violations key)"; bad=1
+      fi
+    elif [ "$rc" = 0 ]; then
+      echo "  $label ($form) SKIP — still exits 0 (engine has not implemented the ⟨0.28⟩ zero-rule refusal)"
+    else
+      echo "     FAIL $label ($form): exited $rc — want 2 (refusal) or, pre-rung, 0"; bad=1
+    fi
+  done
+
+  # (d) THE CONTROL. No policy at all must stay green, and this row NEVER skips: an engine that refuses
+  # here has broken the no-gate case, which is a worse defect than the one the rung closes.
+  rm -f "$G"
+  "${cmd[@]}" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  [ "$rc" = 0 ] || { echo "     FAIL $label (control): NO policy configured exited $rc, not 0 — the rung must not refuse a run that never asked for a gate"; bad=1; }
+
+  [ "$bad" = 0 ] && return 0 || return 1
+}
+
+if [ -d "$GDIR/rust" ]; then
+  zr_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
+fi
+if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
+  zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
+fi
+if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
+  zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
+  zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
+fi
+echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
+if [ "$ZR_OK" = 0 ]; then
+  echo "  -> MATCH — every engine that has implemented the ⟨0.28⟩ zero-rule refusal carries the fail-closed document, the rest print SKIP, and no engine refuses a run that configured no gate at all"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
