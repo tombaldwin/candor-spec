@@ -1830,11 +1830,30 @@ state the consumers were built for; `{}` is a file this document has declared me
 
 ⟨0.28⟩ **THE PAIRING RULE — a CONSUMER obligation, and the belt to arming's braces.** A §2.2 sidecar whose
 paired report is a ⟨0.21⟩ Row-1 manifest-carrying empty is **unanswerable input regardless of its own
-content**, and a verb reading it MUST take its absence arm. This is the normative form of §2.2's own "read
-together with its report", and it covers the staleness routes arming cannot reach: a crash between the
-report write and the sidecar write, a hand-copied half, an artifact pair restored from different backups.
-Producer-side deletion is the floor because *the naive read is the one that ships*; this rule is what makes
-a pair that arrives contradictory anyway fail closed.
+content**. This is the normative form of §2.2's own "read together with its report", and it covers the
+staleness routes arming cannot reach: a crash between the report write and the sidecar write, a hand-copied
+half, an artifact pair restored from different backups. Producer-side deletion is the floor because *the
+naive read is the one that ships*; this rule is what makes a pair that arrives contradictory anyway fail
+closed.
+
+**AND UNANSWERABLE MUST REACH THE MACHINE CHANNEL — "take the absence arm" IS NOT ENOUGH, which is what
+this clause said until it was measured.** The absence arm of a call-graph verb is silence: over an armed
+pair, `callers <f>` emits `{}` (candor-scan) or `{"of":[],"direct":[],"transitive":[]}` (candor-ts), **both
+exit 0**, while the human channel says "no call graph in the report". A consumer reading `direct` — or
+defaulting it, which ⟨0.24⟩ already names as the fail-open idiom on every key in this format — is told
+NOBODY CALLS `f`. That is a blast-radius answer of "safe to edit" over a pair whose honest answer is
+"this run judged nothing", and it is the same human-channel-fine / machine-channel-silent split that made
+the incomplete-analysis defect a defect.
+
+So a verb answering from a sidecar it has ruled unanswerable MUST say so **in the machine output**: either
+a pinned `"unanswerable": "<why>"` key alongside whatever else it emits, or a non-zero exit — never an
+empty result set that a naive read scores as a determined negative. An empty `direct` means *nothing calls
+this*; the verb does not know that, and must not say it.
+
+*Recorded because the correction is the point: the first version of this clause specified the remedy as
+"take its absence arm", and the absence arm IS the defect. The rung then made a rare state — no sidecar —
+into the standard post-failure state, so a quiet corner became the common path. Raised by candor-ts's arm
+of this rung, which flagged the `--json` silence rather than treating it as out of scope.*
 
 ⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
 `policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
