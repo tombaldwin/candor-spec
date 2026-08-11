@@ -6254,6 +6254,41 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     fi
   fi
 
+  # (c) THE DEFAULT PREFIX IS NOT A SINK THIS RUN OWNS — and NOTHING IN THIS SUITE COULD SEE IT.
+  #
+  # Every probe here passes an explicit `--out`/`--json`, so when the ⟨0.28⟩ armer was first written it
+  # armed the DEFAULT prefix too and the suite stayed green. Measured on three engines: a run that dies
+  # in argv parsing overwrote a COMMITTED `.candor/report.<pkg>.json` with the placeholder — found in
+  # candor-rust's own tree, which commits reports for six crates. Committed reports and baselines are
+  # the pattern this project recommends and ships in CI, so this destroyed version-controlled data,
+  # which is a worse outcome than the staleness the rung closes.
+  #
+  # The rule the engines now implement: arm a sink the operator NAMED. ⟨0.27⟩ never had to say so
+  # because `--gate-json` has no default — every verdict sink is named — and the wording carried over
+  # to a flag that DOES have one. This row is that missing premise, made executable.
+  #
+  # UNLIKE (a) AND (b) THIS ROW NEVER SKIPS: leaving the default alone is not a rung an engine works
+  # up to, it is a floor. A regression here is a FAIL on any engine.
+  local DW="$RSW/dflt_${label// /}"
+  rm -rf "$DW"; mkdir -p "$DW"
+  cp -R "${cmd[$(( ${#cmd[@]} - 1 ))]}/." "$DW/" 2>/dev/null || true
+  local dcmd=( "${cmd[@]:0:$(( ${#cmd[@]} - 1 ))}" "$DW" )
+  "${dcmd[@]}" >/dev/null 2>&1                       # a clean run, writing the default-prefix report
+  local dflt
+  dflt=$(ls "$DW"/.candor/*.json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs)\.json$' | head -1)
+  if [ -z "$dflt" ]; then
+    echo "  $label (c) n/a — this engine writes no default-prefix report, so there is none to clobber"
+  else
+    before=$(cksum < "$dflt")
+    "${dcmd[@]}" --zzz-not-a-flag >/dev/null 2>&1
+    after=$(cksum < "$dflt" 2>/dev/null)
+    if [ "$before" = "$after" ]; then
+      echo "  $label (c) PASS — a failed run left the DEFAULT-prefix report untouched"
+    else
+      echo "     FAIL $label (c): a run that exited during argv parsing OVERWROTE the default-prefix report at $dflt — it was never told it owned that path, and a committed report/baseline lives there in real projects"; bad=1
+    fi
+  fi
+
   # (b) STREAM SINK: --json alone, unknown flag; stdout carries the fail-closed report as its only content
   local S="$RSW/stream.out"
   "${cmd[@]}" --json --zzz-not-a-flag > "$S" 2>/dev/null; rc=$?
