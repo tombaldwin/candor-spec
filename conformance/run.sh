@@ -6373,6 +6373,35 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     fi
   fi
 
+  # (e) UNANSWERABLE REACHES THE MACHINE CHANNEL. Deleting the sidecar (row (d)) removes the confidently
+  # WRONG answer; it does not by itself produce an honest one. Measured on candor-scan: `callers <f>` over
+  # an armed pair printed `{}` at exit 0 on --json while stderr said "no call graph in the report" —
+  # human-fine, machine-silent. A consumer reading `direct`, or defaulting it (the fail-open idiom ⟨0.24⟩
+  # names on every key in this format), is told NOBODY CALLS this function: a blast radius of "safe to
+  # edit" over a pair whose honest answer is "this run judged nothing".
+  #
+  # THE RUNG IS WHY THIS ROW EXISTS NOW. An absent sidecar always answered this way; (d) made that the
+  # standard post-failure state, so a rare corner became the common path. A rung can convert a latent
+  # defect into a frequent one without touching the defect.
+  #
+  # SPEC §3.3.1 ⟨0.28⟩ accepts either an `unanswerable` key or a non-zero exit; this row accepts either,
+  # and SKIPs an engine still silent. What it must never accept is an empty result set at exit 0.
+  if [ "${#reports[@]}" != 0 ] && [ -n "${RS_CALLERS_CMD:-}" ]; then
+    local co crc
+    co=$(eval "${RS_CALLERS_CMD}" 2>/dev/null); crc=$?
+    if printf '%s' "$co" | grep -q 'unanswerable' || [ "$crc" != 0 ]; then
+      echo "  $label (e) PASS — an unanswerable callers query discloses in the machine channel (exit $crc)"
+    elif printf '%s' "$co" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(1)
+sys.exit(0 if not d.get('direct') and not d.get('transitive') else 1)" 2>/dev/null; then
+      echo "  $label (e) SKIP — callers answers an empty set at exit 0 over an armed pair (engine has not implemented the ⟨0.28⟩ machine-channel rule)"
+    else
+      echo "     FAIL $label (e): callers over an armed pair returned a NON-empty answer — the sidecar is gone, so any caller list is from somewhere it should not be"; bad=1
+    fi
+  fi
+
   # (b) STREAM SINK: --json alone, unknown flag; stdout carries the fail-closed report as its only content
   local S="$RSW/stream.out"
   "${cmd[@]}" --json --zzz-not-a-flag > "$S" 2>/dev/null; rc=$?
@@ -6395,14 +6424,21 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
 # `--json` takes a FILE (the others treat a following token as a second positional and refuse it);
 # rust/ts/swift publish files through `--out <prefix>`. rust additionally FANS OUT — one report per
 # workspace member — which is why the out-prefix arm asserts over the whole set rather than one path.
+#
+# ⟨0.28⟩ Row (e) needs each engine's own `callers` invocation over the armed prefix, because the verb
+# lives in a different binary per family member (rust/ts split scan from query; swift has no `callers`
+# at all, so its row simply does not run). `$PFX` is the armed prefix, in scope inside `rs_probe`.
 if [ -d "$GDIR/rust" ]; then
-  rs_probe "candor-scan " out-prefix "$SCAN" "$GDIR/rust" || RS_OK=1
+  RS_CALLERS_CMD='"$QUERY" callers pure_a --report "$PFX" --json' \
+    rs_probe "candor-scan " out-prefix "$SCAN" "$GDIR/rust" || RS_OK=1
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
-  rs_probe "candor-java " json-file java -jar "$JAR" "$W/g_java" || RS_OK=1
+  RS_CALLERS_CMD='java -jar "$JAR" callers "$J" pure_a --json' \
+    rs_probe "candor-java " json-file java -jar "$JAR" "$W/g_java" || RS_OK=1
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
-  rs_probe "candor-ts   " out-prefix node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
+  RS_CALLERS_CMD='node "$TS_DIR/query.mjs" callers "$PFX" pure_a --json' \
+    rs_probe "candor-ts   " out-prefix node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   rs_probe "candor-swift" out-prefix "$SW_BIN" "$GDIR/swift" || RS_OK=1
