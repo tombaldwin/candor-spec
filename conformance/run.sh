@@ -1881,8 +1881,37 @@ if [ -n "$SW_PRESENT" ]; then
   printf '{ corrupt' > "$W/gorigin/sbase.N.Swift.callgraph.json"
   gocheck "swift (partial baseline callgraph)" "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" unknown unknown
 fi
+# ⟨0.28⟩ THE EMPTY-BUT-VALID BASELINE CALLGRAPH — the cell the rows above do not reach, and the one the
+# ⟨0.28⟩ sidecar rung put on the common path.
+#
+# Above, `absent` and `partial/corrupt` are pinned four-way. `{}` is neither: it is PRESENT, it PARSES, and
+# it is not a "matched sidecar failed to load". The origin rule's own wording — `"unknown"` = *absent OR
+# incomplete (a matched sidecar failed to load)* — therefore LICENSES reading a clean `{}` as a complete
+# graph in which `f` does not appear, which scores an existing-fn gain as `"new"`: the supply-chain attack
+# signal downgraded to a feature, the exact harm the partial-graph row exists to prevent.
+#
+# MEASURED 2026-08-10: all four engines answer `unknown` here — safer than the text requires. So this row
+# pins agreement that currently holds BY LUCK rather than by rule, on a shape ⟨0.28⟩ made ordinary (a
+# sidecar deleted beside an armed report, then a hand-written or half-restored `{}` in its place). An
+# engine that later "optimises" toward the letter of the origin rule would fabricate a feature, and
+# nothing else in this suite would notice.
+printf '{}' > "$W/gorigin/rbase.demo.scan.callgraph.json"
+rm -f "$W/gorigin/rbase.demo2.scan.callgraph.json"
+gocheck "rust (EMPTY baseline callgraph)" "m::f" "m::h" "$("$QUERY" gains "$W/gorigin/rcur" "$W/gorigin/rbase" --json 2>/dev/null)" unknown unknown
+printf '{}' > "$W/gorigin/jbase.jvm.callgraph.json"
+gocheck "java (EMPTY baseline callgraph)" "m.f" "m.h" "$(java -jar "$JAR" gains "$W/gorigin/jcur.jvm.json" "$W/gorigin/jbase.jvm.json" --json 2>/dev/null)" unknown unknown
+if [ -n "$TS_PRESENT" ]; then
+  printf '{}' > "$W/gorigin/tbase.callgraph.json"
+  rm -f "$W/gorigin/tbase.a.callgraph.json" "$W/gorigin/tbase.b.callgraph.json"
+  gocheck "ts (EMPTY baseline callgraph)" "m.f" "m.h" "$(node "$TS_DIR/query.mjs" gains "$W/gorigin/tcur" "$W/gorigin/tbase" 2>/dev/null)" unknown unknown
+fi
+if [ -n "$SW_PRESENT" ]; then
+  printf '{}' > "$W/gorigin/sbase.M.Swift.callgraph.json"
+  rm -f "$W/gorigin/sbase.N.Swift.callgraph.json"
+  gocheck "swift (EMPTY baseline callgraph)" "M.f" "M.h" "$(env -u CANDOR_CONFIG "$SW_BIN" gains "$W/gorigin/scur" "$W/gorigin/sbase" --json 2>/dev/null)" unknown unknown
+fi
 if [ "$P5B_OK" = 0 ]; then
-  echo "  -> MATCH — every engine separates existing-fn gains from new-fn gains, and discloses unknown on an absent OR partial baseline callgraph"
+  echo "  -> MATCH — every engine separates existing-fn gains from new-fn gains, and discloses unknown on an absent, partial OR empty baseline callgraph"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
