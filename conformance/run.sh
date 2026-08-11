@@ -6641,6 +6641,195 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 40 — THE (ARTIFACT STATE × READ VERB) MATRIX                                          [TIER 1]
+#
+# WHY A MATRIX. Every read-verb disclosure defect this family has found was found one verb at a time,
+# by hand, after something else went wrong: `callers` naming a stale blast radius, `blindspots`
+# reporting zero blind spots over a report whose manifest named a file it could not read, `gains`
+# dropping `unanalyzed` from an output that carried `coverage`. bin/probe-causes.sh already made the
+# argument for the exit-2 side — "a panel finds a defect once; a matrix finds it every time anyone runs
+# it" — and this is the same construction pointed at the READ side.
+#
+# THE PROPERTY. For every artifact state an engine can leave behind, and every verb that reads one:
+# the machine output must never be a DETERMINED NEGATIVE over a state where nothing was judged. An
+# empty `direct` means *nothing calls this*; over an armed report the verb does not know that.
+#
+# THE ORACLE IS PER-VERB, AND THAT MATTERS. A generic "all keys empty" scan is wrong twice over:
+#   · `{}` must count as a determined negative — it is the STRONGEST one, because every key a consumer
+#     reads defaults to empty (`d.get("direct", [])` cannot tell `{}` from `{"direct": []}`). A first
+#     draft of this oracle required a result key to be PRESENT before classifying, and so scored the
+#     rust `callers` defect — the case that prompted the whole exercise — as fine.
+#   · an ECHOED input must not count as an answer. `{"of":["leaf"],"direct":[],"transitive":[]}` is the
+#     callers defect, but `of` echoes the query. A generic scan reads it as a non-empty answer and
+#     passes. Worse, the miss was inconsistent: a STRING echo was transparent, a LIST echo opaque, so
+#     which way a defect fell was luck. Both holes were found by piloting the oracle before building.
+# So RESULT keys are listed per verb below, captured from real output over intact data, not guessed.
+#
+# THREE VERDICTS, and the FAIL condition is the sharp one:
+#   PASS  the verb hedged (a disclosure key), refused (non-zero exit), or answered over intact data
+#   SKIP  a determined negative over a nothing-judged state — the ⟨0.28⟩/§2 re-disclosure rung is not
+#         shipped on this verb yet. Reference-led, exactly as PARTs 37-39.
+#   FAIL  (a) the INTACT control could not answer — a floor, never a SKIP: if a verb cannot answer over
+#             good data the row is measuring nothing; or
+#         (b) a NON-EMPTY answer over a nothing-judged state — the verb answered from somewhere it
+#             should not have. That is the stale-sidecar defect exactly, and no rung excuses it.
+#
+# PILOTED BEFORE BUILDING (candor-rust, 90 cells): 18 determined negatives, all in the same six verbs
+# across three independent nothing-judged states; `absent` and `corrupt` already fail closed. The
+# defect is in the states ⟨0.21⟩ and ⟨0.28⟩ CREATED, which the verbs were never taught about.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[40] STATE × READ-VERB MATRIX  (a determined negative over a state where nothing was judged)"
+SV_OK=0
+SVW="$W/statematrix"; mkdir -p "$SVW"
+cat > "$SVW/oracle.py" <<'SVPY'
+import json, sys
+DISCLOSURE = {"unanswerable","incomplete","unanalyzed","refused","invisible",
+              "coverage","coverageDelta","uncovered","unevaluated","zeroMatch"}
+RESULT_KEYS = {"where":{"directly","inherited"}, "callers":{"direct","transitive"}, "map":None,
+               "impact":{"affected","affectedCount","entryPoints"}, "path":{"path"},
+               "whatif":{"affected","violations"}, "blindspots":{"sources","totalUnknown"},
+               "reachable":{"effects","entryPoints"}, "containment":{"ambient","contained"},
+               "tour":{"reaches"}}
+def _empty(v):
+    if isinstance(v,bool): return True
+    if isinstance(v,(list,dict,str)): return len(v)==0
+    if isinstance(v,(int,float)): return v==0
+    return v is None
+verb, state, rc = sys.argv[1], sys.argv[2], int(sys.argv[3])
+raw = sys.stdin.read().strip()
+# THE INTACT CONTROL MUST *ANSWER*, NOT MERELY AVOID FAILING — and this check has to come FIRST.
+#
+# The design said "the INTACT control could not answer is a FAIL, never a SKIP", and the first
+# implementation then put `if rc != 0: PASS refused` THREE LINES ABOVE it, so a refusing intact cell
+# short-circuited to PASS. Proven by falsification: re-breaking the report locator made every verb
+# answer "no report found" -> exit 2 -> PASS, and the part reported MATCH over 58 cells that asked
+# nothing. The vacuity floor keyed on `skips == 0` did not fire either, because two cells still
+# classified. A floor defeated by an early return is not a floor.
+#
+# So: over good data, refusing or emitting nothing is the failure. That is what makes every other row
+# in this part trustworthy — it is the one cell that proves the fixtures were reached.
+if state == "intact" and (rc != 0 or not raw):
+    print("FAIL intact-control-did-not-answer (fixtures not reached, or the verb broke on good data)")
+    raise SystemExit
+if rc != 0: print("PASS refused"); raise SystemExit
+if not raw: print("PASS no-stdout"); raise SystemExit
+try: doc = json.loads(raw)
+except Exception: print("PASS non-json"); raise SystemExit
+if isinstance(doc, dict) and (DISCLOSURE & set(doc)): print("PASS hedged"); raise SystemExit
+def dn():
+    if not isinstance(doc, dict): return isinstance(doc, list) and len(doc)==0
+    if not doc: return True
+    rk = RESULT_KEYS.get(verb)
+    if rk is None: return all(_empty(v) for v in doc.values())
+    present = [k for k in rk if k in doc]
+    if not present: return True
+    return all(_empty(doc[k]) for k in present)
+neg = dn()
+if state == "intact":
+    print("PASS answered" if not neg else "PASS determined-negative-is-real")
+elif neg:
+    print("SKIP determined-negative")
+elif state == "armedlive":
+    # A LIVE SIDECAR IS A DATA SOURCE THAT EXISTS, so a non-empty answer here is not inexplicable —
+    # it is the ⟨0.28⟩ PAIRING RULE being unimplemented consumer-side. Measured on the first run of
+    # this part: `callers` and `whatif` answer from the stale half over a report that judged nothing.
+    # Louder than an ordinary SKIP because the harm is a CONFIDENT WRONG ANSWER rather than a silence,
+    # but still a rung nobody has shipped, so it does not redden the suite.
+    print("SKIP answers-from-the-stale-half (⟨0.28⟩ pairing rule unimplemented)")
+else:
+    # armed / count0 / absent / corrupt: no live sidecar, no report content. A non-empty answer here
+    # came from somewhere that does not exist, and no rung excuses it.
+    print("FAIL non-empty-answer-over-nothing-judged")
+SVPY
+
+sv_states() { # $1 workdir ; $2 the intact report path — derive the other states from it
+  local d=$1 rep=$2 stem
+  stem="$(basename "$rep" .json)"
+  for s in armed armedlive count0 absent corrupt; do rm -rf "$d/$s"; mkdir -p "$d/$s"; done
+  # armed: the ⟨0.21⟩ Row-1 manifest-carrying empty, sidecars removed (the ⟨0.28⟩ post-failure state)
+  python3 - "$rep" "$d/armed/$stem.json" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1]))
+json.dump({"candor":d.get("candor",{}),"functions":[],"analyzed":{"count":0},
+           "unanalyzed":[{"path":"<run>","reason":"armed"}]}, open(sys.argv[2],"w"))
+PY
+  # armedlive: the same, but a LIVE sidecar beside it (a crash between the two writes)
+  cp -r "$d/armed/." "$d/armedlive/" 2>/dev/null
+  for sc in "$(dirname "$rep")/$stem".*.json; do [ -e "$sc" ] && cp "$sc" "$d/armedlive/" 2>/dev/null; done
+  # count0: judged nothing, but no unanalyzed — ⟨0.24⟩ Row 1
+  python3 - "$rep" "$d/count0/$stem.json" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); d["functions"]=[]; d["analyzed"]={"count":0}
+d.pop("unanalyzed",None); json.dump(d,open(sys.argv[2],"w"))
+PY
+  printf '{ truncated' > "$d/corrupt/$stem.json"
+  # absent: the directory stays empty
+}
+
+sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report prefix) ; $3 intact report
+  local label=$1 cmd=$2 rep=$3
+  local d="$SVW/${label// /}"; rm -rf "$d"; mkdir -p "$d/intact"
+  cp "$rep" "$d/intact/" 2>/dev/null
+  for sc in "$(dirname "$rep")/$(basename "$rep" .json)".*.json; do [ -e "$sc" ] && cp "$sc" "$d/intact/"; done
+  sv_states "$d" "$rep"
+  local skips=0 fails=0 passes=0
+  for st in intact armed armedlive count0 absent corrupt; do
+    for v in where callers map impact path whatif blindspots reachable containment tour; do
+      local argv
+      case "$v" in
+        where)   argv="where Fs" ;;
+        callers) argv="callers $SV_FN" ;;
+        impact)  argv="impact $SV_FN" ;;
+        path)    argv="path $SV_FN Fs" ;;
+        whatif)  argv="whatif $SV_FN Fs" ;;
+        tour)    argv="tour 3" ;;
+        *)       argv="$v" ;;
+      esac
+      # THE LOCATOR IS THE FULL REPORT PATH, NOT A MANGLED PREFIX. The first version passed
+      # `${R%.*}`, which strips the engine's own `.scan` segment and produces a path no engine
+      # resolves — so nearly every cell became "no report found -> exit 2 -> PASS refused". 58 of 60
+      # passes were VACUOUS, and the part looked almost green while measuring nothing. That is the
+      # failure `part.sh --check` exists to prevent, reproduced in a brand-new part; the tell was
+      # `skip=0` when the pilot had measured 18 determined negatives in these very states.
+      local R="$d/$st/$(basename "$rep")" out rc verdict
+      out=$(eval "$cmd $argv --report \"$R\" --json" 2>/dev/null); rc=$?
+      verdict=$(printf '%s' "$out" | python3 "$SVW/oracle.py" "$v" "$st" "$rc")
+      case "$verdict" in
+        FAIL*) echo "     FAIL $label [$st/$v]: ${verdict#FAIL }"; fails=$((fails+1)); SV_OK=1 ;;
+        SKIP*) skips=$((skips+1)) ;;
+        *)     passes=$((passes+1)) ;;
+      esac
+    done
+  done
+  # THE VACUITY FLOOR. A run where nothing was classified is not a green part, it is a part that never
+  # asked. The first version pointed every cell at a mangled locator, every verb answered "no report",
+  # and 58 of 60 cells scored PASS-refused — almost green, measuring nothing. The pilot says these
+  # states produce determined negatives on six verbs today, so a run with NO skips has not reached the
+  # fixtures. Keyed on the pilot's own finding rather than on a magic number.
+  if [ "$skips" = 0 ] && [ "$fails" = 0 ]; then
+    echo "     FAIL $label: every cell passed and NOTHING was classified — the piloted determined"
+    echo "          negatives did not reproduce, so this part is not reading its fixtures. A green"
+    echo "          matrix that asked no question is the failure this floor exists for."
+    SV_OK=1
+  fi
+  echo "  $label  pass=$passes skip=$skips fail=$fails  (skip = the ⟨0.28⟩/§2 re-disclosure rung not yet on that verb)"
+}
+
+SV_FN="transitive_leaf"
+if [ -d "$GDIR/rust" ]; then
+  SVR="$W/rust/.candor/report.$(ls "$W/rust/.candor" 2>/dev/null | head -1 | cut -d. -f2).scan.json"
+  SVR=$(ls "$W"/rust/.candor/*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)
+  [ -n "$SVR" ] && sv_probe "candor-scan " "\"$QUERY\"" "$SVR"
+fi
+echo "PART 40 — the (artifact state × read verb) matrix: no determined negative where nothing was judged"
+if [ "$SV_OK" = 0 ]; then
+  echo "  -> MATCH — no verb answered a determined negative it could not support, and every intact control answered"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
