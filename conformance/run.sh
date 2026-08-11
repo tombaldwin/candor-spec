@@ -6808,12 +6808,16 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
   # and 58 of 60 cells scored PASS-refused — almost green, measuring nothing. The pilot says these
   # states produce determined negatives on six verbs today, so a run with NO skips has not reached the
   # fixtures. Keyed on the pilot's own finding rather than on a magic number.
-  if [ "$skips" = 0 ] && [ "$fails" = 0 ]; then
-    echo "     FAIL $label: every cell passed and NOTHING was classified — the piloted determined"
-    echo "          negatives did not reproduce, so this part is not reading its fixtures. A green"
-    echo "          matrix that asked no question is the failure this floor exists for."
-    SV_OK=1
-  fi
+  # (The vacuity floor that used to sit here keyed on `skips == 0 && fails == 0`, and it was WRONG in a
+  # way that only appears at the finish line: once every verb ships the rung, skips legitimately reach
+  # zero and the floor would redden the suite for SUCCESS. It conflated "did not reach the fixtures"
+  # with "everything is implemented". Surfaced by the arm that closed 18 of the 19 skips and found it
+  # could not close the last one without turning the part red.
+  #
+  # The INTACT-CONTROL check in the oracle supersedes it and is strictly better: if the fixtures are not
+  # reachable, the intact cells cannot answer and FAIL by name. That check is falsified — re-breaking the
+  # report locator produces five `intact-control-did-not-answer` FAILs — so the protection is proven,
+  # not merely asserted.)
   echo "  $label  pass=$passes skip=$skips fail=$fails  (skip = the ⟨0.28⟩/§2 re-disclosure rung not yet on that verb)"
 }
 
