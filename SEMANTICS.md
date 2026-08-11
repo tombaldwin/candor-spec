@@ -271,11 +271,15 @@ Then
 - every dispatch is either resolved to its possible targets ((EDGE)/(DEVIRT)/(CHA)) or charged
   `Unknown` ((UNKNOWN)) — and is **not** silenced by (EXEMPT) over a trait that secretly performs an
   effect;
-- each cross-crate report `I_{K′}` consulted via `X` is itself sound (soundness composes bottom-up).
+- each cross-crate report `I_{K′}` consulted via `X` is itself sound (soundness composes bottom-up) —
+  and is the report of **the K′ of this build**, not merely of *some* K′. A stale artifact is a
+  perfectly sound analysis of a *different program*: it satisfies "itself sound" and breaks the
+  composition anyway. That is **C3** of §8, and it is an assumption about the FILE SYSTEM rather than
+  about the analysis.
 
 Under those assumptions candor never *silently* omits an effect: it either reports the effect or
-reports `Unknown`. The first two assumptions are exactly the **two soundness caveats** C1 and C2 of §8;
-the third is their bottom-up closure across crates.
+reports `Unknown`. The first two assumptions are exactly the soundness caveats C1 and C2 of §8; the
+third carries them bottom-up across crates **and adds C3's freshness obligation**.
 
 **(P4) Precision is best-effort.** `I(f)` may strictly over-approximate `R(f)`: (CHA) unions impls a
 call can't select, and whole-*crate* classifier rules tag pure items in an otherwise-effectful crate.
@@ -284,7 +288,7 @@ per-function annotation; (DEVIRT) and verb-precise κ rules tighten it.
 
 ## 8. Where soundness is *assumed*, not proven
 
-candor is explicit about being conditionally sound. (P3) rests on two assumptions that are engineering
+candor is explicit about being conditionally sound. (P3) rests on three assumptions that are engineering
 commitments, not theorems:
 
 - **C1 — the classifier is curated.** κ is a hand-built allowlist. An effectful call whose callee is
@@ -295,10 +299,32 @@ commitments, not theorems:
 - **C2 — the pure-std-trait exemption.** **(EXEMPT)** assumes the listed std traits are effect-free.
   If a type implemented one of them with a hidden effect, candor would miss it. The set is curated
   tightly to traits where I/O cannot conventionally hide.
+- **C3 — the artifacts consulted describe the program under analysis.** §5b builds the oracle `X`
+  *"from the reports K′ already emitted"*, and justifies availability by noting reports are written
+  bottom-up. Both are claims about **this build's** pass. Nothing in the model distinguishes that from a
+  file left by an earlier one — and a stale report is not unsound, it is sound about the wrong program,
+  which is why C1's and C2's framing does not reach it. The same holds one level down for the §2.2
+  **sidecars**, which the equations above never mention at all: `callers`/`whatif`/`rewire` answer from
+  the call-graph sidecar precisely because a *pure* function is absent from the report, so a stale
+  sidecar answers a question the report cannot even be consulted about.
 
-These are the price of running on real code without per-call proof obligations. The design choice
-throughout is: when forced to choose, **over-report (P4) or mark `Unknown` (UNKNOWN) — never silently
-under-report** — and make any residual blind spot *visible* (C1's coverage signal) rather than silent.
+  Unlike C1 and C2 this is not a limit of the analysis; it is an obligation on the artifact lifecycle,
+  and it is discharged **outside** this document — by SPEC §3.3.1's arming rules (a run that fails
+  replaces its report with a ⟨0.21⟩ Row-1 manifest-carrying empty and removes that report's sidecars),
+  by ⟨0.21⟩'s completeness manifest (which makes "judged nothing" machine-legible rather than
+  indistinguishable from "judged and found nothing"), and by ⟨0.28⟩'s pairing rule (a sidecar beside an
+  armed report is unanswerable whatever it contains, and must say so in the machine channel).
+
+  Recorded because the omission was load-bearing: an entire family of measured defects — a failed run
+  leaving a green report a downstream gate then trusted; `callers` naming a stale blast radius as "the
+  functions affected" — are all C3 violations, and the model had no place to put them. They were fixed
+  as engineering before anyone noticed the theory did not cover them.
+
+These are the price of running on real code without per-call proof obligations. C1 and C2 are the price
+of the *analysis*; C3 is the price of publishing its results as **files that outlive the run**. The
+design choice throughout is: when forced to choose, **over-report (P4) or mark `Unknown` (UNKNOWN) —
+never silently under-report** — and make any residual blind spot *visible* (C1's coverage signal, C3's
+fail-closed artifact) rather than silent.
 
 ## 9. Realization (the Rust implementation)
 
@@ -324,6 +350,6 @@ candor computes the least fixpoint of a monotone effect-propagation operator ove
 lattice: each function's **transitive** effect set, built from a curated classifier at the leaves,
 resolved/over-approximated dispatch in the middle, and a stable-hash-keyed oracle across crate
 boundaries — with an explicit `Unknown` wherever resolution fails, so the result is **conditionally
-sound** (P3) under two stated, *visible* assumptions (C1, C2) and **safe by construction** (it
+sound** (P3) under three stated, *visible* assumptions (C1, C2, C3) and **safe by construction** (it
 over-reports or says `Unknown`, never silently under-reports). The conformance modes are then simple
 set predicates (§6) over `I`, `D`, `declared`, and a baseline.

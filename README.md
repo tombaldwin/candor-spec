@@ -37,7 +37,8 @@ Domain engines (units are not functions; ride the version ladder on their own sc
   codes, the modes, and the trust contract. What it means to "be a candor implementation."
 - **[SEMANTICS.md](SEMANTICS.md)** — the formal analysis: the effect lattice, call-site resolution
   rules, the transitive fixpoint, cross-crate composition, the conformance predicates, and the
-  soundness/precision/termination properties (with the two soundness caveats stated explicitly).
+  soundness/precision/termination properties (with the three soundness caveats stated explicitly —
+  two about the analysis, one about the artifacts it leaves on disk).
 - **[PRINCIPLES.md](PRINCIPLES.md)** — the ideas the family is built on (honesty under uncertainty).
 - **[AGENTS.md](AGENTS.md)** — how an AI agent *consumes* a candor report (any language).
 - **[CLASSIFIER.md](CLASSIFIER.md)** — how to build the effect classifier for a new language, and the
