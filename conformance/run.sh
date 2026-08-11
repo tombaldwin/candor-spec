@@ -6193,24 +6193,65 @@ ok = (d.get("functions") == []
       and bool(d.get("unanalyzed")))
 sys.exit(0 if ok else 1)'
 
-rs_probe() {  # $1 label ; then the scan command with the TARGET LAST
-  local label=$1; shift
+rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the scan command, TARGET LAST
+  local label=$1 form=$2; shift 2
   local cmd=( "$@" ) bad=0 rc before after
-  local J="$RSW/report.json"
 
-  # (a) FILE SINK: seed a green report, run with unknown flag, examine
-  printf '%s\n' "$RS_STALE" > "$J"
-  before=$(cksum < "$J")
-  "${cmd[@]}" --json "$J" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
-  after=$(cksum < "$J")
-  if [ "$rc" != 2 ]; then
-    echo "     FAIL $label (a): an unknown flag exited $rc, not 2"; bad=1
-  elif [ "$before" = "$after" ]; then
-    echo "  $label (a) SKIP — sink still holds the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
-  elif python3 -c "$RS_PY_FAILCLOSED" "$J" 2>/dev/null; then
-    echo "  $label (a) PASS — armed sink carries the ⟨0.21⟩ Row-1 fail-closed shape"
+  # (a) FILE SINK. THE FORM IS PER-ENGINE AND THE FIRST VERSION OF THIS ROW GOT IT WRONG: it probed
+  # `--json <file>` on all four, which is a file sink only on candor-java. rust fans out over
+  # `--out <prefix>` (one report per crate), ts and swift write a single report under `--out`. So three
+  # engines were handed a flag whose file form they do not implement, the pre-seeded file was never a
+  # sink at all, and the row printed SKIP — "not implemented" — for a rung it had not asked about.
+  # A probe that poses the wrong surface reports the engine's answer to a question nobody asked.
+  #
+  # The `out-prefix` arm therefore LEARNS the sink by observation instead of encoding four naming
+  # conventions (`out.<crate>.scan.json` / `out.json` / `sout.<pkg>.Swift.json`): run once clean, see
+  # which report files appear, and seed those. Sidecars are excluded deliberately — whether arming must
+  # also cover `.callgraph`/`.hierarchy` is an OPEN question (§2.2 ⟨0.26⟩ has its own manifest story and
+  # should be checked against it), and a probe must not silently decide a question the spec has not.
+  if [ "$form" = "json-file" ]; then
+    local J="$RSW/report.json"
+    printf '%s\n' "$RS_STALE" > "$J"
+    before=$(cksum < "$J")
+    "${cmd[@]}" --json "$J" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
+    after=$(cksum < "$J")
+    if [ "$rc" != 2 ]; then
+      echo "     FAIL $label (a): an unknown flag exited $rc, not 2"; bad=1
+    elif [ "$before" = "$after" ]; then
+      echo "  $label (a) SKIP — sink still holds the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
+    elif python3 -c "$RS_PY_FAILCLOSED" "$J" 2>/dev/null; then
+      echo "  $label (a) PASS — armed sink carries the ⟨0.21⟩ Row-1 fail-closed shape"
+    else
+      echo "     FAIL $label (a): the sink was replaced but not with a manifest-carrying empty — need \`analyzed.count == 0 AND functions == [] AND unanalyzed non-empty\`"; bad=1
+    fi
   else
-    echo "     FAIL $label (a): the sink was replaced but not with a manifest-carrying empty — need \`analyzed.count == 0 AND functions == [] AND unanalyzed non-empty\`"; bad=1
+    local PFX="$RSW/pfx_${label// /}"
+    rm -f "$PFX".* 2>/dev/null
+    "${cmd[@]}" --out "$PFX" >/dev/null 2>&1
+    # The REPORT files only, sidecars filtered out by their reserved trailing segments (§2.2 ⟨0.24⟩).
+    local reports=()
+    while IFS= read -r f; do reports+=("$f"); done < <(ls "$PFX".*.json "$PFX".json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs)\.json$')
+    if [ "${#reports[@]}" = 0 ]; then
+      echo "  $label (a) SKIP — no report file appeared under --out, so this row has no sink to probe (NOT evidence about the rung)"
+    else
+      for f in "${reports[@]}"; do printf '%s\n' "$RS_STALE" > "$f"; done
+      before=$(cat "${reports[@]}" | cksum)
+      "${cmd[@]}" --out "$PFX" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
+      after=$(cat "${reports[@]}" 2>/dev/null | cksum)
+      local allfc=1
+      for f in "${reports[@]}"; do
+        python3 -c "$RS_PY_FAILCLOSED" "$f" 2>/dev/null || allfc=0
+      done
+      if [ "$rc" != 2 ]; then
+        echo "     FAIL $label (a): an unknown flag exited $rc, not 2"; bad=1
+      elif [ "$before" = "$after" ]; then
+        echo "  $label (a) SKIP — all ${#reports[@]} report file(s) under --out still hold the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
+      elif [ "$allfc" = 1 ]; then
+        echo "  $label (a) PASS — every one of ${#reports[@]} report file(s) under --out carries the ⟨0.21⟩ Row-1 fail-closed shape"
+      else
+        echo "     FAIL $label (a): the --out set changed but not every report is a manifest-carrying empty — a PARTIALLY armed set is the ⟨0.26⟩ hazard (some files answer, some are stale, and nothing says which)"; bad=1
+      fi
+    fi
   fi
 
   # (b) STREAM SINK: --json alone, unknown flag; stdout carries the fail-closed report as its only content
@@ -6231,17 +6272,21 @@ rs_probe() {  # $1 label ; then the scan command with the TARGET LAST
 
 # Every engine reuses the fixtures PART 34 built ($GDIR/<engine>, $W/g_java). SKIP the engine if its
 # fixture isn't available; this part is downstream of PART 34's setup.
+# THE FORM PER ENGINE, measured 2026-08-10 rather than assumed: candor-java is the only one whose
+# `--json` takes a FILE (the others treat a following token as a second positional and refuse it);
+# rust/ts/swift publish files through `--out <prefix>`. rust additionally FANS OUT — one report per
+# workspace member — which is why the out-prefix arm asserts over the whole set rather than one path.
 if [ -d "$GDIR/rust" ]; then
-  rs_probe "candor-scan " "$SCAN" "$GDIR/rust" || RS_OK=1
+  rs_probe "candor-scan " out-prefix "$SCAN" "$GDIR/rust" || RS_OK=1
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
-  rs_probe "candor-java " java -jar "$JAR" "$W/g_java" || RS_OK=1
+  rs_probe "candor-java " json-file java -jar "$JAR" "$W/g_java" || RS_OK=1
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
-  rs_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
+  rs_probe "candor-ts   " out-prefix node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
-  rs_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || RS_OK=1
+  rs_probe "candor-swift" out-prefix "$SW_BIN" "$GDIR/swift" || RS_OK=1
 fi
 echo "PART 37 — SPEC §3.3.1 ⟨0.28⟩: the report sink is armed on exit-2, and the fail-closed shape is a manifest-carrying empty"
 if [ "$RS_OK" = 0 ]; then
