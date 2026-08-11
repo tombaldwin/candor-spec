@@ -1762,11 +1762,79 @@ which is the distinction that made the incomplete-analysis defect a defect (§3.
 **(5) EVERY ROUTE AND EVERY ENGINE THAT WRITES A REPORT.** The rule is about the SINK, not one CLI. Surface
 as of this rung: `candor-scan --json`, `candor-java --json`, `candor-ts --json`, `candor-swift --json`, and
 the agent-fleet's **`observe --json` alongside its `scan`**. `observe` publishes the same §2 shape and its
-stale reports poison chains identically; a route is not covered by its sibling. `--out <prefix>` presents
-the same defect for the file-SET case and is deferred to the next rung: the arming shape for a set of report
-files has two candidate answers (a `<prefix>.__failed.json` marker, or per-package placeholders) and the
-⟨0.26⟩ lesson requires the choice to be MEASURED before it is pinned. The single-file rule above IS the
-four-way operator hazard measured today.
+stale reports poison chains identically; a route is not covered by its sibling.
+
+**(6) `--out <prefix>` — THE REPORT SET, AND THE SET IS THE ONE THE PREVIOUS RUN LEFT.** This was deferred
+pending measurement between a `<prefix>.__failed.json` marker and per-package placeholders; measured, and
+**neither framing survived**. Only ONE engine fans out (candor-scan, one report per crate); java, ts and
+swift write a single report under `--out`, so the file-SET problem exists in one engine rather than four.
+And the objection to per-package placeholders — that the run cannot know the package set at parse time — is
+about the wrong set: the set at risk of going stale is the one the PREVIOUS run wrote, which is knowable by
+globbing the prefix. So the implementation MUST rewrite each of those to the shape in (2) at parse time, and
+each package that scans successfully overwrites its own a moment later.
+
+**Three rules the implementations paid for, stated here so nobody re-derives them:**
+
+- **ONLY A SINK THE OPERATOR NAMED.** Arming binds an explicit `--out`, never the DEFAULT prefix. Measured:
+  arming `<dir>/.candor/report` on a run that died in argv parsing overwrote a COMMITTED report — in this
+  family's own reference tree, which commits reports for six crates, and committed reports and baselines
+  are the pattern this document recommends. ⟨0.27⟩ never had to say this because `--gate-json` has no
+  default: every verdict sink is named. Destroying a version-controlled artifact is a worse outcome than
+  the staleness the rung closes.
+- **IDENTIFY WHAT YOU OVERWRITE; DO NOT DENYLIST WHAT YOU SKIP.** An armer MUST write only files it
+  positively recognises as its own §2 report. A suffix denylist over §2.2's reserved family is the wrong
+  mechanism, not merely an incomplete list: measured, a three-suffix carve-out overwrote `calibrated`,
+  `layerreach`, `encountered-*` and **`<prefix>.gate.json`, a gate verdict** — the report sink silently
+  destroying the verdict sink's document beside it. The denylist-over-allowlist rule elsewhere in this
+  family is about CLASSIFYING, where over-approximating is safe; **for a WRITER it inverts.**
+- **THE INPUT EXEMPTION IS ASKED FIRST, BEFORE IDENTIFICATION.** A policy holding ordinary rule lines is
+  not JSON, so identification-first skips it silently and the operator never learns their policy sat in the
+  arming path; and the exemption must outrank identification for the case where the colliding input IS a
+  valid report — a chained dep report under the same prefix. *Do not touch what this run reads* is the
+  stronger claim whatever the file turns out to be.
+
+**AND THE RUN HANDS BACK WHAT IT TURNED OUT NOT TO OWN.** A file still holding the placeholder once the run
+has finished writing is one the run never claimed — a leftover from a package no longer in the scan. That is
+not an incomplete analysis, and leaving the placeholder asserts one: measured, it turned a COMPLETE scan of
+the remaining members into a permanent exit-2 refusal that only manual deletion cleared, because a
+placeholder's non-empty `unanalyzed` is the ⟨0.21⟩ incompleteness trigger. The implementation MUST restore
+the previous bytes there. The orphaned report is a real and separate defect — it still describes deleted
+code and still reaches a gate over the prefix — and it keeps its own wire question rather than being
+resolved as a side effect of a staleness fix.
+
+⟨0.28⟩ **AND THE §2.2 SIDECARS GO WITH THE REPORT — DELETED, NOT EMPTIED.** A report armed to the shape in
+(2) beside a live sidecar is a PAIR THAT CONTRADICTS ITSELF, and §2.2 gives the sidecar no provenance of its
+own to arbitrate with. It is not a theoretical pairing problem: `callers`/`whatif`/`rewire` are answered
+FROM THE SIDECAR, because a currently-pure function is absent from the report by §2 rule 3 and only the
+sidecar records it. Measured — baseline `f` pure with one caller `g`; the new version gives `f` a real
+effect and adds a second caller `h`; the run exits 2 with the report armed and the sidecar left as it was:
+
+    callers f   →   exit 0, "`f` is reached by 1 function(s) (the blast radius if it gained an effect): g"
+
+The answer is confident, exit-0, labelled as the blast radius, and **wrong** — `h` calls `f` too. An agent
+reads it as safe-to-edit. That is the cardinal sin reached through the half of the pair the rung had not
+touched.
+
+So: on arming, the implementation MUST remove each armed report's §2.2 sidecars, under the same
+artifact-resolution and input-exemption rules as the report itself.
+
+**Deletion rather than `{}`, and the reasoning is NOT the report's.** §3.3.1 forbids deleting a REPORT
+because a consumer that treats a missing file as "nothing to report" fails open. No sidecar consumer has
+that failure mode: §2.2 makes the sidecar OPTIONAL, so every consumer was forced to define an absence arm
+from the start and every specified arm is safe — over-listing (§3.1), `unknown` disclosed (the `gains`
+origin rule), refusal on a corrupt one. Writing `{}` instead buys nothing: ⟨0.24⟩ has already RULED that an
+empty, an absent and an unparseable hierarchy sidecar are THE SAME INPUT. Measured four-way on the one cell
+that rule does not cover — an empty-but-valid baseline CALLGRAPH — all four engines answer `origin:
+"unknown"`, so `{}` and absent are indistinguishable in the field as well as in the text. Absence is the
+state the consumers were built for; `{}` is a file this document has declared meaningless.
+
+⟨0.28⟩ **THE PAIRING RULE — a CONSUMER obligation, and the belt to arming's braces.** A §2.2 sidecar whose
+paired report is a ⟨0.21⟩ Row-1 manifest-carrying empty is **unanswerable input regardless of its own
+content**, and a verb reading it MUST take its absence arm. This is the normative form of §2.2's own "read
+together with its report", and it covers the staleness routes arming cannot reach: a crash between the
+report write and the sidecar write, a hand-copied half, an artifact pair restored from different backups.
+Producer-side deletion is the floor because *the naive read is the one that ships*; this rule is what makes
+a pair that arrives contradictory anyway fail closed.
 
 ⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
 `policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
