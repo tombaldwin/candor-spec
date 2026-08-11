@@ -344,6 +344,35 @@ field in its own output (verdict-preserving — the ⟨0.9⟩ gate auto-disclosu
 the verdict/exit does not change, the caveat travels. Closing the gap remains chaining's job (§2
 CANDOR_DEPS); `coverage` is how an unclosed gap stays visible.
 
+⟨0.28⟩ **AND THE SAME MUST CARRIES THE ⟨0.21⟩ MANIFEST, WHICH IS THE STRONGER CAVEAT AND THE ONE THAT DOES
+NOT TRAVEL.** The rule above is stated over `coverage`, and it is implemented: measured, `gains` over a
+baseline carrying `coverage.uncovered` emits `coverageDelta` naming the uncovered dependency. **The same
+verb, on the same report, in the same output, drops `unanalyzed` entirely.** So the mechanism exists and
+works; it was pointed at the weaker of the two caveats. `coverage.uncovered` says *I could not see into
+this dependency*; `unanalyzed` says *I could not read this file of your own code*, and `analyzed.count: 0`
+says *I judged nothing at all*.
+
+So: **a report-consuming verb MUST re-disclose a non-empty `unanalyzed`, and an `analyzed.count` of 0, on
+the same terms** — verdict-preserving, exit unchanged, the caveat travels.
+
+**AND THE SCOPE IS ANSWERS, NOT ONLY VERDICTS — the wording above is narrower than its own argument.** It
+binds a verb "whose VERDICT could change", and the two cases it reasons from are a `privacy-manifest` "ok"
+and a `gains` "no gains": both are ANSWERS THAT READ AS ALL-CLEARS, which is the property that makes the
+disclosure load-bearing. The descriptive verbs produce the same shape and are not covered by the wording:
+over a report declaring `unanalyzed`, measured, `show` answers `[]`, `where Fs` answers
+`{"directly":[],"inherited":[]}`, `map` answers `{}` and `blindspots` answers `{"totalUnknown":0}` — that
+last one reporting *no blind spots* out of a report whose own manifest names a file it could not read.
+None carries a hedge. A consumer cannot distinguish *nobody performs Fs* from *nothing was examined*.
+
+The obligation therefore binds **any verb whose output could be read as a negative finding about the
+code** — a verdict, an empty result set, a zero count. A verb that genuinely cannot be misread this way
+(`--version`, `parsepolicy` over a policy file, a verb reporting only on its own arguments) is unaffected.
+
+*This is the third time in this document a rule has been stated over the instance it was found in rather
+than the condition that makes it true — see §3.3.1's two ⟨0.24⟩ corrections. The tell is the same each
+time: the clause's own justification is broader than the clause. `coverage` was the field in front of the
+author, and `verdict` was the verb in front of the author.*
+
 ⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The
 report **omits pure functions** (§2 lists only effectful/`Unknown` units), so the consuming convention is
 "absent ⇒ pure." Two envelope fields make that convention *backed* rather than a universal claim the report
