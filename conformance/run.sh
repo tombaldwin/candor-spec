@@ -6612,7 +6612,15 @@ rd_probe() { # $1 label ; $2… the gains invocation (current then baseline)
     echo "     FAIL $label (i): the baseline's coverage.uncovered did NOT reach the verb output. §2 ⟨0.15⟩ makes this a MUST, and it is the live precedent the ⟨0.28⟩ manifest rule argues from"; RD_OK=1
   fi
   # (ii) the ⟨0.28⟩ rung — reference-led.
-  if printf '%s' "$out" | grep -qE 'unanalyzed|incomplete|broken\.rs'; then
+  # CASE-INSENSITIVE, AND NO FIXTURE-PATH CRUTCH. The first version was `grep -qE
+  # 'unanalyzed|incomplete|broken\.rs'` and it was passing on the wrong thing: the prefixed keys
+  # `baselineIncomplete` / `baselineUnanalyzed` do NOT match a lowercase pattern, so the row was
+  # actually satisfied by `broken.rs` — the path string from its own fixture leaking through. A
+  # baseline carrying `count: 0` and no `unanalyzed` array would have printed SKIP against a fully
+  # compliant engine. Found INDEPENDENTLY by the candor-swift and candor-java arms of this rung,
+  # which is why it is believed. Now matches the disclosure KEYS, case-insensitively, and the
+  # fixture path is gone so it cannot carry the row again.
+  if printf '%s' "$out" | grep -qiE 'unanalyzed|incomplete|judgedNothing'; then
     echo "  $label (ii) PASS — the ⟨0.21⟩ manifest travels too"
   else
     echo "  $label (ii) SKIP — the baseline's unanalyzed did not reach the verb output (engine has not implemented the ⟨0.28⟩ manifest re-disclosure)"
