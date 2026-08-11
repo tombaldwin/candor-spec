@@ -3645,8 +3645,19 @@ noreport "java no-report" java -jar "$JAR" where Fs --json
 
 # (1b) BAD TARGET → LOUD exit 2 (corpus-audit #3): a typo'd EFFECT name (`where Network`) or a nonexistent
 #      FUNCTION (`callers zzz`) must NOT answer empty at exit 0 — that reads as an authoritative all-clear for
-#      a question never posed (§4). Pinned for where/callers (path/impact already gate) across the engines that
-#      implement them (swift has neither verb). Uses the discovery reports scanned above; --report avoids the cd.
+#      a question never posed (§4). Uses the discovery reports scanned above; --report avoids the cd.
+#
+#      THIS COMMENT USED TO SAY "(path/impact already gate)" AND NOTHING TESTED IT. Measured 2026-08-11:
+#      true for rust, java and swift; FALSE for candor-ts, where `impact zzz` answered
+#      `{affectedCount: 0}` and `path zzz Fs` answered `{path: []}`, both at exit 0 — an authoritative
+#      "that function affects nothing" for a function that does not exist. A claim in the instrument that
+#      the instrument does not check is the exact shape this file exists to prevent, and it sat in the
+#      paragraph doing the preventing. ts fixed in `e9f8f30`; the claim is now ROWS, below.
+#
+#      NOT COVERED, deliberately: a typo'd EFFECT on `path` (`path <real fn> Netwerk`) answers exit 0 in
+#      ALL FOUR engines. That is a real gap — the same all-clear-for-a-question-never-posed — but it is
+#      four-way, so it wants its own rung rather than one engine being gated into a divergence. Named here
+#      so it stays measured rather than becoming another untested parenthetical.
 badtarget() { # $1 label ; $2… command — expect exit 2
   ( "${@:2}" ) >/dev/null 2>&1
   [ "$?" = 2 ] || p17fail "$1: a typo'd effect / nonexistent fn must exit 2 (loud), not answer empty at exit 0"
@@ -3665,6 +3676,19 @@ fi
 # author who typos --policy ships a gate that never fires; the same silent-guess cardinal sin). AND every
 # engine TOLERATES another engine's valid flag: `--text`/`--human` are candor-ts output-mode flags, so a
 # prose-default engine (rust/java/swift) must accept them (cross-engine `candor <verb> --text` never errors).
+# …and the two verbs the comment above used to ASSERT without asking. swift has `path` but not `impact`.
+badtarget "rust impact <bad fn>"  "$QUERY" impact zzz_no_such_fn --report "$W/rust/.candor/report"
+badtarget "rust path <bad fn>"    "$QUERY" path zzz_no_such_fn Fs --report "$W/rust/.candor/report"
+badtarget "java impact <bad fn>"  java -jar "$JAR" impact zzz_no_such_fn --report "$P17/j/.candor/report.app.jvm.json"
+badtarget "java path <bad fn>"    java -jar "$JAR" path zzz_no_such_fn Fs --report "$P17/j/.candor/report.app.jvm.json"
+if [ -n "$TS_OK" ]; then
+  badtarget "ts impact <bad fn>"  node "$TS_DIR/query.mjs" impact zzz_no_such_fn --report "$P17/t"
+  badtarget "ts path <bad fn>"    node "$TS_DIR/query.mjs" path zzz_no_such_fn Fs --report "$P17/t"
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$P17/s" ]; then
+  badtarget "swift path <bad fn>" "$SW_BIN" path zzz_no_such_fn Fs --report "$P17/s/.candor/report"
+fi
+
 badtarget "rust typo'd flag"  "$QUERY" where Fs --polciy /x --report "$W/rust/.candor/report"
 badtarget "java typo'd flag"  java -jar "$JAR" where Fs --polciy /x --report "$P17/j/.candor/report.app.jvm.json"
 [ -n "$TS_OK" ] && badtarget "ts typo'd flag" node "$TS_DIR/query.mjs" where Fs --polciy /x --report "$P17/t"
@@ -6527,6 +6551,92 @@ fi
 echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
 if [ "$ZR_OK" = 0 ]; then
   echo "  -> MATCH — every engine that has implemented the ⟨0.28⟩ zero-rule refusal carries the fail-closed document, the rest print SKIP, and no engine refuses a run that configured no gate at all"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 39 — SPEC §2: A REPORT-CONSUMING VERB RE-DISCLOSES THE REPORT'S CAVEAT                [TIER 1]
+#
+# §2 ⟨0.15⟩ makes this a MUST for `coverage`: a verb whose answer could change under uncovered reach
+# re-discloses the field in its OWN output, verdict-preserving — the exit does not move, the caveat
+# travels. ⟨0.28⟩ extends the same MUST to the ⟨0.21⟩ manifest, which is the STRONGER caveat:
+# `coverage.uncovered` says "I could not see into this dependency", `unanalyzed` says "I could not read
+# this file of your own code", and `analyzed.count: 0` says "I judged nothing at all".
+#
+# TWO HALVES, AND THE FIRST IS WHY THE SECOND IS CREDIBLE.
+#
+#   (i)  coverage re-disclosure — ALREADY IMPLEMENTED and, until now, PINNED BY NOTHING. Measured:
+#        `gains` over a baseline carrying `coverage.uncovered` emits `coverageDelta` naming the uncovered
+#        dependency. That live precedent is the whole argument for (ii) — the mechanism exists, it works,
+#        it was simply pointed at the weaker field. If it silently regressed, the ⟨0.28⟩ clause would be
+#        arguing from a precedent that no longer existed, and nothing would have said so. A hard FAIL.
+#
+#   (ii) manifest re-disclosure — the ⟨0.28⟩ rung. Reference-led: an engine that drops `unanalyzed`
+#        prints SKIP. Measured pre-rung: the SAME verb, on the SAME report, in the SAME output, carries
+#        coverage and drops the manifest.
+#
+# THIS PART EXISTS BECAUSE OF HOW ITS CLAIM WAS MADE. The ⟨0.28⟩ clause was written from an ad-hoc shell
+# probe, and this session produced five ad-hoc probes that were WRONG in ways that read as findings. A
+# measurement cited in a spec clause has to be a row: a row is falsified by construction and re-runs
+# forever, a probe is trusted once. See bin/probe.sh in the umbrella for the full account.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[39] CAVEAT RE-DISCLOSURE  (SPEC §2 ⟨0.15⟩+⟨0.28⟩ — the verdict does not move, the caveat travels)"
+RD_OK=0
+RDW="$W/redisclose"; mkdir -p "$RDW"
+# A baseline carrying BOTH caveats, and a current that gained an effect so `gains` has something to say.
+cat > "$RDW/base.demo.scan.json" <<'RDEOF'
+{ "candor": {"version":"t","toolchain":"stable","spec":"0.27"},
+  "package": "demo",
+  "coverage": { "uncovered": [ {"name":"mystery-crate","calls":7} ] },
+  "analyzed": { "count": 3 },
+  "unanalyzed": [ {"path":"src/broken.rs","reason":"parse error"} ],
+  "functions": [ {"fn":"a","hash":"demo#a","inferred":["Fs"],"direct":["Fs"]} ] }
+RDEOF
+cat > "$RDW/cur.demo.scan.json" <<'RDEOF'
+{ "candor": {"version":"t","toolchain":"stable","spec":"0.27"},
+  "package": "demo", "analyzed": {"count":3},
+  "functions": [ {"fn":"a","hash":"demo#a","inferred":["Fs","Net"],"direct":["Fs","Net"]} ] }
+RDEOF
+rd_probe() { # $1 label ; $2… the gains invocation (current then baseline)
+  local label=$1; shift
+  local out; out=$("$@" 2>/dev/null)
+  if [ -z "$out" ]; then
+    echo "     FAIL $label: gains produced no output over the caveat-bearing baseline — the row cannot ask its question"; RD_OK=1; return
+  fi
+  # (i) the LIVE precedent — a hard FAIL, never a SKIP.
+  if printf '%s' "$out" | grep -q 'mystery-crate'; then
+    echo "  $label (i) PASS — coverage travels into the verb's own output"
+  else
+    echo "     FAIL $label (i): the baseline's coverage.uncovered did NOT reach the verb output. §2 ⟨0.15⟩ makes this a MUST, and it is the live precedent the ⟨0.28⟩ manifest rule argues from"; RD_OK=1
+  fi
+  # (ii) the ⟨0.28⟩ rung — reference-led.
+  if printf '%s' "$out" | grep -qE 'unanalyzed|incomplete|broken\.rs'; then
+    echo "  $label (ii) PASS — the ⟨0.21⟩ manifest travels too"
+  else
+    echo "  $label (ii) SKIP — the baseline's unanalyzed did not reach the verb output (engine has not implemented the ⟨0.28⟩ manifest re-disclosure)"
+  fi
+}
+rd_probe "candor-scan " "$QUERY" gains "$RDW/cur" "$RDW/base" --json
+if [ -f "$JAR" ]; then
+  cp "$RDW/base.demo.scan.json" "$RDW/jb.jvm.json"; cp "$RDW/cur.demo.scan.json" "$RDW/jc.jvm.json"
+  rd_probe "candor-java " java -jar "$JAR" gains "$RDW/jc.jvm.json" "$RDW/jb.jvm.json" --json
+fi
+if [ -n "$TS_OK" ]; then
+  cp "$RDW/base.demo.scan.json" "$RDW/tb.json"; cp "$RDW/cur.demo.scan.json" "$RDW/tc.json"
+  rd_probe "candor-ts   " node "$TS_DIR/query.mjs" gains "$RDW/tc" "$RDW/tb"
+fi
+# swift too — it has `gains` (see [5b] above, which drives it). The first version of this part covered
+# three engines and omitted the fourth for no reason: the sibling-route habit, in a row written hours
+# after that habit was named in a commit message. A part that covers three engines covers three engines.
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  cp "$RDW/base.demo.scan.json" "$RDW/sb.M.Swift.json"; cp "$RDW/cur.demo.scan.json" "$RDW/sc.M.Swift.json"
+  rd_probe "candor-swift" env -u CANDOR_CONFIG "$SW_BIN" gains "$RDW/sc" "$RDW/sb" --json
+fi
+echo "PART 39 — SPEC §2: a report-consuming verb re-discloses the report's caveat in its own output"
+if [ "$RD_OK" = 0 ]; then
+  echo "  -> MATCH — coverage travels in every engine (the ⟨0.15⟩ MUST, now pinned); the ⟨0.21⟩ manifest travels where ⟨0.28⟩ has shipped and prints SKIP elsewhere"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
