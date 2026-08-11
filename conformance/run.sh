@@ -6174,6 +6174,7 @@ fi
 echo
 echo "[37] REPORT SINK ARMING  (SPEC §3.3.1 ⟨0.28⟩ — the stale-report defect PART 34 doesn't reach)"
 RS_OK=0
+RS_SIDES_BEFORE=0   # set per-engine by the out-prefix arm; declared here because the suite is `set -u`
 RSW="$W/report-arming"; mkdir -p "$RSW"
 RS_STALE='{"candor":{"spec":"0.27"},"package":"prev","functions":[{"fn":"leftover","hash":"h","effects":{"fs":["read"]}}]}'
 RS_PY_FAILCLOSED='import json,sys
@@ -6209,8 +6210,18 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
   # which report files appear, and seed those. Sidecars are excluded deliberately — whether arming must
   # also cover `.callgraph`/`.hierarchy` is an OPEN question (§2.2 ⟨0.26⟩ has its own manifest story and
   # should be checked against it), and a probe must not silently decide a question the spec has not.
+  local reports=()
   if [ "$form" = "json-file" ]; then
     local J="$RSW/report.json"
+    rm -f "${J%.json}".*.json 2>/dev/null
+    printf '%s\n' "$RS_STALE" > "$J"
+    # The CLEAN run first, so (d) below can count the sidecars this engine really emits on THIS route.
+    "${cmd[@]}" --json "$J" >/dev/null 2>&1
+    reports=("$J")
+    RS_SIDES_BEFORE=0
+    for seg in callgraph hierarchy locs calibrated layerreach; do
+      [ -e "${J%.json}.$seg.json" ] && RS_SIDES_BEFORE=$((RS_SIDES_BEFORE+1))
+    done
     printf '%s\n' "$RS_STALE" > "$J"
     before=$(cksum < "$J")
     "${cmd[@]}" --json "$J" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
@@ -6229,8 +6240,16 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     rm -f "$PFX".* 2>/dev/null
     "${cmd[@]}" --out "$PFX" >/dev/null 2>&1
     # The REPORT files only, sidecars filtered out by their reserved trailing segments (§2.2 ⟨0.24⟩).
-    local reports=()
     while IFS= read -r f; do reports+=("$f"); done < <(ls "$PFX".*.json "$PFX".json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs)\.json$')
+    # How many §2.2 sidecars the CLEAN run produced — row (d) below needs it to tell "removed with the
+    # report" from "this engine never emitted one", which are the same directory listing afterwards.
+    RS_SIDES_BEFORE=0
+    for f in "${reports[@]}"; do
+      local b0="${f%.json}"
+      for seg in callgraph hierarchy locs calibrated layerreach; do
+        [ -e "$b0.$seg.json" ] && RS_SIDES_BEFORE=$((RS_SIDES_BEFORE+1))
+      done
+    done
     if [ "${#reports[@]}" = 0 ]; then
       echo "  $label (a) SKIP — no report file appeared under --out, so this row has no sink to probe (NOT evidence about the rung)"
     else
@@ -6286,6 +6305,42 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
       echo "  $label (c) PASS — a failed run left the DEFAULT-prefix report untouched"
     else
       echo "     FAIL $label (c): a run that exited during argv parsing OVERWROTE the default-prefix report at $dflt — it was never told it owned that path, and a committed report/baseline lives there in real projects"; bad=1
+    fi
+  fi
+
+  # (d) THE §2.2 SIDECARS GO WITH THE ARMED REPORT. An armed report beside a LIVE sidecar is a pair that
+  # contradicts itself, and §2.2 gives the sidecar no provenance of its own to arbitrate with. The pair
+  # is not decorative: `callers`/`whatif`/`rewire` are answered FROM THE SIDECAR, because a currently-pure
+  # function is absent from the report by §2 rule 3. MEASURED on candor-scan before the fix — baseline `f`
+  # pure with one caller `g`, new version gives `f` an effect and adds caller `h`, run exits 2:
+  #
+  #   callers f -> exit 0, "`f` is reached by 1 function(s) (the blast radius if it gained an effect): g"
+  #
+  # Confident, exit-0, labelled the blast radius, and WRONG. That is the cardinal sin arriving through the
+  # half of the pair the report rung did not touch.
+  #
+  # Reference-led like (a)/(b): an engine that still leaves them prints SKIP. Only the engines whose
+  # reports actually armed are examined — a sidecar beside a report that never armed says nothing.
+  #
+  # BOTH SINK FORMS. The first version of this row was guarded on `out-prefix`, which silently excluded
+  # candor-java — and java writes `<stem>.callgraph.json` + `<stem>.hierarchy.json` beside a
+  # `--json <file>` report, measured. The sidecar question is about the REPORT, and both forms write one;
+  # guarding on the sink FORM is the sibling-route habit reappearing inside the row built to catch it.
+  if [ "${#reports[@]}" != 0 ]; then
+    local sides_left=0 sides_seen=0
+    for f in "${reports[@]}"; do
+      local base="${f%.json}"
+      for seg in callgraph hierarchy locs calibrated layerreach; do
+        [ -e "$base.$seg.json" ] && { sides_left=$((sides_left+1)); sides_seen=$((sides_seen+1)); }
+      done
+    done
+    # Did this engine even emit sidecars on the clean run? If not the row is not applicable.
+    if [ "$RS_SIDES_BEFORE" = 0 ]; then
+      echo "  $label (d) n/a — this engine emitted no §2.2 sidecar under --out, so there is none to pair"
+    elif [ "$sides_left" = 0 ]; then
+      echo "  $label (d) PASS — the armed report's §2.2 sidecars were removed with it"
+    else
+      echo "  $label (d) SKIP — $sides_left sidecar(s) still sit beside an armed report (engine has not implemented the ⟨0.28⟩ sidecar rule)"
     fi
   fi
 
