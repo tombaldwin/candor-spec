@@ -2777,6 +2777,32 @@ engine exposes, it MUST accept:
   identifying what it looked for and **exit 2**. It MUST NOT emit an empty or degenerate answer at exit 0: a
   query that cannot find its report must never read as a clean "nothing here" (the §4 cardinal sin). A
   `--report` given with no value is likewise an exit-2 error, never a silent fall-back to discovery.
+
+  ⟨0.28⟩ **AND "GIVEN NO VALUE" MEANS THE NEXT TOKEN IS FLAG-SHAPED — otherwise the clause cannot be
+  implemented at all.** A value-taking flag whose following token begins with `--` has NOT been given a
+  value; the operator has made a typing mistake. An engine that consumes the token as a filename cannot
+  ever recognise the "no value" cause this document requires it to report, because there is no argv that
+  produces it: `--policy --gate-json -` becomes *policy = the file named `--gate-json`*, an unreadable
+  path, and the verdict sink the operator named is silently not a sink. Measured after the ⟨0.28⟩
+  pre-pass alignment: candor-scan and candor-java exited 2 with **nothing on the stream**, where the
+  `--gate-json -` refusal document belongs.
+
+  This is the §6.2 unknown-flag rule one position over. That clause refuses to read `--poilcy` as a
+  positional path because *silent reinterpretation is the one thing a security gate must not do*; reading
+  `--gate-json` as a policy FILENAME is the same reinterpretation, and it additionally swallows a sink.
+  So: a value-taking flag followed by a `--`-prefixed token is a usage error at exit 2, and the sinks
+  named elsewhere in that argv are still sinks — the run has a broken command line, not a redefined one.
+
+  A bare `-` stays a legitimate VALUE (`--gate-json -` is the stream form), and an operator who genuinely
+  has a file whose name begins with `--` can spell it `./--weird`. Both are cheaper than the class of
+  mistake this closes.
+
+  *Recorded because the four engines were split by a FIX: aligning the arming pre-pass to the parse loop
+  (⟨0.28⟩, so nothing arms a sink the loop never accepted) exposed that on two engines the loop itself was
+  fail-open. candor-ts and candor-swift kept registering the sink and still pass; candor-scan and
+  candor-java aligned onto the permissive reading and lost the refusal document. The row that caught it —
+  §3.1 (b13) — had been passing on the DISAGREEMENT between pre-pass and loop, which is why neither half
+  looked wrong on its own.*
 - **Verb args** are positional, in the §3.1 order: `where <Effect>`; `show`/`callers`/`impact` `<fn>`;
   `path`/`whatif`/`fix` `<fn> <Effect>`; `map`/`reachable`/`blindspots`/`fix-gate`/`unverified` none;
   `containment [<baseline>]`. The report is a **flag**, never a leading positional, so the first token after
