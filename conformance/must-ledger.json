@@ -1119,7 +1119,7 @@
    "sha": "4aad976dc52ac12d",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "⟨0.28⟩ **AND AN INPUT LOCATOR NAMES A SET — COMPARE THE EXPANSION, NEVER THE TOKEN.** \"Artifacts not strings\" ",
-   "status": "pre-ledger"
+   "part": "PART 37 (g)"
   },
   {
    "sha": "7e655eccaa291241",
@@ -1137,13 +1137,13 @@
    "sha": "1eb761e905b72726",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "- **DERIVE THE EXPANSION FROM THE LOADER, do not re-spell it.** A hand-written second expansion is a second pa",
-   "status": "pre-ledger"
+   "part": "PART 37 (g)"
   },
   {
    "sha": "5e210dd3f399957c",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "- **THE SIDECARS EXPAND TOO.** A report locator that resolves to `<stem>.json` also reaches `<stem>.callgraph.",
-   "status": "pre-ledger"
+   "part": "PART 37 (g3)"
   },
   {
    "sha": "ff2a0804a4dc4730",
