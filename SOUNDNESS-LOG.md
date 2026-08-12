@@ -3044,3 +3044,49 @@ the (g) rows fail naming the destroyed path). The three clause blocks moved from
 `PART 37 (g)` in the must-ledger — the ledger's first upgrade in the direction it was built for.
 
 Commits: candor-rust `4b4384a` · candor-java `3a805d4` · candor-ts `18d10f0` · candor-swift `2853068`.
+
+### 2026-08-12 — two sink routes nobody had audited, and the matrix's own binary list made checkable
+
+**The same vein, two unmeasured routes — measured first, both defective.** After the token-vs-expansion
+sweep above, two routes had never been driven: candor-java's SCAN-side baseline channel, and
+cargo-candor's bespoke `policy`/`guard --gate-json` (not one of the seven binaries PART 43 runs, so no
+guard written today and no conformance row could reach it).
+
+**candor-java: the baseline pair, both directions of the expansion.** `checkBaseline` answers the ⟨0.16⟩
+pure→effectful ratchet FROM the baseline's `.callgraph.json` sidecar while `runInputs` registered the
+token. Measured at HEAD: `CANDOR_BASELINE=base.json candor cls --json base.callgraph.json` wrote the
+report OVER the ratchet's sidecar (98 → 1180 bytes) and then blamed the wreckage ("corrupt/unreadable")
+at exit 2; the `.candor/config` `baseline` spelling — the spelling that defeated the first version of
+this guard in all four engines — destroyed it identically through `--gate-json`. And the SINK is a set
+too: file-mode `--json <stem>` also writes `<stem>.callgraph.json`, so `CANDOR_BASELINE=base.json …
+--json base` replaced the ratchet's sidecar with the CURRENT call graph at a SUCCESS exit — candor-scan's
+`baseline_artifact_files` defect (`e9b1aff`), one spelling over, silently narrowing the ratchet from the
+next run on. Fixed in `runInputs` (report-shaped inputs registered with their on-disk §2.2 sidecars, via
+`Loader.reportSidecarSegments` so the `gate` exclusion rides along) and `refuseJsonOverAnyInput` (the
+sink's full write set compared). Four `SinkArmingIntegrityTest` rows on bytes; the stem-collision row's
+first draft failed only on the exit code — an identical tree writes identical bytes back — so the fixture
+drifts the code before the attack run. A vacuous byte assertion is this vein's own trap.
+
+**cargo-candor: one `rm -f`, the whole defect family.** The wrapper cleared the sink up front, so `guard
+.candor/base --gate-json .candor/base.app.Executable.json` DELETED the baseline member and then reported
+"no baseline found" — exit 2 diagnosing its own act (at the parent commit the falsification run exited 1
+with a verdict over the half-destroyed baseline); the `.candor-version` provenance sidecar and the policy
+file died identically. A usage error left a PREVIOUS run's `{"ok":true}` at the sink in both argv orders;
+every post-parse exit-2 wrote nothing; the stream form put 0 bytes on stdout; and a config-load refusal
+(the ⟨0.27⟩ "armed after config load" window) kept the stale green too. Fixed with the family shape:
+exemption FIRST over the baseline locator's expansion (`$pre.*.json` + `$pre.candor-version`, `-ef`
+device+inode), then ARM the file sink with the refusal document, usage errors deferred past arming,
+every exit-2 through one helper that also serves the stream form, and the config-load window writes the
+document under the same exemption. 21 `ci/wrapper-smoke.sh` rows on bytes, 10 red at the parent.
+
+**And the reason route 2 existed at all is now a checked invariant.** PART 43 derives FLAGS from --help
+precisely because hand lists find only the surface in front of the author — and its BINARIES were a hand
+list of seven. `gen_sink_surface.py` now declares its route inventory and reconciles it BOTH WAYS against
+the route list SPEC §3.3.1 (5) actually names, parsed from SPEC.md at run time (the part_declarations.py
+construction: declaration, not inference — inference measured 1:8). A spec-named route absent from the
+matrix FAILS; a declaration the clause no longer names FAILS; a gap must be DECLARED with a reason and is
+printed every run — candor-agents' `scan`/`observe --json` are today's two declared gaps, visible instead
+of absent. Falsified both directions. Not waivable through the ratchet: a waiver accuses an engine, these
+accuse the suite's own coverage.
+
+Commits: candor-java `d841550` · candor-rust `c96c474` · candor-spec `a097c54`.
