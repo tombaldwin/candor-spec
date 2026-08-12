@@ -1,31 +1,4 @@
 {
-  "comment": "P8 sink-surface waivers — each row is an ACCUSATION that a shipped engine violates the clause it cites, recorded by gen_sink_surface.py's FIRST run (2026-08-12) so the matrix lands green over defects it found rather than defects it ignores. The ratchet is both-ways: a waived cell that starts passing is STALE and fails the run, so no row outlives its defect.",
-  "waivers": [
-    { "cell": "rust-query/diff/--report/cause",
-      "why": "§3.3.1: 'a typo'd or a not-applicable flag stays an exit-2 error (§3.3.1), never a silent swallow' — `diff A B --report --json` runs to a clean exit-0 answer; candor-java and candor-ts refuse the same argv at exit 2 naming the flag. Found by this matrix's first run, 2026-08-12." },
-    { "cell": "rust-query/diff/--policy/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as diff/--report — the broken flag pair is ignored at exit 0." },
-    { "cell": "rust-query/diff/--class/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as diff/--report — the broken flag pair is ignored at exit 0." },
-    { "cell": "rust-query/diff/--clear-other/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as diff/--report — the broken flag pair is ignored at exit 0." },
-    { "cell": "rust-query/diff/--gate-json/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as diff/--report — and here the ignored flag is the SINK flag itself, so an operator's verdict destination vanishes at exit 0." },
-    { "cell": "rust-query/rewire/--report/cause",
-      "why": "§3.3.1: 'a typo'd or a not-applicable flag stays an exit-2 error (§3.3.1), never a silent swallow' — rewire is named under the §3.3.1 grammar (SPEC's Tier-2 pinned-tool-surfaces list carries it); candor-java's rewire refuses this argv at exit 2 naming the flag, candor-rust's answers at exit 0. Found by this matrix's first run, 2026-08-12." },
-    { "cell": "rust-query/rewire/--policy/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as rewire/--report." },
-    { "cell": "rust-query/rewire/--class/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as rewire/--report." },
-    { "cell": "rust-query/rewire/--clear-other/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as rewire/--report." },
-    { "cell": "rust-query/rewire/--gate-json/cause",
-      "why": "§3.3.1 silent-swallow rule, same defect as rewire/--report — the ignored flag is the SINK flag itself." },
-    { "cell": "swift/scan/--target/sink-stream",
-      "why": "§3.2 ⟨0.28⟩ 'the sinks named elsewhere in that argv are still sinks' + §3.3 'fail-closed document for EVERY cause' — `--target --gate-json -` exits 2 with NOTHING on the stream. The FILE spelling passes (the pre-pass leaves an armed placeholder on disk), so this is a refusal path that exits without routing through the stream emitter — the same class as the bare exit(2) candor-scan repaired in 3560681, one flag over. Found by this matrix's first run, 2026-08-12: the hand sweep had covered --policy and --out on this CLI, not --target." },
-    { "cell": "java/help/verify",
-      "why": "§3.3: '--help / -h | print a usage summary that lists these flags' — the jar answers `verify --help` with a usage line carrying value-taking --run/--report/--scope, but the top-level --help never mentions the verb. An undisclosed flag surface, in the engine whose subject is disclosure. Found by this matrix's first run, 2026-08-12." },
-    { "cell": "java/help-query/--class",
-      "why": "§3.3: the usage summary MUST list the flags — candor-java's query grammar ACCEPTS `--class` as a value-taking flag on every verb (it refuses it a value like a real flag: '--class was given no value'), but --help never documents it; candor-rust and candor-ts document theirs. Found by this matrix's first run, 2026-08-12." }
-  ]
+  "comment": "P8 sink-surface waivers — each row is an ACCUSATION that a shipped engine violates the clause it cites, recorded by gen_sink_surface.py's FIRST run (2026-08-12) so the matrix lands green over defects it found rather than defects it ignores. The ratchet is both-ways: a waived cell that starts passing is STALE and fails the run, so no row outlives its defect.  ⟨2026-08-12⟩ All 13 opening waivers deleted: the matrix reported them STALE on the same day it was built, because the defects it found were fixed the same day (candor-rust 97edc4f, candor-swift c5d657e, candor-java 58f06c8). An empty waiver list is the intended steady state — a waiver here accuses an engine of violating a cited clause, so it must be cheaper to fix than to keep.",
+  "waivers": []
 }
