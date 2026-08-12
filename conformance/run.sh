@@ -6735,11 +6735,46 @@ ti_control() { # the CONTROL: a sink INSIDE the scanned tree stays permitted (ex
     echo "  $label (f-control) PASS — a sink inside the scanned tree is still permitted (exit $rc)"
   fi
 }
+# ⟨0.28⟩ (h) THE TARGET EXPANDS TO THE FILES THE RUN WILL PARSE — the residual (f) deliberately left.
+#
+# (f) refuses a sink that IS the target. That is exact-artifact and it is right, and it leaves this:
+# measured on all four engines, a sink NAMED INSIDE the target tree bearing a source extension the engine
+# parses was armed and destroyed. candor-ts replaced `src/main.ts` while scanning `tsconfig.json` and
+# exited 0 REPORTING SUCCESS, having disclosed the parse failure it had itself caused; candor-scan
+# replaced `src/lib.rs` and then reported the file it destroyed as a parse failure; candor-swift replaced
+# a `.swift` under the target and scanned the wreckage.
+#
+# The obvious fix is unavailable and the clause says so: parse-time arming precedes the file walk, so the
+# run does not yet know its file set. The check is over what IS knowable then — the engine's own source
+# extensions. So this row is NOT a containment row, and (f-control) above is what proves that: a
+# `.candor/…json` sink under the same target must still be permitted. A fix that reddens the control has
+# reimplemented containment, which the ruling explicitly rejects and which cost candor-ts 33 tests once.
+#
+# BYTES, not the exit code: candor-ts exited 0 while destroying the file and candor-java exits 2 while
+# doing it, so an exit assertion is blind in both directions.
+ti_expand() { # $1 label ; $2 sink flag ; $3 source extension this engine parses ; $4… cmd, DIR TARGET last
+  local label=$1 flag=$2 ext=$3; shift 3
+  local cmd=( "$@" ) tdir="${@: -1}"
+  local src="$tdir/ti_expand_victim.$ext" before after rc
+  printf '// a source file the scan will parse\n' > "$src"
+  before=$(cksum < "$src")
+  "${cmd[@]}" "$flag" "$src" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$src" 2>/dev/null)
+  if [ "$before" != "$after" ]; then
+    echo "     FAIL $label (h): \`$flag <a .$ext under the target>\` DESTROYED it — the scan target expands to the files the run will PARSE (SPEC §3.3.1 ⟨0.28⟩), and this one was armed over (exit $rc)"; RS_OK=1
+  elif [ "$rc" = 0 ]; then
+    echo "     FAIL $label (h): the source survived but the run exited 0 over a sink it must refuse — a consumer is told the scan succeeded"; RS_OK=1
+  else
+    echo "  $label (h) PASS — a .$ext sink under the scan target is refused (exit $rc), the source byte-identical"
+  fi
+  rm -f "$src"
+}
 TIW="$W/targetinput"; rm -rf "$TIW"; mkdir -p "$TIW"
 if [ -x "$SCAN" ]; then
   printf 'pub fn a() { std::fs::read("x").ok(); }\n' > "$TIW/lib.rs"
   ti_probe "candor-scan " --gate-json "$SCAN" "$TIW/lib.rs"
   [ -d "$GDIR/rust" ] && ti_control "candor-scan " --gate-json "$SCAN" "$GDIR/rust"
+  [ -d "$RSFX/rust" ] && ti_expand "candor-scan " --gate-json rs "$SCAN" "$RSFX/rust"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   # A real jar: the java reproduction destroyed one, and a jar is also the shape whose corruption is
@@ -6755,6 +6790,8 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
     # the coverage gap falsification cannot see: the java rows fail correctly when java breaks, and
     # say nothing about the arm nobody ran.
     [ -n "$RSFX_JAVA" ] && ti_control "candor-java " --json java -jar "$JAR" "$RSFX_JAVA"
+    # java parses CLASS FILES, not sources — its parse set is what the walk feeds ASM.
+    [ -n "$RSFX_JAVA" ] && ti_expand "candor-java " --json class java -jar "$JAR" "$RSFX_JAVA"
   else
     echo "  candor-java  (f) n/a — could not build a jar fixture on this machine"
   fi
@@ -6763,11 +6800,13 @@ if [ -n "$TS_OK" ]; then
   printf 'export function a(){ return require("fs").readFileSync("x") }\n' > "$TIW/app.ts"
   ti_probe "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$TIW/app.ts"
   [ -d "$GDIR/ts" ] && ti_control "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$GDIR/ts"
+  [ -d "$RSFX/ts" ] && ti_expand "candor-ts   " --gate-json ts node "$TS_DIR/scan.mjs" "$RSFX/ts"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   printf 'import Foundation\nfunc a() { _ = FileManager.default.contents(atPath: "x") }\n' > "$TIW/app.swift"
   ti_probe "candor-swift" --gate-json "$SW_BIN" "$TIW/app.swift"
   [ -d "$GDIR/swift" ] && ti_control "candor-swift" --gate-json "$SW_BIN" "$GDIR/swift"
+  [ -d "$RSFX/swift" ] && ti_expand "candor-swift" --gate-json swift "$SW_BIN" "$RSFX/swift"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
