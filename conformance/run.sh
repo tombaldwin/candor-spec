@@ -6748,6 +6748,13 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   if [ -s "$TIW/app.jar" ]; then
     ti_probe "candor-java " --json java -jar "$JAR" "$TIW/app.jar"
     ti_probe "candor-java " --gate-json java -jar "$JAR" "$TIW/app.jar"
+    # ⟨0.28⟩ AND JAVA GETS THE CONTROL TOO. It was the one engine given `ti_probe` without
+    # `ti_control` — so for java this part asserted the refusal and never that the guard is
+    # artifact-shaped rather than containment-shaped, which is the half that can break the default
+    # layout. Found by PART 44's declaration check, in a row written the same day, which is exactly
+    # the coverage gap falsification cannot see: the java rows fail correctly when java breaks, and
+    # say nothing about the arm nobody ran.
+    [ -n "$RSFX_JAVA" ] && ti_control "candor-java " --json java -jar "$JAR" "$RSFX_JAVA"
   else
     echo "  candor-java  (f) n/a — could not build a jar fixture on this machine"
   fi
