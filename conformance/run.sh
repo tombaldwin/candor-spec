@@ -6247,8 +6247,47 @@ ok = (d.get("functions") == []
       and bool(d.get("unanalyzed")))
 sys.exit(0 if ok else 1)'
 
+# ⟨0.28⟩ THE INTACT CONTROL FOR ROW (e) — run over a GENUINE pair, before anything is seeded or armed.
+#
+# Row (e) accepts `unanswerable` OR a non-zero exit. Without this control that predicate is satisfied by
+# EVERY way the probe itself can be broken: a renamed verb, a wrong report locator, the wrong argv arity,
+# an engine that crashes on every `callers` query. All of them exit non-zero, and all of them printed
+# "PASS — discloses in the machine channel". An engine could lose the `callers` verb entirely and the row
+# would stay green forever — vacuous in the strongest sense, because the failure mode it is built to catch
+# and the failure of the instrument are the same observation.
+#
+# This is PART 40's locator lesson arriving one part earlier and not being applied: there, a mangled report
+# path made 58 of 60 cells "no report -> exit 2 -> PASS refused", almost entirely green and measuring
+# nothing. The fix is the same one — prove the question can be ANSWERED before crediting a refusal.
+#
+# So: the same `callers` command, over the intact pair the clean run just produced, MUST answer — exit 0
+# with a parseable document that is not itself a hedge. A control that merely RUNS is not a control; this
+# one asserts. If it cannot answer, row (e) is disabled for that engine and the failure is reported as an
+# instrument fault, never as engine evidence.
+RS_CTRL_OK=0
+rs_intact_control() {
+  local label=$1
+  RS_CTRL_OK=0
+  [ -n "${RS_CALLERS_CMD:-}" ] || return 0
+  local out rc
+  out=$(eval "${RS_CALLERS_CMD}" 2>/dev/null); rc=$?
+  if [ "$rc" = 0 ] && printf '%s' "$out" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(1)
+# An answer, not a hedge and not an empty determined-negative: the control must show the verb REACHING
+# the fixture. 'of' merely echoes the question, so it cannot carry the row.
+sys.exit(0 if isinstance(d,dict) and 'unanswerable' not in d and (d.get('direct') or d.get('transitive')) else 1)" 2>/dev/null; then
+    RS_CTRL_OK=1
+  else
+    echo "     FAIL $label (e-control): \`callers\` could not answer over the INTACT pair (exit $rc) — the row's own invocation is broken, so its later PASS/SKIP would be about the probe, not the engine"
+    return 1
+  fi
+}
+
 rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the scan command, TARGET LAST
   local label=$1 form=$2; shift 2
+  RS_ARMED=0   # ⟨0.28⟩ set by row (a); rows (d) and (e) are only meaningful over a report that ACTUALLY armed
   local cmd=( "$@" ) bad=0 rc before after
 
   # (a) FILE SINK. THE FORM IS PER-ENGINE AND THE FIRST VERSION OF THIS ROW GOT IT WRONG: it probed
@@ -6275,6 +6314,7 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     for seg in callgraph hierarchy locs calibrated layerreach; do
       [ -e "${J%.json}.$seg.json" ] && RS_SIDES_BEFORE=$((RS_SIDES_BEFORE+1))
     done
+    rs_intact_control "$label" || bad=1
     printf '%s\n' "$RS_STALE" > "$J"
     before=$(cksum < "$J")
     "${cmd[@]}" --json "$J" --zzz-not-a-flag >/dev/null 2>&1; rc=$?
@@ -6284,7 +6324,7 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     elif [ "$before" = "$after" ]; then
       echo "  $label (a) SKIP — sink still holds the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
     elif python3 -c "$RS_PY_FAILCLOSED" "$J" 2>/dev/null; then
-      echo "  $label (a) PASS — armed sink carries the ⟨0.21⟩ Row-1 fail-closed shape"
+      RS_ARMED=1; echo "  $label (a) PASS — armed sink carries the ⟨0.21⟩ Row-1 fail-closed shape"
     else
       echo "     FAIL $label (a): the sink was replaced but not with a manifest-carrying empty — need \`analyzed.count == 0 AND functions == [] AND unanalyzed non-empty\`"; bad=1
     fi
@@ -6293,7 +6333,13 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
     rm -f "$PFX".* 2>/dev/null
     "${cmd[@]}" --out "$PFX" >/dev/null 2>&1
     # The REPORT files only, sidecars filtered out by their reserved trailing segments (§2.2 ⟨0.24⟩).
-    while IFS= read -r f; do reports+=("$f"); done < <(ls "$PFX".*.json "$PFX".json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs)\.json$')
+    # ALL SEVEN SEGMENTS, not the three in front of the author. This filter listed
+    # `callgraph|hierarchy|locs` while the sidecar COUNTER four lines below already listed five, and
+    # §2.2 pins seven — so a `<prefix>.calibrated.json` sorted BEFORE the report and was probed as one.
+    # The exact drift §2.2 records the engines making ("one carving out six and another two"), reproduced
+    # inside the row built to catch it. `gate` and `encountered-*` are excluded too: a gate VERDICT under
+    # the prefix is emphatically not a report this row may seed over.
+    while IFS= read -r f; do reports+=("$f"); done < <(ls "$PFX".*.json "$PFX".json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs|calibrated|layerreach|gate|encountered-[^.]*)\.json$')
     # How many §2.2 sidecars the CLEAN run produced — row (d) below needs it to tell "removed with the
     # report" from "this engine never emitted one", which are the same directory listing afterwards.
     RS_SIDES_BEFORE=0
@@ -6303,6 +6349,7 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
         [ -e "$b0.$seg.json" ] && RS_SIDES_BEFORE=$((RS_SIDES_BEFORE+1))
       done
     done
+    rs_intact_control "$label" || bad=1
     if [ "${#reports[@]}" = 0 ]; then
       echo "  $label (a) SKIP — no report file appeared under --out, so this row has no sink to probe (NOT evidence about the rung)"
     else
@@ -6319,7 +6366,7 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
       elif [ "$before" = "$after" ]; then
         echo "  $label (a) SKIP — all ${#reports[@]} report file(s) under --out still hold the pre-seeded green (engine has not implemented ⟨0.28⟩ report-sink arming)"
       elif [ "$allfc" = 1 ]; then
-        echo "  $label (a) PASS — every one of ${#reports[@]} report file(s) under --out carries the ⟨0.21⟩ Row-1 fail-closed shape"
+        RS_ARMED=1; echo "  $label (a) PASS — every one of ${#reports[@]} report file(s) under --out carries the ⟨0.21⟩ Row-1 fail-closed shape"
       else
         echo "     FAIL $label (a): the --out set changed but not every report is a manifest-carrying empty — a PARTIALLY armed set is the ⟨0.26⟩ hazard (some files answer, some are stale, and nothing says which)"; bad=1
       fi
@@ -6388,7 +6435,16 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
       done
     done
     # Did this engine even emit sidecars on the clean run? If not the row is not applicable.
-    if [ "$RS_SIDES_BEFORE" = 0 ]; then
+    #
+    # ⟨0.28⟩ AND THE ROW IS GATED ON THE REPORT HAVING ARMED, which its own comment above claimed
+    # ("Only the engines whose reports actually armed are examined") while the code checked only that
+    # some report file EXISTS. An engine that deletes sidecars on a failed run WITHOUT arming the report
+    # printed "(d) PASS — the armed report's §2.2 sidecars were removed with it" beside an (a) SKIP: a
+    # PASS naming an armed report that never armed, and the worse tree of the two (a stale green report
+    # with its callgraph gone) scored as compliance.
+    if [ "$RS_ARMED" != 1 ]; then
+      echo "  $label (d) SKIP — row (a) did not arm, so a missing sidecar here is not evidence about the pairing rule"
+    elif [ "$RS_SIDES_BEFORE" = 0 ]; then
       echo "  $label (d) n/a — this engine emitted no §2.2 sidecar under --out, so there is none to pair"
     elif [ "$sides_left" = 0 ]; then
       echo "  $label (d) PASS — the armed report's §2.2 sidecars were removed with it"
@@ -6408,13 +6464,52 @@ rs_probe() {  # $1 label ; $2 file-sink FORM (json-file | out-prefix) ; then the
   # standard post-failure state, so a rare corner became the common path. A rung can convert a latent
   # defect into a frequent one without touching the defect.
   #
-  # SPEC §3.3.1 ⟨0.28⟩ accepts either an `unanswerable` key or a non-zero exit; this row accepts either,
-  # and SKIPs an engine still silent. What it must never accept is an empty result set at exit 0.
-  if [ "${#reports[@]}" != 0 ] && [ -n "${RS_CALLERS_CMD:-}" ]; then
+  # SPEC §3.3.1 ⟨0.28⟩ accepts an `unanswerable` key or a non-zero exit; this row accepts either, and
+  # SKIPs an engine still silent. What it must never accept is an empty result set at exit 0.
+  #
+  # ⟨0.28⟩ TWO GATES BEFORE THE PREDICATE, both added after a review found the row vacuous-capable:
+  #
+  #   · RS_CTRL_OK — the same invocation answered over the INTACT pair (see `rs_intact_control`).
+  #     Without it, "exit != 0" is satisfied by a renamed verb, a wrong locator or a crash, and the row
+  #     prints PASS for a question it never asked;
+  #   · RS_ARMED — row (a) actually armed. On an engine that has NOT shipped the rung the "armed pair"
+  #     is really a stale-green report beside a LIVE sidecar, so this row either exits 2 because the
+  #     probe function is absent from the seeded stale report (a PASS for the wrong reason) or answers
+  #     from the live sidecar (a FAIL that reddens the suite for an unshipped rung, breaking the
+  #     part's reference-led promise). Neither observation is about the machine-channel rule.
+  #
+  # AND THE `unanswerable` CHECK IS ON THE PARSED DOCUMENT, NOT A SUBSTRING. `grep -q 'unanswerable'`
+  # matches the word anywhere — in a stderr sentence folded into stdout, in an echoed input, in a
+  # function named `unanswerable_case`. It is the same value-blind spelling this suite has now been
+  # caught by twice (PART 39's key grep, PART 40's key-presence oracle).
+  if [ "${#reports[@]}" != 0 ] && [ -n "${RS_CALLERS_CMD:-}" ] && [ "$RS_CTRL_OK" = 1 ]; then
+    if [ "$RS_ARMED" != 1 ]; then
+      echo "  $label (e) SKIP — row (a) did not arm, so this pair is not the state the rule is about"
+    else
     local co crc
     co=$(eval "${RS_CALLERS_CMD}" 2>/dev/null); crc=$?
-    if printf '%s' "$co" | grep -q 'unanswerable' || [ "$crc" != 0 ]; then
-      echo "  $label (e) PASS — an unanswerable callers query discloses in the machine channel (exit $crc)"
+    # ⟨0.28⟩ `unanswerable` REPLACES the result set — SPEC §3.3.1 now forbids it BESIDE an empty one,
+    # for the reason ⟨0.27⟩ gives about `violations` on a refusal document: a consumer keying on
+    # `direct` is still told nobody calls the function. So a hedge stapled to empty result keys is a
+    # FAIL here, not a PASS.
+    # Classified ONCE into a code, rather than chained through `$?` after an `elif` — that spelling
+    # reads the status of whichever command ran last and is exactly how a probe starts answering a
+    # different question than the one it prints.
+    local ecls
+    printf '%s' "$co" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(2)
+if not isinstance(d,dict) or 'unanswerable' not in d: sys.exit(1)
+# The result keys must be WITHHELD, not emitted empty. Keys that only echo the question may stay.
+sys.exit(3 if any(k in d for k in ('direct','transitive','path','affected')) else 0)" 2>/dev/null
+    ecls=$?
+    if [ "$ecls" = 0 ]; then
+      echo "  $label (e) PASS — callers withholds its result keys and discloses \`unanswerable\` in the machine channel (exit $crc)"
+    elif [ "$ecls" = 3 ]; then
+      echo "     FAIL $label (e): the document carries \`unanswerable\` BESIDE empty result keys — a consumer reading \`direct\` is still told nobody calls this function, which is the defect the key was added to remove (SPEC §3.3.1 ⟨0.28⟩)"; bad=1
+    elif [ "$crc" != 0 ]; then
+      echo "  $label (e) PASS — callers refuses with a non-zero exit ($crc), the other arm §3.3.1 ⟨0.28⟩ permits"
     elif printf '%s' "$co" | python3 -c "
 import sys,json
 try: d=json.load(sys.stdin)
@@ -6423,6 +6518,7 @@ sys.exit(0 if not d.get('direct') and not d.get('transitive') else 1)" 2>/dev/nu
       echo "  $label (e) SKIP — callers answers an empty set at exit 0 over an armed pair (engine has not implemented the ⟨0.28⟩ machine-channel rule)"
     else
       echo "     FAIL $label (e): callers over an armed pair returned a NON-empty answer — the sidecar is gone, so any caller list is from somewhere it should not be"; bad=1
+    fi
     fi
   fi
 
@@ -6452,21 +6548,140 @@ sys.exit(0 if not d.get('direct') and not d.get('transitive') else 1)" 2>/dev/nu
 # ⟨0.28⟩ Row (e) needs each engine's own `callers` invocation over the armed prefix, because the verb
 # lives in a different binary per family member (rust/ts split scan from query; swift has no `callers`
 # at all, so its row simply does not run). `$PFX` is the armed prefix, in scope inside `rs_probe`.
-if [ -d "$GDIR/rust" ]; then
-  RS_CALLERS_CMD='"$QUERY" callers pure_a --report "$PFX" --json' \
-    rs_probe "candor-scan " out-prefix "$SCAN" "$GDIR/rust" || RS_OK=1
+#
+# ⟨0.28⟩ AND IT NEEDS A FIXTURE WITH A CALL EDGE, which the shared gate tree does not have. Row (e)
+# queried `pure_a`, a name that exists in NO fixture — every engine answered "no function matching
+# 'pure_a' in the call graph" at exit 2, and the row scored that as "PASS — discloses in the machine
+# channel". Caught on the first run of the intact control added above, which is the case it was written
+# for: a wrong argv and a compliant refusal are the same observation until something proves the verb can
+# ANSWER.
+#
+# Querying the real `add` is not enough either: the gate fixture is two unrelated functions, so `callers
+# add` is legitimately empty over an INTACT pair, and an empty answer over the armed pair would be
+# indistinguishable from it. A row that cannot tell its two arms apart asks nothing however it is scored.
+#
+# So the probe gets its own copy with one caller appended. Copied rather than added to `conformance/gate`
+# because that tree is shared with the gate-verdict parts, where a new unit changes `analyzed.count` and
+# the callgraph — a fixture edit for one row's benefit is how a part starts measuring a different program
+# than its neighbours.
+RSFX="$RSW/fx"; rm -rf "$RSFX"; mkdir -p "$RSFX"
+rsfx_prep() { # $1 language dir under $GDIR ; leaves a scannable copy at $RSFX/$1 with no stale .candor
+  [ -d "$GDIR/$1" ] || return 1
+  cp -R "$GDIR/$1" "$RSFX/$1" && rm -rf "$RSFX/$1/.candor"
+}
+if rsfx_prep rust; then printf '\npub fn uses_add(a: i32) -> i32 { add(a, 1) }\n' >> "$RSFX/rust/src/lib.rs"; fi
+if rsfx_prep ts;   then printf '\nexport function usesAdd(a: number): number { return add(a, 1); }\n' >> "$RSFX/ts/store.ts"; fi
+if rsfx_prep swift; then printf '\nfunc usesAdd(_ a: Int) -> Int { return add(a, 1) }\n' >> "$RSFX/swift/Store.swift"; fi
+# java compiles from source, so the caller is a new class rather than an edit inside `Store`.
+RSFX_JAVA=""
+if [ -d "$GDIR/java" ] && command -v javac >/dev/null 2>&1; then
+  mkdir -p "$RSFX/javasrc/app" "$RSFX/java"
+  cp "$GDIR"/java/app/*.java "$RSFX/javasrc/app/" 2>/dev/null
+  cat > "$RSFX/javasrc/app/Caller.java" <<'JEOF'
+package app;
+public class Caller { public int usesAdd(int a) { return new Store().add(a, 1); } }
+JEOF
+  javac -d "$RSFX/java" $(find "$RSFX/javasrc" -name '*.java') 2>/dev/null && RSFX_JAVA="$RSFX/java"
+fi
+if [ -d "$RSFX/rust" ]; then
+  RS_CALLERS_CMD='"$QUERY" callers add --report "$PFX" --json' \
+    rs_probe "candor-scan " out-prefix "$SCAN" "$RSFX/rust" || RS_OK=1
+fi
+if [ -f "$JAR" ] && [ -n "$RSFX_JAVA" ]; then
+  RS_CALLERS_CMD='java -jar "$JAR" callers "$J" add --json' \
+    rs_probe "candor-java " json-file java -jar "$JAR" "$RSFX_JAVA" || RS_OK=1
+fi
+if [ -n "$TS_OK" ] && [ -d "$RSFX/ts" ]; then
+  RS_CALLERS_CMD='node "$TS_DIR/query.mjs" callers "$PFX" add --json' \
+    rs_probe "candor-ts   " out-prefix node "$TS_DIR/scan.mjs" "$RSFX/ts" || RS_OK=1
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$RSFX/swift" ]; then
+  rs_probe "candor-swift" out-prefix "$SW_BIN" "$RSFX/swift" || RS_OK=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# (f) THE SCAN TARGET IS AN INPUT — and this is the row that would have caught the worst defect in
+# the rung. NEVER SKIPS.
+#
+# SPEC §3.3.1 ⟨0.28⟩ (3) has named "the target's own source tree" first in its exempt list since the
+# clause was written. Every engine registered the policy, the config, the baseline and the dep reports.
+# NOT ONE registered the target. Measured live on three of the four:
+#
+#   candor-ts    app.ts --gate-json app.ts    -> the operator's SOURCE FILE replaced, EXIT 0
+#   candor-java  app.jar --json app.jar       -> the jar replaced; "cannot read scan target app.jar:
+#                                                zip END header not found" — the diagnostic is the
+#                                                engine discovering the file it just destroyed
+#   candor-scan  lib.rs --gate-json lib.rs    -> the source file replaced, exit 0
+#
+# The ts case is unrecoverable loss of the operator's own code REPORTED AS SUCCESS. Two engines were
+# believed protected because "their targets are directories so the write fails" — that survived exactly
+# as long as it took to point one at a FILE. An accident that holds for today's target kinds is not an
+# implementation of the rule, so this row uses a single-file target wherever the engine takes one.
+#
+# THE ASSERTION IS ON BYTES, NOT ON THE EXIT CODE. An exit-code row would have passed against java
+# throughout (it exited 2 while destroying the jar). What must hold is that the target survives.
+#
+# AND THE CONTROL IS LOAD-BEARING, for the reason the ⟨0.24⟩ count-0 lesson gives: the plausible-but-
+# wrong fix is to refuse any sink UNDER the target, which refuses `<dir>/.candor/report.json` — the
+# layout this document recommends and every default run writes. So the second probe asserts that a
+# sink inside the scanned tree is still PERMITTED. A fix that reddens that has not implemented the
+# rule, it has broken the default.
+ti_probe() { # $1 label ; $2 sink flag ; $3… the command, with the FILE TARGET last
+  local label=$1 flag=$2; shift 2
+  local cmd=( "$@" ) tgt="${@: -1}"
+  local before after rc
+  before=$(cksum < "$tgt")
+  "${cmd[@]}" "$flag" "$tgt" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$tgt" 2>/dev/null)
+  if [ "$before" != "$after" ]; then
+    echo "     FAIL $label (f): \`$flag <the scan target>\` DESTROYED the target ($tgt) — arming wrote over an input SPEC §3.3.1 ⟨0.28⟩ (3) names first, and the run exited $rc"; RS_OK=1
+  elif [ "$rc" = 0 ]; then
+    echo "     FAIL $label (f): the target survived but the run exited 0 over a sink it must refuse — a consumer is told the scan succeeded"; RS_OK=1
+  else
+    echo "  $label (f) PASS — \`$flag <the scan target>\` is refused (exit $rc) with the target byte-identical"
+  fi
+}
+ti_control() { # the CONTROL: a sink INSIDE the scanned tree stays permitted (exact artifact, not containment)
+  local label=$1 flag=$2; shift 2
+  local cmd=( "$@" ) tdir="${@: -1}"
+  mkdir -p "$tdir/.candor"
+  local sink="$tdir/.candor/ti-control.json" rc
+  rm -f "$sink"
+  "${cmd[@]}" "$flag" "$sink" >/dev/null 2>&1; rc=$?
+  if [ "$rc" = 2 ] && [ ! -s "$sink" ]; then
+    echo "     FAIL $label (f-control): a sink INSIDE the scanned tree was refused — the guard is testing CONTAINMENT, not artifact identity, and it has just broken the default layout this document recommends"; RS_OK=1
+  else
+    echo "  $label (f-control) PASS — a sink inside the scanned tree is still permitted (exit $rc)"
+  fi
+}
+TIW="$W/targetinput"; rm -rf "$TIW"; mkdir -p "$TIW"
+if [ -x "$SCAN" ]; then
+  printf 'pub fn a() { std::fs::read("x").ok(); }\n' > "$TIW/lib.rs"
+  ti_probe "candor-scan " --gate-json "$SCAN" "$TIW/lib.rs"
+  [ -d "$GDIR/rust" ] && ti_control "candor-scan " --gate-json "$SCAN" "$GDIR/rust"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
-  RS_CALLERS_CMD='java -jar "$JAR" callers "$J" pure_a --json' \
-    rs_probe "candor-java " json-file java -jar "$JAR" "$W/g_java" || RS_OK=1
+  # A real jar: the java reproduction destroyed one, and a jar is also the shape whose corruption is
+  # least recoverable (no source in the tree to regenerate it from).
+  ( cd "$W/g_java" && jar cf "$TIW/app.jar" . >/dev/null 2>&1 ) || true
+  if [ -s "$TIW/app.jar" ]; then
+    ti_probe "candor-java " --json java -jar "$JAR" "$TIW/app.jar"
+    ti_probe "candor-java " --gate-json java -jar "$JAR" "$TIW/app.jar"
+  else
+    echo "  candor-java  (f) n/a — could not build a jar fixture on this machine"
+  fi
 fi
-if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
-  RS_CALLERS_CMD='node "$TS_DIR/query.mjs" callers "$PFX" pure_a --json' \
-    rs_probe "candor-ts   " out-prefix node "$TS_DIR/scan.mjs" "$GDIR/ts" || RS_OK=1
+if [ -n "$TS_OK" ]; then
+  printf 'export function a(){ return require("fs").readFileSync("x") }\n' > "$TIW/app.ts"
+  ti_probe "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$TIW/app.ts"
+  [ -d "$GDIR/ts" ] && ti_control "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$GDIR/ts"
 fi
-if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
-  rs_probe "candor-swift" out-prefix "$SW_BIN" "$GDIR/swift" || RS_OK=1
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  printf 'import Foundation\nfunc a() { _ = FileManager.default.contents(atPath: "x") }\n' > "$TIW/app.swift"
+  ti_probe "candor-swift" --gate-json "$SW_BIN" "$TIW/app.swift"
+  [ -d "$GDIR/swift" ] && ti_control "candor-swift" --gate-json "$SW_BIN" "$GDIR/swift"
 fi
+
 echo "PART 37 — SPEC §3.3.1 ⟨0.28⟩: the report sink is armed on exit-2, and the fail-closed shape is a manifest-carrying empty"
 if [ "$RS_OK" = 0 ]; then
   echo "  -> MATCH — every engine that has implemented ⟨0.28⟩ report-sink arming carries the fail-closed shape; the rest print SKIP (reference-led rung until 0.28 ships)"
@@ -6601,7 +6816,7 @@ cat > "$RDW/cur.demo.scan.json" <<'RDEOF'
 RDEOF
 rd_probe() { # $1 label ; $2… the gains invocation (current then baseline)
   local label=$1; shift
-  local out; out=$("$@" 2>/dev/null)
+  local out rdrc; out=$("$@" 2>/dev/null); rdrc=$?
   if [ -z "$out" ]; then
     echo "     FAIL $label: gains produced no output over the caveat-bearing baseline — the row cannot ask its question"; RD_OK=1; return
   fi
@@ -6618,12 +6833,35 @@ rd_probe() { # $1 label ; $2… the gains invocation (current then baseline)
   # actually satisfied by `broken.rs` — the path string from its own fixture leaking through. A
   # baseline carrying `count: 0` and no `unanalyzed` array would have printed SKIP against a fully
   # compliant engine. Found INDEPENDENTLY by the candor-swift and candor-java arms of this rung,
-  # which is why it is believed. Now matches the disclosure KEYS, case-insensitively, and the
-  # fixture path is gone so it cannot carry the row again.
-  if printf '%s' "$out" | grep -qiE 'unanalyzed|incomplete|judgedNothing'; then
-    echo "  $label (ii) PASS — the ⟨0.21⟩ manifest travels too"
+  # which is why it is believed. The fixture path is gone so it cannot carry the row again.
+  #
+  # ⟨0.28⟩ AND THEN THE REPLACEMENT PASSED ON THE NEGATED VALUE. `grep -qiE 'unanalyzed|incomplete|
+  # judgedNothing'` asks for a KEY, and case-insensitively `"baselineIncomplete": false` matches it — a
+  # determined claim that the baseline WAS complete, the exact opposite of re-disclosure, scoring PASS.
+  # So would a verbatim echo of the baseline document, which PART 40's oracle explicitly excludes and
+  # this row did not. "What ELSE could make this pass" was asked once, of the fixture-path crutch, and
+  # not asked again of its replacement — which is how the same row was wrong twice in one day.
+  #
+  # Now parsed, with the VALUES asserted against the shapes SPEC §2 ⟨0.28⟩ pins, and the exit checked:
+  # this row's banner promises "verdict-preserving, the exit does not move" and the code discarded `$?`
+  # entirely, so an engine that moved the verdict to exit 2 while naming the caveat in an error
+  # document satisfied both halves. `gains` is advisory without `--strict`, so the intact exit is 0.
+  printf '%s' "$out" | python3 -c "
+import sys,json
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(1)          # text mode / unparseable is not a machine-channel disclosure
+if not isinstance(d,dict): sys.exit(1)
+inc, una, jn = d.get('baselineIncomplete'), d.get('baselineUnanalyzed'), d.get('baselineJudgedNothing')
+# incomplete must be TRUE, not merely present; the two arrays must be non-empty lists.
+ok = (inc is True) or (isinstance(una,list) and una) or (isinstance(jn,list) and jn)
+sys.exit(0 if ok else 1)" 2>/dev/null
+  local rdcls=$?
+  if [ "$rdcls" = 0 ] && [ "$rdrc" = 0 ]; then
+    echo "  $label (ii) PASS — the ⟨0.21⟩ manifest travels too, verdict-preserving (exit $rdrc)"
+  elif [ "$rdcls" = 0 ]; then
+    echo "     FAIL $label (ii): the caveat travelled but the EXIT MOVED to $rdrc. §2 ⟨0.28⟩ is verdict-preserving — the caveat travels, the verdict does not, and an advisory \`gains\` exits 0"; RD_OK=1
   else
-    echo "  $label (ii) SKIP — the baseline's unanalyzed did not reach the verb output (engine has not implemented the ⟨0.28⟩ manifest re-disclosure)"
+    echo "  $label (ii) SKIP — no true \`baselineIncomplete\` and no non-empty \`baselineUnanalyzed\`/\`baselineJudgedNothing\` reached the verb output (engine has not implemented the ⟨0.28⟩ manifest re-disclosure)"
   fi
 }
 rd_probe "candor-scan " "$QUERY" gains "$RDW/cur" "$RDW/base" --json
@@ -6725,7 +6963,23 @@ if rc != 0: print("PASS refused"); raise SystemExit
 if not raw: print("PASS no-stdout"); raise SystemExit
 try: doc = json.loads(raw)
 except Exception: print("PASS non-json"); raise SystemExit
-if isinstance(doc, dict) and (DISCLOSURE & set(doc)): print("PASS hedged"); raise SystemExit
+# THE DISCLOSURE MUST BE A HEDGE, NOT A KEY WITH A HEDGE'S NAME.
+#
+# `DISCLOSURE & set(doc)` asks only that one of these names is PRESENT — so `"incomplete": false` or
+# `"unanalyzed": []`, which are determined claims that the input WAS complete, scored "PASS hedged":
+# the precise opposite of the property, credited as the property. Same value-blind spelling that made
+# PART 39 (ii) pass twice for the wrong reason, in the oracle written to be stricter than PART 39.
+#
+# A hedge is a key whose VALUE withholds something: true for the flags, non-empty for the collections,
+# any string for the reasons. A falsy value under a disclosure key is not a hedge and must fall
+# through to the determined-negative analysis below, where an empty result set is scored honestly.
+def _hedged(k, v):
+    if k in ("incomplete","refused","invisible"): return v is True
+    if isinstance(v,str): return bool(v.strip())      # unanswerable: "<why>"
+    if isinstance(v,(list,dict)): return len(v) > 0   # unanalyzed / unevaluated / coverage / …
+    return bool(v)
+if isinstance(doc, dict) and any(_hedged(k, doc[k]) for k in (DISCLOSURE & set(doc))):
+    print("PASS hedged"); raise SystemExit
 def dn():
     if not isinstance(doc, dict): return isinstance(doc, list) and len(doc)==0
     if not doc: return True
@@ -6782,7 +7036,7 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
   cp "$rep" "$d/intact/" 2>/dev/null
   for sc in "$(dirname "$rep")/$(basename "$rep" .json)".*.json; do [ -e "$sc" ] && cp "$sc" "$d/intact/"; done
   sv_states "$d" "$rep"
-  local skips=0 fails=0 passes=0
+  local skips=0 fails=0 passes=0 intact_cells=0 intact_answered=0
   for st in intact armed armedlive count0 absent corrupt; do
     for v in where callers map impact path whatif blindspots reachable containment tour; do
       local argv
@@ -6809,8 +7063,27 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
         SKIP*) skips=$((skips+1)) ;;
         *)     passes=$((passes+1)) ;;
       esac
+      # ⟨0.28⟩ HOW MANY INTACT CONTROLS ACTUALLY ANSWERED — see the floor below.
+      case "$st/$verdict" in
+        intact/PASS\ answered*) intact_answered=$((intact_answered+1)) ;;
+      esac
+      [ "$st" = intact ] && intact_cells=$((intact_cells+1))
     done
   done
+  # ⟨0.28⟩ THE FAIL-OPEN SPELLING OF THE SAME REGRESSION, which the intact-control check does not catch.
+  #
+  # That check demands `rc == 0 and raw` — and `{}` at exit 0 satisfies both. So it proves the fixtures
+  # were reached only against the LOUD failure (refuse / print nothing); against the QUIET one — the
+  # fail-open `{}`-at-exit-0 that is this project's own measured `callers` defect — every intact cell
+  # scores "PASS determined-negative-is-real", every state cell scores SKIP-determined-negative, and the
+  # part is green with plausible skip counts while asking nothing. The falsification that proved the
+  # control ("re-breaking the locator produces five intact-control FAILs") exercised only the loud arm.
+  #
+  # The fixtures are built with content, so at least one intact control must produce a REAL answer. All
+  # of them coming back empty is not a property of the code under test, it is the probe not reaching it.
+  if [ "$intact_cells" != 0 ] && [ "$intact_answered" = 0 ]; then
+    echo "     FAIL $label: not one of $intact_cells intact controls produced a non-empty answer — over fixtures built with content that is the FAIL-OPEN form of an unreachable locator, and every SKIP below it is vacuous"; SV_OK=1
+  fi
   # THE VACUITY FLOOR. A run where nothing was classified is not a green part, it is a part that never
   # asked. The first version pointed every cell at a mangled locator, every verb answered "no report",
   # and 58 of 60 cells scored PASS-refused — almost green, measuring nothing. The pilot says these
@@ -6831,8 +7104,12 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
 
 SV_FN="transitive_leaf"
 if [ -d "$GDIR/rust" ]; then
-  SVR="$W/rust/.candor/report.$(ls "$W/rust/.candor" 2>/dev/null | head -1 | cut -d. -f2).scan.json"
-  SVR=$(ls "$W"/rust/.candor/*.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)
+  # ALL SEVEN RESERVED SEGMENTS (§2.2 ⟨0.24⟩), anchored. The filter listed three, unanchored, and a
+  # dead first assignment sat above it — so a `<prefix>.calibrated.json`, which sorts BEFORE `report.`,
+  # would have been picked up as "the intact report" and every cell in this part would have run over a
+  # sidecar. Self-detecting via the intact control, but noisily and one layer from the real cause.
+  SVR=$(ls "$W"/rust/.candor/*.json 2>/dev/null \
+        | grep -vE '\.(callgraph|hierarchy|locs|calibrated|layerreach|gate|encountered-[^.]*)\.json$' | head -1)
   [ -n "$SVR" ] && sv_probe "candor-scan " "\"$QUERY\"" "$SVR"
 fi
 echo "PART 40 — the (artifact state × read verb) matrix: no determined negative where nothing was judged"

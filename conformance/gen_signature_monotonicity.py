@@ -388,10 +388,22 @@ def main():
             continue
         info, _unc = sa.leaf_info(got[0], got[1])
         # ⟨0.28⟩ leaf_info returns (None, None) on an armed placeholder — the ⟨0.21⟩ Row-1 fail-closed
-        # shape a scan writes when it fails to complete. Treat that as an ABSENT arm rather than let
-        # `info.get(...)` below crash: the placeholder makes no claim, so this arm answers nothing.
+        # shape a scan writes when it fails to complete.
+        #
+        # AND IT IS A FINDING, NOT AN ABSENCE, which is what this branch said first. Every runner above
+        # already returns `(None, err)` when the scan exits non-zero or writes no report, so the ONLY
+        # way to arrive here is an engine that **exited 0 and wrote a placeholder**: it reported success
+        # while judging nothing. `split_arms.py` names that state `broken`, and before this branch
+        # existed it produced `live == 0`, tripped the broken-vacuity guard, and FAILED the generator.
+        # Filing it under `absent` moved a lying engine from a red suite to one printed line, because
+        # `bad` counts findings/broken/inert and not absent — so P4 would silently lose an engine while
+        # reporting OK. A crash was replaced by a silence; the fix for the crash is the diagnosis, not
+        # the demotion.
         if info is None:
-            absent.append((eng, "arm returned an armed placeholder (⟨0.28⟩ ⟨0.21⟩ Row-1 fail-closed)"))
+            findings.append((eng, "*", "*", "SUCCESS_OVER_NOTHING_JUDGED",
+                             "exit 0 + a report",
+                             "a ⟨0.21⟩ Row-1 armed placeholder — success claimed while judging nothing, "
+                             "so every arm of this property is vacuous for this engine"))
             continue
         live = vac = ok = 0
         counts = {k: 0 for k in CARDINAL + GATEVIS}
