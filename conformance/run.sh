@@ -7471,10 +7471,87 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 45 — `layerPrefix` IS EMITTED WHEN, AND ONLY WHEN, A PREFIX WAS COLLAPSED (SPEC §6.1 ⟨0.28⟩) [TIER 2]
+#
+# candor-java emitted `"layerPrefix": ""` UNCONDITIONALLY from `containment` — the present-but-always-
+# empty shape field_audit.py's header documents — while the other engines emit no such key at all. The
+# ruling: the key appears iff a prefix was actually collapsed; its ABSENCE means none was (§2's
+# omit-rather-than-guess). PART 42's harvest is type-based and by its own admission cannot see this
+# (an always-`""` and a conditional key are both absent-or-string to it), so this is a dedicated
+# content row: two hand-written §2 reports, one whose functions share a dotted root (`com.acme.*` —
+# a collapse, so the key MUST be present and equal to it: `owner`/`placement` are layer names and the
+# collapsed prefix changes what they denote) and one whose functions share nothing (no collapse, so
+# the key MUST be ABSENT — not `""`). Both documents must still answer (`contained` non-empty, exit 0)
+# so an absent key is never credited to an engine that failed to answer at all. The rust engine (also
+# the query path for candor-swift reports) runs the same fixtures: it does not emit the field today,
+# and the row pins the SHAPE rule it inherits if it ever does — present implies non-empty.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+cat > "$W/lp_shared.json" <<'EOF'
+{"candor":{"version":"t","spec":"0.28"},"analyzed":{"count":3},"functions":[
+ {"fn":"com.acme.repo.Save.run","direct":["Fs"],"inferred":["Fs"]},
+ {"fn":"com.acme.repo.Load.run","direct":["Fs"],"inferred":["Fs"]},
+ {"fn":"com.acme.svc.Fetch.run","direct":["Net"],"inferred":["Net"]}]}
+EOF
+cat > "$W/lp_none.json" <<'EOF'
+{"candor":{"version":"t","spec":"0.28"},"analyzed":{"count":2},"functions":[
+ {"fn":"alpha.repo.Save.run","direct":["Fs"],"inferred":["Fs"]},
+ {"fn":"beta.svc.Fetch.run","direct":["Net"],"inferred":["Net"]}]}
+EOF
+java -jar "$JAR" containment --report "$W/lp_shared.json" --json > "$W/lp_java_shared.json" 2>/dev/null; LP_JX_S=$?
+java -jar "$JAR" containment --report "$W/lp_none.json"   --json > "$W/lp_java_none.json"   2>/dev/null; LP_JX_N=$?
+"$QUERY" containment --report "$W/lp_shared.json" --json > "$W/lp_rust_shared.json" 2>/dev/null; LP_RX_S=$?
+"$QUERY" containment --report "$W/lp_none.json"   --json > "$W/lp_rust_none.json"   2>/dev/null; LP_RX_N=$?
+P45_OK=0
+python3 - "$W" "$LP_JX_S" "$LP_JX_N" "$LP_RX_S" "$LP_RX_N" <<'PY' || P45_OK=1
+import json, sys
+W = sys.argv[1]; exits = list(map(int, sys.argv[2:6]))
+fails = 0
+def load(name):
+    try:
+        return json.load(open(f"{W}/{name}.json"))
+    except Exception as e:
+        print(f"  FAIL {name}: no parseable document — {e} (an engine that did not answer proves nothing about the key)")
+        return None
+docs = {n: load(n) for n in ("lp_java_shared", "lp_java_none", "lp_rust_shared", "lp_rust_none")}
+if any(d is None for d in docs.values()) or any(x != 0 for x in exits):
+    print(f"  FAIL: an engine errored on the fixture (exits {exits}) — instrument fault, reported as one")
+    sys.exit(1)
+# CONTROL first: every document ANSWERED — `contained` is non-empty on all four, so a missing
+# `layerPrefix` below is a conditional omission, never a failed run wearing one.
+for n, d in docs.items():
+    if not d.get("contained"):
+        print(f"  FAIL {n}: empty `contained` over a two-layer fixture — the run did not answer, so its key set is not evidence"); fails += 1
+j_s, j_n = docs["lp_java_shared"], docs["lp_java_none"]
+# (a) a collapse happened → the key is PRESENT and IS the collapsed prefix (load-bearing when non-empty:
+#     `owner`/`placement` are layer names relative to it).
+if j_s.get("layerPrefix") != "com.acme":
+    print(f"  FAIL java(shared): layerPrefix is {j_s.get('layerPrefix')!r}, expected 'com.acme' — the collapsed prefix must be reported"); fails += 1
+# (b) no collapse → NO key at all. `""` here is the unconditional emission this row exists to see:
+#     a present-but-always-empty field wearing a schema that implies support (field_audit.py's header).
+if "layerPrefix" in j_n:
+    print(f"  FAIL java(none): layerPrefix {j_n.get('layerPrefix')!r} is EMITTED where no prefix was collapsed — absence is the answer (SPEC §6.1 ⟨0.28⟩)"); fails += 1
+# (c) the shape rule any engine inherits when it gains the field: present ⇒ non-empty string.
+for n in ("lp_rust_shared", "lp_rust_none"):
+    lp = docs[n].get("layerPrefix")
+    if lp is not None and (not isinstance(lp, str) or lp == ""):
+        print(f"  FAIL {n}: layerPrefix {lp!r} — an engine that emits the key must emit the collapsed prefix, never an empty placeholder"); fails += 1
+sys.exit(1 if fails else 0)
+PY
+echo "PART 45 — layerPrefix is emitted when, and only when, a prefix was collapsed (SPEC §6.1 ⟨0.28⟩)"
+# ENGINES: rust java; ts: candor-ts has no `containment` command (PART 11's own exclusion); swift: analyze-only — its reports are queried through candor-query, the rust binary this part already drives
+# CONTROLS: lp_java_shared lp_rust_shared — the shared-prefix fixture proves the checker SEES the key (java must carry 'com.acme' there), and every document must answer with a non-empty `contained`, so the absent-key row cannot pass on a run that answered nothing
+if [ "$P45_OK" = 0 ]; then
+  echo "  -> MATCH — the key appears iff a prefix was collapsed, and absence means none was"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
