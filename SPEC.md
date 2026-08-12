@@ -420,6 +420,57 @@ a key — `show` emits a top-level ARRAY, `map` keys its object by the user's ow
 reserved key there collides with a real symbol — that shape needs its own ruling before the obligation can
 be met, and until it has one those two are **known-open cells, not silently non-compliant ones**.
 
+⟨0.28⟩ **AND HERE IS THAT RULING, AND IT IS ONE RULE, NOT ONE PER VERB.** The two cells above were opened
+separately and would have been closed separately — a shape decision for `show`, another for `map`, a third
+for `privacy-manifest` — which is how this document has come to correct "a rule stated over the instance in
+front of the author" five times. They are one question: *what does a verb emit when it cannot support the
+document it is supposed to emit?*
+
+⟨0.28⟩ has already answered that, one level down, for `unanswerable`: **the hedge REPLACES the result set,
+it does not accompany one**, because a consumer reading `direct` beside a hedge is still told nobody calls
+the function. The same reasoning applies to the document as a whole, so the rule generalises rather than
+being invented:
+
+> **A verb whose pinned shape cannot carry the caveat MUST emit the CAVEAT DOCUMENT INSTEAD of its result
+> document.** Not a result document with the caveat omitted, and not an empty result of the pinned shape.
+
+    show      healthy → [ … ]            hedging → { "incomplete": true, "unanalyzed": […] }
+    map       healthy → { "<mod>": … }   hedging → { "incomplete": true, "judgedNothing": […] }
+
+Three properties make this the right shape rather than merely a shape:
+
+- **Healthy output is untouched.** The document changes only on the path that is currently answering
+  falsely. Every engine measured byte-identity for this rung and none of it is spent.
+- **The type change is LOUD, and that is the point.** A consumer doing `for (const x of doc)` over `show`
+  gets a TypeError, not a silent zero-iteration loop. Today `show` answers `[]` over a report whose own
+  manifest names a file it could not read — *nothing performs this effect*, asserted about code nobody
+  examined. Trading a silent wrong answer for a noisy stop is this document's standing preference, and it
+  is the one case where breaking a consumer is the CORRECT outcome: the consumer was being lied to.
+- **It needs no reserved-key convention**, which matters because §2.2's `@`-prefix precedent DOES NOT
+  TRANSFER here. That convention is safe for the sidecar because a `@`-prefixed key cannot collide with a
+  TYPE name. `map` is keyed by MODULE names, and an npm scoped package is spelled `@scope/name` — so
+  `@incomplete` is a key a real ts module could own. A convention that is airtight in one namespace and
+  merely unlikely in another is not a convention; it is a deferred collision.
+
+**`privacy-manifest` is the same MUST and NOT the same shape problem** — it has an envelope and simply
+never consults completeness, so a "no sensors reached" ships over a partial report. It carries the pinned
+keys in its envelope like any other verb. Recorded here because it was filed alongside the other two and is
+a different defect: *has nowhere to put the caveat* and *never looks for it* need different fixes, and
+grouping them by symptom is how one gets the other's remedy.
+
+⟨0.28⟩ **AND AN ADVISORY VERB OVER A ZERO-RULE POLICY ANSWERS THE SAME WAY.** §6.2 makes a configured
+policy that yields no rules an exit-2 refusal for the GATE, on the ground that `ok: true` is a claim about
+the code that no such run is entitled to make. `whatif`, `fix-gate` and `unverified` share that loader and
+were not touched by the rung. They are ADVISORY — they set no verdict, so `ok: true` is not the exposure
+and the gate's refusal posture is the wrong import.
+
+What they DO produce is an answer *relative to a policy*, and relative to no rules that answer is not a
+finding, it is an absence of questions. So they take the rule above: **the caveat document, and the result
+keys withheld** — `unverified` does not emit an empty `unverified` list over a policy that asked nothing,
+for the same reason ⟨0.27⟩'s refusal document must not carry `violations`. The exit is UNCHANGED; this is
+a disclosure, per ⟨0.24⟩'s standing ruling that count-0 reaches both disclosure channels and stops at the
+exit code.
+
 ⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The
 report **omits pure functions** (§2 lists only effectful/`Unknown` units), so the consuming convention is
 "absent ⇒ pure." Two envelope fields make that convention *backed* rather than a universal claim the report
@@ -1871,6 +1922,38 @@ compare the resulting set. Two consequences the implementations paid for:
   `<stem>.callgraph.json` and the rest of §2.2's reserved family. A guard that protects the report and
   not its sidecars leaves the pair destroyable one half at a time.
 
+⟨0.28⟩ **AND HERE IS WHAT EACH LOCATOR FORM RESOLVES TO — because "expand as the loader will" says how to
+compare, and never says what the loader should expand to.** Three engines were measured disagreeing, and
+the disagreement was invisible because each was internally consistent:
+
+- **A locator naming a FILE resolves to that file, and to its §2.2 sidecars.** It does NOT union the
+  prefix siblings beside it. The operator named one artifact; silently reading three is the mirror of the
+  guard bug above, and it would make `--report r.json` mean something different depending on what else
+  happens to sit in the directory. candor-java and candor-ts already do this and are RIGHT.
+- **A locator naming a PREFIX resolves to the whole matching set, unioned.** ⟨0.24⟩ already ruled this for
+  the advisory verbs and the gate. **Measured, and it did not reach the descriptive verbs:** candor-java's
+  prefix form prints `matches 2 reports; using <one>` and answers `map`/`where`/`show` from the
+  lexicographically FIRST file. A locator that means "the set" for one verb and "whichever sorts first"
+  for another is two contracts wearing one flag, and the quiet one under-reports by construction.
+- **A locator naming a DIRECTORY resolves to the reports discovered inside it**, which is the `.candor/`
+  discovery spelling and is already pinned by the guard clause above.
+
+⟨0.28⟩ **AND THE SCAN TARGET EXPANDS TO THE FILES THE RUN WILL PARSE — the residual the exact-artifact
+ruling deliberately left.** That ruling refuses a sink that IS the target and permits everything else,
+which is correct as far as it goes and leaves this: measured on candor-ts, `--gate-json src/main.ts` while
+scanning `tsconfig.json` still destroys that source, because only the target token is registered and not
+the files it resolves to. The same residual exists in all four.
+
+The obvious fix is not available. The parse-time arming that ⟨0.27⟩ requires happens BEFORE the file walk,
+so the set of files the run will read is not yet known — and deferring the arm to after enumeration would
+uncover the argv-error exits the arming rule exists for.
+
+So the check is narrow and stated over what IS knowable at parse time: **a sink that lies under the target
+AND bears an extension the engine parses is refused.** Not containment in general — `<dir>/.candor/report.json`
+is under the target and is not a source file, so the recommended layout stays permitted, which is the
+control that fix must not break. An engine knows its own source extensions before it knows its file list;
+that is the whole of what makes this checkable at the moment arming happens.
+
 ⟨0.28⟩ **AND THE SCAN TARGET IS THE MEMBER OF THAT LIST NO ENGINE IMPLEMENTED.** The sentence above names
 "the target's own source tree" first, and every engine registered the policy, the config, the baseline and
 the dep reports — and not the target. **Measured, two engines, live:**
@@ -2275,6 +2358,22 @@ exposes the gate through both a scan command and a `gate --report` verb MUST app
 the rung was first implemented on the scan route in four engines while the verb route kept last-wins, so
 `gate --report R --policy <fires> --gate-json A --gate-json B` exited 1 and published a previous run's
 green at `A`. A route is not covered by its sibling.
+
+⟨0.28⟩ **AND A REPEATED `--out` IS THE SAME RULE — filed as an open question by the rung that wrote the
+sentence above, which is the tell.** This clause was recorded as "deferred" for the report sink while
+being settled for the verdict sink, on no stated ground except that the verdict sink was the one being
+worked on. The argument transfers without a word changed: `--out A --out B` names where the reports go,
+twice, the two statements cannot both be honoured, and every engine takes the LAST — leaving `A` holding
+a previous run's reports, readable as current, with nothing saying otherwise.
+
+If anything the report sink is the WORSE case, because `--out` fans out on one engine: the stale set left
+at `A` is a whole prefix of per-crate reports, and a `gate --report A` over it answers from a scan that
+never ran. So: **refused at exit 2, with the fail-closed report written to every prefix named** — the
+report-sink analogue of "every path named gets the refusal", under §3.3.1's arming rules.
+
+*Two spellings of one rule is the habit this document has now paid for in six separate places in a single
+rung. The general form, stated once: when a rule is settled for one sink, the question is not whether it
+applies to the other — it is what makes the other different, answered in writing, or it applies.*
 
 **THE INPUT EXEMPTION COVERS THE PATH, NOT THE RUN.** Rule (2) says a sink naming an input of this run is
 refused having written NOTHING, and it outranks this refusal — for *that path*. Every OTHER path named in
@@ -3408,6 +3507,30 @@ fourth, so these are pinned before a second engine guesses rather than after:
                                      "unknownWhy": [ … ],
                                      "upgrade": "<a policy line>" // e.g. "deny Unknown app" — the rule
                                    }, … ]                         // that WOULD make this decidable
+
+    fix            "crossing": <bool>   // present iff the verb answered; see the ruling below
+
+⟨0.28⟩ **`crossing` — PINNED, and pinning it fixes a purity defect on the other side.** This was the one
+key left grandfathered when the other eleven were pinned, because it needed a ruling rather than a
+transcription: candor-ts and candor-swift emit it from `fix` as a THREE-STATE discriminator — `true`
+beside a plan, `false` with a `reason` on the no-crossing arm, and ABSENT when the verb refused — and the
+MCP `candor_fix` tool contract instructs agents to check `refused` before `crossing`, so it is a shipped
+consumer contract. candor-rust and candor-java emit no such key.
+
+The tempting reading is that two engines minted a field and should drop it. **The measurement says
+otherwise**: rust and java answer that same arm as **PROSE ON STDOUT, under `--json`** — which §3.3.1
+independently forbids ("stdout MUST then be pure JSON"). So the choice is not *pin a key or not*; it is
+*pin the key, or leave two engines emitting a determined negative as unparseable text on the machine
+channel*. Removing it would also break a published tool contract to preserve a defect.
+
+So `crossing` is a **boolean, present exactly when the verb answered**, absent when it refused — the same
+present-iff-answered discipline ⟨0.28⟩ applies to `unanswerable`, and the reason the MCP contract's
+check-`refused`-first ordering is correct rather than incidental. The `false` arm carries `reason`.
+rust and java gain the key and stop printing prose onto a JSON stdout; ts and swift are already conformant.
+
+*Recorded because the shape of the decision generalises: a key TWO engines emit and two do not is not
+automatically a mint to be removed. Ask what the engines WITHOUT it are doing instead — here, the answer
+was a second defect, and the divergence was the only thing making it visible.*
 
 `containmentPct` is an INTEGER percentage, not a float and not a ratio — three engines agree and the
 agreement is now a rule rather than a coincidence. `placement` is an object keyed by LAYER NAME, so it is
