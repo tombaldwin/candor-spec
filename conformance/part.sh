@@ -144,6 +144,16 @@ if argv == ["--list"]:
     print("  they ride along inside a neighbouring slice rather than being addressable on their own.")
     sys.exit(0)
 
+if argv == ["--sections"]:
+    # Machine-readable boundaries for part_declarations.py — ONE implementation of the slicing, the one
+    # `--check` validates, rather than a second parser that can drift from it. 1-based inclusive lines.
+    # `preamble` is everything before the first marker (setup + PARTs 1–6); `tail` is the verdict printer.
+    print(f"preamble\t1\t{marks[0][0]}")
+    for pid, s, e in sections:
+        print(f"{pid}\t{s + 1}\t{e + 1}")
+    print(f"tail\t{tail_at + 1}\t{len(L)}")
+    sys.exit(0)
+
 want = {a.lower() for a in argv}
 by_id = {}
 for pid, s, e in sections:

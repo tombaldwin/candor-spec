@@ -62,6 +62,7 @@ GENERATORS = [
     "gen_rung024.py",
     "gen_sink_surface.py",
     "gen_key_shapes.py",
+    "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 
 BASELINES = [
