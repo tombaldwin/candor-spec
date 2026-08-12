@@ -1,0 +1,63 @@
+{
+ "_": [
+  "GRANDFATHERED WIRE-VOCABULARY DEBT for gen_key_shapes.py check (B).",
+  "Every key here is EMITTED by shipped engines and NAMED NOWHERE in SPEC.md \u2014 the",
+  "same unpinned state judgedNothing was in when four engines guessed four shapes",
+  "(2026-08-12). Listing a key here says the debt is KNOWN, not licensed: the right",
+  "fix for any entry is a SPEC clause pinning it, and deleting the entry is part of",
+  "that fix. The ratchet runs BOTH WAYS \u2014 a key below that becomes SPEC-named, or",
+  "stops being emitted, FAILS as stale so this list cannot outlive the debt.",
+  "Regenerate with: python3 gen_key_shapes.py --write-baseline"
+ ],
+ "grandfathered": {
+  "containmentPct": [
+   "java/containment",
+   "rust/containment",
+   "ts/containment"
+  ],
+  "deniedSpan": [
+   "java/fix",
+   "java/fix-gate",
+   "rust/fix",
+   "rust/fix-gate",
+   "swift/fix",
+   "swift/fix-gate",
+   "ts/fix",
+   "ts/fix-gate"
+  ],
+  "hoistTo": [
+   "java/fix",
+   "java/fix-gate",
+   "rust/fix",
+   "rust/fix-gate",
+   "swift/fix",
+   "swift/fix-gate",
+   "ts/fix",
+   "ts/fix-gate"
+  ],
+  "layerPrefix": [
+   "java/containment"
+  ],
+  "placement": [
+   "java/containment",
+   "rust/containment",
+   "ts/containment"
+  ],
+  "policyAlternative": [
+   "java/fix",
+   "java/fix-gate",
+   "rust/fix",
+   "rust/fix-gate",
+   "swift/fix",
+   "swift/fix-gate",
+   "ts/fix",
+   "ts/fix-gate"
+  ],
+  "remedies": [
+   "java/fix-gate",
+   "rust/fix-gate",
+   "swift/fix-gate",
+   "ts/fix-gate"
+  ]
+ }
+}
