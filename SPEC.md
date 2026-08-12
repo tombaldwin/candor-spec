@@ -1843,6 +1843,34 @@ report) is refused with exit 2 having written NOTHING to that path — arming wo
 Sameness is a question about ARTIFACTS not strings — the ⟨0.28⟩ device+inode rule for the verdict sink
 below applies here as well.
 
+⟨0.28⟩ **AND AN INPUT LOCATOR NAMES A SET — COMPARE THE EXPANSION, NEVER THE TOKEN.** "Artifacts not
+strings" was read as *resolve the path* and implemented as *compare one resolved path to one resolved
+path*, which is still a comparison of the token the operator typed. Almost every input in this format is
+named by a locator that the LOADER expands and the GUARD did not: a `--report` prefix resolves to the
+sibling report set, a baseline prefix to `<prefix>.<unit>.scan.json` plus its callgraph, a dep DIRECTORY
+to every report inside it, a discovered `.candor/` to the whole set. The guard compared `r`; the loader
+read `r.B.…json`; the sink destroyed `r.B.…json`.
+
+**Found independently in three engines, and it is one defect with three spellings.** Measured: `gate
+--report r --gate-json r.B.Swift.json` destroyed the operator's report at exit 2 (candor-swift, also
+through the no-`--report` discovery spelling); `CANDOR_BASELINE=base … --out base` destroyed the ratchet's
+baseline (candor-scan); and candor-java's `gate` sink guard compares the raw `--report` token to this day.
+The `CANDOR_DEPS` directory case was already fixed family-wide one rung earlier, one channel at a time,
+which is precisely the evidence that the rule was never stated over the CONDITION — each engine fixed the
+directory and left every other locator that expands.
+
+So: **before comparing, expand each input locator exactly as the code that READS it will expand it**, and
+compare the resulting set. Two consequences the implementations paid for:
+
+- **DERIVE THE EXPANSION FROM THE LOADER, do not re-spell it.** A hand-written second expansion is a
+  second parser and it drifts: measured, one engine's duplicate-sink guard was a re-derivation of its own
+  input set that had silently lost `CANDOR_BASELINE`, `CANDOR_DEPS` and the config keys, so the refusal
+  document — written to every sink by design — destroyed a chained dep report. Two spellings of one rule
+  means the rule holds on whichever route was in front of the author.
+- **THE SIDECARS EXPAND TOO.** A report locator that resolves to `<stem>.json` also reaches
+  `<stem>.callgraph.json` and the rest of §2.2's reserved family. A guard that protects the report and
+  not its sidecars leaves the pair destroyable one half at a time.
+
 ⟨0.28⟩ **AND THE SCAN TARGET IS THE MEMBER OF THAT LIST NO ENGINE IMPLEMENTED.** The sentence above names
 "the target's own source tree" first, and every engine registered the policy, the config, the baseline and
 the dep reports — and not the target. **Measured, two engines, live:**
