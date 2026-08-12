@@ -7119,6 +7119,97 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 41 — THE LEDGER: EVERY NORMATIVE STATEMENT IN SPEC.md IS CLASSIFIED                    [TIER 1]
+#
+# `clause_check.py` binds PROPERTY -> CLAUSE: a generator must quote a clause and the quote must
+# resolve. It has always run in exactly one direction, and nothing ran in the other, so a rule could be
+# written in SPEC.md, reviewed, repeated in four engines' comments, and executed by nothing.
+#
+# MEASURED, at the cost of a day: §3.3.1 (3) has named "the target's own source tree" as an input a sink
+# must never be armed over SINCE THE CLAUSE WAS WRITTEN. No engine implemented it; no row asked. Three
+# engines were reproduced destroying the operator's source file — candor-ts at EXIT 0, reporting success.
+#
+# The gate is a ratchet, not a sweep: today's 402 statements are frozen `pre-ledger`, and only text ADDED
+# OR CHANGED afterwards must name a part or be explicitly `unenforced` with a reason. Note the extractor
+# works on BLOCKS rather than MUST-sentences, and that is not a detail — the motivating clause contains no
+# MUST token at all (this document states rules declaratively, with the kernel in bold), so a MUST-grep
+# would have measured 87% precision and still been blind to the one clause it was built for.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/must_ledger.py" ] || { echo "FAIL: must_ledger.py is missing — new clauses would enter SPEC.md unclassified"; exit 2; }
+[ -f "$HERE/must-ledger.json" ] || { echo "FAIL: must-ledger.json is missing — the ratchet cannot run, and an absent ledger must never read as 'everything is classified'"; exit 2; }
+echo
+python3 "$HERE/must_ledger.py" || { echo "  -> a normative statement entered SPEC.md without naming the part that exercises it, or a classified clause was reworded and needs re-confirming"; rc=1; }
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 42 — EMITTED KEY SHAPES: THE FOUR ENGINES AGREE, AND SPEC.md NAMES WHAT THEY EMIT      [TIER 1]
+#
+# MEASURED: a rung required a completeness caveat to travel into query output and pinned NO field name.
+# Inside one day `judgedNothing` shipped as an array in rust/java/swift and a BOOLEAN in ts, and `gains`
+# gave three answers. `doc.judgedNothing.length` throws on one engine; `=== true` misses the other three.
+# Both java and ts had GREEN UNIT TESTS asserting their own side — no engine's suite can see this, and the
+# conformance row that should have was a keyword grep, blind to shape.
+#
+# (A) is the primary check and needs no spec at all: one key name, two JSON types, two engines — a
+# contract break by construction. (B) gates a machine-document key SPEC.md never names, on a grandfather
+# ratchet, because SEVEN such keys exist today and a hard gate would open red on agreeing engines.
+#
+# `field_audit.py` is deliberately a REPORT over §2 report fields and stays one; this is its sibling over
+# the QUERY document, gating only properties no engine may legitimately violate.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_key_shapes.py" ] || { echo "FAIL: gen_key_shapes.py is missing"; exit 2; }
+[ -f "$HERE/key-shapes-baseline.json" ] || { echo "FAIL: key-shapes-baseline.json is missing — the vocabulary ratchet cannot run, and an absent baseline must never read as 'nothing is grandfathered'"; exit 2; }
+P42_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_key_shapes.py" --baseline "$HERE/key-shapes-baseline.json"
+) || P42_OK=1
+echo "PART 42 — emitted key shapes (SPEC §2 ⟨0.28⟩ the pinned caveat set, §3.3.1 ⟨0.24⟩ name-and-shape)"
+if [ "$P42_OK" = 0 ]; then
+  echo "  -> MATCH — no key carries two JSON types across the engines, and every machine-document key is named or grandfathered"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 43 — THE SINK SURFACE MATRIX: (binary × verb × value-taking flag × sink spelling)      [TIER 1]
+#
+# A value-taking flag whose next token begins with `--` was consumed as its VALUE, so `--policy
+# --gate-json -` made `--gate-json` the policy FILENAME: the sink the operator named silently was not a
+# sink, and the fail-closed document went nowhere. It also makes §3.2's own "given no value" cause
+# unreachable in principle — no argv produces it.
+#
+# WHY THIS IS GENERATED RATHER THAN ENUMERATED, which is the whole point. One hand-written row caught it
+# on two engines' SCAN CLIs. Fixing those exposed it in candor-query — the sibling binary in the same
+# repo — an hour later. Checking ts and swift then found it in THEIR query verbs, after they had been
+# assumed clean because their scan CLI passed. Each was a separate hand discovery, and the worst was a
+# fail-open GREEN: `gate-verdict --report <swallowed>` exited 0 with a green verdict.
+#
+# The flag list is derived from `--help` per binary and PRINTED every run; an empty derivation FAILS,
+# since a matrix over no flags is the vacuity this suite has already been bitten by twice. Cells assert
+# the DOCUMENT at the sink, never just the exit code — every defect here exited 2 while doing the wrong
+# thing, so an exit-code row stays green through all of them.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/gen_sink_surface.py" ] || { echo "FAIL: gen_sink_surface.py is missing"; exit 2; }
+[ -f "$HERE/sink-surface-baseline.json" ] || { echo "FAIL: sink-surface-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
+P43_OK=0
+echo
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_sink_surface.py" --baseline "$HERE/sink-surface-baseline.json"
+) || P43_OK=1
+echo "PART 43 — the sink surface matrix (SPEC §3.2 ⟨0.28⟩ flag-shaped values, §3.3 ⟨0.8⟩ a document at every sink)"
+if [ "$P43_OK" = 0 ]; then
+  echo "  -> MATCH — no value-taking flag on any binary swallows a sink, and every refusal reaches the document"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 echo
 [ "$rc" -eq 0 ] \
