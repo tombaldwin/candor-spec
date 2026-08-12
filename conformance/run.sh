@@ -34,6 +34,8 @@ W="$(mktemp -d)"
 # so the suite checks ITSELF: snapshot the porcelain now, compare at exit, fail on anything NEW. A tree
 # that was already dirty when you started stays your business.
 REPO_BEFORE="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — shared setup: builds every engine and produces the reports the parts consume; present-but-broken must FAIL in the parts, never read as skipped
 # The scratch tree AND anything a part writes into the TRACKED fixtures. PART 34 row (f) has to put a
 # `.candor/config` inside the scan target — the point of the row is that the engine DISCOVERS it — and a
 # review showed what an interrupt in that window costs: a leftover config declaring a dangling policy
@@ -172,6 +174,8 @@ PY
 # that needs the dynamic syscall oracle). A violation fails the run.
 echo ""
 echo "[1c] HONESTY invariant (SPEC §4 — uncertainty must propagate caller-ward)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — every row (honesty invariant, whatif/rewire equality) asserts document CONTENT; a refusing engine fails the parse or the compare, never scores
 honesty() { local out r; out=$(python3 "$HERE/check_honesty.py" "$1" 2>&1); r=$?; printf '%s\n' "$out" | sed 's/^/  /'; return $r; }
 honesty "$RUST_REPORT" || rc=1
 honesty "$W/java.json" || rc=1
@@ -596,6 +600,9 @@ cat > "$W/ext/report.jvm.json" <<'EOF'
 EOF
 echo ""
 echo "[4n] SPEC-EXTENSION tolerance  (a privacy/1 report + extensions field is read by every OTHER engine)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows demand answers with named content (map answers, the known co-effect surfaces, effect sets equal); no refusal is credited
+# (recorded: [4n]'s own `tolerant` rows probe rust/java/ts only, under a MATCH line that says "every engine". Swift is not a silent omission — it ships neither `map` nor `where`, the two verbs the probe is built on (its ALL ACTIONS are path/tour/gains/fix/fix-gate/unverified/privacy-manifest/gate) — but the claim text overstates the coverage, and the riders in this slice drive all four, so the slice-level line above cannot see it. This note is where it stays visible.)
 P4N_OK=0
 p4n() { echo "     FAIL $1"; P4N_OK=1; }
 # The §2 forward-compat guarantee is TOLERATION: an engine that does not know the extension effect must
@@ -1298,6 +1305,8 @@ fi
 # ====================================================================================================
 echo ""
 echo "[4h] SURFACE TOUR robustness  (tour 0 → exit 2; a deleted callgraph sidecar still surfaces via inline calls)"
+# ENGINES: rust java ts swift
+# CONTROLS: nosidecar — the same reports must still ANSWER a named Fs reach after the sidecar deletion, so the tour-0 exit-2 rows are not credited to a tool that cannot answer
 P4H_OK=0
 p4h() { echo "     FAIL $1"; P4H_OK=1; }
 n0() { ( "$@" ) >/dev/null 2>&1; [ "$?" = 2 ]; }
@@ -1334,6 +1343,8 @@ fi
 # ====================================================================================================
 echo ""
 echo "[4l] SURFACE mostly-Unknown qualification  (never a false 'nothing hidden' over a ≥⅓-Unknown graph)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — both channels demand the qualified output with exact Unknown counts; silence or refusal fails the case match
 P4L_OK=0
 p4l() { echo "     FAIL $1"; P4L_OK=1; }
 MU='{"candor":{"version":"t","toolchain":"stable","spec":"0.23"},"package":"mu","functions":[{"fn":"a.loadA","inferred":["Unknown"],"unknownWhy":["dispatch:x"]},{"fn":"a.loadB","inferred":["Unknown"],"unknownWhy":["dispatch:y"]},{"fn":"db.query","inferred":["Fs"],"direct":["Fs"]}]}'
@@ -1396,6 +1407,8 @@ fi
 # ====================================================================================================
 echo ""
 echo "[4k] SURFACE TOUR corrupt-report loudness  (a found-but-untrustworthy report → exit ≠0, disclosed, never 'nothing hidden')"
+# ENGINES: rust java ts swift
+# CONTROLS: clean_empty_ok — the complement arm: a WELL-FORMED empty report must exit 0, so the loud-corrupt rows are proven to discriminate corruption from emptiness
 P4K_OK=0
 p4k() { echo "     FAIL $1"; P4K_OK=1; }
 TRUNC='{ "candor": {}, "functions": [ { "fn": "x.'   # (a) a truncated envelope — valid prefix, unparseable
@@ -1812,6 +1825,8 @@ PY
 # ====================================================================================================
 echo ""
 echo "[5b] GAINS ORIGIN differential  (existing-fn gain vs new-fn vs unknown, keyed on the baseline callgraph)"
+# ENGINES: rust java ts swift
+# CONTROLS: gains_exit — the advisory-0 and --strict-clean-0 arms prove each engine ANSWERS over the very pairs the failing arms use
 P5B_OK=0
 p5b() { echo "     FAIL $1"; P5B_OK=1; }
 mkdir -p "$W/gorigin"
@@ -2021,6 +2036,8 @@ fi
 # traps its own errors so a broken scan prints a labelled WARN, never an unattributed Python traceback.)
 echo
 echo "[9] unitKind (OPTIONAL §2 field, released 0.5 — ADVISORY: non-function units named, plain fns omit the field):"
+# ENGINES: java ts swift; rust: candor-rust never emits unitKind by design — every Rust unit is an ordinary function, the field's spec-0.7 default (its AGENTS.md says so)
+# CONTROLS: none — advisory rows print WARN and set nothing; a refusal reads as WARN too, so nothing here can pass by refusing
 mkdir -p "$W/uk/java"
 cat > "$W/uk/java/Uk.java" <<'J'
 import java.nio.file.*;
@@ -2081,6 +2098,8 @@ fi
 # was loud on stderr but exited 0.)
 echo
 echo "[8] UNREADABLE POLICY FAILS THE RUN (SPEC §6.2):"
+# ENGINES: rust java ts swift
+# CONTROLS: none — RECORDED WEAKNESS: every row credits a bare exit 2 and no in-part arm proves the engine could run green; the answering evidence lives in PART 1 over other fixtures. This is the PART 37 (e) shape at part granularity
 NOPOL="$W/no-such-dir/no-such.policy"
 check_polfail() { # $1 label, $2… command (run from cwd)
   local label="$1"; shift
@@ -2113,6 +2132,8 @@ check_polfail "java      " env CANDOR_POLICY="$NOPOL" java -jar "$JAR" "$W/jout"
 # uniformly — pinning it here is the one shared place that holds the format across the engines.
 echo
 echo "[7] SELF-DESCRIBING ENGINES (--agents, SPEC §7.11):"
+# ENGINES: rust java ts swift
+# CONTROLS: none — check_agents demands exit 0 plus the canonical header; the gen_* differentials assert cross-engine content equality and carry their own floors
 check_agents() { # $1 label, $2… command
   local label="$1"; shift
   local out first
@@ -2273,6 +2294,8 @@ pub fn go() { helper(); }
 RS
 "$SCAN" "$W/vocab" --json > "$W/vocab.json" 2>/dev/null || true
 echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
+# ENGINES: rust java ts swift
+# CONTROLS: none — vocabulary/containment/gate-verdict rows compare document content across engines; the gate rows require the violation entries, not an exit alone
 python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" <<'PY' || rc=1
 import json, os, sys
 # ⟨0.24⟩ FIVE canonical kinds. `ambiguous` was promoted from TOLERATED: §6.2 had always classed it
@@ -2584,6 +2607,8 @@ PY
 # four-way. Checked HERE while the callgraph sidecars still exist (the sidecar-absent block below strips them,
 # which disables candor-ts fix-gate). Mirrors the proven positional invocations above, adding `--strict`.
 echo "[12b] FIX-GATE exit-code contract  (advisory 0 · --strict 1 while a crossing remains · --strict 0 when clean)"
+# ENGINES: rust java ts swift
+# CONTROLS: fixgate_exit — the advisory-0 and --strict-clean-0 arms prove answering over the same fixtures the exit-1 arms use
 fixgate_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
   [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: fix-gate exit $got, expected $want"; rc=1; }; }
 # A policy that matches NO layer → no crossing → even --strict exits 0 (the "unchanged otherwise" control: it
@@ -2705,6 +2730,8 @@ PY
 # (exit 0) discloses the hole; `--strict` → exit 1 while a hole remains; `--strict` over a policy with NO hole
 # stays 0 (the "unchanged otherwise" control). Reuses the reports produced above; UNVPOL has a hole.
 echo "[12c] UNVERIFIED exit-code contract  (advisory 0 · --strict 1 while a hole remains · --strict 0 when clean)"
+# ENGINES: rust java ts swift
+# CONTROLS: unv_exit — the advisory-0 and --strict-clean-0 arms prove answering over the same fixtures the exit-1 arms use
 unv_exit() { local label="$1" want="$2"; shift 2; ( "$@" ) >/dev/null 2>&1; local got=$?
   [ "$got" = "$want" ] || { echo "  -> DIVERGE — $label: unverified exit $got, expected $want"; rc=1; }; }
 UNVCLEAN="$W/unv/clean.policy"; printf 'pure nonexistentlayer\n' > "$UNVCLEAN"
@@ -2860,6 +2887,8 @@ PY
 # ====================================================================================================
 echo
 echo "[13] .CANDOR/CONFIG differential  (SPEC §config — discovery, precedence, fail-closed agree)"
+# ENGINES: rust java ts swift
+# CONTROLS: cfg_probe — its env-override arm must exit 0 (the engine runs green with the config gate out of play), so the 1/2 arms are about the config, not a broken binary
 CFGW="$W/cfg"; mkdir -p "$CFGW"
 cp -r "$GDIR/rust" "$CFGW/rust"; cp -r "$GDIR/ts" "$CFGW/ts"; cp -r "$GDIR/swift" "$CFGW/swift"
 mkdir -p "$CFGW/java"; javac -d "$CFGW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
@@ -2918,6 +2947,8 @@ fi
 # ====================================================================================================
 echo
 echo "[13b] CONFIG VOCABULARY + INERT-KEY disclosure  (SPEC §config — recognized keys are never 'unknown', never silent)"
+# ENGINES: rust java ts swift
+# CONTROLS: IMPLEMENTED_BY — silence is classified against per-engine implemented-key facts, so a probe that never reaches the engine cannot pass; this part once ran NO engine for its entire existence (the header above tells it)
 VOCW="$W/cfgvocab"; mkdir -p "$VOCW"
 cp -r "$GDIR/rust" "$VOCW/rust"; cp -r "$GDIR/ts" "$VOCW/ts"; cp -r "$GDIR/swift" "$VOCW/swift"
 mkdir -p "$VOCW/java"; javac -d "$VOCW/java" $(find "$GDIR/java" -name '*.java') 2>/dev/null
@@ -3048,6 +3079,8 @@ fi
 # ====================================================================================================
 echo
 echo "[14] CHAINING differential  (SPEC §2 CANDOR_DEPS — join-inherit / stale-downgrade / empty-report coverage)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — chaining rows assert inherited effect sets and named error text; a silent engine fails the compare
 CHW="$W/chain"
 mkdir -p "$CHW/java/dep/com/dep" "$CHW/java/app/org/app" "$CHW/rust/dep/src" "$CHW/rust/app/src"
 cat > "$CHW/java/dep/com/dep/D.java" <<'EOF'
@@ -3168,6 +3201,8 @@ PY
 # ====================================================================================================
 echo
 echo "[15] BASELINE GUARD four-way + stale posture  (SPEC §7 item 5, §2.1 — gain/clean/absent/doctored/empty)"
+# ENGINES: rust java ts swift
+# CONTROLS: sbrow — each engine's row carries clean/absent/empty arms that must NOT fire beside gain/doctored arms that MUST, so the guard is proven discriminating in both directions
 SBW="$W/sb"; mkdir -p "$SBW/jb/q" "$SBW/ja/q" "$SBW/rb/src" "$SBW/ra/src" "$SBW/tb" "$SBW/ta" "$SBW/swb/gd" "$SBW/swa/gd"
 printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); } }\n' > "$SBW/jb/q/G.java"
 printf 'package q;\npublic class G { static void entry() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); new java.net.Socket("h", 80); } }\n' > "$SBW/ja/q/G.java"
@@ -3301,6 +3336,8 @@ fi
 # ====================================================================================================
 echo
 echo "[15b] CALLGRAPH-AWARE guard four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→effectful: present/absent/corrupt)"
+# ENGINES: rust java ts swift
+# CONTROLS: perow — the present/absent/corrupt arms pin the firing and the non-firing sides together
 PEW="$W/pe"; mkdir -p "$PEW/jb/q" "$PEW/ja/q" "$PEW/rb/src" "$PEW/ra/src" "$PEW/tb" "$PEW/ta" "$PEW/swb/pe" "$PEW/swa/pe"
 # java: pure calc + effectful keep; AFTER makes calc read a file
 printf 'package q;\npublic class P {\n static int calc(String s){ return s.length(); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); calc("z"); }\n}\n' > "$PEW/jb/q/P.java"
@@ -3365,6 +3402,8 @@ fi
 # engine-idiomatic UNRESOLVED call (fn-pointer / reflection / dynamic value / opaque closure) — SAME fn
 # identity — and must exit 0, print the advisory note, and NOT [AS-EFF-005].
 echo "[15c] Unknown-only gain is ADVISORY four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→Unknown: exit 0 + note, no fail)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows demand exit 0 PLUS the advisory note naming the Unknown gain; the pass condition is content, not silence
 PUW="$W/peu"; mkdir -p "$PUW/jbu/q" "$PUW/jau/q" "$PUW/rbu/src" "$PUW/rau/src" "$PUW/tbu" "$PUW/tau" "$PUW/swbu/pe" "$PUW/swau/pe"
 # java: fmt pure → fmt does reflection (Unknown), same descriptor fmt(String)
 printf 'package q;\npublic class P {\n static int fmt(String s){ return s.length(); }\n static void keep(){ fmt("z"); }\n}\n' > "$PUW/jbu/q/P.java"
@@ -3435,6 +3474,8 @@ fi
 # ====================================================================================================
 echo
 echo "[16] APPLIED deny-Unknown / pure-vs-Unknown / forbid-layering  (SPEC §6/§6.2 — remaining verdicts agree)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — the compared verdict tuple includes expected-PASS arms (the cousin/no-layer probes), so an engine that refuses everything diverges there
 PW="$W/p16"; mkdir -p "$PW"
 printf 'deny Unknown\n' > "$PW/unknown.policy"
 printf 'pure\n' > "$PW/pure.policy"
@@ -3847,6 +3888,8 @@ sys.exit(0 if any(f.get("interfaceUnion") and f["hash"].endswith("#OutboundChann
 fi
 
 echo "PART 18 — cross-package interface dispatch (interfaceUnion, WORKSPACE-CHAINING-DESIGN.md)"
+# ENGINES: none — scores P18_OK, which the four-way body computes inside slice 16's range (run `part.sh 16 18` together)
+# CONTROLS: none — verdict-only slice; the rows and their evidence live with the body
 if [ "$P18_OK" = 0 ]; then
   echo "  -> MATCH — candor-java + candor-scan + candor-ts + candor-swift all resolve a chained interface/protocol/trait method to the impl's effect (never pure); the union entry is emitted producer-side"
 else
@@ -3940,6 +3983,8 @@ sys.exit(1 if fails else 0)
 PYIE
 
 echo "PART 19 — initializer edge across the scan boundary (SOUNDNESS-VEIN-initializer-edge.md)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows assert the app inherits the dep's named effect across the initializer edge — content, never an exit
 if [ "$P19_OK" = 0 ]; then
   echo "  -> MATCH — a chained dependency's initializer reaches its consumer in all four engines; unchained, each is unchanged"
 else
@@ -4035,6 +4080,8 @@ sys.exit(1 if fails else 0)
 PYSB
 
 echo "PART 20 — implicit stringification across the scan boundary (SOUNDNESS-VEIN-crossing-the-scan-boundary.md)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows assert the stringified value's effect crosses the scan boundary — content, never an exit
 if [ "$P20_OK" = 0 ]; then
   echo "  -> MATCH — a chained dependency's stringification witness reaches its consumer in all four engines"
 else
@@ -4163,6 +4210,8 @@ sys.exit(1 if fails else 0)
 PYUK
 
 echo "PART 21 — could-not-form-a-key discloses (DEP-RECEIVER-TYPING-DESIGN.md half 1)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows assert the could-not-form-a-key disclosure four-way; an engine that says nothing fails the compare
 if [ "$P21_OK" = 0 ]; then
   echo "  -> MATCH — an untyped cross-package receiver discloses instead of reading pure in all four engines"
 else
@@ -4306,6 +4355,8 @@ sys.exit(1 if fails else 0)
 PYDS
 
 echo "PART 22 — a chained dep join carries the whole surface (SOUNDNESS-VEIN-crossing-the-scan-boundary.md)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows compare the chained dep-join surface documents across engines
 if [ "$P22_OK" = 0 ]; then
   echo "  -> MATCH — the literals a dependency was charged with travel with its effects in all four engines"
 else
@@ -4404,6 +4455,8 @@ else
 fi
 
 echo "PART 23 — the model's own lemma still holds (PAPER3 Lemma 2, over the full lattice)"
+# ENGINES: none — checks reference/policy_model.py against SPEC §1 and PAPER3 Lemma 2; no engine binary runs
+# CONTROLS: P23_EXPECT upward-closed — the derived lattice floor and the known-bad absence-keyed rule that must STILL be rejected prove the check discriminates
 if [ "$P23_OK" = 0 ]; then
   echo "  -> MATCH — every shipped verb's rejection set is upward-closed, and the absence-keyed rule still is not"
 else
@@ -4487,6 +4540,8 @@ echo
 ) || P24_OK=1
 
 echo "PART 24 — split-invariance: each engine against ITSELF (SCAN-BOUNDARY-WORK-QUEUE.md §3, P1)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_split_invariance.py scores each engine against ITSELF and carries its own floors and baseline; no exit code is credited here
 if [ "$P24_OK" = 0 ]; then
   echo "  -> MATCH — one tree and split+chained agree, per engine, on every live cell outside the ratchet"
 else
@@ -4547,6 +4602,8 @@ echo
 ) || P25_OK=1
 
 echo "PART 25 — chain idempotence: one copy of a dep report == two (SCAN-BOUNDARY-WORK-QUEUE.md §3, P2)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_chain_idempotence.py compares once-chained to twice-chained documents; its floors and baseline live with it
 if [ "$P25_OK" = 0 ]; then
   echo "  -> MATCH — chaining a report twice answers exactly as chaining it once, outside the ratchet"
 else
@@ -4612,6 +4669,8 @@ echo
 ) || P26_OK=1
 
 echo "PART 26 — trust monotonicity: a distrusted dep report may only ADD hedges (SCAN-BOUNDARY-WORK-QUEUE.md §3, P3)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_trust_monotonicity.py; content differential with its own baseline
 if [ "$P26_OK" = 0 ]; then
   echo "  -> MATCH — every degraded dep report stayed between the unchained and trusted arms, outside the ratchet"
 else
@@ -4670,6 +4729,8 @@ echo
 ) || P28_OK=1
 
 echo "PART 28 — signature monotonicity: adding a call may only ADD (SCAN-BOUNDARY-WORK-QUEUE.md §3, P4)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_signature_monotonicity.py; content differential with its own baseline
 if [ "$P28_OK" = 0 ]; then
   echo "  -> MATCH — every added call only widened, on every live cell, outside the ratchet"
 else
@@ -4735,6 +4796,8 @@ echo
 ) || P29_OK=1
 
 echo "PART 29 — incomplete-vs-violation dominance: a real violation survives an incomplete scan (SPEC §3.3.1, P5)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_incomplete_dominance.py; content differential with its own baseline
 if [ "$P29_OK" = 0 ]; then
   echo "  -> MATCH — every gate failed closed over unreadable code AND still reported the violation it found, outside the ratchet"
 else
@@ -4805,6 +4868,8 @@ echo
 ) || P27_OK=1
 
 echo "PART 27 — the ⟨0.24⟩ rung's behaviour (SPEC §2 locale, §3.1 frontier + gate --report, §6.2 CONTRIBUTES + --class)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_rung024.py; the ⟨0.24⟩ behaviour matrix carries its own controls and baseline
 if [ "$P27_OK" = 0 ]; then
   echo "  -> MATCH — every ⟨0.24⟩ clause the engines implement answers as the spec states it, outside the ratchet"
 else
@@ -4881,6 +4946,8 @@ echo
 ) || P30_OK=1
 
 echo "PART 30 — sidecar manifest fidelity: degrading a sidecar may only WIDEN a disclosure (SPEC §2.2 ⟨0.26⟩, P6)"
+# ENGINES: rust java ts swift
+# CONTROLS: probe_check — the suite-wide can-this-fail gate runs here: a property that cannot fail is reported before the sidecar-manifest differential is believed
 if [ "$P30_OK" = 0 ]; then
   echo "  -> MATCH — every degraded sidecar sat between the full and absent arms, and every walked type carries a key"
 else
@@ -4927,6 +4994,8 @@ echo
 ) || P31_OK=1
 
 echo "PART 31 — SPEC §2 \`fs\`: the read/write refinement answers the same way in every engine"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_fs_kind.py; content differential over the fs read/write refinement
 if [ "$P31_OK" = 0 ]; then
   echo "  -> MATCH — kinds travel the call graph, and an undetermined contributor suppresses the field"
 else
@@ -4965,6 +5034,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[32] ZERO-MATCH RULE DISCLOSURE  (SPEC §4 — a rule that bound nothing cannot have caught anything)"
+# ENGINES: rust java ts swift
+# CONTROLS: zm_probe — the scopeless-hit arm must exit 1 and the no-policy base run fixes the verdict, so the zero-match disclosure is never credited to an engine that cannot gate at all
 ZM_OK=0
 ZMW="$W/zeromatch"; mkdir -p "$ZMW"
 printf 'deny Fs zzz_no_such_layer\n' > "$ZMW/miss.policy"   # (a)+(b): binds nothing, in every language
@@ -5076,6 +5147,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[33] ENGINE PIN ENFORCEMENT  (SPEC §3.4 — one config, one meaning, in every engine)"
+# ENGINES: rust java ts swift
+# CONTROLS: ep_probe — the MATCHING-pin arm must keep the baseline exit and say nothing, so the mismatch exit-2 arms are about the pin, not a broken config parser
 EP_OK=0
 EPW="$W/enginepin"; mkdir -p "$EPW"
 ep_probe() { # $1 label ; $2 impl token ; $3 the engine's own release version ; then the scan command (target LAST)
@@ -5243,6 +5316,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[35] CONFIGURED DEP THAT CANNOT BE READ  (SPEC §2 ⟨0.27⟩ — not reduced coverage, unevaluable)"
+# ENGINES: rust java ts swift
+# CONTROLS: dp_probe — arms (b) present-dep and (c) no-key must exit 0, so the refusal arms are about the dep, never the key or the engine
 DP_OK=0
 DPW="$W/depcfg"; mkdir -p "$DPW"
 printf '{"functions":[]}\n' > "$DPW/present.json"
@@ -5330,6 +5405,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[34] GATE SINK ARMING  (SPEC §3.3.1 — a refusal must not leave yesterday's green on disk)"
+# ENGINES: rust java ts swift
+# CONTROLS: ar_is_refusal ar_has_violations — every credited exit asserts the DOCUMENT at the sink (fail-closed refusal shape, or violations present), never the exit alone
 AR_OK=0
 ARW="$W/arming"; mkdir -p "$ARW"
 AR_STALE='{"spec":"0.0","ok":true,"violations":[]}'
@@ -5569,6 +5646,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[36] VERDICT-DOCUMENT CELLS  (SPEC §3.1/§4 ⟨0.27⟩ — composed shape, stream sink, zeroMatch)"
+# ENGINES: rust java ts swift
+# CONTROLS: vd_probe — cells assert the composed verdict document at the sink over passing AND refusing arms; an absent ts/swift prints NOT CHECKED rather than passing silently
 VD_OK=0
 VDW="$W/vd"; mkdir -p "$VDW"
 printf 'deny Clock\ndeny Frobnicate\n' > "$VDW/bad.policy"    # one honourable no-match line + one bad token
@@ -6226,6 +6305,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[37] REPORT SINK ARMING  (SPEC §3.3.1 ⟨0.28⟩ — the stale-report defect PART 34 doesn't reach)"
+# ENGINES: rust java ts swift
+# CONTROLS: rs_intact_control ti_control — the callers invocation answers over an INTACT pair (the repair of row (e), which once credited "no function matching 'pure_a'" as a disclosure), and the inside-tree sink stays permitted
 RS_OK=0
 RS_SIDES_BEFORE=0   # set per-engine by the out-prefix arm; declared here because the suite is `set -u`
 RSW="$W/report-arming"; mkdir -p "$RSW"
@@ -6715,6 +6796,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[38] ZERO-RULE POLICY REFUSES  (SPEC §6.2 ⟨0.28⟩ — a gate that asked nothing is not a clean gate)"
+# ENGINES: rust java ts swift
+# CONTROLS: ar_is_refusal — an exit 2 is credited only when the sink carries the fail-closed refusal document; exit 0 scores SKIP (pre-rung) and anything else FAILs
 ZR_OK=0
 ZRW="$W/zerorule"; mkdir -p "$ZRW"
 printf '# Project README\n\nThis is documentation, not a policy file.\nSomeone pointed --policy at it by mistake.\n' > "$ZRW/readme.md"
@@ -6798,6 +6881,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[39] CAVEAT RE-DISCLOSURE  (SPEC §2 ⟨0.15⟩+⟨0.28⟩ — the verdict does not move, the caveat travels)"
+# ENGINES: rust java ts swift
+# CONTROLS: rd_probe — empty output over the caveat pair FAILs by name ("the row cannot ask its question"), so a refusing engine cannot score; this part shipped three-of-four and motivated the ENGINES line
 RD_OK=0
 RDW="$W/redisclose"; mkdir -p "$RDW"
 # A baseline carrying BOTH caveats, and a current that gained an effect so `gains` has something to say.
@@ -6927,6 +7012,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[40] STATE × READ-VERB MATRIX  (a determined negative over a state where nothing was judged)"
+# ENGINES: rust; java ts: GAP — both ship all ten read verbs this matrix probes (where/callers/map/impact/…) and only the rust pilot is wired — recorded so the gap is visible instead of invisible; swift: ships only path/tour of the ten (measured from its --help) — a narrower matrix would still apply, also unwired
+# CONTROLS: intact_answered — the intact state must ANSWER per verb (a refusing intact cell FAILs by name) and at least one intact control must produce a real answer, or every SKIP is called vacuous
 SV_OK=0
 SVW="$W/statematrix"; mkdir -p "$SVW"
 cat > "$SVW/oracle.py" <<'SVPY'
@@ -7168,6 +7255,8 @@ echo
   python3 "$HERE/gen_key_shapes.py" --baseline "$HERE/key-shapes-baseline.json"
 ) || P42_OK=1
 echo "PART 42 — emitted key shapes (SPEC §2 ⟨0.28⟩ the pinned caveat set, §3.3.1 ⟨0.24⟩ name-and-shape)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_key_shapes.py harvests real documents and gates shape agreement plus the grandfather ratchet; no exit code is credited here
 if [ "$P42_OK" = 0 ]; then
   echo "  -> MATCH — no key carries two JSON types across the engines, and every machine-document key is named or grandfathered"
 else
@@ -7204,8 +7293,47 @@ echo
   python3 "$HERE/gen_sink_surface.py" --baseline "$HERE/sink-surface-baseline.json"
 ) || P43_OK=1
 echo "PART 43 — the sink surface matrix (SPEC §3.2 ⟨0.28⟩ flag-shaped values, §3.3 ⟨0.8⟩ a document at every sink)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_sink_surface.py derives the flag list from --help and FAILS on an empty derivation; cells assert the document at the sink
 if [ "$P43_OK" = 0 ]; then
   echo "  -> MATCH — no value-taking flag on any binary swallows a sink, and every refusal reaches the document"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 44 — DECLARED COVERAGE: EVERY SLICE NAMES ITS ENGINES AND ITS CONTROLS                 [TIER 1]
+#
+# Two measured failures, both of a shape falsification cannot catch because the missing row never runs:
+#
+#   · PART 39 shipped green covering THREE of four engines — swift has `gains` and simply was not
+#     invoked, inside a row written hours after a commit message naming that exact habit. Writing the
+#     declarations found the same shape twice more: PART 40 probes only rust's query binary while java
+#     and ts ship all ten read verbs it exercises, and PART 4n's `tolerant` rows ask rust/java/ts under
+#     a MATCH line that says "every engine".
+#   · PART 37 row (e) credited ANY non-zero exit as "discloses in the machine channel" — it queried
+#     `pure_a`, a name in NO gate fixture, so every engine refused at exit 2 and scored PASS. The row
+#     had never once asked its question.
+#
+# INFERENCE WAS MEASURED AND REJECTED: flagging (part, verb, engine) triples caught the PART 39 bug and
+# emitted 8 PERMANENT false positives from PART 4k's loops — 1:8, an ignored checker is worse than none.
+# So this is DECLARATION: every slice carries `# ENGINES:` accounting for ALL FOUR (listed, or excluded
+# with a reason) and `# CONTROLS:` naming what proves its rows could ANSWER (or `none — <why>`), and
+# part_declarations.py checks both ways — declared-but-not-invoked is a vacuous claim, invoked-but-not-
+# declared is drift, and an engine mentioned NOWHERE cannot be written at all, which is what makes the
+# PART 39 shape unshippable rather than merely detectable. An un-annotated slice is an ERROR, never a
+# skip: a half-annotated file makes the checker lie. Registered in clause_check.py with empty
+# SPEC_CLAUSES — it binds the suite to itself, not to SPEC.md.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+[ -f "$HERE/part_declarations.py" ] || { echo "FAIL: part_declarations.py is missing — a part could again cover fewer engines than it claims, silently"; exit 2; }
+P44_OK=0
+echo
+python3 "$HERE/part_declarations.py" || P44_OK=1
+echo "PART 44 — declared coverage (suite-internal: ENGINES both ways + CONTROLS exist, per slice)"
+# ENGINES: none — a static check over run.sh itself; no engine binary runs
+# CONTROLS: none — the checker refuses to report success over zero declarations, and a failing `part.sh --sections` is exit 2, never a skip
+if [ "$P44_OK" = 0 ]; then
+  echo "  -> MATCH — every slice's declaration holds in both directions, and every named control exists"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
