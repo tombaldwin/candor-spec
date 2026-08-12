@@ -3430,8 +3430,10 @@ halves are wrong in the way this document keeps correcting:
 The field is load-bearing when it is non-empty: `owner` and `placement` are layer names, and a collapsed
 prefix changes what those names denote. So: **`layerPrefix` is emitted when, and only when, a prefix was
 actually collapsed.** Its ABSENCE means no prefix was collapsed — a real answer under §2's
-omit-rather-than-guess convention, not a gap. candor-java's unconditional `""` is a defect against this
-clause and is queued; the other engines gain the field if and when they collapse a prefix.
+omit-rather-than-guess convention, not a gap. candor-java emitted it unconditionally when this clause was
+written and now guards it; PART 45 pins both arms, including the NEGATIVE one — a run that collapses
+nothing must emit no key at all, which is the arm a presence-only check cannot see. The other engines gain
+the field if and when they collapse a prefix.
 
 **The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers*
 each boundary effect appears in. If an effect appears in a layer it was **not** in before, that is a
