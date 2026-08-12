@@ -3398,10 +3398,13 @@ engine meeting a rule kind from a newer spec rung must not refuse the whole file
 about what that leniency COMPOSES TO: every line ignored is a gate, and it asked nothing.
 
 ⟨0.28⟩ **AND THE CONDITION IS A DROPPED LINE, NOT AN EMPTY POLICY — the clause above is stated over its own
-instance, which is the fourth time in this document.** Its justification is per-line: *"every line ignored
-is a gate, and it asked nothing"*, and its measurement note — all four engines warn per ignored line while
-the verdict document stays silent — is exactly as true of a policy where NINE of ten lines were dropped.
-The refusal fires only at zero survivors, so the discontinuity is stark and the wrong way round:
+instance, which is the fifth time in this document** (§3.1's ⟨0.24⟩ dropped-rule clause was the fourth, and
+it disposes of the sharpest case: a typo'd effect token like `deny Nett app` is a policy ERROR at exit 2,
+not an ignored line, so what follows is about the residue the forward-compat leniency deliberately keeps).
+The zero-rule clause's justification is per-line: *"every line ignored is a gate, and it asked nothing"*,
+and its measurement note — all four engines warn per ignored line while the verdict document stays silent —
+is exactly as true of a policy where NINE of ten lines were dropped. The refusal fires only at zero
+survivors, so the discontinuity is stark and the wrong way round:
 
     0 of 10 rules parse   →   exit 2, fail-closed refusal document
     1 of 10 rules parse   →   { "ok": true, "violations": [] }, exit 0, and the document says nothing
