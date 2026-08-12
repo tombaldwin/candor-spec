@@ -3392,12 +3392,22 @@ fourth, so these are pinned before a second engine guesses rather than after:
     containment    "contained": [ { "effect": "<E>", "containmentPct": <0..100 integer>,
                                     "layers": <n>, "owner": "<layer>",
                                     "placement": { "<layer>": <count>, … } }, … ]
+                   "ambient":   { "<E>": <count>, … }   // the §6.1 ambient effects, keyed by EFFECT
+                                                        // (engine vocabulary, not a user namespace)
 
     fix-gate       "remedies": [ { "fn": …, "effect": "<E>", "site": [ … ],
                                    "deniedSpan": [ "<fn>", … ],   // the functions the denied effect crosses
                                    "hoistTo": [ "<fn>", … ],      // where the boundary can move to; [] = nowhere
+                                   "hoistHigher": [ "<fn>", … ],  // …and further up, if the caller allows it
+                                   "cleanHoist": <bool>,          // the hoist introduces no new crossing
+                                   "layer": "<layer>",            // the remedy's layer; "" = the root
                                    "policyAlternative": "<a policy line>"  // e.g. "allow Exec"
                                  }, … ]
+
+    unverified     "unverified": [ { "fn": …, "rule": "<the policy line that could not be discharged>",
+                                     "unknownWhy": [ … ],
+                                     "upgrade": "<a policy line>" // e.g. "deny Unknown app" — the rule
+                                   }, … ]                         // that WOULD make this decidable
 
 `containmentPct` is an INTEGER percentage, not a float and not a ratio — three engines agree and the
 agreement is now a rule rather than a coincidence. `placement` is an object keyed by LAYER NAME, so it is
