@@ -373,6 +373,53 @@ than the condition that makes it true — see §3.3.1's two ⟨0.24⟩ correctio
 time: the clause's own justification is broader than the clause. `coverage` was the field in front of the
 author, and `verdict` was the verb in front of the author.*
 
+⟨0.28⟩ **AND HERE IS WHAT THE TRAVELLING CAVEAT IS CALLED — because the clause above shipped without
+saying, and four engines guessed.** §3.3.1's ⟨0.24⟩ general rule requires a field entering a
+machine-consumed document to have its name and shape pinned *in the rung that introduces it*, on the
+stated ground that a MUST saying "disclose X" without saying what X is called "is not a requirement, it is
+four independent guesses with a conformance failure scheduled". The re-disclosure MUST above was written
+in the same rung, in this document, and pinned nothing. Measured outcome, inside one day:
+
+    rust    judgedNothing: [ "<report path>", … ]        java   judgedNothing: [ "<report path>", … ]
+    swift   judgedNothing: [ "<report path>", … ]        ts     judgedNothing: true
+
+and on `gains`, which rests on two reports, **three answers**: rust and swift emitted `baselineIncomplete`
+alone, java added `baselineJudgedNothing` as an array, ts added it as a boolean. A consumer written
+against the majority (`doc.judgedNothing.length`) throws on ts; one written against ts (`=== true`)
+silently misses the other three. Both java and ts had green unit tests asserting their own side of it.
+The cost fell hardest on the engine that was most careful: candor-swift *withheld* the key, reasoning in a
+comment that "a key one engine emits and another does not is a divergence a consumer sees" — correct, and
+defeated because its premise (the reference does not emit it) was already stale by the time it was written.
+
+So the caveat's wire form is pinned here, and it is ONE key set whatever verb carries it:
+
+    "incomplete":    true                                        // the flag EITHER cause raises
+    "unanalyzed":    [ { "path": "<file>", "reason": "<why>" } ] // files the scan could not READ
+    "judgedNothing": [ "<report path>", … ]                      // reports declaring `analyzed.count: 0`
+
+`incomplete` is the one key a consumer may branch on alone and be safe under both causes; the other two
+name WHICH, because the two want different repairs — `unanalyzed` wants a scan that can read a file,
+`judgedNothing` wants a scan that reached a conclusion. **`judgedNothing` is an ARRAY, not a boolean**: a
+verb reading a prefix answers over many sibling reports, and *which* of them judged nothing is the whole
+of the actionable content. Each key is **omitted when it does not apply**, so a verb's output over an
+intact report stays byte-identical to its pre-⟨0.28⟩ form — the property every engine measured for this
+rung and the one it must not spend.
+
+**A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** —
+`baselineIncomplete`, `baselineUnanalyzed`, `baselineJudgedNothing`, same shapes. Not one merged flag: the
+sides fail in opposite directions and want different responses. An incomplete CURRENT means the answer may
+be SHORT — effects the reader is not being told about. An incomplete BASELINE means the comparison floor
+is soft, so the existing-vs-new split the verb exists for is unreliable. "Something here is incomplete"
+leaves a supply-chain reviewer unable to act on either. This mirrors the `coverage`/`coverageDelta` shape
+already in use rather than minting a second convention.
+
+**The channel is the machine document itself** — the same document the answer is in, not stderr beside it.
+That is the whole of the clause: the human channel was already fine in every engine measured, and a caveat
+on the other stream is one `2>/dev/null` from gone. Where a verb's pinned output shape has nowhere to put
+a key — `show` emits a top-level ARRAY, `map` keys its object by the user's own module names, so a
+reserved key there collides with a real symbol — that shape needs its own ruling before the obligation can
+be met, and until it has one those two are **known-open cells, not silently non-compliant ones**.
+
 ⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The
 report **omits pure functions** (§2 lists only effectful/`Unknown` units), so the consuming convention is
 "absent ⇒ pure." Two envelope fields make that convention *backed* rather than a universal claim the report
@@ -1771,14 +1818,60 @@ not *nothing to judge*. A ⟨0.21⟩ chain grants no purity licence, `gate --rep
 `invisible` in the coverage ledger, and a downstream verdict discloses it — the machine-consumer channel
 the stale defect was silently deleting is restored. This IS a PARTIAL artifact, and the ⟨0.26⟩ lesson
 (partial answered worse than absent) is answered specifically by keying on `count: 0` — the one integer
-⟨0.24⟩ Row 1 READS as "no claim". The `unanalyzed[].reason` string uses the same vocabulary as the §3.3
-incomplete verdict — `unknown-flag`, `unreadable-config`, `refused-policy`, `target-missing`.
+⟨0.24⟩ Row 1 READS as "no claim".
+
+⟨0.28⟩ **THE `unanalyzed[].reason` VOCABULARY, MINTED HERE RATHER THAN CITED.** This clause said the string
+"uses the same vocabulary as the §3.3 incomplete verdict" and named four tokens. There is no such
+vocabulary: §3.3 pins `unanalyzed: [ { path, reason } ]` and leaves `reason` unconstrained, and grepping
+this document finds those four tokens nowhere else. They are being CREATED here, and a reader of §3.3 will
+never find them — the same mislocation this section already confesses for `conditional`. So, stated as what
+it is: an armed report's `reason` SHOULD name the cause from `unknown-flag`, `unreadable-config`,
+`refused-policy`, `target-missing`, `armed` — and the set is **open**, because a closed set is only a
+constraint if it is closed over the domain and the causes of a failed run are not enumerable in advance.
+`armed` is in the list for the reason the next paragraph gives.
+
+**AND THE ARMED DOCUMENT IS WRITTEN BEFORE THE CAUSE EXISTS.** Arming happens at parse time; the failure
+that leaves the document in place has not happened yet, and rule (1)'s own words — "every subsequent exit
+then leaves that document in place" — literally license never touching it again. An implementation MAY
+therefore arm with `reason: "armed"` and refine it at the exit that knows better; what it MUST NOT do is
+let the vocabulary sentence above read as a promise the machine channel does not keep. A consumer must key
+on the SHAPE (Row 1: `count: 0` + `functions: []`), never on the reason string.
 
 **(3) THE INPUT EXEMPTION FROM ⟨0.27⟩ (2) COVERS THE PATH, NOT THE RUN.** A `--json` path naming an INPUT
 of this run (the target's own source tree, the discovered `.candor/config`, the policy file, a chained dep
 report) is refused with exit 2 having written NOTHING to that path — arming would destroy the input.
 Sameness is a question about ARTIFACTS not strings — the ⟨0.28⟩ device+inode rule for the verdict sink
 below applies here as well.
+
+⟨0.28⟩ **AND THE SCAN TARGET IS THE MEMBER OF THAT LIST NO ENGINE IMPLEMENTED.** The sentence above names
+"the target's own source tree" first, and every engine registered the policy, the config, the baseline and
+the dep reports — and not the target. **Measured, two engines, live:**
+
+    $ printf 'export function hello(){ return 1 }\n' > app.ts
+    $ candor-ts app.ts --gate-json app.ts
+      candor-ts: wrote 0 effectful functions (1 analyzed, 1 files) …                      exit 0
+    $ cat app.ts
+      { "spec": "0.27", "ok": false, … }                     ← the operator's SOURCE FILE, replaced
+
+    $ candor-java app.jar --json app.jar
+      candor: cannot read scan target app.jar: zip END header not found                   exit 2
+                                    ↑ it cannot read the jar because arming just overwrote it
+
+The first is the worse artifact: unrecoverable loss of the operator's own code, reported as SUCCESS. The
+second is self-describing — the diagnostic is the engine discovering the file it destroyed.
+
+So it is stated as a MUST in its own right: **the scan target is an input, and a report or verdict sink
+naming it is refused.** Two notes on the shape of the check, both of which an implementation gets wrong by
+default:
+
+- **EXACT ARTIFACT, NEVER CONTAINMENT.** A report written into `.candor/` *inside* the tree being scanned
+  is ordinary usage and the recommended layout; a rule that refuses any sink under the target refuses the
+  default. One engine tried containment and it "took 33 tests with it". Exact identity already separates
+  the two cases: `<dir>/.candor/report.json` is not the artifact `<dir>`.
+- **THE TARGET IS OFTEN A DIRECTORY, AND THAT IS NOT A GUARD.** Two engines were protected only because
+  their targets are directories, so the arm write happened to fail. An accident that holds for today's
+  target kinds is not an implementation of this rule — a single-file target route (a jar, a `.ts` file, a
+  module) is exactly where it stops holding, which is where both reproductions above came from.
 
 **(4) `--json` ON STDOUT IS THE STREAM FORM.** Arming does not apply (no previous document to go stale);
 the document-on-every-exit rule applies IN FULL. On any exit-2 the fail-closed report is written to stdout,
@@ -1831,6 +1924,27 @@ the previous bytes there. The orphaned report is a real and separate defect — 
 code and still reaches a gate over the prefix — and it keeps its own wire question rather than being
 resolved as a side effect of a staleness fix.
 
+⟨0.28⟩ **AND "FINISHED WRITING" MEANS THE SCAN COMPLETED — NOT THAT CONTROL CAME BACK.** The paragraph above
+was stated over the instance it was measured in, a COMPLETE scan with a member removed, and read literally
+it reinstates the exact stale green this rung exists to destroy. On a run that dies part-way, the packages
+it never reached are still holding placeholders, and they are not "never claimed" — they are
+claimed-and-unreached. Handing their previous bytes back republishes the previous run's answer as current.
+**Measured**: candor-scan's `--deps` path *returns* 2 instead of exiting, so the hand-back ran on a run that
+had written nothing, and the previous green reports came back byte-identically at exit 2.
+
+So the hand-back is conditional on the run having ENUMERATED and SCANNED its package set. On any exit that
+precedes that, the placeholders stand — a run that died before enumeration cannot distinguish "no longer in
+the scan" from "not yet reached", and the fail-closed reading is the only one it is entitled to. An
+implementation keying the hand-back on *control returned to the top level* rather than on *this run wrote
+its set* has the defect whether or not a path reaches it today; the next early return will re-open it
+silently.
+
+**AND AN ORPHAN'S SIDECARS COME BACK WITH IT.** The hand-back as first written restores report bytes only,
+while the sidecar rule below deleted that report's sidecars at arming — so a compliant run produced a
+live-looking report with its sidecars missing, which is a third state neither the pre-run tree nor the armed
+tree ever had, and precisely the torn pair the pairing rule two clauses down treats as a hazard route. A
+pair is restored together or not at all.
+
 ⟨0.28⟩ **AND THE §2.2 SIDECARS GO WITH THE REPORT — DELETED, NOT EMPTIED.** A report armed to the shape in
 (2) beside a live sidecar is a PAIR THAT CONTRADICTS ITSELF, and §2.2 gives the sidecar no provenance of its
 own to arbitrate with. It is not a theoretical pairing problem: `callers`/`whatif`/`rewire` are answered
@@ -1874,15 +1988,43 @@ NOBODY CALLS `f`. That is a blast-radius answer of "safe to edit" over a pair wh
 "this run judged nothing", and it is the same human-channel-fine / machine-channel-silent split that made
 the incomplete-analysis defect a defect.
 
-So a verb answering from a sidecar it has ruled unanswerable MUST say so **in the machine output**: either
-a pinned `"unanswerable": "<why>"` key alongside whatever else it emits, or a non-zero exit — never an
-empty result set that a naive read scores as a determined negative. An empty `direct` means *nothing calls
-this*; the verb does not know that, and must not say it.
+So a verb that has ruled its input unanswerable MUST say so **in the machine output**: a pinned
+`"unanswerable": "<why>"` key, or a non-zero exit, or both. An empty `direct` means *nothing calls this*;
+the verb does not know that, and must not say it.
 
-*Recorded because the correction is the point: the first version of this clause specified the remedy as
-"take its absence arm", and the absence arm IS the defect. The rung then made a rare state — no sidecar —
-into the standard post-failure state, so a quiet corner became the common path. Raised by candor-ts's arm
-of this rung, which flagged the `--json` silence rather than treating it as out of scope.*
+⟨0.28⟩ **AND THE OBLIGATION KEYS ON THE REPORT, NOT ON THE SIDECAR'S EXISTENCE — which is what this clause
+said until the deletion rule above was read back against it.** As written it bound "a verb answering from
+a sidecar it has ruled unanswerable", i.e. a sidecar that is THERE. Two clauses earlier, this same rung
+requires the armed report's sidecars to be **deleted**. After compliant deletion there is no sidecar, the
+verb takes the ordinary absence arm, and the ordinary absence arm is the `{}`-at-exit-0 this clause was
+written to forbid — measured, and quoted three paragraphs up. The producer MUST steered the common case
+into the one state the consumer MUST did not cover, and the clause's own words say why that matters: the
+rung "made a rare state — no sidecar — into the standard post-failure state".
+
+So the trigger is **the report**: a verb answering over a ⟨0.21⟩ Row-1 manifest-carrying empty is
+unanswerable for the call-graph questions whether the sidecar is present-and-contradictory, absent, or
+deleted by arming. One semantic state — *this run judged nothing* — gets one machine surface, instead of
+two that differ by whether a file happened to survive.
+
+⟨0.28⟩ **AND `unanswerable` REPLACES THE RESULT SET; IT DOES NOT ACCOMPANY ONE.** The permitted remedy
+above read "a pinned `unanswerable` key **alongside whatever else it emits**", which licenses
+`{"of":[…],"direct":[],"transitive":[],"unanswerable":"…"}` — and the naive reader this clause names, the
+one keying on `direct`, is still told NOBODY CALLS `f`. The remedy still carried the defect. ⟨0.27⟩ already
+settled the identical question the other way one section down: the refusal document **MUST NOT carry a
+`violations` key**, because "an empty array there is precisely the claim it cannot make", and a consumer
+keying only on `ok` must land on FAIL. A hedge beside an empty result set is that same defect wearing the
+hedge as clothing.
+
+So a verb emitting `unanswerable` MUST **withhold the result keys** it cannot fill — no `direct`, no
+`transitive`, no `path`, no `affected` — rather than emitting them empty. Keys that merely echo the
+question (`of`, `fn`, `effect`) may stay: they carry no claim about the code.
+
+*Recorded because the corrections are the point, and there were two of them on one clause. The first
+version specified the remedy as "take its absence arm", and the absence arm IS the defect — raised by
+candor-ts's arm of this rung, which flagged the `--json` silence rather than treating it as out of scope.
+The second version fixed the channel and left the shape, so a compliant engine could still ship the
+determined negative with a hedge stapled to it. A MUST whose literal compliance is the forbidden behaviour
+is worse than no MUST, because it reads as covered — and this clause managed it twice.*
 
 ⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`,
 `policyVocabulary`, `parsepolicy`'s `errors`, and now `conditional` were each a field I required — or an
@@ -3254,6 +3396,31 @@ satisfied, and a POLICY that contains no rules is the same shape and the stronge
 ignored-with-a-warning — silent reinterpretation remains the one thing a security gate must not do, and an
 engine meeting a rule kind from a newer spec rung must not refuse the whole file over it. This rung is
 about what that leniency COMPOSES TO: every line ignored is a gate, and it asked nothing.
+
+⟨0.28⟩ **AND THE CONDITION IS A DROPPED LINE, NOT AN EMPTY POLICY — the clause above is stated over its own
+instance, which is the fourth time in this document.** Its justification is per-line: *"every line ignored
+is a gate, and it asked nothing"*, and its measurement note — all four engines warn per ignored line while
+the verdict document stays silent — is exactly as true of a policy where NINE of ten lines were dropped.
+The refusal fires only at zero survivors, so the discontinuity is stark and the wrong way round:
+
+    0 of 10 rules parse   →   exit 2, fail-closed refusal document
+    1 of 10 rules parse   →   { "ok": true, "violations": [] }, exit 0, and the document says nothing
+                              about the nine gates that were never asked
+
+A 90%-gateless green is the harm this rung exists to close, arriving at every fraction below 100%.
+
+Refusal is the wrong remedy there — it would break the forward-compatibility leniency this clause has just
+finished defending. **Disclosure is the remedy**, and it is the same move ⟨0.15⟩ made for `coverage`: the
+verdict document MUST carry the lines the parse dropped, so a machine consumer can see that the gate it is
+reading is smaller than the gate that was written.
+
+    "ignored": [ { "line": <n>, "text": "<the source line, verbatim>", "reason": "<why>" }, … ]
+
+Omitted entirely when nothing was dropped, so a clean policy's verdict stays byte-identical. This is
+distinct from `unevaluated`, and the distinction is load-bearing: `unevaluated` carries rules that PARSED
+and could not be answered, `ignored` carries text that never became a rule at all. A consumer that sees
+neither is entitled to believe the policy on disk is the policy that ran — which is the claim every engine
+is currently making without support.
 
 **The refusal covers the empty file and the all-comments file too**, and that is deliberate rather than
 incidental: the operator who commits a placeholder policy and the operator who typo'd a path have written
