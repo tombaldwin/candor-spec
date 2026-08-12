@@ -7427,9 +7427,9 @@ echo
 ) || P43_OK=1
 echo "PART 43 — the sink surface matrix (SPEC §3.2 ⟨0.28⟩ flag-shaped values, §3.3 ⟨0.8⟩ a document at every sink)"
 # ENGINES: rust java ts swift
-# CONTROLS: none — delegated: gen_sink_surface.py derives the flag list from --help and FAILS on an empty derivation; cells assert the document at the sink
+# CONTROLS: none — delegated: gen_sink_surface.py derives the flag list from --help and FAILS on an empty derivation; cells assert the document at the sink; the BINARY inventory itself is checked both ways against SPEC §3.3.1 (5) — a spec-named route absent from the matrix FAILS, and a declared gap is printed every run, never silently absent
 if [ "$P43_OK" = 0 ]; then
-  echo "  -> MATCH — no value-taking flag on any binary swallows a sink, and every refusal reaches the document"
+  echo "  -> MATCH — no value-taking flag on any binary swallows a sink, every refusal reaches the document, and the binary inventory reconciles with §3.3.1 (5) both ways"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi

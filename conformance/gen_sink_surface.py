@@ -70,7 +70,100 @@ SPEC_CLAUSES = [
     ("§3.3 ⟨0.8⟩",  "On **exit 2** it writes a **fail-closed document for EVERY cause**"),
     ("§3.3.1 ⟨0.18⟩", "a typo'd or a not-applicable flag stays an exit-2 error (§3.3.1), never a silent swallow."),
     ("§3.3",        "print a usage summary that lists these flags."),
+    ("§3.3.1 ⟨0.28⟩ (5)", "EVERY ROUTE AND EVERY ENGINE THAT WRITES A REPORT."),
+    ("§3.3.1 ⟨0.28⟩ (5)", "a route is not covered by its sibling."),
 ]
+
+# =====================================================================================================
+# THE BINARY INVENTORY IS ITSELF A HAND LIST — so it is CHECKED against §3.3.1 (5), both ways.
+#
+# The flag list is derived from --help precisely because a hand enumeration finds only the surface in
+# front of the author — and then the BINARIES this matrix drives were exactly such a hand list, one
+# level up. That is how `cargo-candor policy/guard --gate-json` (a bespoke gate-sink route) and the
+# agent-fleet's `scan`/`observe --json` sat outside every guard written on 2026-08-12: no cell could
+# fail over a binary the matrix never runs.
+#
+# So the inventory is DECLARED here and checked BOTH WAYS against the route list SPEC §3.3.1 (5)
+# actually names (the "Surface as of this rung:" sentence, parsed from SPEC.md at run time — the same
+# construction as part_declarations.py, chosen over inference after inference measured 1 true : 8 false
+# positives):
+#   · a route named in the clause and absent from this declaration FAILS — the spec grew a route and
+#     the matrix silently didn't;
+#   · a route declared here that the clause no longer names FAILS — the declaration outlived a rewrite.
+# A route may be declared as a GAP with a reason: a gap stays a gap, but a visible one, printed every
+# run — never an absence. ("driven", <engine-key>) must match a key locate_engines() returns, so a
+# "driven" claim over a binary the matrix cannot locate is a FAIL, not a silent vacuity.
+# =====================================================================================================
+ROUTE_INVENTORY = {
+    "candor-scan --json":  ("driven", "rust"),
+    "candor-java --json":  ("driven", "java"),
+    "candor-ts --json":    ("driven", "ts"),
+    "candor-swift --json": ("driven", "swift"),
+    "observe --json": ("gap", "candor-agents (the agent-fleet engine, a pipx-installed Python tool) is "
+                              "not driven by this matrix — NO cell asserts its report sink or its argv "
+                              "handling; its own suite (candor-agents test.py) is the only coverage"),
+    "scan":           ("gap", "candor-agents `scan` — same engine, same gap; the clause's own words: "
+                              "a route is not covered by its sibling"),
+}
+
+# Sink routes that exist in the family but are NOT report sinks named by §3.3.1 (5) — declared here so
+# the reader of this inventory sees the whole surface, not the checked subset. Informative, printed.
+ROUTE_NOTES = [
+    ("cargo-candor policy/guard --gate-json", "a bespoke VERDICT-sink route (not a report sink); "
+     "covered in candor-rust ci/wrapper-smoke.sh (input exemption + refusal document rows, 2026-08-12)"),
+    ("candor-java verify", "driven by this matrix as a flag family inside the one jar"),
+    ("candor-query gate-verdict --gate-json", "driven by this matrix (the rust query surface)"),
+    ("MCP servers / LSP / umbrella bin/candor dispatcher", "read-only or pass-through — no report or "
+     "verdict sink of their own; the dispatcher's engines are the ones driven above"),
+]
+
+
+def check_route_inventory(eng):
+    """The both-ways check: SPEC §3.3.1 (5)'s named routes vs ROUTE_INVENTORY. Returns FAIL strings."""
+    fails = []
+    spec_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SPEC.md")
+    try:
+        text = open(spec_path).read()
+    except OSError as e:
+        return ["route-inventory: cannot read SPEC.md (%s) — this check would pass over nothing" % e]
+    # The clause's route list is one sentence: "Surface as of this rung: `a`, `b`, … `z`**."
+    # Whitespace-tolerant anchors — SPEC.md is hard-wrapped, so a phrase can carry a line break.
+    m5 = re.search(r"\(5\)\s+EVERY\s+ROUTE\s+AND\s+EVERY\s+ENGINE\s+THAT\s+WRITES\s+A\s+REPORT\."
+                   r"(.*?)(?:\n\n|\*\*\(6\))", text, re.S)
+    if not m5:
+        return ["route-inventory: SPEC §3.3.1 (5) not found — the clause this inventory is checked "
+                "against has moved or been reworded; re-anchor the parse AND re-audit the inventory"]
+    sent = re.search(r"Surface\s+as\s+of\s+this\s+rung:(.*?\.)", m5.group(1), re.S)
+    if not sent:
+        return ["route-inventory: the (5) clause no longer says 'Surface as of this rung:' — re-anchor "
+                "the parse AND re-audit the inventory"]
+    spec_routes = re.findall(r"`([^`]+)`", sent.group(1))
+    if not spec_routes:
+        return ["route-inventory: parsed the (5) sentence but found NO backticked routes — the "
+                "derivation is broken, and an empty route list must never read as 'all covered'"]
+    print("  route inventory (SPEC §3.3.1 (5), both ways):")
+    for r in spec_routes:
+        decl = ROUTE_INVENTORY.get(r)
+        if decl is None:
+            fails.append("route-inventory: SPEC §3.3.1 (5) names `%s` and this matrix neither drives "
+                         "nor declares it — the spec grew a route and the inventory silently didn't" % r)
+            continue
+        status, detail = decl
+        if status == "driven":
+            if detail not in eng:
+                fails.append("route-inventory: `%s` is declared driven via engine %r, which "
+                             "locate_engines() does not return — a vacuous 'driven'" % (r, detail))
+            else:
+                print("    driven  %-22s (engine %s%s)" % (r, detail,
+                      "" if eng[detail].get("present") else " — ABSENT this run, disclosed above"))
+        else:
+            print("    GAP     %-22s — %s" % (r, detail))
+    for r in sorted(set(ROUTE_INVENTORY) - set(spec_routes)):
+        fails.append("route-inventory: `%s` is declared here but SPEC §3.3.1 (5) no longer names it — "
+                     "the declaration outlived a rewrite; re-audit both sides" % r)
+    for name, note in ROUTE_NOTES:
+        print("    note    %-22s — %s" % (name, note))
+    return fails
 
 import argparse
 import json
@@ -429,6 +522,11 @@ def main():
 def run_matrix(ws, args):
     print("P7 — THE SINK SURFACE: (binary x verb x value-taking flag x sink spelling), derived from --help")
     eng = locate_engines(ws)
+    # The binary inventory is a hand list — checked both ways against SPEC §3.3.1 (5) before any cell
+    # runs, so a route the spec names and the matrix does not drive is a FAILURE or a printed GAP,
+    # never an absence. NOT waivable through the ratchet: a waiver accuses an engine; this accuses the
+    # suite's own coverage.
+    inv_fails = check_route_inventory(eng)
     m = Matrix(ws)
     inventories = {}     # binary label -> sorted mandatory flags (the printed inventory)
     all_mandatory = {}   # binary label -> set, for the union probe
@@ -639,10 +737,13 @@ def run_matrix(ws, args):
     for cid, why in unwaived:
         print("FAIL: %s — %s" % (cid, why))
 
+    for f in inv_fails:
+        print("FAIL: %s" % f)
+
     if _PROBE_FAULT and not _probe_fired:
         print("FAIL: probe fault requested but no sink cell ran — the property is not exercising sinks")
         return 1
-    if unwaived or stale:
+    if unwaived or stale or inv_fails:
         return 1
     print("  P7 OK — %d live cells across %d binaries (%s)"
           % (oks, len(inventories), ", ".join(sorted(inventories))))
