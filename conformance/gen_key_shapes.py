@@ -458,8 +458,33 @@ def main():
               % (len(shapes), ", ".join(live)))
 
     # (B) THE VOCABULARY RATCHET.
-    unnamed = {k: v for k, v in vocab.items()
-               if not re.search(r"\b%s\b" % re.escape(k), spec_text)}
+    #
+    # ⟨0.28⟩ "NAMED" MEANS WRITTEN AS A KEY, NOT USED AS A WORD — and this check shipped with the
+    # weaker test, which is the defect this whole file exists to catch, in the file that catches it.
+    # `\bcrossing\b` matched SPEC.md SEVEN times as ordinary English — a salience factor in the
+    # scoring formula, "a boundary crossing", "an unverified-purity hole, a boundary crossing" — and
+    # ZERO times as a key. So `crossing`, an unpinned wire field ts and swift emit from `fix` and the
+    # MCP tool contract instructs agents to branch on, scored PASS because the spec happened to
+    # discuss boundaries in prose. Found by the engine agent that went looking for the ruling.
+    #
+    # A pinned key is written as code: `key` in backticks, or inside a fenced shape block. Prose
+    # cannot pin a field name — that is the ⟨0.24⟩ general rule's whole point ("a MUST that says
+    # 'disclose X' without saying what X is called is four independent guesses"). Matching prose lets
+    # the ratchet certify exactly the debt it was built to name.
+    def spec_names(k):
+        # The identifier ALONE in backticks, or quoted-with-a-colon in a shape block. Nothing looser.
+        #
+        # Two weaker spellings were tried and both certified the debt they were built to name. A bare
+        # `\bkey\b` matched ordinary English — `crossing` appears SEVEN times in this document as a word
+        # ("a boundary crossing", a factor in the salience formula) and ZERO times as a key, so an
+        # unpinned field that ts and swift emit from `fix`, and that the MCP tool contract instructs
+        # agents to branch on, scored PASS. Allowing the key ANYWHERE INSIDE a backtick span then still
+        # matched it, via the backticked FORMULA `score = salience × benignity × hops-factor × crossing`.
+        # Prose cannot pin a field name; a backticked expression that merely mentions one cannot either.
+        esc = re.escape(k)
+        return bool(re.search(r'`"?%s"?`' % esc, spec_text)      # `key` / `"key"` — the identifier alone
+                    or re.search(r'"%s"\s*:' % esc, spec_text))  # "key": — a pinned shape block
+    unnamed = {k: v for k, v in vocab.items() if not spec_names(k)}
     if write_baseline:
         payload = {
             "_": ["GRANDFATHERED WIRE-VOCABULARY DEBT for gen_key_shapes.py check (B).",
@@ -497,7 +522,7 @@ def main():
     for k in sorted(grandfathered):
         if k not in unnamed:
             b_fail += 1
-            why = ("SPEC.md now names it" if re.search(r"\b%s\b" % re.escape(k), spec_text)
+            why = ("SPEC.md now names it" if spec_names(k)
                    else "no engine emitted it in this harvest")
             print("FAIL (B): grandfathered key `%s` is STALE — %s. Deleting the entry is part of the "
                   "fix (the ratchet runs both ways so the debt list cannot outlive the debt)" % (k, why))

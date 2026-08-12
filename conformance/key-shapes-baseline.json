@@ -8,10 +8,21 @@
   "that fix. The ratchet runs BOTH WAYS — a key below that becomes SPEC-named, or",
   "stops being emitted, FAILS as stale so this list cannot outlive the debt.",
   "Regenerate with: python3 gen_key_shapes.py --write-baseline",
-  "⟨2026-08-12⟩ EMPTIED. All 7 opening entries were pinned in SPEC §6.1 ⟨0.28⟩ the same day this",
-  "gate was built, and the both-ways ratchet then failed every one as STALE — which is the entry",
-  "path working: the list named the debt, the debt was paid, and the list could not outlive it.",
-  "An empty grandfather map is the intended steady state, not an unused feature."
+  "⟨2026-08-12, second pass⟩ The opening 7 were pinned in SPEC §6.1 and the ratchet failed them as",
+  "STALE — working as designed. Then the NAMING TEST itself was found too weak: a bare \\bkey\\b matched",
+  "SPEC prose, so `crossing` (7 prose uses as an English word, 0 as a key) scored PASS. Tightened to",
+  "the identifier alone in backticks or \"key\": in a shape block, which surfaced FIVE keys the loose",
+  "test had been certifying. Four were pinned (ambient, cleanHoist, layer, upgrade).",
+  "`crossing` is the one that needs a FAMILY RULING, not a pin: ts and swift emit it from `fix` as a",
+  "three-state discriminator (true beside a plan / false + reason / absent when refused) and the MCP",
+  "candor_fix tool contract tells agents to branch on it; rust and java emit no such key and answer",
+  "that arm as PROSE ON STDOUT UNDER --json, which is its own §3.3.1 problem. Pinning it unilaterally",
+  "would invent a wire surface for two engines; removing it breaks a published contract."
  ],
- "grandfathered": {}
+ "grandfathered": {
+  "crossing": [
+   "swift/fix",
+   "ts/fix"
+  ]
+ }
 }
