@@ -2439,19 +2439,19 @@
    "sha": "c3e7a9d7f8f16421",
    "at": "6.1 Containment",
    "excerpt": "⟨0.28⟩ **`layerPrefix` IS THE ONE THAT MUST CHANGE",
-   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+   "part": "PART 45"
   },
   {
    "sha": "6fc097cf1558be45",
    "at": "6.1 Containment",
    "excerpt": "- a field that is **always present and usually empty**",
-   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+   "part": "PART 45"
   },
   {
    "sha": "91dee06e5655a200",
    "at": "6.1 Containment",
    "excerpt": "The field is load-bearing when it is non-empty",
-   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+   "part": "PART 45"
   }
  ]
 }
