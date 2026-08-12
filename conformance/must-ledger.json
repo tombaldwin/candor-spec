@@ -1,417 +1,2457 @@
 {
-  "_": [
-    "MUST LEDGER \u2014 every normative statement of SPEC.md, classified. See must_ledger.py's header",
-    "for why this exists and what a statement is (block-granularity: MUST/REQUIRED/bold-kernel).",
-    "Each entry carries exactly ONE of:",
-    "  \"part\": \"PART NN \u2026\"      \u2014 the conformance part that exercises it (must resolve in this dir)",
-    "  \"unenforced\": \"<why>\"    \u2014 deliberately not exercised; the reason is the record",
-    "  \"status\": \"pre-ledger\"   \u2014 existed before the ledger did (the baseline freeze).",
-    "Adding a NEW entry as pre-ledger defeats the gate; a reviewer of this diff should refuse it.",
-    "`sha` anchors the whitespace-normalised block text: editing the clause orphans the entry,",
-    "which is the point \u2014 an edited MUST must be RE-confirmed. `at`/`excerpt` are informative."
-  ],
-  "entries": [
-    {"sha": "19e2edb9ad03239e", "at": "Contents", "excerpt": "**Version 0.27** — all code engines declare `0.27`; the floor is conformance-pinned. How versions move (the la", "status": "pre-ledger"},
-    {"sha": "e0e539b6a42515d0", "at": "Contents", "excerpt": "The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the **pinned", "status": "pre-ledger"},
-    {"sha": "2eb912adcc7b7bbc", "at": "Conformance tiers", "excerpt": "- **Tier 1 — the interop floor.** The report envelope and schema, the effect vocabulary, the `Unknown` trust m", "status": "pre-ledger"},
-    {"sha": "9c0d8267482c8e35", "at": "Conformance tiers", "excerpt": "- **Tier 2 — the pinned tool surfaces.** The §3.1 query shapes, the §3.3 command-line surface, and the §3.3.1 ", "status": "pre-ledger"},
-    {"sha": "036b88d777d63613", "at": "Conformance tiers", "excerpt": "Both tiers are part of the `spec` a conformant engine declares, and both are conformance-pinned. The version r", "status": "pre-ledger"},
-    {"sha": "ab01f02d434a27e5", "at": "The family, named precisely", "excerpt": "- **The four code engines** are the conformance-pinned set — candor-java, candor-scan, candor-ts, candor-swift", "status": "pre-ledger"},
-    {"sha": "181cac33993a88c8", "at": "Versioning policy", "excerpt": "The spec version is a *cross-engine* contract, but it is a **version ladder, not a lockstep stamp**. Two guara", "status": "pre-ledger"},
-    {"sha": "54b6ccb8ceb0e438", "at": "Versioning policy", "excerpt": "- **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version **identical", "status": "pre-ledger"},
-    {"sha": "30944141a67dfa24", "at": "Versioning policy", "excerpt": "- **The version each engine declares is disclosed, not assumed.** An engine emits in every report the exact sp", "status": "pre-ledger"},
-    {"sha": "11041daaa0d94fd7", "at": "Versioning policy", "excerpt": "- **Minor (additive) bump → the reference MAY lead.** A new optional field/query/artifact, a refinement that n", "status": "pre-ledger"},
-    {"sha": "567a5785c679683d", "at": "Versioning policy", "excerpt": "- **Major (breaking) bump → lockstep.** A breaking change (the envelope reshape, a removed/retyped field) is a", "status": "pre-ledger"},
-    {"sha": "749dc41cc87859a8", "at": "Versioning policy", "excerpt": "- **Engine SPEC EXTENSIONS (2026-07-14).** An **ecosystem-specific surface** — one whose sources exist in a si", "status": "pre-ledger"},
-    {"sha": "1e94e099bb5bd763", "at": "Versioning policy", "excerpt": "So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the contrac", "status": "pre-ledger"},
-    {"sha": "c1a7c99018d74eea", "at": "Versioning policy", "excerpt": "See the [changelog](#8-changelog) for what each version added. An implementation MUST emit the spec version it", "status": "pre-ledger"},
-    {"sha": "efe8395991740dcb", "at": "1. Effects", "excerpt": "An implementation MAY add language-specific effects, but SHOULD use these names where they apply. `Unknown` is", "status": "pre-ledger"},
-    {"sha": "1a3f8389a987d974", "at": "1. Effects", "excerpt": "Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not** class", "status": "pre-ledger"},
-    {"sha": "2b0bd6bb6113c179", "at": "2. The report", "excerpt": "The `candor` header records which engine produced the report (§2.1). A bare top-level array (no envelope) rema", "status": "pre-ledger"},
-    {"sha": "a708b5c451052a4b", "at": "2. The report", "excerpt": "**One report covers ONE package** (crate / npm package / JVM module / SwiftPM package / fleet). An engine MUST", "status": "pre-ledger"},
-    {"sha": "35e78c2d7ffd0ee8", "at": "2. The report", "excerpt": "**The factory-bound receiver — `typeSurface`** ⟨0.23⟩ (design: `DEP-RECEIVER-TYPING-DESIGN.md`; produced and c", "status": "pre-ledger"},
-    {"sha": "fd89e700b5b093c2", "at": "2. The report", "excerpt": "whose keys and values are **fully qualified in the producing package's own namespace — the same namespace the ", "status": "pre-ledger"},
-    {"sha": "3b60476af643a0c8", "at": "2. The report", "excerpt": "- the producer publishes a **plain nominal** return only. A `Result<Conn,E>`/`Option<Conn>`/`Vec<Conn>` return", "status": "pre-ledger"},
-    {"sha": "8849287bfb28fbbd", "at": "2. The report", "excerpt": "- **a miss falls back to the disclosure of the unformed key, never to silence** (the three-row rule — a lookup", "status": "pre-ledger"},
-    {"sha": "49833659be632f2c", "at": "2. The report", "excerpt": "**Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§\"Versioning policy\" ", "status": "pre-ledger"},
-    {"sha": "1b15c4434f1a1fc1", "at": "2. The report", "excerpt": "⟨0.15⟩ **The `coverage` envelope field** — the κ-coverage ledger (§7 item 14) as data, so \"what the scan could", "status": "pre-ledger"},
-    {"sha": "62a399050f7977b3", "at": "2. The report", "excerpt": "⟨0.28⟩ **AND THE SAME MUST CARRIES THE ⟨0.21⟩ MANIFEST, WHICH IS THE STRONGER CAVEAT AND THE ONE THAT DOES NOT", "status": "pre-ledger"},
-    {"sha": "60d48d42bde0d0d3", "at": "2. The report", "excerpt": "So: **a report-consuming verb MUST re-disclose a non-empty `unanalyzed`, and an `analyzed.count` of 0, on the ", "status": "pre-ledger"},
-    {"sha": "07b5fb764edacf9e", "at": "2. The report", "excerpt": "**AND THE SCOPE IS ANSWERS, NOT ONLY VERDICTS — the wording above is narrower than its own argument.** It bind", "status": "pre-ledger"},
-    {"sha": "2097278e20122e04", "at": "2. The report", "excerpt": "The obligation therefore binds **any verb whose output could be read as a negative finding about the code** — ", "status": "pre-ledger"},
-    {"sha": "8df3d2d05341a550", "at": "2. The report", "excerpt": "⟨0.28⟩ **AND HERE IS WHAT THE TRAVELLING CAVEAT IS CALLED — because the clause above shipped without saying, a", "status": "pre-ledger"},
-    {"sha": "90d1dd114bbbb320", "at": "2. The report", "excerpt": "`incomplete` is the one key a consumer may branch on alone and be safe under both causes; the other two name W", "status": "pre-ledger"},
-    {"sha": "d8258a51a7dbac91", "at": "2. The report", "excerpt": "**A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** — `baselineIncomplete`,", "status": "pre-ledger"},
-    {"sha": "80ba485994c78f7b", "at": "2. The report", "excerpt": "**The channel is the machine document itself** — the same document the answer is in, not stderr beside it. Tha", "status": "pre-ledger"},
-    {"sha": "977623abd7af2cca", "at": "2. The report", "excerpt": "⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The report", "status": "pre-ledger"},
-    {"sha": "28dd0a70ca1c3dcb", "at": "2. The report", "excerpt": "⟨0.24⟩ **`analyzed.count == 0` IS \"I JUDGED NOTHING\", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE.** A ch", "status": "pre-ledger"},
-    {"sha": "e818eb5d593415de", "at": "2. The report", "excerpt": "**State the harm precisely, because the loose form is misleading.** The empty report carries no effects, so th", "status": "pre-ledger"},
-    {"sha": "14c7f678f5daa42b", "at": "2. The report", "excerpt": "**The wire ALREADY distinguishes the two cases and no engine reads it.** A `pub use`-only facade package emits", "status": "pre-ledger"},
-    {"sha": "ff2a1faf1268cfbd", "at": "2. The report", "excerpt": "| `analyzed.count` | `functions` | what it means | what a consumer MUST do |", "status": "pre-ledger"},
-    {"sha": "0fa7fbfe710f0caf", "at": "2. The report", "excerpt": "| `0` | `[]` | **nothing was judged** | treat the package as **NOT COVERED** — the κ ledger records it `invisi", "status": "pre-ledger"},
-    {"sha": "801a0ac4ad160780", "at": "2. The report", "excerpt": "| `n > 0` | `[]` | **n units judged, all pure** | believe it (§2 rule 3). This is a legitimate all-pure claim ", "status": "pre-ledger"},
-    {"sha": "61238589575e1e7a", "at": "2. The report", "excerpt": "⟨0.24⟩ **`count` MUST BE A NON-NEGATIVE INTEGER; anything else is UNREADABLE and fails closed.** A review foun", "status": "pre-ledger"},
-    {"sha": "7fb8e0d5df57590c", "at": "2. The report", "excerpt": "⟨0.24⟩ **THE GENERAL RULE THESE TWO ARE INSTANCES OF: A KEY THAT IS PRESENT BUT UNPARSEABLE IS CORRUPT INPUT, ", "status": "pre-ledger"},
-    {"sha": "ca14fba0c7ebd383", "at": "2. The report", "excerpt": "- `unanalyzed: [{\"unit\":…,\"why\":…}]` — right shape, wrong field names, exactly what a hand-built or foreign-pr", "status": "pre-ledger"},
-    {"sha": "ca880b0bf64a3cc0", "at": "2. The report", "excerpt": "- `unanalyzed: [\"src/broken.rs\"]` — a bare string list. **All four dropped it and exited 0.**", "status": "pre-ledger"},
-    {"sha": "05b820f349087e3b", "at": "2. The report", "excerpt": "So: on `analyzed`, `unanalyzed`, `functions`, and every §2 key a verdict reads, an implementation MUST disting", "status": "pre-ledger"},
-    {"sha": "bf8aa733f6097a92", "at": "2. The report", "excerpt": "⟨0.24⟩ **A report with NO `functions` KEY is MALFORMED, and MUST be refused LOUDLY — not believed, not silentl", "status": "pre-ledger"},
-    {"sha": "46535e893943e995", "at": "2. The report", "excerpt": "**KEY THE RULE ON THE INTEGER, NEVER ON THE EMPTINESS OF `functions` — and here is the number.** Measured over", "status": "pre-ledger"},
-    {"sha": "315727e736c7df2c", "at": "2. The report", "excerpt": "**Two structural traps for an implementer**, both found the same way. **Coverage is anchored TWICE** — the env", "status": "pre-ledger"},
-    {"sha": "a5dbbfd27bde5232", "at": "2. The report", "excerpt": "**Row 3 retires a pre-⟨0.21⟩ affordance, and that is deliberate.** A manifest-less empty report previously DID", "status": "pre-ledger"},
-    {"sha": "92fda10d0125cf3f", "at": "2. The report", "excerpt": "⟨0.24⟩ **THE SAME RULE BINDS `gate --report` (§3.1) — AS A DISCLOSURE, NOT AS AN EXIT CODE.** A report present", "status": "pre-ledger"},
-    {"sha": "690cb2a252952830", "at": "2. The report", "excerpt": "**The exit code and the verdict document are UNCHANGED.** ⟨0.24⟩ *This clause first read \"MUST say so rather t", "status": "pre-ledger"},
-    {"sha": "99d3877c8932e33b", "at": "2. The report", "excerpt": "⟨0.24⟩ **THE CONFLICT CASE — a package chained TWICE, once judged and once not.** A `count: 0` report makes **", "status": "pre-ledger"},
-    {"sha": "26037c8b81523e18", "at": "2. The report", "excerpt": "Note it runs OPPOSITE to the ⟨0.21⟩ `incomplete` reconciliation, and deliberately: an `incomplete` report make", "status": "pre-ledger"},
-    {"sha": "64fd241274c00e81", "at": "2. The report", "excerpt": "**One engine diverges here on purpose and the reason generalises.** candor-rust keeps the HEDGE on conflict ra", "status": "pre-ledger"},
-    {"sha": "df413b2dc4c7499a", "at": "2. The report", "excerpt": "**Note what this does NOT fix.** It separates *judged nothing* from *judged and found nothing*. It does not se", "status": "pre-ledger"},
-    {"sha": "16f7b97d1478662d", "at": "2. The report", "excerpt": "- `\"unanalyzed\": [ { \"path\": \"<file>\", \"reason\": \"<why>\" } ]` — the TARGET's own source candor could NOT analy", "status": "pre-ledger"},
-    {"sha": "c8f9ee0716add401", "at": "2. The report", "excerpt": "**Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not recognize. A", "status": "pre-ledger"},
-    {"sha": "beb17d4c0f6aa204", "at": "2. The report", "excerpt": "// does not run one MUST OMIT all three, never emit `[]`.", "status": "pre-ledger"},
-    {"sha": "6ce6bccfa4cc7141", "at": "2. The report", "excerpt": "\"unknownWhy\": [\"dispatch:Foo.bar\"], // ⟨0.6⟩ REQUIRED when this fn introduces `Unknown` DIRECTLY (a source); a", "status": "pre-ledger"},
-    {"sha": "d35ff507845fd97c", "at": "2. The report", "excerpt": "// it participates in gating); an engine MUST do at least", "status": "pre-ledger"},
-    {"sha": "c4bb64137c3e8a30", "at": "2. The report", "excerpt": "// effect MUST be attributed to an \"initializer\" unit — a", "status": "pre-ledger"},
-    {"sha": "4cf292a300d03529", "at": "2. The report", "excerpt": "// across the package boundary. Producers MUST emit it", "status": "pre-ledger"},
-    {"sha": "45d95ffbcce90250", "at": "2. The report", "excerpt": "`inferred` MUST be transitive: if A calls B and B performs `Net`, A's `inferred` includes `Net` — **including ", "status": "pre-ledger"},
-    {"sha": "06ca30f214b58b17", "at": "2. The report", "excerpt": "`hash` is the join key a dependent uses to inherit a function's effects across a package boundary — both withi", "status": "pre-ledger"},
-    {"sha": "65b324503b2fa6c4", "at": "2. The report", "excerpt": "⟨0.27⟩ **A CONFIGURED DEP THAT CANNOT BE READ IS UNEVALUABLE (exit 2), NOT REDUCED COVERAGE.** Measured across", "status": "pre-ledger"},
-    {"sha": "63673b7e6efc3cab", "at": "2. The report", "excerpt": "Both postures were internally coherent, which is why this needed a ruling rather than a bug report. The contin", "status": "pre-ledger"},
-    {"sha": "e481f93700ad8276", "at": "2. The report", "excerpt": "So: a dep path named by `deps`/`CANDOR_DEPS` that does not exist or cannot be read MUST exit 2, naming it. Gen", "status": "pre-ledger"},
-    {"sha": "14983e66a4d38d00", "at": "2. The report", "excerpt": "⟨0.25⟩ **An ambiguous key — two entries sharing it — MUST be UNIONED. It MUST NOT be picked from, and it MUST ", "status": "pre-ledger"},
-    {"sha": "ec08a2a11e3a1cd5", "at": "2. The report", "excerpt": "**This REVERSES ⟨0.24⟩ and earlier, which said such a key \"is dropped, not picked from — §4's under-report-don", "status": "pre-ledger"},
-    {"sha": "e29c1fb8a83fa74e", "at": "2. The report", "excerpt": "**The union is not a hedge, and that is measured rather than argued.** Across three real `.candor/deps` trees ", "status": "pre-ledger"},
-    {"sha": "dcbb4b86fc1d3bb9", "at": "2. The report", "excerpt": "**The collision the drop rule was written for — two UNRELATED functions sharing an imprecise key — is real, an", "status": "pre-ledger"},
-    {"sha": "98f31183d39309de", "at": "2. The report", "excerpt": "**TRUST LEVELS DO NOT RANK HERE.** A §2.1-downgraded entry (rule 2) joins the union like any other; an impleme", "status": "pre-ledger"},
-    {"sha": "46f6941bdfa8a645", "at": "2. The report", "excerpt": "2. **Stale reports are not trusted**: §2.1's version-trust rule applies at the join, and a report whose produc", "status": "pre-ledger"},
-    {"sha": "f1e64c42e27db991", "at": "2. The report", "excerpt": "3. **A chained package is COVERED, not blind, including its silence.** Reports omit pure functions, so a call ", "status": "pre-ledger"},
-    {"sha": "037d7554b163b8c7", "at": "2. The report", "excerpt": "`fs` refines the `Fs` effect into `read` / `write` kinds: the detail a consumer needs to tell a read-only func", "status": "pre-ledger"},
-    {"sha": "d592d5e7ddd78519", "at": "2. The report", "excerpt": "`hosts` refines the `Net` effect with the endpoint(s) a call talks to, but **only the statically decidable sub", "status": "pre-ledger"},
-    {"sha": "3f06528980aecf27", "at": "2. The report", "excerpt": "`cmds` (for `Exec`), `paths` (for `Fs`) and `tables` (for `Db`) follow the **same rules as `hosts`**: the stat", "status": "pre-ledger"},
-    {"sha": "56771d43ceac12b6", "at": "2. The report", "excerpt": "The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a producer S", "status": "pre-ledger"},
-    {"sha": "a8e018f18f011aea", "at": "2.1 Provenance (the `candor` header)", "excerpt": "A report is only meaningful relative to the engine that produced it: a richer classifier or a new resolution r", "status": "pre-ledger"},
-    {"sha": "531332e98c07fd22", "at": "2.1 Provenance (the `candor` header)", "excerpt": "- `version`: the engine **build identity** (a build id / git hash / release tag). It answers \"which binary pro", "status": "pre-ledger"},
-    {"sha": "037cff87c7ddd21a", "at": "2.1 Provenance (the `candor` header)", "excerpt": "- `spec`: the **candor-spec contract version** this engine implements (`\"0.15\"`). This is the version *this do", "status": "pre-ledger"},
-    {"sha": "9917875eb842395d", "at": "2.1 Provenance (the `candor` header)", "excerpt": "⟨0.27⟩ **`resolves` — WHICH OPTIONAL REFINEMENTS THIS PRODUCER COMPUTES.** A top-level array beside `extension", "status": "pre-ledger"},
-    {"sha": "3aec9db62d5f940f", "at": "2.1 Provenance (the `candor` header)", "excerpt": "**Why it exists: without it, the absence of an optional field is OVERLOADED and a consumer cannot read it.** A", "status": "pre-ledger"},
-    {"sha": "e4d063116e37485d", "at": "2.1 Provenance (the `candor` header)", "excerpt": "That overloading is not hypothetical and it is what motivated this rung. `fs` had been in this document for a ", "status": "pre-ledger"},
-    {"sha": "7de16f9030a47bce", "at": "2.1 Provenance (the `candor` header)", "excerpt": "- A producer **MUST NOT** list a surface it does not compute. Doing so converts \"unimplemented\" into a false \"", "status": "pre-ledger"},
-    {"sha": "249273f05e63091b", "at": "2.1 Provenance (the `candor` header)", "excerpt": "- A consumer **MUST NOT** read an absent optional field as \"the producer looked and could not tell\" unless tha", "status": "pre-ledger"},
-    {"sha": "6a615c6f45afd001", "at": "2.1 Provenance (the `candor` header)", "excerpt": "**Eligible surfaces are those whose PRESENCE is a positive claim.** `fs` is: a present `fs` is an affirmative ", "status": "pre-ledger"},
-    {"sha": "f318df45c020c430", "at": "2.2 The call-graph sidecar", "excerpt": "Crucially, unlike the report — which omits pure functions and records only effect-relevant `calls` — the sidec", "status": "pre-ledger"},
-    {"sha": "4aa9133e366f1628", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.24⟩ **`Llm` REFINES `Net`; `Db` DOES NOT — and this sentence used to say they did so alike.** It read \"`Llm", "status": "pre-ledger"},
-    {"sha": "10de9b1a72a9ab39", "at": "2.2 The call-graph sidecar", "excerpt": "It was not a wording problem. PAPER3's Definition 2 took the sentence at its word and carried `Db ⊑ₑ Net`, Def", "status": "pre-ledger"},
-    {"sha": "671ff3371c33cdb1", "at": "2.2 The call-graph sidecar", "excerpt": "**The residual is real and is a CLASSIFIER question, not a gate one.** A *networked* database call is genuine ", "status": "pre-ledger"},
-    {"sha": "192c784cbdb9eddc", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.24⟩ **`callgraph` and `hierarchy` are RESERVED trailing segments, and a report-locator glob MUST exclude th", "status": "pre-ledger"},
-    {"sha": "0d61b21a41c518c9", "at": "2.2 The call-graph sidecar", "excerpt": "That is a FALSE DISCLOSURE, and it was not cosmetic. Three measured consequences, each against a sidecar-remov", "status": "pre-ledger"},
-    {"sha": "508ffe4d8ba5f553", "at": "2.2 The call-graph sidecar", "excerpt": "The exclusion MUST be a **denylist** — carve out the reserved segments, keep accepting everything else. The in", "status": "pre-ledger"},
-    {"sha": "a59b3d8be6018395", "at": "2.2 The call-graph sidecar", "excerpt": "**The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`, and t", "status": "pre-ledger"},
-    {"sha": "004065778afc1647", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.7⟩ **The type-hierarchy sidecar.** Alongside the report, an engine whose language has class/interface/ prot", "status": "pre-ledger"},
-    {"sha": "8645e326626cd99f", "at": "2.2 The call-graph sidecar", "excerpt": "The type name keys match the owner type in the report's `dispatch:<owner>.<member>` reasons (§4) and the funct", "status": "pre-ledger"},
-    {"sha": "d2ca1c4c4708d39c", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.26⟩ **THE KEY SET IS THE MANIFEST: an absent type is UNANSWERABLE, never \"has no supertypes\".**", "status": "pre-ledger"},
-    {"sha": "7e976b546128bad8", "at": "2.2 The call-graph sidecar", "excerpt": "A producer MUST emit a key for **every type it indexed**, carrying `[]` when that type has no supertypes — whi", "status": "pre-ledger"},
-    {"sha": "774198fe34250d24", "at": "2.2 The call-graph sidecar", "excerpt": "**Why this is a rung and not a clarification: absence carried two meanings and the format could not tell them ", "status": "pre-ledger"},
-    {"sha": "a6d6e185518b7b5b", "at": "2.2 The call-graph sidecar", "excerpt": "**Measured, and the shape is the argument.** On the `callers --include-unknown` frontier fixture (13 implement", "status": "pre-ledger"},
-    {"sha": "1f9a391a57e55612", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.26⟩ **`@unanalyzed` — types the pass TRIED and could not index.** Reserved keys are `@`-prefixed, so they c", "status": "pre-ledger"},
-    {"sha": "a50ef9e2ecc4ae5f", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.26⟩ **THE §5 RECONCILIATION TRIO IS PRESENT-OR-ABSENT, NEVER EMPTY-AS-A-CLAIM.**", "status": "pre-ledger"},
-    {"sha": "62378b42b38a8fa8", "at": "2.2 The call-graph sidecar", "excerpt": "`declared` / `undeclared` / `overdeclared` are the outputs of the §5 capability-reconciliation pass. An engine", "status": "pre-ledger"},
-    {"sha": "2bc481e87ccce922", "at": "2.2 The call-graph sidecar", "excerpt": "This is §2.2 ⟨0.26⟩'s rule one layer up, and ⟨0.21⟩'s before that: **an empty set is a positive claim.** `unde", "status": "pre-ledger"},
-    {"sha": "9ca2464e085f90a1", "at": "2.2 The call-graph sidecar", "excerpt": "**Measured, and the shape is the argument.** Only one engine implements the §5 codes (AS-EFF-001/002/004) at a", "status": "pre-ledger"},
-    {"sha": "00a8432132e94c4e", "at": "2.2 The call-graph sidecar", "excerpt": "**That admission is the load-bearing part, and it indicts a CHECK rather than an engine.** A schema-parity com", "status": "pre-ledger"},
-    {"sha": "13bca9099dbd57f5", "at": "2.2 The call-graph sidecar", "excerpt": "**Deserialization is half the contract.** A reader that defaults an absent array to `[]` destroys the distinct", "status": "pre-ledger"},
-    {"sha": "e89a05b0b272e973", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.24⟩ **EVERY ORDERING — in a report and in a query output — MUST be locale-INDEPENDENT.** Sort by Unicode co", "status": "pre-ledger"},
-    {"sha": "67c0e73058edd478", "at": "2.2 The call-graph sidecar", "excerpt": "**ASCII DOES NOT PROTECT YOU HERE, and that is what makes this clause separate from the collation one.** The c", "status": "pre-ledger"},
-    {"sha": "6bcf2fb9fe91356a", "at": "2.2 The call-graph sidecar", "excerpt": "A CONTROL FOR THIS MUST BE CHOSEN AGAINST A LOCALE THAT ACTUALLY REORDERS ASCII. Turkish is the intuitive choi", "status": "pre-ledger"},
-    {"sha": "b9f2aecedf10caf1", "at": "2.2 The call-graph sidecar", "excerpt": "Note this is **separate from, and orthogonal to, the collation rule** for a single joined field. They are diff", "status": "pre-ledger"},
-    {"sha": "385a5d9536a54b95", "at": "2.2 The call-graph sidecar", "excerpt": "- **This rule (locale-independence) binds EVERY ordering**, in every report and every query output. It is sati", "status": "pre-ledger"},
-    {"sha": "61d90c02edcf8bb9", "at": "2.2 The call-graph sidecar", "excerpt": "- **Code-point order is required ONLY where a field's collation is pinned** (§3.1's `viaDispatchOn`). It is th", "status": "pre-ledger"},
-    {"sha": "d193a0368e535786", "at": "2.2 The call-graph sidecar", "excerpt": "Read the other way — code-point mandatory everywhere — this clause would make a bare `.sort()` in any UTF-16 l", "status": "pre-ledger"},
-    {"sha": "b8fb0c29e952d345", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.23⟩ **EVERY VALUE IN THIS FILE IS AN ARRAY OF STRINGS, and that is a constraint on WRITERS.** A producer MU", "status": "pre-ledger"},
-    {"sha": "af55553447798ae4", "at": "2.2 The call-graph sidecar", "excerpt": "*This was first written the other way round, as a requirement on readers, and that is the mistake the rule now", "status": "pre-ledger"},
-    {"sha": "79f324587ecbd188", "at": "2.2 The call-graph sidecar", "excerpt": "The one metadata key defined so far is candor-java's `\"@superclass\"` — a **flat array** `[type, superclass, ty", "status": "pre-ledger"},
-    {"sha": "4844dacb5e2b153a", "at": "2.2 The call-graph sidecar", "excerpt": "⟨0.24⟩ **RULED — see §3.1: an EMPTY sidecar, an ABSENT one and an UNPARSEABLE one are the SAME INPUT, and all ", "status": "pre-ledger"},
-    {"sha": "62889ab7d859f448", "at": "3. Modes", "excerpt": "- **baseline guard**: diff against a saved report and flag functions that *gained* an effect. ⟨0.16⟩ Existence", "status": "pre-ledger"},
-    {"sha": "ffaf2ed4088e32cd", "at": "3. Modes", "excerpt": "- **risk** (optional, **heuristic**): flag an effect whose argument derives from a function parameter (e.g. `f", "status": "pre-ledger"},
-    {"sha": "7f7494e65a1453cd", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **gains `<current>` `<baseline>`**: same two inputs; the package-level **gained-capability alarm** — the eff", "status": "pre-ledger"},
-    {"sha": "1962621d29d3567f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's provenance ", "status": "pre-ledger"},
-    {"sha": "1f4b633dfe11888e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **tour `[<N>]`** ⟨0.11⟩: the N (default 10) most *surprising* transitive reaches in the report — each a beni", "status": "pre-ledger"},
-    {"sha": "aa005842afa7a3fe", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`parsepolicy` MUST NOT REFUSE A POLICY IT CAN READ AND CANNOT HONOUR. It REPORTS that parse, includin", "status": "pre-ledger"},
-    {"sha": "b4bd7894907bd285", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: `parsepolicy` emits its parse **and an `errors` list**, and exits 0. Each entry is `{ \"kind\", \"token\", \"ac", "status": "pre-ledger"},
-    {"sha": "4806585dcaff8111", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`errors` CARRIES EVERY LINE THE ENGINE DID NOT HONOUR AS WRITTEN — not only unrecognised tokens.** Me", "status": "pre-ledger"},
-    {"sha": "8f2307f52b776dc7", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "This is deliberately **additive to the witness and silent about the gate.** Whether a dropped rule should also", "status": "pre-ledger"},
-    {"sha": "67badfa923bff24b", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "These bind **engines, not consumers**: a consumer that only reads the JSON report is fully conformant. For an ", "status": "pre-ledger"},
-    {"sha": "71a81deb9efe5efc", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "`show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved them (§2", "status": "pre-ledger"},
-    {"sha": "57b871a323a06cab", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**The surprising-reach surface** ⟨0.11⟩ (`tour`, and the scan-time opener). An engine SHOULD surface, at scan ", "status": "pre-ledger"},
-    {"sha": "ed905cd37a3b20bf", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**A located report that yields no trustworthy functions MUST fail loudly** ⟨0.11⟩ (exit 2, the failure disclos", "status": "pre-ledger"},
-    {"sha": "3d03f06e474bffee", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`gate --report <locator> --policy <file>` — apply a policy to an EXISTING report, with no scan.** Eve", "status": "pre-ledger"},
-    {"sha": "3d2fa59afcdd7cef", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Two things this buys, and the second is why it is a MUST rather than a convenience.", "status": "pre-ledger"},
-    {"sha": "ee8901d0b80754c6", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "An engine MUST NOT re-derive, widen, or re-classify anything while serving this verb: it reads `S` and `D` fro", "status": "pre-ledger"},
-    {"sha": "a64fefcf72763e1c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**SHAPE** (reference implementation, candor-java): `gate --report <locator> --policy <file> [--json] [--gate-j", "status": "pre-ledger"},
-    {"sha": "efdaecae60f96fd7", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**EQUIVALENCE IS THE ACCEPTANCE TEST, AND IT IS BYTE-LEVEL.** For any report a scan produced, `gate --report <", "status": "pre-ledger"},
-    {"sha": "9a04e0e1a54ef644", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never evaluate", "status": "pre-ledger"},
-    {"sha": "9f47a7c647e74e12", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into a ", "status": "pre-ledger"},
-    {"sha": "72c27459e6ca5dad", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`allow <E> …`** — the AS-EFF-008 literal allowlist. Its surface-completeness marker **is not guaranteed** ", "status": "pre-ledger"},
-    {"sha": "1ff9e2af6ac498df", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a live ", "status": "pre-ledger"},
-    {"sha": "a7c4bc76dad5e405", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **REFUSE ONLY WHEN THE ABSENT DATUM COULD CHANGE THE ANSWER — the refusal is MINIMAL, not coarse, and m", "status": "pre-ledger"},
-    {"sha": "93fbbbdd92eca0ce", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The refusal's **granularity differs by cause, and that is deliberate**: whole-policy for `forbid`/`allow` (enf", "status": "pre-ledger"},
-    {"sha": "719dbb0cedb58ce9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE FOURTH CHANNEL: POLICY VOCABULARY ANCHORS AT THE POLICY FILE, ON BOTH ROUTES.** §3.1's MUST NOT n", "status": "pre-ledger"},
-    {"sha": "6471af1d37bc9719", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- `CANDOR_CONFIG` alone can flip the verdict, so the verb is **not literally a pure function of `(report, poli", "status": "pre-ledger"},
-    {"sha": "fd7035706daf7158", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **The two routes anchor differently.** All four gate verbs anchor at the **policy file's** directory while a", "status": "pre-ledger"},
-    {"sha": "fa41c45900f80106", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**RULING.** `unknown-alias` — and any future key that supplies POLICY VOCABULARY rather than scan configuratio", "status": "pre-ledger"},
-    {"sha": "329f228e1ddb9afd", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **AND THE AMBIENCE MUST BE DISCLOSED.** If a config file supplied vocabulary that participated in the v", "status": "pre-ledger"},
-    {"sha": "2be7cd45a0e4e335", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **A TYPO'D EFFECT NAME DELETES THE RULE, SILENTLY, FOUR-WAY GREEN — and the token rule stopped at the b", "status": "pre-ledger"},
-    {"sha": "29f57e3798fd793c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The operator reads an armed `deny Net`; there is no gate at all. This document already calls a dropped rule *\"", "status": "pre-ledger"},
-    {"sha": "e89b6d113c2fffbc", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`allow`'s effect position is a fixed, closed FIVE-token set** — `Net`, `Exec`, `Fs`, `Db`, `Llm`. ⟨0.24⟩ *", "status": "pre-ledger"},
-    {"sha": "c6a7b3280fdd8509", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **A `deny` whose effect list ends up EMPTY after scope-splitting is malformed under either reading** — there", "status": "pre-ledger"},
-    {"sha": "2b036cc57aa45f97", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **CORRUPTION IS JUDGED PER KEY *ROLE*, NOT PER RULE — and the decisive argument is that trustworthiness", "status": "pre-ledger"},
-    {"sha": "63c82aa0ba09e895", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Consulted-keys is wrong, and not by preference: it makes the same report trustworthy under one policy and un", "status": "pre-ledger"},
-    {"sha": "98863630cad31291", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "But producer impeachment is not \"any bad byte refuses\" either, and this document already ruled otherwise witho", "status": "pre-ledger"},
-    {"sha": "884889416a63b190", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE FIRING CONDITION IS OVER THE REACHABLE CLOSURE, NOT \"THE FUNCTION'S OWN ENTRY\".** `5a8cf48` and `", "status": "pre-ledger"},
-    {"sha": "6cecfc49675f3a47", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not answer `true`, and it does not answer `fa", "status": "pre-ledger"},
-    {"sha": "a72d629187cc4e2d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So the field is **omitted**, and `incomplete: true` plus the `unanalyzed` manifest take its place. A consumer ", "status": "pre-ledger"},
-    {"sha": "fb493d0a76c8c5f1", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE GENERAL LAW: AN ADVISORY VERB MAY BE LESS CERTAIN THAN THE GATE, NEVER MORE.** Three separate mea", "status": "pre-ledger"},
-    {"sha": "a78af0b9793070e8", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "3. and this one: over a report carrying `hosts` but no `netClass`, **`gate --report` REFUSES (§3.1 answerabili", "status": "pre-ledger"},
-    {"sha": "560a14d890e80624", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "All three are one defect: **the advisory verb was more confident than the gate over identical bytes.** The cur", "status": "pre-ledger"},
-    {"sha": "11eead2732346260", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`unverified` MUST NAME the function.** A function the gate COULD NOT JUDGE is an unverified hole in the st", "status": "pre-ledger"},
-    {"sha": "f08817f8efa84104", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`fix-gate` AND `fix` MUST NOT offer a remedy premised on evidence the gate refused to read.** A hoist plan", "status": "pre-ledger"},
-    {"sha": "a406943ab45e4a5d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **Both carry `unevaluated: [ { \"rule\", \"why\" } ]`** — the gate's own shape (§3.1), because it is the same di", "status": "pre-ledger"},
-    {"sha": "ae49427fbff1e2ad", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Why this is a LAW and not a fourth patch:** the three instances differ in mechanism — a lenient reader, a mi", "status": "pre-ledger"},
-    {"sha": "f8c29a3fa4c59237", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **\"THE SAME BYTES\" MEANS THE SAME REPORT SET, AND THAT WAS NOT TRUE.** candor-java measured the relatio", "status": "pre-ledger"},
-    {"sha": "a3c791046f413eec", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **AND `ok` IS OMITTED FOR THE WITHHELD-RULE TRIGGER TOO, not set to `false`.** `4fd140c` argued the `fa", "status": "pre-ledger"},
-    {"sha": "a5ff53cc259a3e2d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME BYTES.** ", "status": "pre-ledger"},
-    {"sha": "a11b8cd85cf8979d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So the rule is a RELATION, not a shape: whatever leniency a reader applies, the advisory verb's incompleteness", "status": "pre-ledger"},
-    {"sha": "aea12799222da986", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE SAME RULE BINDS EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later s", "status": "pre-ledger"},
-    {"sha": "55a603323f6a8c5f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "`unverified` is the sharpest case in the family: **it is the verb that exists to say \"your green gate is not p", "status": "pre-ledger"},
-    {"sha": "4961f989149b8f81", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: an advisory verb over an incomplete report emits `incomplete: true` plus the `unanalyzed` manifest and **O", "status": "pre-ledger"},
-    {"sha": "07fc26e3b359f2be", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **AND THE DISCLOSURE MUST REACH EVERY CHANNEL THE VERB ANSWERS ON, WHICH ITS TESTS PROBABLY CANNOT SEE.", "status": "pre-ledger"},
-    {"sha": "1f8636aad8c8531e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED: `\"cond", "status": "pre-ledger"},
-    {"sha": "2153270373016f86", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Neither of the two obvious answers is right. Printing the rule stripped of its filter (`deny Net` for `deny Ne", "status": "pre-ledger"},
-    {"sha": "3da5474f41367456", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ *I MIS-TRANSCRIBED THIS PIN, WHICH IS ITS OWN LESSON.* The shape above was written from the description", "status": "pre-ledger"},
-    {"sha": "dc64e89e2a5f6cc8", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`errors[].accepted` IS AN ARRAY OF TOKENS, and `kind` is drawn from a CLOSED set** — `reason-class/al", "status": "pre-ledger"},
-    {"sha": "f6299b48d00e896f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ *`rule-form` was missing and the set was wrong the day it was pinned — the SIXTH time I have scoped a c", "status": "pre-ledger"},
-    {"sha": "725658938842747a", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE STALE-DOCUMENT RULE BINDS EVERY MACHINE-OUTPUT PATH, NOT JUST `--gate-json`.** The argument — *a ", "status": "pre-ledger"},
-    {"sha": "ca2336c3a0b36931", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND HERE IS THE MUST FOR THE REPORT SINK, WITH A SHAPE.** The ⟨0.24⟩ clause above generalised the *wh", "status": "pre-ledger"},
-    {"sha": "dc232428d9b0c3f3", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(1) THE ARMING RULE, RESTATED FOR THE REPORT SINK.** As soon as `--json <path>` has been parsed and accepted", "status": "pre-ledger"},
-    {"sha": "d70b630eb428d45e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer a", "status": "pre-ledger"},
-    {"sha": "e85738a0371bdcae", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **THE `unanalyzed[].reason` VOCABULARY, MINTED HERE RATHER THAN CITED.** This clause said the string \"u", "status": "pre-ledger"},
-    {"sha": "86f980bbae4ff9f5", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**AND THE ARMED DOCUMENT IS WRITTEN BEFORE THE CAUSE EXISTS.** Arming happens at parse time; the failure that ", "status": "pre-ledger"},
-    {"sha": "619c3a806bc0b958", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(3) THE INPUT EXEMPTION FROM ⟨0.27⟩ (2) COVERS THE PATH, NOT THE RUN.** A `--json` path naming an INPUT of t", "status": "pre-ledger"},
-    {"sha": "4aad976dc52ac12d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND AN INPUT LOCATOR NAMES A SET — COMPARE THE EXPANSION, NEVER THE TOKEN.** \"Artifacts not strings\" ", "status": "pre-ledger"},
-    {"sha": "7e655eccaa291241", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Found independently in three engines, and it is one defect with three spellings.** Measured: `gate --report ", "status": "pre-ledger"},
-    {"sha": "61dd96a9ad5e8b71", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: **before comparing, expand each input locator exactly as the code that READS it will expand it**, and comp", "status": "pre-ledger"},
-    {"sha": "1eb761e905b72726", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **DERIVE THE EXPANSION FROM THE LOADER, do not re-spell it.** A hand-written second expansion is a second pa", "status": "pre-ledger"},
-    {"sha": "5e210dd3f399957c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **THE SIDECARS EXPAND TOO.** A report locator that resolves to `<stem>.json` also reaches `<stem>.callgraph.", "status": "pre-ledger"},
-    {"sha": "ff2a0804a4dc4730", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So it is stated as a MUST in its own right: **the scan target is an input, and a report or verdict sink naming", "part": "PART 37 (f)"},
-    {"sha": "8b72fa42a3359ced", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **EXACT ARTIFACT, NEVER CONTAINMENT.** A report written into `.candor/` *inside* the tree being scanned is o", "status": "pre-ledger"},
-    {"sha": "416efc9656482957", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **THE TARGET IS OFTEN A DIRECTORY, AND THAT IS NOT A GUARD.** Two engines were protected only because their ", "status": "pre-ledger"},
-    {"sha": "1959eb3875c806f4", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(4) `--json` ON STDOUT IS THE STREAM FORM.** Arming does not apply (no previous document to go stale); the d", "status": "pre-ledger"},
-    {"sha": "51c9dd6171a05323", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(5) EVERY ROUTE AND EVERY ENGINE THAT WRITES A REPORT.** The rule is about the SINK, not one CLI. Surface as", "status": "pre-ledger"},
-    {"sha": "f86d00279acc8027", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(6) `--out <prefix>` — THE REPORT SET, AND THE SET IS THE ONE THE PREVIOUS RUN LEFT.** This was deferred pen", "status": "pre-ledger"},
-    {"sha": "bf536c006b5ed8a9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **ONLY A SINK THE OPERATOR NAMED.** Arming binds an explicit `--out`, never the DEFAULT prefix. Measured: ar", "status": "pre-ledger"},
-    {"sha": "cd4967a91460bea2", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **IDENTIFY WHAT YOU OVERWRITE; DO NOT DENYLIST WHAT YOU SKIP.** An armer MUST write only files it positively", "status": "pre-ledger"},
-    {"sha": "6f4bd78b2d2930d0", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **THE INPUT EXEMPTION IS ASKED FIRST, BEFORE IDENTIFICATION.** A policy holding ordinary rule lines is not J", "status": "pre-ledger"},
-    {"sha": "d6fa783b977817ab", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**AND THE RUN HANDS BACK WHAT IT TURNED OUT NOT TO OWN.** A file still holding the placeholder once the run ha", "status": "pre-ledger"},
-    {"sha": "dd5260b2f3d798f3", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND \"FINISHED WRITING\" MEANS THE SCAN COMPLETED — NOT THAT CONTROL CAME BACK.** The paragraph above w", "status": "pre-ledger"},
-    {"sha": "3e1aa5b8e66b91c9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**AND AN ORPHAN'S SIDECARS COME BACK WITH IT.** The hand-back as first written restores report bytes only, whi", "status": "pre-ledger"},
-    {"sha": "62b0b1cd9ecfb5e5", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND THE §2.2 SIDECARS GO WITH THE REPORT — DELETED, NOT EMPTIED.** A report armed to the shape in (2)", "status": "pre-ledger"},
-    {"sha": "6cf8c5f268407c06", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: on arming, the implementation MUST remove each armed report's §2.2 sidecars, under the same artifact-resol", "status": "pre-ledger"},
-    {"sha": "907ed9c4ea2b278f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Deletion rather than `{}`, and the reasoning is NOT the report's.** §3.3.1 forbids deleting a REPORT because", "status": "pre-ledger"},
-    {"sha": "8d9ec063ef691ba0", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **THE PAIRING RULE — a CONSUMER obligation, and the belt to arming's braces.** A §2.2 sidecar whose pai", "status": "pre-ledger"},
-    {"sha": "ed84d00b6aee3faa", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**AND UNANSWERABLE MUST REACH THE MACHINE CHANNEL — \"take the absence arm\" IS NOT ENOUGH, which is what this c", "status": "pre-ledger"},
-    {"sha": "27a7c1a910e29ae2", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So a verb that has ruled its input unanswerable MUST say so **in the machine output**: a pinned `\"unanswerable", "status": "pre-ledger"},
-    {"sha": "2736c66b67bd7271", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND THE OBLIGATION KEYS ON THE REPORT, NOT ON THE SIDECAR'S EXISTENCE — which is what this clause sai", "status": "pre-ledger"},
-    {"sha": "b9e14a55135ab0f6", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND `unanswerable` REPLACES THE RESULT SET; IT DOES NOT ACCOMPANY ONE.** The permitted remedy above r", "status": "pre-ledger"},
-    {"sha": "8901baed6d2f92ee", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So a verb emitting `unanswerable` MUST **withhold the result keys** it cannot fill — no `direct`, no `transiti", "status": "pre-ledger"},
-    {"sha": "839b309a5c3aed4f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`, `policyVocab", "status": "pre-ledger"},
-    {"sha": "25192eddeeb74857", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: **a field that enters a machine-consumed document MUST have its name and shape stated here in the same run", "status": "pre-ledger"},
-    {"sha": "f7f1dd445193df01", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **`aliases` MAPS EACH ALIAS TO THE CLASSES IT EXPANDS TO — `{\"corp\": [\"reflect\"]}`, AN OBJECT.** This c", "status": "pre-ledger"},
-    {"sha": "2e9b2c433ca2c4fd", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE DISCLOSURE'S SHAPE IS `\"policyVocabulary\": { \"config\": \"<path>\", \"aliases\": { … } }`.** I left th", "status": "pre-ledger"},
-    {"sha": "f2c5cd71e820ca2e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "`policyVocabulary` over `vocabulary` because the document already carries other vocabularies (effects, reason ", "status": "pre-ledger"},
-    {"sha": "027fc7e2f9fdc561", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE VERDICT'S `coverage` BLOCK IS `{ \"uncovered\": <n>, \"packages\": [ … ] }`, AND UNTIL NOW THIS DOCUM", "status": "pre-ledger"},
-    {"sha": "0bd929b050977491", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "`packages` is correct, and **not because it is three-to-one.** The §2 envelope names the very same objects `pa", "status": "pre-ledger"},
-    {"sha": "88aa0b0048abaa8c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Recording the shape of the miss: **a field can be uniform across three engines, mentioned in this document, co", "status": "pre-ledger"},
-    {"sha": "7f35abcb16856c0d", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **PRECEDENCE: A CERTAIN VIOLATION DOMINATES A REFUSAL, AND ALL FOUR ENGINES HAVE THIS BACKWARDS.** Thre", "status": "pre-ledger"},
-    {"sha": "0b7d96da2cb3bf7a", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The consequence is not cosmetic. A refusal writes no `--gate-json` document (below), so refusing over a firing", "status": "pre-ledger"},
-    {"sha": "e1fb8eed5c0950dd", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ *This clause first read \"refusal (2) > violation (1)\", ratifying the measured four-way behaviour. I wro", "status": "pre-ledger"},
-    {"sha": "95ffa6115e7abf77", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**A machine consumer of rust's or swift's exit-1 verdict cannot see that any rule went unevaluated at all.** T", "status": "pre-ledger"},
-    {"sha": "27a24a5e0e1523e2", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ The refusal document's `reason` is likewise now pinned: a STRING naming the cause. All four converge on", "status": "pre-ledger"},
-    {"sha": "cf0a8e3b12ebb93c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The stale-document hazard is separate, and survives the correction above — it bites whenever a refusal is the ", "status": "pre-ledger"},
-    {"sha": "f0f288720da98c0a", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So: ⟨0.24⟩ **if `--gate-json` was requested and the gate REFUSES, the implementation MUST write a document at ", "status": "pre-ledger"},
-    {"sha": "65292c40e1e09c92", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **WHEN, EXACTLY, THE SINK IS ARMED — and the one thing that must never be written to it.** The rule abo", "status": "pre-ledger"},
-    {"sha": "2ce3dc881c21bc76", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(1) Arm at the instant the sink is known, and before anything else can exit.** The implementation MUST write", "status": "pre-ledger"},
-    {"sha": "8af8a87d40d59718", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(2) A `--gate-json` path that names an INPUT of this run is refused, and NOTHING is written.** The sink is o", "status": "pre-ledger"},
-    {"sha": "bcf4639dc7ce66df", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **AND THE WRITE MUST LAND ON THE SAME ARTIFACT THE COMPARISON RESOLVED.** The rule above is stated abou", "status": "pre-ledger"},
-    {"sha": "e06c48d053e76a37", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "A stale green through a single flag, with no operator mistake at all. An implementation MUST resolve the sink ", "status": "pre-ledger"},
-    {"sha": "88c4f3b967a6375a", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **DEVICE+INODE IS NOT OPTIONAL WHERE THE PLATFORM OFFERS IT.** The parenthetical below was read as advi", "status": "pre-ledger"},
-    {"sha": "ae42a53217b5e4e2", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Sameness here is a question about **artifacts, not strings**. `--policy /w/P --gate-json ./P` from `/w` is the", "status": "pre-ledger"},
-    {"sha": "9b43458e77d4418f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **THE STREAM SINK: `-` IS NOT ARMED, AND IT IS NOT EXEMPT.** `--gate-json -` (and §3.1's `--json`, whic", "status": "pre-ledger"},
-    {"sha": "570e1523a75d5655", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **TWO ARTIFACTS CANNOT SHARE ONE STREAM: `--json` BESIDE `--gate-json -` ON THE SCAN ROUTE IS REFUSED.*", "status": "pre-ledger"},
-    {"sha": "f384e405b7b4c67c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The implementation MUST exit 2 with a diagnostic naming both flags, and the fail-closed document is the stream", "status": "pre-ledger"},
-    {"sha": "b2def7e7ff0a7823", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.28⟩ **ONE RUN NAMES ONE SINK. A REPEATED `--gate-json` IS REFUSED, AND EVERY PATH NAMED GETS THE REFUSAL.**", "status": "pre-ledger"},
-    {"sha": "15e4281b33e4f80e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Writing to *each* is the load-bearing half, and it is not symmetry for its own sake. Measured across all four ", "status": "pre-ledger"},
-    {"sha": "aa2b34f8aa659691", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**EVERY ROUTE THAT ACCEPTS `--gate-json`.** The rule is about a RUN, not about one CLI. An engine that exposes", "status": "pre-ledger"},
-    {"sha": "054a3932f35808e0", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**THE INPUT EXEMPTION COVERS THE PATH, NOT THE RUN.** Rule (2) says a sink naming an input of this run is refu", "status": "pre-ledger"},
-    {"sha": "5ca8e1176a37cfcc", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING A CER", "status": "pre-ledger"},
-    {"sha": "3bdb8fd91c0d0c94", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The general test, and the reason this is a boundary rather than a carve-out: **ask whether the refusal's cause", "status": "pre-ledger"},
-    {"sha": "a1cbd97669dec5d0", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE OPERATIONAL FORM OF MINIMAL REFUSAL: WITHHOLD PER (RULE, FUNCTION) — and applying the precedence ", "status": "pre-ledger"},
-    {"sha": "b082146a91081714", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Once a firing rule stops short-circuiting the refusal, the evaluator reaches code it never reached before. Mea", "status": "pre-ledger"},
-    {"sha": "390d79d1e4042228", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So the rule is: **a rule FIRES on a function only where the match is evidenced by that function's own entry, a", "status": "pre-ledger"},
-    {"sha": "32fe5acd85e6aa1b", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Two things generalise here, and both are expensive to learn twice.**", "status": "pre-ledger"},
-    {"sha": "11c54651998661f2", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "*And a soundness fix is a fabrication risk in its own right.* This project already records that killing a fabr", "status": "pre-ledger"},
-    {"sha": "93933e42f5c4b890", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **PRECEDENCE BINDS THE VERDICT, NOT THE POLICY GATE — a certain BASELINE regression is deleted by an un", "status": "pre-ledger"},
-    {"sha": "2d8154c946a32d6a", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "So **a typo in a policy token downgrades \"your change added an effect\" to \"could not evaluate\"**, and the regr", "status": "pre-ledger"},
-    {"sha": "3fe85bfa682fcce9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Three individually-correct decisions composed into it, which is why no engine caught it: the baseline guard ru", "status": "pre-ledger"},
-    {"sha": "ab39f3ef71e9c7d5", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**So the rule is over the verdict.** Any violation the run has already established on carried evidence — whate", "status": "pre-ledger"},
-    {"sha": "116d8f372f0f5ee9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **NEITHER RULE HAS A CARVE-OUT, AND BOTH OF MINE DID.** candor-rust implemented the two clauses above, ", "status": "pre-ledger"},
-    {"sha": "0cff5ece91f9ac2f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(a) Precedence binds `forbid` and `allow` too.** Measured: `deny Fs app.fsUnit` (fires) beside `forbid app -", "status": "pre-ledger"},
-    {"sha": "02db9f5c7a50ed78", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**(b) The refusal document has no exempt cause.** §3.3 enumerates exit-2 causes including a broken gate CONFIG", "status": "pre-ledger"},
-    {"sha": "df4886d6e7b2a093", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**The pattern in both is one thing: a rule stated over the instance it was found in rather than over the condi", "status": "pre-ledger"},
-    {"sha": "402f6bf839f37c3b", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **THE COMPOSED DOCUMENT: `refused` AND `violations` ARE MUTUALLY EXCLUSIVE, AND THE COMPOSED SHAPE IS A", "status": "pre-ledger"},
-    {"sha": "4bfacca1e41ee3af", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The rule: **a document that carries `violations` is a VERDICT, never a refusal document, and it MUST NOT carry", "status": "pre-ledger"},
-    {"sha": "88a162b7b9b2dca1", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**The refusal is disclosed in `unevaluated`, and on a whole-policy refusal that list carries EVERY rule of the", "status": "pre-ledger"},
-    {"sha": "12b55e285ee99dcf", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **A rule whose SCOPE binds nothing rides the verdict document as `zeroMatch` — see §3.1's zero-match cl", "status": "pre-ledger"},
-    {"sha": "943b6cd859e59603", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope function RE", "status": "pre-ledger"},
-    {"sha": "c244ce6d2f749f1f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The unscoped form of the very same question is refused by every engine; adding `app.web` makes all four answer", "status": "pre-ledger"},
-    {"sha": "a23d687bdeba6338", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The cause is uniform: each engine tests whether the *in-scope entry's own* class set is empty, and never asks ", "status": "pre-ledger"},
-    {"sha": "35cea6f57097ea6e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE MANIFEST DOES NOT TRAVEL, AND THIS VERB IS WHERE THAT BITES.** The verb leans on *absent is absen", "status": "pre-ledger"},
-    {"sha": "9c3fcc0dcd7adaa7", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "What would close it is the **per-unit analyzed NAME SET**. That set exists today — it is exactly the §2.2 call", "status": "pre-ledger"},
-    {"sha": "981de677f88b29d7", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **THE MODEL-VERSUS-CONTRACT RESIDUAL IS RESOLVED — and it MOVED before it closed, which is the part to ", "status": "pre-ledger"},
-    {"sha": "e55ff8500383168c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**The second engine then found 100 disagreements again, in a NEW family**: `Llm ∈ S` with `Net ∉ S`, the survi", "status": "pre-ledger"},
-    {"sha": "efd2066d9af7fa73", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The `Llm` family is **not a defect in either layer: it is UNREACHABLE.** Every engine co-emits `Llm` and `Net`", "status": "pre-ledger"},
-    {"sha": "8e49cac67de178b0", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**The standing rule for anyone running this differential: a model quantifying over all of `L` will fire CORREC", "status": "pre-ledger"},
-    {"sha": "c356bb8da2354977", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **Three surfaces this document NAMED and never DEFINED.** Each is cited elsewhere as though it were spe", "status": "pre-ledger"},
-    {"sha": "24bfa80dadc1f29f", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **`reports <prefix>`** — enumerates the report files a prefix locator resolves to, and nothing else. It is t", "status": "pre-ledger"},
-    {"sha": "257edd9bd0f3cbc4", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- **The `encountered-*` sidecar family** — engine-local artefacts recording what a scan saw, reserved in §2.2 ", "status": "pre-ledger"},
-    {"sha": "533bf1e05d88c69b", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "`callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the *unresolv", "status": "pre-ledger"},
-    {"sha": "922fd6724f8f9120", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **A rule whose SCOPE matches no function is UNANSWERABLE, and MUST be disclosed rather than scored as s", "status": "pre-ledger"},
-    {"sha": "874dab96089074ab", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "The remedy is DISCLOSURE, not refusal. Exit 2 would be wrong: a zero-match rule is legitimate when one policy ", "status": "pre-ledger"},
-    {"sha": "5bc8659e1ef62718", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.27⟩ **…and the `--gate-json` VERDICT CARRIES THE SAME LIST, under the pinned key `zeroMatch`.** This senten", "status": "pre-ledger"},
-    {"sha": "fcfe314afafe4282", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "sorted by Unicode code point and deduplicated (the `viaDispatchOn` collation, for the same reason: a field no ", "status": "pre-ledger"},
-    {"sha": "0991bd7f8c84a113", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**Status: the console disclosure is implemented four-way** (candor-swift led it; candor-java, candor-rust and ", "status": "pre-ledger"},
-    {"sha": "f5cd7b8b4ad459d9", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an unanswerab", "status": "pre-ledger"},
-    {"sha": "ff4eeb88d58f9c17", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "This is the same direction the **no-hierarchy fallback already takes** one rung up: with no §2.2 sidecar, cond", "status": "pre-ledger"},
-    {"sha": "7bcb746626ed08d5", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "⟨0.24⟩ **An EMPTY §2.2 hierarchy sidecar and an ABSENT one are the SAME INPUT to this query, and both take the", "status": "pre-ledger"},
-    {"sha": "3dcfcb5e328b2726", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**A dot-free detail MUST be recognised STRUCTURALLY** (the detail contains no `.`) and short-circuited *before", "status": "pre-ledger"},
-    {"sha": "f18f6ed8d6fd6c13", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- The split helpers fall back to the WHOLE STRING when there is no dot, and they are applied to the reason det", "status": "pre-ledger"},
-    {"sha": "a78005a254e15166", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "- Without the short-circuit the same detail can be **disclosed in one arm and dropped in the other**, decided ", "status": "pre-ledger"},
-    {"sha": "d05b18e85dd2c345", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**\"Sorted\" means by UNICODE CODE POINT**, equivalently by UTF-8 byte order — the two orders coincide, and nami", "status": "pre-ledger"},
-    {"sha": "47e8a4542ebf609c", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "**\"UTF-8 byte order\" names the ORDER, not the METHOD — do not implement it by encoding to UTF-8.** In a langua", "status": "pre-ledger"},
-    {"sha": "7d37fe54393d118e", "at": "3.1 Read-only queries (SHOULD)", "excerpt": "Note also what is *not* checkable across engines here: a lone surrogate has no UTF-8 encoding and therefore ca", "status": "pre-ledger"},
-    {"sha": "c84d58b98cc879fc", "at": "3.2 Pre-edit and structural tools (SHOULD)", "excerpt": "- **rewire `<baseline>`**: the **de-wiring / structural-regression** check. Diffs the current call graph again", "status": "pre-ledger"},
-    {"sha": "ba6ce0d63697697f", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "The mode names above are conceptual; this fixes the *invocation* so a person or an agent drives any engine ide", "status": "pre-ledger"},
-    {"sha": "ac4ee5ca5de433bf", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "| `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (", "status": "pre-ledger"},
-    {"sha": "021715533d7668bb", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "| `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to st", "status": "pre-ledger"},
-    {"sha": "bac0128e2f7c80c2", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of t", "status": "pre-ledger"},
-    {"sha": "2c5e3993cbf9366d", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "| `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope", "status": "pre-ledger"},
-    {"sha": "990dcce67c2c2233", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "| `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the can", "status": "pre-ledger"},
-    {"sha": "daf506bcc4af0584", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "**Fully offline.** candor runs fully offline: an engine MUST NOT phone home — no telemetry, no update checks, ", "status": "pre-ledger"},
-    {"sha": "62c6a3ff700dfa7d", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "The short aliases `-V` and `-h` are REQUIRED; every other flag uses its long `--name` form. An engine MAY expo", "status": "pre-ledger"},
-    {"sha": "5225139a88b6dce1", "at": "3.3 The command-line surface (REQUIRED)", "excerpt": "A read-only **query** surface (§3.1) — whether shipped as a separate binary (e.g. `candor-query`) or as subcom", "status": "pre-ledger"},
-    {"sha": "c88478426b50c110", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "§3.1 pins the query **names and JSON shapes**; this pins the **invocation** around them, so a query is driven ", "status": "pre-ledger"},
-    {"sha": "19b099da4302b56c", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **Report resolution.** With no `--report`, the engine discovers the report by walking UP from the CWD for a ", "status": "pre-ledger"},
-    {"sha": "5eff9cdc2fb94ddd", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **No report is a loud failure.** If the report cannot be resolved to an existing file — discovery finds no `", "status": "pre-ledger"},
-    {"sha": "e19b965541e2e563", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "⟨0.28⟩ **AND \"GIVEN NO VALUE\" MEANS THE NEXT TOKEN IS FLAG-SHAPED — otherwise the clause cannot be implemented", "status": "pre-ledger"},
-    {"sha": "f812e02f58b147ad", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **Deprecated positional forms are arity-gated.** An engine that still accepts the pre-0.10 positional forms ", "status": "pre-ledger"},
-    {"sha": "8d2c16c2b32f4920", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **`--json`** selects JSON (stdout MUST then be pure JSON, per §3.3). **`--policy <file>`** supplies a policy", "status": "pre-ledger"},
-    {"sha": "5231fbc0a238aaa8", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **`--strict` — the advisory-verb CI gate** ⟨0.18⟩. `unverified`, `fix-gate`, and `gains` are ADVISORY: they ", "status": "pre-ledger"},
-    {"sha": "45aff77c2ca6c3e3", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb (", "status": "pre-ledger"},
-    {"sha": "844f4de1955cd801", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "`ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear in ", "status": "pre-ledger"},
-    {"sha": "e8173c95dd1607b2", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two exit-", "status": "pre-ledger"},
-    {"sha": "a1ba3ec30d2a8aaf", "at": "3.3.1 The query command-line grammar (REQUIRED f", "excerpt": "- **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A per-member writ", "status": "pre-ledger"},
-    {"sha": "e0c61113e8363db9", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "⟨0.27⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than hoped for.** The com", "status": "pre-ledger"},
-    {"sha": "513838a2031dd0b3", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "A producer implementing this MUST compare the pin against its own release version and, on a difference, FAIL w", "status": "pre-ledger"},
-    {"sha": "8ae2b82999dffcd6", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "- **No pin, or a pin naming another implementation** — unchanged behaviour. The key is opt-in by construction:", "status": "pre-ledger"},
-    {"sha": "54cf12f60229d974", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "- **The pin is well-formed and the producer cannot determine its OWN version** (a source build rather than a p", "status": "pre-ledger"},
-    {"sha": "67ba990dffcfd3db", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "A pin that is present but **unreadable** (`engine latest`, a bare `engine`, anything that is not a version) MU", "status": "pre-ledger"},
-    {"sha": "3702e8837e84eafa", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "**The qualified form exists because the family versions as a LADDER, not in lockstep** (§2 versioning policy):", "status": "pre-ledger"},
-    {"sha": "439c5344806e1de6", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "**A version token carries AT MOST ONE leading `v`.** `vv0.27.0` is not a version; two engines accepted it as o", "status": "pre-ledger"},
-    {"sha": "c72072d9201c4024", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "There is deliberately **no `CANDOR_ENGINE` environment variable**, breaking the 1:1 key↔env mapping the rest o", "status": "pre-ledger"},
-    {"sha": "bc64de6d4fd420f1", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "**Status: implemented and enforced identically by candor-java, candor-rust, candor-ts, candor-swift and candor", "status": "pre-ledger"},
-    {"sha": "4d822c560a8347cb", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for enforcement, ", "status": "pre-ledger"},
-    {"sha": "74a5afcc901121bc", "at": "3.4 The configuration file — `.candor/config` (S", "excerpt": "**Discovery is anchored to the scan target, not the CWD**: the file is found by walking UP from the target (`t", "status": "pre-ledger"},
-    {"sha": "48f25b31748347da", "at": "4. The trust contract — the core of candor", "excerpt": "The defining rule: **an implementation must never report a function as effect-free when it could not actually ", "status": "pre-ledger"},
-    {"sha": "4b18d6899eb1642f", "at": "4. The trust contract — the core of candor", "excerpt": "**The limit, stated plainly.** Whether a function performs an effect is undecidable in general (Rice's theorem", "status": "pre-ledger"},
-    {"sha": "6c6b0543417ef3e2", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "So **reason-scoped `Unknown` (⟨0.19⟩) is the `D` component made policy-addressable**, and the completeness man", "status": "pre-ledger"},
-    {"sha": "72bb5a2e06b50dee", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "**Dispatch over a local abstraction — the bounded-CHA discipline** (all four code engines): a call dispatched ", "status": "pre-ledger"},
-    {"sha": "6fb5119bd2da859e", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "**Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the child does is", "status": "pre-ledger"},
-    {"sha": "5ec9af949f2f1fdc", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "An implementation MAY treat dispatch over a curated set of conventionally-pure standard-library traits/interfa", "status": "pre-ledger"},
-    {"sha": "aae45f4879f365b5", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "A method *inherited* by a type (a trait default/provided method, or a concrete method on a base class the type", "status": "pre-ledger"},
-    {"sha": "b6f24b9ddabf008d", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "| `dispatch:` | an unresolved **virtual / interface / protocol** dispatch with a **resolvable owner type + mem", "status": "pre-ledger"},
-    {"sha": "14cbfb664f7c35e8", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "⟨0.24⟩ **The dotted detail is normative WHEN an owner was formed; a DOT-FREE detail is the reserved form for \"", "status": "pre-ledger"},
-    {"sha": "756d1f00974b5bcd", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists: `dispatch", "status": "pre-ledger"},
-    {"sha": "0787bc89cdd78787", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "⟨0.7⟩ **What is conformance-binding, and what is per-language.** Precisely: the **`kind` SET** (`reflect`/`nat", "status": "pre-ledger"},
-    {"sha": "68d21f6bface9006", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "An implementer amending this section MUST update both halves and **MUST** add a test that a **fabricated** off", "status": "pre-ledger"},
-    {"sha": "82e029ffb944a733", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "**MUST, not SHOULD — because a mutation exists that ONLY that control catches.** Measured: an engine whose pre", "status": "pre-ledger"},
-    {"sha": "10d925bcf306914c", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "**A consumer may need a kind it never emits.** An engine that chains dependency reports relays their `unknownW", "status": "pre-ledger"},
-    {"sha": "bfd7c6b8f7b7ba30", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "**A dispatch FRONTIER must key off the kind, not the class.** §3.1's frontier resolves overrides against an ow", "status": "pre-ledger"},
-    {"sha": "f5044ae8d129c012", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "⟨0.24⟩ **OPEN — two off-vocabulary kinds an engine emits today, and one of them answers a DIFFERENT QUESTION f", "status": "pre-ledger"},
-    {"sha": "5f96971098b49a88", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** — §6.2 holds them up as the ", "status": "pre-ledger"},
-    {"sha": "50bd0c15ab752636", "at": "4.0 The disclosure model, formally — a signature", "excerpt": "⟨0.7⟩ **Domain engines.** The four kinds describe why a *code* call's body could not be resolved, and so bind ", "status": "pre-ledger"},
-    {"sha": "b35f19f4b2dc5df9", "at": "5. Capabilities (conformance)", "excerpt": "Conformance needs a way for a function to *declare* the effects it may perform. The canonical mechanism is a *", "status": "pre-ledger"},
-    {"sha": "53a6e39d28f495a2", "at": "5.1 The effect manifest — declared effects for a", "excerpt": "A cap type lets a *function* declare its effects. The same trust tier extends to a whole **opaque dependency**", "status": "pre-ledger"},
-    {"sha": "609aeaa7bc9dc824", "at": "6. Diagnostics (`AS-EFF-00x`)", "excerpt": "A **literal-allowlist** policy rule, `allow <Effect> [in <scope>] <value>...`, constrains *which* values a sco", "status": "pre-ledger"},
-    {"sha": "51925727660b4322", "at": "6.1 Containment — the architecture-quality signa", "excerpt": "candor defines **no single quality score**. Raw effect *counts* are domain-dependent — a database app performs", "status": "pre-ledger"},
-    {"sha": "da4156f8c0f685a1", "at": "6.1 Containment — the architecture-quality signa", "excerpt": "> **Note — \"cross-cutting\" here is unrelated to the \"ambient authority\" partition.** This containment > split ", "status": "pre-ledger"},
-    {"sha": "9393e500f3247929", "at": "6.1 Containment — the architecture-quality signa", "excerpt": "**The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers* each b", "status": "pre-ledger"},
-    {"sha": "0c0279857d399744", "at": "6.1 Containment — the architecture-quality signa", "excerpt": "+ trend gate and MUST NOT present a single aggregate score.", "status": "pre-ledger"},
-    {"sha": "4328fd176afe8c4f", "at": "6.2 The policy DSL (normative)", "excerpt": "**Lexical.** One rule per line. A `#` begins a comment to end-of-line; blank lines and comment-only lines are ", "status": "pre-ledger"},
-    {"sha": "68e200f2cabfd5a5", "at": "6.2 The policy DSL (normative)", "excerpt": "**An unreadable policy FILE is a failure, not an absent gate.** The malformed-line rule above is for content; ", "status": "pre-ledger"},
-    {"sha": "d718bd3c0f3d80c4", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.28⟩ **AND A CONFIGURED POLICY THAT YIELDS ZERO RULES IS THE SAME FAILURE, REACHED THROUGH A READABLE FILE.*", "status": "pre-ledger"},
-    {"sha": "94dc761333aac32f", "at": "6.2 The policy DSL (normative)", "excerpt": "and exits 0. That is **byte-identical to the verdict of a gate that ran and found nothing**, and also byte-ide", "status": "pre-ledger"},
-    {"sha": "8a53310b1e5f32fc", "at": "6.2 The policy DSL (normative)", "excerpt": "So: **when a policy is CONFIGURED and parsing yields NO RULES AT ALL, the run MUST refuse — exit 2 with the fa", "status": "pre-ledger"},
-    {"sha": "771a18d5b168abf0", "at": "6.2 The policy DSL (normative)", "excerpt": "**Three things make this forced rather than chosen.** First, it is the clause above stated over the CONDITION ", "status": "pre-ledger"},
-    {"sha": "771a6c65683f60c7", "at": "6.2 The policy DSL (normative)", "excerpt": "**The line-level leniency above is UNCHANGED and still correct.** An unrecognized or malformed line stays igno", "status": "pre-ledger"},
-    {"sha": "25af348b49ceb299", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.28⟩ **AND THE CONDITION IS A DROPPED LINE, NOT AN EMPTY POLICY — the clause above is stated over its own in", "status": "pre-ledger"},
-    {"sha": "4169e49489971abc", "at": "6.2 The policy DSL (normative)", "excerpt": "Refusal is the wrong remedy there — it would break the forward-compatibility leniency this clause has just fin", "status": "pre-ledger"},
-    {"sha": "c8ef1bbb002b8ca6", "at": "6.2 The policy DSL (normative)", "excerpt": "**The refusal covers the empty file and the all-comments file too**, and that is deliberate rather than incide", "status": "pre-ledger"},
-    {"sha": "1ac36e89ec44802f", "at": "6.2 The policy DSL (normative)", "excerpt": "**An unrecognized command-line FLAG is the same failure class.** A CLI MUST reject an unknown leading-dash arg", "status": "pre-ledger"},
-    {"sha": "073056d2167f1f57", "at": "6.2 The policy DSL (normative)", "excerpt": "- **`allow`**: the effect MUST be one of the **five** that carry a literal surface (`Net`, `Exec`, `Fs`, `Db`,", "status": "pre-ledger"},
-    {"sha": "ca06e4853d090bbc", "at": "6.2 The policy DSL (normative)", "excerpt": "**Reason-scoped `Unknown` (`deny E Unknown[class…]`)** ⟨0.19⟩**.** In a `deny`, the `Unknown` token MAY carry ", "status": "pre-ledger"},
-    {"sha": "fa37f9e400ce00a5", "at": "6.2 The policy DSL (normative)", "excerpt": "| `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |", "status": "pre-ledger"},
-    {"sha": "6a70dd48061b9247", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **The `--class` FILTER — normative, because it had no semantics here and three engines wrote three.** `", "status": "pre-ledger"},
-    {"sha": "286b313c79da5e26", "at": "6.2 The policy DSL (normative)", "excerpt": "0. **REQUIREMENT (1) BELOW — transitive resolution — applies to `unverified` and NOT to `blindspots`.** Both v", "status": "pre-ledger"},
-    {"sha": "2309fb7981f25e3e", "at": "6.2 The policy DSL (normative)", "excerpt": "1. **It MUST resolve the class set TRANSITIVELY, over the same reach the gate uses.** `unknownWhy` is **direct", "status": "pre-ledger"},
-    {"sha": "3c8279d1b4378203", "at": "6.2 The policy DSL (normative)", "excerpt": "2. **It MUST fail CLOSED.** An entry the filter cannot classify is KEPT, never dropped. The failure it replace", "status": "pre-ledger"},
-    {"sha": "349e70f568bc46a3", "at": "6.2 The policy DSL (normative)", "excerpt": "3. **The contribution in (2) MUST be gated on the function having a DIRECT `Unknown` it did not name** — not o", "status": "pre-ledger"},
-    {"sha": "dba2779886f68a78", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **THE POLICY SIDE MUST REFUSE TOO — my \"a dropped token leaves a WIDER rule\" reasoning was FALSE, and t", "status": "pre-ledger"},
-    {"sha": "71b9a5b867e14a3b", "at": "6.2 The policy DSL (normative)", "excerpt": "- `deny Unknown[corp]` — the *only* token is unrecognised, the filter empties, and the rule **WIDENS** to a ba", "status": "pre-ledger"},
-    {"sha": "379b4737aba5854c", "at": "6.2 The policy DSL (normative)", "excerpt": "- `deny Unknown[dispatch,nativ]` — a **typo among valid tokens**. It is silently dropped, the rule **NARROWS**", "status": "pre-ledger"},
-    {"sha": "812f3275e6bc00a8", "at": "6.2 The policy DSL (normative)", "excerpt": "So the policy side takes the same rule as the query side: **an unrecognised token in ANY policy value list is ", "status": "pre-ledger"},
-    {"sha": "036b32f21a479ddc", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **\"REASON-CLASS\" WAS TOO NARROW, AND THE NARROWING WAS AN ARTIFACT OF WHERE I FOUND IT.** This clause f", "status": "pre-ledger"},
-    {"sha": "28db7eed4fd7aeed", "at": "6.2 The policy DSL (normative)", "excerpt": "- `unknown-alias corp = dispatch,nativ` → the DEFINITION silently becomes `{dispatch}`, and the gate goes **gr", "status": "pre-ledger"},
-    {"sha": "bef7e703721a55c8", "at": "6.2 The policy DSL (normative)", "excerpt": "The rule was never about reason-classes; it is about **a policy value list the implementation cannot honour as", "status": "pre-ledger"},
-    {"sha": "72526e352cec0ec2", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **THE FLAG'S VALUE GRAMMAR**, which was never stated and is therefore where the next divergence would h", "status": "pre-ledger"},
-    {"sha": "19e7584c47f647e2", "at": "6.2 The policy DSL (normative)", "excerpt": "The diagnostic is cheap and every implementation should carry it as a test, **but it must be stated precisely,", "status": "pre-ledger"},
-    {"sha": "7f8ba04c34d2d114", "at": "6.2 The policy DSL (normative)", "excerpt": "**THE GATE AND THE DISCLOSURE MUST APPLY THE SAME RULE, AND SHOULD SHARE THE SAME CODE.** In the engine where ", "status": "pre-ledger"},
-    {"sha": "a97d2b697dd913c0", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **IMPLEMENT IT AT THE SOURCE, NOT AT THE JOIN — one engine already did, and that is the shape to copy.*", "status": "pre-ledger"},
-    {"sha": "2f1500dac0750535", "at": "6.2 The policy DSL (normative)", "excerpt": "Measured consequence: candor-swift's empty-set default is **unreachable** — instrumented over two real targets", "status": "pre-ledger"},
-    {"sha": "9f46cd78eaf1a174", "at": "6.2 The policy DSL (normative)", "excerpt": "**THE STRONGEST FORM IS TO MAKE THE STATE UNWRITABLE, NOT MERELY UNREACHED — and one engine already does.** ca", "status": "pre-ledger"},
-    {"sha": "7a04cf5140350bb2", "at": "6.2 The policy DSL (normative)", "excerpt": "That is the ideal an implementation should aim at. A join-side default is a *coping* mechanism; a source-side ", "status": "pre-ledger"},
-    {"sha": "4253467e935ef11c", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **`ambiguous:` is a §4 kind, and was projected here before it was one.** This table has always mapped `", "status": "pre-ledger"},
-    {"sha": "c846b4409b8fb914", "at": "6.2 The policy DSL (normative)", "excerpt": "It is now a fifth kind in §4. The alternative — stop emitting it — was measured and rejected: on candor-rust i", "status": "pre-ledger"},
-    {"sha": "96ec5b718bef4405", "at": "6.2 The policy DSL (normative)", "excerpt": "⟨0.24⟩ **`CONTRIBUTES`, not \"is treated as\" — and the difference is a proved property.** This clause used to r", "status": "pre-ledger"},
-    {"sha": "b28143f337cbe75e", "at": "6.2 The policy DSL (normative)", "excerpt": "- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's unrecognised-to", "status": "pre-ledger"},
-    {"sha": "035c6adcd313790f", "at": "6.2 The policy DSL (normative)", "excerpt": "- **`pure`** is unaffected — **its verdict never depended on `Unknown` at all**; reason-scoping is a `deny`-si", "status": "pre-ledger"},
-    {"sha": "e4542ee0b6b37470", "at": "6.2 The policy DSL (normative)", "excerpt": "A conformant `--gate-json` verdict (§3.3) records, on an `AS-EFF-006` violation whose `effects` include `Unkno", "status": "pre-ledger"},
-    {"sha": "b30f480230247269", "at": "6.2 The policy DSL (normative)", "excerpt": "**`Net` destination-class (`deny Net[dest…]`)** ⟨0.21⟩**.** In a `deny`, the `Net` token MAY carry a bracketed", "status": "pre-ledger"},
-    {"sha": "87973de90aeae23a", "at": "6.2 The policy DSL (normative)", "excerpt": "- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's unrecognised-to", "status": "pre-ledger"},
-    {"sha": "a78685c5e96be797", "at": "6.2 The policy DSL (normative)", "excerpt": "Per-function, a conformant report MAY carry a **`netClass`** array (§2) — the destination classes present in a", "status": "pre-ledger"},
-    {"sha": "afb2b186718da00f", "at": "6.2 The policy DSL (normative)", "excerpt": "**Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not substring**", "status": "pre-ledger"},
-    {"sha": "f658c81f89927701", "at": "6.2 The policy DSL (normative)", "excerpt": "**Literal matching** (`allow`) is **per effect**: a `Net` host matches by hostname with the port ignored (`api", "status": "pre-ledger"},
-    {"sha": "ab7db3e469882c89", "at": "6.2 The policy DSL (normative)", "excerpt": "**From gate to guard — runtime enforcement** ⟨0.5⟩. A policy is an *advisory* gate by default: the engine DETE", "status": "pre-ledger"},
-    {"sha": "5d18bc54e42cb9e5", "at": "7. Conformance checklist for an implementation", "excerpt": "Two **profiles** exist, and a claim of conformance names one. A **sound engine** meets every MUST below; this ", "status": "pre-ledger"},
-    {"sha": "59d7ca940f4ad441", "at": "7. Conformance checklist for an implementation", "excerpt": "11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and consumes th", "status": "pre-ledger"},
-    {"sha": "17f35ba8b9d7c250", "at": "7. Conformance checklist for an implementation", "excerpt": "12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report: self-analysis is", "status": "pre-ledger"},
-    {"sha": "d6a9e3f6d52a4448", "at": "7. Conformance checklist for an implementation", "excerpt": "13. **enforce the §4 trust contract with an adversarial soundness harness.** Item 4 states the contract; this ", "status": "pre-ledger"},
-    {"sha": "cf8687e7ab7c6dcb", "at": "7. Conformance checklist for an implementation", "excerpt": "- **Teeth-verified:** disabling a resolution mechanism MUST make the harness fail: a harness that cannot fail ", "status": "pre-ledger"},
-    {"sha": "24780539a221f50e", "at": "7. Conformance checklist for an implementation", "excerpt": "- **Forms are the coverage unit.** The harness proves only the forms it encodes; every code engine has had a \"", "status": "pre-ledger"},
-    {"sha": "3140f9edc4dea943", "at": "7. Conformance checklist for an implementation", "excerpt": "- The harness SHOULD run in CI alongside the engine's tests; an unrun harness proves nothing. All four code en", "status": "pre-ledger"},
-    {"sha": "d7ba81180b26aacb", "at": "7. Conformance checklist for an implementation", "excerpt": "14. **disclose the curated classifier's blind spots per scan — the coverage ledger.** Every candor engine clas", "status": "pre-ledger"},
-    {"sha": "7e92757b7babb0a0", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "1. **§2 — the report envelope, `hash`, and the sidecars.** The `{ candor, functions }` envelope with a full pr", "status": "pre-ledger"},
-    {"sha": "f735ff862a49842d", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "2. **§4 — the trust contract and the `unknownWhy` vocabulary.** Unresolved ⇒ `Unknown`, never silent-pure; the", "status": "pre-ledger"},
-    {"sha": "b49f425dc1b9f938", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "3. **§3.3 — the command-line surface and the gate verdict.** `--policy` (+ `CANDOR_POLICY`), `--json` to stdou", "status": "pre-ledger"},
-    {"sha": "adee13f6e37affc4", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "4. **§3.4 — the `.candor/config` file.** Target-anchored discovery, flag → env → config → default precedence, ", "status": "pre-ledger"},
-    {"sha": "f45f82abc6ca64bd", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "5. **§6.2 — the policy grammar and scope/literal matching.** The four rule kinds parsed exactly (expose `parse", "status": "pre-ledger"},
-    {"sha": "295ea5761b12cb0a", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "6. **§3.1 — the read-only queries.** `show`/`where`/`callers`/`map`/`diff`/`gains`/`reachable`/`path`/ `impact", "status": "pre-ledger"},
-    {"sha": "07c2e86e1cdb8ee2", "at": "Appendix — Implementing 0.8: the checklist", "excerpt": "7. **§7 — the coverage ledger, `--agents`, and the checklist items.** The per-scan `classifier doesn't cover` ", "status": "pre-ledger"}
-  ]
+ "_": [
+  "MUST LEDGER — every normative statement of SPEC.md, classified. See must_ledger.py's header",
+  "for why this exists and what a statement is (block-granularity: MUST/REQUIRED/bold-kernel).",
+  "Each entry carries exactly ONE of:",
+  "  \"part\": \"PART NN …\"      — the conformance part that exercises it (must resolve in this dir)",
+  "  \"unenforced\": \"<why>\"    — deliberately not exercised; the reason is the record",
+  "  \"status\": \"pre-ledger\"   — existed before the ledger did (the baseline freeze).",
+  "Adding a NEW entry as pre-ledger defeats the gate; a reviewer of this diff should refuse it.",
+  "`sha` anchors the whitespace-normalised block text: editing the clause orphans the entry,",
+  "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative."
+ ],
+ "entries": [
+  {
+   "sha": "19e2edb9ad03239e",
+   "at": "Contents",
+   "excerpt": "**Version 0.27** — all code engines declare `0.27`; the floor is conformance-pinned. How versions move (the la",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e0e539b6a42515d0",
+   "at": "Contents",
+   "excerpt": "The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the **pinned",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2eb912adcc7b7bbc",
+   "at": "Conformance tiers",
+   "excerpt": "- **Tier 1 — the interop floor.** The report envelope and schema, the effect vocabulary, the `Unknown` trust m",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9c0d8267482c8e35",
+   "at": "Conformance tiers",
+   "excerpt": "- **Tier 2 — the pinned tool surfaces.** The §3.1 query shapes, the §3.3 command-line surface, and the §3.3.1 ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "036b88d777d63613",
+   "at": "Conformance tiers",
+   "excerpt": "Both tiers are part of the `spec` a conformant engine declares, and both are conformance-pinned. The version r",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ab01f02d434a27e5",
+   "at": "The family, named precisely",
+   "excerpt": "- **The four code engines** are the conformance-pinned set — candor-java, candor-scan, candor-ts, candor-swift",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "181cac33993a88c8",
+   "at": "Versioning policy",
+   "excerpt": "The spec version is a *cross-engine* contract, but it is a **version ladder, not a lockstep stamp**. Two guara",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "54b6ccb8ceb0e438",
+   "at": "Versioning policy",
+   "excerpt": "- **The floor is conformance-pinned.** Every conformant engine implements a common *floor* version **identical",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "30944141a67dfa24",
+   "at": "Versioning policy",
+   "excerpt": "- **The version each engine declares is disclosed, not assumed.** An engine emits in every report the exact sp",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "11041daaa0d94fd7",
+   "at": "Versioning policy",
+   "excerpt": "- **Minor (additive) bump → the reference MAY lead.** A new optional field/query/artifact, a refinement that n",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "567a5785c679683d",
+   "at": "Versioning policy",
+   "excerpt": "- **Major (breaking) bump → lockstep.** A breaking change (the envelope reshape, a removed/retyped field) is a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "749dc41cc87859a8",
+   "at": "Versioning policy",
+   "excerpt": "- **Engine SPEC EXTENSIONS (2026-07-14).** An **ecosystem-specific surface** — one whose sources exist in a si",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1e94e099bb5bd763",
+   "at": "Versioning policy",
+   "excerpt": "So `spec 0.8` released on candor-java while the other engines are still at `0.7` does **not** fork the contrac",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c1a7c99018d74eea",
+   "at": "Versioning policy",
+   "excerpt": "See the [changelog](#8-changelog) for what each version added. An implementation MUST emit the spec version it",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "efe8395991740dcb",
+   "at": "1. Effects",
+   "excerpt": "An implementation MAY add language-specific effects, but SHOULD use these names where they apply. `Unknown` is",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1a3f8389a987d974",
+   "at": "1. Effects",
+   "excerpt": "Plain **console writes** (`println!`, `System.out.println`, bare stdout/stderr) are deliberately **not** class",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2b0bd6bb6113c179",
+   "at": "2. The report",
+   "excerpt": "The `candor` header records which engine produced the report (§2.1). A bare top-level array (no envelope) rema",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a708b5c451052a4b",
+   "at": "2. The report",
+   "excerpt": "**One report covers ONE package** (crate / npm package / JVM module / SwiftPM package / fleet). An engine MUST",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "35e78c2d7ffd0ee8",
+   "at": "2. The report",
+   "excerpt": "**The factory-bound receiver — `typeSurface`** ⟨0.23⟩ (design: `DEP-RECEIVER-TYPING-DESIGN.md`; produced and c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fd89e700b5b093c2",
+   "at": "2. The report",
+   "excerpt": "whose keys and values are **fully qualified in the producing package's own namespace — the same namespace the ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3b60476af643a0c8",
+   "at": "2. The report",
+   "excerpt": "- the producer publishes a **plain nominal** return only. A `Result<Conn,E>`/`Option<Conn>`/`Vec<Conn>` return",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8849287bfb28fbbd",
+   "at": "2. The report",
+   "excerpt": "- **a miss falls back to the disclosure of the unformed key, never to silence** (the three-row rule — a lookup",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "49833659be632f2c",
+   "at": "2. The report",
+   "excerpt": "**Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§\"Versioning policy\" ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1b15c4434f1a1fc1",
+   "at": "2. The report",
+   "excerpt": "⟨0.15⟩ **The `coverage` envelope field** — the κ-coverage ledger (§7 item 14) as data, so \"what the scan could",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "62a399050f7977b3",
+   "at": "2. The report",
+   "excerpt": "⟨0.28⟩ **AND THE SAME MUST CARRIES THE ⟨0.21⟩ MANIFEST, WHICH IS THE STRONGER CAVEAT AND THE ONE THAT DOES NOT",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "60d48d42bde0d0d3",
+   "at": "2. The report",
+   "excerpt": "So: **a report-consuming verb MUST re-disclose a non-empty `unanalyzed`, and an `analyzed.count` of 0, on the ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "07b5fb764edacf9e",
+   "at": "2. The report",
+   "excerpt": "**AND THE SCOPE IS ANSWERS, NOT ONLY VERDICTS — the wording above is narrower than its own argument.** It bind",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2097278e20122e04",
+   "at": "2. The report",
+   "excerpt": "The obligation therefore binds **any verb whose output could be read as a negative finding about the code** — ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8df3d2d05341a550",
+   "at": "2. The report",
+   "excerpt": "⟨0.28⟩ **AND HERE IS WHAT THE TRAVELLING CAVEAT IS CALLED — because the clause above shipped without saying, a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "90d1dd114bbbb320",
+   "at": "2. The report",
+   "excerpt": "`incomplete` is the one key a consumer may branch on alone and be safe under both causes; the other two name W",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d8258a51a7dbac91",
+   "at": "2. The report",
+   "excerpt": "**A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** — `baselineIncomplete`,",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "80ba485994c78f7b",
+   "at": "2. The report",
+   "excerpt": "**The channel is the machine document itself** — the same document the answer is in, not stderr beside it. Tha",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "977623abd7af2cca",
+   "at": "2. The report",
+   "excerpt": "⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The report",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "28dd0a70ca1c3dcb",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **`analyzed.count == 0` IS \"I JUDGED NOTHING\", AND A CONSUMER MUST NOT READ IT AS FULL COVERAGE.** A ch",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e818eb5d593415de",
+   "at": "2. The report",
+   "excerpt": "**State the harm precisely, because the loose form is misleading.** The empty report carries no effects, so th",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "14c7f678f5daa42b",
+   "at": "2. The report",
+   "excerpt": "**The wire ALREADY distinguishes the two cases and no engine reads it.** A `pub use`-only facade package emits",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ff2a1faf1268cfbd",
+   "at": "2. The report",
+   "excerpt": "| `analyzed.count` | `functions` | what it means | what a consumer MUST do |",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0fa7fbfe710f0caf",
+   "at": "2. The report",
+   "excerpt": "| `0` | `[]` | **nothing was judged** | treat the package as **NOT COVERED** — the κ ledger records it `invisi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "801a0ac4ad160780",
+   "at": "2. The report",
+   "excerpt": "| `n > 0` | `[]` | **n units judged, all pure** | believe it (§2 rule 3). This is a legitimate all-pure claim ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "61238589575e1e7a",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **`count` MUST BE A NON-NEGATIVE INTEGER; anything else is UNREADABLE and fails closed.** A review foun",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7fb8e0d5df57590c",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **THE GENERAL RULE THESE TWO ARE INSTANCES OF: A KEY THAT IS PRESENT BUT UNPARSEABLE IS CORRUPT INPUT, ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ca14fba0c7ebd383",
+   "at": "2. The report",
+   "excerpt": "- `unanalyzed: [{\"unit\":…,\"why\":…}]` — right shape, wrong field names, exactly what a hand-built or foreign-pr",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ca880b0bf64a3cc0",
+   "at": "2. The report",
+   "excerpt": "- `unanalyzed: [\"src/broken.rs\"]` — a bare string list. **All four dropped it and exited 0.**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "05b820f349087e3b",
+   "at": "2. The report",
+   "excerpt": "So: on `analyzed`, `unanalyzed`, `functions`, and every §2 key a verdict reads, an implementation MUST disting",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bf8aa733f6097a92",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **A report with NO `functions` KEY is MALFORMED, and MUST be refused LOUDLY — not believed, not silentl",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "46535e893943e995",
+   "at": "2. The report",
+   "excerpt": "**KEY THE RULE ON THE INTEGER, NEVER ON THE EMPTINESS OF `functions` — and here is the number.** Measured over",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "315727e736c7df2c",
+   "at": "2. The report",
+   "excerpt": "**Two structural traps for an implementer**, both found the same way. **Coverage is anchored TWICE** — the env",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a5dbbfd27bde5232",
+   "at": "2. The report",
+   "excerpt": "**Row 3 retires a pre-⟨0.21⟩ affordance, and that is deliberate.** A manifest-less empty report previously DID",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "92fda10d0125cf3f",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **THE SAME RULE BINDS `gate --report` (§3.1) — AS A DISCLOSURE, NOT AS AN EXIT CODE.** A report present",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "690cb2a252952830",
+   "at": "2. The report",
+   "excerpt": "**The exit code and the verdict document are UNCHANGED.** ⟨0.24⟩ *This clause first read \"MUST say so rather t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "99d3877c8932e33b",
+   "at": "2. The report",
+   "excerpt": "⟨0.24⟩ **THE CONFLICT CASE — a package chained TWICE, once judged and once not.** A `count: 0` report makes **",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "26037c8b81523e18",
+   "at": "2. The report",
+   "excerpt": "Note it runs OPPOSITE to the ⟨0.21⟩ `incomplete` reconciliation, and deliberately: an `incomplete` report make",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "64fd241274c00e81",
+   "at": "2. The report",
+   "excerpt": "**One engine diverges here on purpose and the reason generalises.** candor-rust keeps the HEDGE on conflict ra",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "df413b2dc4c7499a",
+   "at": "2. The report",
+   "excerpt": "**Note what this does NOT fix.** It separates *judged nothing* from *judged and found nothing*. It does not se",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "16f7b97d1478662d",
+   "at": "2. The report",
+   "excerpt": "- `\"unanalyzed\": [ { \"path\": \"<file>\", \"reason\": \"<why>\" } ]` — the TARGET's own source candor could NOT analy",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c8f9ee0716add401",
+   "at": "2. The report",
+   "excerpt": "**Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not recognize. A",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "beb17d4c0f6aa204",
+   "at": "2. The report",
+   "excerpt": "// does not run one MUST OMIT all three, never emit `[]`.",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6ce6bccfa4cc7141",
+   "at": "2. The report",
+   "excerpt": "\"unknownWhy\": [\"dispatch:Foo.bar\"], // ⟨0.6⟩ REQUIRED when this fn introduces `Unknown` DIRECTLY (a source); a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d35ff507845fd97c",
+   "at": "2. The report",
+   "excerpt": "// it participates in gating); an engine MUST do at least",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c4bb64137c3e8a30",
+   "at": "2. The report",
+   "excerpt": "// effect MUST be attributed to an \"initializer\" unit — a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4cf292a300d03529",
+   "at": "2. The report",
+   "excerpt": "// across the package boundary. Producers MUST emit it",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "45d95ffbcce90250",
+   "at": "2. The report",
+   "excerpt": "`inferred` MUST be transitive: if A calls B and B performs `Net`, A's `inferred` includes `Net` — **including ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "06ca30f214b58b17",
+   "at": "2. The report",
+   "excerpt": "`hash` is the join key a dependent uses to inherit a function's effects across a package boundary — both withi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "65b324503b2fa6c4",
+   "at": "2. The report",
+   "excerpt": "⟨0.27⟩ **A CONFIGURED DEP THAT CANNOT BE READ IS UNEVALUABLE (exit 2), NOT REDUCED COVERAGE.** Measured across",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "63673b7e6efc3cab",
+   "at": "2. The report",
+   "excerpt": "Both postures were internally coherent, which is why this needed a ruling rather than a bug report. The contin",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e481f93700ad8276",
+   "at": "2. The report",
+   "excerpt": "So: a dep path named by `deps`/`CANDOR_DEPS` that does not exist or cannot be read MUST exit 2, naming it. Gen",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "14983e66a4d38d00",
+   "at": "2. The report",
+   "excerpt": "⟨0.25⟩ **An ambiguous key — two entries sharing it — MUST be UNIONED. It MUST NOT be picked from, and it MUST ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ec08a2a11e3a1cd5",
+   "at": "2. The report",
+   "excerpt": "**This REVERSES ⟨0.24⟩ and earlier, which said such a key \"is dropped, not picked from — §4's under-report-don",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e29c1fb8a83fa74e",
+   "at": "2. The report",
+   "excerpt": "**The union is not a hedge, and that is measured rather than argued.** Across three real `.candor/deps` trees ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "dcbb4b86fc1d3bb9",
+   "at": "2. The report",
+   "excerpt": "**The collision the drop rule was written for — two UNRELATED functions sharing an imprecise key — is real, an",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "98f31183d39309de",
+   "at": "2. The report",
+   "excerpt": "**TRUST LEVELS DO NOT RANK HERE.** A §2.1-downgraded entry (rule 2) joins the union like any other; an impleme",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "46f6941bdfa8a645",
+   "at": "2. The report",
+   "excerpt": "2. **Stale reports are not trusted**: §2.1's version-trust rule applies at the join, and a report whose produc",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f1e64c42e27db991",
+   "at": "2. The report",
+   "excerpt": "3. **A chained package is COVERED, not blind, including its silence.** Reports omit pure functions, so a call ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "037d7554b163b8c7",
+   "at": "2. The report",
+   "excerpt": "`fs` refines the `Fs` effect into `read` / `write` kinds: the detail a consumer needs to tell a read-only func",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d592d5e7ddd78519",
+   "at": "2. The report",
+   "excerpt": "`hosts` refines the `Net` effect with the endpoint(s) a call talks to, but **only the statically decidable sub",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3f06528980aecf27",
+   "at": "2. The report",
+   "excerpt": "`cmds` (for `Exec`), `paths` (for `Fs`) and `tables` (for `Db`) follow the **same rules as `hosts`**: the stat",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "56771d43ceac12b6",
+   "at": "2. The report",
+   "excerpt": "The four together are the literal surfaces an `allow <Effect>` policy rule (AS-EFF-008) enforces; a producer S",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a8e018f18f011aea",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "A report is only meaningful relative to the engine that produced it: a richer classifier or a new resolution r",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "531332e98c07fd22",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "- `version`: the engine **build identity** (a build id / git hash / release tag). It answers \"which binary pro",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "037cff87c7ddd21a",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "- `spec`: the **candor-spec contract version** this engine implements (`\"0.15\"`). This is the version *this do",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9917875eb842395d",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "⟨0.27⟩ **`resolves` — WHICH OPTIONAL REFINEMENTS THIS PRODUCER COMPUTES.** A top-level array beside `extension",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3aec9db62d5f940f",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "**Why it exists: without it, the absence of an optional field is OVERLOADED and a consumer cannot read it.** A",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e4d063116e37485d",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "That overloading is not hypothetical and it is what motivated this rung. `fs` had been in this document for a ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7de16f9030a47bce",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "- A producer **MUST NOT** list a surface it does not compute. Doing so converts \"unimplemented\" into a false \"",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "249273f05e63091b",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "- A consumer **MUST NOT** read an absent optional field as \"the producer looked and could not tell\" unless tha",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6a615c6f45afd001",
+   "at": "2.1 Provenance (the `candor` header)",
+   "excerpt": "**Eligible surfaces are those whose PRESENCE is a positive claim.** `fs` is: a present `fs` is an affirmative ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f318df45c020c430",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "Crucially, unlike the report — which omits pure functions and records only effect-relevant `calls` — the sidec",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4aa9133e366f1628",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.24⟩ **`Llm` REFINES `Net`; `Db` DOES NOT — and this sentence used to say they did so alike.** It read \"`Llm",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "10de9b1a72a9ab39",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "It was not a wording problem. PAPER3's Definition 2 took the sentence at its word and carried `Db ⊑ₑ Net`, Def",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "671ff3371c33cdb1",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**The residual is real and is a CLASSIFIER question, not a gate one.** A *networked* database call is genuine ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "192c784cbdb9eddc",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.24⟩ **`callgraph` and `hierarchy` are RESERVED trailing segments, and a report-locator glob MUST exclude th",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0d61b21a41c518c9",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "That is a FALSE DISCLOSURE, and it was not cosmetic. Three measured consequences, each against a sidecar-remov",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "508ffe4d8ba5f553",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "The exclusion MUST be a **denylist** — carve out the reserved segments, keep accepting everything else. The in",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a59b3d8be6018395",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`, and t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "004065778afc1647",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.7⟩ **The type-hierarchy sidecar.** Alongside the report, an engine whose language has class/interface/ prot",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8645e326626cd99f",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "The type name keys match the owner type in the report's `dispatch:<owner>.<member>` reasons (§4) and the funct",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d2ca1c4c4708d39c",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.26⟩ **THE KEY SET IS THE MANIFEST: an absent type is UNANSWERABLE, never \"has no supertypes\".**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7e976b546128bad8",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "A producer MUST emit a key for **every type it indexed**, carrying `[]` when that type has no supertypes — whi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "774198fe34250d24",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**Why this is a rung and not a clarification: absence carried two meanings and the format could not tell them ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a6d6e185518b7b5b",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**Measured, and the shape is the argument.** On the `callers --include-unknown` frontier fixture (13 implement",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1f9a391a57e55612",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.26⟩ **`@unanalyzed` — types the pass TRIED and could not index.** Reserved keys are `@`-prefixed, so they c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a50ef9e2ecc4ae5f",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.26⟩ **THE §5 RECONCILIATION TRIO IS PRESENT-OR-ABSENT, NEVER EMPTY-AS-A-CLAIM.**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "62378b42b38a8fa8",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "`declared` / `undeclared` / `overdeclared` are the outputs of the §5 capability-reconciliation pass. An engine",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2bc481e87ccce922",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "This is §2.2 ⟨0.26⟩'s rule one layer up, and ⟨0.21⟩'s before that: **an empty set is a positive claim.** `unde",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9ca2464e085f90a1",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**Measured, and the shape is the argument.** Only one engine implements the §5 codes (AS-EFF-001/002/004) at a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "00a8432132e94c4e",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**That admission is the load-bearing part, and it indicts a CHECK rather than an engine.** A schema-parity com",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "13bca9099dbd57f5",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**Deserialization is half the contract.** A reader that defaults an absent array to `[]` destroys the distinct",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e89a05b0b272e973",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.24⟩ **EVERY ORDERING — in a report and in a query output — MUST be locale-INDEPENDENT.** Sort by Unicode co",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "67c0e73058edd478",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**ASCII DOES NOT PROTECT YOU HERE, and that is what makes this clause separate from the collation one.** The c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6bcf2fb9fe91356a",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "A CONTROL FOR THIS MUST BE CHOSEN AGAINST A LOCALE THAT ACTUALLY REORDERS ASCII. Turkish is the intuitive choi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b9f2aecedf10caf1",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "Note this is **separate from, and orthogonal to, the collation rule** for a single joined field. They are diff",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "385a5d9536a54b95",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "- **This rule (locale-independence) binds EVERY ordering**, in every report and every query output. It is sati",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "61d90c02edcf8bb9",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "- **Code-point order is required ONLY where a field's collation is pinned** (§3.1's `viaDispatchOn`). It is th",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d193a0368e535786",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "Read the other way — code-point mandatory everywhere — this clause would make a bare `.sort()` in any UTF-16 l",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b8fb0c29e952d345",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.23⟩ **EVERY VALUE IN THIS FILE IS AN ARRAY OF STRINGS, and that is a constraint on WRITERS.** A producer MU",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "af55553447798ae4",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "*This was first written the other way round, as a requirement on readers, and that is the mistake the rule now",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "79f324587ecbd188",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "The one metadata key defined so far is candor-java's `\"@superclass\"` — a **flat array** `[type, superclass, ty",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4844dacb5e2b153a",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "⟨0.24⟩ **RULED — see §3.1: an EMPTY sidecar, an ABSENT one and an UNPARSEABLE one are the SAME INPUT, and all ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "62889ab7d859f448",
+   "at": "3. Modes",
+   "excerpt": "- **baseline guard**: diff against a saved report and flag functions that *gained* an effect. ⟨0.16⟩ Existence",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ffaf2ed4088e32cd",
+   "at": "3. Modes",
+   "excerpt": "- **risk** (optional, **heuristic**): flag an effect whose argument derives from a function parameter (e.g. `f",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7f7494e65a1453cd",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **gains `<current>` `<baseline>`**: same two inputs; the package-level **gained-capability alarm** — the eff",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1962621d29d3567f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **reachable / path / impact**: the runtime effect surface (union over entry points), an effect's provenance ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1f4b633dfe11888e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **tour `[<N>]`** ⟨0.11⟩: the N (default 10) most *surprising* transitive reaches in the report — each a beni",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "aa005842afa7a3fe",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`parsepolicy` MUST NOT REFUSE A POLICY IT CAN READ AND CANNOT HONOUR. It REPORTS that parse, includin",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b4bd7894907bd285",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: `parsepolicy` emits its parse **and an `errors` list**, and exits 0. Each entry is `{ \"kind\", \"token\", \"ac",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4806585dcaff8111",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`errors` CARRIES EVERY LINE THE ENGINE DID NOT HONOUR AS WRITTEN — not only unrecognised tokens.** Me",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8f2307f52b776dc7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "This is deliberately **additive to the witness and silent about the gate.** Whether a dropped rule should also",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "67badfa923bff24b",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "These bind **engines, not consumers**: a consumer that only reads the JSON report is fully conformant. For an ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "71a81deb9efe5efc",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "`show` carries the report's optional refinement fields (`fs`/`hosts`/…) only when the engine resolved them (§2",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "57b871a323a06cab",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The surprising-reach surface** ⟨0.11⟩ (`tour`, and the scan-time opener). An engine SHOULD surface, at scan ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ed905cd37a3b20bf",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**A located report that yields no trustworthy functions MUST fail loudly** ⟨0.11⟩ (exit 2, the failure disclos",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3d03f06e474bffee",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`gate --report <locator> --policy <file>` — apply a policy to an EXISTING report, with no scan.** Eve",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3d2fa59afcdd7cef",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Two things this buys, and the second is why it is a MUST rather than a convenience.",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ee8901d0b80754c6",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "An engine MUST NOT re-derive, widen, or re-classify anything while serving this verb: it reads `S` and `D` fro",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a64fefcf72763e1c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**SHAPE** (reference implementation, candor-java): `gate --report <locator> --policy <file> [--json] [--gate-j",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "efdaecae60f96fd7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**EQUIVALENCE IS THE ACCEPTANCE TEST, AND IT IS BYTE-LEVEL.** For any report a scan produced, `gate --report <",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9a04e0e1a54ef644",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never evaluate",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9f47a7c647e74e12",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into a ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "72c27459e6ca5dad",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`allow <E> …`** — the AS-EFF-008 literal allowlist. Its surface-completeness marker **is not guaranteed** ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1ff9e2af6ac498df",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a live ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a7c4bc76dad5e405",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **REFUSE ONLY WHEN THE ABSENT DATUM COULD CHANGE THE ANSWER — the refusal is MINIMAL, not coarse, and m",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "93fbbbdd92eca0ce",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The refusal's **granularity differs by cause, and that is deliberate**: whole-policy for `forbid`/`allow` (enf",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "719dbb0cedb58ce9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE FOURTH CHANNEL: POLICY VOCABULARY ANCHORS AT THE POLICY FILE, ON BOTH ROUTES.** §3.1's MUST NOT n",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6471af1d37bc9719",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- `CANDOR_CONFIG` alone can flip the verdict, so the verb is **not literally a pure function of `(report, poli",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fd7035706daf7158",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **The two routes anchor differently.** All four gate verbs anchor at the **policy file's** directory while a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fa41c45900f80106",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**RULING.** `unknown-alias` — and any future key that supplies POLICY VOCABULARY rather than scan configuratio",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "329f228e1ddb9afd",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **AND THE AMBIENCE MUST BE DISCLOSED.** If a config file supplied vocabulary that participated in the v",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2be7cd45a0e4e335",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **A TYPO'D EFFECT NAME DELETES THE RULE, SILENTLY, FOUR-WAY GREEN — and the token rule stopped at the b",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "29f57e3798fd793c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The operator reads an armed `deny Net`; there is no gate at all. This document already calls a dropped rule *\"",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e89b6d113c2fffbc",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`allow`'s effect position is a fixed, closed FIVE-token set** — `Net`, `Exec`, `Fs`, `Db`, `Llm`. ⟨0.24⟩ *",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c6a7b3280fdd8509",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **A `deny` whose effect list ends up EMPTY after scope-splitting is malformed under either reading** — there",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2b036cc57aa45f97",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **CORRUPTION IS JUDGED PER KEY *ROLE*, NOT PER RULE — and the decisive argument is that trustworthiness",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "63c82aa0ba09e895",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Consulted-keys is wrong, and not by preference: it makes the same report trustworthy under one policy and un",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "98863630cad31291",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "But producer impeachment is not \"any bad byte refuses\" either, and this document already ruled otherwise witho",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "884889416a63b190",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE FIRING CONDITION IS OVER THE REACHABLE CLOSURE, NOT \"THE FUNCTION'S OWN ENTRY\".** `5a8cf48` and `",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6cecfc49675f3a47",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not answer `true`, and it does not answer `fa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a72d629187cc4e2d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So the field is **omitted**, and `incomplete: true` plus the `unanalyzed` manifest take its place. A consumer ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fb493d0a76c8c5f1",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE GENERAL LAW: AN ADVISORY VERB MAY BE LESS CERTAIN THAN THE GATE, NEVER MORE.** Three separate mea",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a78af0b9793070e8",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "3. and this one: over a report carrying `hosts` but no `netClass`, **`gate --report` REFUSES (§3.1 answerabili",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "560a14d890e80624",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "All three are one defect: **the advisory verb was more confident than the gate over identical bytes.** The cur",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "11eead2732346260",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`unverified` MUST NAME the function.** A function the gate COULD NOT JUDGE is an unverified hole in the st",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f08817f8efa84104",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`fix-gate` AND `fix` MUST NOT offer a remedy premised on evidence the gate refused to read.** A hoist plan",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a406943ab45e4a5d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **Both carry `unevaluated: [ { \"rule\", \"why\" } ]`** — the gate's own shape (§3.1), because it is the same di",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ae49427fbff1e2ad",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Why this is a LAW and not a fourth patch:** the three instances differ in mechanism — a lenient reader, a mi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f8c29a3fa4c59237",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **\"THE SAME BYTES\" MEANS THE SAME REPORT SET, AND THAT WAS NOT TRUE.** candor-java measured the relatio",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a3c791046f413eec",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **AND `ok` IS OMITTED FOR THE WITHHELD-RULE TRIGGER TOO, not set to `false`.** `4fd140c` argued the `fa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a5ff53cc259a3e2d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME BYTES.** ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a11b8cd85cf8979d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So the rule is a RELATION, not a shape: whatever leniency a reader applies, the advisory verb's incompleteness",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "aea12799222da986",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE SAME RULE BINDS EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later s",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "55a603323f6a8c5f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "`unverified` is the sharpest case in the family: **it is the verb that exists to say \"your green gate is not p",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4961f989149b8f81",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: an advisory verb over an incomplete report emits `incomplete: true` plus the `unanalyzed` manifest and **O",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "07fc26e3b359f2be",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **AND THE DISCLOSURE MUST REACH EVERY CHANNEL THE VERB ANSWERS ON, WHICH ITS TESTS PROBABLY CANNOT SEE.",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1f8636aad8c8531e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **A NARROWED RULE ASKED AS A HYPOTHETICAL IS ANSWERED CONDITIONALLY, AND THE CONDITION IS NAMED: `\"cond",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2153270373016f86",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Neither of the two obvious answers is right. Printing the rule stripped of its filter (`deny Net` for `deny Ne",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3da5474f41367456",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ *I MIS-TRANSCRIBED THIS PIN, WHICH IS ITS OWN LESSON.* The shape above was written from the description",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "dc64e89e2a5f6cc8",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`errors[].accepted` IS AN ARRAY OF TOKENS, and `kind` is drawn from a CLOSED set** — `reason-class/al",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f6299b48d00e896f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ *`rule-form` was missing and the set was wrong the day it was pinned — the SIXTH time I have scoped a c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "725658938842747a",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE STALE-DOCUMENT RULE BINDS EVERY MACHINE-OUTPUT PATH, NOT JUST `--gate-json`.** The argument — *a ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ca2336c3a0b36931",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND HERE IS THE MUST FOR THE REPORT SINK, WITH A SHAPE.** The ⟨0.24⟩ clause above generalised the *wh",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "dc232428d9b0c3f3",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(1) THE ARMING RULE, RESTATED FOR THE REPORT SINK.** As soon as `--json <path>` has been parsed and accepted",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d70b630eb428d45e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e85738a0371bdcae",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **THE `unanalyzed[].reason` VOCABULARY, MINTED HERE RATHER THAN CITED.** This clause said the string \"u",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "86f980bbae4ff9f5",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**AND THE ARMED DOCUMENT IS WRITTEN BEFORE THE CAUSE EXISTS.** Arming happens at parse time; the failure that ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "619c3a806bc0b958",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(3) THE INPUT EXEMPTION FROM ⟨0.27⟩ (2) COVERS THE PATH, NOT THE RUN.** A `--json` path naming an INPUT of t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4aad976dc52ac12d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND AN INPUT LOCATOR NAMES A SET — COMPARE THE EXPANSION, NEVER THE TOKEN.** \"Artifacts not strings\" ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7e655eccaa291241",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Found independently in three engines, and it is one defect with three spellings.** Measured: `gate --report ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "61dd96a9ad5e8b71",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: **before comparing, expand each input locator exactly as the code that READS it will expand it**, and comp",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1eb761e905b72726",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **DERIVE THE EXPANSION FROM THE LOADER, do not re-spell it.** A hand-written second expansion is a second pa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5e210dd3f399957c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **THE SIDECARS EXPAND TOO.** A report locator that resolves to `<stem>.json` also reaches `<stem>.callgraph.",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ff2a0804a4dc4730",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So it is stated as a MUST in its own right: **the scan target is an input, and a report or verdict sink naming",
+   "part": "PART 37 (f)"
+  },
+  {
+   "sha": "8b72fa42a3359ced",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **EXACT ARTIFACT, NEVER CONTAINMENT.** A report written into `.candor/` *inside* the tree being scanned is o",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "416efc9656482957",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **THE TARGET IS OFTEN A DIRECTORY, AND THAT IS NOT A GUARD.** Two engines were protected only because their ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1959eb3875c806f4",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(4) `--json` ON STDOUT IS THE STREAM FORM.** Arming does not apply (no previous document to go stale); the d",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "51c9dd6171a05323",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(5) EVERY ROUTE AND EVERY ENGINE THAT WRITES A REPORT.** The rule is about the SINK, not one CLI. Surface as",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f86d00279acc8027",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(6) `--out <prefix>` — THE REPORT SET, AND THE SET IS THE ONE THE PREVIOUS RUN LEFT.** This was deferred pen",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bf536c006b5ed8a9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **ONLY A SINK THE OPERATOR NAMED.** Arming binds an explicit `--out`, never the DEFAULT prefix. Measured: ar",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "cd4967a91460bea2",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **IDENTIFY WHAT YOU OVERWRITE; DO NOT DENYLIST WHAT YOU SKIP.** An armer MUST write only files it positively",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6f4bd78b2d2930d0",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **THE INPUT EXEMPTION IS ASKED FIRST, BEFORE IDENTIFICATION.** A policy holding ordinary rule lines is not J",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d6fa783b977817ab",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**AND THE RUN HANDS BACK WHAT IT TURNED OUT NOT TO OWN.** A file still holding the placeholder once the run ha",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "dd5260b2f3d798f3",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND \"FINISHED WRITING\" MEANS THE SCAN COMPLETED — NOT THAT CONTROL CAME BACK.** The paragraph above w",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3e1aa5b8e66b91c9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**AND AN ORPHAN'S SIDECARS COME BACK WITH IT.** The hand-back as first written restores report bytes only, whi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "62b0b1cd9ecfb5e5",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND THE §2.2 SIDECARS GO WITH THE REPORT — DELETED, NOT EMPTIED.** A report armed to the shape in (2)",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6cf8c5f268407c06",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: on arming, the implementation MUST remove each armed report's §2.2 sidecars, under the same artifact-resol",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "907ed9c4ea2b278f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Deletion rather than `{}`, and the reasoning is NOT the report's.** §3.3.1 forbids deleting a REPORT because",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8d9ec063ef691ba0",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **THE PAIRING RULE — a CONSUMER obligation, and the belt to arming's braces.** A §2.2 sidecar whose pai",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ed84d00b6aee3faa",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**AND UNANSWERABLE MUST REACH THE MACHINE CHANNEL — \"take the absence arm\" IS NOT ENOUGH, which is what this c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "27a7c1a910e29ae2",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So a verb that has ruled its input unanswerable MUST say so **in the machine output**: a pinned `\"unanswerable",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2736c66b67bd7271",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND THE OBLIGATION KEYS ON THE REPORT, NOT ON THE SIDECAR'S EXISTENCE — which is what this clause sai",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b9e14a55135ab0f6",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND `unanswerable` REPLACES THE RESULT SET; IT DOES NOT ACCOMPANY ONE.** The permitted remedy above r",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8901baed6d2f92ee",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So a verb emitting `unanswerable` MUST **withhold the result keys** it cannot fill — no `direct`, no `transiti",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "839b309a5c3aed4f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **AND THE GENERAL RULE, BECAUSE THIS IS THE FOURTH TIME IN ONE DAY.** `coverage.packages`, `policyVocab",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "25192eddeeb74857",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: **a field that enters a machine-consumed document MUST have its name and shape stated here in the same run",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f7f1dd445193df01",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **`aliases` MAPS EACH ALIAS TO THE CLASSES IT EXPANDS TO — `{\"corp\": [\"reflect\"]}`, AN OBJECT.** This c",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2e9b2c433ca2c4fd",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE DISCLOSURE'S SHAPE IS `\"policyVocabulary\": { \"config\": \"<path>\", \"aliases\": { … } }`.** I left th",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f2c5cd71e820ca2e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "`policyVocabulary` over `vocabulary` because the document already carries other vocabularies (effects, reason ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "027fc7e2f9fdc561",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE VERDICT'S `coverage` BLOCK IS `{ \"uncovered\": <n>, \"packages\": [ … ] }`, AND UNTIL NOW THIS DOCUM",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0bd929b050977491",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "`packages` is correct, and **not because it is three-to-one.** The §2 envelope names the very same objects `pa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "88aa0b0048abaa8c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Recording the shape of the miss: **a field can be uniform across three engines, mentioned in this document, co",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7f35abcb16856c0d",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **PRECEDENCE: A CERTAIN VIOLATION DOMINATES A REFUSAL, AND ALL FOUR ENGINES HAVE THIS BACKWARDS.** Thre",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0b7d96da2cb3bf7a",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The consequence is not cosmetic. A refusal writes no `--gate-json` document (below), so refusing over a firing",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e1fb8eed5c0950dd",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ *This clause first read \"refusal (2) > violation (1)\", ratifying the measured four-way behaviour. I wro",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "95ffa6115e7abf77",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**A machine consumer of rust's or swift's exit-1 verdict cannot see that any rule went unevaluated at all.** T",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "27a24a5e0e1523e2",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ The refusal document's `reason` is likewise now pinned: a STRING naming the cause. All four converge on",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "cf0a8e3b12ebb93c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The stale-document hazard is separate, and survives the correction above — it bites whenever a refusal is the ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f0f288720da98c0a",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So: ⟨0.24⟩ **if `--gate-json` was requested and the gate REFUSES, the implementation MUST write a document at ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "65292c40e1e09c92",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **WHEN, EXACTLY, THE SINK IS ARMED — and the one thing that must never be written to it.** The rule abo",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2ce3dc881c21bc76",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(1) Arm at the instant the sink is known, and before anything else can exit.** The implementation MUST write",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8af8a87d40d59718",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(2) A `--gate-json` path that names an INPUT of this run is refused, and NOTHING is written.** The sink is o",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bcf4639dc7ce66df",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **AND THE WRITE MUST LAND ON THE SAME ARTIFACT THE COMPARISON RESOLVED.** The rule above is stated abou",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e06c48d053e76a37",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "A stale green through a single flag, with no operator mistake at all. An implementation MUST resolve the sink ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "88c4f3b967a6375a",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **DEVICE+INODE IS NOT OPTIONAL WHERE THE PLATFORM OFFERS IT.** The parenthetical below was read as advi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ae42a53217b5e4e2",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Sameness here is a question about **artifacts, not strings**. `--policy /w/P --gate-json ./P` from `/w` is the",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9b43458e77d4418f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **THE STREAM SINK: `-` IS NOT ARMED, AND IT IS NOT EXEMPT.** `--gate-json -` (and §3.1's `--json`, whic",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "570e1523a75d5655",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **TWO ARTIFACTS CANNOT SHARE ONE STREAM: `--json` BESIDE `--gate-json -` ON THE SCAN ROUTE IS REFUSED.*",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f384e405b7b4c67c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The implementation MUST exit 2 with a diagnostic naming both flags, and the fail-closed document is the stream",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b2def7e7ff0a7823",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.28⟩ **ONE RUN NAMES ONE SINK. A REPEATED `--gate-json` IS REFUSED, AND EVERY PATH NAMED GETS THE REFUSAL.**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "15e4281b33e4f80e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Writing to *each* is the load-bearing half, and it is not symmetry for its own sake. Measured across all four ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "aa2b34f8aa659691",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**EVERY ROUTE THAT ACCEPTS `--gate-json`.** The rule is about a RUN, not about one CLI. An engine that exposes",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "054a3932f35808e0",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**THE INPUT EXEMPTION COVERS THE PATH, NOT THE RUN.** Rule (2) says a sink naming an input of this run is refu",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5ca8e1176a37cfcc",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **PRECEDENCE GOVERNS ANSWERABILITY REFUSALS. A CORRUPTION REFUSAL DOMINATES EVERYTHING, INCLUDING A CER",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3bdb8fd91c0d0c94",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The general test, and the reason this is a boundary rather than a carve-out: **ask whether the refusal's cause",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a1cbd97669dec5d0",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE OPERATIONAL FORM OF MINIMAL REFUSAL: WITHHOLD PER (RULE, FUNCTION) — and applying the precedence ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b082146a91081714",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Once a firing rule stops short-circuiting the refusal, the evaluator reaches code it never reached before. Mea",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "390d79d1e4042228",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So the rule is: **a rule FIRES on a function only where the match is evidenced by that function's own entry, a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "32fe5acd85e6aa1b",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Two things generalise here, and both are expensive to learn twice.**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "11c54651998661f2",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "*And a soundness fix is a fabrication risk in its own right.* This project already records that killing a fabr",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "93933e42f5c4b890",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **PRECEDENCE BINDS THE VERDICT, NOT THE POLICY GATE — a certain BASELINE regression is deleted by an un",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2d8154c946a32d6a",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So **a typo in a policy token downgrades \"your change added an effect\" to \"could not evaluate\"**, and the regr",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3fe85bfa682fcce9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Three individually-correct decisions composed into it, which is why no engine caught it: the baseline guard ru",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ab39f3ef71e9c7d5",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**So the rule is over the verdict.** Any violation the run has already established on carried evidence — whate",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "116d8f372f0f5ee9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **NEITHER RULE HAS A CARVE-OUT, AND BOTH OF MINE DID.** candor-rust implemented the two clauses above, ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0cff5ece91f9ac2f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(a) Precedence binds `forbid` and `allow` too.** Measured: `deny Fs app.fsUnit` (fires) beside `forbid app -",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "02db9f5c7a50ed78",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**(b) The refusal document has no exempt cause.** §3.3 enumerates exit-2 causes including a broken gate CONFIG",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "df4886d6e7b2a093",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The pattern in both is one thing: a rule stated over the instance it was found in rather than over the condi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "402f6bf839f37c3b",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **THE COMPOSED DOCUMENT: `refused` AND `violations` ARE MUTUALLY EXCLUSIVE, AND THE COMPOSED SHAPE IS A",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4bfacca1e41ee3af",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The rule: **a document that carries `violations` is a VERDICT, never a refusal document, and it MUST NOT carry",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "88a162b7b9b2dca1",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The refusal is disclosed in `unevaluated`, and on a whole-policy refusal that list carries EVERY rule of the",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "12b55e285ee99dcf",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **A rule whose SCOPE binds nothing rides the verdict document as `zeroMatch` — see §3.1's zero-match cl",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "943b6cd859e59603",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope function RE",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c244ce6d2f749f1f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The unscoped form of the very same question is refused by every engine; adding `app.web` makes all four answer",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a23d687bdeba6338",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The cause is uniform: each engine tests whether the *in-scope entry's own* class set is empty, and never asks ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "35cea6f57097ea6e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE MANIFEST DOES NOT TRAVEL, AND THIS VERB IS WHERE THAT BITES.** The verb leans on *absent is absen",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9c3fcc0dcd7adaa7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "What would close it is the **per-unit analyzed NAME SET**. That set exists today — it is exactly the §2.2 call",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "981de677f88b29d7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **THE MODEL-VERSUS-CONTRACT RESIDUAL IS RESOLVED — and it MOVED before it closed, which is the part to ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e55ff8500383168c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The second engine then found 100 disagreements again, in a NEW family**: `Llm ∈ S` with `Net ∉ S`, the survi",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "efd2066d9af7fa73",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The `Llm` family is **not a defect in either layer: it is UNREACHABLE.** Every engine co-emits `Llm` and `Net`",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8e49cac67de178b0",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The standing rule for anyone running this differential: a model quantifying over all of `L` will fire CORREC",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c356bb8da2354977",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **Three surfaces this document NAMED and never DEFINED.** Each is cited elsewhere as though it were spe",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "24bfa80dadc1f29f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **`reports <prefix>`** — enumerates the report files a prefix locator resolves to, and nothing else. It is t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "257edd9bd0f3cbc4",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- **The `encountered-*` sidecar family** — engine-local artefacts recording what a scan saw, reserved in §2.2 ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "533bf1e05d88c69b",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "`callers --include-unknown` ⟨0.7⟩ adds **`possibleViaUnknownDispatch`** to the `callers` output: the *unresolv",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "922fd6724f8f9120",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **A rule whose SCOPE matches no function is UNANSWERABLE, and MUST be disclosed rather than scored as s",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "874dab96089074ab",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "The remedy is DISCLOSURE, not refusal. Exit 2 would be wrong: a zero-match rule is legitimate when one policy ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5bc8659e1ef62718",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.27⟩ **…and the `--gate-json` VERDICT CARRIES THE SAME LIST, under the pinned key `zeroMatch`.** This senten",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fcfe314afafe4282",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "sorted by Unicode code point and deduplicated (the `viaDispatchOn` collation, for the same reason: a field no ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0991bd7f8c84a113",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Status: the console disclosure is implemented four-way** (candor-swift led it; candor-java, candor-rust and ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f5cd7b8b4ad459d9",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an unanswerab",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ff4eeb88d58f9c17",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "This is the same direction the **no-hierarchy fallback already takes** one rung up: with no §2.2 sidecar, cond",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7bcb746626ed08d5",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.24⟩ **An EMPTY §2.2 hierarchy sidecar and an ABSENT one are the SAME INPUT to this query, and both take the",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3dcfcb5e328b2726",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**A dot-free detail MUST be recognised STRUCTURALLY** (the detail contains no `.`) and short-circuited *before",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f18f6ed8d6fd6c13",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- The split helpers fall back to the WHOLE STRING when there is no dot, and they are applied to the reason det",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a78005a254e15166",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "- Without the short-circuit the same detail can be **disclosed in one arm and dropped in the other**, decided ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d05b18e85dd2c345",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**\"Sorted\" means by UNICODE CODE POINT**, equivalently by UTF-8 byte order — the two orders coincide, and nami",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "47e8a4542ebf609c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**\"UTF-8 byte order\" names the ORDER, not the METHOD — do not implement it by encoding to UTF-8.** In a langua",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7d37fe54393d118e",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "Note also what is *not* checkable across engines here: a lone surrogate has no UTF-8 encoding and therefore ca",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c84d58b98cc879fc",
+   "at": "3.2 Pre-edit and structural tools (SHOULD)",
+   "excerpt": "- **rewire `<baseline>`**: the **de-wiring / structural-regression** check. Diffs the current call graph again",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ba6ce0d63697697f",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "The mode names above are conceptual; this fixes the *invocation* so a person or an agent drives any engine ide",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ac4ee5ca5de433bf",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "| `--policy <file>` | enforce a §6.2 policy file: exit **1** on a violation, **2** if the file is unreadable (",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "021715533d7668bb",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "| `--json` | emit the §2 report as JSON to **stdout** (the report envelope; the §2.2 sidecar need not go to st",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bac0128e2f7c80c2",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "| `--gate-json <file>` ⟨0.8⟩ | write the **structured gate verdict** (below) as JSON — the machine analog of t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2c5e3993cbf9366d",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "| `--version` / `-V` | print the engine build **and the candor-spec version it implements** (the §2.1 envelope",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "990dcce67c2c2233",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "| `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the can",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "daf506bcc4af0584",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "**Fully offline.** candor runs fully offline: an engine MUST NOT phone home — no telemetry, no update checks, ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "62c6a3ff700dfa7d",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "The short aliases `-V` and `-h` are REQUIRED; every other flag uses its long `--name` form. An engine MAY expo",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5225139a88b6dce1",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "A read-only **query** surface (§3.1) — whether shipped as a separate binary (e.g. `candor-query`) or as subcom",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c88478426b50c110",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "§3.1 pins the query **names and JSON shapes**; this pins the **invocation** around them, so a query is driven ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "19b099da4302b56c",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **Report resolution.** With no `--report`, the engine discovers the report by walking UP from the CWD for a ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5eff9cdc2fb94ddd",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **No report is a loud failure.** If the report cannot be resolved to an existing file — discovery finds no `",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e19b965541e2e563",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "⟨0.28⟩ **AND \"GIVEN NO VALUE\" MEANS THE NEXT TOKEN IS FLAG-SHAPED — otherwise the clause cannot be implemented",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f812e02f58b147ad",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **Deprecated positional forms are arity-gated.** An engine that still accepts the pre-0.10 positional forms ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8d2c16c2b32f4920",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **`--json`** selects JSON (stdout MUST then be pure JSON, per §3.3). **`--policy <file>`** supplies a policy",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5231fbc0a238aaa8",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **`--strict` — the advisory-verb CI gate** ⟨0.18⟩. `unverified`, `fix-gate`, and `gains` are ADVISORY: they ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "45aff77c2ca6c3e3",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb (",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "844f4de1955cd801",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "`ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear in ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e8173c95dd1607b2",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two exit-",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a1ba3ec30d2a8aaf",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A per-member writ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e0c61113e8363db9",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "⟨0.27⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than hoped for.** The com",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "513838a2031dd0b3",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "A producer implementing this MUST compare the pin against its own release version and, on a difference, FAIL w",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8ae2b82999dffcd6",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **No pin, or a pin naming another implementation** — unchanged behaviour. The key is opt-in by construction:",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "54cf12f60229d974",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **The pin is well-formed and the producer cannot determine its OWN version** (a source build rather than a p",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "67ba990dffcfd3db",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "A pin that is present but **unreadable** (`engine latest`, a bare `engine`, anything that is not a version) MU",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3702e8837e84eafa",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "**The qualified form exists because the family versions as a LADDER, not in lockstep** (§2 versioning policy):",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "439c5344806e1de6",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "**A version token carries AT MOST ONE leading `v`.** `vv0.27.0` is not a version; two engines accepted it as o",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c72072d9201c4024",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "There is deliberately **no `CANDOR_ENGINE` environment variable**, breaking the 1:1 key↔env mapping the rest o",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bc64de6d4fd420f1",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "**Status: implemented and enforced identically by candor-java, candor-rust, candor-ts, candor-swift and candor",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4d822c560a8347cb",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "An engine reads the keys whose modes it implements; a known-but-unimplemented key is **inert for enforcement, ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "74a5afcc901121bc",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "**Discovery is anchored to the scan target, not the CWD**: the file is found by walking UP from the target (`t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "48f25b31748347da",
+   "at": "4. The trust contract — the core of candor",
+   "excerpt": "The defining rule: **an implementation must never report a function as effect-free when it could not actually ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4b18d6899eb1642f",
+   "at": "4. The trust contract — the core of candor",
+   "excerpt": "**The limit, stated plainly.** Whether a function performs an effect is undecidable in general (Rice's theorem",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6c6b0543417ef3e2",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "So **reason-scoped `Unknown` (⟨0.19⟩) is the `D` component made policy-addressable**, and the completeness man",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "72bb5a2e06b50dee",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**Dispatch over a local abstraction — the bounded-CHA discipline** (all four code engines): a call dispatched ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6fb5119bd2da859e",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the child does is",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5ec9af949f2f1fdc",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "An implementation MAY treat dispatch over a curated set of conventionally-pure standard-library traits/interfa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "aae45f4879f365b5",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "A method *inherited* by a type (a trait default/provided method, or a concrete method on a base class the type",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b6f24b9ddabf008d",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "| `dispatch:` | an unresolved **virtual / interface / protocol** dispatch with a **resolvable owner type + mem",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "14cbfb664f7c35e8",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.24⟩ **The dotted detail is normative WHEN an owner was formed; a DOT-FREE detail is the reserved form for \"",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "756d1f00974b5bcd",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists: `dispatch",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0787bc89cdd78787",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.7⟩ **What is conformance-binding, and what is per-language.** Precisely: the **`kind` SET** (`reflect`/`nat",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "68d21f6bface9006",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "An implementer amending this section MUST update both halves and **MUST** add a test that a **fabricated** off",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "82e029ffb944a733",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**MUST, not SHOULD — because a mutation exists that ONLY that control catches.** Measured: an engine whose pre",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "10d925bcf306914c",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**A consumer may need a kind it never emits.** An engine that chains dependency reports relays their `unknownW",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bfd7c6b8f7b7ba30",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**A dispatch FRONTIER must key off the kind, not the class.** §3.1's frontier resolves overrides against an ow",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f5044ae8d129c012",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.24⟩ **OPEN — two off-vocabulary kinds an engine emits today, and one of them answers a DIFFERENT QUESTION f",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5f96971098b49a88",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.24⟩ **`dep:<hash>` and `dep-stale:<pkg>` are REGISTERED, not migration kinds** — §6.2 holds them up as the ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "50bd0c15ab752636",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.7⟩ **Domain engines.** The four kinds describe why a *code* call's body could not be resolved, and so bind ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b35f19f4b2dc5df9",
+   "at": "5. Capabilities (conformance)",
+   "excerpt": "Conformance needs a way for a function to *declare* the effects it may perform. The canonical mechanism is a *",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "53a6e39d28f495a2",
+   "at": "5.1 The effect manifest — declared effects for a",
+   "excerpt": "A cap type lets a *function* declare its effects. The same trust tier extends to a whole **opaque dependency**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "609aeaa7bc9dc824",
+   "at": "6. Diagnostics (`AS-EFF-00x`)",
+   "excerpt": "A **literal-allowlist** policy rule, `allow <Effect> [in <scope>] <value>...`, constrains *which* values a sco",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "51925727660b4322",
+   "at": "6.1 Containment — the architecture-quality signa",
+   "excerpt": "candor defines **no single quality score**. Raw effect *counts* are domain-dependent — a database app performs",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "da4156f8c0f685a1",
+   "at": "6.1 Containment — the architecture-quality signa",
+   "excerpt": "> **Note — \"cross-cutting\" here is unrelated to the \"ambient authority\" partition.** This containment > split ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9393e500f3247929",
+   "at": "6.1 Containment — the architecture-quality signa",
+   "excerpt": "**The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers* each b",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "0c0279857d399744",
+   "at": "6.1 Containment — the architecture-quality signa",
+   "excerpt": "+ trend gate and MUST NOT present a single aggregate score.",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4328fd176afe8c4f",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**Lexical.** One rule per line. A `#` begins a comment to end-of-line; blank lines and comment-only lines are ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "68e200f2cabfd5a5",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**An unreadable policy FILE is a failure, not an absent gate.** The malformed-line rule above is for content; ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d718bd3c0f3d80c4",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.28⟩ **AND A CONFIGURED POLICY THAT YIELDS ZERO RULES IS THE SAME FAILURE, REACHED THROUGH A READABLE FILE.*",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "94dc761333aac32f",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "and exits 0. That is **byte-identical to the verdict of a gate that ran and found nothing**, and also byte-ide",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "8a53310b1e5f32fc",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "So: **when a policy is CONFIGURED and parsing yields NO RULES AT ALL, the run MUST refuse — exit 2 with the fa",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "771a18d5b168abf0",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**Three things make this forced rather than chosen.** First, it is the clause above stated over the CONDITION ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "771a6c65683f60c7",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**The line-level leniency above is UNCHANGED and still correct.** An unrecognized or malformed line stays igno",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "25af348b49ceb299",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.28⟩ **AND THE CONDITION IS A DROPPED LINE, NOT AN EMPTY POLICY — the clause above is stated over its own in",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4169e49489971abc",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "Refusal is the wrong remedy there — it would break the forward-compatibility leniency this clause has just fin",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c8ef1bbb002b8ca6",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**The refusal covers the empty file and the all-comments file too**, and that is deliberate rather than incide",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "1ac36e89ec44802f",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**An unrecognized command-line FLAG is the same failure class.** A CLI MUST reject an unknown leading-dash arg",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "073056d2167f1f57",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- **`allow`**: the effect MUST be one of the **five** that carry a literal surface (`Net`, `Exec`, `Fs`, `Db`,",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ca06e4853d090bbc",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**Reason-scoped `Unknown` (`deny E Unknown[class…]`)** ⟨0.19⟩**.** In a `deny`, the `Unknown` token MAY carry ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "fa37f9e400ce00a5",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "| `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "6a70dd48061b9247",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **The `--class` FILTER — normative, because it had no semantics here and three engines wrote three.** `",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "286b313c79da5e26",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "0. **REQUIREMENT (1) BELOW — transitive resolution — applies to `unverified` and NOT to `blindspots`.** Both v",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2309fb7981f25e3e",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "1. **It MUST resolve the class set TRANSITIVELY, over the same reach the gate uses.** `unknownWhy` is **direct",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3c8279d1b4378203",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "2. **It MUST fail CLOSED.** An entry the filter cannot classify is KEPT, never dropped. The failure it replace",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "349e70f568bc46a3",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "3. **The contribution in (2) MUST be gated on the function having a DIRECT `Unknown` it did not name** — not o",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "dba2779886f68a78",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **THE POLICY SIDE MUST REFUSE TOO — my \"a dropped token leaves a WIDER rule\" reasoning was FALSE, and t",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "71b9a5b867e14a3b",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- `deny Unknown[corp]` — the *only* token is unrecognised, the filter empties, and the rule **WIDENS** to a ba",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "379b4737aba5854c",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- `deny Unknown[dispatch,nativ]` — a **typo among valid tokens**. It is silently dropped, the rule **NARROWS**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "812f3275e6bc00a8",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "So the policy side takes the same rule as the query side: **an unrecognised token in ANY policy value list is ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "036b32f21a479ddc",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **\"REASON-CLASS\" WAS TOO NARROW, AND THE NARROWING WAS AN ARTIFACT OF WHERE I FOUND IT.** This clause f",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "28db7eed4fd7aeed",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- `unknown-alias corp = dispatch,nativ` → the DEFINITION silently becomes `{dispatch}`, and the gate goes **gr",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "bef7e703721a55c8",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "The rule was never about reason-classes; it is about **a policy value list the implementation cannot honour as",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "72526e352cec0ec2",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **THE FLAG'S VALUE GRAMMAR**, which was never stated and is therefore where the next divergence would h",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "19e7584c47f647e2",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "The diagnostic is cheap and every implementation should carry it as a test, **but it must be stated precisely,",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7f8ba04c34d2d114",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**THE GATE AND THE DISCLOSURE MUST APPLY THE SAME RULE, AND SHOULD SHARE THE SAME CODE.** In the engine where ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a97d2b697dd913c0",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **IMPLEMENT IT AT THE SOURCE, NOT AT THE JOIN — one engine already did, and that is the shape to copy.*",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "2f1500dac0750535",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "Measured consequence: candor-swift's empty-set default is **unreachable** — instrumented over two real targets",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "9f46cd78eaf1a174",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**THE STRONGEST FORM IS TO MAKE THE STATE UNWRITABLE, NOT MERELY UNREACHED — and one engine already does.** ca",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7a04cf5140350bb2",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "That is the ideal an implementation should aim at. A join-side default is a *coping* mechanism; a source-side ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "4253467e935ef11c",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **`ambiguous:` is a §4 kind, and was projected here before it was one.** This table has always mapped `",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "c846b4409b8fb914",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "It is now a fifth kind in §4. The alternative — stop emitting it — was measured and rejected: on candor-rust i",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "96ec5b718bef4405",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.24⟩ **`CONTRIBUTES`, not \"is treated as\" — and the difference is a proved property.** This clause used to r",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b28143f337cbe75e",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's unrecognised-to",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "035c6adcd313790f",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- **`pure`** is unaffected — **its verdict never depended on `Unknown` at all**; reason-scoping is a `deny`-si",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e4542ee0b6b37470",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "A conformant `--gate-json` verdict (§3.3) records, on an `AS-EFF-006` violation whose `effects` include `Unkno",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b30f480230247269",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**`Net` destination-class (`deny Net[dest…]`)** ⟨0.21⟩**.** In a `deny`, the `Net` token MAY carry a bracketed",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "87973de90aeae23a",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "- ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's unrecognised-to",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a78685c5e96be797",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "Per-function, a conformant report MAY carry a **`netClass`** array (§2) — the destination classes present in a",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "afb2b186718da00f",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not substring**",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f658c81f89927701",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**Literal matching** (`allow`) is **per effect**: a `Net` host matches by hostname with the port ignored (`api",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "ab7db3e469882c89",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**From gate to guard — runtime enforcement** ⟨0.5⟩. A policy is an *advisory* gate by default: the engine DETE",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "5d18bc54e42cb9e5",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "Two **profiles** exist, and a claim of conformance names one. A **sound engine** meets every MUST below; this ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "59d7ca940f4ad441",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "11. ship the **standard companion documents**: an `AGENTS.md` (how an AI coding agent produces and consumes th",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "17f35ba8b9d7c250",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "12. **use candor on itself.** Analyze its own codebase cleanly (no crash, a plausible report: self-analysis is",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d6a9e3f6d52a4448",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "13. **enforce the §4 trust contract with an adversarial soundness harness.** Item 4 states the contract; this ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "cf8687e7ab7c6dcb",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "- **Teeth-verified:** disabling a resolution mechanism MUST make the harness fail: a harness that cannot fail ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "24780539a221f50e",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "- **Forms are the coverage unit.** The harness proves only the forms it encodes; every code engine has had a \"",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "3140f9edc4dea943",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "- The harness SHOULD run in CI alongside the engine's tests; an unrun harness proves nothing. All four code en",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "d7ba81180b26aacb",
+   "at": "7. Conformance checklist for an implementation",
+   "excerpt": "14. **disclose the curated classifier's blind spots per scan — the coverage ledger.** Every candor engine clas",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "7e92757b7babb0a0",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "1. **§2 — the report envelope, `hash`, and the sidecars.** The `{ candor, functions }` envelope with a full pr",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f735ff862a49842d",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "2. **§4 — the trust contract and the `unknownWhy` vocabulary.** Unresolved ⇒ `Unknown`, never silent-pure; the",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "b49f425dc1b9f938",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "3. **§3.3 — the command-line surface and the gate verdict.** `--policy` (+ `CANDOR_POLICY`), `--json` to stdou",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "adee13f6e37affc4",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "4. **§3.4 — the `.candor/config` file.** Target-anchored discovery, flag → env → config → default precedence, ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "f45f82abc6ca64bd",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "5. **§6.2 — the policy grammar and scope/literal matching.** The four rule kinds parsed exactly (expose `parse",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "295ea5761b12cb0a",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "6. **§3.1 — the read-only queries.** `show`/`where`/`callers`/`map`/`diff`/`gains`/`reachable`/`path`/ `impact",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "07c2e86e1cdb8ee2",
+   "at": "Appendix — Implementing 0.8: the checklist",
+   "excerpt": "7. **§7 — the coverage ledger, `--agents`, and the checklist items.** The per-scan `classifier doesn't cover` ",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "a78f55acaa7de4a8",
+   "at": "6.1 Containment",
+   "excerpt": "⟨0.28⟩ **AND THE JSON SHAPE, PINNED BECAUSE IT WAS NOT.**",
+   "part": "PART 42"
+  },
+  {
+   "sha": "61447e406a6ae577",
+   "at": "6.1 Containment",
+   "excerpt": "`containmentPct` is an INTEGER percentage",
+   "part": "PART 42"
+  },
+  {
+   "sha": "c3e7a9d7f8f16421",
+   "at": "6.1 Containment",
+   "excerpt": "⟨0.28⟩ **`layerPrefix` IS THE ONE THAT MUST CHANGE",
+   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+  },
+  {
+   "sha": "6fc097cf1558be45",
+   "at": "6.1 Containment",
+   "excerpt": "- a field that is **always present and usually empty**",
+   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+  },
+  {
+   "sha": "91dee06e5655a200",
+   "at": "6.1 Containment",
+   "excerpt": "The field is load-bearing when it is non-empty",
+   "unenforced": "no part distinguishes an UNCONDITIONALLY-emitted empty `layerPrefix` from a conditionally omitted one — PART 42 compares types across engines and would see both as absent-or-string. The candor-java fix and the row that would pin it are queued together; recorded here rather than left to look covered."
+  }
+ ]
 }
