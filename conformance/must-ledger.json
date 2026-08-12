@@ -2572,6 +2572,48 @@
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "(see SPEC.md)",
    "unenforced": "⟨0.28⟩ `crossing` — ruled 2026-08-12, NOT YET EXERCISED. PART 42 sees only that it is emitted with one type; nothing checks present-iff-answered, and nothing catches rust/java printing the no-crossing arm as PROSE on a JSON stdout, which is the defect the ruling exists to close. Row + the rust/java fix land together; the grandfather entry in key-shapes-baseline.json goes at the same time."
+  },
+  {
+   "sha": "1a9dcdf0e7f5628d",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "7d058333f3040121",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "4c71ede92a5e6e67",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "c8e0e9636975f8c9",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "4f3bfa54da53a140",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "95d6aaf1203d27e3",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+  },
+  {
+   "sha": "21cd73d9b2a13ca7",
+   "at": "⟨0.28⟩ Phase 1b ruling",
+   "excerpt": "(see SPEC.md)",
+   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
   }
  ]
 }

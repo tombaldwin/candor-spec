@@ -471,6 +471,47 @@ for the same reason ⟨0.27⟩'s refusal document must not carry `violations`. T
 a disclosure, per ⟨0.24⟩'s standing ruling that count-0 reaches both disclosure channels and stops at the
 exit code.
 
+⟨0.28⟩ **AND HERE IS WHAT THAT CAVEAT DOCUMENT CONTAINS — because the paragraph above said "the caveat
+document" and never said what is in it.** That is the ⟨0.24⟩ general rule ("a MUST that says 'disclose X'
+without saying what X is called is four independent guesses") broken by the clause written to enforce it,
+in the same rung, for the second time. Caught by candor-rust, which implemented it, noticed the gap, chose
+the conservative reading and flagged it rather than minting a name.
+
+No new key: the document carries **`unevaluated`** with a single entry naming the whole policy, in the
+exact spelling §3.1 already pins for the gate's own zero-rule refusal. The gate and the advisory verbs then
+say the same thing about the same policy in the same words, which is the property that makes a
+cross-engine consumer possible at all.
+
+⟨0.28⟩ **AND THE LIST OF ADVISORY VERBS IS ILLUSTRATIVE, NOT CLOSED — `fix` takes this too.** The clause
+names `whatif`, `fix-gate` and `unverified` because those were the three in front of the author. `fix`
+shares the same policy loader and its answer is equally policy-relative: over a configured policy that
+yielded no rules it emits `{"crossing": false, "reason": "not-forbidden"}` at exit 0, and *not-forbidden*
+by a policy that forbids nothing is vacuously true — an all-clear produced by deleting the question.
+candor-rust extended the rule to it and flagged the extension; candor-swift read the list as closed and did
+not; **the divergence was created by the clause, not by either engine.**
+
+So: every verb that answers relative to a CONFIGURED policy takes this rule. Composed with the `crossing`
+ruling below, `fix` over a zero-rule policy emits **no `crossing` key** — that key is present exactly when
+the verb answered, and here it did not. A policy that is not configured at all remains the honest way to
+say "I am not gating" (§6.2) and is untouched.
+
+⟨0.28⟩ **AND A HEDGING DOCUMENT WITHDRAWS `ok` — with one carve-out that is already ruled.** Measured:
+candor-swift's `privacy-manifest --verify` emits `ok: true` beside `incomplete: true`. A consumer keying on
+`ok` — which is what `ok` is FOR — reads a determined all-clear out of a document that is simultaneously
+saying it could not see everything. That is ⟨0.27⟩'s `violations` problem under a different key.
+
+**The carve-out is the GATE VERDICT, and it is not an exception so much as a different question.** ⟨0.24⟩
+ruled explicitly that a judged-nothing report leaves the verdict and exit UNCHANGED, and candor-rust's own
+note gives the reason: *"this report makes no claim, and inventing one for it would be the opposite
+defect."* The gate's `ok` is scoped to *did a rule I could evaluate fire* — a question a partial report can
+still answer — and `unevaluated` / `zeroMatch` / `ignored` carry what it could not evaluate. An advisory
+verb's `ok` is scoped to *is this code clean in the sense I check*, which a partial input cannot support.
+
+So the rule is stated over the scope, not the verb: **`ok` is withdrawn wherever it is a claim about the
+CODE that the hedged input cannot support, and kept where a clause has scoped it to the rules actually
+evaluated.** Written this way because the tempting form — "a hedging document never carries `ok`" — is
+false, and would have reopened the ⟨0.24⟩ count-0 ruling from the other side.
+
 ⟨0.21⟩ **The completeness manifest — `analyzed` + `unanalyzed`** (COMPLETENESS-MANIFEST-DESIGN.md). The
 report **omits pure functions** (§2 lists only effectful/`Unknown` units), so the consuming convention is
 "absent ⇒ pure." Two envelope fields make that convention *backed* rather than a universal claim the report
@@ -500,6 +541,26 @@ emits `count: 0`; an all-pure two-function package emits `count: 2` with the sam
 | `0` | `[]` | **nothing was judged** | treat the package as **NOT COVERED** — the κ ledger records it `invisible`, exactly as if unchained. It MUST NOT license a purity claim for any unit in it. |
 | `n > 0` | `[]` | **n units judged, all pure** | believe it (§2 rule 3). This is a legitimate all-pure claim and MUST NOT be hedged. |
 | absent | `[]` | pre-⟨0.21⟩ producer | fall back to the unchained reading — no manifest, no claim. |
+
+⟨0.28⟩ **AND THE THIRD ROW IS NOT THE FIRST ROW — measured, two engines report it as one.** Over
+`{"candor":{…},"functions":[]}` with no `analyzed` key at all, candor-java's note says the report *"declares
+`analyzed.count: 0`"* and candor-rust lists it under `judgedNothing`. **The report declares nothing.** The
+hedge is the right DIRECTION — row 3's own instruction is *no manifest, no claim* — but the disclosure is
+false, and this document rates a false disclosure worse than a missing one (§3.4's `net-partner` finding:
+an engine reported "ignoring unknown config key" *while honouring it*).
+
+It is also a hole in ⟨0.28⟩'s own pin, which defines `judgedNothing` as *reports declaring
+`analyzed.count: 0`* — a row-3 report is not one, so putting it there makes the key mean two things and
+loses the distinction the three-row table exists to draw. The repairs differ: row 1 wants a scan that
+reaches a conclusion, row 3 wants a producer that emits a manifest at all.
+
+So row 3 gets its own name, pinned here in the rung that introduces it:
+
+    "noManifest": [ "<report path>", … ]   // consulted reports carrying no `analyzed` key
+
+It raises `incomplete` like the others and is omitted when empty. Note candor-rust's GATE note already
+says "`analyzed.count` is 0, **or absent with no entries**" — naming both conditions honestly on that one
+route while the query route asserts the wrong one, which is how a message drifts from what the code checks.
 
 The second row is the control that makes the first meaningful: a fix that hedges *both* has not implemented
 the rule, it has disabled the feature. Conformance PART 26 prints `CONTROL SEPARATION`, and a correct
