@@ -7181,13 +7181,64 @@ fi
 # PILOTED BEFORE BUILDING (candor-rust, 90 cells): 18 determined negatives, all in the same six verbs
 # across three independent nothing-judged states; `absent` and `corrupt` already fail closed. The
 # defect is in the states ⟨0.21⟩ and ⟨0.28⟩ CREATED, which the verbs were never taught about.
+#
+# ── FOUR ENGINES, AND THE VERB SURFACE IS DECLARED PER ENGINE ────────────────────────────────────
+#
+# This part shipped probing rust alone, and part_declarations.py named it: java/ts/swift ship the same
+# read verbs and none of them was driven. Extending it is not a loop over four commands, because THE
+# VERB SURFACE IS NOT UNIFORM and getting that wrong reproduces this part's own founding defect.
+#
+# MEASURED (2026-08-13, each verb driven over that engine's intact conformance report; the transcript
+# is the row itself — rerun the part to reproduce it):
+#   rust / java / ts   all ten of where callers map impact path whatif blindspots reachable
+#                      containment tour answer at exit 0 over intact data.
+#   swift              TWO of the ten — `path` and `tour`. The other eight do not exist as verbs, and
+#                      its CLI reads the leading token as a SCAN TARGET:
+#                        `candor-swift where Fs --report R --json`
+#                           -> stderr "unexpected extra argument `Fs` — the scan takes ONE target"
+#                        `candor-swift map --report R --json`
+#                           -> stderr "unknown flag --report (see --help)"
+#                      and in BOTH spellings it prints an ARMED PLACEHOLDER REPORT to stdout at exit 2.
+#                      Fed to the oracle as verb output that is 8 phantom cells per state — 48 cells
+#                      that look like a covered engine and measure the argument parser.
+#
+# So the surface is DECLARED, the fourth argument to sv_probe, exactly as gen_key_shapes.py's
+# ENGINE_VERBS is declared and for the same measured reason. Declaration beats probing here because
+# "the engine refused" and "the engine has no such verb" are the same exit code, and the second must
+# not be scored as the first — that is a determined negative about the TOOL, one level up.
+#
+# AND THE DECLARATION IS CHECKED IN THE STRICT DIRECTION. A declared-absent cell that comes back exit 0
+# with a parseable document FAILs as a STALE DECLARATION, so an engine GAINING a verb forces a one-line
+# update here rather than quietly staying uncovered. (Measured today: swift's fallback exits 2 in both
+# spellings, so it stays excluded — the strict check is armed, not merely asserted.) This is the same
+# shape PART 44 enforces over the suite's own `# ENGINES:` lines, where an engine EXCLUDED with a
+# reason must have no invocation marker and an engine LISTED must have one — both directions, because
+# an absence a human wrote down is a claim, and a claim gets a row.
+#
+# FALSIFIED, BOTH NEW MECHANISMS, before this was believed (a row nobody watched fail is not a row):
+#   · POINTED candor-ts AT A MUTANT — a `query.mjs` shim that rewrites any `--report` under the state
+#     matrix to the INTACT copy, i.e. an engine that answers confidently over a report that judged
+#     nothing. 36 FAILs, each naming engine, state and verb (armed/count0/absent/corrupt × 9 verbs),
+#     the part turned DIVERGE, and rust/java/swift stayed green beside it. Restored.
+#   · SHRANK THE DECLARATION to `SV_SWIFT="tour"`. `FAIL candor-swift [intact/path]: declared ABSENT …
+#     but it answered exit 0 with a JSON document — the declaration is STALE`, part DIVERGE. Restored.
+#     That is the direction that matters: the surface list can only shrink below the truth by failing.
+#
+# THE PROBE RUNS FROM A DEDICATED EMPTY DIRECTORY. Engines walk UP from the cwd when discovering
+# reports and candor-swift's scan fallback resolves its "target" against it, so a cell whose locator
+# should resolve to nothing could otherwise find this repo. Measured behaviour-neutral for the rust
+# arm (identical verdicts from the suite's cwd and from the empty one) — it is there so a future CLI
+# change cannot turn an `absent` row green by finding some other report, or scan the repo the suite
+# lives in.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[40] STATE × READ-VERB MATRIX  (a determined negative over a state where nothing was judged)"
-# ENGINES: rust; java ts: GAP — both ship all ten read verbs this matrix probes (where/callers/map/impact/…) and only the rust pilot is wired — recorded so the gap is visible instead of invisible; swift: ships only path/tour of the ten (measured from its --help) — a narrower matrix would still apply, also unwired
-# CONTROLS: intact_answered — the intact state must ANSWER per verb (a refusing intact cell FAILs by name) and at least one intact control must produce a real answer, or every SKIP is called vacuous
+# All four, each over its OWN intact conformance report, each with its verb surface DECLARED — swift ships 2 of the 10 (see the header measurement); the other 8 are still driven and checked for having gained a verb.
+# ENGINES: rust java ts swift
+# CONTROLS: intact_answered sv_surface — the intact state must ANSWER per verb (a refusing intact cell FAILs by name), at least one intact control per ENGINE must produce a real answer or every SKIP under it is called vacuous, and sv_surface is checked in the strict direction so a declared-absent verb that starts answering FAILs as a stale declaration rather than staying silently uncovered
 SV_OK=0
 SVW="$W/statematrix"; mkdir -p "$SVW"
+SVCWD="$SVW/cwd"; mkdir -p "$SVCWD"   # nothing of ours reachable by walking up — see the header
 cat > "$SVW/oracle.py" <<'SVPY'
 import json, sys
 DISCLOSURE = {"unanswerable","incomplete","unanalyzed","refused","invisible",
@@ -7289,13 +7340,13 @@ PY
   # absent: the directory stays empty
 }
 
-sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report prefix) ; $3 intact report
-  local label=$1 cmd=$2 rep=$3
+sv_probe() { # $1 label ; $2 query-command as a string ; $3 intact report ; $4 DECLARED verb surface
+  local label=$1 cmd=$2 rep=$3 sv_surface=" ${4:-} "
   local d="$SVW/${label// /}"; rm -rf "$d"; mkdir -p "$d/intact"
   cp "$rep" "$d/intact/" 2>/dev/null
   for sc in "$(dirname "$rep")/$(basename "$rep" .json)".*.json; do [ -e "$sc" ] && cp "$sc" "$d/intact/"; done
   sv_states "$d" "$rep"
-  local skips=0 fails=0 passes=0 intact_cells=0 intact_answered=0
+  local skips=0 fails=0 passes=0 intact_cells=0 intact_answered=0 nosurf=0
   for st in intact armed armedlive count0 absent corrupt; do
     for v in where callers map impact path whatif blindspots reachable containment tour; do
       local argv
@@ -7314,8 +7365,26 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
       # passes were VACUOUS, and the part looked almost green while measuring nothing. That is the
       # failure `part.sh --check` exists to prevent, reproduced in a brand-new part; the tell was
       # `skip=0` when the pilot had measured 18 determined negatives in these very states.
+      #
+      # MEASURED FOR ALL FOUR: `--report <the full .json path>` resolves on rust, java, ts AND swift
+      # (each also accepts its own prefix form; the full path is the one spelling all four share, so
+      # the locator needs no per-engine table and cannot silently mangle one engine's).
       local R="$d/$st/$(basename "$rep")" out rc verdict
-      out=$(eval "$cmd $argv --report \"$R\" --json" 2>/dev/null); rc=$?
+      # `env -u` because a leaked CANDOR_* would make the cell read an artifact the row never built,
+      # and `cd` into an empty dir because an unresolvable locator must stay unresolvable (header).
+      out=$(cd "$SVCWD" && eval "env -u CANDOR_CONFIG -u CANDOR_REPORT -u CANDOR_POLICY $cmd $argv --report \"$R\" --json" 2>/dev/null); rc=$?
+      # THE DECLARED-ABSENT CELL, CHECKED IN THE STRICT DIRECTION (header). Scoring a verb the engine
+      # does not ship would credit its ARGUMENT PARSER's exit 2 as "the verb refused" — and on swift
+      # that exit 2 arrives with an armed placeholder REPORT on stdout, so the oracle would be reading
+      # a scan document as query output in 48 cells. Not scored; but if it ever answers, that is a
+      # stale declaration and it FAILs, which is what stops this list rotting into false coverage.
+      case "$sv_surface" in
+        *" $v "*) ;;
+        *) if [ "$rc" = 0 ] && printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' >/dev/null 2>&1; then
+             echo "     FAIL $label [$st/$v]: declared ABSENT from this engine's verb surface, but it answered exit 0 with a JSON document — the declaration is STALE. Add \`$v\` to this engine's sv_probe surface so the matrix covers it (see the PART 40 header)"; fails=$((fails+1)); SV_OK=1
+           else nosurf=$((nosurf+1)); fi
+           continue ;;
+      esac
       verdict=$(printf '%s' "$out" | python3 "$SVW/oracle.py" "$v" "$st" "$rc")
       case "$verdict" in
         FAIL*) echo "     FAIL $label [$st/$v]: ${verdict#FAIL }"; fails=$((fails+1)); SV_OK=1 ;;
@@ -7358,10 +7427,19 @@ sv_probe() { # $1 label ; $2 query-command as a string (uses $R for the report p
   # reachable, the intact cells cannot answer and FAIL by name. That check is falsified — re-breaking the
   # report locator produces five `intact-control-did-not-answer` FAILs — so the protection is proven,
   # not merely asserted.)
-  echo "  $label  pass=$passes skip=$skips fail=$fails  (skip = the ⟨0.28⟩/§2 re-disclosure rung not yet on that verb)"
+  # THE INTACT-CONTROL COUNT IS PRINTED, NOT JUST THRESHOLDED. The floor above fires only at ZERO, and
+  # "1 of 10 intact controls answered" is a very different part from "10 of 10" — the first is one
+  # fixture away from vacuous and nothing would have said so. So the ratio goes on the summary line for
+  # every engine, where a drift toward zero is visible before it reaches the floor.
+  echo "  $label  pass=$passes skip=$skips fail=$fails  intact-answered=$intact_answered/$intact_cells  no-such-verb=$nosurf  (skip = the ⟨0.28⟩/§2 re-disclosure rung not yet on that verb)"
 }
 
-SV_FN="transitive_leaf"
+SV_FN="transitive_leaf"        # measured to resolve on all four engines from the bare leaf name
+# THE TEN, and the two engines' worth of surface that is NOT ten (header). Written out per engine
+# rather than as "$SV_ALL minus a list", because the interesting engine is the one with two verbs and a
+# subtraction hides it: a reader has to be able to see what swift covers without doing set arithmetic.
+SV_ALL="where callers map impact path whatif blindspots reachable containment tour"
+SV_SWIFT="path tour"
 if [ -d "$GDIR/rust" ]; then
   # ALL SEVEN RESERVED SEGMENTS (§2.2 ⟨0.24⟩), anchored. The filter listed three, unanchored, and a
   # dead first assignment sat above it — so a `<prefix>.calibrated.json`, which sorts BEFORE `report.`,
@@ -7369,11 +7447,28 @@ if [ -d "$GDIR/rust" ]; then
   # sidecar. Self-detecting via the intact control, but noisily and one layer from the real cause.
   SVR=$(ls "$W"/rust/.candor/*.json 2>/dev/null \
         | grep -vE '\.(callgraph|hierarchy|locs|calibrated|layerreach|gate|encountered-[^.]*)\.json$' | head -1)
-  [ -n "$SVR" ] && sv_probe "candor-scan " "\"$QUERY\"" "$SVR"
+  [ -n "$SVR" ] && sv_probe "candor-scan " "\"$QUERY\"" "$SVR" "$SV_ALL"
+fi
+# EACH ENGINE OVER ITS OWN PART-1 CONFORMANCE REPORT, not over a shared hand-written one. The states
+# are DERIVED from that report (sv_states rewrites it), so the intact control is the engine's real
+# output shape and the derived states inherit its real `candor` block and sidecar naming — an engine
+# whose locator expansion or manifest handling is peculiar is exercised as it actually ships. The four
+# reports are read-only here; PART 1 and the setup built them and nothing between rewrites them.
+if [ -f "$JAR" ] && [ -s "$W/java.json" ]; then
+  sv_probe "candor-java " "java -jar \"$JAR\"" "$W/java.json" "$SV_ALL"
+fi
+if [ -n "$TS_OK" ] && [ -s "$W/ts.json" ]; then
+  sv_probe "candor-ts   " "node \"$TS_DIR/query.mjs\"" "$W/ts.json" "$SV_ALL"
+fi
+# swift: TWO of the ten, declared. The other eight are driven anyway and checked for having gained a
+# verb — see the strict-direction block in sv_probe. A part that covers three engines covers three
+# engines, and this one was the fourth that PART 39 forgot for no reason.
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -s "${SW_REPORT:-/nonexistent}" ]; then
+  sv_probe "candor-swift" "\"$SW_BIN\"" "$SW_REPORT" "$SV_SWIFT"
 fi
 echo "PART 40 — the (artifact state × read verb) matrix: no determined negative where nothing was judged"
 if [ "$SV_OK" = 0 ]; then
-  echo "  -> MATCH — no verb answered a determined negative it could not support, and every intact control answered"
+  echo "  -> MATCH — on every engine, no verb answered a determined negative it could not support, at least one intact control answered, and no verb declared absent from an engine's surface came back with a document"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
@@ -7480,9 +7575,10 @@ fi
 #
 #   · PART 39 shipped green covering THREE of four engines — swift has `gains` and simply was not
 #     invoked, inside a row written hours after a commit message naming that exact habit. Writing the
-#     declarations found the same shape twice more: PART 40 probes only rust's query binary while java
-#     and ts ship all ten read verbs it exercises, and PART 4n's `tolerant` rows ask rust/java/ts under
-#     a MATCH line that says "every engine".
+#     declarations found the same shape twice more: PART 40 probed only rust's query binary while java
+#     and ts ship all ten read verbs it exercises (CLOSED 2026-08-13 — PART 40 now drives all four, and
+#     closing it required MEASURING that swift ships 2 of the 10 rather than assuming a uniform loop),
+#     and PART 4n's `tolerant` rows ask rust/java/ts under a MATCH line that says "every engine".
 #   · PART 37 row (e) credited ANY non-zero exit as "discloses in the machine channel" — it queried
 #     `pure_a`, a name in NO gate fixture, so every engine refused at exit 2 and scored PASS. The row
 #     had never once asked its question.
