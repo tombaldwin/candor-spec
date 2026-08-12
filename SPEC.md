@@ -3383,6 +3383,46 @@ For each boundary effect, **containment** is the share of its *direct* occurrenc
 dominant layer (100% = fully contained). This is reported **per effect**, as a diagnostic, never summed
 into one number.
 
+⟨0.28⟩ **AND THE JSON SHAPE, PINNED BECAUSE IT WAS NOT.** `containment --json` and the `fix`/`fix-gate`
+remedy documents carry SEVEN field names this document has never named — measured by conformance PART 42,
+which harvests what the engines actually emit and compares it against SPEC.md. That is the identical
+condition `judgedNothing` was in the morning it shipped as an array in three engines and a boolean in the
+fourth, so these are pinned before a second engine guesses rather than after:
+
+    containment    "contained": [ { "effect": "<E>", "containmentPct": <0..100 integer>,
+                                    "layers": <n>, "owner": "<layer>",
+                                    "placement": { "<layer>": <count>, … } }, … ]
+
+    fix-gate       "remedies": [ { "fn": …, "effect": "<E>", "site": [ … ],
+                                   "deniedSpan": [ "<fn>", … ],   // the functions the denied effect crosses
+                                   "hoistTo": [ "<fn>", … ],      // where the boundary can move to; [] = nowhere
+                                   "policyAlternative": "<a policy line>"  // e.g. "allow Exec"
+                                 }, … ]
+
+`containmentPct` is an INTEGER percentage, not a float and not a ratio — three engines agree and the
+agreement is now a rule rather than a coincidence. `placement` is an object keyed by LAYER NAME, so it is
+a user namespace: a reserved key may not be added beside its entries (§2.2's `@`-prefix problem, one level
+in). `deniedSpan`, `hoistTo` and `site` are arrays of function names and MUST be emitted even when empty —
+an absent `hoistTo` and an empty one mean different things (*not computed* vs *nowhere to hoist*), and this
+document has ruled twice that a consumer must not have to tell those apart by guessing.
+
+⟨0.28⟩ **`layerPrefix` IS THE ONE THAT MUST CHANGE, AND IT IS AN INSTRUCTIVE SHAPE.** candor-java emits a
+top-level `"layerPrefix": "<the common prefix this run collapsed>"` from `containment`, and emits it
+UNCONDITIONALLY — including `""` when nothing was collapsed. The other engines do not emit it at all. Both
+halves are wrong in the way this document keeps correcting:
+
+- a key one engine emits and another does not is a divergence a consumer sees, and
+- a field that is **always present and usually empty** is the `fs: Vec::new()` defect recorded in
+  `conformance/field_audit.py`'s header — *"a present-but-always-empty field asserts 'kind undetermined' on
+  every function forever while wearing a schema that implies support"*. Requiring the other three to emit
+  `""` forever would spread that rather than fix it.
+
+The field is load-bearing when it is non-empty: `owner` and `placement` are layer names, and a collapsed
+prefix changes what those names denote. So: **`layerPrefix` is emitted when, and only when, a prefix was
+actually collapsed.** Its ABSENCE means no prefix was collapsed — a real answer under §2's
+omit-rather-than-guess convention, not a gap. candor-java's unconditional `""` is a defect against this
+clause and is queued; the other engines gain the field if and when they collapse a prefix.
+
 **The ratchet (`AS-EFF-010`).** Given a baseline report, an implementation compares the *set of layers*
 each boundary effect appears in. If an effect appears in a layer it was **not** in before, that is a
 containment regression (`AS-EFF-010`), and the check fails: the gate. The reverse, an effect that
