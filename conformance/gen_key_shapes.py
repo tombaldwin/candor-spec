@@ -112,6 +112,18 @@ import tempfile
 import time
 from collections import defaultdict
 
+# Registered in clause_check.py's GENERATORS, which then required this list — correctly, and the
+# omission is worth recording because it is this file's own subject one level up: a property that
+# enforces a contract without naming it is the same defect as a field that enters a machine document
+# without a name. Caught the moment the generator was wired in, by the gate that runs the other way.
+SPEC_CLAUSES = [
+    ("§3.3.1 ⟨0.24⟩", "a field that enters a machine-consumed document MUST have its name and shape "
+                      "stated here in the same rung that introduces it."),
+    ("§2 ⟨0.28⟩",     "**`judgedNothing` is an ARRAY, not a boolean**"),
+    ("§2 ⟨0.28⟩",     "A verb resting on TWO reports discloses both sides separately, "
+                      "`baseline`-prefixed"),
+]
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 

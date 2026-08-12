@@ -60,6 +60,8 @@ GENERATORS = [
     "gen_incomplete_dominance.py",
     "gen_sidecar_manifest.py",
     "gen_rung024.py",
+    "gen_sink_surface.py",
+    "gen_key_shapes.py",
 ]
 
 BASELINES = [
@@ -70,6 +72,8 @@ BASELINES = [
     "incomplete-dominance-baseline.json",
     "sidecar-manifest-baseline.json",
     "rung024-baseline.json",
+    "sink-surface-baseline.json",
+    "key-shapes-baseline.json",
 ]
 
 
