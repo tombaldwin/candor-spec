@@ -308,12 +308,29 @@ commitments, not theorems:
   the call-graph sidecar precisely because a *pure* function is absent from the report, so a stale
   sidecar answers a question the report cannot even be consulted about.
 
-  Unlike C1 and C2 this is not a limit of the analysis; it is an obligation on the artifact lifecycle,
-  and it is discharged **outside** this document — by SPEC §3.3.1's arming rules (a run that fails
-  replaces its report with a ⟨0.21⟩ Row-1 manifest-carrying empty and removes that report's sidecars),
-  by ⟨0.21⟩'s completeness manifest (which makes "judged nothing" machine-legible rather than
-  indistinguishable from "judged and found nothing"), and by ⟨0.28⟩'s pairing rule (a sidecar beside an
-  armed report is unanswerable whatever it contains, and must say so in the machine channel).
+  Unlike C1 and C2 this is not a limit of the analysis; it is an obligation on the artifact lifecycle.
+  **Half of it is enforced outside this document and half of it remains assumed**, and the split matters
+  more than the mechanisms:
+
+  - The **failed-run and torn-pair** routes are enforced — by SPEC §3.3.1's arming rules (a run that fails
+    replaces its report with a ⟨0.21⟩ Row-1 manifest-carrying empty and removes that report's sidecars),
+    by ⟨0.21⟩'s completeness manifest (which makes "judged nothing" machine-legible rather than
+    indistinguishable from "judged and found nothing"), and by ⟨0.28⟩'s pairing rule (a report that judged
+    nothing makes its call-graph questions unanswerable whatever the sidecar contains, and the verb must
+    say so in the machine channel).
+  - The **ordinary stale artifact is not**. A *successful* earlier scan of a since-edited `K′` passes all
+    three: it carries a full manifest, it is not armed, and its pair is coherent. It is consulted silently.
+    `ĥ` is a content hash of a definition's **path**, not of its body, so an edited body keeps its oracle
+    key and the stale `I_{K′}` is substituted for the current one without any signal. For that route C3 is
+    a pure assumption on the operator's or the orchestrator's build discipline, which is the correct home
+    for it in §8 — but it is an assumption, not a discharged obligation, and calling it discharged is how
+    a reader concludes the whole caveat has been engineered away.
+
+  **§5b's baseline mode is the in-house instance of the unenforced half.** It reads an existing snapshot
+  by design, so `X` is built from deliberately old dependency reports; a dep that gained an effect since
+  the snapshot leaves the gain invisible on the current side of a `diff`/`gains` run. §2.1's version-trust
+  guard does not catch it — it checks the producing engine's version, not the freshness of the code the
+  report describes.
 
   Recorded because the omission was load-bearing: an entire family of measured defects — a failed run
   leaving a green report a downstream gate then trusted; `callers` naming a stale blast radius as "the
