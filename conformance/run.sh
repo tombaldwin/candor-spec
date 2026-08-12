@@ -6306,7 +6306,7 @@ fi
 echo
 echo "[37] REPORT SINK ARMING  (SPEC §3.3.1 ⟨0.28⟩ — the stale-report defect PART 34 doesn't reach)"
 # ENGINES: rust java ts swift
-# CONTROLS: rs_intact_control ti_control — the callers invocation answers over an INTACT pair (the repair of row (e), which once credited "no function matching 'pure_a'" as a disclosure), and the inside-tree sink stays permitted
+# CONTROLS: rs_intact_control ti_control gl_control — the callers invocation answers over an INTACT pair (the repair of row (e), which once credited "no function matching 'pure_a'" as a disclosure), the inside-tree sink stays permitted, and gl_control proves the gate verb can still publish a verdict at <report-stem>.gate.json beside the reports (the over-refusal a stem-glob expansion guard would introduce, held in BOTH worlds)
 RS_OK=0
 RS_SIDES_BEFORE=0   # set per-engine by the out-prefix arm; declared here because the suite is `set -u`
 RSW="$W/report-arming"; mkdir -p "$RSW"
@@ -6769,6 +6769,132 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   ti_probe "candor-swift" --gate-json "$SW_BIN" "$TIW/app.swift"
   [ -d "$GDIR/swift" ] && ti_control "candor-swift" --gate-json "$SW_BIN" "$GDIR/swift"
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# (g) THE GATE VERB'S `--report` LOCATOR NAMES A SET — THE GUARD COMPARES THE EXPANSION, NEVER THE
+# TOKEN (SPEC §3.3.1 (3) ⟨0.28⟩). NEVER SKIPS.
+#
+# The clause shipped with no row — the exact failure PART 41 exists to catch, reproduced the day
+# PART 41 was built. "Artifacts not strings" was implemented in every engine as *compare one resolved
+# path to one resolved path*, which is still a comparison of the token the operator typed, while the
+# LOADER reads the locator's EXPANSION. Measured live 2026-08-12, four engines:
+#
+#   gate --report r --policy P --gate-json <one of r's expanded reports>
+#       rust/java/ts: exit 2 with the operator's REPORT replaced by the armed refusal — and the
+#       diagnostic blaming the report ("failed to parse — corrupt input" / "object has no 'functions'
+#       array") for the corruption the run itself inflicted. swift closed this half first (ef6476a).
+#   the discovery spelling (no `--report` anywhere in argv; sink = the discovered .candor report)
+#       — destroyed identically: nothing in the command line names the file that dies.
+#   gate … --gate-json <the report's callgraph sidecar>
+#       ALL FOUR, including post-ef6476a swift: the report loads fine, the gate runs, and a REAL
+#       VERDICT lands where the graph belongs at a SUCCESS exit — the §2.2 pair destroyed one half at
+#       a time, nothing red anywhere, and every later callers/fix/rewire reads a verdict document as
+#       a callgraph.
+#
+# EVERY ROW ASSERTS BYTES. The report rows also exited 2 before the fix, and the sidecar rows exited
+# 0/1 — no exit-code assertion can see either defect (the ti_probe lesson, one verb over).
+#
+# THE CONTROL IS `<report-stem>.gate.json`, deliberately: a sibling matching `<stem>.*.json` — the
+# exact file a fix that guarded "everything sharing the stem" would refuse — and the beside-the-report
+# verdict layout, the spelling `--gate-json` exists for. It must still gate with a REAL verdict, and it
+# holds in BOTH worlds (the pre-fix engines pass it too), so it is a control and not a second copy of
+# the row.
+GL_OK=0
+GLW="$W/gatelocator"; rm -rf "$GLW"; mkdir -p "$GLW"
+printf 'deny Fs\n' > "$GLW/policy"
+GL_PY_REAL_VERDICT='import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: sys.exit(1)
+# A real verdict: the pinned §3.1 shape with an answer, never the refusal/armed discriminator.
+sys.exit(0 if isinstance(d,dict) and "ok" in d and not d.get("refused") else 1)'
+gl_control() { # $1 label ; $2 tree ; $3 report ; $4 sidecar-or-empty ; rest: the gate command
+  local label=$1 tree=$2 rep=$3 side=$4; shift 4
+  local cmd=( "$@" ) sink="${rep%.json}.gate.json" rc rep_before side_before=""
+  rm -f "$sink"
+  rep_before=$(cksum < "$rep"); [ -n "$side" ] && side_before=$(cksum < "$side")
+  "${cmd[@]}" --report "$tree/.candor/report" --policy "$GLW/policy" --gate-json "$sink" >/dev/null 2>&1; rc=$?
+  if [ "$rc" != 0 ] && [ "$rc" != 1 ]; then
+    echo "     FAIL $label (g-control): \`--gate-json <report-stem>.gate.json\` was REFUSED (exit $rc) — over-refusal: a stem-glob guard has broken the beside-the-report verdict layout"; GL_OK=1
+  elif ! python3 -c "$GL_PY_REAL_VERDICT" "$sink" 2>/dev/null; then
+    echo "     FAIL $label (g-control): the sink holds no real verdict (need \`ok\` present and no \`refused\`)"; GL_OK=1
+  elif [ "$(cksum < "$rep")" != "$rep_before" ] || { [ -n "$side" ] && [ "$(cksum < "$side")" != "$side_before" ]; }; then
+    echo "     FAIL $label (g-control): the control run itself changed the report pair's bytes"; GL_OK=1
+  else
+    echo "  $label (g-control) PASS — <report-stem>.gate.json still gates with a real verdict (exit $rc), pair intact"
+  fi
+}
+gl_probe() { # $1 label ; $2 tree whose .candor holds this engine's reports ; rest: the gate command
+  local label=$1 tree=$2; shift 2
+  local cmd=( "$@" ) rep side rc before after
+  rep=$(ls "$tree"/.candor/*.json 2>/dev/null | grep -vE '\.(callgraph|hierarchy|locs|calibrated|layerreach|gate|encountered-[^.]*)\.json$' | head -1)
+  side=$(ls "$tree"/.candor/*.callgraph.json 2>/dev/null | head -1)
+  if [ -z "$rep" ]; then
+    echo "     FAIL $label (g): the fixture scan left no report under $tree/.candor — an instrument fault, reported as one (the PART 40 locator lesson: a missing report makes every refusal row pass for the wrong reason)"; GL_OK=1; return
+  fi
+
+  # (g1) the PREFIX spelling: the sink names one of the locator's expanded reports.
+  before=$(cksum < "$rep")
+  "${cmd[@]}" --report "$tree/.candor/report" --policy "$GLW/policy" --gate-json "$rep" >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$rep" 2>/dev/null)
+  if [ "$before" != "$after" ]; then
+    echo "     FAIL $label (g1): \`--gate-json <an expanded report>\` DESTROYED $rep (exit $rc) — the guard compared the locator TOKEN while the loader reads its EXPANSION (SPEC §3.3.1 (3) ⟨0.28⟩)"; GL_OK=1
+  elif [ "$rc" = 0 ]; then
+    echo "     FAIL $label (g1): the report survived but the run exited 0 over a sink it must refuse — a consumer is told the gate ran"; GL_OK=1
+  else
+    echo "  $label (g1) PASS — a sink naming an expanded report is refused (exit $rc) with the report byte-identical"
+  fi
+
+  # (g2) the DISCOVERY spelling: no `--report` anywhere in argv.
+  before=$(cksum < "$rep")
+  ( cd "$tree" && env -u CANDOR_REPORT "${cmd[@]}" --policy "$GLW/policy" --gate-json ".candor/$(basename "$rep")" ) >/dev/null 2>&1; rc=$?
+  after=$(cksum < "$rep" 2>/dev/null)
+  if [ "$before" != "$after" ]; then
+    echo "     FAIL $label (g2): the DISCOVERED report was destroyed (exit $rc) — the no-\`--report\` spelling reads the same files and got none of the guard"; GL_OK=1
+  elif [ "$rc" = 0 ]; then
+    echo "     FAIL $label (g2): the discovered report survived but the run exited 0 over a sink it must refuse"; GL_OK=1
+  else
+    echo "  $label (g2) PASS — the discovery spelling is refused (exit $rc) with the report byte-identical"
+  fi
+
+  # (g3) the §2.2 SIDECAR half of the pair — the worse artifact: pre-fix this run SUCCEEDED.
+  if [ -n "$side" ]; then
+    before=$(cksum < "$side")
+    "${cmd[@]}" --report "$tree/.candor/report" --policy "$GLW/policy" --gate-json "$side" >/dev/null 2>&1; rc=$?
+    after=$(cksum < "$side" 2>/dev/null)
+    if [ "$before" != "$after" ]; then
+      echo "     FAIL $label (g3): the report's callgraph sidecar was DESTROYED (exit $rc) — pre-fix this exited 0/1 as a SUCCESS with a real verdict where the graph belongs, so only the bytes can see it"; GL_OK=1
+    elif [ "$rc" = 0 ]; then
+      echo "     FAIL $label (g3): the sidecar survived but the run exited 0 over a sink it must refuse"; GL_OK=1
+    else
+      echo "  $label (g3) PASS — a sink naming the pair's sidecar half is refused (exit $rc) with the sidecar byte-identical"
+    fi
+  else
+    echo "  $label (g3) n/a — this engine's scan emitted no callgraph sidecar beside this report, so the pair has one half here"
+  fi
+
+  gl_control "$label" "$tree" "$rep" "$side" "${cmd[@]}"
+}
+# Each engine's own gate tree, scanned into the DEFAULT `.candor/` layout so the discovery spelling is
+# posable — COPIED, because the suite must not dirty the tracked fixtures (the porcelain guard's lesson).
+cp -R "$GDIR/rust" "$GLW/rust"; rm -rf "$GLW/rust/.candor"
+( cd "$GLW/rust" && "$SCAN" . ) >/dev/null 2>&1
+gl_probe "candor-query" "$GLW/rust" "$QUERY" gate || true
+if [ -f "$JAR" ] && [ -n "$RSFX_JAVA" ]; then
+  mkdir -p "$GLW/java/.candor"
+  java -jar "$JAR" "$RSFX_JAVA" --json "$GLW/java/.candor/report.app.jvm.json" >/dev/null 2>&1
+  gl_probe "candor-java " "$GLW/java" java -jar "$JAR" gate || true
+fi
+if [ -n "$TS_OK" ]; then
+  cp -R "$GDIR/ts" "$GLW/ts"; rm -rf "$GLW/ts/.candor"
+  ( cd "$GLW/ts" && node "$TS_DIR/scan.mjs" . ) >/dev/null 2>&1
+  gl_probe "candor-ts   " "$GLW/ts" node "$TS_DIR/query.mjs" gate || true
+fi
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  cp -R "$GDIR/swift" "$GLW/swift"; rm -rf "$GLW/swift/.candor"
+  env -u CANDOR_CONFIG "$SW_BIN" "$GLW/swift" --out "$GLW/swift/.candor/report" >/dev/null 2>&1
+  gl_probe "candor-swift" "$GLW/swift" env -u CANDOR_CONFIG "$SW_BIN" gate || true
+fi
+[ "$GL_OK" = 0 ] || RS_OK=1
 
 echo "PART 37 — SPEC §3.3.1 ⟨0.28⟩: the report sink is armed on exit-2, and the fail-closed shape is a manifest-carrying empty"
 if [ "$RS_OK" = 0 ]; then
@@ -7348,7 +7474,7 @@ fi
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on

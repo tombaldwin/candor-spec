@@ -3003,3 +3003,44 @@ look for if candor-ts or candor-rust ever grows a per-workspace-member or per-cr
 Gates: two properties pinned in `TargetScopeProcessTests` — a scoped key must not be joinable as the
 package's, and a scoped scan must leave exactly ONE report in `.candor/`. 593 swift tests + 108 smoke;
 four-way conformance green.
+
+### 2026-08-12 — the gate verb's sink guard compared the locator TOKEN; the loader reads its EXPANSION
+
+**The clause existed and nothing executed it** — §3.3.1 (3) ⟨0.28⟩ ("AND AN INPUT LOCATOR NAMES A SET —
+COMPARE THE EXPANSION, NEVER THE TOKEN") is one of the two clauses that motivated the PART 41 must-ledger,
+and on the day the ledger shipped the clause was still inert on three of the four engines' `gate --report`
+routes. candor-swift closed the report half first (`ef6476a`) and its commit named the other three;
+measured today, all three had it, on both spellings:
+
+    gate --report r --policy P --gate-json r.<crate>.scan.json     (rust; java/ts identical in shape)
+        → exit 2, the operator's report replaced by the armed refusal — and the diagnostic blames the
+          report ("failed to parse — corrupt input" / "object has no 'functions' array") for the
+          corruption the run itself inflicted. The run reports the corpse of the file it killed.
+    the discovery spelling — no --report anywhere in argv, sink = the discovered .candor report —
+        destroyed it identically: nothing in the command line names the file that dies.
+
+**And the sidecar half was live in ALL FOUR, including post-fix swift.** The swift fix derived its list
+from the gate's loader, which opens no sidecar — so the sidecars read as not-inputs and were carved out.
+Measured: `gate --report r --gate-json r.<unit>.<eng>.callgraph.json` loads the report FINE, runs the
+gate, and lands a REAL verdict where the graph belongs at a SUCCESS exit (rust exit 1, swift exit 0
+"policy ✓") — the §2.2 pair destroyed one half at a time with nothing red anywhere, and every later
+`callers`/`fix`/`rewire` reads a verdict document as a callgraph. The clause's second consequence ("THE
+SIDECARS EXPAND TOO") says exactly this; the reference fix for the vein had itself under-read the clause.
+
+**The fix, four engines, one shape.** A loader-adjacent enumerator per engine (rust
+`gate_report_input_files` beside `load_gate_report`; java `Query.gateReportInputFiles` beside
+`locatorReportSet`; ts `gateReportInputFiles` beside `reportFilesAt`/`loadGateReport`; swift
+`withGateReportSidecars` inside the existing `gateReportInputFiles`) — the reports by the loader's own
+resolution rule, discovery included, plus each report's §2.2 sidecars, existing files only. `gate` is
+excluded from every sidecar walk: `<report-stem>.gate.json` is the verdict sink's own beside-the-report
+layout — the exact spelling `--gate-json` exists for — and each engine's control test pins that it still
+gates with a real verdict, because over-refusal (a stem-glob guard) is the plausible-but-wrong fix here.
+
+**Pinned by PART 37 (g)**, never-skips, four engines × three spellings + the `<stem>.gate.json` control,
+every row on BYTES — the report rows also exited 2 before the fix and the sidecar rows exited 0/1, so no
+exit-code assertion can see either defect. Falsified per engine (each regression test red at the parent
+commit, on bytes or on the engine blaming the file it destroyed) and in the harness (guard reverted →
+the (g) rows fail naming the destroyed path). The three clause blocks moved from `pre-ledger` to
+`PART 37 (g)` in the must-ledger — the ledger's first upgrade in the direction it was built for.
+
+Commits: candor-rust `4b4384a` · candor-java `3a805d4` · candor-ts `18d10f0` · candor-swift `2853068`.
