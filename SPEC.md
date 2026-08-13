@@ -452,6 +452,15 @@ Three properties make this the right shape rather than merely a shape:
   `@incomplete` is a key a real ts module could own. A convention that is airtight in one namespace and
   merely unlikely in another is not a convention; it is a deferred collision.
 
+⟨0.28⟩ **AND `privacy-manifest`'s OWN TWO KEYS, PINNED HERE BECAUSE DRIVING THE VERB IS WHAT FOUND THEM.**
+The verb's document is `{ "reached": [ … ], "required": { … } }` — `reached` the privacy-relevant surfaces
+this scan actually reached, `required` the manifest entries they imply, keyed by the platform's own
+declaration name. Both were emitted and named nowhere; conformance PART 42 could not see them because it
+did not DRIVE the verb, and it did not drive the verb because only one engine ships it. Coverage bounded
+by what an instrument runs is the same finding as the missing row-3 fixture two clauses up, arriving from
+the verb axis instead of the state axis. `required` is keyed by USER-FACING declaration names, so it is a
+namespace and not vocabulary — a reserved key may not be added beside its entries.
+
 **`privacy-manifest` is the same MUST and NOT the same shape problem** — it has an envelope and simply
 never consults completeness, so a "no sensors reached" ships over a partial report. It carries the pinned
 keys in its envelope like any other verb. Recorded here because it was filed alongside the other two and is
