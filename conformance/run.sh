@@ -7338,8 +7338,110 @@ zr_advisory() { # $1 label ; $2 report locator ; $3… the QUERY command
   done
 }
 
+# ⟨0.28⟩ (ign) THE PARTIALLY-PARSED POLICY — `ignored` CARRIES THE LINES THAT NEVER BECAME RULES.
+#
+# The zero-rule refusal above closes the 0-of-10 case. §6.2 names the harm that survives it explicitly:
+#
+#     0 of 10 rules parse   ->  exit 2, fail-closed refusal document
+#     1 of 10 rules parse   ->  { "ok": true, "violations": [] }, exit 0, and the document says nothing
+#                               about the nine gates that were never asked
+#
+# "A 90%-gateless green, arriving at every fraction below 100%." Refusal is the WRONG remedy — it would
+# break the forward-compatibility leniency §6.2 spends its length defending, under which a rule an older
+# engine does not recognise is ignored-with-a-warning rather than fatal. Disclosure is the remedy, so the
+# verdict MUST carry the dropped lines:
+#
+#     "ignored": [ { "line": <n>, "text": "<the source line, verbatim>", "reason": "<why>" }, ... ]
+#
+# WHY THIS ROW EXISTS AT ALL, given all four engines already comply: nothing held them there. `ignored`
+# was implemented four-way and pinned by nobody — each engine's own suite tests its own spelling, which is
+# exactly the arrangement that cannot see the four drifting apart, and PART 42 pins only that a key which
+# APPEARS is SPEC-named and single-typed, never that it appears. This is the shape the skip ratchet was
+# built for one commit earlier, reached from the other side: there a rung un-shipped invisibly, here it
+# was never held down in the first place.
+#
+# NOT REFERENCE-LED, deliberately, unlike every other row in this part. A SKIP is the right posture while
+# engines are catching up to a new rung; this one has already landed everywhere, so absence is a
+# REGRESSION and must be red. It also keeps the row out of the skip baseline, where five entries currently
+# make almost any rise a real signal.
+#
+# TWO CELLS, and the second is the control:
+#   (ign)       a policy that parses PARTLY -> the verdict carries `ignored`, correctly shaped
+#   (ign-clean) a policy that parses WHOLLY -> the verdict has NO `ignored` key ("omitted entirely when
+#               nothing was dropped, so a clean policy's verdict stays byte-identical"). Without this, an
+#               engine emitting `"ignored": []` unconditionally — or one that dropped a line it should
+#               have PARSED — scores a pass on the cell above.
+#
+# FALSIFIED four-way-green, one cell at a time, against candor-rust: suppressing the key reddens (ign)
+# alone; emitting it unconditionally reddens (ign-clean) alone. Neither breaks the other, so the two cells
+# are independent rather than one assertion written twice.
+#
+# THE FIRST FALSIFICATION ATTEMPT FAILED, and its cause is the reason this comment says which emitter.
+# candor-report exposes SEVEN gate-verdict functions; I patched `gate_verdict_json_with_coverage_v28`,
+# rebuilt, and the cell still passed — `--gate-json` on a scan reaches `gate_verdict_json_v28` instead. A
+# row that stays green under a deliberate break reads exactly like a row that has nothing to catch, so a
+# falsification is only evidence once it has reddened the cell. Swept the other five while there: all have
+# ZERO live callers, and the two live ones both carry `ignored`, so rust has no verdict route that emits a
+# gateless green. That sweep is the point — the wrong-emitter slip is what prompted asking the question.
+IGN_PY='import json,sys
+d=json.load(open(sys.argv[1]))
+want=sys.argv[2]
+ig=d.get("ignored")
+if want=="absent":
+    sys.exit(0 if ig is None else 10)
+if not isinstance(ig,list) or not ig: sys.exit(11)
+for e in ig:
+    if not isinstance(e,dict): sys.exit(12)
+    if not isinstance(e.get("line"),int): sys.exit(13)
+    if not isinstance(e.get("text"),str) or not e["text"].strip(): sys.exit(14)
+    if not isinstance(e.get("reason"),str) or not e["reason"].strip(): sys.exit(15)
+# the dropped line must be reported VERBATIM — a normalised or truncated echo cannot be grepped for in
+# the file the operator is looking at, which is the whole use of the key
+if not any("wibble" in e["text"] for e in ig): sys.exit(16)
+# ...and the gate still ANSWERED on the rules that did parse: this is disclosure, not refusal
+if d.get("ok") is None or "violations" not in d: sys.exit(17)
+sys.exit(0)'
+ign_probe() { # $1 label ; then the scan command with the TARGET LAST
+  local label=$1; shift
+  local cmd=( "$@" ) bad=0 rc G="$ZRW/ign.verdict.json"
+  # one good rule, one line no engine can parse. `deny Fs app` is the same rule PART 38's own
+  # real.policy uses, so a cell cannot fail because the VALID half was rejected.
+  printf 'deny Fs app\nwibble not a rule at all\n' > "$ZRW/partial.policy"
+
+  rm -f "$G"
+  "${cmd[@]}" --policy "$ZRW/partial.policy" --gate-json "$G" >/dev/null 2>&1; rc=$?
+  if [ ! -s "$G" ]; then
+    echo "     FAIL $label (ign): no verdict written (exit $rc) — a policy that parses PARTLY must still gate on the rules that parsed"; bad=1
+  else
+    python3 -c "$IGN_PY" "$G" present; local r=$?
+    case "$r" in
+      0)  echo "  $label (ign) PASS — the dropped line reaches the verdict as \`ignored\`, verbatim" ;;
+      10) echo "     FAIL $label (ign): internal — 'present' mode took the absent branch"; bad=1 ;;
+      11) echo "     FAIL $label (ign): the verdict has NO \`ignored\` — a line was silently dropped and the document claims the policy on disk is the policy that ran (§6.2: the 90%-gateless green)"; bad=1 ;;
+      1[2-5]) echo "     FAIL $label (ign): \`ignored\` is present but malformed (code $r) — §6.2 pins { line: <int>, text: <string>, reason: <string> }"; bad=1 ;;
+      16) echo "     FAIL $label (ign): \`ignored\` does not echo the dropped line VERBATIM — a consumer cannot locate it in the file"; bad=1 ;;
+      17) echo "     FAIL $label (ign): the verdict carries \`ignored\` but no \`ok\`/\`violations\` — this rung is DISCLOSURE, not refusal; the rules that parsed must still be gated"; bad=1 ;;
+      *)  echo "     FAIL $label (ign): unexpected oracle code $r"; bad=1 ;;
+    esac
+  fi
+
+  # THE CONTROL. A wholly-parseable policy must leave the verdict byte-identical to a pre-rung one.
+  rm -f "$G"
+  "${cmd[@]}" --policy "$ZRW/real.policy" --gate-json "$G" >/dev/null 2>&1
+  if [ ! -s "$G" ]; then
+    echo "     FAIL $label (ign-clean): no verdict written for a wholly-valid policy"; bad=1
+  elif python3 -c "$IGN_PY" "$G" absent; then
+    echo "  $label (ign-clean) PASS — a clean policy's verdict carries no \`ignored\` key"
+  else
+    echo "     FAIL $label (ign-clean): a WHOLLY-VALID policy produced an \`ignored\` key — either the key is emitted unconditionally (making the cell above vacuous) or a line that should have PARSED was dropped"; bad=1
+  fi
+
+  [ "$bad" = 0 ] && return 0 || return 1
+}
+
 if [ -d "$GDIR/rust" ]; then
   zr_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
+  ign_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
   [ -n "${QUERY:-}" ] && zr_advisory "candor-scan " "$W/g_rust" "$QUERY"
   [ -n "${QUERY:-}" ] && zr_crossing "candor-scan " "$W/g_rust" save "$QUERY"
   [ -n "${QUERY:-}" ] && zr_okwithhold "candor-scan " "$QUERY"
@@ -7347,6 +7449,7 @@ if [ -d "$GDIR/rust" ]; then
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
+  ign_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
   # java's advisory verbs need a REPORT; the gate fixture is a class dir, so produce one here rather
   # than pointing at a path nothing creates — an absent report would SKIP, and a vacuous SKIP is the
   # failure this part exists to avoid.
@@ -7358,6 +7461,7 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
   zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
+  ign_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
   zr_advisory "candor-ts   " "$W/g_ts" node "$TS_DIR/query.mjs"
   zr_crossing "candor-ts   " "$W/g_ts" save node "$TS_DIR/query.mjs"
   zr_okwithhold "candor-ts   " node "$TS_DIR/query.mjs"
@@ -7365,6 +7469,7 @@ if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
+  ign_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
   zr_advisory "candor-swift" "$W/g_sw" "$SW_BIN"
   zr_crossing "candor-swift" "$W/g_sw" save "$SW_BIN"
   zr_okwithhold "candor-swift" "$SW_BIN"
