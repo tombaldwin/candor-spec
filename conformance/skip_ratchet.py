@@ -90,6 +90,12 @@ CELL = re.compile(r"^\s*(candor-[a-z]+)\s*\(([^)]+)\)\s+SKIP")
 # token from its reason with an em dash or a colon; a sentence about skipping does not.
 LOOSE = re.compile(r"\bSKIP\b\s*[—:]")
 VERDICT = re.compile(r"^\s*->")
+# An engine the RUNNER does not have. The suite already announces this itself, loudly and on purpose —
+# "candor-swift: not present on this runner", plus a `CONFORMANCE_REQUIRE_ALL=1` escape to make absence
+# fatal where a leg demands all four. Absence is a first-class state of a run, and this gate reads the
+# suite's own declaration of it rather than re-deriving engine availability from the toolchain, which
+# would be a SECOND spelling of a fact the suite already states and free to drift from it.
+ABSENT = re.compile(r"(candor-[a-z]+).*not present on this runner")
 # Volatile substrings that must not enter a key: temp dirs, counts, hashes.
 SCRUB = [(re.compile(r"/(?:var|tmp|private)/\S+"), "<path>"),
          (re.compile(r"\b\d+\b"), "<n>"),
@@ -107,17 +113,21 @@ def key_of(line):
 
 
 def counts(path):
-    """key -> skip count, over the whole run log."""
+    """(key -> skip count, engines the suite declared absent) over the whole run log."""
     out = collections.Counter()
+    absent = set()
     with open(path, errors="replace") as fh:
         for line in fh:
+            a = ABSENT.search(line)
+            if a:
+                absent.add(a.group(1).strip())
             m = TALLY.match(line)
             if m:
                 out["tally:" + m.group(1).strip()] += int(m.group(3))
                 continue
             if LOOSE.search(line) and not VERDICT.match(line):
                 out[key_of(line)] += 1
-    return out
+    return out, absent
 
 
 def main():
@@ -136,7 +146,7 @@ def main():
               "and an unreadable instrument must never read as a clean one" % log)
         return 1
 
-    now = counts(log)
+    now, absent = counts(log)
     if write:
         payload = {
             "_": ["SKIP RATCHET BASELINE — see skip_ratchet.py's header.",
@@ -165,12 +175,25 @@ def main():
     # prints exactly one tally per engine, unconditionally, so a baseline tally key that is ABSENT means
     # the log stopped early or the matrix did not run. Cell keys are exempt — a cell that stops skipping
     # legitimately prints PASS instead, and its key is SUPPOSED to disappear.
-    missing = sorted(k for k in base if k.startswith("tally:") and k not in now)
+    # AN ENGINE THIS RUNNER DOES NOT HAVE IS NOT A MISSING TALLY. The conformance CI runs two legs: a
+    # ubuntu leg with rust/java/ts (no swift toolchain on those runners) and a macos leg with all four.
+    # This guard was written on a four-engine machine and stated over that INSTANCE — "PART 40 prints one
+    # tally per engine, unconditionally" — which is only true of engines the run actually HAS. It reddened
+    # the ubuntu leg on its first push. Same shape as the SPEC clause in #97, one layer down: a rule
+    # written over the situation in front of me rather than the condition that makes it true.
+    #
+    # The exemption reads the suite's OWN declaration ("not present on this runner"), so absence still has
+    # to be stated in the log to be honoured — a tally that vanishes with no such line is still the
+    # truncation case and still FAILS. The absent set is printed, so an engine quietly dropping out of a
+    # leg is visible rather than inferred from a number that got smaller.
+    missing = sorted(k for k in base
+                     if k.startswith("tally:") and k not in now and k[len("tally:"):] not in absent)
     if missing:
         for k in missing:
-            print("     FAIL skip-ratchet: `%s` is in the baseline but absent from the log — PART 40 prints "
-                  "one tally per engine unconditionally, so an absent one means the log was truncated or "
-                  "the matrix never ran. Fewer skips scores as a PASS, so this must fail loudly." % k)
+            print("     FAIL skip-ratchet: `%s` is in the baseline but absent from the log, and the suite "
+                  "never said that engine was \"not present on this runner\" — so it WAS available and its "
+                  "tally still did not print, meaning the log was truncated or the matrix never ran. Fewer "
+                  "skips scores as a PASS, so this must fail loudly." % k)
         print("  -> skip-ratchet: %d baseline tally key(s) missing" % len(missing))
         return 1
 
@@ -184,8 +207,9 @@ def main():
                   "re-baseline and say so." % (k, is_, was))
         print("  -> skip-ratchet: %d key(s) rose" % len(risen))
         return 1
-    print("  skip-ratchet: OK — %d skips over %d keys, none risen%s"
-          % (sum(now.values()), len(now), (", %d fell" % fell) if fell else ""))
+    print("  skip-ratchet: OK — %d skips over %d keys, none risen%s%s"
+          % (sum(now.values()), len(now), (", %d fell" % fell) if fell else "",
+             (" [not on this runner: %s]" % " ".join(sorted(absent))) if absent else ""))
     return 0
 
 
