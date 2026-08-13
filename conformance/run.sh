@@ -8217,6 +8217,147 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 46 — A CALLER OF A BODY-LESS LOCAL DECLARATION IS NOT PURE, four-way                [TIER 1]
+#
+# A declaration the scan can SEE whose BODY is not in the analyzed set. Every language has one and they
+# are spelled differently — `declare function` / any `.d.ts` member (ts), `extern "C"` (rust), `native`
+# (java), a protocol requirement no local type conforms to (swift) — but the contract is one: a caller
+# that reaches it MUST NOT be certified pure. There is no body to have read, so purity is a claim about
+# code the engine never saw, which is §3's honesty invariant exactly.
+#
+# WHY THIS ROW EXISTS. candor-ts was the four-way outlier and nothing here could see it. `localName`
+# minted a unit for the declaration WITHOUT asking whether it had a body, the call site edged the caller
+# to that empty unit, and the caller unioned nothing and read PURE — so `deny Unknown`, the gate whose
+# entire purpose is "fail if candor cannot see what this reaches", exited 0 where the other three exit 1.
+# Found on real code by `candor/bin/corpus.sh`: candor-ts's whole report for `axios` is 54 `index.d.ts`
+# declarations while its 61 `.js` implementation files are never analyzed, giving `analyzed.count: 54`
+# with `functions: []` — ⟨0.24⟩ ROW 2, the row that tells a consumer to believe the report and not hedge.
+#
+# THE SIBLING ROUTE, which is why hand-written fixtures missed it for so long: PART 21 and the engines'
+# own boundary suites pin this same shape in a DEPENDENCY. Nobody asked it of the project's OWN source.
+#
+# ASSERTED ON THE CALLER, deliberately, because the engines disagree about WHERE to put the disclosure
+# and the ruling is that they may: java charges the DECLARATION unit (`native:ambient`) and lets the
+# fixpoint carry it caller-ward, rust and swift charge at the EDGE (`native:extern fn`,
+# `dispatch:Ambient.ping`), and candor-ts now follows java's shape because it already mints the unit and
+# already forms the edge. All four are the same observation to a consumer, and the caller's transitive
+# set is what a gate actually reads — so that is what the row compares. §4 makes the reason CLASS
+# per-language and best-effort, so the row does not compare the string.
+#
+# CONTROL, and it is the half that keeps the fix from being a fabrication: the SAME declaration shape
+# WITH a local body (a trait impl, a subclass override, a conforming type) is ALREADY resolved by each
+# engine's CHA, and its caller must carry the real effect and NO Unknown. Without this row the rule
+# "a body-less declaration means Unknown" would pass while charging every abstract method in every real
+# project — measured on the corpus, that control is what takes zod's delta to +0 and hono's to +9.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P46_OK=0
+BL="$W/bodyless"
+# ---- java: a `native` method has no body in any analyzed class file; abstract+local subclass is the control.
+mkdir -p "$BL/java"
+cat > "$BL/java/A.java" <<'EOF'
+import java.io.*;
+public class A {
+  public static native int opaque(String u);
+  public static int candorUnanswered() { return opaque("u"); }
+  public static abstract class Base { public abstract void hook(); }
+  public static class Impl extends Base { public void hook() { try { new FileOutputStream("/tmp/x").close(); } catch (IOException e) {} } }
+  public static void candorAnswered(Base b) { b.hook(); }
+}
+EOF
+javac -d "$BL/java/classes" "$BL/java/A.java" 2>/dev/null
+java -jar "$JAR" "$BL/java/classes" --json "$BL/j.json" >/dev/null 2>&1
+# ---- rust: an `extern "C"` fn is declared and not defined here; a trait with a local impl is the control.
+BL_RS="/nonexistent"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$BL/rs/src"
+  printf '[package]\nname="bl"\nversion="0.0.0"\nedition="2021"\n' > "$BL/rs/Cargo.toml"
+  cat > "$BL/rs/src/lib.rs" <<'EOF'
+extern "C" { pub fn opaque(u: u32) -> u32; }
+pub fn candor_unanswered() -> u32 { unsafe { opaque(1) } }
+pub trait Store { fn put(&self, k: &str); }
+pub struct Disk;
+impl Store for Disk { fn put(&self, k: &str) { std::fs::write("/tmp/x", k).ok(); } }
+pub fn candor_answered(d: &Disk) { d.put("k") }
+EOF
+  ( cd "$BL/rs" && "$SCAN" . >/dev/null 2>&1 )
+  BL_RS=$(ls "$BL"/rs/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)
+fi
+# ---- swift: a protocol requirement NO local type conforms to; a conformed protocol is the control.
+BL_SW="/nonexistent"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$BL/sw/Sources/BL"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "BL", targets: [.target(name: "BL")])\n' > "$BL/sw/Package.swift"
+  cat > "$BL/sw/Sources/BL/a.swift" <<'EOF'
+import Foundation
+public protocol Opaque { func ping(_ k: String) }
+public func candorUnanswered(_ a: Opaque) { a.ping("k") }
+public protocol Store { func put(_ k: String) }
+public struct Disk: Store { public init() {}; public func put(_ k: String) { FileManager.default.createFile(atPath: "/tmp/x", contents: nil) } }
+public func candorAnswered(_ d: Disk) { d.put("k") }
+EOF
+  ( cd "$BL/sw" && "$SW_BIN" . >/dev/null 2>&1 )
+  BL_SW=$(ls "$BL"/sw/.candor/report.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy' | head -1)
+fi
+# ---- ts: an ambient `declare function`; an abstract member with a local subclass is the control.
+BL_TS="/nonexistent"
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$BL/ts/src"
+  printf '{"name":"bl","version":"0.0.0"}\n' > "$BL/ts/package.json"
+  cat > "$BL/ts/src/a.ts" <<'EOF'
+import * as fsm from "node:fs";
+declare function opaque(u: string): string;
+export function candorUnanswered(): string { return opaque("u"); }
+export abstract class Base { abstract hook(): void; }
+export class Impl extends Base { hook(): void { fsm.readFileSync("/tmp/y"); } }
+export function candorAnswered(b: Base): void { b.hook(); }
+EOF
+  ( cd "$TS_DIR" && node scan.mjs "$BL/ts" >/dev/null 2>&1 )
+  BL_TS="$BL/ts/.candor/report.json"
+fi
+python3 - "$BL/j.json" "$BL_RS" "$BL_SW" "$BL_TS" <<'PYBL' || P46_OK=1
+import json, sys, os, re
+def norm(n): return re.sub(r"[^a-z]", "", (n or "").lower())
+def caller(path, want):
+    """The transitive effect set of the uniquely-named caller, or None if the report is unreadable."""
+    try: d = json.load(open(path))
+    except Exception: return None
+    for e in d.get("functions", []):
+        if norm(e.get("fn") or e.get("name")).endswith(want): return set(e.get("inferred", []))
+    return set()   # absent from `functions` == analyzed and PURE (the ⟨0.21⟩ reading)
+print("\n[46] A CALLER OF A BODY-LESS LOCAL DECLARATION IS NOT PURE  (declare / extern / native / unconformed protocol)")
+engines = [("java", sys.argv[1])]
+for i, name in ((2, "rust"), (3, "swift"), (4, "ts")):
+    if len(sys.argv) > i and os.path.exists(sys.argv[i]): engines.append((name, sys.argv[i]))
+fails = 0
+for name, path in engines:
+    un = caller(path, "candorunanswered")
+    an = caller(path, "candoranswered")
+    if un is None or an is None:
+        print(f"  {name:6s} -> DIVERGE  (unreadable report at {path} — an engine that did not answer proves nothing)")
+        fails += 1; continue
+    # (a) the under-report: no body was ever read, so a pure claim is a claim about unseen code.
+    if "Unknown" not in un:
+        print(f"  {name:6s} -> DIVERGE  (caller of the body-less declaration is {sorted(un) or 'PURE'} — a purity claim over code with no body)")
+        fails += 1; continue
+    # (b) the CONTROL: the same shape WITH a local body is resolved, so charging it too is fabrication.
+    if "Unknown" in an or not (an - {"Unknown"}):
+        print(f"  {name:6s} -> DIVERGE  (CONTROL: the LOCALLY-BODIED shape reads {sorted(an) or 'PURE'} — expected its real effect and no Unknown)")
+        fails += 1; continue
+    print(f"  {name:6s} -> MATCH    (unanswered caller discloses Unknown; locally-bodied control resolves to {sorted(an)})")
+sys.exit(1 if fails else 0)
+PYBL
+
+echo "PART 46 — a caller of a body-less local declaration is not pure (SPEC §3 honesty invariant)"
+# ENGINES: rust java ts swift
+# CONTROLS: candorAnswered — the SAME declaration shape with a LOCAL BODY (trait impl / subclass override / conforming type) must resolve to its real effect and carry NO Unknown, so the row cannot pass by charging every abstract member in the project
+if [ "$P46_OK" = 0 ]; then
+  echo "  -> MATCH — no engine certifies a caller of a body-less declaration pure, and none over-charges the locally-bodied control"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
@@ -8229,7 +8370,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
