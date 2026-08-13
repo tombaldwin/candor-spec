@@ -6820,6 +6820,68 @@ ro_probe() { # $1 label ; $2 sink flag ; $3 A ; $4 B ; $5… the scan command, T
     echo "     FAIL $label (i-control): a SINGLE $flag no longer produces a real report (exit $rc) — the guard has broken the flag rather than implementing the rule"; RS_OK=1
   fi
 }
+# ⟨0.28⟩ (j) WHAT EACH LOCATOR FORM RESOLVES TO — a FILE is one report, a PREFIX is the union.
+#
+# SPEC §3.1 ⟨0.28⟩ pins it. "Expand as the loader will" (the guard rule, rows (g)/(h)) says how to COMPARE
+# a sink against the inputs; it never said what the loader should expand TO, and three engines disagreed
+# invisibly because each was internally consistent. MEASURED: candor-swift's FILE locator answered from a
+# SIBLING — `path B.doFs Fs --report r.A.Swift.json` returned B's function and its gate summed
+# `analyzed.count` across both; candor-java's PREFIX form printed `matches 2 reports; using <one>` and
+# answered the descriptive verbs from the lexicographically FIRST file, so one flag meant "the set" for
+# the gate and "whichever sorts first" elsewhere.
+#
+# THE DISCRIMINATOR IS `analyzed.count`, which is how swift's defect was found: two reports of one unit
+# each under a single prefix, so the FILE form must report 1 and the PREFIX form 2. A row asserting only
+# that a verb ANSWERS would pass against both defects.
+#
+# NAMING COMES FROM gen_key_shapes.py's table rather than being re-derived here — each engine discovers
+# reports by its OWN convention, and §3.3.1's own rule is "derive the expansion from the loader, do not
+# re-spell it". A second spelling in the suite would be this row's subject, in this row.
+LRW="$W/locatorforms"; rm -rf "$LRW"; mkdir -p "$LRW"
+# A policy that PARSES to one real rule and BINDS NOTHING. Both obvious shortcuts are wrong and this row
+# hit them: an EMPTY policy is a zero-rule policy and §6.2 makes it a REFUSAL (the verdict then carries no
+# `analyzed` at all), and `deny Nett app` is a §3.1 policy ERROR at exit 2 on the typo'd effect token. A
+# real effect against a layer no fixture has is the only spelling that leaves the gate running and quiet.
+printf 'deny Fs zzz_no_such_layer\n' > "$LRW/inert.policy"
+lr_report() { python3 - "$1" "$2" <<'LRPY'
+import json,sys
+json.dump({"candor":{"version":"t","toolchain":"x","spec":"0.27"},"package":sys.argv[2],
+           "analyzed":{"count":1},
+           "functions":[{"fn":sys.argv[2]+".f","hash":sys.argv[2]+"#f","inferred":["Fs"],"direct":["Fs"]}]},
+          open(sys.argv[1],"w"))
+LRPY
+}
+LR_PY_COUNT='import json,sys
+d=json.load(open(sys.argv[1]))
+a=d.get("analyzed") or {}
+print(a.get("count") if isinstance(a,dict) else "?")'
+lr_probe() { # $1 label ; $2 stem ; $3 sibling stem ; $4 prefix ; $5… the GATE command
+  local label=$1 stem=$2 sib=$3 pfx=$4; shift 4
+  local cmd=( "$@" ) d="$LRW/${label// /}"; rm -rf "$d"; mkdir -p "$d"
+  lr_report "$d/$stem.json" app
+  lr_report "$d/$sib.json" dep
+  local vf="$d/vfile.json" vp="$d/vpfx.json" cf cp_
+  rm -f "$vf" "$vp"
+  "${cmd[@]}" --report "$d/$stem.json" --gate-json "$vf" >/dev/null 2>&1
+  "${cmd[@]}" --report "$d/$pfx"       --gate-json "$vp" >/dev/null 2>&1
+  if [ ! -s "$vf" ] || [ ! -s "$vp" ]; then
+    echo "  $label (j) SKIP — one of the two locator forms produced no verdict document, so the pair cannot be compared (file=$([ -s "$vf" ] && echo yes || echo no) prefix=$([ -s "$vp" ] && echo yes || echo no))"; return
+  fi
+  cf=$(python3 -c "$LR_PY_COUNT" "$vf" 2>/dev/null); cp_=$(python3 -c "$LR_PY_COUNT" "$vp" 2>/dev/null)
+  # THE PREFIX CELL IS THE PREMISE: if it does not see BOTH, the fixture never had two readable reports
+  # and the FILE cell below would pass for a reason that is not the rule.
+  if [ "$cp_" != 2 ]; then
+    echo "  $label (j) SKIP — the PREFIX form reported analyzed.count=$cp_, not 2. Either the fixture does not put two readable reports under one prefix, or the verdict is a REFUSAL document (which carries no \`analyzed\`) — the FILE cell cannot be credited either way"; return
+  fi
+  if [ "$cf" = 1 ]; then
+    echo "  $label (j) PASS — a FILE locator is ONE report (count=1) and a PREFIX is the union (count=2)"
+  elif [ "$cf" = 2 ]; then
+    echo "     FAIL $label (j): the FILE locator \`$stem.json\` reported analyzed.count=2 — it UNIONED the sibling beside it. The operator named one artifact; reading three makes \`--report r.json\` mean something different depending on what else sits in the directory (SPEC §3.1 ⟨0.28⟩)"; RS_OK=1
+  else
+    echo "     FAIL $label (j): the FILE locator reported analyzed.count=$cf, neither the one report it names nor the union — the two forms are not resolving to anything this clause describes"; RS_OK=1
+  fi
+}
+
 ROW="$W/repeatedout"; rm -rf "$ROW"; mkdir -p "$ROW"
 
 TIW="$W/targetinput"; rm -rf "$TIW"; mkdir -p "$TIW"
@@ -6829,6 +6891,7 @@ if [ -x "$SCAN" ]; then
   [ -d "$GDIR/rust" ] && ti_control "candor-scan " --gate-json "$SCAN" "$GDIR/rust"
   [ -d "$RSFX/rust" ] && ti_expand "candor-scan " --gate-json rs "$SCAN" "$RSFX/rust"
   [ -d "$GDIR/rust" ] && ro_probe "candor-scan " --out "$ROW/ra" "$ROW/rb" "$SCAN" "$GDIR/rust"
+  [ -n "${QUERY:-}" ] && lr_probe "candor-scan " report.app.scan report.dep.scan report "$QUERY" gate --policy "$LRW/inert.policy"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   # A real jar: the java reproduction destroyed one, and a jar is also the shape whose corruption is
@@ -6848,6 +6911,7 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
     [ -n "$RSFX_JAVA" ] && ti_expand "candor-java " --json class java -jar "$JAR" "$RSFX_JAVA"
     # java spells its report sink `--json <file>`; the rule is about the SINK, not the flag name.
     ro_probe "candor-java " --json "$ROW/ja.json" "$ROW/jb.json" java -jar "$JAR" "$W/g_java"
+    lr_probe "candor-java " r r.dep r java -jar "$JAR" gate --policy "$LRW/inert.policy"
   else
     echo "  candor-java  (f) n/a — could not build a jar fixture on this machine"
   fi
@@ -6858,6 +6922,10 @@ if [ -n "$TS_OK" ]; then
   [ -d "$GDIR/ts" ] && ti_control "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$GDIR/ts"
   [ -d "$RSFX/ts" ] && ti_expand "candor-ts   " --gate-json ts node "$TS_DIR/scan.mjs" "$RSFX/ts"
   [ -d "$GDIR/ts" ] && ro_probe "candor-ts   " --out "$ROW/ta" "$ROW/tb" node "$TS_DIR/scan.mjs" "$GDIR/ts"
+  # ts's stem and prefix are BOTH `r` in the shared naming table, so `--report r` hits the exact file
+  # `r.json` and the two forms collapse into one — the row then compares a locator with itself. Given
+  # the rust/swift shape (`<prefix>.<pkg>`) the forms are distinct, which is what the row needs.
+  lr_probe "candor-ts   " r.app r.dep r node "$TS_DIR/query.mjs" gate --policy "$LRW/inert.policy"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   printf 'import Foundation\nfunc a() { _ = FileManager.default.contents(atPath: "x") }\n' > "$TIW/app.swift"
@@ -6865,6 +6933,7 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   [ -d "$GDIR/swift" ] && ti_control "candor-swift" --gate-json "$SW_BIN" "$GDIR/swift"
   [ -d "$RSFX/swift" ] && ti_expand "candor-swift" --gate-json swift "$SW_BIN" "$RSFX/swift"
   [ -d "$GDIR/swift" ] && ro_probe "candor-swift" --out "$ROW/sa" "$ROW/sb" "$SW_BIN" "$GDIR/swift"
+  lr_probe "candor-swift" r.app.Swift r.dep.Swift r "$SW_BIN" gate --policy "$LRW/inert.policy"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
