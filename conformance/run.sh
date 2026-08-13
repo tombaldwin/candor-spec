@@ -7523,7 +7523,11 @@ sv_probe() { # $1 label ; $2 query-command as a string ; $3 intact report ; $4 D
   sv_states "$d" "$rep"
   local skips=0 fails=0 passes=0 intact_cells=0 intact_answered=0 nosurf=0
   for st in intact armed armedlive count0 absent corrupt; do
-    for v in where callers map impact path whatif blindspots reachable containment tour; do
+    # ⟨0.28⟩ THE LOOP DRIVES THE UNION OF EVERY DECLARED SURFACE, not a hard-coded list. It was written
+    # out here AND declared in `SV_ALL`, so adding a verb to one and not the other silently drops it —
+    # `show` was added to `SV_ALL` below and would have gone unrun. The per-engine `sv_surface` check
+    # inside the loop still decides what each engine is asked; this just stops the outer list drifting.
+    for v in $SV_EVERY; do
       local argv
       case "$v" in
         where)   argv="where Fs" ;;
@@ -7532,6 +7536,7 @@ sv_probe() { # $1 label ; $2 query-command as a string ; $3 intact report ; $4 D
         path)    argv="path $SV_FN Fs" ;;
         whatif)  argv="whatif $SV_FN Fs" ;;
         tour)    argv="tour 3" ;;
+        show)    argv="show $SV_FN" ;;
         *)       argv="$v" ;;
       esac
       # THE LOCATOR IS THE FULL REPORT PATH, NOT A MANGLED PREFIX. The first version passed
@@ -7613,8 +7618,16 @@ SV_FN="transitive_leaf"        # measured to resolve on all four engines from th
 # THE TEN, and the two engines' worth of surface that is NOT ten (header). Written out per engine
 # rather than as "$SV_ALL minus a list", because the interesting engine is the one with two verbs and a
 # subtraction hides it: a reader has to be able to see what swift covers without doing set arithmetic.
-SV_ALL="where callers map impact path whatif blindspots reachable containment tour"
+# ⟨0.28⟩ `show` JOINS THE TEN. It was excluded while Rung A was unruled — its document is a top-level
+# ARRAY, so it had nowhere to hang a caveat and answered `[]` over a report whose own manifest named a
+# file it could not read. SPEC §2 ⟨0.28⟩ ruled it: the caveat document REPLACES the result document, and
+# the type change is the assertion — a consumer doing `for (x of doc)` gets a TypeError instead of a
+# silent zero-iteration loop. This matrix already scores exactly that distinction (an empty ARRAY is a
+# determined negative; an object carrying a disclosure key is a hedge), so `show` needs no new oracle,
+# only to be asked. candor-swift does not ship it.
+SV_ALL="where callers map impact path whatif blindspots reachable containment tour show"
 SV_SWIFT="path tour"
+SV_EVERY="$SV_ALL"   # the union the loop walks; per-engine surface is enforced inside sv_probe
 if [ -d "$GDIR/rust" ]; then
   # ALL SEVEN RESERVED SEGMENTS (§2.2 ⟨0.24⟩), anchored. The filter listed three, unanchored, and a
   # dead first assignment sat above it — so a `<prefix>.calibrated.json`, which sorts BEFORE `report.`,

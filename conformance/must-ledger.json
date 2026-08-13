@@ -2457,7 +2457,7 @@
    "sha": "2bcc5e217050f80d",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "⟨0.28⟩ **AND HERE IS THAT RULING, AND IT IS ONE RULE, NOT ONE PER VERB.** The two cells above were opened sepa",
-   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
+   "part": "PART 40"
   },
   {
    "sha": "9c937c3824703bf1",
@@ -2469,7 +2469,7 @@
    "sha": "4e4e99e8b047ceec",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "> **A verb whose pinned shape cannot carry the caveat MUST emit the CAVEAT DOCUMENT INSTEAD of its result > do",
-   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
+   "part": "PART 40"
   },
   {
    "sha": "baa04c43fb78122e",
@@ -2481,7 +2481,7 @@
    "sha": "cbb02665a2cb9efe",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "- **The type change is LOUD, and that is the point.** A consumer doing `for (const x of doc)` over `show` gets",
-   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
+   "part": "PART 40"
   },
   {
    "sha": "033b20bcea03bc93",
