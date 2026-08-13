@@ -1,0 +1,14 @@
+{
+ "_": [
+  "SKIP RATCHET BASELINE — see skip_ratchet.py's header.",
+  "A count here may FALL freely (an engine shipped a rung). A count that RISES fails.",
+  "Regenerate ONLY for a deliberate coverage change, and say so in the commit: a skip",
+  "count that drifts upward one unremarkable commit at a time stops meaning anything."
+ ],
+ "skips": {
+  "tally:candor-java": 1,
+  "tally:candor-scan": 1,
+  "tally:candor-swift": 0,
+  "tally:candor-ts": 3
+ }
+}
