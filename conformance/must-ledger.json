@@ -2547,13 +2547,13 @@
    "sha": "f4f1ae9c91ae5d74",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "⟨0.28⟩ **AND A REPEATED `--out` IS THE SAME RULE — filed as an open question by the rung that wrote the senten",
-   "unenforced": "⟨0.28⟩ repeated `--out`. The repeated `--gate-json` refusal is pinned; its report-sink twin is not. rust, ts and swift refuse it and java has no `--out`, so a row would go green on three and n/a on one."
+   "part": "PART 37 (i)"
   },
   {
    "sha": "e558516e883c9155",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "If anything the report sink is the WORSE case, because `--out` fans out on one engine: the stale set left at `",
-   "unenforced": "⟨0.28⟩ repeated `--out`. The repeated `--gate-json` refusal is pinned; its report-sink twin is not. rust, ts and swift refuse it and java has no `--out`, so a row would go green on three and n/a on one."
+   "part": "PART 37 (i)"
   },
   {
    "sha": "5b18c85435142a05",
