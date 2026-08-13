@@ -7034,6 +7034,9 @@ printf '# Project README\n\nThis is documentation, not a policy file.\nSomeone p
 : > "$ZRW/empty.policy"
 printf '# just a comment\n\n# another\n' > "$ZRW/comments.policy"
 printf 'deny Fs app\n' > "$ZRW/real.policy"
+# a ⟨0.21⟩ Row-1 judged-nothing report — the state both cells are about. All four engines accept a
+# `--report <full .json path>`, measured by PART 40, so one hand-written fixture serves the family.
+printf '{"candor":{"version":"t","toolchain":"x","spec":"0.27"},"package":"jn","functions":[],"analyzed":{"count":0}}\n' > "$ZRW/jn.report.json"
 
 zr_probe() { # $1 label ; then the scan command with the TARGET LAST
   local label=$1; shift
@@ -7123,6 +7126,57 @@ if not isinstance(d,dict): sys.exit(1)
 if "crossing" in d: sys.exit(2)
 u=d.get("unevaluated")
 sys.exit(0 if isinstance(u,list) and u else 3)'
+# ⟨0.28⟩ (ok) A HEDGING DOCUMENT WITHDRAWS `ok` — AND THE GATE VERDICT DOES NOT.
+#
+# SPEC §2 ⟨0.28⟩: `ok` is withdrawn wherever it is a claim about the CODE that the hedged input cannot
+# support. Measured on candor-swift's `privacy-manifest --verify`: `ok: true` beside `incomplete: true` —
+# ⟨0.27⟩'s `violations`-on-a-refusal-document problem under a different key.
+#
+# THE CARVE-OUT IS THE INTERESTING HALF, and the tempting general form ("a hedging document never carries
+# `ok`") is FALSE. ⟨0.24⟩ ruled the count-0 arm explicitly the other way for the GATE: measured, it emits
+# `ok: true` over a judged-nothing report deliberately, and candor-rust's own note says why — *"this report
+# makes no claim, and inventing one for it would be the opposite defect."* The gate's `ok` is scoped to
+# *did a rule I could evaluate fire*, a question a partial report still answers; an advisory verb's `ok` is
+# scoped to *is this code clean*, which it cannot.
+#
+# So the row is TWO CELLS and the second is not a nicety — it is what stops a fix withdrawing `ok`
+# everywhere and reopening ⟨0.24⟩ from the other side. A row that only asserted the withholding would score
+# that regression as a pass.
+ZR_PY_NO_OK='import json,sys
+d=json.load(open(sys.argv[1]))
+if not isinstance(d,dict): sys.exit(1)
+if "ok" in d: sys.exit(2)
+sys.exit(0 if any(k in d for k in ("incomplete","judgedNothing","noManifest","unanalyzed")) else 3)'
+ZR_PY_HAS_OK='import json,sys
+d=json.load(open(sys.argv[1]))
+sys.exit(0 if isinstance(d,dict) and "ok" in d else 1)'
+zr_okwithhold() { # $1 label ; $2… the QUERY command
+  local label=$1; shift
+  local cmd=( "$@" ) R="$ZRW/jn.report.json" a="$ZRW/ok.$label.adv.json" g="$ZRW/ok.$label.gate.json" cls
+  rm -f "$a" "$g"
+  "${cmd[@]}" unverified --report "$R" --policy "$ZRW/real.policy" --json > "$a" 2>/dev/null
+  "${cmd[@]}" gate --report "$R" --policy "$ZRW/real.policy" --json > "$g" 2>/dev/null
+  if [ ! -s "$a" ]; then
+    echo "  $label (ok) SKIP — \`unverified\` produced no machine document over a judged-nothing report"
+  else
+    python3 -c "$ZR_PY_NO_OK" "$a" 2>/dev/null; cls=$?
+    case "$cls" in
+      0) echo "  $label (ok) PASS — an advisory verb withdraws \`ok\` over a judged-nothing report and says why" ;;
+      2) echo "  $label (ok) SKIP — \`unverified\` still carries \`ok\` beside its hedge (engine has not implemented the ⟨0.28⟩ withdrawal)" ;;
+      *) echo "  $label (ok) SKIP — no caveat key in the document, so this is the re-disclosure rung rather than the \`ok\` one" ;;
+    esac
+  fi
+  # THE CARVE-OUT, and it NEVER SKIPS: ⟨0.24⟩ settled it, so an engine dropping `ok` from the gate verdict
+  # is a REGRESSION against a shipped ruling, not an unshipped rung.
+  if [ ! -s "$g" ]; then
+    echo "     FAIL $label (ok-carveout): \`gate --report\` produced no verdict document over a judged-nothing report — ⟨0.24⟩ requires the verdict and exit UNCHANGED there"; ZR_OK=1
+  elif python3 -c "$ZR_PY_HAS_OK" "$g" 2>/dev/null; then
+    echo "  $label (ok-carveout) PASS — the GATE verdict keeps \`ok\` over the same bytes (⟨0.24⟩: inventing no claim, and withdrawing one would be the opposite defect)"
+  else
+    echo "     FAIL $label (ok-carveout): the gate verdict DROPPED \`ok\` over a judged-nothing report — ⟨0.24⟩ ruled that arm explicitly the other way, and a consumer keying on \`ok\` now has nothing to read"; ZR_OK=1
+  fi
+}
+
 zr_crossing() { # $1 label ; $2 report locator ; $3 fn ; $4… the QUERY command
   local label=$1 rep=$2 fn=$3; shift 3
   local cmd=( "$@" ) a="$ZRW/x.$label.ans.json" r="$ZRW/x.$label.ref.json" cls
@@ -7173,6 +7227,7 @@ if [ -d "$GDIR/rust" ]; then
   zr_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
   [ -n "${QUERY:-}" ] && zr_advisory "candor-scan " "$W/g_rust" "$QUERY"
   [ -n "${QUERY:-}" ] && zr_crossing "candor-scan " "$W/g_rust" save "$QUERY"
+  [ -n "${QUERY:-}" ] && zr_okwithhold "candor-scan " "$QUERY"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
@@ -7182,16 +7237,19 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   java -jar "$JAR" "$W/g_java" --json "$ZRW/java.report.json" >/dev/null 2>&1
   [ -s "$ZRW/java.report.json" ] && zr_advisory "candor-java " "$ZRW/java.report.json" java -jar "$JAR"
   [ -s "$ZRW/java.report.json" ] && zr_crossing "candor-java " "$ZRW/java.report.json" save java -jar "$JAR"
+  zr_okwithhold "candor-java " java -jar "$JAR"
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
   zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
   zr_advisory "candor-ts   " "$W/g_ts" node "$TS_DIR/query.mjs"
   zr_crossing "candor-ts   " "$W/g_ts" save node "$TS_DIR/query.mjs"
+  zr_okwithhold "candor-ts   " node "$TS_DIR/query.mjs"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
   zr_advisory "candor-swift" "$W/g_sw" "$SW_BIN"
   zr_crossing "candor-swift" "$W/g_sw" save "$SW_BIN"
+  zr_okwithhold "candor-swift" "$SW_BIN"
 fi
 echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
 if [ "$ZR_OK" = 0 ]; then
