@@ -2487,7 +2487,7 @@
    "sha": "3873277b76978626",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "**`privacy-manifest` is the same MUST and NOT the same shape problem** — it has an envelope and simply never c",
-   "unenforced": "⟨0.28⟩ `privacy-manifest` carries the pinned caveat keys. candor-swift implements it and is the only engine shipping the verb; no row drives it. Needs a reference-led row."
+   "part": "PART 42"
   },
   {
    "sha": "775cf42b2ff7759c",
@@ -2601,7 +2601,7 @@
    "sha": "95d6aaf1203d27e3",
    "at": "⟨0.28⟩ Phase 1b ruling",
    "excerpt": "⟨0.28⟩ **AND THE THIRD ROW IS NOT THE FIRST ROW — measured, two engines report it as one.** Over `{\"candor\":{…",
-   "unenforced": "⟨0.28⟩ `noManifest`. PART 42 pins the KEY (SPEC-named, one type across engines) but nothing asserts the BEHAVIOUR — that a report with no `analyzed` key lands in `noManifest` and not in `judgedNothing`. That distinction is the entire clause, and two engines got it wrong before it was written."
+   "part": "PART 42"
   },
   {
    "sha": "8f10ee51abcdcf62",
@@ -2613,6 +2613,12 @@
    "sha": "5515211a52f019e0",
    "at": "2. The report",
    "excerpt": "*Pinned in the same breath as `noManifest` itself because the alternative was measured: all four engines deriv",
+   "part": "PART 42"
+  },
+  {
+   "sha": "7424c60143dd717b",
+   "at": "2. The report",
+   "excerpt": "⟨0.28⟩ **AND `privacy-manifest`'s OWN TWO KEYS, PINNED HERE BECAUSE DRIVING THE VERB IS WHAT FOUND THEM.** The",
    "part": "PART 42"
   }
  ]

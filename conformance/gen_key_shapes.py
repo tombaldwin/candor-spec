@@ -224,6 +224,14 @@ VERBS = [
     ("path",        ["path", "app.top", "Exec"]),
     ("map",         ["map"]),
     ("blindspots",  ["blindspots"]),
+    # ⟨0.28⟩ `privacy-manifest` — ONE ENGINE SHIPS IT, and that is a reason to declare it, not to skip
+    # it. SPEC §2 ⟨0.28⟩ names this verb explicitly as the case that is "the same MUST and NOT the same
+    # shape problem": it HAS an envelope and simply never consulted completeness, so a clean "no sensors
+    # reached" shipped over a partial report. candor-swift found that, reported it rather than inventing
+    # a wire surface alone, and implemented it once the ruling existed. Driving it here gets the (A)
+    # shape, (B) vocabulary and (C) right-cause checks for free, which a bespoke one-engine row would
+    # not — and ENGINE_VERBS records the three-engine absence rather than leaving it implied.
+    ("privacy-manifest", ["privacy-manifest"]),
     ("reachable",   ["reachable"]),
     ("containment", ["containment"]),
     ("tour",        ["tour", "5"]),
@@ -240,7 +248,7 @@ ENGINE_VERBS = {
     "rust":  {v for v, _ in VERBS} | {"gains"},
     "java":  {v for v, _ in VERBS} | {"gains"},
     "ts":    {v for v, _ in VERBS} | {"gains"},
-    "swift": {"path", "tour", "gains", "fix", "fix-gate", "unverified"},
+    "swift": {"path", "tour", "gains", "fix", "fix-gate", "unverified", "privacy-manifest"},
 }
 
 # The ⟨0.28⟩-pinned caveat key set (SPEC §2, "AND HERE IS WHAT THE TRAVELLING CAVEAT IS CALLED"):
@@ -547,6 +555,51 @@ def main():
     else:
         print("  (B) PASS — %d vocabulary keys: every SPEC-unnamed key (%d) is grandfathered debt, "
               "no stale entries" % (len(vocab), len(unnamed)))
+
+    # ── (C) ⟨0.24⟩ ROW 3 IS NOT ROW 1 — the cause the caveat NAMES, not merely that it carries one.
+    #
+    # (A) and (B) are both blind to this by construction, and deliberately so: (A) compares TYPES per
+    # (verb, key-path) and a key one engine emits while another does not passes it (presence-per-verb is
+    # PART 39/40's reference-led surface); (B) asks only that a key be SPEC-named. So an engine filing a
+    # row-3 report under `judgedNothing` — which rust, java AND swift all did until today — satisfies
+    # both: the key is named, and its type agrees with everyone else's `judgedNothing`.
+    #
+    # But the distinction IS the clause. SPEC §2 ⟨0.24⟩'s table has three rows and they want different
+    # repairs: `count: 0` means a scan reached no conclusion, an ABSENT manifest means a producer that
+    # predates ⟨0.21⟩ and can make no claim either way. Reporting the second as the first is a FALSE
+    # disclosure, which this family rates worse than a missing one.
+    #
+    # Both directions, because a fix that renames everything is as wrong as one that renames nothing —
+    # the ⟨0.24⟩ control-separation lesson, where a plausible repair withdrew 104 real claims to catch 6.
+    EXPECT = {"nomanifest": ("noManifest", "judgedNothing"),
+              "judgednothing": ("judgedNothing", "noManifest")}
+    cfail = crows = 0
+    for (engine, state, verb), cell in sorted(cells.items()):
+        if state not in EXPECT or not isinstance(cell["doc"], dict):
+            continue
+        want, forbid = EXPECT[state]
+        doc = cell["doc"]
+        if want not in doc and forbid not in doc:
+            continue                                   # this verb does not disclose here; (A)/(B)'s turf
+        crows += 1
+        if forbid in doc:
+            print("     FAIL (C): %s `%s` over the %s state names the cause `%s` — ⟨0.24⟩ row 3 (no "
+                  "`analyzed` key at all) and row 1 (`count: 0`) are different facts wanting different "
+                  "repairs, and reporting one as the other is a FALSE disclosure"
+                  % (engine, verb, state, forbid))
+            cfail = 1
+        elif want not in doc:
+            print("     FAIL (C): %s `%s` over the %s state hedges without naming `%s`" % (engine, verb, state, want))
+            cfail = 1
+    if cfail:
+        rc = 1
+    elif crows == 0:
+        print("     FAIL (C): not one cell disclosed a row-1 or row-3 cause — the fixture states exist "
+              "but nothing consulted them, so this check asked nothing")
+        rc = 1
+    else:
+        print("  (C) PASS — %d disclosing cells name the RIGHT cause: an absent manifest is `noManifest`, "
+              "a `count: 0` is `judgedNothing`, and neither is reported as the other" % crows)
     return rc
 
 
