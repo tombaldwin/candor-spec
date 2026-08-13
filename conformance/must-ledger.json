@@ -192,12 +192,6 @@
    "status": "pre-ledger"
   },
   {
-   "sha": "d8258a51a7dbac91",
-   "at": "2. The report",
-   "excerpt": "**A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** — `baselineIncomplete`,",
-   "status": "pre-ledger"
-  },
-  {
    "sha": "80ba485994c78f7b",
    "at": "2. The report",
    "excerpt": "**The channel is the machine document itself** — the same document the answer is in, not stderr beside it. Tha",
@@ -2610,10 +2604,16 @@
    "unenforced": "⟨0.28⟩ `noManifest`. PART 42 pins the KEY (SPEC-named, one type across engines) but nothing asserts the BEHAVIOUR — that a report with no `analyzed` key lands in `noManifest` and not in `judgedNothing`. That distinction is the entire clause, and two engines got it wrong before it was written."
   },
   {
-   "sha": "21cd73d9b2a13ca7",
-   "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "It raises `incomplete` like the others and is omitted when empty. Note candor-rust's GATE note already says \"`",
-   "unenforced": "⟨0.28⟩ `noManifest`. PART 42 pins the KEY (SPEC-named, one type across engines) but nothing asserts the BEHAVIOUR — that a report with no `analyzed` key lands in `noManifest` and not in `judgedNothing`. That distinction is the entire clause, and two engines got it wrong before it was written."
+   "sha": "8f10ee51abcdcf62",
+   "at": "2. The report",
+   "excerpt": "**A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** — `baselineIncomplete`,",
+   "part": "PART 42"
+  },
+  {
+   "sha": "5515211a52f019e0",
+   "at": "2. The report",
+   "excerpt": "*Pinned in the same breath as `noManifest` itself because the alternative was measured: all four engines deriv",
+   "part": "PART 42"
   }
  ]
 }

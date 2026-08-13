@@ -406,7 +406,7 @@ intact report stays byte-identical to its pre-⟨0.28⟩ form — the property e
 rung and the one it must not spend.
 
 **A verb resting on TWO reports discloses both sides separately, `baseline`-prefixed** —
-`baselineIncomplete`, `baselineUnanalyzed`, `baselineJudgedNothing`, same shapes. Not one merged flag: the
+`baselineIncomplete`, `baselineUnanalyzed`, `baselineJudgedNothing`, `baselineNoManifest`, same shapes. Not one merged flag: the
 sides fail in opposite directions and want different responses. An incomplete CURRENT means the answer may
 be SHORT — effects the reader is not being told about. An incomplete BASELINE means the comparison floor
 is soft, so the existing-vs-new split the verb exists for is unreliable. "Something here is incomplete"
@@ -558,7 +558,15 @@ So row 3 gets its own name, pinned here in the rung that introduces it:
 
     "noManifest": [ "<report path>", … ]   // consulted reports carrying no `analyzed` key
 
-It raises `incomplete` like the others and is omitted when empty. Note candor-rust's GATE note already
+It raises `incomplete` like the others and is omitted when empty, and it takes the `baseline`-prefixed
+form on a two-report verb like every other member of the set — `baselineNoManifest`.
+
+*Pinned in the same breath as `noManifest` itself because the alternative was measured: all four engines
+derived the prefixed form MECHANICALLY from the one key set the moment `noManifest` existed, so it was
+emitted four-way and named nowhere within minutes of the rung landing. That is `judgedNothing`'s opening
+condition exactly, and it survived PART 42's vocabulary gate — not through a hole in the check but because
+the gate's corpus carries no row-3 artifact state, so it could not provoke the key it would have caught.
+An instrument's FIXTURES are part of its coverage, and a new artifact state has to reach them.* Note candor-rust's GATE note already
 says "`analyzed.count` is 0, **or absent with no entries**" — naming both conditions honestly on that one
 route while the query route asserts the wrong one, which is how a message drifts from what the code checks.
 
