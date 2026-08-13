@@ -201,12 +201,19 @@ INTACT = {
 }
 CG = {e["fn"]: e.get("calls", []) for e in INTACT["functions"]}
 
-STATES = ["intact", "armed", "judgednothing", "corruptsib"]
+# ⟨0.28⟩ `nomanifest` IS THE FOURTH HEDGING STATE, and its absence was a measured coverage gap rather
+# than an oversight of taste. SPEC §2 ⟨0.24⟩'s table has THREE rows and this corpus carried two of them:
+# `count: 0` (row 1) and a healthy report (row 2). A report with NO `analyzed` key — row 3, the
+# pre-⟨0.21⟩ producer — never appeared, so when all four engines gained `noManifest` and derived
+# `baselineNoManifest` from it mechanically, check (B) reported ZERO SPEC-unnamed keys while a key named
+# nowhere in SPEC.md was being emitted four-way. The check was sound; it could not provoke the state.
+# An instrument's FIXTURES are part of its coverage.
+STATES = ["intact", "armed", "judgednothing", "nomanifest", "corruptsib"]
 # `gains` reads TWO reports and prefixes the baseline side's caveats, so it gets its own pairings:
 # a clean control, each hedge state on the baseline side, the hedge on the CURRENT side (unprefixed
 # keys), and the corrupt sibling.
 GAINS_PAIRS = [("intact", "intact"), ("intact", "armed"), ("intact", "judgednothing"),
-               ("armed", "intact"), ("intact", "corruptsib")]
+               ("armed", "intact"), ("intact", "corruptsib"), ("intact", "nomanifest")]
 
 # The disclosure verbs, with arguments that make each one answer over INTACT (an empty control answer
 # is a cell that cannot diverge). @PURE@/@DENY@ are replaced with real policy-file paths at run time.
@@ -239,8 +246,14 @@ ENGINE_VERBS = {
 # The ⟨0.28⟩-pinned caveat key set (SPEC §2, "AND HERE IS WHAT THE TRAVELLING CAVEAT IS CALLED"):
 # reserved vocabulary at EVERY position, including inside user-keyed objects — measured, the engines
 # emit them into map's module namespace, the collision SPEC leaves as a known-open cell.
-RESERVED_EVERYWHERE = {"incomplete", "unanalyzed", "judgedNothing",
-                       "baselineIncomplete", "baselineUnanalyzed", "baselineJudgedNothing"}
+# ⟨0.28⟩ `noManifest` AND ITS BASELINE TWIN JOIN THE SET, and the omission is why the row-3 fixture
+# above turned (A) red the moment it existed: unregistered, the key was masked as USER DATA at `map`'s
+# root and its array collided with the module objects beside it. The gate's own diagnostic named the
+# cause ("a reserved-style key that is not in RESERVED_EVERYWHERE"). A caveat key must be reserved
+# EVERYWHERE the caveat can travel, and `map`'s namespace is exactly where SPEC §2 ⟨0.28⟩ says it does.
+RESERVED_EVERYWHERE = {"incomplete", "unanalyzed", "judgedNothing", "noManifest",
+                       "baselineIncomplete", "baselineUnanalyzed", "baselineJudgedNothing",
+                       "baselineNoManifest"}
 
 # Object positions whose KEYS are the user's own names, not engine vocabulary (header: the
 # user-namespace line). Paths use `.` segments with `[]` for array elements and `*` for masked keys.
@@ -261,6 +274,9 @@ def state_report(state):
     if state in ("intact", "corruptsib"):
         return r
     r["functions"] = []
+    if state == "nomanifest":                  # ⟨0.24⟩ ROW 3 — a pre-⟨0.21⟩ producer: no `analyzed` AT
+        r.pop("analyzed", None)                # ALL, which is "no manifest, no claim" and NOT row 1's
+        return r                               # "count: 0, nothing was judged"
     r["analyzed"]["count"] = 0
     if state == "armed":                       # the ⟨0.21⟩ Row-1 armed placeholder
         r["unanalyzed"] = [{"path": "src/broken.x", "reason": "parse error"}]
