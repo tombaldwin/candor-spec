@@ -7033,6 +7033,7 @@ ZRW="$W/zerorule"; mkdir -p "$ZRW"
 printf '# Project README\n\nThis is documentation, not a policy file.\nSomeone pointed --policy at it by mistake.\n' > "$ZRW/readme.md"
 : > "$ZRW/empty.policy"
 printf '# just a comment\n\n# another\n' > "$ZRW/comments.policy"
+printf 'deny Fs app\n' > "$ZRW/real.policy"
 
 zr_probe() { # $1 label ; then the scan command with the TARGET LAST
   local label=$1; shift
@@ -7091,6 +7092,61 @@ if not isinstance(d,dict): sys.exit(1)
 if any(k in d for k in ("ok","violations","unverified","remedies","affected","crossing")): sys.exit(2)
 u=d.get("unevaluated")
 sys.exit(0 if isinstance(u,list) and u else 3)'
+# ⟨0.28⟩ (cross) `crossing` IS PRESENT EXACTLY WHEN THE VERB ANSWERED.
+#
+# SPEC §6.1 ⟨0.28⟩ pins it as a boolean present iff `fix` answered, absent when it refused. PART 42 pins
+# that the key is SPEC-named and carries ONE JSON TYPE across the engines; neither of those is the ruling.
+# The ruling is the PRESENCE DISCIPLINE, and nothing asked.
+#
+# Why it was pinned rather than removed, which is what makes the row worth having: ts and swift emitted it
+# and rust/java did not — and the measurement showed rust and java answering that same arm as PROSE ON
+# STDOUT under `--json`, which §3.3.1 independently forbids. The choice was never pin-or-drop; it was pin,
+# or leave two engines emitting a determined negative as unparseable text on the machine channel while
+# breaking a shipped MCP tool contract to preserve it.
+#
+# TWO CELLS, and the row does NOT need a `crossing: true` fixture — TRUE AND FALSE ARE BOTH ANSWERS, so
+# presence is the assertion and a per-engine crossing-true fixture (fragile, layer-name dependent) is not
+# needed. Measured on candor-scan: a real policy gives `{"crossing": false, "reason": "not-forbidden"}`.
+#
+#   answered   real policy      -> `crossing` present, and `fn` echoed (proving the name RESOLVED, so an
+#                                  unresolvable fn cannot masquerade as a compliant absence — the PART 37
+#                                  (e) trap, where a name in no fixture scored PASS for a question never
+#                                  asked)
+#   refused    zero-rule policy -> `crossing` ABSENT, and `unevaluated` present (proving it took the
+#                                  zero-rule arm specifically, not that the verb merely fell over)
+ZR_PY_ANSWERED='import json,sys
+d=json.load(open(sys.argv[1]))
+sys.exit(0 if isinstance(d,dict) and "crossing" in d and isinstance(d["crossing"],bool) and d.get("fn") else 1)'
+ZR_PY_REFUSED='import json,sys
+d=json.load(open(sys.argv[1]))
+if not isinstance(d,dict): sys.exit(1)
+if "crossing" in d: sys.exit(2)
+u=d.get("unevaluated")
+sys.exit(0 if isinstance(u,list) and u else 3)'
+zr_crossing() { # $1 label ; $2 report locator ; $3 fn ; $4… the QUERY command
+  local label=$1 rep=$2 fn=$3; shift 3
+  local cmd=( "$@" ) a="$ZRW/x.$label.ans.json" r="$ZRW/x.$label.ref.json" cls
+  rm -f "$a" "$r"
+  "${cmd[@]}" fix "$fn" Fs --report "$rep" --policy "$ZRW/real.policy" --json > "$a" 2>/dev/null
+  "${cmd[@]}" fix "$fn" Fs --report "$rep" --policy "$ZRW/comments.policy" --json > "$r" 2>/dev/null
+  if [ ! -s "$a" ] || ! python3 -c "$ZR_PY_ANSWERED" "$a" 2>/dev/null; then
+    echo "  $label (cross) SKIP — \`fix $fn Fs\` did not ANSWER over a real policy (no boolean \`crossing\` with an echoed \`fn\`), so the refusal cell below could not be credited to the rule — engine has not shipped it, or this fixture cannot resolve that name"
+    return
+  fi
+  python3 -c "$ZR_PY_REFUSED" "$r" 2>/dev/null; cls=$?
+  case "$cls" in
+    0) echo "  $label (cross) PASS — \`crossing\` present when answered, ABSENT when the policy asked nothing" ;;
+    # REFERENCE-LED, like every other ⟨0.28⟩ row in this part. MEASURED on its first run: candor-scan and
+    # candor-ts withhold it, candor-java and candor-swift still emit it. That is not a regression — the
+    # Phase 1b ruling that put `fix` in the advisory set post-dates their Phase 2 work, and candor-swift
+    # REPORTED this exact cell rather than extending the list unilaterally, which was the right call and
+    # is cited in the clause. So it SKIPs and names the gap, and the ledger entry stays UNENFORCED until
+    # all four comply — a row that exists is not the same as a rule that is exercised.
+    2) echo "  $label (cross) SKIP — \`crossing\` is still present over a policy that asked nothing (engine has not extended the ⟨0.28⟩ Phase 1b withholding to \`fix\`; rust and ts have)" ;;
+    *) echo "  $label (cross) SKIP — the refusal arm carries no \`unevaluated\` caveat, so this is the zero-rule rung rather than the \`crossing\` one" ;;
+  esac
+}
+
 zr_advisory() { # $1 label ; $2 report locator ; $3… the QUERY command
   local label=$1 rep=$2; shift 2
   local cmd=( "$@" ) v out rc cls
@@ -7116,6 +7172,7 @@ zr_advisory() { # $1 label ; $2 report locator ; $3… the QUERY command
 if [ -d "$GDIR/rust" ]; then
   zr_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
   [ -n "${QUERY:-}" ] && zr_advisory "candor-scan " "$W/g_rust" "$QUERY"
+  [ -n "${QUERY:-}" ] && zr_crossing "candor-scan " "$W/g_rust" save "$QUERY"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
@@ -7124,14 +7181,17 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   # failure this part exists to avoid.
   java -jar "$JAR" "$W/g_java" --json "$ZRW/java.report.json" >/dev/null 2>&1
   [ -s "$ZRW/java.report.json" ] && zr_advisory "candor-java " "$ZRW/java.report.json" java -jar "$JAR"
+  [ -s "$ZRW/java.report.json" ] && zr_crossing "candor-java " "$ZRW/java.report.json" save java -jar "$JAR"
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
   zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
   zr_advisory "candor-ts   " "$W/g_ts" node "$TS_DIR/query.mjs"
+  zr_crossing "candor-ts   " "$W/g_ts" save node "$TS_DIR/query.mjs"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
   zr_advisory "candor-swift" "$W/g_sw" "$SW_BIN"
+  zr_crossing "candor-swift" "$W/g_sw" save "$SW_BIN"
 fi
 echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
 if [ "$ZR_OK" = 0 ]; then

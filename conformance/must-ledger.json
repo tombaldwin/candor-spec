@@ -2559,19 +2559,19 @@
    "sha": "5b18c85435142a05",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "⟨0.28⟩ **`crossing` — PINNED, and pinning it fixes a purity defect on the other side.** This was the one key l",
-   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
+   "unenforced": "⟨0.28⟩ `crossing` present-iff-answered. A ROW NOW EXISTS — PART 38 (cross), four-way, with a premise cell proving the fn resolved so an unresolvable name cannot masquerade as a compliant absence. It is reference-led and MEASURED: rust and ts withhold `crossing` over a zero-rule policy, java and swift still emit it, so two cells SKIP. Deliberately still `unenforced`: a row that exists is not a rule that is exercised, and discharging this while half the family SKIPs is the vacuity the ledger is for. Discharge when java and swift extend the Phase 1b withholding to `fix`."
   },
   {
    "sha": "ff5d723ae29963b0",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "The tempting reading is that two engines minted a field and should drop it. **The measurement says otherwise**",
-   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
+   "unenforced": "⟨0.28⟩ `crossing` present-iff-answered. A ROW NOW EXISTS — PART 38 (cross), four-way, with a premise cell proving the fn resolved so an unresolvable name cannot masquerade as a compliant absence. It is reference-led and MEASURED: rust and ts withhold `crossing` over a zero-rule policy, java and swift still emit it, so two cells SKIP. Deliberately still `unenforced`: a row that exists is not a rule that is exercised, and discharging this while half the family SKIPs is the vacuity the ledger is for. Discharge when java and swift extend the Phase 1b withholding to `fix`."
   },
   {
    "sha": "e7275895cf25461c",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "So `crossing` is a **boolean, present exactly when the verb answered**, absent when it refused — the same pres",
-   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
+   "unenforced": "⟨0.28⟩ `crossing` present-iff-answered. A ROW NOW EXISTS — PART 38 (cross), four-way, with a premise cell proving the fn resolved so an unresolvable name cannot masquerade as a compliant absence. It is reference-led and MEASURED: rust and ts withhold `crossing` over a zero-rule policy, java and swift still emit it, so two cells SKIP. Deliberately still `unenforced`: a row that exists is not a rule that is exercised, and discharging this while half the family SKIPs is the vacuity the ledger is for. Discharge when java and swift extend the Phase 1b withholding to `fix`."
   },
   {
    "sha": "1a9dcdf0e7f5628d",
