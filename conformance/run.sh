@@ -6769,12 +6769,66 @@ ti_expand() { # $1 label ; $2 sink flag ; $3 source extension this engine parses
   fi
   rm -f "$src"
 }
+# ⟨0.28⟩ (i) A REPEATED REPORT SINK IS REFUSED, AND EVERY PREFIX NAMED GETS THE FAIL-CLOSED REPORT.
+#
+# The repeated `--gate-json` refusal was settled for the VERDICT sink while being filed as "deferred" for
+# the report sink, on no stated ground except which sink was being worked on. SPEC §3.1 ⟨0.28⟩ closes it:
+# the argument transfers unchanged, and the report sink is the WORSE case because `--out` fans out, so the
+# stale set left at the losing prefix is a whole prefix of per-crate reports that a `gate --report` over it
+# then answers from.
+#
+# MEASURED before the rung on rust/ts/swift: last-wins at exit 0, with the FIRST prefix byte-identical to
+# its previous good run. java has no `--out` — its report sink is `--json <file>`, and the same rule binds
+# it, so the row drives each engine's own spelling rather than skipping the one that spells it differently.
+#
+# THE SHAPE OF THE ASSERTION: a fresh prefix has nothing to go stale, so each sink is SEEDED by a real
+# clean run first — otherwise "no previous report was left behind" passes vacuously. Then both must hold
+# the ⟨0.21⟩ Row-1 fail-closed shape, not merely be absent or unchanged. The control is a single sink after
+# it, which must scan normally: a fix that refuses every `--out` has broken the flag, not implemented the
+# rule.
+ro_probe() { # $1 label ; $2 sink flag ; $3 A ; $4 B ; $5… the scan command, TARGET LAST
+  local label=$1 flag=$2 A=$3 B=$4; shift 4
+  local cmd=( "$@" ) rc n
+  "${cmd[@]}" "$flag" "$A" >/dev/null 2>&1
+  "${cmd[@]}" "$flag" "$B" >/dev/null 2>&1
+  # A SINK IS EITHER A PREFIX OR A FILE, and this row conflated them on its first run: the glob
+  # `"$A"*.json` expands to `ja.json*.json` for a FILE sink and matches nothing, so candor-java scored
+  # `n/a` — a vacuous cell in the row written to pin the prefix-vs-file vein. Both forms now.
+  ro_artifacts() { local k; for k in "$1" "$1"*.json; do [ -e "$k" ] && printf '%s\n' "$k"; done; }
+  local seeded=0
+  for f in $(ro_artifacts "$A"; ro_artifacts "$B"); do seeded=$((seeded+1)); done
+  if [ "$seeded" = 0 ]; then
+    echo "  $label (i) n/a — this engine wrote no report under $flag, so there is no repeated sink to probe"; return
+  fi
+  "${cmd[@]}" "$flag" "$A" "$flag" "$B" >/dev/null 2>&1; rc=$?
+  if [ "$rc" != 2 ]; then
+    echo "     FAIL $label (i): \`$flag A $flag B\` exited $rc, not 2 — a run publishes ONE report, and the reader of the path that loses cannot tell it lost (SPEC §3.1 ⟨0.28⟩)"; RS_OK=1; return
+  fi
+  n=0
+  for f in $(ro_artifacts "$A"; ro_artifacts "$B"); do
+    [ -e "$f" ] || continue
+    python3 -c "$RS_PY_FAILCLOSED" "$f" 2>/dev/null || { echo "     FAIL $label (i): refused, but $f still holds a previous run's report rather than the ⟨0.21⟩ Row-1 fail-closed shape — the stale green survives the refusal"; RS_OK=1; n=1; }
+  done
+  [ "$n" = 0 ] && echo "  $label (i) PASS — a repeated report sink is refused (exit 2) and every prefix named carries the fail-closed shape"
+  # CONTROL: the flag still works singly. A guard that refuses every repeated-looking argv has broken it.
+  rm -f "$A" "$A"*.json
+  "${cmd[@]}" "$flag" "$A" >/dev/null 2>&1; rc=$?
+  local ok=0; for f in $(ro_artifacts "$A"); do python3 -c "$RS_PY_FAILCLOSED" "$f" 2>/dev/null || ok=1; done
+  if [ "$rc" = 0 ] && [ "$ok" = 1 ]; then
+    echo "  $label (i-control) PASS — a single $flag still scans and writes a real report (exit 0)"
+  else
+    echo "     FAIL $label (i-control): a SINGLE $flag no longer produces a real report (exit $rc) — the guard has broken the flag rather than implementing the rule"; RS_OK=1
+  fi
+}
+ROW="$W/repeatedout"; rm -rf "$ROW"; mkdir -p "$ROW"
+
 TIW="$W/targetinput"; rm -rf "$TIW"; mkdir -p "$TIW"
 if [ -x "$SCAN" ]; then
   printf 'pub fn a() { std::fs::read("x").ok(); }\n' > "$TIW/lib.rs"
   ti_probe "candor-scan " --gate-json "$SCAN" "$TIW/lib.rs"
   [ -d "$GDIR/rust" ] && ti_control "candor-scan " --gate-json "$SCAN" "$GDIR/rust"
   [ -d "$RSFX/rust" ] && ti_expand "candor-scan " --gate-json rs "$SCAN" "$RSFX/rust"
+  [ -d "$GDIR/rust" ] && ro_probe "candor-scan " --out "$ROW/ra" "$ROW/rb" "$SCAN" "$GDIR/rust"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   # A real jar: the java reproduction destroyed one, and a jar is also the shape whose corruption is
@@ -6792,6 +6846,8 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
     [ -n "$RSFX_JAVA" ] && ti_control "candor-java " --json java -jar "$JAR" "$RSFX_JAVA"
     # java parses CLASS FILES, not sources — its parse set is what the walk feeds ASM.
     [ -n "$RSFX_JAVA" ] && ti_expand "candor-java " --json class java -jar "$JAR" "$RSFX_JAVA"
+    # java spells its report sink `--json <file>`; the rule is about the SINK, not the flag name.
+    ro_probe "candor-java " --json "$ROW/ja.json" "$ROW/jb.json" java -jar "$JAR" "$W/g_java"
   else
     echo "  candor-java  (f) n/a — could not build a jar fixture on this machine"
   fi
@@ -6801,12 +6857,14 @@ if [ -n "$TS_OK" ]; then
   ti_probe "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$TIW/app.ts"
   [ -d "$GDIR/ts" ] && ti_control "candor-ts   " --gate-json node "$TS_DIR/scan.mjs" "$GDIR/ts"
   [ -d "$RSFX/ts" ] && ti_expand "candor-ts   " --gate-json ts node "$TS_DIR/scan.mjs" "$RSFX/ts"
+  [ -d "$GDIR/ts" ] && ro_probe "candor-ts   " --out "$ROW/ta" "$ROW/tb" node "$TS_DIR/scan.mjs" "$GDIR/ts"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   printf 'import Foundation\nfunc a() { _ = FileManager.default.contents(atPath: "x") }\n' > "$TIW/app.swift"
   ti_probe "candor-swift" --gate-json "$SW_BIN" "$TIW/app.swift"
   [ -d "$GDIR/swift" ] && ti_control "candor-swift" --gate-json "$SW_BIN" "$GDIR/swift"
   [ -d "$RSFX/swift" ] && ti_expand "candor-swift" --gate-json swift "$SW_BIN" "$RSFX/swift"
+  [ -d "$GDIR/swift" ] && ro_probe "candor-swift" --out "$ROW/sa" "$ROW/sb" "$SW_BIN" "$GDIR/swift"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
