@@ -7006,17 +7006,74 @@ zr_probe() { # $1 label ; then the scan command with the TARGET LAST
   [ "$bad" = 0 ] && return 0 || return 1
 }
 
+# ⟨0.28⟩ (adv) THE ADVISORY VERBS TAKE THE SAME RULE, AND THE GATE'S REFUSAL IS THE WRONG IMPORT.
+#
+# §6.2 makes a configured zero-rule policy an exit-2 refusal for the GATE, because `ok: true` is a claim
+# about the code no such run is entitled to make. `whatif`/`fix`/`fix-gate`/`unverified` share that policy
+# loader and were NOT touched by the rung. They are ADVISORY — they set no verdict, so `ok: true` is not
+# the exposure and refusing is the wrong shape. MEASURED before the rung, all four engines: they answered
+# `{"ok": true, "<result>": []}` at exit 0 INCLUDING `--strict` — a confident all-clear relative to a
+# policy that asked nothing, which is an all-clear produced by deleting the question.
+#
+# SPEC §2 ⟨0.28⟩ rules it: the CAVEAT DOCUMENT, the RESULT KEYS WITHHELD, and the EXIT UNCHANGED (⟨0.24⟩ —
+# a disclosure, not an exit code). The caveat carries `unevaluated` with one whole-policy entry, the same
+# spelling the gate's own refusal uses, so both say the same thing about the same policy in the same words.
+#
+# TWO VERBS, chosen so the row cannot be wrong for an irrelevant reason: `unverified` and `fix-gate` are
+# the two ALL FOUR engines ship, and neither takes positional arguments — so no per-engine function name
+# can make a cell fail for a reason that is not the rule. `whatif` (absent on swift) and `fix` are the
+# same rule and want their own row.
+#
+# ASSERTS THE DOCUMENT, not the exit: every engine already exited 0 here BEFORE the rung, so an exit-only
+# row is green against the defect it is written for.
+ZR_PY_CAVEAT='import json,sys
+d=json.load(open(sys.argv[1]))
+if not isinstance(d,dict): sys.exit(1)
+# the result keys a policy-relative answer must WITHHOLD when the policy asked nothing
+if any(k in d for k in ("ok","violations","unverified","remedies","affected","crossing")): sys.exit(2)
+u=d.get("unevaluated")
+sys.exit(0 if isinstance(u,list) and u else 3)'
+zr_advisory() { # $1 label ; $2 report locator ; $3… the QUERY command
+  local label=$1 rep=$2; shift 2
+  local cmd=( "$@" ) v out rc cls
+  for v in unverified fix-gate; do
+    out="$ZRW/adv.$label.$v.json"; rm -f "$out"
+    "${cmd[@]}" "$v" --report "$rep" --policy "$ZRW/comments.policy" --json > "$out" 2>/dev/null; rc=$?
+    if [ ! -s "$out" ]; then
+      echo "  $label (adv/$v) SKIP — no machine document over a zero-rule policy (engine has not implemented the ⟨0.28⟩ advisory caveat)"; continue
+    fi
+    python3 -c "$ZR_PY_CAVEAT" "$out" 2>/dev/null; cls=$?
+    if [ "$cls" = 0 ] && [ "$rc" = 0 ]; then
+      echo "  $label (adv/$v) PASS — caveat document, result keys withheld, exit unchanged (0)"
+    elif [ "$cls" = 2 ]; then
+      echo "     FAIL $label (adv/$v): the document still carries a RESULT KEY over a policy that asked nothing — an answer relative to no rules is not a finding, it is an absence of questions (SPEC §2 ⟨0.28⟩)"; ZR_OK=1
+    elif [ "$cls" = 0 ]; then
+      echo "     FAIL $label (adv/$v): the caveat is right but the EXIT MOVED to $rc — ⟨0.24⟩ makes this a disclosure, not an exit code"; ZR_OK=1
+    else
+      echo "  $label (adv/$v) SKIP — no \`unevaluated\` caveat in the document (engine has not implemented the ⟨0.28⟩ advisory caveat)"
+    fi
+  done
+}
+
 if [ -d "$GDIR/rust" ]; then
   zr_probe "candor-scan " "$SCAN" "$GDIR/rust" || ZR_OK=1
+  [ -n "${QUERY:-}" ] && zr_advisory "candor-scan " "$W/g_rust" "$QUERY"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
+  # java's advisory verbs need a REPORT; the gate fixture is a class dir, so produce one here rather
+  # than pointing at a path nothing creates — an absent report would SKIP, and a vacuous SKIP is the
+  # failure this part exists to avoid.
+  java -jar "$JAR" "$W/g_java" --json "$ZRW/java.report.json" >/dev/null 2>&1
+  [ -s "$ZRW/java.report.json" ] && zr_advisory "candor-java " "$ZRW/java.report.json" java -jar "$JAR"
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
   zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
+  zr_advisory "candor-ts   " "$W/g_ts" node "$TS_DIR/query.mjs"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
+  zr_advisory "candor-swift" "$W/g_sw" "$SW_BIN"
 fi
 echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
 if [ "$ZR_OK" = 0 ]; then
