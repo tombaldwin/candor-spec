@@ -2499,13 +2499,13 @@
    "sha": "775cf42b2ff7759c",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "⟨0.28⟩ **AND AN ADVISORY VERB OVER A ZERO-RULE POLICY ANSWERS THE SAME WAY.** §6.2 makes a configured policy t",
-   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
+   "part": "PART 38"
   },
   {
    "sha": "405031c41679a622",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "What they DO produce is an answer *relative to a policy*, and relative to no rules that answer is not a findin",
-   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
+   "part": "PART 38"
   },
   {
    "sha": "4dc91e9fc1ffc538",
@@ -2583,7 +2583,7 @@
    "sha": "7d058333f3040121",
    "at": "⟨0.28⟩ Phase 1b ruling",
    "excerpt": "⟨0.28⟩ **AND THE LIST OF ADVISORY VERBS IS ILLUSTRATIVE, NOT CLOSED — `fix` takes this too.** The clause names",
-   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
+   "part": "PART 38"
   },
   {
    "sha": "4c71ede92a5e6e67",
