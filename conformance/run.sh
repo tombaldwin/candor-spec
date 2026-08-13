@@ -7219,6 +7219,47 @@ sys.exit(0 if any(k in d for k in ("incomplete","judgedNothing","noManifest","un
 ZR_PY_HAS_OK='import json,sys
 d=json.load(open(sys.argv[1]))
 sys.exit(0 if isinstance(d,dict) and "ok" in d else 1)'
+# ⟨0.28⟩ (spell) THE ADVISORY CAVEAT USES THE GATE'S OWN WORDING, CHARACTER FOR CHARACTER.
+#
+# SPEC §2 ⟨0.28⟩ does not merely require an `unevaluated` — it requires the whole-policy entry "in the
+# exact spelling §3.1 already pins for the gate's own zero-rule refusal", so the gate and the advisory
+# verbs say the same thing about the same policy in the same words. PART 38 (adv) asserts the key is a
+# non-empty list; that is the container, not the contract.
+#
+# It matters because this is the `judgedNothing` class one level in: a consumer reading
+# `unevaluated[].rule` to decide WHICH policy could not be asked meets two formats if an engine words its
+# advisory caveat differently from its gate refusal — and each engine would be internally consistent, so
+# no engine's own suite can see it. That is exactly how four engines came to spell one field four ways.
+#
+# The comparison is between TWO ROUTES OF THE SAME ENGINE over the SAME policy, so it needs no
+# cross-engine agreement to be meaningful and cannot be defeated by a family-wide wording change.
+ZR_PY_UNEVAL='import json,sys
+d=json.load(open(sys.argv[1]))
+u=(d or {}).get("unevaluated") or []
+print("\n".join(sorted((e.get("rule","") + " | " + e.get("why","")) for e in u if isinstance(e,dict))))'
+zr_spelling() { # $1 label ; $2… the QUERY command
+  local label=$1; shift
+  local cmd=( "$@" ) R="$ZRW/jn.report.json" a="$ZRW/sp.$label.adv.json" g="$ZRW/sp.$label.gate.json"
+  rm -f "$a" "$g"
+  "${cmd[@]}" unverified --report "$R" --policy "$ZRW/comments.policy" --json > "$a" 2>/dev/null
+  "${cmd[@]}" gate --report "$R" --policy "$ZRW/comments.policy" --gate-json "$g" >/dev/null 2>&1
+  if [ ! -s "$a" ] || [ ! -s "$g" ]; then
+    echo "  $label (spell) SKIP — one of the two routes produced no document over a zero-rule policy, so their wording cannot be compared"; return
+  fi
+  local ua ug
+  ua=$(python3 -c "$ZR_PY_UNEVAL" "$a" 2>/dev/null)
+  ug=$(python3 -c "$ZR_PY_UNEVAL" "$g" 2>/dev/null)
+  if [ -z "$ua" ] || [ -z "$ug" ]; then
+    echo "  $label (spell) SKIP — one route carries no whole-policy \`unevaluated\` entry (adv=$([ -n "$ua" ] && echo yes || echo no) gate=$([ -n "$ug" ] && echo yes || echo no))"
+  elif [ "$ua" = "$ug" ]; then
+    echo "  $label (spell) PASS — the advisory caveat and the gate refusal name the policy in identical words"
+  else
+    echo "     FAIL $label (spell): the two routes word the same fact differently — a consumer reading \`unevaluated[].rule\` meets two formats from ONE engine (SPEC §2 ⟨0.28⟩ pins the gate's spelling)"; ZR_OK=1
+    echo "        advisory: $(printf '%s' "$ua" | head -1 | cut -c1-100)"
+    echo "        gate:     $(printf '%s' "$ug" | head -1 | cut -c1-100)"
+  fi
+}
+
 zr_okwithhold() { # $1 label ; $2… the QUERY command
   local label=$1; shift
   local cmd=( "$@" ) R="$ZRW/jn.report.json" a="$ZRW/ok.$label.adv.json" g="$ZRW/ok.$label.gate.json" cls
@@ -7297,6 +7338,7 @@ if [ -d "$GDIR/rust" ]; then
   [ -n "${QUERY:-}" ] && zr_advisory "candor-scan " "$W/g_rust" "$QUERY"
   [ -n "${QUERY:-}" ] && zr_crossing "candor-scan " "$W/g_rust" save "$QUERY"
   [ -n "${QUERY:-}" ] && zr_okwithhold "candor-scan " "$QUERY"
+  [ -n "${QUERY:-}" ] && zr_spelling "candor-scan " "$QUERY"
 fi
 if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   zr_probe "candor-java " java -jar "$JAR" "$W/g_java" || ZR_OK=1
@@ -7307,18 +7349,21 @@ if [ -f "$JAR" ] && [ -d "$W/g_java" ]; then
   [ -s "$ZRW/java.report.json" ] && zr_advisory "candor-java " "$ZRW/java.report.json" java -jar "$JAR"
   [ -s "$ZRW/java.report.json" ] && zr_crossing "candor-java " "$ZRW/java.report.json" save java -jar "$JAR"
   zr_okwithhold "candor-java " java -jar "$JAR"
+  zr_spelling "candor-java " java -jar "$JAR"
 fi
 if [ -n "$TS_OK" ] && [ -d "$GDIR/ts" ]; then
   zr_probe "candor-ts   " node "$TS_DIR/scan.mjs" "$GDIR/ts" || ZR_OK=1
   zr_advisory "candor-ts   " "$W/g_ts" node "$TS_DIR/query.mjs"
   zr_crossing "candor-ts   " "$W/g_ts" save node "$TS_DIR/query.mjs"
   zr_okwithhold "candor-ts   " node "$TS_DIR/query.mjs"
+  zr_spelling "candor-ts   " node "$TS_DIR/query.mjs"
 fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -d "$GDIR/swift" ]; then
   zr_probe "candor-swift" "$SW_BIN" "$GDIR/swift" || ZR_OK=1
   zr_advisory "candor-swift" "$W/g_sw" "$SW_BIN"
   zr_crossing "candor-swift" "$W/g_sw" save "$SW_BIN"
   zr_okwithhold "candor-swift" "$SW_BIN"
+  zr_spelling "candor-swift" "$SW_BIN"
 fi
 echo "PART 38 — SPEC §6.2 ⟨0.28⟩: a configured policy that yields zero rules refuses, and no-policy stays green"
 if [ "$ZR_OK" = 0 ]; then
