@@ -25,6 +25,11 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANDOR="${CANDOR:-$HERE/../../candor-rust}"
 CANDOR_JAVA="${CANDOR_JAVA:-$HERE/../../candor-java}"
 W="$(mktemp -d)"
+# ⟨0.28⟩ THE RUN LOG, for the skip ratchet at the end of this file. Teed rather than accumulated at each
+# print site: the SKIP lines are emitted by thirty-odd parts in a dozen shapes, and a counter threaded
+# through all of them is a second bookkeeping system to drift against the thing it counts.
+SKIPLOG="$W/run.log"
+exec > >(tee "$SKIPLOG") 2>&1
 # ── THE SUITE MUST NOT DIRTY THE REPO IT LIVES IN ────────────────────────────────────────────────
 # Twice now an engine arm ran without `--out` and wrote its report into the CURRENT directory — which is
 # this repo, when the suite is run the documented way. That is not untidy, it is a release blocker:
@@ -8043,6 +8048,15 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+
+# ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
+# `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
+# rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
+# entirely moved PART 40 to `pass=43 skip=23 fail=0` and the part stayed green.
+[ -f "$HERE/skip_ratchet.py" ] || { echo "FAIL: skip_ratchet.py is missing — a rung could un-ship in silence"; rc=1; }
+echo
+sync 2>/dev/null || true
+python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
