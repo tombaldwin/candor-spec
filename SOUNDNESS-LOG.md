@@ -3090,3 +3090,69 @@ of absent. Falsified both directions. Not waivable through the ratchet: a waiver
 accuse the suite's own coverage.
 
 Commits: candor-java `d841550` · candor-rust `c96c474` · candor-spec `a097c54`.
+
+### 2026-08-13 — a caller of a body-less declaration read pure: the dependency case was pinned, the local one never asked
+
+**candor-ts certified callers of declarations it had never seen a body for, and `deny Unknown` was
+green on them.** `localName` mints a unit for any declaration it can name and never asks whether the
+declaration has a BODY. An ambient `declare function`, any member of a local `.d.ts`, an `abstract`
+member no subclass overrides — each got a unit, the call site edged the caller to it, the unit was
+EMPTY, and so the caller unioned nothing and came back pure. `deny Unknown`, the gate whose entire
+purpose is *fail if candor cannot see what this reaches*, exited **0** where candor-rust, candor-java
+and candor-swift all exit 1 on the same input.
+
+**Found by the corpus round, and unreachable from any fixture anyone had thought to write.**
+candor-ts's whole report for `axios` is 54 `index.d.ts` declarations while its 61 `.js` implementation
+files are never analyzed: `analyzed.count: 54`, `functions: []`, no `unanalyzed` — ⟨0.24⟩ **row 2**,
+the row that instructs a consumer to believe the report and not hedge. Note what did NOT catch it:
+`check_honesty.py` called that report HONEST, correctly and within its documented scope, because it
+sees uncertainty an engine HAD and failed to propagate, never BLINDNESS. Only the four-way
+differential reached it.
+
+**THE SIBLING ROUTE, again.** This exact shape crossing a PACKAGE boundary has been pinned since the
+scan-boundary work — PART 21, and candor-ts's own `boundary:` suite has four rows on a chained
+dependency's interface members, abstract members and function-valued property signatures. Every one of
+them asks about a DEPENDENCY. Nobody asked the same question of the project's own source, and the
+answer there was the opposite. The new rows sit directly beneath the old ones for that reason.
+
+**Ruled, not invented: the engines already disagreed about WHERE the disclosure goes, and may.** java
+charges the DECLARATION unit (`native:ambient`) and lets its fixpoint carry it caller-ward; rust and
+swift charge at the EDGE (`native:extern fn`, `dispatch:Ambient.ping`). Both are the same observation
+to a consumer, so **PART 46 asserts on the CALLER's transitive set** — what a gate actually reads —
+and not on the reason string, which §4 makes per-language and best-effort. candor-ts takes java's
+shape because it already mints the unit and already forms the edge, making mint-side ONE place; the
+edge-side alternative would have to touch every call and desugar site, which is the drift that made
+`discloseUnanswerableKey` one function after it had been two. **No spec version moves** — §3's honesty
+invariant already required this and §4 already defines `native:` as "a boundary to code the engine
+cannot analyse". What was missing was a row.
+
+**The over-charge half is measured, and it is most of the work.** A body-less declaration is charged
+only where NO LOCAL BODY ANSWERS IT: a base member with a local bodied override is already resolved by
+the class-CHA at the dispatch site, which edges the caller to the overrides and runs its own
+`allResolved` gate. Charging the empty base as well would manufacture uncertainty over code the engine
+can see. Measured on the corpus, that single condition is the difference between an adoptable fix and
+an unusable one — **zod +0** (its one abstract, `ZodType._parse`, is locally overridden) and **hono
++18 → +9**; the naive form charges hono's `EventProcessor`, six abstracts with three local subclasses.
+The nine remaining hono flips are all true positives (`Deno.mkdir`/`writeFile` Fs,
+`Deno.upgradeWebSocket`/`FetcherLike.fetch` Net — local `.d.ts` shims with no body), and axios's 52 are
+the correct answer for a report that is nothing but declarations. PART 46 therefore carries the
+locally-bodied CONTROL in every arm: without it the row would pass while charging every abstract
+member in every real project. The second over-charge trap is the OVERLOAD SET — N body-less signatures
+precede the implementation under the same unit name — so the marker mirrors `fns.set`'s
+last-write-wins exactly, or every overloaded function in every project becomes unanalysable.
+
+**Calibrated:** PART 46 was run with the fix reverted and reddens on ts alone, all three other arms
+green. **Residual, stated so the axios headline is not over-read:** this closes the *"candor cannot
+see"* channel, not the blindness. `deny Unknown` on axios now exits 1; **`deny Net` still exits 0**,
+because recovering that means analyzing the `.js` implementation.
+
+**Found alongside it, same class of silence, different surface:** `candor-ts --agents` truncated its
+own contract at **8170 of 23121 characters** whenever stdout was a pipe — `printAgents` wrote
+asynchronously and scan.mjs called `process.exit(0)` on the next line, discarding the buffer. Exit 0,
+nothing on stderr, cut mid-sentence: an agent piping the contract into its context read a third of its
+instructions and could not tell. The function's own header claimed one shared implementation "can
+never diverge within an install"; query.mjs drains on the way out and scan.mjs exits, so sharing the
+PRINTER did not share the EXIT — the sibling route inside the very function written to prevent it.
+Fixed with a synchronous `fs.writeSync(1, …)` loop in the printer, so the next caller inherits it. Only
+pipes were affected, which is why a redirect to a file looked correct and only the suite's
+`execFileSync` ever saw it.
