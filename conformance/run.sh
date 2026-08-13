@@ -7578,14 +7578,77 @@ sys.exit(0 if ok else 1)" 2>/dev/null
     echo "  $label (ii) SKIP — no true \`baselineIncomplete\` and no non-empty \`baselineUnanalyzed\`/\`baselineJudgedNothing\` reached the verb output (engine has not implemented the ⟨0.28⟩ manifest re-disclosure)"
   fi
 }
+# ⟨0.28⟩ (chan) THE CAVEAT IS IN THE MACHINE DOCUMENT, NOT ON STDERR BESIDE IT.
+#
+# SPEC §2 rules it in one sentence — "The channel is the machine document itself — the same document the
+# answer is in, not stderr beside it … a caveat on the other stream is one `2>/dev/null` from gone" — and
+# until now NOTHING ASSERTED IT. The clause sits in the MUST ledger as `pre-ledger`, one of the 397
+# grandfathered entries the new-MUST ratchet cannot see, so no part was ever bound to it.
+#
+# IT HAS ALREADY DIVERGED ONCE. candor-swift's first draft of the completeness note went to stderr where
+# rust put it on stdout: identical text, opposite channels, and invisible to every assertion in either
+# tree because each engine's suite only reads its own output. It was repaired, and the repair is held by
+# nothing — the same "un-shipped looks like never-shipped" hole the skip ratchet was built for, reached
+# from the other side.
+#
+# WHY STDOUT IS THE ANSWER AND NOT A PREFERENCE: a qualification must not be SEPARABLE from what it
+# qualifies. If `2>/dev/null` removes the caveat and keeps the answer, the caveat is decoration. Measured
+# twice this session on real consumers: candor-ts told axios's reader "imports won't resolve" on stderr
+# while the machine channel said `analyzed: 54, functions: []`; and the MCP gate returned
+# `{"ok":true,"violations":[]}` while its per-line policy warnings went to the server's stderr — "a
+# channel the calling agent never reads".
+#
+# TWO CELLS, and each one's oracle is the other's falsifier:
+#   (chan)     over a ⟨0.21⟩ Row-1 report, STDOUT ALONE parses as JSON carrying `incomplete` +
+#              `judgedNothing`. An engine that moved the caveat to stderr leaves stdout looking exactly
+#              like the intact case, which is precisely what the control below rejects.
+#   (chan-ctl) over an INTACT report, stdout carries NEITHER key — the ⟨0.28⟩ byte-identical property.
+#              Without it, an engine emitting the keys unconditionally scores a pass above.
+CHAN_PY='import json,sys
+d=json.load(open(sys.argv[1]))
+want=sys.argv[2]
+has=("incomplete" in d) or ("judgedNothing" in d)
+if want=="caveat":
+    if not isinstance(d.get("judgedNothing"),list) or not d["judgedNothing"]: sys.exit(11)
+    if d.get("incomplete") is not True: sys.exit(12)
+    sys.exit(0)
+sys.exit(0 if not has else 13)'
+chan_probe() { # $1 label ; $2 row1-report ; $3 intact-report ; $4.. the verb invocation (report path appended)
+  local label=$1 r1=$2 intact=$3; shift 3
+  local bad=0
+  # STDOUT ONLY — stderr is discarded exactly as `2>/dev/null` would, which is the clause's own test.
+  "$@" "$r1" --json > "$RDW/chan.out" 2>/dev/null
+  if ! python3 -c "$CHAN_PY" "$RDW/chan.out" caveat 2>/dev/null; then
+    echo "     FAIL $label (chan): with stderr discarded, stdout does not carry \`incomplete\`+\`judgedNothing\` — the caveat is on the wrong channel (SPEC §2: one \`2>/dev/null\` from gone) or malformed: $(head -c 120 "$RDW/chan.out")"; bad=1
+  else
+    echo "  $label (chan) PASS — the caveat rides in the machine document, stderr discarded"
+  fi
+  "$@" "$intact" --json > "$RDW/chan.ctl" 2>/dev/null
+  if python3 -c "$CHAN_PY" "$RDW/chan.ctl" none 2>/dev/null; then
+    echo "  $label (chan-ctl) PASS — an intact report's document carries neither key"
+  else
+    echo "     FAIL $label (chan-ctl): an INTACT report produced \`incomplete\`/\`judgedNothing\` — the keys are emitted unconditionally, which makes the cell above vacuous: $(head -c 120 "$RDW/chan.ctl")"; bad=1
+  fi
+  [ "$bad" = 0 ] && return 0 || return 1
+}
+# Row-1 (`analyzed.count: 0`) and intact fixtures. swift resolves a bare `.json` only under its own
+# `*.Swift.json` family shape, so it gets its own pair — same bytes, conformant name.
+printf '{"candor":{"version":"t","toolchain":"x","spec":"0.27"},"package":"jn","functions":[],"analyzed":{"count":0}}\n' > "$RDW/chan_r1.json"
+printf '{"candor":{"version":"t","toolchain":"x","spec":"0.27"},"package":"ok","functions":[{"fn":"a.f","inferred":["Fs"],"calls":[]}],"analyzed":{"count":1}}\n' > "$RDW/chan_ok.json"
+cp "$RDW/chan_r1.json" "$RDW/chan_r1.demo.Swift.json"
+cp "$RDW/chan_ok.json" "$RDW/chan_ok.demo.Swift.json"
+
 rd_probe "candor-scan " "$QUERY" gains "$RDW/cur" "$RDW/base" --json
+chan_probe "candor-scan " "$RDW/chan_r1.json" "$RDW/chan_ok.json" "$QUERY" tour --report || RD_OK=1
 if [ -f "$JAR" ]; then
   cp "$RDW/base.demo.scan.json" "$RDW/jb.jvm.json"; cp "$RDW/cur.demo.scan.json" "$RDW/jc.jvm.json"
   rd_probe "candor-java " java -jar "$JAR" gains "$RDW/jc.jvm.json" "$RDW/jb.jvm.json" --json
+  chan_probe "candor-java " "$RDW/chan_r1.json" "$RDW/chan_ok.json" java -jar "$JAR" tour --report || RD_OK=1
 fi
 if [ -n "$TS_OK" ]; then
   cp "$RDW/base.demo.scan.json" "$RDW/tb.json"; cp "$RDW/cur.demo.scan.json" "$RDW/tc.json"
   rd_probe "candor-ts   " node "$TS_DIR/query.mjs" gains "$RDW/tc" "$RDW/tb"
+  chan_probe "candor-ts   " "$RDW/chan_r1.json" "$RDW/chan_ok.json" node "$TS_DIR/query.mjs" tour --report || RD_OK=1
 fi
 # swift too — it has `gains` (see [5b] above, which drives it). The first version of this part covered
 # three engines and omitted the fourth for no reason: the sibling-route habit, in a row written hours
@@ -7593,6 +7656,7 @@ fi
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   cp "$RDW/base.demo.scan.json" "$RDW/sb.M.Swift.json"; cp "$RDW/cur.demo.scan.json" "$RDW/sc.M.Swift.json"
   rd_probe "candor-swift" env -u CANDOR_CONFIG "$SW_BIN" gains "$RDW/sc" "$RDW/sb" --json
+  chan_probe "candor-swift" "$RDW/chan_r1.demo.Swift.json" "$RDW/chan_ok.demo.Swift.json" env -u CANDOR_CONFIG "$SW_BIN" tour --report || RD_OK=1
 fi
 echo "PART 39 — SPEC §2: a report-consuming verb re-discloses the report's caveat in its own output"
 if [ "$RD_OK" = 0 ]; then
