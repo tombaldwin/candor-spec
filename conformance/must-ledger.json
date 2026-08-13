@@ -2456,164 +2456,164 @@
   {
    "sha": "2bcc5e217050f80d",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "⟨0.28⟩ **AND HERE IS THAT RULING, AND IT IS ONE RULE, NOT ONE PER VERB.** The two cells above were opened sepa",
+   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
   },
   {
    "sha": "9c937c3824703bf1",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "⟨0.28⟩ has already answered that, one level down, for `unanswerable`: **the hedge REPLACES the result set, it ",
+   "part": "PART 37 (e)"
   },
   {
    "sha": "4e4e99e8b047ceec",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "> **A verb whose pinned shape cannot carry the caveat MUST emit the CAVEAT DOCUMENT INSTEAD of its result > do",
+   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
   },
   {
    "sha": "baa04c43fb78122e",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "- **Healthy output is untouched.** The document changes only on the path that is currently answering falsely. ",
+   "part": "PART 40"
   },
   {
    "sha": "cbb02665a2cb9efe",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "- **The type change is LOUD, and that is the point.** A consumer doing `for (const x of doc)` over `show` gets",
+   "unenforced": "⟨0.28⟩ Rung A. PART 40 exercises the caveat-instead rule four-way for `map` (it is in the matrix's verb list) but NOT for `show`, which is the harder half — an ARRAY has nowhere to hang a key, so the type change is the whole assertion. A `show` row over the hedging states is the missing piece; until it exists this MUST is half-covered and says so here."
   },
   {
    "sha": "033b20bcea03bc93",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "- **It needs no reserved-key convention**, which matters because §2.2's `@`-prefix precedent DOES NOT TRANSFER",
+   "unenforced": "⟨0.28⟩ Rung A — DESIGN JUSTIFICATION, not an obligation an engine can violate. It records why §2.2's `@`-prefix precedent does not transfer (npm scoped packages make `@incomplete` a key a real module could own). Nothing to exercise; kept classified so the reasoning cannot be quietly dropped."
   },
   {
    "sha": "3873277b76978626",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "**`privacy-manifest` is the same MUST and NOT the same shape problem** — it has an envelope and simply never c",
+   "unenforced": "⟨0.28⟩ `privacy-manifest` carries the pinned caveat keys. candor-swift implements it and is the only engine shipping the verb; no row drives it. Needs a reference-led row."
   },
   {
    "sha": "775cf42b2ff7759c",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "⟨0.28⟩ **AND AN ADVISORY VERB OVER A ZERO-RULE POLICY ANSWERS THE SAME WAY.** §6.2 makes a configured policy t",
+   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
   },
   {
    "sha": "405031c41679a622",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG A (the disclosure envelope) — ruled 2026-08-12, NOT YET EXERCISED. No engine emits the caveat document in place of a result document yet, and no part asks. Row + four-way engine work are queued together as one unit: the row is reference-led and will SKIP until an engine ships, so it can land first. Counted here so 'spec ahead of instrument' is a number, not a mood."
+   "excerpt": "What they DO produce is an answer *relative to a policy*, and relative to no rules that answer is not a findin",
+   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
   },
   {
    "sha": "4dc91e9fc1ffc538",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "⟨0.28⟩ **AND HERE IS WHAT EACH LOCATOR FORM RESOLVES TO — because \"expand as the loader will\" says how to comp",
+   "unenforced": "⟨0.28⟩ Rung B locator RESOLUTION — what a verb ANSWERS FROM. PART 37 (g) pins the guard side (a locator's expansion must not be destroyed) and (h) the target's; nothing asserts that a FILE resolves to one file and a PREFIX to the unioned set. candor-swift was measured UNIONING where it must not, so this is a live shape, not a formality."
   },
   {
    "sha": "fb38965f93e53699",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "- **A locator naming a FILE resolves to that file, and to its §2.2 sidecars.** It does NOT union the prefix si",
+   "unenforced": "⟨0.28⟩ Rung B locator RESOLUTION — what a verb ANSWERS FROM. PART 37 (g) pins the guard side (a locator's expansion must not be destroyed) and (h) the target's; nothing asserts that a FILE resolves to one file and a PREFIX to the unioned set. candor-swift was measured UNIONING where it must not, so this is a live shape, not a formality."
   },
   {
    "sha": "728bced854b1b2ed",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "- **A locator naming a PREFIX resolves to the whole matching set, unioned.** ⟨0.24⟩ already ruled this for the",
+   "unenforced": "⟨0.28⟩ Rung B locator RESOLUTION — what a verb ANSWERS FROM. PART 37 (g) pins the guard side (a locator's expansion must not be destroyed) and (h) the target's; nothing asserts that a FILE resolves to one file and a PREFIX to the unioned set. candor-swift was measured UNIONING where it must not, so this is a live shape, not a formality."
   },
   {
    "sha": "e528a64521fd84c9",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "- **A locator naming a DIRECTORY resolves to the reports discovered inside it**, which is the `.candor/` disco",
+   "part": "PART 37 (g)"
   },
   {
    "sha": "5be05383d054227a",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "⟨0.28⟩ **AND THE SCAN TARGET EXPANDS TO THE FILES THE RUN WILL PARSE — the residual the exact-artifact ruling ",
+   "part": "PART 37 (h)"
   },
   {
    "sha": "f7abf5e78a33cce6",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ RUNG B (locator resolution) — ruled 2026-08-12, NOT YET EXERCISED. Pins what each locator FORM resolves to (file / prefix / directory) and the target's expansion to parsed source files. java's prefix form answering descriptive verbs from the lexicographically-first report is the measured violation; row + fix queued together."
+   "excerpt": "So the check is narrow and stated over what IS knowable at parse time: **a sink that lies under the target AND",
+   "part": "PART 37 (h)"
   },
   {
    "sha": "f4f1ae9c91ae5d74",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ REPEATED --out — ruled 2026-08-12, NOT YET EXERCISED. The report-sink analogue of the repeated --gate-json refusal, which IS pinned (PART 37). Row belongs beside it; no engine refuses a repeated --out today, so it would SKIP four-way until the fix lands."
+   "excerpt": "⟨0.28⟩ **AND A REPEATED `--out` IS THE SAME RULE — filed as an open question by the rung that wrote the senten",
+   "unenforced": "⟨0.28⟩ repeated `--out`. The repeated `--gate-json` refusal is pinned; its report-sink twin is not. rust, ts and swift refuse it and java has no `--out`, so a row would go green on three and n/a on one."
   },
   {
    "sha": "e558516e883c9155",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ REPEATED --out — ruled 2026-08-12, NOT YET EXERCISED. The report-sink analogue of the repeated --gate-json refusal, which IS pinned (PART 37). Row belongs beside it; no engine refuses a repeated --out today, so it would SKIP four-way until the fix lands."
+   "excerpt": "If anything the report sink is the WORSE case, because `--out` fans out on one engine: the stale set left at `",
+   "unenforced": "⟨0.28⟩ repeated `--out`. The repeated `--gate-json` refusal is pinned; its report-sink twin is not. rust, ts and swift refuse it and java has no `--out`, so a row would go green on three and n/a on one."
   },
   {
    "sha": "5b18c85435142a05",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ `crossing` — ruled 2026-08-12, NOT YET EXERCISED. PART 42 sees only that it is emitted with one type; nothing checks present-iff-answered, and nothing catches rust/java printing the no-crossing arm as PROSE on a JSON stdout, which is the defect the ruling exists to close. Row + the rust/java fix land together; the grandfather entry in key-shapes-baseline.json goes at the same time."
+   "excerpt": "⟨0.28⟩ **`crossing` — PINNED, and pinning it fixes a purity defect on the other side.** This was the one key l",
+   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
   },
   {
    "sha": "ff5d723ae29963b0",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ `crossing` — ruled 2026-08-12, NOT YET EXERCISED. PART 42 sees only that it is emitted with one type; nothing checks present-iff-answered, and nothing catches rust/java printing the no-crossing arm as PROSE on a JSON stdout, which is the defect the ruling exists to close. Row + the rust/java fix land together; the grandfather entry in key-shapes-baseline.json goes at the same time."
+   "excerpt": "The tempting reading is that two engines minted a field and should drop it. **The measurement says otherwise**",
+   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
   },
   {
    "sha": "e7275895cf25461c",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ `crossing` — ruled 2026-08-12, NOT YET EXERCISED. PART 42 sees only that it is emitted with one type; nothing checks present-iff-answered, and nothing catches rust/java printing the no-crossing arm as PROSE on a JSON stdout, which is the defect the ruling exists to close. Row + the rust/java fix land together; the grandfather entry in key-shapes-baseline.json goes at the same time."
+   "excerpt": "So `crossing` is a **boolean, present exactly when the verb answered**, absent when it refused — the same pres",
+   "unenforced": "⟨0.28⟩ `crossing`. PART 42 pins that it is SPEC-named and carries one JSON type across the engines; nothing checks PRESENT-IFF-ANSWERED, which is the whole of the ruling, nor that rust/java stopped printing the no-crossing arm as prose on a JSON stdout."
   },
   {
    "sha": "1a9dcdf0e7f5628d",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "⟨0.28⟩ **AND HERE IS WHAT THAT CAVEAT DOCUMENT CONTAINS — because the paragraph above said \"the caveat documen",
+   "unenforced": "⟨0.28⟩ Phase 1b. No row drives the zero-rule caveat's `unevaluated` spelling, `fix` in the advisory set, or the `ok` withdrawal and its gate carve-out. Only ts implements all four, so the rows are reference-led and would SKIP three engines — they can land before the engine work."
   },
   {
    "sha": "7d058333f3040121",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "⟨0.28⟩ **AND THE LIST OF ADVISORY VERBS IS ILLUSTRATIVE, NOT CLOSED — `fix` takes this too.** The clause names",
+   "unenforced": "⟨0.28⟩ Rung A, the advisory-over-zero-rule arm. PART 38 pins the GATE's zero-rule refusal; no row drives `whatif`/`fix`/`fix-gate`/`unverified` over a configured zero-rule policy. All four engines implement it, so the row would go green immediately — it is missing, not blocked."
   },
   {
    "sha": "4c71ede92a5e6e67",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "⟨0.28⟩ **AND A HEDGING DOCUMENT WITHDRAWS `ok` — with one carve-out that is already ruled.** Measured: candor-",
+   "unenforced": "⟨0.28⟩ Phase 1b. No row drives the zero-rule caveat's `unevaluated` spelling, `fix` in the advisory set, or the `ok` withdrawal and its gate carve-out. Only ts implements all four, so the rows are reference-led and would SKIP three engines — they can land before the engine work."
   },
   {
    "sha": "c8e0e9636975f8c9",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "**The carve-out is the GATE VERDICT, and it is not an exception so much as a different question.** ⟨0.24⟩ rule",
+   "unenforced": "⟨0.28⟩ Phase 1b. No row drives the zero-rule caveat's `unevaluated` spelling, `fix` in the advisory set, or the `ok` withdrawal and its gate carve-out. Only ts implements all four, so the rows are reference-led and would SKIP three engines — they can land before the engine work."
   },
   {
    "sha": "4f3bfa54da53a140",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "So the rule is stated over the scope, not the verb: **`ok` is withdrawn wherever it is a claim about the CODE ",
+   "unenforced": "⟨0.28⟩ Phase 1b. No row drives the zero-rule caveat's `unevaluated` spelling, `fix` in the advisory set, or the `ok` withdrawal and its gate carve-out. Only ts implements all four, so the rows are reference-led and would SKIP three engines — they can land before the engine work."
   },
   {
    "sha": "95d6aaf1203d27e3",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "⟨0.28⟩ **AND THE THIRD ROW IS NOT THE FIRST ROW — measured, two engines report it as one.** Over `{\"candor\":{…",
+   "unenforced": "⟨0.28⟩ `noManifest`. PART 42 pins the KEY (SPEC-named, one type across engines) but nothing asserts the BEHAVIOUR — that a report with no `analyzed` key lands in `noManifest` and not in `judgedNothing`. That distinction is the entire clause, and two engines got it wrong before it was written."
   },
   {
    "sha": "21cd73d9b2a13ca7",
    "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "(see SPEC.md)",
-   "unenforced": "⟨0.28⟩ Phase 1b rulings (2026-08-12) — NOT YET EXERCISED, and each was created BY a measured cross-engine divergence rather than found by a row: `noManifest` (row 3 reported as row 1 in two engines), the zero-rule caveat's `unevaluated` spelling (unpinned by my own clause), `fix` in the advisory set (rust extended, swift did not — the clause caused the split), and the `ok` withdrawal with its gate carve-out. Rows land with the four-way engine work as one unit; counted here so the gap is a number rather than a mood."
+   "excerpt": "It raises `incomplete` like the others and is omitted when empty. Note candor-rust's GATE note already says \"`",
+   "unenforced": "⟨0.28⟩ `noManifest`. PART 42 pins the KEY (SPEC-named, one type across engines) but nothing asserts the BEHAVIOUR — that a report with no `analyzed` key lands in `noManifest` and not in `judgedNothing`. That distinction is the entire clause, and two engines got it wrong before it was written."
   }
  ]
 }
