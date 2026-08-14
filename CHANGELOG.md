@@ -14,6 +14,22 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.28.0] — 2026-08-14
+
+- **Conformance PART 46 — a caller of a body-less local declaration is not pure, four-way.** candor-ts
+  certified callers of declarations it had never seen a body for and nothing here could see it: the same
+  shape crossing a PACKAGE boundary has been pinned since the scan-boundary work (PART 21), while the
+  LOCAL case was never asked. The row asserts on the CALLER's transitive set — what a gate reads — because
+  the engines legitimately differ on where the disclosure lands (java charges the declaration, rust and
+  swift the edge) and §4 makes the reason class per-language. Calibrated: with the candor-ts fix reverted
+  it reddens on ts alone.
+- **PART 38 (`ignored`) and PART 39 (the caveat's channel)** — two ⟨0.28⟩ clauses that were ruled, written
+  down, implemented four-way, and asserted by nobody. PART 39's first draft was wrong twice in one day.
+- **The skip ratchet** — a reference-led SKIP means "this engine has not shipped the rung", so a rung that
+  UN-SHIPS looks identical to one that never shipped. Deleting a whole rung left the suite green; the
+  ratchet caught three parts, not the one it was built for. An engine the runner does not HAVE is not a
+  missing tally.
+
 - **⟨0.28⟩ `--json` beside `--gate-json -` on the SCAN route is refused.** On the gate verbs `--json` IS
   `--gate-json -` (one artifact, named twice); on a scan `--json` writes the REPORT to stdout, so asking
   for both puts a report and a verdict on one stream. Measured: four engines concatenated them, so
