@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.27** — all code engines declare `0.27`; the floor is conformance-pinned. How versions
+**Version 0.28** — all code engines declare `0.28`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
@@ -1018,7 +1018,7 @@ implementation MAY fall back to that sidecar for provenance.
 `extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
 
 ```json
-{ "candor": { "version": "…", "toolchain": "…", "spec": "0.27" },
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.28" },
   "resolves": ["fs"],
   "functions": [ … ] }
 ```
@@ -2040,7 +2040,7 @@ the dep reports — and not the target. **Measured, two engines, live:**
     $ candor-ts app.ts --gate-json app.ts
       candor-ts: wrote 0 effectful functions (1 analyzed, 1 files) …                      exit 0
     $ cat app.ts
-      { "spec": "0.27", "ok": false, … }                     ← the operator's SOURCE FILE, replaced
+      { "spec": "0.28", "ok": false, … }                     ← the operator's SOURCE FILE, replaced
 
     $ candor-java app.jar --json app.jar
       candor: cannot read scan target app.jar: zip END header not found                   exit 2
