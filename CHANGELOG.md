@@ -16,6 +16,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.28.0] — 2026-08-14
 
+- **SPEC §2 envelope example** carried the previous floor in one spelling the bump's pattern missed.
+
 - **Conformance PART 46 — a caller of a body-less local declaration is not pure, four-way.** candor-ts
   certified callers of declarations it had never seen a body for and nothing here could see it: the same
   shape crossing a PACKAGE boundary has been pinned since the scan-boundary work (PART 21), while the
