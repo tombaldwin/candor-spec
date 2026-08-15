@@ -8445,7 +8445,7 @@ if [ -n "$SW_PRESENT" ]; then
 fi
 echo "PART 47 — a \`forbid\` rule is refused on a report route (SPEC §6.2)"
 # ENGINES: rust java ts swift
-# CONTROLS: the SCAN route on the same code and the same rule must EVALUATE it (exit 1) — a refusal-only assertion passes on an engine with no layering support at all
+# CONTROLS: rsc tsc jsc ssc — the SCAN route exit codes on the same code and the same rule; each must EVALUATE it (exit 1), because a refusal-only assertion also passes on an engine with no layering support at all
 if [ "$P47_OK" = 0 ]; then
   echo "  -> MATCH — every engine evaluates \`forbid\` at scan time and refuses it on a report route"
 else

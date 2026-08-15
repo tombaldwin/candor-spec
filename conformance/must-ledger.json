@@ -2620,6 +2620,18 @@
    "at": "2. The report",
    "excerpt": "⟨0.28⟩ **AND `privacy-manifest`'s OWN TWO KEYS, PINNED HERE BECAUSE DRIVING THE VERB IS WHAT FOUND THEM.** The",
    "part": "PART 42"
+  },
+  {
+   "sha": "948f56ec310dd1af",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**A `forbid` rule MUST NOT be evaluated from a REPORT** (`gate --report`, and any verb reading a §2 report rat",
+   "part": "PART 47"
+  },
+  {
+   "sha": "eda3e5b58963c142",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "**A consequence of scope matching worth stating, because writing a real policy hits it immediately:** a scope ",
+   "unenforced": "DESCRIPTIVE, and no row is possible — a CLASSIFICATION, not a backlog item. It restates a consequence of the scope-matching rule already specified above (a scope is a segment-prefix, so it contains its own sub-scopes) for a reader about to write their first layering policy: `forbid a.b.model -> a.b` self-fires. There is nothing here an engine could implement differently — the behaviour it describes is the scope-matching rule, which every scoped-rule row already exercises. Binding it would mean asserting an engine correctly fails to provide a form the grammar does not have. The ⟨0.29⟩ `only` permission form in the umbrella backlog is what would make the limitation actionable; when that lands this paragraph becomes a pointer to it and the rows move there."
   }
  ]
 }
