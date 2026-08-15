@@ -14,6 +14,27 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+
+- **§6.2: a `forbid` rule MUST NOT be evaluated from a REPORT, and conformance PART 47 pins it.** A
+  report's `calls` sidecar is EFFECT-RELEVANT — an engine keeps the edges that carry an effect — while
+  `forbid` matches on NAME, so a crossing into a wholly PURE unit is absent from the graph and the rule
+  reads GREEN where a scan fails. An engine given `forbid` on a report route must refuse at exit 2 and
+  name the rule, never evaluate it and never drop it silently.
+
+  **This records behaviour all four engines had already converged on independently**, each naming the
+  effect-relevant call graph as the reason, and which nothing specified or pinned. Written down because
+  unanimous good judgement is not a contract: a refactor of any of the four could regress it to a silent
+  green with no row to notice — the "a pinned clause with no row still drifts" lesson from PART 39, one
+  level earlier. PART 47 carries the SCAN route as its control, so a refusal cannot pass on an engine
+  with no layering support at all, and both directions were falsified.
+
+- **§6.2 also states a consequence of scope matching** that writing a real layering policy hits at once:
+  a scope is a segment-prefix, so it contains its own sub-scopes, and `forbid a.b.model -> a.b`
+  self-fires on every call inside `a.b.model`. "This package may depend on nothing outside itself" is
+  not directly expressible; a leaf can only be protected by enumerating what it may not reach, and that
+  list does not cover a package added later.
+
+  Both found by pointing candor's own architecture gate at candor for the first time.
 ## [0.28.2] — 2026-08-15
 
 

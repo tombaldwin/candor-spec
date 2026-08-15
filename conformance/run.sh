@@ -8359,6 +8359,100 @@ else
 fi
 
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 47 — A `forbid` RULE IS REFUSED ON A REPORT ROUTE, four-way (SPEC §6.2)             [TIER 1]
+#
+# A report's `calls` sidecar is EFFECT-RELEVANT: an engine keeps the edges that carry an effect. But
+# `forbid` matches on NAME, so a crossing into a wholly PURE unit is simply absent from that graph — a
+# layering violation the SCAN reports is invisible to a report route, and the rule reads GREEN. An engine
+# that evaluates `forbid` from a report therefore emits a FALSE ALL-CLEAR on the architecture gate.
+#
+# WHY THIS ROW EXISTS, and it is not because an engine was wrong. All four already refuse, at exit 2,
+# each naming the effect-relevant call graph — converged independently, specified nowhere, pinned by
+# nothing. Unanimous good judgement is not a contract: any of the four could regress this to a silent
+# green in a refactor and no row would notice, which is the same "a pinned clause with no row still
+# drifts" lesson PART 39 was added for. Found by pointing candor's own architecture gate at candor.
+#
+# THE CONTROL IS THE SCAN ROUTE. Refusing everything would pass a refusal-only assertion, so each engine
+# must also be shown EVALUATING the same rule at scan time on the same code — one violation, exit 1.
+# Without that pair, "it refused" is indistinguishable from "it cannot do layering at all".
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P47_OK=0
+FB="$W/forbid47"; mkdir -p "$FB"
+# rust
+if [ -x "$SCAN" ]; then
+  mkdir -p "$FB/rs/src"
+  printf '[package]\nname="fb"\nversion="0.0.0"\nedition="2021"\n' > "$FB/rs/Cargo.toml"
+  printf 'pub mod model {\n  pub fn inner() -> u32 { 2 }\n  pub fn outer() -> u32 { inner() }\n}\n' > "$FB/rs/src/lib.rs"
+  printf 'forbid model -> model\n' > "$FB/rs/p.pol"
+  ( cd "$FB/rs" && "$SCAN" . --out r >/dev/null 2>&1 )
+fi
+# ts
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$FB/ts/src"
+  printf '{"name":"fb","version":"0.0.0"}\n' > "$FB/ts/package.json"
+  printf 'export namespace model {\n  export function inner(): number { return 2; }\n  export function outer(): number { return inner(); }\n}\n' > "$FB/ts/src/a.ts"
+  printf 'forbid model -> model\n' > "$FB/ts/p.pol"
+  ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --out "$FB/ts/r" >/dev/null 2>&1 )
+fi
+# java
+mkdir -p "$FB/java/model"
+printf 'package model;\npublic class M {\n  public static int inner() { return 2; }\n  public static int outer() { return inner(); }\n}\n' > "$FB/java/M.java"
+javac -d "$FB/java/classes" "$FB/java/M.java" 2>/dev/null
+printf 'forbid model -> model\n' > "$FB/java/p.pol"
+java -jar "$JAR" "$FB/java/classes" --json "$FB/java/r.json" >/dev/null 2>&1
+# swift
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$FB/sw/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$FB/sw/Package.swift"
+  printf 'enum model {\n  static func inner() -> Int { return 2 }\n  static func outer() -> Int { return inner() }\n}\n' > "$FB/sw/Sources/S/a.swift"
+  printf 'forbid model -> model\n' > "$FB/sw/p.pol"
+  ( cd "$FB/sw" && "$SW_BIN" . --out r >/dev/null 2>&1 )
+fi
+
+p47() { # $1 engine ; $2 scan-rc ; $3 report-rc
+  if [ "$2" != 1 ]; then
+    echo "  $1  -> DIVERGE  (SCAN route exit $2, expected 1 — the control: if it cannot evaluate forbid at all,"
+    echo "                   a refusal on the report route proves nothing)"; P47_OK=1; return
+  fi
+  if [ "$3" != 2 ]; then
+    echo "  $1  -> DIVERGE  (report route exit $3, expected 2 — evaluating or dropping \`forbid\` from an"
+    echo "                   effect-relevant call graph is a FALSE ALL-CLEAR on the architecture gate)"; P47_OK=1; return
+  fi
+  echo "  $1  -> MATCH    (scan evaluates it: exit 1; report route refuses: exit 2)"
+}
+echo "[47] A \`forbid\` RULE IS REFUSED ON A REPORT ROUTE  (SPEC §6.2 — the calls graph is effect-relevant)"
+if [ -x "$SCAN" ]; then
+  ( cd "$FB/rs" && "$SCAN" . --policy p.pol >/dev/null 2>&1 ); rsc=$?
+  rrep="$(ls "$FB"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  "$QUERY" gate --report "$rrep" --policy "$FB/rs/p.pol" >/dev/null 2>&1; rrc=$?
+  p47 "rust " "$rsc" "$rrc"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --policy "$FB/ts/p.pol" >/dev/null 2>&1 ); tsc=$?
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" >/dev/null 2>&1 ); trc=$?
+  p47 "ts   " "$tsc" "$trc"
+fi
+java -jar "$JAR" "$FB/java/classes" --policy "$FB/java/p.pol" >/dev/null 2>&1; jsc=$?
+java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/p.pol" >/dev/null 2>&1; jrc=$?
+p47 "java " "$jsc" "$jrc"
+if [ -n "$SW_PRESENT" ]; then
+  ( cd "$FB/sw" && "$SW_BIN" . --policy p.pol >/dev/null 2>&1 ); ssc=$?
+  srep="$(ls "$FB"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  "$SW_BIN" gate --report "$srep" --policy "$FB/sw/p.pol" >/dev/null 2>&1; src=$?
+  p47 "swift" "$ssc" "$src"
+fi
+echo "PART 47 — a \`forbid\` rule is refused on a report route (SPEC §6.2)"
+# ENGINES: rust java ts swift
+# CONTROLS: the SCAN route on the same code and the same rule must EVALUATE it (exit 1) — a refusal-only assertion passes on an engine with no layering support at all
+if [ "$P47_OK" = 0 ]; then
+  echo "  -> MATCH — every engine evaluates \`forbid\` at scan time and refuses it on a report route"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
