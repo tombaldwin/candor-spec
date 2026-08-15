@@ -3770,25 +3770,29 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
 - **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
 
-  **A `forbid` rule MUST NOT be evaluated from a REPORT** (`gate --report`, and any verb reading a §2
-  report rather than source): a report's `calls` sidecar is EFFECT-RELEVANT — an engine keeps the edges
-  that carry an effect — while `forbid` matches on NAME, so a crossing into a wholly PURE unit is absent
-  from the graph and the rule would read GREEN where a scan fails. An engine given a `forbid` rule on a
-  report route MUST refuse at **exit 2** and name the rule, never evaluate it and never drop it silently
-  (dropping is the same false green one step quieter). Evaluating `forbid` at SCAN time is the supported
-  route, and the refusal message SHOULD say so.
+  **`forbid` is UNANSWERABLE from a report** — §3.1's answerability rule already binds it, and this is a
+  pointer to that rule, not a second statement of it. See §3.1 ⟨0.24⟩ ANSWERABILITY: *a rule whose evidence
+  the wire does not carry MUST be refused (exit 2), never evaluated*, which names `forbid A -> B` in its
+  own list. Evaluating `forbid` at SCAN time is the supported route.
 
-  *⟨0.28.2⟩ This clause records behaviour all four engines had already converged on independently — java,
-  rust, ts and swift each refuse at exit 2, each naming the effect-relevant call graph as the reason —
-  and which nothing specified or pinned. Written down because unanimous good judgement is not a contract:
-  a fifth engine, or a refactor of any of these four, could regress it to a silent green with no row to
-  notice. Found by pointing candor's own architecture gate at candor for the first time.*
-
-  **A consequence of scope matching worth stating, because writing a real policy hits it immediately:** a
-  scope is a segment-prefix, so it contains its own sub-scopes. `forbid a.b.model -> a.b` therefore
-  SELF-FIRES on every call inside `a.b.model`, and "this package may depend on nothing outside itself"
-  is not directly expressible — a leaf must be protected by enumerating what it may not reach, a list
-  that does not cover a package added later. See the umbrella backlog for the permission-form proposal.
+  *⟨0.29⟩ This paragraph was, for one commit, a full restatement of the rule with its own grounding, and
+  every part of that was a mistake worth recording rather than quietly deleting.*
+  *(1) It claimed the behaviour was "specified nowhere". §3.1 had specified it since ⟨0.24⟩ — the MUST and
+  the `forbid` bullet both — so the register briefly held TWO entries for one rule, one pinned and one not,
+  which is a drift channel rather than a pin.*
+  *(2) Its stated ground was FALSE and had already been retracted one section up. It said a report's
+  `calls` graph is effect-relevant so a crossing into a pure unit is invisible; but §2.2 requires the
+  SIDECAR to record every project function's edges INCLUDING pure ones, and PART 1b pins that. §3.1's
+  `allow` bullet had already had to correct exactly this reasoning — "This clause first said the marker
+  does not ride the wire, flatly. That is FALSE for at least one engine … Uniform refusal is the
+  requirement; the wire's contents are not the reason." The real basis is that a report MUST NOT be
+  back-filled from its sidecar, plus uniform refusal.*
+  *(3) It stated the refusal UNCONDITIONALLY, which contradicts §3.1's precedence ruling: where a certain
+  violation stands beside the refused rule, the gate exits 1 with the rule disclosed as `unevaluated`, not
+  2. Measured — all four engines exit 1 on `deny Fs` + `forbid` over a report, so a fifth engine
+  implementing this paragraph literally would have been the odd one out. A rule stated over the INSTANCE
+  that was measured (a sole-`forbid` policy) rather than over the CONDITION, for the fourth time in this
+  document, in the section whose own commentary names that hazard.*
 
 **Reason-scoped `Unknown` (`deny E Unknown[class…]`)** ⟨0.19⟩**.** In a `deny`, the `Unknown` token MAY
 carry a bracketed **reason-class filter**: `Unknown[reflect,dispatch]` denies the `Unknown` part only for a

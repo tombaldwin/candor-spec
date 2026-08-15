@@ -831,7 +831,7 @@
    "sha": "9f47a7c647e74e12",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "- **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into a ",
-   "status": "pre-ledger"
+   "part": "PART 47"
   },
   {
    "sha": "72c27459e6ca5dad",
@@ -2622,16 +2622,16 @@
    "part": "PART 42"
   },
   {
-   "sha": "948f56ec310dd1af",
+   "sha": "8649c0f39ebc43b2",
    "at": "6.2 The policy DSL (normative)",
-   "excerpt": "**A `forbid` rule MUST NOT be evaluated from a REPORT** (`gate --report`, and any verb reading a §2 report rat",
+   "excerpt": "**`forbid` is UNANSWERABLE from a report** — §3.1's answerability rule already binds it, and this is a pointer",
    "part": "PART 47"
   },
   {
-   "sha": "eda3e5b58963c142",
+   "sha": "b45ab0a6bde7f6aa",
    "at": "6.2 The policy DSL (normative)",
-   "excerpt": "**A consequence of scope matching worth stating, because writing a real policy hits it immediately:** a scope ",
-   "unenforced": "DESCRIPTIVE, and no row is possible — a CLASSIFICATION, not a backlog item. It restates a consequence of the scope-matching rule already specified above (a scope is a segment-prefix, so it contains its own sub-scopes) for a reader about to write their first layering policy: `forbid a.b.model -> a.b` self-fires. There is nothing here an engine could implement differently — the behaviour it describes is the scope-matching rule, which every scoped-rule row already exercises. Binding it would mean asserting an engine correctly fails to provide a form the grammar does not have. The ⟨0.29⟩ `only` permission form in the umbrella backlog is what would make the limitation actionable; when that lands this paragraph becomes a pointer to it and the rows move there."
+   "excerpt": "*⟨0.29⟩ This paragraph was, for one commit, a full restatement of the rule with its own grounding, and every p",
+   "unenforced": "PERMANENT — a RETRACTION NOTE, and no row is possible. It records why the ⟨0.28.2⟩ version of this paragraph was withdrawn: it duplicated §3.1's MUST, grounded itself on reasoning §3.1 had already retracted for `allow`, and stated the refusal unconditionally against §3.1's precedence ruling. It binds the DOCUMENT'S AUTHORS, not the engines — the same standard as 033b20bcea03bc93. The behaviour it used to state is bound by PART 47 through §3.1; nothing here is a separate requirement an engine could fail. Kept rather than deleted because a wrong clause removed without its reason is a clause somebody rewrites."
   }
  ]
 }

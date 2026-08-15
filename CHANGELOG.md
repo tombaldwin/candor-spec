@@ -14,6 +14,38 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **RETRACTED, one commit after it landed: the §6.2 `forbid`-on-a-report clause.** It was wrong in three
+  ways a review found and the commit that wrote it did not. (1) It said the behaviour was "specified
+  nowhere" — §3.1's ⟨0.24⟩ ANSWERABILITY rule had specified it since 0.24 and names `forbid A -> B` in its
+  own list, so the register briefly held two entries for one MUST, one pinned and one not: a drift channel
+  dressed as a pin. (2) Its stated ground was FALSE and had already been retracted one section up — it
+  claimed a report's `calls` graph is effect-relevant so a crossing into a pure unit is invisible, but
+  §2.2 requires the SIDECAR to carry every project function's edges including pure ones, and PART 1b pins
+  that; §3.1's `allow` bullet had already corrected exactly this reasoning ("Uniform refusal is the
+  requirement; the wire's contents are not the reason"). (3) It stated the refusal UNCONDITIONALLY, which
+  contradicts §3.1's precedence ruling — where a certain violation stands beside the refused rule the gate
+  exits 1 with the rule disclosed as `unevaluated`, and all four engines do exactly that. A rule stated
+  over the INSTANCE that was measured rather than over the CONDITION, for the fourth time in this
+  document, in the section whose own commentary names that hazard. §6.2 now POINTS at §3.1, and the
+  retraction note stays in place: a wrong clause deleted without its reason is a clause somebody rewrites.
+- The descriptive scope-matching paragraph went with it. It described matching as a segment-prefix; the
+  normative rule is a CONTIGUOUS RUN of segments anywhere in the FQN, exact but for a prefix-matching last
+  segment — an infix rule. Its conclusion was right and its mechanism was not, and the mechanism is what a
+  reader generalises from. The limitation it described lives in the umbrella backlog as the ⟨0.29⟩ `only`
+  proposal, which is where the fix is.
+- **PART 47 hardened, after a review showed its report-route assertion could pass for two unrelated
+  reasons.** It asserted one integer. Now: the report must EXIST and be non-empty (an absent or empty
+  `--report` path also exits 2 in all four engines, so an `ls` glob that missed would have printed MATCH);
+  the SAME report under a deny-only policy must exit 0 (otherwise a broken report route refuses everything
+  and the row proves nothing); a `deny Fs` + `forbid` policy must still exit 2, which is the row that
+  separates REFUSED from SILENTLY DROPPED — a one-rule policy could not, because dropping the only rule
+  trips the ⟨0.28⟩ zero-rule refusal at the same exit code. Calibrated rather than reasoned: an unknown
+  rule kind every engine really does drop exits 0 beside the same deny, where `forbid` exits 2. Plus the
+  refusal must say `forbid`, and an absent engine now prints SKIP instead of being counted silently in a
+  summary that said "every engine".
+- The ledger binds PART 47 to §3.1's statement, which was `pre-ledger` and unbound — the statement the
+  part actually exercises.
+
 
 - **§6.2: a `forbid` rule MUST NOT be evaluated from a REPORT, and conformance PART 47 pins it.** A
   report's `calls` sidecar is EFFECT-RELEVANT — an engine keeps the edges that carry an effect — while

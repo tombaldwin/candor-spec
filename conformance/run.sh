@@ -8386,6 +8386,8 @@ if [ -x "$SCAN" ]; then
   printf '[package]\nname="fb"\nversion="0.0.0"\nedition="2021"\n' > "$FB/rs/Cargo.toml"
   printf 'pub mod model {\n  pub fn inner() -> u32 { 2 }\n  pub fn outer() -> u32 { inner() }\n}\n' > "$FB/rs/src/lib.rs"
   printf 'forbid model -> model\n' > "$FB/rs/p.pol"
+  printf 'deny Fs\n' > "$FB/rs/deny.pol"
+  printf 'deny Fs\nforbid model -> model\n' > "$FB/rs/mixed.pol"
   ( cd "$FB/rs" && "$SCAN" . --out r >/dev/null 2>&1 )
 fi
 # ts
@@ -8394,6 +8396,8 @@ if [ -n "$TS_PRESENT" ]; then
   printf '{"name":"fb","version":"0.0.0"}\n' > "$FB/ts/package.json"
   printf 'export namespace model {\n  export function inner(): number { return 2; }\n  export function outer(): number { return inner(); }\n}\n' > "$FB/ts/src/a.ts"
   printf 'forbid model -> model\n' > "$FB/ts/p.pol"
+  printf 'deny Fs\n' > "$FB/ts/deny.pol"
+  printf 'deny Fs\nforbid model -> model\n' > "$FB/ts/mixed.pol"
   ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --out "$FB/ts/r" >/dev/null 2>&1 )
 fi
 # java
@@ -8401,6 +8405,8 @@ mkdir -p "$FB/java/model"
 printf 'package model;\npublic class M {\n  public static int inner() { return 2; }\n  public static int outer() { return inner(); }\n}\n' > "$FB/java/M.java"
 javac -d "$FB/java/classes" "$FB/java/M.java" 2>/dev/null
 printf 'forbid model -> model\n' > "$FB/java/p.pol"
+printf 'deny Fs\n' > "$FB/java/deny.pol"
+printf 'deny Fs\nforbid model -> model\n' > "$FB/java/mixed.pol"
 java -jar "$JAR" "$FB/java/classes" --json "$FB/java/r.json" >/dev/null 2>&1
 # swift
 if [ -n "$SW_PRESENT" ]; then
@@ -8408,46 +8414,103 @@ if [ -n "$SW_PRESENT" ]; then
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$FB/sw/Package.swift"
   printf 'enum model {\n  static func inner() -> Int { return 2 }\n  static func outer() -> Int { return inner() }\n}\n' > "$FB/sw/Sources/S/a.swift"
   printf 'forbid model -> model\n' > "$FB/sw/p.pol"
+  printf 'deny Fs\n' > "$FB/sw/deny.pol"
+  printf 'deny Fs\nforbid model -> model\n' > "$FB/sw/mixed.pol"
   ( cd "$FB/sw" && "$SW_BIN" . --out r >/dev/null 2>&1 )
 fi
 
-p47() { # $1 engine ; $2 scan-rc ; $3 report-rc
+p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-rc ; $6 mixed-rc ; $7 refusal text
   if [ "$2" != 1 ]; then
     echo "  $1  -> DIVERGE  (SCAN route exit $2, expected 1 — the control: if it cannot evaluate forbid at all,"
     echo "                   a refusal on the report route proves nothing)"; P47_OK=1; return
+  fi
+  # THE REPORT MUST EXIST. Every engine exits 2 for an ABSENT or EMPTY --report path too — measured, all
+  # four — and the locators here are `ls` globs over engine-chosen report names. So a setup whose scan
+  # silently produced nothing, or an engine that renamed its report, printed MATCH for a refusal that
+  # never happened. The row asserted an integer that two unrelated causes produce.
+  if [ -z "$4" ] || [ ! -s "$4" ]; then
+    echo "  $1  -> DIVERGE  (no report at '${4:-<empty>}' — exit 2 here would be a MISSING FILE, not a refusal)"
+    P47_OK=1; return
+  fi
+  # …AND THE ROUTE MUST BE ABLE TO ANSWER. Same report, same verb, a deny-only policy: exit 0. Without
+  # this the part passes against an engine whose report route is simply broken.
+  if [ "$5" != 0 ]; then
+    echo "  $1  -> DIVERGE  (the SAME report under a deny-only policy exits $5, expected 0 — the report route"
+    echo "                   is not answering at all, so its refusal of \`forbid\` says nothing)"; P47_OK=1; return
   fi
   if [ "$3" != 2 ]; then
     echo "  $1  -> DIVERGE  (report route exit $3, expected 2 — evaluating or dropping \`forbid\` from an"
     echo "                   effect-relevant call graph is a FALSE ALL-CLEAR on the architecture gate)"; P47_OK=1; return
   fi
-  echo "  $1  -> MATCH    (scan evaluates it: exit 1; report route refuses: exit 2)"
+  # REFUSED, NOT DROPPED — and a ONE-RULE policy cannot tell those apart. Dropping the only rule leaves
+  # zero rules, which trips the ⟨0.28⟩ zero-rule fail-closed refusal: also exit 2. Measured against a rule
+  # of an unknown kind (`frobnicate model -> model`, dropped by all four): rust 2, java 2, ts 2, swift 2 —
+  # identical to the observable this row was asserting. So the harmful half of the MUST ("never drop it
+  # silently") was unexercised. `deny Fs` + `forbid` over a pure fixture separates them: a refusal is 2,
+  # a silent drop leaves an answerable deny-only policy that finds nothing and exits 0. CALIBRATED, not
+  # reasoned: `deny Fs` + `frobnicate model -> model` (an unknown kind every engine really does drop) over
+  # this fixture's report exits 0, while `deny Fs` + `forbid model -> model` exits 2. The row separates
+  # them because it was measured separating them.
+  if [ "$6" != 2 ]; then
+    echo "  $1  -> DIVERGE  (\`deny Fs\` + \`forbid\` over a report exits $6, expected 2 — a policy whose"
+    echo "                   \`forbid\` was DROPPED answers on what is left and goes green, which is the"
+    echo "                   same false all-clear one step quieter)"; P47_OK=1; return
+  fi
+  # …AND IT MUST SAY WHAT WAS REFUSED. Asked of the VALUE, not a key's presence — PART 39 was wrong twice
+  # in one day for asking the other question. STATED PRECISELY, because the row is weaker than it looks:
+  # this asserts the word `forbid` appears, not that the specific rule text does. rust and java print the
+  # rule (`forbid model -> model`); ts and swift print "this policy has 1 `forbid` rule(s)". Both satisfy
+  # this; only the first two would satisfy "names the rule". Pinning the stronger form means changing two
+  # engines first, so it is a rung item, not a row to write today — and claiming it here would be the
+  # instrument asserting more than it asks.
+  case "$7" in
+    *forbid*) ;;
+    *) echo "  $1  -> DIVERGE  (the refusal never says \`forbid\` — an operator is told exit 2 and not why)"
+       P47_OK=1; return;;
+  esac
+  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only on the SAME report: 0; deny+forbid: 2; says \`forbid\`)"
 }
 echo "[47] A \`forbid\` RULE IS REFUSED ON A REPORT ROUTE  (SPEC §6.2 — the calls graph is effect-relevant)"
 if [ -x "$SCAN" ]; then
   ( cd "$FB/rs" && "$SCAN" . --policy p.pol >/dev/null 2>&1 ); rsc=$?
   rrep="$(ls "$FB"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
-  "$QUERY" gate --report "$rrep" --policy "$FB/rs/p.pol" >/dev/null 2>&1; rrc=$?
-  p47 "rust " "$rsc" "$rrc"
+  rtxt="$("$QUERY" gate --report "$rrep" --policy "$FB/rs/p.pol" 2>&1)"; rrc=$?
+  "$QUERY" gate --report "$rrep" --policy "$FB/rs/deny.pol"  >/dev/null 2>&1; rdc=$?
+  "$QUERY" gate --report "$rrep" --policy "$FB/rs/mixed.pol" >/dev/null 2>&1; rmc=$?
+  p47 "rust " "$rsc" "$rrc" "$rrep" "$rdc" "$rmc" "$rtxt"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
 fi
 if [ -n "$TS_PRESENT" ]; then
   ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --policy "$FB/ts/p.pol" >/dev/null 2>&1 ); tsc=$?
-  ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" >/dev/null 2>&1 ); trc=$?
-  p47 "ts   " "$tsc" "$trc"
+  ttxt="$( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" 2>&1 )"; trc=$?
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/deny.pol"  >/dev/null 2>&1 ); tdc=$?
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/mixed.pol" >/dev/null 2>&1 ); tmc=$?
+  p47 "ts   " "$tsc" "$trc" "$FB/ts/r.json" "$tdc" "$tmc" "$ttxt"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
 fi
 java -jar "$JAR" "$FB/java/classes" --policy "$FB/java/p.pol" >/dev/null 2>&1; jsc=$?
-java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/p.pol" >/dev/null 2>&1; jrc=$?
-p47 "java " "$jsc" "$jrc"
+jtxt="$(java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/p.pol" 2>&1)"; jrc=$?
+java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/deny.pol"  >/dev/null 2>&1; jdc=$?
+java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/mixed.pol" >/dev/null 2>&1; jmc=$?
+p47 "java " "$jsc" "$jrc" "$FB/java/r.json" "$jdc" "$jmc" "$jtxt"
 if [ -n "$SW_PRESENT" ]; then
   ( cd "$FB/sw" && "$SW_BIN" . --policy p.pol >/dev/null 2>&1 ); ssc=$?
   srep="$(ls "$FB"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
-  "$SW_BIN" gate --report "$srep" --policy "$FB/sw/p.pol" >/dev/null 2>&1; src=$?
-  p47 "swift" "$ssc" "$src"
+  stxt="$("$SW_BIN" gate --report "$srep" --policy "$FB/sw/p.pol" 2>&1)"; src=$?
+  "$SW_BIN" gate --report "$srep" --policy "$FB/sw/deny.pol"  >/dev/null 2>&1; sdc=$?
+  "$SW_BIN" gate --report "$srep" --policy "$FB/sw/mixed.pol" >/dev/null 2>&1; smc=$?
+  p47 "swift" "$ssc" "$src" "$srep" "$sdc" "$smc" "$stxt"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
 fi
 echo "PART 47 — a \`forbid\` rule is refused on a report route (SPEC §6.2)"
 # ENGINES: rust java ts swift
 # CONTROLS: rsc tsc jsc ssc — the SCAN route exit codes on the same code and the same rule; each must EVALUATE it (exit 1), because a refusal-only assertion also passes on an engine with no layering support at all
 if [ "$P47_OK" = 0 ]; then
-  echo "  -> MATCH — every engine evaluates \`forbid\` at scan time and refuses it on a report route"
+  echo "  -> MATCH — every engine ASKED evaluates \`forbid\` at scan time and refuses it on a report route"
+  echo "     (an engine printed SKIP above was not asked; CI is three-way, so 'every engine' would overclaim)"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
