@@ -14,6 +14,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+
+- **`conformance/.gitignore` covers the preflight's reuse stamp.** A local cache of which SHAs were
+  green, so `release-preflight` [11] can tell whether anything that could change the answer moved.
+  It has to be ignored or it defeats itself: an untracked file makes the tree dirty, and a dirty tree
+  correctly forbids reuse — so the stamp would have forbidden reuse on its own first write.
 ## [0.28.0] — 2026-08-14
 
 - **SPEC §2 envelope example** carried the previous floor in one spelling the bump's pattern missed.
