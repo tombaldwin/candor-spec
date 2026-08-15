@@ -14,6 +14,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.28.2] — 2026-08-15
+
 
 - **`conformance/.gitignore` covers the preflight's reuse stamp.** A local cache of which SHAs were
   green, so `release-preflight` [11] can tell whether anything that could change the answer moved.
