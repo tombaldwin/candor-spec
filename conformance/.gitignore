@@ -3,3 +3,8 @@
 **/out/
 *.class
 .part-run.*.sh
+# The preflight's conformance-reuse stamp: which SHAs were green, so the next invocation can tell
+# whether anything that could change the answer moved. A LOCAL cache, never an artifact — and it must be
+# ignored, because an untracked file here makes the tree dirty and a dirty tree correctly forbids reuse.
+# The stamp would otherwise defeat itself on its own first write.
+.last-green-shas
