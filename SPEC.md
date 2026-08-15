@@ -3770,6 +3770,26 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
 - **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
 
+  **A `forbid` rule MUST NOT be evaluated from a REPORT** (`gate --report`, and any verb reading a §2
+  report rather than source): a report's `calls` sidecar is EFFECT-RELEVANT — an engine keeps the edges
+  that carry an effect — while `forbid` matches on NAME, so a crossing into a wholly PURE unit is absent
+  from the graph and the rule would read GREEN where a scan fails. An engine given a `forbid` rule on a
+  report route MUST refuse at **exit 2** and name the rule, never evaluate it and never drop it silently
+  (dropping is the same false green one step quieter). Evaluating `forbid` at SCAN time is the supported
+  route, and the refusal message SHOULD say so.
+
+  *⟨0.28.2⟩ This clause records behaviour all four engines had already converged on independently — java,
+  rust, ts and swift each refuse at exit 2, each naming the effect-relevant call graph as the reason —
+  and which nothing specified or pinned. Written down because unanimous good judgement is not a contract:
+  a fifth engine, or a refactor of any of these four, could regress it to a silent green with no row to
+  notice. Found by pointing candor's own architecture gate at candor for the first time.*
+
+  **A consequence of scope matching worth stating, because writing a real policy hits it immediately:** a
+  scope is a segment-prefix, so it contains its own sub-scopes. `forbid a.b.model -> a.b` therefore
+  SELF-FIRES on every call inside `a.b.model`, and "this package may depend on nothing outside itself"
+  is not directly expressible — a leaf must be protected by enumerating what it may not reach, a list
+  that does not cover a package added later. See the umbrella backlog for the permission-form proposal.
+
 **Reason-scoped `Unknown` (`deny E Unknown[class…]`)** ⟨0.19⟩**.** In a `deny`, the `Unknown` token MAY
 carry a bracketed **reason-class filter**: `Unknown[reflect,dispatch]` denies the `Unknown` part only for a
 function whose `Unknown` arises from one of the listed classes; a concrete effect in the same rule (`deny Net
