@@ -1,7 +1,8 @@
 # The file set — what a report says about code it never opened ⟨0.29 candidate, DESIGN⟩
 
-> **Status (2026-08-16):** DESIGN, not shipped. The defect is MEASURED four-way (§1). The proposal in §4
-> has one decision left for Tom (§5, the verdict consequence). This is B1 of the agreed ⟨0.29⟩ rung.
+> **Status (2026-08-16):** DESIGN, DECIDED, not yet built. The defect is MEASURED four-way (§1). §5 was
+> rewritten after reading why each engine skips what it skips — the first draft had the wrong axis, and
+> §5.0 records that. **Tom's call: rung 2 of the ladder, "disclose + peek".**
 
 ⟨0.21⟩ gave the report a completeness manifest: `analyzed:{count,digest}` and `unanalyzed:[{path,reason}]`,
 plus a fail-closed exit-2 verdict when a file was opened and could not be parsed. That closed the
@@ -64,12 +65,17 @@ routinely emits noise is a gate people learn to wave through. So the categories 
   them and must not pretend otherwise; but a project whose `Exec` lives in shell is a project where "candor
   says no Exec" is a dangerous sentence. A count with a reason, same as N2.
 
-Collapsing N1 into N2/N3 is what makes the current silence defensible-sounding and wrong: the engines are
-not choosing to exclude `build.rs`, they simply never had a concept of it.
+Collapsing N1 into N2/N3 is what makes the current silence defensible-sounding and wrong.
+**CORRECTED after §5.0: the engines ARE choosing.** The first draft of this paragraph said they "simply
+never had a concept of it", and that is false — `build.rs` is skipped by name with a written rationale,
+and the other three have their own. N1 is therefore not an oversight class but a SCOPE class, which is
+why the fix is to publish the scope rather than to widen it. The three-way split still holds; only the
+story about how N1 came to exist was wrong.
 
-## 4. Proposal
+## 4. Proposal (shape; the chosen rung is §5.2)
 
-A `unconsidered` block in the report envelope, beside `analyzed`/`unanalyzed`:
+Two additions to the report envelope, beside `analyzed`/`unanalyzed`. The first is the DENOMINATOR; the
+second is what the peek found in it.
 
 ```json
 "analyzed":     { "count": 2, "digest": "…" },
@@ -79,8 +85,16 @@ A `unconsidered` block in the report envelope, beside `analyzed`/`unanalyzed`:
               { "path": "examples/ex.rs", "reason": "outside the file selector" } ],
   "elided": [ { "path": "target/",        "count": 18422, "reason": "excluded by convention" },
               { "path": "scripts/deploy.sh", "count": 1,   "reason": "not a language this engine reads" } ]
-}
+},
+"outOfScope": [ { "fn": "build_script::main", "path": "build.rs", "effects": ["Exec"],
+                  "class": "build-script",
+                  "reason": "runs at compile time, not crate runtime — this scan did not judge it" } ]
 ```
+
+`outOfScope` is **its own kind, never a `violation`**: folding it in would move verdicts, which is exactly
+what the chosen rung promises not to do, and would make an exit code depend on a file the gate declined to
+judge. It is emitted ONLY when a policy is configured, and only for effects that policy DENIES — see §5.2
+for why that bound is what keeps the whole thing quiet.
 
 Four constraints this shape is built to satisfy:
 
@@ -95,32 +109,80 @@ Four constraints this shape is built to satisfy:
 4. **The reason is a VALUE, not a presence.** PART 39 was wrong twice in one day by asking whether a key was
    there rather than what it said; the conformance rows for this must read the reason string.
 
-## 5. The one open decision — what it does to the VERDICT
+## 5. The decision, and why the first version of this section was wrong
 
-⟨0.21⟩ established that a disclosure alone does not close a machine-consumer channel; the fail-closed exit-2
-verdict is what did. The same question here, and it is genuinely a trade:
+### 5.0 The correction — these are CONSIDERED exclusions, not gaps
 
-- **V1 — advisory.** Report key plus stderr, exit unchanged. Cheapest, adoptable everywhere, and weakest:
-  it leaves `deny Exec` → exit 0 over a repo containing `execSync("curl | sh")`, which is the exact sentence
-  this rung exists to delete.
-- **V2 — fail closed on N1 when a policy is configured.** `unconsidered.files` non-empty ⇒ the gate cannot
-  be certified ⇒ exit 2, same shape as ⟨0.21⟩'s parse-failure verdict. Strongest, and consistent with
-  *always fix a fixable silent under-report*. Cost: every Rust crate with a `build.rs` goes red on upgrade.
-- **V3 — the ⟨0.24⟩ shape.** Withdraw `ok` from the verdict document (the machine channel) and disclose,
-  while exit stays 0 unless `--strict`. Splits the difference along a seam the family already has.
+The first draft treated this as *the engines miss files* and asked only how hard to fail. Reading the
+engines settles it differently. **Every skip is deliberate and documented.** candor-rust, `lang.rs:1102`:
 
-**Recommendation: V2, narrowed to N1, with the ⟨0.21⟩ UNKNOWN-RATCHET precedent for adoption** — a recorded
-baseline of accepted `unconsidered.files` in `.candor/config`, so a legacy project pins what it already has
-and only *new* unopened source turns the gate red. That keeps the fail-closed property where it earns its
-keep (a file appearing outside the selector is a change nobody reviewed) without the flag-day cost of V2
-plain. It is a ratchet, not a threshold, which is the form this project has repeatedly found survives.
+> *"True if a crate-root-RELATIVE path is the Cargo BUILD SCRIPT — i.e. exactly `build.rs` at the root.
+> It runs at COMPILE time, never the crate's runtime behaviour, so it's skipped."*
+
+candor-ts takes the tsconfig program (`parsed.fileNames`, and its own comment says the arm
+over-approximates *deliberately*); candor-swift takes SwiftPM targets; candor-java reads bytecode. Every
+one of those is defensible. **None of them is in the report.**
+
+So the report carries a NUMERATOR and no DENOMINATOR. `analyzed: {count: N}` is true, and the scope
+decision that produced N appears nowhere, so a consumer cannot tell whether the answer is to the question
+they asked. The build-script exclusion is right for *"what does this library do when I call it"* and wrong
+for *"what does building this crate do to my machine"*. The operator chose neither.
+
+**Being considered is what made it survive.** This is [[feedback-documented-limitation-is-not-measured]]
+exactly: a limitation written as a code comment reads as CONSIDERED, and that is what stops it being
+measured. The `build.rs` comment is well-argued prose, which is precisely why nobody measured its cost —
+and its cost is that `deny Exec` over a crate whose `build.rs` runs `curl | sh` is GREEN, on a file that
+runs on every `cargo build` whether or not anyone calls the library.
+
+### 5.1 Two things the first recommendation got wrong
+
+- **Fail-closed on a UNIVERSAL condition disables the gate.** Every project has files outside the
+  selector. This project already wrote that lesson down, in preflight [10]'s NONE branch: *a gate that
+  fails routinely on a benign shape is a gate that gets waved through, which is worse than not having it.*
+- **The ratchet FREEZES the defect rather than closing it.** Baselining the accepted set means day one
+  accepts the `build.rs` that execs. It stops regressions — real value — but it does not close the hole
+  that was measured, and the first draft presented it as though it did.
+
+### 5.2 The ladder, and where we stop
+
+1. **Disclose the scope** — excluded classes, counts, reasons.
+2. **Disclose + PEEK** ⟵ **CHOSEN.** Additionally READ the excluded files and warn when they contain an
+   effect **the policy actually denies**. No verdict change; nothing goes red.
+3. **+ policy lever** — a `scope +build-scripts` form so CI can REQUIRE them clean. A four-engine rung.
+4. **Change the default** — build scripts in scope unless excluded. A flag day.
+
+**Rung 2 is chosen because it closes the measured defect for every existing user on upgrade, at zero
+breakage.** Rung 1 tells you a build script exists, not that it execs — you still have to go and look,
+which is the work the tool is for. Rungs 3 and 4 are both strictly better *for people who act*, and rung 4
+is the only one that protects someone who never reads a changelog — but 4 turns adopters' CI red unasked
+(uflexi's included) and 3 leaves everyone who does not opt in exactly where they are today.
+
+**The peek is POLICY-SCOPED, and that is what keeps it quiet.** No configured policy ⇒ no peek ⇒ not one
+new line of output. With a policy, it reports only effects that policy DENIES — so the noise floor is
+"things you have already said you care about", not "everything in your test tree".
+
+### 5.3 What rung 2 must not become
+
+- **The same classifier, not a second path.** The peek differs from the gate in its FILE SET and in
+  whether the result is binding — never in how an effect is judged. Two judgement paths would drift, and
+  a drifted second opinion reported as a warning is worse than no warning.
+- **Not a violation.** `outOfScope` findings are their own kind. Folding them into `violations` would
+  change verdicts, which is exactly what rung 2 promises not to do, and would make the exit code depend
+  on a file the gate did not judge.
+- **Silent when there is nothing to say, LOUD in the report either way.** ⟨0.27⟩: an empty
+  `outOfScope: []` is a positive statement and must be emitted. Absence of the key must mean *this engine
+  cannot answer*, per ⟨0.26⟩.
 
 ## 6. Conformance obligation (sketch)
 
 A new PART, four-way, with rows that a pre-fix engine **cannot** pass:
 
-- the §1 fixture per engine — same-language `Exec` outside the selector — asserting the verdict changes AND
-  that `unconsidered.files[].reason` reads the expected string (a value, not a presence).
+- the §1 fixture per engine — same-language `Exec` outside the selector — asserting the WARNING fires,
+  that the verdict does NOT change (exit unchanged, `violations` untouched), and that the reason string
+  reads what it should (a VALUE, not a key's presence — PART 39 was wrong twice in one day on that).
+- **the peek is policy-scoped**: the same tree with NO policy emits no out-of-scope finding at all.
+- **the peek is bounded by the policy**: `deny Net` over a tree whose only out-of-scope effect is `Exec`
+  reports nothing — otherwise the floor is "everything in your test tree" and the gate becomes noise.
 - **the control**, which is the row that matters most: a project with *no* unopened same-language source
   must emit `"files": []` and stay green. Without it the part passes against an engine that fails
   everything, which is the vacuous-control shape this project keeps measuring in its own work.
