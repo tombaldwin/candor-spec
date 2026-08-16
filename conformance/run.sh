@@ -8791,6 +8791,91 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 50 — `incomplete` CROSSES THE SCAN BOUNDARY (SPEC §2 ⟨0.29⟩)                         [TIER 1]
+#
+# An absent `paths` is overloaded between "reaches no path" and "reaches a path I could not see", and the
+# per-unit `incomplete` field is the only thing separating them. §2 named it in the CHAINED-JOIN clause —
+# "a join that carries the effect and drops `incomplete` lets a benign literal in the consumer certify
+# what the dependency declared uncertifiable" — and never said a PRODUCER had to emit it, so two engines
+# computed it internally and published nothing. The rule about the join was vacuous for half the family.
+#
+# MEASURED, and it is a FALSE ALL-CLEAR on a configured gate rather than a wire nicety: a dependency whose
+# `Fs` path is a runtime value published nothing to say so, and a consumer that ALSO writes ONE allowed
+# literal joined `paths: ["/tmp/lit"]` with no marker — so `allow Fs /tmp/lit` answered `policy ✓` in
+# candor-ts and candor-java where candor-rust and candor-swift charge AS-EFF-008 on identical code.
+#
+# THE ROW IS THE CHAINED VERDICT, not the field. Every engine already fails closed on the SAME code in ONE
+# package (AS-EFF-008 keys on "no visible literal"), so a single-crate row would pass on all four and
+# prove nothing; the defect lives entirely at the boundary, where the consumer's own literal is what makes
+# the surface look complete. The field's presence is checked too, but the verdict is the teeth.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P50_OK=0
+IN="$W/incomplete50"; mkdir -p "$IN"
+p50() { # $1 engine ; $2 dep-report json ; $3 consumer gate rc ; $4 consumer gate output
+  python3 "$HERE/incomplete_check.py" "$1" "$2" "$3" "$4" || P50_OK=1
+}
+echo "[50] \`incomplete\` CROSSES THE SCAN BOUNDARY  (SPEC §2 ⟨0.29⟩ — a benign local literal must not certify a dep's unseen one)"
+printf 'allow Fs /tmp/lit\n' > "$IN/allow.pol"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$IN/rs/dep/src" "$IN/rs/app/src"
+  printf '[package]\nname="deplib"\nversion="1.0.0"\nedition="2021"\n' > "$IN/rs/dep/Cargo.toml"
+  printf 'pub fn dep_write(p: &str) { let _ = std::fs::write(p, b"x"); }\n' > "$IN/rs/dep/src/lib.rs"
+  ( cd "$IN/rs/dep" && "$SCAN" . --out r >/dev/null 2>&1 )
+  rdep="$(ls "$IN"/rs/dep/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  printf '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\ndeplib = "1"\n' > "$IN/rs/app/Cargo.toml"
+  printf 'pub fn consumer() { let _ = std::fs::write("/tmp/lit", b"x"); deplib::dep_write("/etc/passwd"); }\n' > "$IN/rs/app/src/lib.rs"
+  rout="$( cd "$IN/rs/app" && CANDOR_DEPS="$rdep" "$SCAN" . --out r --policy "$IN/allow.pol" 2>&1 )"; rrc=$?
+  p50 "rust" "$rdep" "$rrc" "$rout"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$IN/ts/dep/src" "$IN/ts/app/src" "$IN/ts/app/node_modules/deplib/src"
+  printf '{"name":"deplib","version":"1.0.0"}\n' > "$IN/ts/dep/package.json"
+  printf 'import * as fsm from "node:fs";\nexport function depWrite(p: string): void { fsm.writeFileSync(p, "x"); }\n' > "$IN/ts/dep/src/a.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$IN/ts/dep" --out "$IN/ts/dep/r" >/dev/null 2>&1 )
+  cp "$IN/ts/dep/package.json" "$IN/ts/app/node_modules/deplib/"
+  cp "$IN/ts/dep/src/a.ts" "$IN/ts/app/node_modules/deplib/src/"
+  printf '{"name":"app","version":"0.0.0"}\n' > "$IN/ts/app/package.json"
+  printf 'import * as fsm from "node:fs";\nimport { depWrite } from "deplib/src/a";\nexport function consumer(): void { fsm.writeFileSync("/tmp/lit", "x"); depWrite("/etc/passwd"); }\n' > "$IN/ts/app/src/a.ts"
+  tout="$( cd "$TS_DIR" && CANDOR_DEPS="$IN/ts/dep/r.json" node scan.mjs "$IN/ts/app" --out "$IN/ts/app/r" --policy "$IN/allow.pol" 2>&1 )"; trc=$?
+  p50 "ts" "$IN/ts/dep/r.json" "$trc" "$tout"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+mkdir -p "$IN/java/dep" "$IN/java/app"
+printf 'package deplib;\npublic class D { public static void depWrite(String p) throws Exception { java.nio.file.Files.write(java.nio.file.Path.of(p), new byte[0]); } }\n' > "$IN/java/dep/D.java"
+javac -d "$IN/java/dep/classes" "$IN/java/dep/D.java" 2>/dev/null
+java -jar "$JAR" "$IN/java/dep/classes" --json "$IN/java/dep/r.json" >/dev/null 2>&1
+printf 'package app;\npublic class A {\n  public static void consumer() throws Exception {\n    java.nio.file.Files.write(java.nio.file.Path.of("/tmp/lit"), new byte[0]);\n    deplib.D.depWrite("/etc/passwd");\n  }\n}\n' > "$IN/java/app/A.java"
+javac -cp "$IN/java/dep/classes" -d "$IN/java/app/classes" "$IN/java/app/A.java" 2>/dev/null
+jout="$(CANDOR_DEPS="$IN/java/dep/r.json" java -jar "$JAR" "$IN/java/app/classes" --policy "$IN/allow.pol" 2>&1)"; jrc=$?
+p50 "java" "$IN/java/dep/r.json" "$jrc" "$jout"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$IN/sw/dep/Sources/deplib" "$IN/sw/app/Sources/App"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "deplib", targets: [.target(name: "deplib")])\n' > "$IN/sw/dep/Package.swift"
+  printf 'import Foundation\npublic func depWrite(_ p: String) { FileManager.default.createFile(atPath: p, contents: nil) }\n' > "$IN/sw/dep/Sources/deplib/a.swift"
+  ( cd "$IN/sw/dep" && "$SW_BIN" . --out r >/dev/null 2>&1 )
+  sdep="$(ls "$IN"/sw/dep/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "App", targets: [.target(name: "App")])\n' > "$IN/sw/app/Package.swift"
+  printf 'import Foundation\nimport deplib\npublic func consumer() { FileManager.default.createFile(atPath: "/tmp/lit", contents: nil); depWrite("/etc/passwd") }\n' > "$IN/sw/app/Sources/App/a.swift"
+  sout="$( cd "$IN/sw/app" && CANDOR_DEPS="$sdep" "$SW_BIN" . --out r --policy "$IN/allow.pol" 2>&1 )"; src=$?
+  p50 "swift" "$sdep" "$src" "$sout"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 50 — \`incomplete\` crosses the scan boundary (SPEC §2 ⟨0.29⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: rdep sdep — the DEPENDENCY report, which incomplete_check.py asserts declares `incomplete` with NO `paths` before it looks at any verdict; without that half the row could pass on an engine charging AS-EFF-008 for an unrelated reason (ts and java pass their dep report as a literal path rather than a variable)
+if [ "$P50_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED publishes the undetermined locator and carries it across the"
+  echo "     chain, so a consumer's own benign literal cannot certify a dependency's unseen one"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
