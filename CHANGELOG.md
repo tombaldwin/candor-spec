@@ -14,6 +14,17 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §3.1's answerability list was a CLOSED ENUMERATION and `only` had nowhere to join it.** It
+  read "exactly three refusals", so §6.2's `only` clause pointed back at a list that did not contain the
+  rule it was pointing about. *A rule stated as a COUNT of its members stops being true the next time the
+  domain grows* — the count is gone and the members carry it. `only` is now the fourth entry, with the
+  stricter reason it is unanswerable for.
+- **⟨0.29⟩ PART 4 could not see a new rule kind.** The four-way grammar differential — the part that
+  exists to catch exactly the divergence where two engines omitted `only` from `parsepolicy` — read three
+  keys and stopped, over a battery containing no `only` line. Both fixed: the battery gained well-formed
+  AND malformed `only` lines (every engine must DROP the same lines, not just accept the same ones), and
+  the comparison a fourth key, read with `.get` so an engine that has not shipped the kind DIVERGES rather
+  than crashing the differential.
 - **⟨0.29⟩ §2.1 `resolves` names `incomplete`.** The rung that closed an overloaded absence INSIDE a
   report (`paths` absent = "no path" or "a path I could not see") left an overloaded absence ABOUT the
   report: a consumer could not tell a producer that computes undetermined locators and found none from one

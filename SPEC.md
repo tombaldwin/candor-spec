@@ -1652,8 +1652,11 @@ a fixture making the scoped arms non-vacuous). Anything less than byte-equality 
 into two gates.
 
 ⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never
-evaluated.** Reaching equivalence required exactly three refusals, each found by measurement and each
-FAIL-OPEN if approximated instead:
+evaluated.** Reaching equivalence required the refusals below, each found by measurement and each
+FAIL-OPEN if approximated instead. ⟨0.29⟩ *This list read "exactly three" and was a CLOSED enumeration —
+so when `only` was added it had nowhere to be admitted, and §6.2's `only` clause pointed back at a list
+that did not contain it. A rule stated as a count of its members is a rule that silently stops being true
+the next time the domain grows; the count is gone and the members are what carry it.*:
 
 - **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into
   a wholly pure unit is invisible in the report. Unanswerable.
@@ -1667,6 +1670,10 @@ FAIL-OPEN if approximated instead:
   requirement; the wire's contents are not the reason, they were merely the first reason noticed.* The reference engine's first attempt *reconstructed* it for `Net` from `netClass ∋ unknown-host`;
   the equivalence test refuted that in one run, because the same token also names a merely **unrecognised**
   host, so it flagged two functions the scan passes.
+- ⟨0.29⟩ **`only <A> -> <B> …`** — the permission form, and unanswerable for a STRICTER reason than
+  `forbid`: `forbid` asks whether ONE named crossing is present, `only` asks whether EVERY reached scope
+  is on a list, so a report that omits a crossing does not merely under-report — it turns a green into a
+  claim of COMPLETENESS. A route that discloses it MUST also REMOVE it from the evaluation.
 - **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a
   live fail-open rather than a theoretical one: `deny Net[unknown-host]` over a `Net`-bearing entry with no
   `netClass` matched against an empty set and returned **exit 0**, where the bare `deny Net` returns 1 —
