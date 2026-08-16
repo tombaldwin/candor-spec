@@ -80,8 +80,16 @@ def main():
         return fail(engine, f"`only A -> B` exited {rc_short} over a tree where A reaches an UNLISTED "
                             "scope, expected 1 — the form's entire purpose is that what the list omits "
                             "is a violation")
-    if "AS-EFF-009" not in out_short:
-        return fail(engine, f"the violation is not charged as AS-EFF-009: {out_short[:200]}")
+    # ⟨0.29⟩ ITS OWN CODE, and the row asserts BOTH halves: 011 present AND 009 absent. A rule code is the
+    # handle a CI suppression keys on, so sharing `forbid`'s would make an existing suppression silently
+    # mute a class of violation its author never accepted. Asserting only "011 appears" would pass on an
+    # engine that emitted both, which is the same collision wearing a second label.
+    if "AS-EFF-011" not in out_short:
+        return fail(engine, f"the violation is not charged as AS-EFF-011: {out_short[:200]}")
+    if "AS-EFF-009" in out_short:
+        return fail(engine, "an `only` violation is ALSO charged as AS-EFF-009 — `forbid`'s code. A "
+                            "suppression written for a forbid crossing would silently mute this: "
+                            f"{out_short[:200]}")
     if "infra" not in out_short:
         return fail(engine, "the message never names what was reached, so an operator is told a rule "
                             f"fired and not what tripped it: {out_short[:200]}")

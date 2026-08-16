@@ -8684,7 +8684,7 @@ fi
 
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
-# PART 49 — THE `only <A> -> <B> …` PERMISSION FORM (SPEC §6.2 ⟨0.29⟩, AS-EFF-009)          [TIER 1]
+# PART 49 — THE `only <A> -> <B> …` PERMISSION FORM (SPEC §6.2 ⟨0.29⟩, AS-EFF-011)          [TIER 1]
 #
 # `forbid` fails OPEN — the dependency you forgot to prohibit is silently permitted — so "this package is
 # a leaf" can only be spelled as an enumeration of what it must not reach, a list that does not cover a
