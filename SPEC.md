@@ -751,6 +751,17 @@ already carry.
   load-bearing rather than descriptive: an engine that cannot read one of its own excluded classes —
   candor-java reads BYTECODE, so an uncompiled `.java` is unreadable to its peek — would otherwise publish
   `[]` over files nobody opened, which is the ⟨0.26⟩ partial-manifest failure exactly.
+- ⟨0.29⟩ **`peeked: true` MUST mean every file of that class was READ on this run**, not that the class is
+  one the engine is willing to peek. A file the peek OPENED and could not read — a parse failure, an
+  archive whose members will not load — withdraws the claim, because `outOfScope: []` beside `peeked: true`
+  is the sentence *there is nothing in those files* and an unread file cannot support it. Since the peek
+  runs the engine's ordinary path (clause above), it produces its own `unanalyzed` manifest, and that
+  manifest is the evidence: a producer that discards it publishes a claim it holds the disproof of.
+  **The claim is withdrawn PER CLASS**, not for the whole report — a parse failure is a fact about one
+  file, and an engine peeking several classes in one run (candor-swift reads `harness-target` and
+  `manifest` together) must not let one unreadable test file delete what it did read. An unread file the
+  producer cannot attribute to a class withdraws the claim for ALL of them: fail closed.
+
 - ⟨0.29⟩ **The peek MUST reach its finding through the engine's ordinary analysis path over a different FILE
   SET, never through a second one.** Two judgement paths drift, and a drifted second opinion reported as a
   warning is worse than no warning: the reader cannot tell a real finding from two code paths disagreeing.
@@ -1009,6 +1020,18 @@ query), informative-not-complete, never emitted unless read from a literal. A pr
 `tables` from a *declarative* mapping the source makes statically visible (a JPA `@Table(name=…)` /
 TypeORM `@Entity('…')` entity reached through a typed repository): the same decidability bar, read
 from an annotation literal instead of a SQL one.
+
+⟨0.29⟩ **A literal surface MUST be read from the POSITION that names the locator, never from whichever
+argument of the call happens to be a literal.** §4's subprocess-boundary clause already states this for the
+`Exec` head — argv[0] is the program, and `spawn(tool, "curl")` with a dynamic `tool` must not refine —
+and the rule is the same for every surface: the path, the host, the command and the query each sit at a
+known argument position, and a literal anywhere else is DATA. Reading it as the locator FABRICATES a
+destination, which is worse than reading none: `write(userPath, "/tmp/lit")` publishing
+`paths: ["/tmp/lit"]` lets `allow Fs /tmp/lit` certify a write to a runtime-controlled destination, so the
+operator's own allow-rule becomes the mechanism of the false all-clear. **Where an operation takes SEVERAL
+locator positions — a copy, a rename, a link — the surface is complete only when EVERY one of them is a
+literal**; one literal beside one runtime path is an unseen destination, and the unit MUST carry
+`incomplete` for that effect (§2) rather than publish the half it can see as though it were the whole.
 
 Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
 extraction is pinned token-for-token; the cross-impl vector battery

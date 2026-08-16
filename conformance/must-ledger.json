@@ -2710,6 +2710,18 @@
    "at": "6.2 The policy DSL (normative)",
    "excerpt": "⟨0.29⟩ only — the permission form, AS-EFF-011",
    "part": "PART 49"
+  },
+  {
+   "sha": "f20f6e8d7e1fa34c",
+   "at": "2. The report",
+   "excerpt": "⟨0.29⟩ peeked: true means every file of the class was READ — withdrawn per class",
+   "part": "PART 52"
+  },
+  {
+   "sha": "216721be78cd7832",
+   "at": "2. The report",
+   "excerpt": "⟨0.29⟩ a literal surface is read from the locator POSITION; every position of a multi-locator op",
+   "part": "PART 51"
   }
  ]
 }
