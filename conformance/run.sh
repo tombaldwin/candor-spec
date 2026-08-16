@@ -8394,7 +8394,7 @@ fi
 if [ -n "$TS_PRESENT" ]; then
   mkdir -p "$FB/ts/src"
   printf '{"name":"fb","version":"0.0.0"}\n' > "$FB/ts/package.json"
-  printf 'export namespace model {\n  export function inner(): number { return 2; }\n  export function outer(): number { return inner(); }\n}\n' > "$FB/ts/src/a.ts"
+  printf 'import * as fsm from "node:fs";\nexport namespace model {\n  export function inner(): number { return 2; }\n  export function outer(): number { return inner(); }\n}\n' > "$FB/ts/src/a.ts"
   printf 'forbid model -> model\n' > "$FB/ts/p.pol"
   printf 'deny Fs\n' > "$FB/ts/deny.pol"
   printf 'deny Fs\nforbid model -> model\n' > "$FB/ts/mixed.pol"
@@ -8678,6 +8678,118 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 49 — THE `only <A> -> <B> …` PERMISSION FORM (SPEC §6.2 ⟨0.29⟩, AS-EFF-009)          [TIER 1]
+#
+# `forbid` fails OPEN — the dependency you forgot to prohibit is silently permitted — so "this package is
+# a leaf" can only be spelled as an enumeration of what it must not reach, a list that does not cover a
+# package added tomorrow and says nothing about it. That is the allowlist hazard the family refuses
+# throughout the ANALYSIS, sitting in the POLICY LANGUAGE. `only` fails SAFE.
+#
+# THE ROWS ARE THE THREE RULINGS, NOT THE VIOLATION. Any engine walking a call graph produces the
+# violation; what a differential must hold is the decisions §6.2 pins, each of which silently changes what
+# a policy MEANS — the implicit `A -> A`, the walk that STOPS at a permitted scope, and zero-match measured
+# on `from` alone. See only_check.py for what each row rules out and how the fixture forces it.
+#
+# ONE FIXTURE SHAPE, FOUR LANGUAGES: `model` reaches `util` (permitted) and `infra` (not); `util` itself
+# reaches `deep`, which no rule ever permits. That last edge is what makes the STOP rule falsifiable — an
+# engine that descends past a permitted scope fails there and nowhere else.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P49_OK=0
+ON="$W/only49"; mkdir -p "$ON"
+p49() { # $1 engine ; $2..$9 as only_check.py takes them (the gate's rc and output are SEPARATE args)
+  python3 "$HERE/only_check.py" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" || P49_OK=1
+}
+echo "[49] THE \`only <A> -> <B> …\` PERMISSION FORM  (SPEC §6.2 ⟨0.29⟩ — forbid fails OPEN, only fails SAFE)"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$ON/rs/src"
+  printf '[package]\nname="lf"\nversion="0.0.0"\nedition="2021"\n' > "$ON/rs/Cargo.toml"
+  printf 'pub mod model {\n  pub fn shape() -> u32 { crate::util::helper() }\n  pub fn leaks() -> u32 { crate::infra::db_read() }\n}\npub mod util { pub fn helper() -> u32 { crate::deep::inner() } }\npub mod infra { pub fn db_read() -> u32 { let _ = std::fs::read("/tmp/x"); 9 } }\npub mod deep { pub fn inner() -> u32 { 1 } }\n' > "$ON/rs/src/lib.rs"
+  printf 'only model -> util\n'       > "$ON/rs/short.pol"
+  printf 'only model -> util infra\n' > "$ON/rs/full.pol"
+  printf 'only nosuch -> util\n'      > "$ON/rs/zero.pol"
+  # THE REPORT-ROUTE ROW NEEDED TWO THINGS TO STOP BEING VACUOUS, both measured rather than reasoned.
+  # (1) An ANSWERABLE rule beside the `only`: with an `only`-only policy every engine refuses OUTRIGHT
+  # before evaluating anything, so "no AS-EFF-009 was drawn" is true however broken the removal is.
+  # (2) An EFFECT in the fixture: a wholly pure tree produces a report with no entries and an empty
+  # call graph, so the leaked rule has nothing to walk and still draws nothing — leaving `only` in
+  # candor-ts's `answerable` passed this row twice before `infra` was given an `Fs`. `deny Net` is the
+  # answerable rule precisely because it does NOT fire here, so the expected exit stays the refusal's 2.
+  printf 'deny Net\nonly model -> util\n' > "$ON/rs/gate.pol"
+  rso="$( cd "$ON/rs" && "$SCAN" . --out r --policy short.pol 2>&1 )"; rsr=$?
+  rfo="$( cd "$ON/rs" && "$SCAN" . --out r2 --policy full.pol 2>&1 )"; rfr=$?
+  rzo="$( cd "$ON/rs" && "$SCAN" . --out r3 --policy zero.pol 2>&1 )"; rzr=$?
+  rrep="$(ls "$ON"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  rgo="$("$QUERY" gate --report "$rrep" --policy "$ON/rs/gate.pol" 2>&1)"; rgr=$?
+  p49 "rust" "$rsr" "$rso" "$rfr" "$rfo" "$rzr" "$rzo" "$rgr" "$rgo"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$ON/ts/src"
+  printf '{"name":"lf","version":"0.0.0"}\n' > "$ON/ts/package.json"
+  printf 'import * as fsm from "node:fs";\nexport namespace model {\n  export function shape(): number { return util.helper(); }\n  export function leaks(): number { return infra.dbRead(); }\n}\nexport namespace util { export function helper(): number { return deep.inner(); } }\nexport namespace infra { export function dbRead(): number { fsm.readFileSync("/tmp/x"); return 9; } }\nexport namespace deep { export function inner(): number { return 1; } }\n' > "$ON/ts/src/a.ts"
+  printf 'only model -> util\n'       > "$ON/ts/short.pol"
+  printf 'only model -> util infra\n' > "$ON/ts/full.pol"
+  printf 'only nosuch -> util\n'      > "$ON/ts/zero.pol"
+  printf 'deny Net\nonly model -> util\n' > "$ON/ts/gate.pol"
+  tso="$( cd "$TS_DIR" && node scan.mjs "$ON/ts" --out "$ON/ts/r" --policy "$ON/ts/short.pol" 2>&1 )"; tsr=$?
+  tfo="$( cd "$TS_DIR" && node scan.mjs "$ON/ts" --out "$ON/ts/r2" --policy "$ON/ts/full.pol" 2>&1 )"; tfr=$?
+  tzo="$( cd "$TS_DIR" && node scan.mjs "$ON/ts" --out "$ON/ts/r3" --policy "$ON/ts/zero.pol" 2>&1 )"; tzr=$?
+  tgo="$( cd "$TS_DIR" && node query.mjs gate --report "$ON/ts/r.json" --policy "$ON/ts/gate.pol" 2>&1 )"; tgr=$?
+  p49 "ts" "$tsr" "$tso" "$tfr" "$tfo" "$tzr" "$tzo" "$tgr" "$tgo"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+mkdir -p "$ON/java/src/util" "$ON/java/src/infra" "$ON/java/src/deep"
+printf 'package app;\npublic class M {\n  public static int shape() { return app.util.U.helper(); }\n  public static int leaks() { return app.infra.I.dbRead(); }\n}\n' > "$ON/java/src/M.java"
+printf 'package app.util;\npublic class U { public static int helper() { return app.deep.D.inner(); } }\n' > "$ON/java/src/util/U.java"
+printf 'package app.infra;\npublic class I { public static int dbRead() { try { java.nio.file.Files.readAllBytes(java.nio.file.Path.of("/tmp/x")); } catch (Exception e) {} return 9; } }\n' > "$ON/java/src/infra/I.java"
+printf 'package app.deep;\npublic class D { public static int inner() { return 1; } }\n' > "$ON/java/src/deep/D.java"
+javac -d "$ON/java/classes" $(find "$ON/java/src" -name '*.java') 2>/dev/null
+printf 'only app.M -> app.util\n'          > "$ON/java/short.pol"
+printf 'only app.M -> app.util app.infra\n' > "$ON/java/full.pol"
+printf 'only nosuch -> app.util\n'          > "$ON/java/zero.pol"
+printf 'deny Net\nonly app.M -> app.util\n'   > "$ON/java/gate.pol"
+jso="$(java -jar "$JAR" "$ON/java/classes" --policy "$ON/java/short.pol" 2>&1)"; jsr=$?
+jfo="$(java -jar "$JAR" "$ON/java/classes" --policy "$ON/java/full.pol" 2>&1)"; jfr=$?
+jzo="$(java -jar "$JAR" "$ON/java/classes" --policy "$ON/java/zero.pol" 2>&1)"; jzr=$?
+java -jar "$JAR" "$ON/java/classes" --json "$ON/java/r.json" >/dev/null 2>&1
+jgo="$(java -jar "$JAR" gate --report "$ON/java/r.json" --policy "$ON/java/gate.pol" 2>&1)"; jgr=$?
+# The java fixture's scopes carry the `app.` prefix its packages have; the checker matches on the
+# SUBSTRINGS the messages share across engines (`infra`, `deep`, `only … -> …`), so the rule text it
+# looks for is spelled per engine here rather than assumed identical.
+jso="${jso//app.M -> app.util/model -> util}"; jgo="${jgo//app.M -> app.util/model -> util}"
+jzo="${jzo//nosuch -> app.util/nosuch -> util}"
+p49 "java" "$jsr" "$jso" "$jfr" "$jfo" "$jzr" "$jzo" "$jgr" "$jgo"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$ON/sw/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$ON/sw/Package.swift"
+  printf 'enum model {\n  static func shape() -> Int { return util.helper() }\n  static func leaks() -> Int { return infra.dbRead() }\n}\nenum util { static func helper() -> Int { return deep.inner() } }\nimport Foundation\nenum infra { static func dbRead() -> Int { _ = FileManager.default.contents(atPath: "/tmp/x"); return 9 } }\nenum deep { static func inner() -> Int { return 1 } }\n' > "$ON/sw/Sources/S/a.swift"
+  printf 'only model -> util\n'       > "$ON/sw/short.pol"
+  printf 'only model -> util infra\n' > "$ON/sw/full.pol"
+  printf 'only nosuch -> util\n'      > "$ON/sw/zero.pol"
+  printf 'deny Net\nonly model -> util\n' > "$ON/sw/gate.pol"
+  sso="$( cd "$ON/sw" && "$SW_BIN" . --out r --policy short.pol 2>&1 )"; ssr=$?
+  sfo="$( cd "$ON/sw" && "$SW_BIN" . --out r2 --policy full.pol 2>&1 )"; sfr=$?
+  szo="$( cd "$ON/sw" && "$SW_BIN" . --out r3 --policy zero.pol 2>&1 )"; szr=$?
+  srep="$(ls "$ON"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  sgo="$("$SW_BIN" gate --report "$srep" --policy "$ON/sw/gate.pol" 2>&1)"; sgr=$?
+  p49 "swift" "$ssr" "$sso" "$sfr" "$sfo" "$szr" "$szo" "$sgr" "$sgo"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 49 — the \`only\` permission form (SPEC §6.2 ⟨0.29⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: rfr tfr jfr sfr — the SAME tree under a policy that PERMITS everything it reaches (full.pol), per engine; each must exit 0, because without it "exit 1" is indistinguishable from an engine that fires on any `only` rule at all
+if [ "$P49_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED charges what the permission list omits, stops at a permitted"
+  echo "     scope, discloses a rule whose \`from\` binds nothing, and refuses the form on a report route"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
