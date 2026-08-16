@@ -14,6 +14,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ PART 47's naming row STRENGTHENED — from "the word `forbid` appears" to the RULE TEXT.** The
+  weaker form carried a comment saying it was weaker than it looked and why: two engines could not
+  satisfy the stronger one. Re-measured before changing anything, and the filing was half wrong — rust,
+  java **and candor-ts** all printed `forbid model -> model`; only candor-swift printed a bare count. A
+  two-engine item was a one-engine item. Both engines' messages now carry the rule in `why` itself rather
+  than relying on a caller's prefix, because three ts callers print `why` alone (including the MCP agent
+  channel). Falsified: reverting swift to the count-only message fires the new arm, with a diagnosis
+  distinct from the never-says-`forbid` one.
 - **⟨0.29⟩ §2 THE FILE SET — what a report says about code it never opened** (FILE-SET-DESIGN.md, rung 2
   of 4: *disclose + peek*), pinned four-way by **PART 48**. ⟨0.21⟩'s `unanalyzed` names files an engine
   OPENED and could not read; nothing named files it never opened at all, and a consumer cannot tell the
