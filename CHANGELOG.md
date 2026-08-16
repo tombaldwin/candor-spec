@@ -14,6 +14,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §2.1 `resolves` names `incomplete`.** The rung that closed an overloaded absence INSIDE a
+  report (`paths` absent = "no path" or "a path I could not see") left an overloaded absence ABOUT the
+  report: a consumer could not tell a producer that computes undetermined locators and found none from one
+  that never computes them. That is what `resolves` is for, and the `fs` clause beside it makes the same
+  argument. All four declare it; PART 50 asserts the declaration before reading any absence as meaningful.
 - **⟨0.29⟩ §2 `incomplete` — STATED OVER THE CONDITION, not over one use of it**, and pinned four-way by
   **PART 50**. The field was named only in §2's chained-JOIN clause ("a join that carries the effect and
   drops `incomplete` lets a benign literal in the consumer certify what the dependency declared

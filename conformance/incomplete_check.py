@@ -49,6 +49,17 @@ def main():
         return fail(f"the dependency report is unreadable ({dep_path}: {e}) — the fixture did not scan, "
                     "and every assertion below would be about a file that is not there")
 
+    # ⟨0.29⟩ THE PRODUCER DECLARES THE SURFACE. An absent `incomplete` is overloaded between "does not
+    # compute undetermined locators" and "computed them and found none" — the ambiguity §2.1's `resolves`
+    # exists to remove, one field over from the `fs` case it was built for. Checked FIRST, because every
+    # assertion below reads the field's absence as meaningful and that reading is only licensed once the
+    # producer has said it computes it.
+    resolves = dep.get("resolves")
+    if not isinstance(resolves, list) or "incomplete" not in resolves:
+        return fail("the producer does not declare `incomplete` in `resolves`, so a consumer cannot tell "
+                    "'computed and found none' from 'never computed it' — and every absence below would "
+                    f"be unreadable: resolves={resolves!r}")
+
     fns = dep.get("functions") or []
     if not fns:
         return fail("the dependency report has NO entries — its `Fs` writer is missing, so the row would "

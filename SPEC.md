@@ -261,7 +261,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 ```json
 {
   "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.28" },
-  "resolves":  ["fs"],                                          // §2.1 ⟨0.27⟩ optional refinements this producer computes
+  "resolves":  ["fs", "incomplete"],                             // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
 ```
@@ -980,6 +980,12 @@ report, §2.1, that carried no `fs`, so no read/write is locally observable), th
 but never writes"), which is the §4 trust contract's forbidden direction (under-claiming an effect).
 Omission says "`Fs`, kind undetermined"; a present `fs` is an affirmative read/write classification.
 
+⟨0.29⟩ **`incomplete` is named by `resolves` too, on the same argument.** An absent `incomplete` is
+overloaded between *"this producer does not compute undetermined locators"* and *"it computed them and
+found none"* — exactly the ambiguity `resolves` exists to remove, one field over. A producer that computes
+the field declares it; one that does not MUST NOT, since listing it would turn "unimplemented" into a false
+"nothing undetermined", which is the inversion in the direction that certifies.
+
 ⟨0.27⟩ `fs` is the first surface named by the envelope's **`resolves`** array (§2.1). Read the two
 together: `resolves` containing `fs` is what makes an absent `fs` mean "reached, kind undetermined" rather
 than "this engine does not track kinds". Without the declaration the omission is unreadable, which is how
@@ -1078,7 +1084,7 @@ implementation MAY fall back to that sidecar for provenance.
 
 ```json
 { "candor": { "version": "…", "toolchain": "…", "spec": "0.28" },
-  "resolves": ["fs"],
+  "resolves": ["fs", "incomplete"],
   "functions": [ … ] }
 ```
 
