@@ -9066,6 +9066,94 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 53 — THE PEEK IS A PRODUCER READING THE POLICY, SO §3.1 BINDS IT (SPEC §2 ⟨0.29⟩)      [TIER 1]
+#
+# §2 already says it — "Over a policy the engine REFUSES, the key is ABSENT for the reason §3.1 withholds
+# `ok`". The clause shipped WITH the rung and three of the four engines did not implement it: over
+# `deny Net` beside a typo'd effect token, candor-java withheld the key and candor-rust, candor-ts and
+# candor-swift published it at exit 2. A MUST can exist in the spec and in one implementation.
+#
+# THE HARM IS THE KEY, NOT THE FINDING. `outOfScope: []` beside a refusal reads "a policy was configured,
+# I looked at what it denies, and there is nothing" — a look taken against rules no route would honour,
+# searching the parser's SALVAGE of an unhonourable file. That is the silent rewriting the refusal exists
+# to prevent, one layer down from where it was prevented.
+#
+# THREE SHAPES: A refused (key ABSENT), B honoured-and-dirty (key PRESENT with the finding), C
+# honoured-and-clean (key PRESENT and EMPTY). B stops an engine passing A by never publishing the key —
+# maximally cautious, and it deletes the feature. C stops it collapsing asked-and-clear ⟨0.27⟩ into
+# cannot-answer ⟨0.26⟩, which is the overload the rung exists to remove.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P53_OK=0
+RP="$W/refused53"; mkdir -p "$RP"
+p53() { # $1 engine ; $2..$7 rc/report triples for shapes A B C
+  python3 "$HERE/refused_peek_check.py" "$@" || P53_OK=1
+}
+echo "[53] THE PEEK IS A PRODUCER READING THE POLICY  (SPEC §2 ⟨0.29⟩ — a refused policy leaves the key ABSENT)"
+printf 'deny Net\ndeny Nonsense\n' > "$RP/refused.pol"   # a typo'd effect token: every route refuses
+printf 'deny Net\n' > "$RP/stands.pol"
+printf 'deny Db\n'  > "$RP/other.pol"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$RP/rs/src" "$RP/rs/tests"
+  printf '[package]\nname="ref53"\nversion="0.0.0"\nedition="2021"\n' > "$RP/rs/Cargo.toml"
+  printf 'pub fn lib_fn() -> i32 { 1 }\n' > "$RP/rs/src/lib.rs"
+  printf 'pub fn t() { let _ = std::net::TcpStream::connect("1.2.3.4:80"); }\n' > "$RP/rs/tests/h.rs"
+  ( cd "$RP/rs" && "$SCAN" . --out a --policy "$RP/refused.pol" >/dev/null 2>&1 ); ra=$?
+  ( cd "$RP/rs" && "$SCAN" . --out b --policy "$RP/stands.pol"  >/dev/null 2>&1 ); rb=$?
+  ( cd "$RP/rs" && "$SCAN" . --out c --policy "$RP/other.pol"   >/dev/null 2>&1 ); rc3=$?
+  p53 "rust" "$ra" "$RP/rs/a.ref53.scan.json" "$rb" "$RP/rs/b.ref53.scan.json" \
+      "$rc3" "$RP/rs/c.ref53.scan.json"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$RP/ts/src" "$RP/ts/test"
+  printf '{"name":"ref53","version":"0.0.0"}\n' > "$RP/ts/package.json"
+  printf 'export function libFn(): number { return 1; }\n' > "$RP/ts/src/a.ts"
+  printf 'import * as https from "node:https";\nexport function t(): void { https.get("https://e.example/x"); }\n' > "$RP/ts/test/h.test.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/a" --policy "$RP/refused.pol" >/dev/null 2>&1 ); ta=$?
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/b" --policy "$RP/stands.pol"  >/dev/null 2>&1 ); tb=$?
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/c" --policy "$RP/other.pol"   >/dev/null 2>&1 ); tc=$?
+  p53 "ts" "$ta" "$RP/ts/a.json" "$tb" "$RP/ts/b.json" "$tc" "$RP/ts/c.json"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+mkdir -p "$RP/java/src" "$RP/java/stage/lib"
+printf 'package app;\npublic class M { public static int m() { return 1; } }\n' > "$RP/java/src/M.java"
+printf 'package lib;\npublic class L { public static void reach() throws Exception { new java.net.Socket("1.2.3.4", 80).close(); } }\n' > "$RP/java/src/L.java"
+javac -d "$RP/java/classes" "$RP/java/src/M.java" 2>/dev/null
+javac -d "$RP/java/libc" "$RP/java/src/L.java" 2>/dev/null
+cp "$RP/java/libc/lib/L.class" "$RP/java/stage/lib/" 2>/dev/null
+( cd "$RP/java/stage" && jar cf "$RP/java/classes/lib.jar" lib/ ) 2>/dev/null
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/a.json" --policy "$RP/refused.pol" >/dev/null 2>&1; ja=$?
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/b.json" --policy "$RP/stands.pol"  >/dev/null 2>&1; jb=$?
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/c.json" --policy "$RP/other.pol"   >/dev/null 2>&1; jc=$?
+p53 "java" "$ja" "$RP/java/a.json" "$jb" "$RP/java/b.json" "$jc" "$RP/java/c.json"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$RP/sw/Sources/S" "$RP/sw/Tests/STests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "STests", dependencies: ["S"])])\n' > "$RP/sw/Package.swift"
+  printf 'public func libFn() -> Int { return 1 }\n' > "$RP/sw/Sources/S/a.swift"
+  printf 'import Foundation\npublic func t() { _ = try? String(contentsOf: URL(string: "https://e.example/x")!, encoding: .utf8) }\n' > "$RP/sw/Tests/STests/t.swift"
+  swr() { ls "$RP"/sw/"$1".*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1; }
+  ( cd "$RP/sw" && "$SW_BIN" . --out a --policy "$RP/refused.pol" >/dev/null 2>&1 ); sa=$?
+  ( cd "$RP/sw" && "$SW_BIN" . --out b --policy "$RP/stands.pol"  >/dev/null 2>&1 ); sb=$?
+  ( cd "$RP/sw" && "$SW_BIN" . --out c --policy "$RP/other.pol"   >/dev/null 2>&1 ); sc=$?
+  p53 "swift" "$sa" "$(swr a)" "$sb" "$(swr b)" "$sc" "$(swr c)"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 53 — the peek is a producer reading the policy, so §3.1 binds it (SPEC §2 ⟨0.29⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: shape B — a policy that STANDS and denies the effect in an excluded file must still publish the finding, because an engine that never emits the key passes shape A while deleting the ⟨0.29⟩ peek and looking maximally cautious doing it; shape C — a policy that stands and denies something else must publish present-and-EMPTY, so asked-and-clear ⟨0.27⟩ is not collapsed into cannot-answer ⟨0.26⟩
+# CONTROLS: the exit codes are asserted before the keys — 2 for the refusal, 0 for both honoured runs — so shape A cannot pass on an engine that simply HONOURED the typo'd token
+if [ "$P53_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED withholds the peek's key over a policy it refuses, and publishes"
+  echo "     it (finding, or a meant empty) over one it honours"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
@@ -9077,7 +9165,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured + an `Fs` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is `peeked` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured + an `Fs` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is `peeked` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class + the peek withholds its key over a policy the engine refuses, exactly as the gate withholds `ok`)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
