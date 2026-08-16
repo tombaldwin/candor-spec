@@ -8880,6 +8880,93 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 51 — AN `Fs` PATH LITERAL COMES FROM THE PATH POSITION (SPEC §4)                     [TIER 1]
+#
+# candor-ts states this rule at the `Exec` head — "the head MUST be argv[0], NOT any literal arg:
+# `spawn(toolVar, "curl")` names no static program, so its trailing literal must not fabricate Net" — and
+# the block below it says the discipline was "generalized from Exec to Net". It stopped there. `Fs` took
+# the first string literal ANYWHERE in the call and published it as the destination.
+#
+# MEASURED: `write(userPath, "/tmp/lit")` published `paths: ["/tmp/lit"]` — the BYTES — so `allow Fs
+# /tmp/lit` answered `policy ✓` at exit 0 in candor-rust and candor-ts, where candor-java and candor-swift
+# fail closed on identical code. A green gate certifying a write to a runtime-controlled destination, with
+# the operator's own allow-rule as the mechanism.
+#
+# THREE UNITS, all load-bearing: the defect (`exfil`), the OVER-CHARGE CONTROL (`okLit` — a fully-literal
+# write must still certify, or the fix is "stop reading literals" and the tool answers nothing), and the
+# two-path case (`twoPath` — a literal at position 0 and a runtime path at position 1 is NOT a visible
+# surface, so the property is every path position, not the first one).
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P51_OK=0
+FP="$W/fspos51"; mkdir -p "$FP"
+p51() { # $1 engine ; $2 report ; $3 gate rc ; $4 gate output
+  python3 "$HERE/fs_position_check.py" "$1" "$2" "$3" "$4" || P51_OK=1
+}
+echo "[51] AN \`Fs\` PATH LITERAL COMES FROM THE PATH POSITION  (SPEC §4 — a content literal must not name a destination)"
+printf 'allow Fs /tmp/lit\n' > "$FP/allow.pol"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$FP/rs/src"
+  printf '[package]\nname="fspos"\nversion="0.0.0"\nedition="2021"\n' > "$FP/rs/Cargo.toml"
+  { printf '#![allow(non_snake_case)]\n'
+    printf 'pub fn exfil(p: &str) { let _ = std::fs::write(p, "/tmp/lit"); }\n'
+    printf 'pub fn okLit() { let _ = std::fs::write("/tmp/lit", "x"); }\n'
+    printf 'pub fn twoPath(d: &str) { let _ = std::fs::copy("/tmp/lit", d); }\n'
+  } > "$FP/rs/src/lib.rs"
+  rout="$( cd "$FP/rs" && "$SCAN" . --out r --policy "$FP/allow.pol" 2>&1 )"; rrc=$?
+  rrep="$(ls "$FP"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  p51 "rust" "$rrep" "$rrc" "$rout"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$FP/ts/src"
+  printf '{"name":"fspos","version":"0.0.0"}\n' > "$FP/ts/package.json"
+  { printf 'import * as fsm from "node:fs";\n'
+    printf 'export function exfil(p: string): void { fsm.writeFileSync(p, "/tmp/lit"); }\n'
+    printf 'export function okLit(): void { fsm.writeFileSync("/tmp/lit", "x"); }\n'
+    printf 'export function twoPath(d: string): void { fsm.copyFileSync("/tmp/lit", d); }\n'
+  } > "$FP/ts/src/a.ts"
+  tout="$( cd "$TS_DIR" && node scan.mjs "$FP/ts" --out "$FP/ts/r" --policy "$FP/allow.pol" 2>&1 )"; trc=$?
+  p51 "ts" "$FP/ts/r.json" "$trc" "$tout"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+mkdir -p "$FP/java"
+{ printf 'package x;\nimport java.nio.file.*;\npublic class A {\n'
+  printf '  public static void exfil(String p) throws Exception { Files.writeString(Path.of(p), "/tmp/lit"); }\n'
+  printf '  public static void okLit() throws Exception { Files.writeString(Path.of("/tmp/lit"), "x"); }\n'
+  printf '  public static void twoPath(String d) throws Exception { Files.copy(Path.of("/tmp/lit"), Path.of(d)); }\n'
+  printf '}\n'
+} > "$FP/java/A.java"
+javac -d "$FP/java/classes" "$FP/java/A.java" 2>/dev/null
+jout="$(java -jar "$JAR" "$FP/java/classes" --json "$FP/java/r.json" --policy "$FP/allow.pol" 2>&1)"; jrc=$?
+p51 "java" "$FP/java/r.json" "$jrc" "$jout"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$FP/sw/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$FP/sw/Package.swift"
+  { printf 'import Foundation\n'
+    printf 'public func exfil(_ p: String) { FileManager.default.createFile(atPath: p, contents: "/tmp/lit".data(using: .utf8)) }\n'
+    printf 'public func okLit() { FileManager.default.createFile(atPath: "/tmp/lit", contents: nil) }\n'
+    printf 'public func twoPath(_ d: String) throws { try FileManager.default.copyItem(atPath: "/tmp/lit", toPath: d) }\n'
+  } > "$FP/sw/Sources/S/a.swift"
+  sout="$( cd "$FP/sw" && "$SW_BIN" . --out r --policy "$FP/allow.pol" 2>&1 )"; src=$?
+  srep="$(ls "$FP"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  p51 "swift" "$srep" "$src" "$sout"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 51 — an \`Fs\` path literal comes from the path position (SPEC §4)"
+# ENGINES: rust java ts swift
+# CONTROLS: okLit — a fully-literal write must STILL publish its path and stay unmarked, so an engine cannot satisfy this row by giving up the Fs surface; and it must be ABSENT from the violation output, so the exit 1 is this defect rather than an over-charge
+if [ "$P51_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED reads the path from the PATH POSITION: a literal in the content"
+  echo "     position names no destination, and one literal out of two path positions is not a surface"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
@@ -8891,7 +8978,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured + an `Fs` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
