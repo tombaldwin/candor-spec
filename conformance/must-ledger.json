@@ -2698,6 +2698,12 @@
    "at": "2. The report",
    "excerpt": "⟨0.29⟩ `incomplete` — the undetermined locator",
    "part": "PART 50"
+  },
+  {
+   "sha": "9d3876f3de2336e2",
+   "at": "2. The report",
+   "excerpt": "⟨0.29⟩ `incomplete` is named by `resolves` too",
+   "part": "PART 50"
   }
  ]
 }
