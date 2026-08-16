@@ -14,6 +14,23 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §2 a literal surface is read from the LOCATOR POSITION.** §4 already stated it for the `Exec`
+  head — argv[0] is the program, and `spawn(tool, "curl")` with a dynamic head must not refine — and the
+  same rule was never written for the other three surfaces. MEASURED: `write(userPath, "/tmp/lit")`
+  published `paths: ["/tmp/lit"]`, the BYTES, so `allow Fs /tmp/lit` certified a write to a
+  runtime-controlled destination at exit 0 in two engines while the other two failed closed. Where an
+  operation takes several locator positions the surface is complete only when EVERY one is a literal.
+  Conformance PART 51, over-charge control included: a fully-literal write must still certify, or the
+  rule is satisfied by giving up the surface.
+- **⟨0.29⟩ §2 `peeked: true` means every file of the class was READ.** The rung made the flag an outcome
+  and stopped one level short: the peek runs the engine's ordinary path, so it writes its own ⟨0.21⟩
+  `unanalyzed` manifest, and every engine discarded it — an excluded file that failed to parse inside the
+  peek published `peeked: true` beside `outOfScope: []`. A producer publishing a claim it holds the
+  disproof of. Withdrawn PER CLASS; an unattributable unread file withdraws all. Conformance PART 52.
+- **⟨0.29⟩ §2's refused-policy clause had one implementation.** "Over a policy the engine REFUSES, the
+  key is ABSENT" shipped WITH the rung; three of four engines published `outOfScope` at exit 2 anyway.
+  A MUST can exist in the spec and in one engine. Conformance PART 53 — and the §2 statement's MUST-ledger
+  entry now names PART 48 + PART 53, because PART 48 owned the clause and could not see this half of it.
 - **⟨0.29⟩ §6 `AS-EFF-011` — `only` gets its own code.** It charged `AS-EFF-009` for one commit, on the
   reasoning that the code already means "calls into a layer a declared dependency rule forbids" and an
   `only` is one — true about the ENGINE, wrong about the CONSUMER. A code is what a CI suppression, a
