@@ -2632,6 +2632,24 @@
    "at": "6.2 The policy DSL (normative)",
    "excerpt": "*⟨0.29⟩ This paragraph was, for one commit, a full restatement of the rule with its own grounding, and every p",
    "unenforced": "PERMANENT — a RETRACTION NOTE, and no row is possible. It records why the ⟨0.28.2⟩ version of this paragraph was withdrawn: it duplicated §3.1's MUST, grounded itself on reasoning §3.1 had already retracted for `allow`, and stated the refusal unconditionally against §3.1's precedence ruling. It binds the DOCUMENT'S AUTHORS, not the engines — the same standard as 033b20bcea03bc93. The behaviour it used to state is bound by PART 47 through §3.1; nothing here is a separate requirement an engine could fail. Kept rather than deleted because a wrong clause removed without its reason is a clause somebody rewrites."
+  },
+  {
+   "sha": "d0184d30d09c317c",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.29⟩ `\"excluded\": [ { \"class\": \"<token>\", \"count\": <n>, \"peeked\": <bool>, \"reason\": \"<why>\" } ]` — **THE S",
+   "part": "PART 48"
+  },
+  {
+   "sha": "b545d30032c153de",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.29⟩ `\"outOfScope\": [ { \"fn\": …, \"path\": …, \"effects\": [\"<Effect>\"…], \"class\": …, \"reason\": … } ]` — **THE",
+   "part": "PART 48"
+  },
+  {
+   "sha": "c26fccbc8d130f8d",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.29⟩ **The peek MUST reach its finding through the engine's ordinary analysis path over a different FILE S",
+   "part": "PART 48"
   }
  ]
 }

@@ -8535,6 +8535,141 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 48 — THE FILE SET: WHAT A REPORT SAYS ABOUT CODE IT NEVER OPENED (SPEC §2 ⟨0.29⟩)   [TIER 1]
+#
+# MEASURED FOUR-WAY BEFORE THE RUNG (2026-08-15/16), one fixture shape per engine: a same-language source
+# performing `Exec`, outside that engine's selector, under `deny Exec`. All four answered `policy ✓` /
+# `no violations` at exit 0 — no stderr note, no key in the report, no exit code. A false all-clear under
+# an explicit deny, in every engine. The four AGREED, which by this project's own rule is the weakest
+# evidence available: common-mode, and here common-mode wrong.
+#
+# THE ROWS ARE THE BOUNDS, NOT THE FINDING. A part asserting only "the warning fires" passes against an
+# engine that reports every file it ever skipped under every policy — the noise floor that makes a gate
+# one people scroll past, and the likeliest way this rung regresses. See file_set_check.py for what each
+# arm rules out and what is deliberately NOT asserted (the `class` tokens: §2 makes them engine-chosen,
+# and a shared enumeration would force one engine to file its exclusion under another's name).
+#
+# THE FIXTURE EXECS `ls` WITH NO ARGUMENT, IN ALL FOUR, AND THAT IS LOAD-BEARING. The obvious spelling —
+# `Command::new("curl")` / `execSync("curl http://…")` / `Runtime.exec("curl … | sh")` — is classified Net
+# AS WELL AS Exec, so the `deny Net` bound row matches legitimately and reads as a broken bound. The
+# fixture could not test the thing it claimed to. It cost time in all four ports; an argument-free `ls`
+# isolates Exec.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P48_OK=0
+FS="$W/fileset48"; mkdir -p "$FS"
+# rust — the excluded file is the CARGO BUILD SCRIPT, which runs on every `cargo build`.
+if [ -x "$SCAN" ]; then
+  mkdir -p "$FS/rs/src" "$FS/rsctl/src"
+  printf '[package]\nname="fs48"\nversion="0.0.0"\nedition="2021"\n' > "$FS/rs/Cargo.toml"
+  printf 'pub fn add(a: i32) -> i32 { a + 1 }\n' > "$FS/rs/src/lib.rs"
+  printf 'fn main() { std::process::Command::new("ls").status().unwrap(); }\n' > "$FS/rs/build.rs"
+  printf 'deny Exec\n' > "$FS/rs/exec.pol"; printf 'deny Net\n' > "$FS/rs/net.pol"
+  printf '[package]\nname="fs48ctl"\nversion="0.0.0"\nedition="2021"\n' > "$FS/rsctl/Cargo.toml"
+  printf 'pub fn add(a: i32) -> i32 { a + 1 }\n' > "$FS/rsctl/src/lib.rs"
+  # THE TWIN: the excluded file's code as an ORDINARY library unit. `build.rs` cannot be brought into
+  # scope by a flag (it is skipped by name, at the root, in every mode), so the in-scope spelling of the
+  # same code is a sibling crate — which is what makes the two answers comparable at all.
+  mkdir -p "$FS/rstwin/src"
+  printf '[package]\nname="fs48twin"\nversion="0.0.0"\nedition="2021"\n' > "$FS/rstwin/Cargo.toml"
+  printf 'pub fn main() { std::process::Command::new("ls").status().unwrap(); }\n' > "$FS/rstwin/src/lib.rs"
+fi
+# ts — the excluded file is outside the tsconfig `include`, and a file your build excludes may still run
+# in CI or at install time.
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$FS/ts/src" "$FS/ts/excluded" "$FS/tsctl/src"
+  printf '{"name":"fs48","version":"0.0.0"}\n' > "$FS/ts/package.json"
+  printf '{"compilerOptions":{"target":"es2022","module":"esnext","noEmit":true},"include":["src/**/*"]}\n' > "$FS/ts/tsconfig.json"
+  printf 'export function add(a: number): number { return a + 1; }\n' > "$FS/ts/src/a.ts"
+  printf 'import { execSync } from "node:child_process";\nexport function deploy(): void { execSync("ls"); }\n' > "$FS/ts/excluded/deploy.ts"
+  printf 'deny Exec\n' > "$FS/ts/exec.pol"; printf 'deny Net\n' > "$FS/ts/net.pol"
+  printf '{"name":"fs48ctl","version":"0.0.0"}\n' > "$FS/tsctl/package.json"
+  printf 'export function add(a: number): number { return a + 1; }\n' > "$FS/tsctl/src/a.ts"
+fi
+# java — the excluded file is a JAR under the scan root: bytecode this engine reads perfectly well, that a
+# `.class`-filtering directory walk never opens.
+mkdir -p "$FS/java/src" "$FS/java/toolsrc/com/t"
+printf 'package com.x;\npublic class App { public static int add(int a){ return a + 1; } }\n' > "$FS/java/src/App.java"
+printf 'package com.t;\npublic class Tool { public static void go() throws Exception { new ProcessBuilder("ls").start(); } }\n' > "$FS/java/toolsrc/com/t/Tool.java"
+javac -d "$FS/java/classes" "$FS/java/src/App.java" 2>/dev/null
+javac -d "$FS/java/toolcls" "$FS/java/toolsrc/com/t/Tool.java" 2>/dev/null
+mkdir -p "$FS/java/libs"
+( cd "$FS/java/toolcls" && jar cf "$FS/java/libs/tool.jar" com 2>/dev/null )
+rm -rf "$FS/java/toolcls" "$FS/java/toolsrc"
+printf 'deny Exec\n' > "$FS/java/exec.pol"; printf 'deny Net\n' > "$FS/java/net.pol"
+# swift — the excluded file is under Tests/, which SwiftPM compiles and CI runs.
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$FS/sw/Sources/S" "$FS/sw/Tests" "$FS/swctl/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$FS/sw/Package.swift"
+  printf 'public func add(_ a: Int) -> Int { a + 1 }\n' > "$FS/sw/Sources/S/a.swift"
+  printf 'import Foundation\npublic func helper() {\n  let p = Process()\n  p.launchPath = "/bin/ls"\n  try? p.run()\n}\n' > "$FS/sw/Tests/Helper.swift"
+  printf 'deny Exec\n' > "$FS/sw/exec.pol"; printf 'deny Net\n' > "$FS/sw/net.pol"
+  printf 'public func add(_ a: Int) -> Int { a + 1 }\n' > "$FS/swctl/Sources/S/a.swift"
+fi
+
+echo "[48] THE FILE SET — WHAT A REPORT SAYS ABOUT CODE IT NEVER OPENED  (SPEC §2 ⟨0.29⟩)"
+if [ -x "$SCAN" ]; then
+  ( cd "$FS/rs" && "$SCAN" . --out e --policy exec.pol >/dev/null 2>&1 ); r48e=$?
+  ( cd "$FS/rs" && "$SCAN" . --out n --policy net.pol  >/dev/null 2>&1 ); r48n=$?
+  ( cd "$FS/rs" && "$SCAN" . --out z >/dev/null 2>&1 )
+  ( cd "$FS/rsctl" && "$SCAN" . --out c >/dev/null 2>&1 )
+  ( cd "$FS/rstwin" && "$SCAN" . --out t >/dev/null 2>&1 )
+  python3 "$HERE/file_set_check.py" "rust" "$r48e" "$FS/rs/e.fs48.scan.json" \
+      "$r48n" "$FS/rs/n.fs48.scan.json" "$FS/rs/z.fs48.scan.json" \
+      "$FS/rsctl/c.fs48ctl.scan.json" "$FS/rstwin/t.fs48twin.scan.json" Exec || P48_OK=1
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/e" --policy "$FS/ts/exec.pol" >/dev/null 2>&1 ); t48e=$?
+  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/n" --policy "$FS/ts/net.pol"  >/dev/null 2>&1 ); t48n=$?
+  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/z" >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node scan.mjs "$FS/tsctl" --out "$FS/tsctl/c" >/dev/null 2>&1 )
+  # THE TWIN: the excluded directory, scanned as an ordinary target rather than through the tsconfig
+  # that leaves it out — the same file, in scope, answered by the ordinary path.
+  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/excluded" --out "$FS/ts/twin" >/dev/null 2>&1 )
+  python3 "$HERE/file_set_check.py" "ts" "$t48e" "$FS/ts/e.json" "$t48n" "$FS/ts/n.json" \
+      "$FS/ts/z.json" "$FS/tsctl/c.json" "$FS/ts/twin.json" Exec || P48_OK=1
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+java -jar "$JAR" "$FS/java" --json "$FS/java/e.json" --policy "$FS/java/exec.pol" >/dev/null 2>&1; j48e=$?
+java -jar "$JAR" "$FS/java" --json "$FS/java/n.json" --policy "$FS/java/net.pol"  >/dev/null 2>&1; j48n=$?
+java -jar "$JAR" "$FS/java" --json "$FS/java/z.json" >/dev/null 2>&1
+java -jar "$JAR" "$FS/java/classes" --json "$FS/java/c.json" >/dev/null 2>&1
+# THE TWIN: the jar as the scan TARGET — `<dir-or-jar>` is the documented usage, so this is the same
+# bytes through the same entry point the peek reaches them by, differing only in being asked directly.
+java -jar "$JAR" "$FS/java/libs/tool.jar" --json "$FS/java/t.json" >/dev/null 2>&1
+python3 "$HERE/file_set_check.py" "java" "$j48e" "$FS/java/e.json" "$j48n" "$FS/java/n.json" \
+    "$FS/java/z.json" "$FS/java/c.json" "$FS/java/t.json" Exec || P48_OK=1
+if [ -n "$SW_PRESENT" ]; then
+  ( cd "$FS/sw" && "$SW_BIN" . --out e --policy exec.pol >/dev/null 2>&1 ); s48e=$?
+  ( cd "$FS/sw" && "$SW_BIN" . --out n --policy net.pol  >/dev/null 2>&1 ); s48n=$?
+  ( cd "$FS/sw" && "$SW_BIN" . --out z >/dev/null 2>&1 )
+  ( cd "$FS/swctl" && "$SW_BIN" . --out c >/dev/null 2>&1 )
+  # THE TWIN: the excluded file named directly. A single `.swift` file is a legal target, and naming one
+  # bypasses the harness-path filter that put it out of scope — the same code, in scope, ordinary path.
+  ( cd "$FS/sw" && "$SW_BIN" Tests/Helper.swift --out t >/dev/null 2>&1 )
+  python3 "$HERE/file_set_check.py" "swift" "$s48e" "$(ls "$FS"/sw/e.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$s48n" "$(ls "$FS"/sw/n.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$(ls "$FS"/sw/z.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$(ls "$FS"/swctl/c.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$(ls "$FS"/sw/t.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" Exec || P48_OK=1
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 48 — the file set: what a report says about code it never opened (SPEC §2 ⟨0.29⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: rsctl tsctl classes swctl — a project with NOTHING excluded, per engine; each must still EMIT `excluded` as [], because without it the part passes against an engine that fails everything
+if [ "$P48_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED reports the effect in the file it did not judge, leaves the"
+  echo "     verdict where it was, says nothing under a policy denying a different effect, and omits the"
+  echo "     key entirely when no policy was configured"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
@@ -8547,7 +8682,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on

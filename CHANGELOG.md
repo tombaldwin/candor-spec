@@ -14,6 +14,41 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §2 THE FILE SET — what a report says about code it never opened** (FILE-SET-DESIGN.md, rung 2
+  of 4: *disclose + peek*), pinned four-way by **PART 48**. ⟨0.21⟩'s `unanalyzed` names files an engine
+  OPENED and could not read; nothing named files it never opened at all, and a consumer cannot tell the
+  two apart because `analyzed.count` is a NUMERATOR whose denominator — the file selector — is invisible.
+  Measured 2026-08-15/16, one fixture shape per engine (a same-language `Exec` outside the selector, under
+  `deny Exec`): **all four answered `policy ✓` / `no violations` at exit 0**, with no stderr note, no key
+  and no exit code. A false all-clear under an explicit deny, in every engine — and the four AGREED, which
+  by this project's own rule is the weakest evidence available: common-mode, and here common-mode wrong.
+  - `excluded: [{class, count, peeked, reason}]` — the scope, ALWAYS emitted including `[]` (⟨0.27⟩'s
+    zero-match rule; under ⟨0.26⟩ an absent key means *cannot answer*). Counts, never file lists.
+  - `outOfScope: [{fn, path, effects, class, reason}]` — the peek. **MUST NOT move the verdict**: never a
+    `violation`, never in `functions`, exit code unchanged. Emitted only when a policy is configured AND
+    honoured, and only for effects it DENIES.
+  - `peeked` is load-bearing, not descriptive: an empty `outOfScope` is a claim about the classes marked
+    `true` and no others. candor-java cannot read an uncompiled `.java`; candor-swift will not read
+    `.build/`. Without the flag their `[]` certifies files nobody opened.
+  - `class` tokens are **engine-chosen and not interchange vocabulary** — the selectors differ per
+    language, and a shared enumeration would force one engine to file its exclusion under another's name.
+
+  **PART 48's rows are the BOUNDS, not the finding**, because a part asserting only "the warning fires"
+  passes against an engine that reports every file it ever skipped: policy-bounded (`deny Net` says
+  nothing about the same `Exec`), policy-scoped (no policy ⇒ the key is ABSENT, since `[]` would be a
+  claim), verdict-unmoved, and the CONTROL — a project with nothing to exclude still emits `excluded: []`,
+  without which the part passes against an engine that fails everything. **Falsified five ways on the real
+  harness before it was trusted**, each perturbation producing its own diagnosis.
+
+  **The TWIN arm is how the "never a second analysis path" MUST became observable at all.** No row can
+  read which code path produced a finding, and a MUST no row exercises is what the ledger exists to stop
+  accumulating — so each engine is asked the same question twice, through the peek and by scanning that
+  code as an ordinary target, and the two effect sets must agree. It does not prove one path; it fails
+  exactly when two have diverged.
+
+  *Not covered, and recorded as a decision rather than left to be discovered: a file in no language the
+  engine reads. A project whose `Exec` lives in `scripts/deploy.sh` is still one where "candor says no
+  Exec" is a dangerous sentence (FILE-SET-DESIGN §3, N3).*
 - **PART 47 now binds the ADVISORY siblings of the report route, not the gate alone.** §3.1's
   answerability MUST covers every verb reading a §2 report; the part pinned `gate --report`, so the
   siblings drifted in silence. Measured over a `forbid`-only policy: `unverified` and `fix-gate` emitted

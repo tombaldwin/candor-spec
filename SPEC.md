@@ -702,6 +702,47 @@ already carry.
   pre-⟨0.21⟩ report). Distinct from `coverage` (an unmodeled *dependency*): `unanalyzed` is the target's own
   unseen source. A truly-isolated pure unit (uncalled, calling nothing) MUST still be a §2.2 call-graph node
   (empty adjacency), so its membership reads *analyzed-pure*, never *never-seen*.
+- ⟨0.29⟩ `"excluded": [ { "class": "<token>", "count": <n>, "peeked": <bool>, "reason": "<why>" } ]` — **THE
+  SCOPE: the files this scan chose not to OPEN.** A different claim from `unanalyzed`, which names files it
+  opened and could not read, and one no report could previously make at all: `analyzed.count` is a
+  NUMERATOR whose denominator — the engine's file selector — is invisible, so a consumer cannot tell the two
+  apart. **Absence of a file from the report licenses a purity claim about that file only if the report says
+  the file was CONSIDERED** — the ⟨0.21⟩/⟨0.24⟩ three-row rule applied one level out. **`excluded` MUST be
+  emitted whenever the engine can enumerate its own file selection, `[]` INCLUDED**: an empty list is the
+  positive statement *I looked and excluded nothing*, and under ⟨0.26⟩ an ABSENT key means *this producer
+  cannot answer*, which is a different claim. That is the opposite rule from `coverage`/`unanalyzed` above,
+  deliberately: for a LEDGER, empty and absent can mean the same thing; for a SCOPE they cannot.
+  **CLASSES WITH COUNTS, NEVER FILE LISTS** — an excluded set can contain a build tree, which is unbounded,
+  and a gate that routinely prints thousands of paths is one people learn to scroll past. `reason` is what a
+  consumer reads to decide whether the exclusion matches the question they are asking, so it MUST say why
+  the class exists, in the engine's own terms; a conformance row asserts its VALUE, not the key's presence.
+  `class` tokens are ENGINE-CHOSEN and are NOT interchange vocabulary: the selectors differ per language
+  (`build-script`, `harness-target`, `source-without-class`), and a shared enumeration would force one
+  engine to file its exclusion under another's name.
+- ⟨0.29⟩ `"outOfScope": [ { "fn": …, "path": …, "effects": ["<Effect>"…], "class": …, "reason": … } ]` —
+  **THE PEEK: an effect found in a file the gate did NOT judge.** **An out-of-scope finding MUST NOT move
+  the verdict.** It is its own kind: never a member of `violations`, never a member of `functions`, and the
+  exit code MUST be what it would have been without it. A file the gate declined to judge must not decide an
+  exit code. **Emitted only when a policy is CONFIGURED and HONOURED, and only for effects that policy
+  DENIES** — that bound is what keeps the block from becoming the noise it would otherwise be, because the
+  floor is then "things you have already said you care about" rather than "everything you excluded". With no
+  policy the key is ABSENT: nothing was asked, so `[]` would be a claim. Over a policy the engine REFUSES,
+  the key is ABSENT for the reason §3.1 withholds `ok` — the peek is a producer reading the policy, and it
+  may not certify relative to a gate that evaluated nothing. **Present-and-empty is asked-and-clear, and it
+  is a claim about the classes `excluded` marks `peeked: true` AND NO OTHERS.** That is what makes `peeked`
+  load-bearing rather than descriptive: an engine that cannot read one of its own excluded classes —
+  candor-java reads BYTECODE, so an uncompiled `.java` is unreadable to its peek — would otherwise publish
+  `[]` over files nobody opened, which is the ⟨0.26⟩ partial-manifest failure exactly.
+- ⟨0.29⟩ **The peek MUST reach its finding through the engine's ordinary analysis path over a different FILE
+  SET, never through a second one.** Two judgement paths drift, and a drifted second opinion reported as a
+  warning is worse than no warning: the reader cannot tell a real finding from two code paths disagreeing.
+  The engines satisfy this structurally rather than by review — a recursive call into the scan entry point
+  where that entry point is a callable function, and a child process of the same binary where it is not.
+
+  *⟨0.29⟩ What this does NOT cover, recorded so it is a decision rather than a discovery: a file in no
+  language the engine reads. A project whose `Exec` lives in `scripts/deploy.sh` is one where "candor says
+  no Exec" remains a dangerous sentence, and no engine counts those files today — enumerating them would
+  cost this block the bound that keeps it readable. See FILE-SET-DESIGN.md §3 (N3).*
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
