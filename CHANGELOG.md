@@ -14,6 +14,13 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 47 now binds the ADVISORY siblings of the report route, not the gate alone.** §3.1's
+  answerability MUST covers every verb reading a §2 report; the part pinned `gate --report`, so the
+  siblings drifted in silence. Measured over a `forbid`-only policy: `unverified` and `fix-gate` emitted
+  `{"ok": true, …}` at exit 0 in rust, ts and swift — rust in prose, *"no deny/pure boundary crossings in
+  this report ✓"* — while candor-java, the reference engine, disclosed and withheld `ok`. All four now
+  reach exit 2 under `--strict`, which is the form where the exit IS the answer, and the row asserts it.
+
 - **RETRACTED, one commit after it landed: the §6.2 `forbid`-on-a-report clause.** It was wrong in three
   ways a review found and the commit that wrote it did not. (1) It said the behaviour was "specified
   nowhere" — §3.1's ⟨0.24⟩ ANSWERABILITY rule had specified it since 0.24 and names `forbid A -> B` in its

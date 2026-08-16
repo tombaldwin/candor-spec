@@ -8468,7 +8468,19 @@ p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-
     *) echo "  $1  -> DIVERGE  (the refusal never says \`forbid\` — an operator is told exit 2 and not why)"
        P47_OK=1; return;;
   esac
-  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only on the SAME report: 0; deny+forbid: 2; says \`forbid\`)"
+  # ⟨0.29⟩ …AND THE ADVISORY SIBLINGS OF THE SAME ROUTE. §3.1's answerability MUST binds every verb that
+  # reads a §2 report, not the gate alone, and this part pinned the gate only — so the siblings drifted in
+  # silence. MEASURED before the fix: over a `forbid`-only policy, `unverified` and `fix-gate` emitted
+  # `{"ok": true, …}` at exit 0 in rust, ts and swift (rust printed a green ✓ in prose), certifying
+  # relative to a gate that had evaluated nothing. candor-java, the reference engine, was the only one
+  # that disclosed and withheld `ok`. Under `--strict` — the CI form, where the exit is the answer — all
+  # four must now reach the could-not-evaluate 2, not the 0 that reads as "nothing left to fix".
+  if [ "$8" != "2:2" ]; then
+    echo "  $1  -> DIVERGE  (unverified:fix-gate --strict exited $8, expected 2:2 — an advisory verb that"
+    echo "                   certifies over a policy the gate refused is the gate's false all-clear with"
+    echo "                   one more step of indirection)"; P47_OK=1; return
+  fi
+  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only: 0; deny+forbid: 2; says \`forbid\`; advisory --strict: 2:2)"
 }
 echo "[47] A \`forbid\` RULE IS REFUSED ON A REPORT ROUTE  (SPEC §6.2 — the calls graph is effect-relevant)"
 if [ -x "$SCAN" ]; then
@@ -8477,7 +8489,9 @@ if [ -x "$SCAN" ]; then
   rtxt="$("$QUERY" gate --report "$rrep" --policy "$FB/rs/p.pol" 2>&1)"; rrc=$?
   "$QUERY" gate --report "$rrep" --policy "$FB/rs/deny.pol"  >/dev/null 2>&1; rdc=$?
   "$QUERY" gate --report "$rrep" --policy "$FB/rs/mixed.pol" >/dev/null 2>&1; rmc=$?
-  p47 "rust " "$rsc" "$rrc" "$rrep" "$rdc" "$rmc" "$rtxt"
+  "$QUERY" unverified --report "$rrep" --policy "$FB/rs/p.pol" --strict >/dev/null 2>&1; ruv=$?
+  "$QUERY" fix-gate   --report "$rrep" --policy "$FB/rs/p.pol" --strict >/dev/null 2>&1; rfg=$?
+  p47 "rust " "$rsc" "$rrc" "$rrep" "$rdc" "$rmc" "$rtxt" "$ruv:$rfg"
 else
   echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
 fi
@@ -8486,7 +8500,9 @@ if [ -n "$TS_PRESENT" ]; then
   ttxt="$( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" 2>&1 )"; trc=$?
   ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/deny.pol"  >/dev/null 2>&1 ); tdc=$?
   ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/mixed.pol" >/dev/null 2>&1 ); tmc=$?
-  p47 "ts   " "$tsc" "$trc" "$FB/ts/r.json" "$tdc" "$tmc" "$ttxt"
+  ( cd "$TS_DIR" && node query.mjs unverified --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" --strict >/dev/null 2>&1 ); tuv=$?
+  ( cd "$TS_DIR" && node query.mjs fix-gate   --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" --strict >/dev/null 2>&1 ); tfg=$?
+  p47 "ts   " "$tsc" "$trc" "$FB/ts/r.json" "$tdc" "$tmc" "$ttxt" "$tuv:$tfg"
 else
   echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
 fi
@@ -8494,14 +8510,18 @@ java -jar "$JAR" "$FB/java/classes" --policy "$FB/java/p.pol" >/dev/null 2>&1; j
 jtxt="$(java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/p.pol" 2>&1)"; jrc=$?
 java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/deny.pol"  >/dev/null 2>&1; jdc=$?
 java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/mixed.pol" >/dev/null 2>&1; jmc=$?
-p47 "java " "$jsc" "$jrc" "$FB/java/r.json" "$jdc" "$jmc" "$jtxt"
+java -jar "$JAR" unverified --report "$FB/java/r.json" --policy "$FB/java/p.pol" --strict >/dev/null 2>&1; juv=$?
+java -jar "$JAR" fix-gate   --report "$FB/java/r.json" --policy "$FB/java/p.pol" --strict >/dev/null 2>&1; jfg=$?
+p47 "java " "$jsc" "$jrc" "$FB/java/r.json" "$jdc" "$jmc" "$jtxt" "$juv:$jfg"
 if [ -n "$SW_PRESENT" ]; then
   ( cd "$FB/sw" && "$SW_BIN" . --policy p.pol >/dev/null 2>&1 ); ssc=$?
   srep="$(ls "$FB"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
   stxt="$("$SW_BIN" gate --report "$srep" --policy "$FB/sw/p.pol" 2>&1)"; src=$?
   "$SW_BIN" gate --report "$srep" --policy "$FB/sw/deny.pol"  >/dev/null 2>&1; sdc=$?
   "$SW_BIN" gate --report "$srep" --policy "$FB/sw/mixed.pol" >/dev/null 2>&1; smc=$?
-  p47 "swift" "$ssc" "$src" "$srep" "$sdc" "$smc" "$stxt"
+  "$SW_BIN" unverified --report "$srep" --policy "$FB/sw/p.pol" --strict >/dev/null 2>&1; suv=$?
+  "$SW_BIN" fix-gate   --report "$srep" --policy "$FB/sw/p.pol" --strict >/dev/null 2>&1; sfg=$?
+  p47 "swift" "$ssc" "$src" "$srep" "$sdc" "$smc" "$stxt" "$suv:$sfg"
 else
   echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
 fi
