@@ -695,6 +695,24 @@ already carry.
   in **neither** ⇒ **never analyzed** (candor makes no purity claim). `digest` is an opaque, **within-engine**-
   stable fingerprint of the sorted analyzed-qual set (a same-input re-scan agrees; compare same-engine only —
   qualifiers differ across engines). Present whenever the engine can enumerate its analyzed set.
+- ⟨0.29⟩ `"incomplete": [ "<Effect>", … ]` — **the effects whose LOCATOR this unit could not determine**:
+  its own `Fs` write whose path is a parameter, its own exec whose command is computed, its own `Db` call
+  whose table is built at runtime. **Omitted when empty**, so a scan that determined everything is
+  byte-identical to a pre-rung report.
+  **A PRODUCER THAT COMPUTES THIS FACT MUST PUBLISH IT**, and this clause states the CONDITION rather than
+  any one use of it — because for a long time the document stated only the use. §2's chained-join rule
+  named `incomplete` among the surfaces a join must carry, and nothing said a producer had to emit it, so
+  two engines computed it internally and published nothing: the join had nothing to carry and the rule
+  about the join was vacuous for half the family.
+  **The harm is a FALSE ALL-CLEAR on a configured gate, measured across the scan boundary.** An absent
+  `paths` is overloaded between *"reaches no path"* and *"reaches a path I could not see"*, and this field
+  is the only thing separating them. A dependency whose `Fs` path is a runtime value published nothing to
+  say so; a consumer that ALSO wrote one allowed literal joined `paths: ["/tmp/lit"]` with no marker, and
+  `allow Fs /tmp/lit` answered **`policy ✓`** where the engines that publish the field charge AS-EFF-008
+  on identical code. The same shape holds for `Exec` and `Db`; `Net` was already covered, because
+  ⟨0.20⟩ gave it a wire form of its own (`netClass ∋ unknown-host`) and the other three effects had none.
+  A consumer MUST read the pair: a literal surface is a complete account of what a unit reaches only when
+  `incomplete` does not name that effect.
 - `"unanalyzed": [ { "path": "<file>", "reason": "<why>" } ]` — the TARGET's own source candor could NOT
   analyze (a file that failed to read/parse; a skipped unparseable class). Its units are absent NOT because
   pure but because never seen — disclosed on stderr today but INVISIBLE to a machine reading the JSON, so a

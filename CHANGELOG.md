@@ -14,6 +14,21 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §2 `incomplete` — STATED OVER THE CONDITION, not over one use of it**, and pinned four-way by
+  **PART 50**. The field was named only in §2's chained-JOIN clause ("a join that carries the effect and
+  drops `incomplete` lets a benign literal in the consumer certify what the dependency declared
+  uncertifiable"), and nothing said a PRODUCER had to emit it — so candor-ts and candor-java computed it
+  internally and published nothing, the join had nothing to carry, and the rule about the join was vacuous
+  for half the family. **A rule written over the instance that was measured rather than over the condition
+  that produces it, for the fourth time in this document.**
+  The harm is a FALSE ALL-CLEAR on a configured gate, and only across a boundary: a dependency whose `Fs`
+  path is a runtime value published nothing to say so, and a consumer that ALSO wrote one allowed literal
+  joined `paths: ["/tmp/lit"]` with no marker — `allow Fs /tmp/lit` answered `policy ✓` in two engines and
+  AS-EFF-008 in the other two, on identical code. `Net` was already covered because ⟨0.20⟩ gave it a wire
+  form of its own (`netClass ∋ unknown-host`); `Fs`/`Exec`/`Db` had none. **PART 50's row is the CHAINED
+  VERDICT, not the field**: in one package every engine already fails closed (AS-EFF-008 keys on "no
+  visible literal"), so a single-crate row passes on all four and proves nothing. Falsified two ways —
+  not emitting the field, and emitting it without joining, fail with different diagnoses.
 - **⟨0.29⟩ §6.2 `only <A> -> <B> [<C> …]` — the PERMISSION form** (AS-EFF-009), pinned four-way by
   **PART 49**. `forbid` can state a prohibition but not a permission, and it **fails OPEN**: the
   dependency you forgot to prohibit is silently permitted, so "this package is a leaf" could only be

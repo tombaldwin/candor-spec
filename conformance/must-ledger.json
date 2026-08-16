@@ -2692,6 +2692,12 @@
    "at": "6.2 The policy DSL (normative)",
    "excerpt": "⟨0.29⟩ `only` — the permission form",
    "part": "PART 49"
+  },
+  {
+   "sha": "7529fc33303ece15",
+   "at": "2. The report",
+   "excerpt": "⟨0.29⟩ `incomplete` — the undetermined locator",
+   "part": "PART 50"
   }
  ]
 }
