@@ -822,12 +822,6 @@
    "status": "pre-ledger"
   },
   {
-   "sha": "9a04e0e1a54ef644",
-   "at": "3.1 Read-only queries (SHOULD)",
-   "excerpt": "⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never evaluate",
-   "status": "pre-ledger"
-  },
-  {
    "sha": "9f47a7c647e74e12",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "- **`forbid A -> B`** — a call-graph dependency rule. `calls` is *effect-relevant* only, so a crossing into a ",
@@ -2704,6 +2698,18 @@
    "at": "2. The report",
    "excerpt": "⟨0.29⟩ `incomplete` is named by `resolves` too",
    "part": "PART 50"
+  },
+  {
+   "sha": "caa26c969d1b84bc",
+   "at": "3.1 / 6.2",
+   "excerpt": "⟨0.29⟩ only — answerability",
+   "part": "PART 49"
+  },
+  {
+   "sha": "0099143e9e8c9e5a",
+   "at": "3.1 / 6.2",
+   "excerpt": "⟨0.29⟩ only — answerability",
+   "part": "PART 49"
   }
  ]
 }

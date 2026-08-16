@@ -285,17 +285,21 @@ def norm(p):
                      tuple(sorted(r.get("netClasses", [])))) for r in d["deny"])
     allow  = sorted((r["effect"], r["scope"], tuple(sorted(r["values"]))) for r in d["allow"])
     forbid = sorted((r["from"], r["to"]) for r in d["forbid"])
-    return deny, allow, forbid
+    # ⟨0.29⟩ the PERMISSION form. `.get("only", [])` rather than `d["only"]`: an engine that has not
+    # shipped the kind must show as an EMPTY set and DIVERGE from the ones that have, not crash the
+    # differential with a KeyError — a missing key is the very divergence this part exists to report.
+    only = sorted((r["from"], tuple(r["to"])) for r in d.get("only", []))
+    return deny, allow, forbid, only
 r, j = norm(sys.argv[1]), norm(sys.argv[2])
 t = norm(sys.argv[3]) if os.path.exists(sys.argv[3]) else None
 sw = norm(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4] and os.path.exists(sys.argv[4]) else None
 print("\n[4] POLICY-DSL grammar differential  (SPEC §6.2 — parse the same battery in every engine)")
-print(f"  candor(rust): {len(r[0])} deny, {len(r[1])} allow, {len(r[2])} forbid")
-print(f"  candor-java : {len(j[0])} deny, {len(j[1])} allow, {len(j[2])} forbid")
+print(f"  candor(rust): {len(r[0])} deny, {len(r[1])} allow, {len(r[2])} forbid, {len(r[3])} only")
+print(f"  candor-java : {len(j[0])} deny, {len(j[1])} allow, {len(j[2])} forbid, {len(j[3])} only")
 if t is not None:
-    print(f"  candor-ts   : {len(t[0])} deny, {len(t[1])} allow, {len(t[2])} forbid")
+    print(f"  candor-ts   : {len(t[0])} deny, {len(t[1])} allow, {len(t[2])} forbid, {len(t[3])} only")
 if sw is not None:
-    print(f"  candor-swift: {len(sw[0])} deny, {len(sw[1])} allow, {len(sw[2])} forbid")
+    print(f"  candor-swift: {len(sw[0])} deny, {len(sw[1])} allow, {len(sw[2])} forbid, {len(sw[3])} only")
 else:
     print("  candor-swift: not present on this runner — grammar diff runs three-way (loudly)")
 others = [x for x in (t, sw) if x is not None]

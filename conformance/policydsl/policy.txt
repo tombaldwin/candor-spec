@@ -36,3 +36,13 @@ deny Net[unknown-host] domain2                # Net destination-class: narrow to
 deny Net[known-telemetry,unknown-host] obs    # multiple destination classes on one rule
 deny Net[*] anywhere                          # `*` ⇒ all destinations ⇒ empty filter (like bare Net)
 deny Net[bogus,unknown-host] mixed           # ⟨0.24⟩ same for a destination-class token — reported, never silently dropped
+
+# ⟨0.29⟩ the PERMISSION form (SPEC §6.2). A rule kind absent from this battery is a kind the four-way
+# differential below cannot see: `only` shipped in four engines while two of them omitted it from the
+# `parsepolicy` witness entirely, and PART 4 stayed green because it read three keys and parsed a file
+# with no `only` line in it. The malformed spellings are here for the same reason the malformed `forbid`
+# ones are — every engine must DROP the same lines, not just accept the same ones.
+only app.model -> app.dto app.util
+only app.web -> app.api
+only app.broken ->
+only app.broken app.dto
