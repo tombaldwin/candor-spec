@@ -14,6 +14,27 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §6.2 `only <A> -> <B> [<C> …]` — the PERMISSION form** (AS-EFF-009), pinned four-way by
+  **PART 49**. `forbid` can state a prohibition but not a permission, and it **fails OPEN**: the
+  dependency you forgot to prohibit is silently permitted, so "this package is a leaf" could only be
+  spelled as an enumeration that does not cover a package added tomorrow and says nothing about it — the
+  allowlist hazard this document refuses throughout the ANALYSIS, sitting in the POLICY LANGUAGE. `only`
+  fails SAFE. Found by pointing candor's own architecture gate at candor, where the natural
+  `forbid <pkg>.model -> <pkg>` self-fires because a scope matches a contiguous run of segments.
+  Three rulings an implementation MUST follow, each of which could plausibly have gone the other way:
+  `A -> A` is IMPLICIT; the walk STOPS at a permitted scope and DESCENDS THROUGH `from`; and zero-match is
+  measured on `from` ALONE, unlike `forbid`'s either-endpoint count. `only` is unanswerable from a report
+  for a stricter reason than `forbid` — it asks whether EVERYTHING reached is on a list, so an omitted
+  crossing turns a green into a claim of COMPLETENESS — and a route that discloses it MUST also REMOVE it.
+  **That last sentence is in the clause because two engines failed it.** candor-rust and candor-java each
+  disclosed the rule and evaluated it anyway, printing a violation beside their own statement that the
+  rule could not be evaluated; both had the removal site fifty lines from where the kind was added.
+  **PART 49 found the rust one, but only after the row was falsified and rebuilt twice**: with an
+  `only`-only policy every engine refuses before evaluating anything, and over a wholly pure fixture the
+  report carries no graph to walk — so the row needed an answerable rule beside it AND an effect in the
+  tree before a leak could show itself. Its checker records that the ts arm still cannot fail (that
+  engine passes an empty call graph on the report route, a second structural guarantee), because a reader
+  must not take four MATCHes for four equally strong arms.
 - **⟨0.29⟩ PART 47's naming row STRENGTHENED — from "the word `forbid` appears" to the RULE TEXT.** The
   weaker form carried a comment saying it was weaker than it looked and why: two engines could not
   satisfy the stronger one. Re-measured before changing anything, and the filing was half wrong — rust,

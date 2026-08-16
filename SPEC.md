@@ -3810,6 +3810,42 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
   remaining tokens are the allowed values (≥1 required, else the rule is dropped).
 - **`forbid`**: two scopes separated by a literal `->` token (`forbid domain -> infra`). A line missing
   the arrow or either scope is dropped.
+- ⟨0.29⟩ **`only`**: a scope, a literal `->` token, then **one or more** scopes
+  (`only app.model -> app.dto app.util`). A line missing the arrow, the leading scope, or **every**
+  trailing scope is dropped — an empty tail is NOT read as "may reach nothing", which is a different rule
+  and one far likelier typed by accident than meant. **`only <A> -> <B> …` says A may reach A and the
+  listed scopes and NOTHING ELSE**, and it charges `AS-EFF-009` exactly as `forbid` does: the code already
+  means *calls into a layer a declared dependency rule forbids*, and an `only` is a declared dependency
+  rule. The verdict carries the raw line, so a consumer still reads which form fired.
+
+  **`forbid` FAILS OPEN and `only` FAILS SAFE, which is the whole reason the second form exists.** A
+  dependency you forgot to prohibit is silently permitted, so *"this package is a leaf"* can only be
+  spelled with `forbid` as an enumeration of what it must not reach — a list that does not cover a package
+  added tomorrow, and nothing says so. That is the allowlist hazard this document refuses throughout the
+  ANALYSIS, sitting in the POLICY LANGUAGE. Under `only` the dependency you forgot to permit is a loud
+  violation on the day it appears, which makes `only` the form to RECOMMEND for protecting a leaf.
+
+  Three rules an implementation MUST follow, each of which could plausibly have gone the other way:
+
+  1. **`A -> A` is IMPLICIT.** A scope may always reach itself. Without this the form is unusable for the
+     case it exists for: a scope matches a contiguous run of segments, so `app.model` sits *under*
+     `app`, and the natural rule for a leaf self-fires on every internal call.
+  2. **The walk STOPS at a permitted scope, and DESCENDS THROUGH `from`.** A permitted callee's own
+     dependencies are governed by the rules about IT; descending past it would make `only` demand the
+     transitive closure of everything you permit, which is the same enumeration-that-rots one level down.
+     A function in `A` calling another function in `A` that reaches `infra` is still `A` reaching `infra`.
+  3. **Zero-match (§4) is measured on `from` ALONE**, unlike `forbid`, which counts a match on either
+     endpoint. A `forbid`'s subject is the pair; an `only`'s subject is the scope it makes a promise
+     ABOUT. A rule whose destinations all resolve while its `from` names nothing has bound nothing — and
+     that is precisely the typo that leaves an operator believing a leaf is protected.
+
+  **`only` is UNANSWERABLE from a report**, on the same §3.1 rule as `forbid` and for a stricter reason:
+  `forbid` asks whether one named crossing is present, while `only` asks whether EVERY reached scope is on
+  a list, so a report that omits a crossing does not merely under-report — it turns a green into a claim of
+  COMPLETENESS. A route that discloses the rule MUST also REMOVE it from the evaluation; disclosing it and
+  then evaluating it anyway is the shape this clause exists to prevent, and it is what a partial
+  implementation produces. `only` is a RULE for §6.2's zero-rule check: a policy holding only `only` lines
+  is armed, and refusing it as empty would turn that fail-closed guard into a false refusal.
 
   **`forbid` is UNANSWERABLE from a report** — §3.1's answerability rule already binds it, and this is a
   pointer to that rule, not a second statement of it. See §3.1 ⟨0.24⟩ ANSWERABILITY: *a rule whose evidence
