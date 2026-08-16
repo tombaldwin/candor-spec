@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PART 49 — THE `only <A> -> <B> …` PERMISSION FORM (SPEC §6.2 ⟨0.29⟩, AS-EFF-009).
+PART 49 — THE `only <A> -> <B> …` PERMISSION FORM (SPEC §6.2 ⟨0.29⟩, AS-EFF-011).
 
 `forbid` can state a PROHIBITION but not a PERMISSION. It fails OPEN — the dependency you forgot to
 prohibit is silently permitted — so "this package is a leaf" can only be spelled as an enumeration of what
@@ -27,7 +27,12 @@ have gone the other way and each of which SILENTLY changes what a policy means:
                       endpoint stays silent and fails this row.
   · ARMED, NOT EMPTY  an `only`-only policy is a live gate; refusing it as a zero-rule file would turn
                       ⟨0.28⟩'s fail-closed guard into a false refusal by the rung that added the kind.
-  · REPORT ROUTE      refused at exit 2, and NO AS-EFF-009 drawn. Stricter than `forbid`'s case: `forbid`
+  · REPORT ROUTE      refused at exit 2, and NO VIOLATION drawn — checked for AS-EFF-011 (the code this
+                      form actually emits) AND AS-EFF-009 (`forbid`'s, which an engine routing `only`
+                      through the wrong evaluator would print). This arm grepped 009 ALONE until the
+                      ⟨0.29⟩ pre-release panel: the row was watching for a code this form does not emit,
+                      so a live report-route leak would have printed 011 and passed. An instrument aimed
+                      one identifier to the left of the thing it exists to catch. Stricter than `forbid`'s case: `forbid`
                       asks whether one named crossing is present, `only` asks whether EVERYTHING reached
                       is on a list, so a report that omits a crossing turns a green into a claim of
                       COMPLETENESS. The row checks BOTH — an engine that discloses the rule and evaluates
@@ -128,14 +133,28 @@ def main():
                             "rule whose evidence the wire does not carry MUST be refused, never evaluated")
     if "only model -> util" not in gate_out:
         return fail(engine, f"the refusal never names the rule: {gate_out[:200]}")
-    if "AS-EFF-009" in gate_out:
-        return fail(engine, "a violation was drawn from a REPORT. The rule was disclosed as unanswerable "
-                            "and then evaluated anyway, which is what a partial implementation produces: "
-                            "the disclosure stands beside the very evaluation it says did not happen")
+    # BOTH CODES. `only` emits AS-EFF-011; AS-EFF-009 is `forbid`'s and appears here only if an engine
+    # routed the rule through the wrong evaluator — also a leak, and also a defect. Until the ⟨0.29⟩
+    # pre-release panel this line grepped 009 alone, i.e. the row that exists to catch a report-route
+    # evaluation was watching for a code this form never prints.
+    #
+    # WHAT THIS LINE COVERS THAT THE EXIT CODE ABOVE DOES NOT, since the two look redundant. Deleting an
+    # engine's removal site outright was measured: candor-rust then exits 1 and the `gate_rc` assertion
+    # fires first, so this grep never runs. It is for the PARTIAL implementation — the engine that
+    # discloses the rule as unanswerable, exits 2, AND prints the violation anyway. That is not a
+    # hypothetical shape: candor-java shipped it for one build, disclosure and removal fifty lines apart.
+    # Stated because the exit-code arm is the one a seeded-defect calibration reaches, and a reader who
+    # assumes this line was exercised by that seed would be wrong.
+    for code in ("AS-EFF-011", "AS-EFF-009"):
+        if code in gate_out:
+            return fail(engine, f"a violation ({code}) was drawn from a REPORT. The rule was disclosed as "
+                                "unanswerable and then evaluated anyway, which is what a partial "
+                                "implementation produces: the disclosure stands beside the very "
+                                "evaluation it says did not happen")
 
     print(f"  {engine:6} -> MATCH    (omits: exit 1 naming the reach and the rule; list+stop: exit 0, "
           f"`deep` unreported; zero-match on `from`: disclosed, exit 0; armed; report route: refused, "
-          f"no 009)")
+          f"neither 011 nor 009)")
     return 0
 
 
