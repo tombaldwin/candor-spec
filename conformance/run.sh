@@ -8967,6 +8967,105 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 52 — A CLASS IS `peeked` ONLY IF EVERY FILE OF IT WAS READ (SPEC §2 ⟨0.29⟩)           [TIER 1]
+#
+# PART 48 pins that a report says what it did not OPEN. This pins the OTHER half: whether the peek that
+# was supposed to look actually managed to. `peeked` was made an OUTCOME by the rung — a peek that never
+# ran no longer claims a read — and it stopped one level short. The peek reuses the engine's own entry
+# point, so the child writes its own ⟨0.21⟩ `unanalyzed` manifest; every engine read the child's
+# `functions` and discarded it. An excluded file that FAILED TO PARSE INSIDE THE PEEK therefore published
+# `peeked: true` beside `outOfScope: []` — byte-identical to a clean peek, on all four engines. The ⟨0.26⟩
+# partial-manifest rule failing inside the rung built to enforce it, in the same field, twice.
+#
+# THREE SHAPES over the same tree, and the controls are the row: A the file does not parse (peeked FALSE),
+# B it parses and is clean (peeked TRUE — without this an engine passes by never claiming a peek, which
+# deletes the feature and looks SAFE while doing it), C it parses and holds the denied effect (peeked TRUE
+# and the finding published — without this the row passes on a peek that reads nothing).
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P52_OK=0
+PK="$W/peek52"; mkdir -p "$PK"
+p52() { # $1 engine ; $2 A report ; $3 B report ; $4 C report ; $5 class
+  python3 "$HERE/peek_completeness_check.py" "$1" "$2" "$3" "$4" "$5" || P52_OK=1
+}
+echo "[52] A CLASS IS \`peeked\` ONLY IF EVERY FILE OF IT WAS READ  (SPEC §2 ⟨0.29⟩ — an unreadable file must withdraw the claim)"
+printf 'deny Net\n' > "$PK/deny.pol"
+if [ -x "$SCAN" ]; then
+  mkdir -p "$PK/rs/src" "$PK/rs/tests"
+  printf '[package]\nname="peek52"\nversion="0.0.0"\nedition="2021"\n' > "$PK/rs/Cargo.toml"
+  printf 'pub fn lib_fn() -> i32 { 1 }\n' > "$PK/rs/src/lib.rs"
+  printf 'pub fn t() { let x = ((((; }\n' > "$PK/rs/tests/h.rs"
+  ( cd "$PK/rs" && "$SCAN" . --out a --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'pub fn t() -> i32 { 1 }\n' > "$PK/rs/tests/h.rs"
+  ( cd "$PK/rs" && "$SCAN" . --out b --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'pub fn t() { let _ = std::net::TcpStream::connect("1.2.3.4:80"); }\n' > "$PK/rs/tests/h.rs"
+  ( cd "$PK/rs" && "$SCAN" . --out c --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "rust" "$PK/rs/a.peek52.scan.json" "$PK/rs/b.peek52.scan.json" "$PK/rs/c.peek52.scan.json" \
+      "non-library-target"
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$PK/ts/src" "$PK/ts/test"
+  printf '{"name":"peek52","version":"0.0.0"}\n' > "$PK/ts/package.json"
+  printf 'export function libFn(): number { return 1; }\n' > "$PK/ts/src/a.ts"
+  printf 'export function t() { const x = ((((; }\n' > "$PK/ts/test/h.test.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/a" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'export function t(): number { return 1; }\n' > "$PK/ts/test/h.test.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/b" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'import * as https from "node:https";\nexport function t(): void { https.get("https://e.example/x"); }\n' > "$PK/ts/test/h.test.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/c" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "ts" "$PK/ts/a.json" "$PK/ts/b.json" "$PK/ts/c.json" "test-file"
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+# java's peeked class is the ARCHIVE under the scan root, so its three shapes are three jars: one holding a
+# byte sequence ASM cannot read, one holding a calm class, one holding a class that opens a Socket.
+mkdir -p "$PK/java/src" "$PK/java/lib"
+printf 'package app;\npublic class M { public static int m() { return 1; } }\n' > "$PK/java/src/M.java"
+printf 'package lib;\npublic class L { public static void reach() throws Exception { new java.net.Socket("1.2.3.4", 80).close(); } }\n' > "$PK/java/lib/L.java"
+printf 'package lib;\npublic class P { public static int calm() { return 1; } }\n' > "$PK/java/lib/P.java"
+javac -d "$PK/java/classes" "$PK/java/src/M.java" 2>/dev/null
+javac -d "$PK/java/libc" "$PK/java/lib/L.java" "$PK/java/lib/P.java" 2>/dev/null
+mkdir -p "$PK/java/stage/lib"
+cp "$PK/java/libc/lib/P.class" "$PK/java/stage/lib/"
+printf 'not a class file at all' > "$PK/java/stage/lib/Broken.class"
+( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/a.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+rm -f "$PK/java/stage/lib/Broken.class"
+( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/b.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+cp "$PK/java/libc/lib/L.class" "$PK/java/stage/lib/"
+( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/c.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+p52 "java" "$PK/java/a.json" "$PK/java/b.json" "$PK/java/c.json" "archive-under-the-scan-root"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$PK/sw/Sources/S" "$PK/sw/Tests/STests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "STests", dependencies: ["S"])])\n' > "$PK/sw/Package.swift"
+  printf 'public func libFn() -> Int { return 1 }\n' > "$PK/sw/Sources/S/a.swift"
+  swp() { ls "$PK"/sw/"$1".*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1; }
+  printf 'public func t() { let x = ((((( }\n' > "$PK/sw/Tests/STests/t.swift"
+  ( cd "$PK/sw" && "$SW_BIN" . --out a --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'public func t() -> Int { return 1 }\n' > "$PK/sw/Tests/STests/t.swift"
+  ( cd "$PK/sw" && "$SW_BIN" . --out b --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  printf 'import Foundation\npublic func t() { _ = try? String(contentsOf: URL(string: "https://e.example/x")!, encoding: .utf8) }\n' > "$PK/sw/Tests/STests/t.swift"
+  ( cd "$PK/sw" && "$SW_BIN" . --out c --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "swift" "$(swp a)" "$(swp b)" "$(swp c)" "harness-target"
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 52 — a class is \`peeked\` only if every file of it was read (SPEC §2 ⟨0.29⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: shape B — the SAME tree with the SAME file parsing and clean must publish `peeked: true` with an empty `outOfScope`, because `peeked: false` is the SAFE value and an engine that stopped claiming a peek at all would pass shape A while silently deleting the feature; shape C — the same file holding the denied effect must still be peeked AND reported, so the two `true`s above are about a peek that actually reads
+# CONTROLS: swift's `manifest` class is peeked in the same runs and is NOT charged for the harness file's parse failure — the claim is withdrawn per CLASS, not wholesale
+if [ "$P52_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED withdraws the peek claim for the class holding a file it could"
+  echo "     not read, and keeps it for a class it read cleanly"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
@@ -8978,7 +9077,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured + an `Fs` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind without moving the verdict — bounded by the policy, absent when none was configured + an `Fs` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is `peeked` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
