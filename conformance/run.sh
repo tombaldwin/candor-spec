@@ -8456,15 +8456,23 @@ p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-
     echo "                   \`forbid\` was DROPPED answers on what is left and goes green, which is the"
     echo "                   same false all-clear one step quieter)"; P47_OK=1; return
   fi
-  # …AND IT MUST SAY WHAT WAS REFUSED. Asked of the VALUE, not a key's presence — PART 39 was wrong twice
-  # in one day for asking the other question. STATED PRECISELY, because the row is weaker than it looks:
-  # this asserts the word `forbid` appears, not that the specific rule text does. rust and java print the
-  # rule (`forbid model -> model`); ts and swift print "this policy has 1 `forbid` rule(s)". Both satisfy
-  # this; only the first two would satisfy "names the rule". Pinning the stronger form means changing two
-  # engines first, so it is a rung item, not a row to write today — and claiming it here would be the
-  # instrument asserting more than it asks.
+  # …AND IT MUST NAME THE RULE. Asked of the VALUE, not a key's presence — PART 39 was wrong twice in one
+  # day for asking the other question.
+  #
+  # ⟨0.29⟩ STRENGTHENED from "the word `forbid` appears" to the RULE TEXT. The weaker form was written
+  # because two engines could not satisfy the stronger one, and the row said so rather than claiming more
+  # than it asked. Re-measured on one fixture before changing anything, and the filing turned out to be
+  # half wrong: rust, java AND ts all printed `forbid model -> model`; only candor-swift printed a bare
+  # "this policy has 1 `forbid` rule(s)". A count is a fact about the FILE handed to a reader asking which
+  # LINE stopped their gate — and with two rules, every row said "2". Both engines now name the rule in
+  # `why` itself rather than relying on a caller to prefix it: three ts callers print `why` alone (the
+  # advisory disclosure, the LSP fix path, and the MCP error — the agent channel), so a predicate-style
+  # message would have read as a fragment there and lost the rule entirely.
   case "$7" in
-    *forbid*) ;;
+    *"forbid model -> model"*) ;;
+    *forbid*) echo "  $1  -> DIVERGE  (the refusal says \`forbid\` but never names the RULE — an operator"
+              echo "                   with three of them is told a KIND went unenforced, not which line)"
+              P47_OK=1; return;;
     *) echo "  $1  -> DIVERGE  (the refusal never says \`forbid\` — an operator is told exit 2 and not why)"
        P47_OK=1; return;;
   esac
@@ -8480,7 +8488,7 @@ p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-
     echo "                   certifies over a policy the gate refused is the gate's false all-clear with"
     echo "                   one more step of indirection)"; P47_OK=1; return
   fi
-  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only: 0; deny+forbid: 2; says \`forbid\`; advisory --strict: 2:2)"
+  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only: 0; deny+forbid: 2; NAMES the rule; advisory --strict: 2:2)"
 }
 echo "[47] A \`forbid\` RULE IS REFUSED ON A REPORT ROUTE  (SPEC §6.2 — the calls graph is effect-relevant)"
 if [ -x "$SCAN" ]; then
