@@ -3567,6 +3567,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-008` | an allowlisted effect's literal surface (host / command / path / table) is visibly violating **or uncertifiable** — a value outside the allowlist, or a value the engine cannot see (fail-closed) | policy |
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 | `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
+| ⟨0.29⟩ `AS-EFF-011` | reaches a scope an `only` PERMISSION rule does not list | policy |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
@@ -3845,9 +3846,17 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
   (`only app.model -> app.dto app.util`). A line missing the arrow, the leading scope, or **every**
   trailing scope is dropped — an empty tail is NOT read as "may reach nothing", which is a different rule
   and one far likelier typed by accident than meant. **`only <A> -> <B> …` says A may reach A and the
-  listed scopes and NOTHING ELSE**, and it charges `AS-EFF-009` exactly as `forbid` does: the code already
-  means *calls into a layer a declared dependency rule forbids*, and an `only` is a declared dependency
-  rule. The verdict carries the raw line, so a consumer still reads which form fired.
+  listed scopes and NOTHING ELSE**, and it charges its OWN code, **`AS-EFF-011`**.
+
+  ⟨0.29⟩ *It charged `AS-EFF-009` for one commit, on the reasoning that the code already means "calls into
+  a layer a declared dependency rule forbids" and an `only` is one. That is true about the ENGINE and wrong
+  about the CONSUMER. A code is the handle a suppression, a dashboard link and an alert filter key on, and
+  `forbid` and `only` are opposite constructs — must-not-reach versus must-be-on-the-list — with opposite
+  remedies. The decisive argument is timing: before this rung an `AS-EFF-009` suppression meant exactly "I
+  have accepted a `forbid` crossing", so shipping `only` under it would make every existing suppression
+  silently begin muting a class of violation its author never accepted — a fail-open change to an
+  operator's configuration, made by us, invisible to them. That is the argument `only` itself is built on,
+  turned on the tool. Free to fix before release and breaking after it.*
 
   **`forbid` FAILS OPEN and `only` FAILS SAFE, which is the whole reason the second form exists.** A
   dependency you forgot to prohibit is silently permitted, so *"this package is a leaf"* can only be

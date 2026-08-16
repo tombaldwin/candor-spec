@@ -14,6 +14,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ §6 `AS-EFF-011` — `only` gets its own code.** It charged `AS-EFF-009` for one commit, on the
+  reasoning that the code already means "calls into a layer a declared dependency rule forbids" and an
+  `only` is one — true about the ENGINE, wrong about the CONSUMER. A code is what a CI suppression, a
+  dashboard link and an alert filter key on, and the two forms are opposite constructs with opposite
+  remedies. **Decisive argument: timing.** An existing `AS-EFF-009` suppression means "I accepted a
+  `forbid` crossing"; shipping `only` under it would make that suppression silently begin muting a class
+  its author never accepted — a fail-open change to an operator's config, made by us and invisible to
+  them. Free before release, breaking after. PART 49 asserts both halves (011 present, 009 absent).
 - **⟨0.29⟩ §3.1's answerability list was a CLOSED ENUMERATION and `only` had nowhere to join it.** It
   read "exactly three refusals", so §6.2's `only` clause pointed back at a list that did not contain the
   rule it was pointing about. *A rule stated as a COUNT of its members stops being true the next time the
