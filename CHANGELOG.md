@@ -14,6 +14,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.29.0] — 2026-08-17
+
 - **⟨0.29⟩ PART 51 gained `twoLit`: both path positions literal, both published.** The row shipped with
   three functions and could not see the case where a two-path op's positions are BOTH literal —
   candor-rust and candor-ts published position 0, observed that every position was a literal, and
