@@ -16,6 +16,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.29.0] — 2026-08-17
 
+- **§3.3.1's sink-arming transcript is marked `informative`.** The `spec 0.28` inside it is a
+  MEASURED capture, not a template: rewriting it at each floor bump would falsify the record of what
+  was observed. The marker is `release-preflight [2]`'s own, so the string can stay honest and the
+  bump-miss detector stays sharp.
+
 - **⟨0.29⟩ PART 51 gained `twoLit`: both path positions literal, both published.** The row shipped with
   three functions and could not see the case where a two-path op's positions are BOTH literal —
   candor-rust and candor-ts published position 0, observed that every position was a literal, and
