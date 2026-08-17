@@ -8937,6 +8937,7 @@ if [ -x "$SCAN" ]; then
     printf 'pub fn exfil(p: &str) { let _ = std::fs::write(p, "/tmp/lit"); }\n'
     printf 'pub fn okLit() { let _ = std::fs::write("/tmp/lit", "x"); }\n'
     printf 'pub fn twoPath(d: &str) { let _ = std::fs::copy("/tmp/lit", d); }\n'
+    printf 'pub fn twoLit() { let _ = std::fs::copy("/tmp/lit", "/tmp/dst"); }\n'
   } > "$FP/rs/src/lib.rs"
   rout="$( cd "$FP/rs" && "$SCAN" . --out r --policy "$FP/allow.pol" 2>&1 )"; rrc=$?
   rrep="$(ls "$FP"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
@@ -8951,6 +8952,7 @@ if [ -n "$TS_PRESENT" ]; then
     printf 'export function exfil(p: string): void { fsm.writeFileSync(p, "/tmp/lit"); }\n'
     printf 'export function okLit(): void { fsm.writeFileSync("/tmp/lit", "x"); }\n'
     printf 'export function twoPath(d: string): void { fsm.copyFileSync("/tmp/lit", d); }\n'
+    printf 'export function twoLit(): void { fsm.copyFileSync("/tmp/lit", "/tmp/dst"); }\n'
   } > "$FP/ts/src/a.ts"
   tout="$( cd "$TS_DIR" && node scan.mjs "$FP/ts" --out "$FP/ts/r" --policy "$FP/allow.pol" 2>&1 )"; trc=$?
   p51 "ts" "$FP/ts/r.json" "$trc" "$tout"
@@ -8962,6 +8964,7 @@ mkdir -p "$FP/java"
   printf '  public static void exfil(String p) throws Exception { Files.writeString(Path.of(p), "/tmp/lit"); }\n'
   printf '  public static void okLit() throws Exception { Files.writeString(Path.of("/tmp/lit"), "x"); }\n'
   printf '  public static void twoPath(String d) throws Exception { Files.copy(Path.of("/tmp/lit"), Path.of(d)); }\n'
+  printf '  public static void twoLit() throws Exception { Files.copy(Path.of("/tmp/lit"), Path.of("/tmp/dst")); }\n'
   printf '}\n'
 } > "$FP/java/A.java"
 javac -d "$FP/java/classes" "$FP/java/A.java" 2>/dev/null
@@ -8974,6 +8977,7 @@ if [ -n "$SW_PRESENT" ]; then
     printf 'public func exfil(_ p: String) { FileManager.default.createFile(atPath: p, contents: "/tmp/lit".data(using: .utf8)) }\n'
     printf 'public func okLit() { FileManager.default.createFile(atPath: "/tmp/lit", contents: nil) }\n'
     printf 'public func twoPath(_ d: String) throws { try FileManager.default.copyItem(atPath: "/tmp/lit", toPath: d) }\n'
+    printf 'public func twoLit() throws { try FileManager.default.copyItem(atPath: "/tmp/lit", toPath: "/tmp/dst") }\n'
   } > "$FP/sw/Sources/S/a.swift"
   sout="$( cd "$FP/sw" && "$SW_BIN" . --out r --policy "$FP/allow.pol" 2>&1 )"; src=$?
   srep="$(ls "$FP"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
@@ -8983,7 +8987,7 @@ else
 fi
 echo "PART 51 — an \`Fs\` path literal comes from the path position (SPEC §4)"
 # ENGINES: rust java ts swift
-# CONTROLS: okLit — a fully-literal write must STILL publish its path and stay unmarked, so an engine cannot satisfy this row by giving up the Fs surface; and it must be ABSENT from the violation output, so the exit 1 is this defect rather than an over-charge
+# CONTROLS: okLit twoLit — a fully-literal write must STILL publish its path and stay unmarked, so an engine cannot satisfy this row by giving up the Fs surface, and it must be ABSENT from the violation output so the exit 1 is this defect rather than an over-charge; twoLit copies between two LITERAL paths and must publish BOTH with no `incomplete`, which is what stops a `complete` verdict being computed over more positions than the surface lists
 if [ "$P51_OK" = 0 ]; then
   echo "  -> MATCH — every engine ASKED reads the path from the PATH POSITION: a literal in the content"
   echo "     position names no destination, and one literal out of two path positions is not a surface"
