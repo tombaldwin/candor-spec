@@ -2135,7 +2135,7 @@ the dep reports — and not the target. **Measured, two engines, live:**
     $ candor-ts app.ts --gate-json app.ts
       candor-ts: wrote 0 effectful functions (1 analyzed, 1 files) …                      exit 0
     $ cat app.ts
-      { "spec": "0.28", "ok": false, … }                     ← the operator's SOURCE FILE, replaced
+      { "spec": "0.28", "ok": false, … }                     ← the operator's SOURCE FILE, replaced (measured at spec 0.28, informative)
 
     $ candor-java app.jar --json app.jar
       candor: cannot read scan target app.jar: zip END header not found                   exit 2
