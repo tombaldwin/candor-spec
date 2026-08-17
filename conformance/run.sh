@@ -8492,7 +8492,23 @@ p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-
     echo "                   certifies over a policy the gate refused is the gate's false all-clear with"
     echo "                   one more step of indirection)"; P47_OK=1; return
   fi
-  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only: 0; deny+forbid: 2; NAMES the rule; advisory --strict: 2:2)"
+  # ⟨0.29⟩ …AND THE SAME TWO VERBS OVER AN ANSWERABLE POLICY MUST NOT REACH 2. The row above asserted an
+  # integer with no control, so an engine whose advisory verbs refuse UNCONDITIONALLY — a flag parsed
+  # wrong, a route that always hedges — satisfied it while answering nothing, and 2 is the CAUTIOUS value,
+  # so the failure looks like rigour. Same report, same verbs, the deny-only policy the gate arm already
+  # exits 0 over: measured 0:0 on all four engines. This is the shape PART 52's control exists for, one
+  # part over.
+  if [ "$9" = "2:2" ]; then
+    echo "  $1  -> DIVERGE  (unverified:fix-gate --strict also exited 2:2 over the ANSWERABLE deny-only"
+    echo "                   policy — these verbs refuse unconditionally, so the 2:2 above is not evidence"
+    echo "                   of answerability discipline and this row has been passing vacuously)"
+    P47_OK=1; return
+  fi
+  if [ "$9" != "0:0" ]; then
+    echo "  $1  -> DIVERGE  (unverified:fix-gate --strict exited $9 over the answerable deny-only policy,"
+    echo "                   expected 0:0 — the same report the gate arm answers 0 over)"; P47_OK=1; return
+  fi
+  echo "  $1  -> MATCH    (scan: 1; report refuses: 2; deny-only: 0; deny+forbid: 2; NAMES the rule; advisory --strict: 2:2 over forbid, 0:0 over deny-only)"
 }
 echo "[47] A \`forbid\` RULE IS REFUSED ON A REPORT ROUTE  (SPEC §6.2 — the calls graph is effect-relevant)"
 if [ -x "$SCAN" ]; then
@@ -8503,7 +8519,9 @@ if [ -x "$SCAN" ]; then
   "$QUERY" gate --report "$rrep" --policy "$FB/rs/mixed.pol" >/dev/null 2>&1; rmc=$?
   "$QUERY" unverified --report "$rrep" --policy "$FB/rs/p.pol" --strict >/dev/null 2>&1; ruv=$?
   "$QUERY" fix-gate   --report "$rrep" --policy "$FB/rs/p.pol" --strict >/dev/null 2>&1; rfg=$?
-  p47 "rust " "$rsc" "$rrc" "$rrep" "$rdc" "$rmc" "$rtxt" "$ruv:$rfg"
+  "$QUERY" unverified --report "$rrep" --policy "$FB/rs/deny.pol" --strict >/dev/null 2>&1; ruvd=$?
+  "$QUERY" fix-gate   --report "$rrep" --policy "$FB/rs/deny.pol" --strict >/dev/null 2>&1; rfgd=$?
+  p47 "rust " "$rsc" "$rrc" "$rrep" "$rdc" "$rmc" "$rtxt" "$ruv:$rfg" "$ruvd:$rfgd"
 else
   echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
 fi
@@ -8514,7 +8532,9 @@ if [ -n "$TS_PRESENT" ]; then
   ( cd "$TS_DIR" && node query.mjs gate --report "$FB/ts/r.json" --policy "$FB/ts/mixed.pol" >/dev/null 2>&1 ); tmc=$?
   ( cd "$TS_DIR" && node query.mjs unverified --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" --strict >/dev/null 2>&1 ); tuv=$?
   ( cd "$TS_DIR" && node query.mjs fix-gate   --report "$FB/ts/r.json" --policy "$FB/ts/p.pol" --strict >/dev/null 2>&1 ); tfg=$?
-  p47 "ts   " "$tsc" "$trc" "$FB/ts/r.json" "$tdc" "$tmc" "$ttxt" "$tuv:$tfg"
+  ( cd "$TS_DIR" && node query.mjs unverified --report "$FB/ts/r.json" --policy "$FB/ts/deny.pol" --strict >/dev/null 2>&1 ); tuvd=$?
+  ( cd "$TS_DIR" && node query.mjs fix-gate   --report "$FB/ts/r.json" --policy "$FB/ts/deny.pol" --strict >/dev/null 2>&1 ); tfgd=$?
+  p47 "ts   " "$tsc" "$trc" "$FB/ts/r.json" "$tdc" "$tmc" "$ttxt" "$tuv:$tfg" "$tuvd:$tfgd"
 else
   echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
 fi
@@ -8524,7 +8544,9 @@ java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/deny.pol"  >
 java -jar "$JAR" gate --report "$FB/java/r.json" --policy "$FB/java/mixed.pol" >/dev/null 2>&1; jmc=$?
 java -jar "$JAR" unverified --report "$FB/java/r.json" --policy "$FB/java/p.pol" --strict >/dev/null 2>&1; juv=$?
 java -jar "$JAR" fix-gate   --report "$FB/java/r.json" --policy "$FB/java/p.pol" --strict >/dev/null 2>&1; jfg=$?
-p47 "java " "$jsc" "$jrc" "$FB/java/r.json" "$jdc" "$jmc" "$jtxt" "$juv:$jfg"
+java -jar "$JAR" unverified --report "$FB/java/r.json" --policy "$FB/java/deny.pol" --strict >/dev/null 2>&1; juvd=$?
+java -jar "$JAR" fix-gate   --report "$FB/java/r.json" --policy "$FB/java/deny.pol" --strict >/dev/null 2>&1; jfgd=$?
+p47 "java " "$jsc" "$jrc" "$FB/java/r.json" "$jdc" "$jmc" "$jtxt" "$juv:$jfg" "$juvd:$jfgd"
 if [ -n "$SW_PRESENT" ]; then
   ( cd "$FB/sw" && "$SW_BIN" . --policy p.pol >/dev/null 2>&1 ); ssc=$?
   srep="$(ls "$FB"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
@@ -8533,13 +8555,15 @@ if [ -n "$SW_PRESENT" ]; then
   "$SW_BIN" gate --report "$srep" --policy "$FB/sw/mixed.pol" >/dev/null 2>&1; smc=$?
   "$SW_BIN" unverified --report "$srep" --policy "$FB/sw/p.pol" --strict >/dev/null 2>&1; suv=$?
   "$SW_BIN" fix-gate   --report "$srep" --policy "$FB/sw/p.pol" --strict >/dev/null 2>&1; sfg=$?
-  p47 "swift" "$ssc" "$src" "$srep" "$sdc" "$smc" "$stxt" "$suv:$sfg"
+  "$SW_BIN" unverified --report "$srep" --policy "$FB/sw/deny.pol" --strict >/dev/null 2>&1; suvd=$?
+  "$SW_BIN" fix-gate   --report "$srep" --policy "$FB/sw/deny.pol" --strict >/dev/null 2>&1; sfgd=$?
+  p47 "swift" "$ssc" "$src" "$srep" "$sdc" "$smc" "$stxt" "$suv:$sfg" "$suvd:$sfgd"
 else
   echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
 fi
 echo "PART 47 — a \`forbid\` rule is refused on a report route (SPEC §6.2)"
 # ENGINES: rust java ts swift
-# CONTROLS: rsc tsc jsc ssc — the SCAN route exit codes on the same code and the same rule; each must EVALUATE it (exit 1), because a refusal-only assertion also passes on an engine with no layering support at all
+# CONTROLS: rsc tsc jsc ssc ruvd tuvd juvd suvd — the SCAN route exit codes on the same code and the same rule, each of which must EVALUATE it (exit 1), because a refusal-only assertion also passes on an engine with no layering support at all; and the SAME advisory verbs run under `--strict` over the ANSWERABLE deny-only policy, which must reach 0:0 and not 2:2, because 2 is the cautious value and a verb that refuses unconditionally would otherwise satisfy the forbid arm while answering nothing
 if [ "$P47_OK" = 0 ]; then
   echo "  -> MATCH — every engine ASKED evaluates \`forbid\` at scan time and refuses it on a report route"
   echo "     (an engine printed SKIP above was not asked; CI is three-way, so 'every engine' would overclaim)"
@@ -8996,12 +9020,12 @@ if [ -x "$SCAN" ]; then
   printf '[package]\nname="peek52"\nversion="0.0.0"\nedition="2021"\n' > "$PK/rs/Cargo.toml"
   printf 'pub fn lib_fn() -> i32 { 1 }\n' > "$PK/rs/src/lib.rs"
   printf 'pub fn t() { let x = ((((; }\n' > "$PK/rs/tests/h.rs"
-  ( cd "$PK/rs" && "$SCAN" . --out a --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$PK/rs" && "$SCAN" . --out shapeA --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'pub fn t() -> i32 { 1 }\n' > "$PK/rs/tests/h.rs"
-  ( cd "$PK/rs" && "$SCAN" . --out b --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$PK/rs" && "$SCAN" . --out shapeB --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'pub fn t() { let _ = std::net::TcpStream::connect("1.2.3.4:80"); }\n' > "$PK/rs/tests/h.rs"
-  ( cd "$PK/rs" && "$SCAN" . --out c --policy "$PK/deny.pol" >/dev/null 2>&1 )
-  p52 "rust" "$PK/rs/a.peek52.scan.json" "$PK/rs/b.peek52.scan.json" "$PK/rs/c.peek52.scan.json" \
+  ( cd "$PK/rs" && "$SCAN" . --out shapeC --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "rust" "$PK/rs/shapeA.peek52.scan.json" "$PK/rs/shapeB.peek52.scan.json" "$PK/rs/shapeC.peek52.scan.json" \
       "non-library-target"
 else
   echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
@@ -9011,12 +9035,12 @@ if [ -n "$TS_PRESENT" ]; then
   printf '{"name":"peek52","version":"0.0.0"}\n' > "$PK/ts/package.json"
   printf 'export function libFn(): number { return 1; }\n' > "$PK/ts/src/a.ts"
   printf 'export function t() { const x = ((((; }\n' > "$PK/ts/test/h.test.ts"
-  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/a" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/shapeA" --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'export function t(): number { return 1; }\n' > "$PK/ts/test/h.test.ts"
-  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/b" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/shapeB" --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'import * as https from "node:https";\nexport function t(): void { https.get("https://e.example/x"); }\n' > "$PK/ts/test/h.test.ts"
-  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/c" --policy "$PK/deny.pol" >/dev/null 2>&1 )
-  p52 "ts" "$PK/ts/a.json" "$PK/ts/b.json" "$PK/ts/c.json" "test-file"
+  ( cd "$TS_DIR" && node scan.mjs "$PK/ts" --out "$PK/ts/shapeC" --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "ts" "$PK/ts/shapeA.json" "$PK/ts/shapeB.json" "$PK/ts/shapeC.json" "test-file"
 else
   echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
 fi
@@ -9032,33 +9056,32 @@ mkdir -p "$PK/java/stage/lib"
 cp "$PK/java/libc/lib/P.class" "$PK/java/stage/lib/"
 printf 'not a class file at all' > "$PK/java/stage/lib/Broken.class"
 ( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
-java -jar "$JAR" "$PK/java/classes" --json "$PK/java/a.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/shapeA.json" --policy "$PK/deny.pol" >/dev/null 2>&1
 rm -f "$PK/java/stage/lib/Broken.class"
 ( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
-java -jar "$JAR" "$PK/java/classes" --json "$PK/java/b.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/shapeB.json" --policy "$PK/deny.pol" >/dev/null 2>&1
 cp "$PK/java/libc/lib/L.class" "$PK/java/stage/lib/"
 ( cd "$PK/java/stage" && jar cf "$PK/java/classes/lib.jar" lib/ ) 2>/dev/null
-java -jar "$JAR" "$PK/java/classes" --json "$PK/java/c.json" --policy "$PK/deny.pol" >/dev/null 2>&1
-p52 "java" "$PK/java/a.json" "$PK/java/b.json" "$PK/java/c.json" "archive-under-the-scan-root"
+java -jar "$JAR" "$PK/java/classes" --json "$PK/java/shapeC.json" --policy "$PK/deny.pol" >/dev/null 2>&1
+p52 "java" "$PK/java/shapeA.json" "$PK/java/shapeB.json" "$PK/java/shapeC.json" "archive-under-the-scan-root"
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$PK/sw/Sources/S" "$PK/sw/Tests/STests"
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "STests", dependencies: ["S"])])\n' > "$PK/sw/Package.swift"
   printf 'public func libFn() -> Int { return 1 }\n' > "$PK/sw/Sources/S/a.swift"
   swp() { ls "$PK"/sw/"$1".*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1; }
   printf 'public func t() { let x = ((((( }\n' > "$PK/sw/Tests/STests/t.swift"
-  ( cd "$PK/sw" && "$SW_BIN" . --out a --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$PK/sw" && "$SW_BIN" . --out shapeA --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'public func t() -> Int { return 1 }\n' > "$PK/sw/Tests/STests/t.swift"
-  ( cd "$PK/sw" && "$SW_BIN" . --out b --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  ( cd "$PK/sw" && "$SW_BIN" . --out shapeB --policy "$PK/deny.pol" >/dev/null 2>&1 )
   printf 'import Foundation\npublic func t() { _ = try? String(contentsOf: URL(string: "https://e.example/x")!, encoding: .utf8) }\n' > "$PK/sw/Tests/STests/t.swift"
-  ( cd "$PK/sw" && "$SW_BIN" . --out c --policy "$PK/deny.pol" >/dev/null 2>&1 )
-  p52 "swift" "$(swp a)" "$(swp b)" "$(swp c)" "harness-target"
+  ( cd "$PK/sw" && "$SW_BIN" . --out shapeC --policy "$PK/deny.pol" >/dev/null 2>&1 )
+  p52 "swift" "$(swp shapeA)" "$(swp shapeB)" "$(swp shapeC)" "harness-target"
 else
   echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
 fi
 echo "PART 52 — a class is \`peeked\` only if every file of it was read (SPEC §2 ⟨0.29⟩)"
 # ENGINES: rust java ts swift
-# CONTROLS: shape B — the SAME tree with the SAME file parsing and clean must publish `peeked: true` with an empty `outOfScope`, because `peeked: false` is the SAFE value and an engine that stopped claiming a peek at all would pass shape A while silently deleting the feature; shape C — the same file holding the denied effect must still be peeked AND reported, so the two `true`s above are about a peek that actually reads
-# CONTROLS: swift's `manifest` class is peeked in the same runs and is NOT charged for the harness file's parse failure — the claim is withdrawn per CLASS, not wholesale
+# CONTROLS: shapeB shapeC — shape B (the SAME tree with the SAME file parsing and clean) must publish `peeked: true` with an empty `outOfScope`, because `peeked: false` is the SAFE value and an engine that stopped claiming a peek at all would pass shape A while silently deleting the feature; shape C (the same file holding the denied effect) must still be peeked AND reported, so the two `true`s above are about a peek that actually reads; and swift's `manifest` class is peeked in the same runs and is NOT charged for the harness file's parse failure, so the claim is seen to be withdrawn per CLASS rather than wholesale
 if [ "$P52_OK" = 0 ]; then
   echo "  -> MATCH — every engine ASKED withdraws the peek claim for the class holding a file it could"
   echo "     not read, and keeps it for a class it read cleanly"
@@ -9099,11 +9122,11 @@ if [ -x "$SCAN" ]; then
   printf '[package]\nname="ref53"\nversion="0.0.0"\nedition="2021"\n' > "$RP/rs/Cargo.toml"
   printf 'pub fn lib_fn() -> i32 { 1 }\n' > "$RP/rs/src/lib.rs"
   printf 'pub fn t() { let _ = std::net::TcpStream::connect("1.2.3.4:80"); }\n' > "$RP/rs/tests/h.rs"
-  ( cd "$RP/rs" && "$SCAN" . --out a --policy "$RP/refused.pol" >/dev/null 2>&1 ); ra=$?
-  ( cd "$RP/rs" && "$SCAN" . --out b --policy "$RP/stands.pol"  >/dev/null 2>&1 ); rb=$?
-  ( cd "$RP/rs" && "$SCAN" . --out c --policy "$RP/other.pol"   >/dev/null 2>&1 ); rc3=$?
-  p53 "rust" "$ra" "$RP/rs/a.ref53.scan.json" "$rb" "$RP/rs/b.ref53.scan.json" \
-      "$rc3" "$RP/rs/c.ref53.scan.json"
+  ( cd "$RP/rs" && "$SCAN" . --out shapeA --policy "$RP/refused.pol" >/dev/null 2>&1 ); ra=$?
+  ( cd "$RP/rs" && "$SCAN" . --out shapeB --policy "$RP/stands.pol"  >/dev/null 2>&1 ); rb=$?
+  ( cd "$RP/rs" && "$SCAN" . --out shapeC --policy "$RP/other.pol"   >/dev/null 2>&1 ); rc3=$?
+  p53 "rust" "$ra" "$RP/rs/shapeA.ref53.scan.json" "$rb" "$RP/rs/shapeB.ref53.scan.json" \
+      "$rc3" "$RP/rs/shapeC.ref53.scan.json"
 else
   echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
 fi
@@ -9112,10 +9135,10 @@ if [ -n "$TS_PRESENT" ]; then
   printf '{"name":"ref53","version":"0.0.0"}\n' > "$RP/ts/package.json"
   printf 'export function libFn(): number { return 1; }\n' > "$RP/ts/src/a.ts"
   printf 'import * as https from "node:https";\nexport function t(): void { https.get("https://e.example/x"); }\n' > "$RP/ts/test/h.test.ts"
-  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/a" --policy "$RP/refused.pol" >/dev/null 2>&1 ); ta=$?
-  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/b" --policy "$RP/stands.pol"  >/dev/null 2>&1 ); tb=$?
-  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/c" --policy "$RP/other.pol"   >/dev/null 2>&1 ); tc=$?
-  p53 "ts" "$ta" "$RP/ts/a.json" "$tb" "$RP/ts/b.json" "$tc" "$RP/ts/c.json"
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/shapeA" --policy "$RP/refused.pol" >/dev/null 2>&1 ); ta=$?
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/shapeB" --policy "$RP/stands.pol"  >/dev/null 2>&1 ); tb=$?
+  ( cd "$TS_DIR" && node scan.mjs "$RP/ts" --out "$RP/ts/shapeC" --policy "$RP/other.pol"   >/dev/null 2>&1 ); tc=$?
+  p53 "ts" "$ta" "$RP/ts/shapeA.json" "$tb" "$RP/ts/shapeB.json" "$tc" "$RP/ts/shapeC.json"
 else
   echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
 fi
@@ -9126,27 +9149,26 @@ javac -d "$RP/java/classes" "$RP/java/src/M.java" 2>/dev/null
 javac -d "$RP/java/libc" "$RP/java/src/L.java" 2>/dev/null
 cp "$RP/java/libc/lib/L.class" "$RP/java/stage/lib/" 2>/dev/null
 ( cd "$RP/java/stage" && jar cf "$RP/java/classes/lib.jar" lib/ ) 2>/dev/null
-java -jar "$JAR" "$RP/java/classes" --json "$RP/java/a.json" --policy "$RP/refused.pol" >/dev/null 2>&1; ja=$?
-java -jar "$JAR" "$RP/java/classes" --json "$RP/java/b.json" --policy "$RP/stands.pol"  >/dev/null 2>&1; jb=$?
-java -jar "$JAR" "$RP/java/classes" --json "$RP/java/c.json" --policy "$RP/other.pol"   >/dev/null 2>&1; jc=$?
-p53 "java" "$ja" "$RP/java/a.json" "$jb" "$RP/java/b.json" "$jc" "$RP/java/c.json"
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/shapeA.json" --policy "$RP/refused.pol" >/dev/null 2>&1; ja=$?
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/shapeB.json" --policy "$RP/stands.pol"  >/dev/null 2>&1; jb=$?
+java -jar "$JAR" "$RP/java/classes" --json "$RP/java/shapeC.json" --policy "$RP/other.pol"   >/dev/null 2>&1; jc=$?
+p53 "java" "$ja" "$RP/java/shapeA.json" "$jb" "$RP/java/shapeB.json" "$jc" "$RP/java/shapeC.json"
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$RP/sw/Sources/S" "$RP/sw/Tests/STests"
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "STests", dependencies: ["S"])])\n' > "$RP/sw/Package.swift"
   printf 'public func libFn() -> Int { return 1 }\n' > "$RP/sw/Sources/S/a.swift"
   printf 'import Foundation\npublic func t() { _ = try? String(contentsOf: URL(string: "https://e.example/x")!, encoding: .utf8) }\n' > "$RP/sw/Tests/STests/t.swift"
   swr() { ls "$RP"/sw/"$1".*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1; }
-  ( cd "$RP/sw" && "$SW_BIN" . --out a --policy "$RP/refused.pol" >/dev/null 2>&1 ); sa=$?
-  ( cd "$RP/sw" && "$SW_BIN" . --out b --policy "$RP/stands.pol"  >/dev/null 2>&1 ); sb=$?
-  ( cd "$RP/sw" && "$SW_BIN" . --out c --policy "$RP/other.pol"   >/dev/null 2>&1 ); sc=$?
-  p53 "swift" "$sa" "$(swr a)" "$sb" "$(swr b)" "$sc" "$(swr c)"
+  ( cd "$RP/sw" && "$SW_BIN" . --out shapeA --policy "$RP/refused.pol" >/dev/null 2>&1 ); sa=$?
+  ( cd "$RP/sw" && "$SW_BIN" . --out shapeB --policy "$RP/stands.pol"  >/dev/null 2>&1 ); sb=$?
+  ( cd "$RP/sw" && "$SW_BIN" . --out shapeC --policy "$RP/other.pol"   >/dev/null 2>&1 ); sc=$?
+  p53 "swift" "$sa" "$(swr shapeA)" "$sb" "$(swr shapeB)" "$sc" "$(swr shapeC)"
 else
   echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
 fi
 echo "PART 53 — the peek is a producer reading the policy, so §3.1 binds it (SPEC §2 ⟨0.29⟩)"
 # ENGINES: rust java ts swift
-# CONTROLS: shape B — a policy that STANDS and denies the effect in an excluded file must still publish the finding, because an engine that never emits the key passes shape A while deleting the ⟨0.29⟩ peek and looking maximally cautious doing it; shape C — a policy that stands and denies something else must publish present-and-EMPTY, so asked-and-clear ⟨0.27⟩ is not collapsed into cannot-answer ⟨0.26⟩
-# CONTROLS: the exit codes are asserted before the keys — 2 for the refusal, 0 for both honoured runs — so shape A cannot pass on an engine that simply HONOURED the typo'd token
+# CONTROLS: shapeB shapeC — shape B (a policy that STANDS and denies the effect in an excluded file) must still publish the finding, because an engine that never emits the key passes shape A while deleting the ⟨0.29⟩ peek and looking maximally cautious doing it; shape C (a policy that stands and denies something else) must publish present-and-EMPTY, so asked-and-clear ⟨0.27⟩ is not collapsed into cannot-answer ⟨0.26⟩; and the exit codes are asserted BEFORE the keys — 2 for the refusal, 0 for both honoured runs — so shape A cannot pass on an engine that simply HONOURED the typo'd token
 if [ "$P53_OK" = 0 ]; then
   echo "  -> MATCH — every engine ASKED withholds the peek's key over a policy it refuses, and publishes"
   echo "     it (finding, or a meant empty) over one it honours"
