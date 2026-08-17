@@ -14,6 +14,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ PART 51 gained `twoLit`: both path positions literal, both published.** The row shipped with
+  three functions and could not see the case where a two-path op's positions are BOTH literal —
+  candor-rust and candor-ts published position 0, observed that every position was a literal, and
+  therefore called the surface COMPLETE, so `allow Fs /tmp/lit` certified a copy into `/tmp/dst` at exit
+  0. A false all-clear assembled from two correct-looking halves: the right completeness verdict computed
+  over more positions than the surface lists. Found by generating a case per `fs` export in each engine
+  and diffing the four — which is exactly what a hand-written row cannot do, and what the row itself was
+  written from.
 - **⟨0.29⟩ two conformance instruments that could not fail, and a verdict line that ran its own words.**
   PART 47 asserted `unverified:fix-gate --strict` == 2:2 over a `forbid` policy with nothing showing those
   verbs ever exit otherwise — an engine refusing UNCONDITIONALLY satisfied it while answering nothing, and
