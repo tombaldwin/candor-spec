@@ -14,6 +14,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.29⟩ two conformance instruments that could not fail, and a verdict line that ran its own words.**
+  PART 47 asserted `unverified:fix-gate --strict` == 2:2 over a `forbid` policy with nothing showing those
+  verbs ever exit otherwise — an engine refusing UNCONDITIONALLY satisfied it while answering nothing, and
+  2 is the CAUTIOUS value, so the failure would have looked like rigour. The same verbs now also run over
+  the answerable deny-only policy: 0:0, four-way. `only_check.py`'s report-route arm grepped `AS-EFF-009`
+  — `forbid`'s code — for a form that emits `AS-EFF-011`, i.e. it was aimed one identifier to the left of
+  the leak it exists to catch. And the three summary fragments added for PARTs 51–53 carried unescaped
+  backticks inside a double-quoted `echo`, so bash ran `Fs`, `peeked` and `ok` as commands and the words
+  vanished from the line the suite prints as its verdict.
+
 - **⟨0.29⟩ §2 a literal surface is read from the LOCATOR POSITION.** §4 already stated it for the `Exec`
   head — argv[0] is the program, and `spawn(tool, "curl")` with a dynamic head must not refine — and the
   same rule was never written for the other three surfaces. MEASURED: `write(userPath, "/tmp/lit")`
