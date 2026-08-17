@@ -12,9 +12,9 @@
  ],
  "entries": [
   {
-   "sha": "f3845edd2de2d5b3",
+   "sha": "ab7be877f50af9a4",
    "at": "Contents",
-   "excerpt": "**Version 0.28** — all code engines declare `0.28`; the floor is conformance-pinned. How versions move (the",
+   "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
    "status": "pre-ledger"
   },
   {
