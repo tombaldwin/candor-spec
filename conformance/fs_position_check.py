@@ -20,11 +20,18 @@ That is the cardinal sin in its exact shape: a green gate certifying a write to 
 destination, with the operator's own allow-rule as the thing that lets it through. Worse than a missing
 rule, because the report names a path that was never written to.
 
-THIS ROW HAS THREE FUNCTIONS AND ALL THREE ARE LOAD-BEARING:
+THIS ROW HAS FOUR FUNCTIONS AND ALL FOUR ARE LOAD-BEARING:
 
   exfil(p)    write(runtime, "/tmp/lit")           the defect: a literal in a NON-path position
   okLit()     write("/tmp/lit", …)                 THE OVER-CHARGE CONTROL
   twoPath(d)  copy("/tmp/lit", runtime)            a literal in ONE path position of TWO
+  twoLit()    copy("/tmp/lit", "/tmp/dst")         BOTH positions literal — publish BOTH
+
+`twoLit` is the second defect this row caught, and it was found by GENERATING a case per `fs` export
+rather than by re-reading the fix: candor-rust and candor-ts published position 0, saw both positions were
+literal, and therefore called the surface COMPLETE — so `allow Fs /tmp/lit` answered `policy ✓` at exit 0
+over a copy INTO `/tmp/dst`. A false all-clear built out of two correct-looking halves: the right
+completeness verdict attached to half a surface. candor-java and candor-swift published both all along.
 
 `okLit` is why the row cannot be satisfied by an engine that simply stopped reading literals: charge
 everything and `exfil`/`twoPath` pass while the tool becomes useless, which is the failure mode every
@@ -62,7 +69,7 @@ def main():
                 if str(f.get("fn", "")).replace("::", ".").split(".")[-1] == leaf]
         return hits[0] if len(hits) == 1 else None
 
-    fns = {leaf: unit(leaf) for leaf in ("exfil", "okLit", "twoPath")}
+    fns = {leaf: unit(leaf) for leaf in ("exfil", "okLit", "twoPath", "twoLit")}
     missing = [k for k, v in fns.items() if v is None]
     if missing:
         return fail(f"the report does not name exactly one unit for {missing} — the fixture did not "
@@ -98,11 +105,20 @@ def main():
         return fail("`twoPath` copies FROM a literal TO a runtime path and is not marked incomplete — a "
                     "position-0 literal certified a destination that was never visible")
 
-    # (4) THE VERDICT. Fields an engine publishes but does not gate on are a report nobody is protected by.
+    # (4) BOTH literal ⇒ BOTH published. Completeness and the surface must be computed over the same set
+    # of positions; a `complete` verdict covering positions the report never lists is the false all-clear.
+    if paths(fns["twoLit"]) != {"/tmp/lit", "/tmp/dst"}:
+        return fail(f"`twoLit` copies between TWO literal paths and publishes {sorted(paths(fns['twoLit']))} "
+                    "— the unpublished position is certified by any rule that allows the published one")
+    if inc(fns["twoLit"]):
+        return fail("`twoLit` has literals in BOTH path positions and is still marked incomplete — the "
+                    "surface is entirely visible, so this charges a call nothing is hidden in")
+
+    # (5) THE VERDICT. Fields an engine publishes but does not gate on are a report nobody is protected by.
     if rc != "1":
-        return fail(f"the gate answered exit {rc} over `allow Fs /tmp/lit`, but two of these three units "
-                    "reach an Fs destination the report cannot name — a green here IS the false all-clear")
-    for leaf in ("exfil", "twoPath"):
+        return fail(f"the gate answered exit {rc} over `allow Fs /tmp/lit`, but three of these four units "
+                    "reach an Fs destination outside the allowlist — a green here IS the false all-clear")
+    for leaf in ("exfil", "twoPath", "twoLit"):
         if leaf not in out:
             return fail(f"the violation output never names `{leaf}` — the exit code is right for some "
                         "other reason, and this row would survive the defect it exists to catch")
@@ -111,7 +127,8 @@ def main():
                     "exit 1 above is an over-charge, not this defect")
 
     print(f"  {engine:6} -> OK        (the path POSITION decides: a content literal fabricates nothing, a "
-          "half-literal two-path op is incomplete, and a fully-literal write still certifies)")
+          "half-literal two-path op is incomplete, BOTH literal positions are published, and a "
+          "fully-literal write still certifies)")
     return 0
 
 
