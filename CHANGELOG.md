@@ -14,6 +14,19 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.29.1] — 2026-08-18
+
+- **The generative differential asks about `argv`.** It did not, and that absence is why the four engines
+  answered one question two ways without a green run ever noticing: candor-rust charged
+  `std::env::args()` as `Env` from the start, while candor-ts's `process.argv`, candor-swift's
+  `CommandLine.arguments` and candor-java's `ProcessHandle.Info.arguments()` all read PURE until a
+  cross-engine parity sweep asked directly. §1 already decides it — `Env` is "reading environment
+  variables / **the process environment**", and argv is process-startup state delivered by the same
+  `exec` as envp, which is how a secret reaches a program as `--token=…`. So the engines were moved to
+  §1's existing wording; **SPEC.md is unchanged, and this stays a within-spec patch.** The new case
+  generates four shapes per engine, and is calibrated: removing ts's arm prints `(pure)!D` for ts on all
+  four while the others say `Env`.
+
 ## [0.29.0] — 2026-08-17
 
 - **§3.3.1's sink-arming transcript is marked `informative`.** The `spec 0.28` inside it is a
