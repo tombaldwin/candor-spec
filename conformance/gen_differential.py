@@ -80,6 +80,18 @@ EFFECTS = [
         ts='void process.env.X;',
         swift='_ = ProcessInfo.processInfo.environment["PATH"]',
     )),
+    # ARGV — the row whose ABSENCE let the engines answer one question three ways. rust charged
+    # `std::env::args()` as Env from the start; ts's `process.argv`, swift's `CommandLine.arguments` and
+    # java's `ProcessHandle.Info.arguments()` all read PURE until a cross-engine parity sweep asked
+    # (2026-08-18). §1's Env is "reading environment variables / THE PROCESS ENVIRONMENT", and argv is
+    # process-startup state delivered by the same `exec` as envp — secrets arrive through it. A green
+    # four-way run could not see the divergence because nothing here asked about argv.
+    dict(id="argv", effect="Env", sink=dict(
+        rust='let _ = std::env::args().count();',
+        java='ProcessHandle.current().info().arguments();',
+        ts='void process.argv[2];',
+        swift='_ = CommandLine.arguments',
+    )),
     dict(id="clock", effect="Clock", sink=dict(
         rust='let _ = std::time::SystemTime::now();',
         java='long t = System.currentTimeMillis();',
