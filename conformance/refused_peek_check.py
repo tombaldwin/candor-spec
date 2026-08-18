@@ -59,9 +59,16 @@ def main():
     if a_rc != "2":
         return fail(f"the refused policy answered exit {a_rc}, not 2 — this engine did not refuse it, so "
                     "the absence asserted below would be about a policy that stood")
-    if b_rc != "0" or c_rc != "0":
-        return fail(f"a policy that STANDS answered exit {b_rc}/{c_rc} rather than 0 — the controls are "
-                    "not measuring a run whose peek was allowed to publish")
+    # ⟨0.30⟩ THE TWO STANDING SHAPES NOW ANSWER DIFFERENTLY, and the split is the rung: B's peek finds the
+    # denied effect, so its verdict is INCOMPLETE (exit 2); C's peek is asked-and-clear, so it stays 0.
+    # Asserting both is strictly stronger than the old "both 0" — it pins that the finding moves the
+    # verdict AND that an empty peek does not, which is the over-charge control this rung most needs.
+    if b_rc != "2":
+        return fail(f"a policy that STANDS over an excluded file holding the denied effect answered exit "
+                    f"{b_rc}, not 2 — ⟨0.30⟩ makes a published finding an INCOMPLETE verdict")
+    if c_rc != "0":
+        return fail(f"a policy that STANDS with an asked-and-clear peek answered exit {c_rc}, not 0 — an "
+                    "empty `outOfScope` must not move the verdict, or the rung reddens every exclusion")
 
     # (A) THE DEFECT.
     if "outOfScope" in docs["A"]:
