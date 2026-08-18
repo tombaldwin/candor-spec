@@ -12,12 +12,6 @@
  ],
  "entries": [
   {
-   "sha": "ab7be877f50af9a4",
-   "at": "Contents",
-   "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
-   "status": "pre-ledger"
-  },
-  {
    "sha": "e0e539b6a42515d0",
    "at": "Contents",
    "excerpt": "The **spec/contract version** — the report schema, the effect vocabulary, the `AS-EFF` codes, and the **pinned",
@@ -2634,12 +2628,6 @@
    "part": "PART 48"
   },
   {
-   "sha": "b545d30032c153de",
-   "at": "2. The report",
-   "excerpt": "- ⟨0.29⟩ `\"outOfScope\": [ { \"fn\": …, \"path\": …, \"effects\": [\"<Effect>\"…], \"class\": …, \"reason\": … } ]` — **THE",
-   "part": "PART 48 + PART 53"
-  },
-  {
    "sha": "c26fccbc8d130f8d",
    "at": "2. The report",
    "excerpt": "- ⟨0.29⟩ **The peek MUST reach its finding through the engine's ordinary analysis path over a different FILE S",
@@ -2722,6 +2710,42 @@
    "at": "2. The report",
    "excerpt": "⟨0.29⟩ a literal surface is read from the locator POSITION; every position of a multi-locator op",
    "part": "PART 51"
+  },
+  {
+   "sha": "74ffa7c4c45afc7b",
+   "at": "Contents",
+   "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
+   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through \u27e80.29\u27e9, \u27e80.30\u27e9 deliberately not) and that an upgrade to \u27e80.30\u27e9 is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it describes IS exercised, by PART 48 and PART 54. Reclassified from pre-ledger because the \u27e80.30\u27e9 sentence is new text, and carrying a pre-ledger status across a reword is how the gate gets defeated."
+  },
+  {
+   "sha": "66fb6633734a95c5",
+   "at": "2. The report",
+   "excerpt": "- \u27e80.29\u27e9 `\"outOfScope\": [ { \"fn\": \u2026, \"path\": \u2026, \"effects\": [\"<Effect>\"\u2026], \"class\": \u2026, \"reason\": \u2026 } ]` — **THE",
+   "part": "PART 48"
+  },
+  {
+   "sha": "4ee7d51d413b2fab",
+   "at": "2. The report",
+   "excerpt": "- \u27e80.30\u27e9 **A NON-EMPTY `outOfScope` MAKES THE VERDICT INCOMPLETE — `ok: false`, `incomplete: true`, EXIT 2.** ",
+   "part": "PART 48"
+  },
+  {
+   "sha": "6b1be92e9b125f61",
+   "at": "2. The report",
+   "excerpt": "**Exit 2, NOT exit 1, and the distinction is the point.** These functions are still never members of `violatio",
+   "part": "PART 48"
+  },
+  {
+   "sha": "2418e9e6284b0ef2",
+   "at": "2. The report",
+   "excerpt": "**The bound in the \u27e80.29\u27e9 clause above is what makes this affordable**: `outOfScope` is emitted only for effec",
+   "part": "PART 48"
+  },
+  {
+   "sha": "015d1bf263bbcb1f",
+   "at": "2. The report",
+   "excerpt": "**\u00a73.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new ancho",
+   "part": "PART 54"
   }
  ]
 }
