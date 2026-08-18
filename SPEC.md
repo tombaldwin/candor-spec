@@ -20,8 +20,11 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 **Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
-introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung is additive over the last,
-so an older-version consumer that ignores the newer optional fields is unaffected. **0.23 is a tier-1 additive
+introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung through ⟨0.29⟩ is additive over the last,
+so an older-version consumer that ignores the newer optional fields is unaffected. **⟨0.30⟩ is the first
+exception and is deliberately not additive**: it adds no field and removes none, but it changes what a gate
+DOES with an existing one, and a tree that passed under ⟨0.29⟩ can exit 2 under ⟨0.30⟩. An upgrade is
+therefore a decision, not a drop-in — see the changelog entry for what flips and what provably does not. **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
 `CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
@@ -738,10 +741,11 @@ already carry.
   (`build-script`, `harness-target`, `source-without-class`), and a shared enumeration would force one
   engine to file its exclusion under another's name.
 - ⟨0.29⟩ `"outOfScope": [ { "fn": …, "path": …, "effects": ["<Effect>"…], "class": …, "reason": … } ]` —
-  **THE PEEK: an effect found in a file the gate did NOT judge.** **An out-of-scope finding MUST NOT move
-  the verdict.** It is its own kind: never a member of `violations`, never a member of `functions`, and the
-  exit code MUST be what it would have been without it. A file the gate declined to judge must not decide an
-  exit code. **Emitted only when a policy is CONFIGURED and HONOURED, and only for effects that policy
+  **THE PEEK: an effect found in a file the gate did NOT judge.** ⟨0.29⟩ ruled that **an out-of-scope
+  finding MUST NOT move the verdict** — the exit code had to be what it would have been without it, because
+  a file the gate declined to judge must not decide an exit code. ⟨0.30⟩ **REVERSES that**: see the ⟨0.30⟩
+  clause below. It remains its own kind: never a member of `violations`, never a member of `functions`.
+  **Emitted only when a policy is CONFIGURED and HONOURED, and only for effects that policy
   DENIES** — that bound is what keeps the block from becoming the noise it would otherwise be, because the
   floor is then "things you have already said you care about" rather than "everything you excluded". With no
   policy the key is ABSENT: nothing was asked, so `[]` would be a claim. Over a policy the engine REFUSES,
@@ -772,6 +776,35 @@ already carry.
   language the engine reads. A project whose `Exec` lives in `scripts/deploy.sh` is one where "candor says
   no Exec" remains a dangerous sentence, and no engine counts those files today — enumerating them would
   cost this block the bound that keeps it readable. See FILE-SET-DESIGN.md §3 (N3).*
+
+- ⟨0.30⟩ **A NON-EMPTY `outOfScope` MAKES THE VERDICT INCOMPLETE — `ok: false`, `incomplete: true`, EXIT 2.**
+  This reverses ⟨0.29⟩'s "an out-of-scope finding MUST NOT move the verdict", and the reversal is a
+  measurement, not a preference. That clause assumed the peek would surface UNCERTAINTY, which a gate can
+  reasonably decline to act on. It does not. Measured on published 0.29.1 under `deny Net`, the peek
+  resolves a CONCRETE DENIED EFFECT and names the function: `axios` 37 functions `performs Net`,
+  `node-fetch` 15, `ky` 9, `execa` 9, `zx` 3, `ofetch` 1 — every one exit 0, `policy ✓`. An engine that
+  concludes a function performs the denied effect, prints that conclusion, and then certifies the tree is
+  committing the cardinal sin with the evidence already in its hand.
+
+  **Exit 2, NOT exit 1, and the distinction is the point.** These functions are still never members of
+  `violations` and never members of `functions` — the gate did not judge them, so reporting a violation
+  would be a second false claim in the opposite direction. Exit 2 says *I could not see enough of this tree
+  to answer*, which is exactly what happened, and it reuses the fail-closed vocabulary already established
+  by ⟨0.21⟩ (`{ok:false, incomplete:true, unanalyzed}`) and ⟨0.27⟩ (a configured dep that cannot be read is
+  UNEVALUABLE, not reduced coverage). A consumer branching on `incomplete` alone is safe under both.
+
+  **The bound in the ⟨0.29⟩ clause above is what makes this affordable**: `outOfScope` is emitted only for
+  effects the policy DENIES, so the trigger is never "you excluded something" but always "you excluded
+  something that does the thing you said must not happen." Measured across 27 real packages, that flips the
+  6 above and leaves 14 green untouched — every one with an empty peek because the scan read it in full.
+  Present-and-empty remains asked-and-clear and remains exit 0; the over-charge control is structural.
+
+  **§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new
+  anchor:** `outOfScope` is a field OF THE REPORT, so `gate --report` reads the same entries `scan --policy`
+  peeked, and both routes derive one verdict document from identical input. An ABSENT key is the ⟨0.26⟩
+  *cannot answer*, not a clear one, and it does NOT trigger this clause — a report produced with no policy
+  was never asked the question, and pre-⟨0.30⟩ reports predate the key. A gate that wants this assurance
+  must be given a report whose producer was configured with the policy.
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
@@ -4363,6 +4396,31 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.30 (conformance-pinned four-way, PART 48 amended + PART 54)** — the **first NON-ADDITIVE rung**, and the only one so
+  far that can turn a previously GREEN gate into a failure. No field is added or removed: `outOfScope`
+  (§2, ⟨0.29⟩) is unchanged in shape and in emission rule. What changes is what a gate DOES with it —
+  **a non-empty `outOfScope` now makes the verdict `ok: false`, `incomplete: true`, exit 2**, reversing
+  ⟨0.29⟩'s "an out-of-scope finding MUST NOT move the verdict".
+
+  **Reversed on a measurement.** The ⟨0.29⟩ rule assumed the peek surfaces UNCERTAINTY, which a gate may
+  reasonably decline to act on. Measured on published 0.29.1 under `deny Net`, it does not: it resolves a
+  CONCRETE denied effect and names the function — `axios` 37 functions `performs Net`, `node-fetch` 15,
+  `ky` 9, `execa` 9, `zx` 3, `ofetch` 1, every one exiting 0 with `policy ✓`. `axios` ships 5 real `.ts`
+  files, all of them type tests, against 160 `.js` implementation files. An engine that concludes a
+  function performs the denied effect, prints that conclusion, and then certifies the tree is committing
+  the cardinal sin holding its own evidence.
+
+  **Exit 2, not exit 1**: these are still never members of `violations`, because the gate did not judge
+  them and a violation claim would be false in the other direction. It reuses ⟨0.21⟩'s
+  `{ok:false, incomplete:true}` and follows ⟨0.27⟩'s precedent that an unreadable configured input is
+  UNEVALUABLE rather than reduced coverage.
+
+  **Bounded, so the over-charge control is structural.** ⟨0.29⟩ already restricts `outOfScope` to effects
+  the policy DENIES, so the trigger is never "you excluded something" but "you excluded something that
+  does the thing you forbade". Across 27 real packages it flips the 6 above and leaves 14 green untouched.
+  Present-and-empty stays asked-and-clear and stays exit 0; an ABSENT key is ⟨0.26⟩ *cannot answer* and
+  does NOT trigger the clause, so pre-⟨0.30⟩ reports and no-policy reports are unaffected.
 
 - **0.27 (all code engines declare `0.27`; conformance-pinned four-way, PART 31)** — a **tier-1 additive**
   rung: the envelope's **`resolves`** array (§2.1) declares which optional per-function refinement surfaces

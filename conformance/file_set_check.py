@@ -20,8 +20,12 @@ gate one people scroll past, and the failure this rung is most likely to regress
 
   · the FINDING          `deny Exec` over the fixture reports the out-of-scope Exec, and the reason string
                          says the gate did not judge it — asked of the VALUE, not the key's presence.
-  · the VERDICT UNMOVED  same run: exit unchanged, and the out-of-scope fn absent from `functions`. A file
-                         the gate declined to judge must not decide an exit code.
+  · the VERDICT ⟨0.30⟩   same run: exit 2 (`ok:false`, `incomplete:true`), and the out-of-scope fn STILL
+                         absent from `functions` and from `violations`. ⟨0.29⟩ asserted the exit was
+                         UNMOVED here; ⟨0.30⟩ reverses that half on the measurement that the peek resolves
+                         a CONCRETE denied effect (axios 37 fns `performs Net`, exit 0, `policy ✓`). The
+                         membership half is unchanged and is the reason the code is 2 and not 1: the gate
+                         did not judge this unit, so a violation claim would be false the other way.
   · POLICY-BOUNDED       `deny Net` over the SAME tree says nothing about the same `Exec`.
   · POLICY-SCOPED        no policy at all ⇒ the key is ABSENT, not `[]`. Nothing was asked, so an empty
                          list would be a claim (⟨0.26⟩: absence means "this producer cannot answer").
@@ -101,14 +105,23 @@ def main():
     if not (f0.get("path") or "").strip():
         return fail(engine, f"the finding names no file, so nobody can go and look: {f0}")
 
-    # ── the VERDICT UNMOVED ───────────────────────────────────────────────────────────────────────
-    if rc_exec != "0":
-        return fail(engine, f"exit {rc_exec} under `deny {effect}` — the in-scope code is clean, so a "
-                            "non-zero exit means a file the gate declined to judge decided the verdict")
+    # ── the VERDICT INCOMPLETE ⟨0.30⟩ ─────────────────────────────────────────────────────────────
+    # ⟨0.29⟩ asserted the opposite here (exit UNMOVED). ⟨0.30⟩ reverses the exit-code half on the
+    # measurement that the peek resolves a CONCRETE denied effect rather than uncertainty; the
+    # STRUCTURAL half below is unchanged, because the gate still did not judge this unit.
+    if rc_exec != "2":
+        return fail(engine, f"exit {rc_exec} under `deny {effect}` — a peeked function performs the denied "
+                            "effect, so the verdict is INCOMPLETE (exit 2), not a pass (⟨0.30⟩)")
     fns = {e.get("fn") for e in (d_exec.get("functions") or [])}
     if f0.get("fn") in fns:
         return fail(engine, f"`{f0.get('fn')}` is in `functions` as well — the peek folded an unjudged "
-                            "unit into the judged set, which is the verdict moving one step quieter")
+                            "unit into the judged set. ⟨0.30⟩ moves the EXIT CODE, not the membership: "
+                            "exit 2 says `I could not see enough`, and claiming a violation over code the "
+                            "gate never judged would be false in the other direction")
+    viols = {(e.get("fn") if isinstance(e, dict) else e) for e in (d_exec.get("violations") or [])}
+    if f0.get("fn") in viols:
+        return fail(engine, f"`{f0.get('fn')}` was reported as a VIOLATION — ⟨0.30⟩ makes the verdict "
+                            "incomplete, never a violation: the gate did not judge this unit")
 
     # ── POLICY-BOUNDED ────────────────────────────────────────────────────────────────────────────
     bound = d_net.get("outOfScope")
@@ -173,7 +186,7 @@ def main():
 
     unpeeked = [e["class"] for e in exc if not e["peeked"]]
     note = f"; unpeeked: {','.join(unpeeked)}" if unpeeked else ""
-    print(f"  {engine:6} -> MATCH    (finds it: {f0['fn']} in {f0['path']}; verdict 0, not in functions; "
+    print(f"  {engine:6} -> MATCH    (finds it: {f0['fn']} in {f0['path']}; verdict 2, not in functions; "
           f"bound: []; no policy: absent; control: []; twin agrees on {'+'.join(sorted(want))}{note})")
     return 0
 

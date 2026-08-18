@@ -8644,7 +8644,7 @@ if [ -n "$SW_PRESENT" ]; then
   printf 'public func add(_ a: Int) -> Int { a + 1 }\n' > "$FS/swctl/Sources/S/a.swift"
 fi
 
-echo "[48] THE FILE SET — WHAT A REPORT SAYS ABOUT CODE IT NEVER OPENED  (SPEC §2 ⟨0.29⟩)"
+echo "[48] THE FILE SET — WHAT A REPORT SAYS ABOUT CODE IT NEVER OPENED  (SPEC §2 ⟨0.29⟩, verdict ⟨0.30⟩)"
 if [ -x "$SCAN" ]; then
   ( cd "$FS/rs" && "$SCAN" . --out e --policy exec.pol >/dev/null 2>&1 ); r48e=$?
   ( cd "$FS/rs" && "$SCAN" . --out n --policy net.pol  >/dev/null 2>&1 ); r48n=$?
