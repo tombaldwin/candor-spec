@@ -16,6 +16,41 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+### ⟨0.30⟩ — a non-empty `outOfScope` makes the verdict INCOMPLETE (exit 2)
+
+The **first non-additive rung**: no field is added or removed, but a tree that passed under ⟨0.29⟩ can
+exit 2 under ⟨0.30⟩, so upgrading is a decision rather than a drop-in. §2's peek block is unchanged in
+shape and in emission rule; what changes is what a gate DOES with it.
+
+⟨0.29⟩ required that an out-of-scope finding MUST NOT move the verdict, on the assumption that the peek
+surfaces uncertainty. Measured on published 0.29.1 it resolves a CONCRETE denied effect and names the
+function — `axios` 37 functions `performs Net` at exit 0 with `policy ✓`, plus `node-fetch` 15, `ky` 9,
+`execa` 9, `zx` 3, `ofetch` 1. The reversal is that measurement, not a preference.
+
+Exit 2 rather than exit 1: the findings are never `violations` and never `functions`, because the gate
+did not judge those units. §3.3 gains **(c) an INCOMPLETE SCOPE** as a third exit-2 cause — neither a
+broken gate CONFIG nor an unreadable file, but files that were readable and deliberately not opened —
+and §3.1's clause that leaned on there being exactly two is updated with it.
+
+Bounded by the ⟨0.29⟩ rule that `outOfScope` carries only effects the policy DENIES: across 27 real
+packages the rung flips 6 and leaves 14 green. Present-and-empty stays exit 0; an ABSENT key is ⟨0.26⟩
+*cannot answer* and does not trigger, so pre-⟨0.30⟩ and no-policy reports are unaffected.
+
+Conformance: **PART 48**'s verdict arm amended (the exit-code half reverses; the membership half stands,
+and a new arm asserts the finding is never reported as a violation), **PART 53**'s controls now assert
+the split (a peek that finds the denied effect answers 2, an asked-and-clear peek answers 0), and
+**PART 54** is new — both routes reach the same exit with byte-equal verdict documents, a corrupt key
+fails closed in both positions, `pure` answers 2, and `unverified --strict` follows the gate.
+
+### Backfilled — the changelog was missing two rungs
+
+§8 jumped from 0.30 to 0.27 while the header promised it "lists every rung's contents", so the ⟨0.29⟩
+rule this release reverses had no entry to reverse. **0.28** (the REPORT-sink arming: the report sink is
+armed on exit-2 exactly as the verdict sink is, so a fail-closed manifest-carrying empty replaces the
+previous run's report; plus §6.2's `ignored` disclosure for policy lines the parse dropped) and **0.29**
+(the FILE SET: `excluded`/`outOfScope`/`peeked`, the per-function `incomplete` surface, and the rule
+that a class is `peeked` only if every file of it was read) are now recorded.
+
 ## [0.29.1] — 2026-08-18
 
 - **The generative differential asks about `argv`.** It did not, and that absence is why the four engines
