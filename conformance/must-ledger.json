@@ -2706,7 +2706,7 @@
    "part": "PART 51"
   },
   {
-   "sha": "74ffa7c4c45afc7b",
+   "sha": "9224a7c62169e3e2",
    "at": "Contents",
    "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
    "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through \u27e80.29\u27e9, \u27e80.30\u27e9 deliberately not) and that an upgrade to \u27e80.30\u27e9 is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it describes IS exercised, by PART 48 and PART 54. Reclassified from pre-ledger because the \u27e80.30\u27e9 sentence is new text, and carrying a pre-ledger status across a reword is how the gate gets defeated."
