@@ -18,6 +18,19 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.30.0] — 2026-08-19
 
+- **PART 55 — the generated policy matrix.** The peek must reach the GATE's own judgement over identical
+  code, placed in scope and out. No cell carries a hand-written expected value, so a policy form nobody
+  anticipated is covered the moment it is added. It found three defects on its first run (swift and java
+  dropping a rule's class filters; java's peek running with an empty config, so `net-partner` was never
+  seen) and then the ts/swift corrupt-key hole in the advisory verbs.
+- **§2 now states what conformance pins**: `pure` denies every effect except `Unknown`; a rule's class
+  filters and scope narrow the peek exactly as they narrow the gate, matched against a project-relative
+  qualifier rather than an absolute path; and the advisory verbs follow the gate's incompleteness. §3.3(c)
+  states the no-`violations`-key property explicitly, as (a) already did for its own shape.
+- FILE-SET-DESIGN.md opens with the ⟨0.30⟩ reversal — it described the ⟨0.29⟩ design in present tense
+  under a "not yet built" header, and SPEC.md sends readers to it. README.md's engine table claimed spec
+  0.8. AGENTS.md gains the peek.
+
 - **Spec floor 0.30.** The declaration this build emits as `candor.spec` moves with the family; see
   candor-spec's changelog for the rung.
 
