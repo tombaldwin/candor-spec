@@ -9299,6 +9299,38 @@ else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi
 
+# ── PART 55 — THE GENERATED POLICY MATRIX (SPEC §6.2 / §2 ⟨0.30⟩)                          [TIER 1]
+# Every part above tests shapes a human chose. This one GENERATES them, because the defect class it
+# covers is "the policy form the author did not think of": three review rounds found the peek disagreeing
+# with the gate about `pure`, about destination-class filters, about the partner config, and about rule
+# scopes — each fixed, each followed by an adjacent one.
+#
+# NO CELL CARRIES AN EXPECTED VALUE. The same effect-performing code is placed in scope and out of scope,
+# and the peek must reach the GATE's own conclusion. The gate is the oracle, so a form nobody anticipated
+# is covered the moment it is added to SHAPES. See gen_policy_matrix.py for the five further dimensions
+# that ride the same fixtures (sink independence, attribution, path independence, advisory verbs, a
+# corrupt key) and for the three times the GENERATOR was wrong rather than an engine.
+echo
+echo "[55] THE GENERATED POLICY MATRIX  (SPEC §6.2 — the peek must agree with the gate)"
+# ENGINES: rust java ts swift
+# CONTROLS: in-scope — every shape runs BOTH placements, and the IN-SCOPE run is the control for the out-of-scope one: a peek answering 2 for everything fails the 0<->0 cells, a peek answering 0 for everything fails the 1<->2 cells, so neither vacuous engine can pass
+P55_OK=0
+# The engines are passed EXPLICITLY rather than left to the generator's own discovery, so this slice
+# names the binaries it drives — a part that declares four engines while delegating every invocation is
+# a claim a reader cannot check from the slice (PART 44 fails it, correctly).
+CANDOR="${CANDOR:-$(dirname "$SCAN")/../..}" \
+CANDOR_QUERY_BIN="$QUERY" CANDOR_SCAN_BIN="$SCAN" \
+CANDOR_JAVA_JAR="$JAR" CANDOR_TS="$TS_DIR" CANDOR_SWIFT="${SW_BIN:+$(dirname "$SW_BIN")/../..}" \
+  python3 "$HERE/gen_policy_matrix.py" || P55_OK=1
+echo "  control: every cell judges the out-of-scope placement against its in-scope twin"
+echo "PART 55 — the generated policy matrix (SPEC §6.2 / §2 ⟨0.30⟩)"
+if [ "$P55_OK" = 0 ]; then
+  echo "  -> MATCH — in every generated cell the peek reaches the same judgement the gate reaches over"
+  echo "     identical code, with the verdict independent of the machine sink and of the checkout path"
+else
+  echo "  -> DIVERGE — see the cells above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

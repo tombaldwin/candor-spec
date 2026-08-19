@@ -1,5 +1,12 @@
 # The file set — what a report says about code it never opened ⟨0.29 candidate, DESIGN⟩
 
+> **Status (2026-08-19): BUILT, and §5's verdict rule was REVERSED by ⟨0.30⟩.** This document describes
+> the rung as designed, when an out-of-scope finding was disclosure only — every "no verdict change" and
+> "nothing goes red" below is the ⟨0.29⟩ decision and is now HISTORY. ⟨0.30⟩ makes a non-empty
+> `outOfScope` an INCOMPLETE verdict (`ok:false`, `incomplete:true`, exit 2), on the measurement that the
+> peek resolves a CONCRETE denied effect rather than uncertainty. SPEC.md §2 ⟨0.30⟩ and §3.3(c) are
+> authoritative; read this for the design reasoning, not for what an engine does today.
+
 > **Status (2026-08-16):** DESIGN, DECIDED, not yet built. The defect is MEASURED four-way (§1). §5 was
 > rewritten after reading why each engine skips what it skips — the first draft had the wrong axis, and
 > §5.0 records that. **Tom's call: rung 2 of the ladder, "disclose + peek".**
