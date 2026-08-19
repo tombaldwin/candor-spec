@@ -43,9 +43,12 @@ change what the gate does, so the peek is required to change with them.
 TWO FURTHER INVARIANTS, same fixtures, free
 -------------------------------------------
   · SINK INDEPENDENCE — the exit code must be identical with and without `--gate-json`. A machine-readable
-    sink is an output channel; it must not decide a verdict. (candor-rust currently FAILS this: its
-    cross-member violation record is populated only when the sink is requested, so the ⟨0.30⟩ precedence
-    check goes blind without it — measured on `clap` under `pure`, exit 1 with the flag and 2 without.)
+    sink is an output channel; it must not decide a verdict. (This arm exists because candor-rust FAILED
+    it: its cross-member violation record was populated only when the sink was requested, so the ⟨0.30⟩
+    precedence check went blind without it — measured on `clap` under `pure`, exit 1 with the flag and 2
+    without. FIXED — recording is unconditional now — and this arm is what holds it fixed. Past tense
+    deliberately: the present-tense wording outlived the defect and read as a known-broken engine, which
+    is how a closed defect gets re-derived by the next reader.)
   · PRECEDENCE — a run holding a real violation exits 1, never 2. "I could not evaluate" must not
     displace "I judged this and it breaks your policy".
 
@@ -84,6 +87,11 @@ SHAPES = [
     dict(id="scoped-hit",       policy="deny Net grab\n",                 needs=None),
     dict(id="scoped-miss",      policy="deny Net zzznomatch\n",          needs=None),
     dict(id="other-effect",     policy="deny Db\n",                      needs=None),
+    # ⟨0.20⟩ REASON-SCOPED UNKNOWN. Added after a review noted the matrix had no `Unknown[class]` form,
+    # so the reason-narrowing half of the peek's rule matching was unpinned in the two engines whose
+    # peek is a hand-mirror rather than shared code. The gate is still the oracle: whatever it concludes
+    # over the in-scope twin is what the peek must conclude over the out-of-scope one.
+    dict(id="deny-unknown-class", policy="deny Net Unknown[unresolved]\n", needs=None),
 ]
 
 # The effect-performing body, per language. It reaches a LITERAL host so destination-class filters have
@@ -272,6 +280,14 @@ def discover():
             "java", "-jar", jar, verb, "--report", rep, "--policy", os.path.join(d, "pol"), "--strict"]
     sw = _p("CANDOR_SWIFT", "candor-swift")
     swb = os.path.join(sw, ".build", "debug", "candor-swift")
+    # ASKED-AND-ABSENT IS A FAILURE, NOT A SKIP — run.sh's own SW_PRESENT/SW_OK note makes the same
+    # distinction and this file did not honour it. A caller that names CANDOR_SWIFT has asserted the
+    # engine is there; if the binary is missing, that is a broken invocation and the matrix must say so
+    # rather than quietly dropping a column. It dropped swift's column on every run for exactly this
+    # reason (run.sh passed a path that was one level short) while printing a green MATCH over 3 engines.
+    if os.environ.get("CANDOR_SWIFT") and not os.path.exists(swb):
+        sys.exit(f"gen_policy_matrix: CANDOR_SWIFT={sw} was given but {swb} does not exist — "
+                 f"refusing to report a matrix with swift silently absent")
     if os.path.exists(swb):
         ENGINES["swift"] = dict(query=lambda d, rep, verb, swb=swb: [
                                     swb, verb, "--report", rep, "--policy", os.path.join(d, "pol"),
@@ -334,6 +350,7 @@ def main():
     WORK = tempfile.mkdtemp(prefix="candor-polmatrix-")
     bad = 0
     cells = 0
+    LOADED = {}   # shape id -> engines where the GATE fired; see the vacuity ledger at the end
     for engine in sorted(ENGINES):
         if only and engine != only:
             continue
@@ -360,6 +377,13 @@ def main():
         for shape in SHAPES:
             cells += 1
             gate_rc, gate_out, _gd = judge(engine, shape, placed_out=False, sink=True)
+            # VACUITY LEDGER (recorded here, reported at the end). A cell whose GATE answers 0 is
+            # satisfied by a peek that also answers 0 — including a peek that does nothing at all. Such
+            # a cell is not wrong, but it carries no evidence about the peek's matching, and a summary
+            # that prints only a cell COUNT lets a shape firing nowhere read as coverage.
+            LOADED.setdefault(shape["id"], set())
+            if gate_rc != 0:
+                LOADED[shape["id"]].add(engine)
             peek_rc, peek_out, peek_dir = judge(engine, shape, placed_out=True, sink=True)
             # THE AGREEMENT INVARIANT. The gate is the oracle: whatever it decides about the in-scope
             # copy, the peek must decide about the identical out-of-scope copy. 1 <-> 2 because the
@@ -483,8 +507,19 @@ def main():
                             print(f"  {engine:6} {shape['id']:16} ADVISORY  `{verb} --strict` exits 0 over "
                                   f"the report the gate refuses at 2")
                             break
+    inert = sorted(sid for sid, engs in LOADED.items() if not engs)
     print(f"  policy matrix: {cells} cell(s) over {len(ENGINES) if not only else 1} engine(s), "
           f"{bad} disagreement(s)")
+    print(f"  load-bearing:  {sum(1 for engs in LOADED.values() if engs)}/{len(LOADED)} shape(s) make the "
+          f"gate fire on at least one engine")
+    if inert:
+        # NOT a failure: some shapes are here precisely to pin that a policy does NOT fire (scoped-miss,
+        # class-no-config, other-effect). Printed so a shape that is inert by ACCIDENT — a mistyped rule,
+        # a fixture that stopped matching — cannot pass as coverage. A cell whose gate answers 0 is
+        # satisfied by a peek that also answers 0, including a peek that does nothing at all, so the cell
+        # COUNT alone overstates what the matrix knows.
+        print(f"  inert shapes:  {', '.join(inert)} — the gate answers 0 on every engine, so these pin a "
+              f"NON-firing policy and say nothing about the peek's matching")
     if keep:
         print(f"  workspace kept: {WORK}")
     else:
