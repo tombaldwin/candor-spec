@@ -9315,12 +9315,19 @@ echo "[55] THE GENERATED POLICY MATRIX  (SPEC §6.2 — the peek must agree with
 # ENGINES: rust java ts swift
 # CONTROLS: in-scope — every shape runs BOTH placements, and the IN-SCOPE run is the control for the out-of-scope one: a peek answering 2 for everything fails the 0<->0 cells, a peek answering 0 for everything fails the 1<->2 cells, so neither vacuous engine can pass
 P55_OK=0
+# SW_DIR, not path arithmetic off SW_BIN. It read `$(dirname "$SW_BIN")/../..` — correct under the
+# shell's LOGICAL `..`, wrong under the kernel's physical one, because SwiftPM makes `.build/debug` a
+# symlink to `.build/<triple>/debug`. So it resolved to `.build`, the generator probed
+# `.build/.build/debug/candor-swift`, found nothing, and printed `swift -> SKIP (engine not built)` —
+# on EVERY run, including full ones on a machine with swift built. PART 55 announced four engines and
+# had never once asked the fourth, and swift's peek is a hand-mirror of the gate rather than shared
+# code, which is exactly the engine the matrix exists to hold. Measured 2026-08-19.
 # The engines are passed EXPLICITLY rather than left to the generator's own discovery, so this slice
 # names the binaries it drives — a part that declares four engines while delegating every invocation is
 # a claim a reader cannot check from the slice (PART 44 fails it, correctly).
 CANDOR="${CANDOR:-$(dirname "$SCAN")/../..}" \
 CANDOR_QUERY_BIN="$QUERY" CANDOR_SCAN_BIN="$SCAN" \
-CANDOR_JAVA_JAR="$JAR" CANDOR_TS="$TS_DIR" CANDOR_SWIFT="${SW_BIN:+$(dirname "$SW_BIN")/../..}" \
+CANDOR_JAVA_JAR="$JAR" CANDOR_TS="$TS_DIR" CANDOR_SWIFT="${SW_OK:+$SW_DIR}" \
   python3 "$HERE/gen_policy_matrix.py" || P55_OK=1
 echo "  control: every cell judges the out-of-scope placement against its in-scope twin"
 echo "PART 55 — the generated policy matrix (SPEC §6.2 / §2 ⟨0.30⟩)"
