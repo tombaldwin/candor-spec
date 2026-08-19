@@ -113,6 +113,15 @@ instead of grepping, same names and output shapes in every language:
   when an edit crosses an effect or layer line — a deterministic guarantee an LLM review can't give.
   The configuration travels with the repo in **`.candor/config`** (SPEC §3.4: `policy`, `baseline`,
   `deps`, … keys; discovered from the scan target, so "point CI at the repo" is the whole setup).
+- **⟨0.30⟩ A GREEN GATE CAN NOW EXIT 2 — read `outOfScope` before you trust a pass.** When a policy is
+  configured, candor also reads the files the scan EXCLUDED (test files, build scripts, archives under the
+  root, files outside the build's program) and reports any that perform an effect the policy DENIES, under
+  the report's `outOfScope` key. A non-empty block makes the verdict `ok:false`, `incomplete:true`, exit 2
+  — *"I could not see enough of this tree to certify it"*, which is NOT the same as "your code violates":
+  those functions are never in `violations`, because the gate did not judge them. Branch on `incomplete`
+  to tell the two apart. An absent key means the producer was never asked (no policy at scan time), and an
+  empty one means asked-and-clear.
+
 - **Consume the gate verdict as data** → run the scan with `--gate-json <file>` (SPEC §3.3): the same
   check that sets the exit code re-emits `{ spec, ok, violations: [{rule, fn, effects}] }` — join each
   `fn` to its `loc` in the report instead of parsing console `AS-EFF` lines. **On exit 2 a FAIL-CLOSED

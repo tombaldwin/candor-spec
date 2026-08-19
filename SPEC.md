@@ -801,6 +801,24 @@ already carry.
   6 above and leaves 14 green untouched — every one with an empty peek because the scan read it in full.
   Present-and-empty remains asked-and-clear and remains exit 0; the over-charge control is structural.
 
+  ⟨0.30⟩ **THE PEEK ASKS THE GATE'S OWN MATCHER, NOT A SECOND ONE.** §6.2 already requires the gate and
+  the disclosure to apply the same rule and share the same code; this clause states what that means for
+  the block now that it is verdict-bearing. "Effects that policy DENIES" is decided per (rule, function)
+  exactly as the gate decides it — so **`pure`, a deny rule with an EMPTY effect list, denies every effect
+  except `Unknown`** and cannot be weaker than a `deny <Effect>` over the same code; a rule's `[class]`
+  filters narrow the peek as they narrow the gate; and a rule's SCOPE binds the peek against the same
+  project-relative qualifier, never an absolute path (a verdict must not depend on the checkout
+  directory). Measured cost of leaving this unsaid: all four engines flattened the rules into a set of
+  effect NAMES, so the STRICTEST policy silently disarmed the rung while class-filtered rules reddened
+  destinations they do not deny. Exercised by the generated matrix, PART 55, which asserts the peek's
+  judgement equals the gate's over identical code rather than any hand-written expectation.
+
+  ⟨0.30⟩ **AND THE ADVISORY VERBS FOLLOW IT.** ⟨0.24⟩ binds every verb that answers `ok` — `unverified`,
+  `fix-gate`, and any later sibling — to be *at least as pessimistic as the gate over the same bytes*.
+  A non-empty `outOfScope`, and a PRESENT-but-unreadable one, are therefore incompleteness to those verbs
+  too: `--strict` answers 2 wherever `gate --report` would. Measured: the rung moved the gate and left
+  the siblings certifying `PROVABLY clean` over the identical report.
+
   **§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new
   anchor:** `outOfScope` is a field OF THE REPORT, so `gate --report` reads the same entries `scan --policy`
   peeked, and both routes derive one verdict document from identical input. An ABSENT key is the ⟨0.26⟩
@@ -3198,7 +3216,8 @@ Two further MUSTs guard the verdict's integrity:
   analyzed: { count } }`, exit 2 — and for the same reason: the gate could not see enough of the tree to
   certify it. The findings are NEVER `violations` (the gate did not judge those units) and the document
   MUST carry `outOfScope`, because exit 2 with a silent document is the stderr-only disclosure ⟨0.21⟩
-  exists to close. A real violation (exit 1) still dominates, as in (b).
+  exists to close. It carries **no `violations` entry for these functions** — the same explicit statement
+  (a) makes about its own shape — and a run that ALSO holds a real violation exits 1 carrying both keys. A real violation (exit 1) still dominates, as in (b).
 
   *Recorded because a reader relied on the count: this list read "there are two exit-2 causes and they
   differ" for four rungs, and §3.1 leans on that enumeration when it rules that an engine refusing

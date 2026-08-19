@@ -2742,10 +2742,22 @@
    "part": "PART 54"
   },
   {
-   "sha": "3ca64e7826e11a30",
+   "sha": "8eb477ca921eb861",
    "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb)",
    "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** \u2014 refined \u27e80.21\u27e9. There are three exi",
    "part": "PART 54"
+  },
+  {
+   "sha": "8bcb218f1e6d4343",
+   "at": "2. The report",
+   "excerpt": "\u27e80.30\u27e9 **THE PEEK ASKS THE GATE'S OWN MATCHER, NOT A SECOND ONE.** \u00a76.2 already requires the gate and the disc",
+   "part": "PART 55"
+  },
+  {
+   "sha": "3d63a8cca6c485cd",
+   "at": "2. The report",
+   "excerpt": "\u27e80.30\u27e9 **AND THE ADVISORY VERBS FOLLOW IT.** \u27e80.24\u27e9 binds every verb that answers `ok` \u2014 `unverified`, `fix-ga",
+   "part": "PART 55"
   }
  ]
 }
