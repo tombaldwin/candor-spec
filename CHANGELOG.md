@@ -16,6 +16,9 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **Spec floor 0.30.** The declaration this build emits as `candor.spec` moves with the family; see
+  candor-spec's changelog for the rung.
+
 ### ⟨0.30⟩ — a non-empty `outOfScope` makes the verdict INCOMPLETE (exit 2)
 
 The **first non-additive rung**: no field is added or removed, but a tree that passed under ⟨0.29⟩ can
