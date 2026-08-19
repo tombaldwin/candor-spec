@@ -81,7 +81,7 @@ SHAPES = [
     dict(id="class-known",      policy="deny Net[known-partner]\n",      needs="net-partner partner.example\n"),
     dict(id="class-unknown",    policy="deny Net[unknown-host]\n",       needs="net-partner partner.example\n"),
     dict(id="class-no-config",  policy="deny Net[known-partner]\n",      needs=None),
-    dict(id="scoped-hit",       policy="deny Net grab_net\n",            needs=None),
+    dict(id="scoped-hit",       policy="deny Net grab\n",                 needs=None),
     dict(id="scoped-miss",      policy="deny Net zzznomatch\n",          needs=None),
     dict(id="other-effect",     policy="deny Db\n",                      needs=None),
 ]
@@ -329,6 +329,26 @@ def main():
     for engine in sorted(ENGINES):
         if only and engine != only:
             continue
+        # ── CALIBRATION FLOOR — run BEFORE any cell of this engine is believed. ────────────────────
+        # Every arm below compares the peek to the gate, so an engine that sees NOTHING agrees with
+        # itself perfectly: a stub classifying nothing and exiting 0 passes every cell, and so does one
+        # answering 2 for everything. That is not hypothetical — the swift fixture in this very file
+        # once inferred `Unknown` instead of `Net`, so every destination-class cell agreed 0<->0 while
+        # exercising nothing, and the repair was a one-off manual edit that left no guard behind.
+        # This is that guard: the bare `deny Net` cell MUST gate RED in scope, and the in-scope report
+        # MUST carry Net on the fixture function. If either fails, this engine's whole column is
+        # UNCALIBRATED and its greens mean nothing.
+        cal_rc, _cal_out, cal_dir = judge(engine, SHAPES[0], placed_out=False, sink=True)
+        _crp, cal_doc = report_at(cal_dir)
+        cal_net = any("Net" in (f.get("inferred") or [])
+                      for f in (cal_doc or {}).get("functions") or [])
+        if cal_rc != 1 or not cal_net:
+            bad += 1
+            print(f"  {engine:6} CALIBRATION      the in-scope `deny Net` fixture gated {cal_rc} "
+                  f"(want 1) and {'carries' if cal_net else 'does NOT carry'} Net in its report — this "
+                  f"engine's column tests NOTHING until that holds, because every arm compares the peek "
+                  f"to a gate that is not firing")
+            continue
         for shape in SHAPES:
             cells += 1
             gate_rc, gate_out, _gd = judge(engine, shape, placed_out=False, sink=True)
@@ -337,6 +357,16 @@ def main():
             # copy, the peek must decide about the identical out-of-scope copy. 1 <-> 2 because the
             # gate JUDGED it and the peek did not; 0 <-> 0 because neither found anything to say.
             want = {0: 0, 1: 2, 2: 2}.get(gate_rc)
+            if peek_rc == 2 and want == 2:
+                # "I refused because incomplete" and "I found the finding" are both exit 2. Compare the
+                # EVIDENCE too, or a peek that always answers 2 with an empty block passes every cell.
+                _rp2, d2 = report_at(peek_dir)
+                if not ((d2 or {}).get("outOfScope") or []):
+                    bad += 1
+                    print(f"  {engine:6} {shape['id']:16} EMPTY-FINDING  exit 2 with an EMPTY "
+                          f"`outOfScope` — the exit is right for the wrong reason, which is how a peek "
+                          f"that refuses everything passes a matrix that only compares exit codes")
+                    continue
             if peek_rc != want:
                 bad += 1
                 print(f"  {engine:6} {shape['id']:16} DISAGREE  in-scope gate={gate_rc} -> peek should be "
@@ -392,10 +422,15 @@ def main():
                 # CI happened to clone. Generated per parent rather than listed in SHAPES: the policy text
                 # has to NAME the directory, so it cannot be a static row.
                 seen = {}
+                # ONE fixed scope name, run under two differently-named parents. Generating the policy
+                # PER PARENT was the bug: it named whichever directory it ran under, so an absolute-path
+                # matcher bound under both and the exits agreed — the arm written to pin that defect
+                # could not fail. `aaa_checkout_one` is a segment of one parent and not the other, so a
+                # path matcher arms once and a correct engine arms never.
+                scoped = dict(shape, id="path-scope", policy="deny Net aaa_checkout_one\n")
                 for pname in ("aaa_checkout_one", "zzz_checkout_two"):
                     par = os.path.join(WORK, pname)
                     os.makedirs(par, exist_ok=True)
-                    scoped = dict(shape, id="path-scope", policy=f"deny Net {pname}\n")
                     rc_p, _, _ = judge(engine, scoped, placed_out=True, sink=True, parent=par)
                     seen[pname] = rc_p
                 if len(set(seen.values())) != 1:
