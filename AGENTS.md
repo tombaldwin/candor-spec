@@ -115,8 +115,13 @@ instead of grepping, same names and output shapes in every language:
   `deps`, … keys; discovered from the scan target, so "point CI at the repo" is the whole setup).
 - **Consume the gate verdict as data** → run the scan with `--gate-json <file>` (SPEC §3.3): the same
   check that sets the exit code re-emits `{ spec, ok, violations: [{rule, fn, effects}] }` — join each
-  `fn` to its `loc` in the report instead of parsing console `AS-EFF` lines. On exit 2 no verdict is
-  written; never treat a stale file as the current verdict.
+  `fn` to its `loc` in the report instead of parsing console `AS-EFF` lines. **On exit 2 a FAIL-CLOSED
+  verdict IS written — read it.** ⟨0.24⟩ made a refusal document mandatory on every exit-2 cause
+  (`ok:false` + `refused:true` + the reason), ⟨0.21⟩ writes `ok:false` + `incomplete:true` + `unanalyzed`
+  when source could not be analysed, and ⟨0.30⟩ writes `ok:false` + `incomplete:true` + `outOfScope` when
+  the gate found a denied effect in a file it did not judge. Branch on `ok` — false under every cause —
+  and on `incomplete` to tell "could not see enough" from "your code violates". Still never treat a file
+  from a PREVIOUS run as current: the point of the arming is that this run always overwrites it.
 
 ## The trust rule — do not skip this
 
