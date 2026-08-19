@@ -36,6 +36,17 @@ WHAT EACH ARM RULES OUT
                        everything — the vacuous-pass shape this suite keeps measuring in its own work,
                        and the one this rung is most likely to regress into.
 
+  · (E) CORRUPT ⇒ 2    a PRESENT-but-garbled `outOfScope` fails closed, in BOTH positions — a non-list
+                       top level and a non-object element. Review found two engines holed in DIFFERENT
+                       positions, each passing the shape the other refused; a single-shape arm clears both.
+  · (F) `pure` ⇒ 2     `pure` denies every effect, so it cannot be WEAKER than the `deny <Effect>` that
+                       fires on the same tree. An engine deriving the peek's target set by flattening
+                       rules into effect NAMES gets nothing from `pure` — measured, all four engines let
+                       the strictest policy silently disarm the rung.
+  · (G) ADVISORY ⇒ 2   `unverified --strict` follows the gate, per ⟨0.24⟩'s "AN ADVISORY VERB MUST NEVER
+                       BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME BYTES". A rung
+                       that moves the gate and not its siblings relocates its own all-clear one verb over.
+
 (C) AND (D) ARE NOT THE SAME CONTROL. (D) is "the peek ran and found nothing" (present-and-empty, a real
 answer). (C) is "the peek never ran" (absent, no answer at all). ⟨0.26⟩/⟨0.27⟩ make those different
 claims, and an engine that collapses them passes one while failing the other.
@@ -53,13 +64,15 @@ def load(path):
 
 
 def main():
-    if len(sys.argv) < 9:
+    if len(sys.argv) < 15:
         print("usage: peek_route_equality_check.py <engine> <scan_rc> <scan_verdict> <gate_rc> "
-              "<gate_verdict> <absent_rc> <ctl_scan_rc> <ctl_scan_verdict> <ctl_gate_rc> <ctl_gate_verdict>")
+              "<gate_verdict> <absent_rc> <ctl_scan_rc> <ctl_scan_verdict> <ctl_gate_rc> <ctl_gate_verdict> "
+              "<mal_list_rc> <mal_elem_rc> <pure_rc> <strict_rc>")
         return 2
     engine = sys.argv[1].strip()
     (scan_rc, scan_v, gate_rc, gate_v, absent_rc,
-     ctl_scan_rc, ctl_scan_v, ctl_gate_rc, ctl_gate_v) = sys.argv[2:11]
+     ctl_scan_rc, ctl_scan_v, ctl_gate_rc, ctl_gate_v,
+     mal_list_rc, mal_elem_rc, pure_rc, strict_rc) = sys.argv[2:15]
 
     def fail(msg):
         print(f"  {engine:6} -> DIVERGE  ({msg})")
@@ -130,8 +143,43 @@ def main():
                     "clean path as tightly as the failing one, and a rung that only keeps byte-equality "
                     "when it fires has broken the verb it rode in on")
 
-    print(f"  {engine:6} -> OK        (both routes exit 2 on the finding, byte-equal; ok:false + incomplete "
-          "+ no violations; absent key ⇒ 0; asked-and-clear ⇒ 0/0 byte-equal)")
+    # ── (E) A CORRUPT KEY FAILS CLOSED ────────────────────────────────────────────────────────────
+    # `outOfScope` non-emptiness is a fail-closed trigger, so coerced to its empty default a garbled key
+    # becomes the claim "I looked and nothing was there" — the safe-LOOKING value and the wrong one.
+    # BOTH SHAPES, because review found the two engines with holes had them in DIFFERENT positions: one
+    # accepted a non-list top level, the other a non-object element, and each passed the shape the other
+    # refused. A single-shape arm would have cleared both.
+    if mal_list_rc != "2":
+        return fail(f"a report whose `outOfScope` is NOT A LIST gated {mal_list_rc}, not 2 — read as empty "
+                    "it turns NOT-certified into `policy ✓`, which is the fail-open coercion the strict "
+                    "read exists to prevent")
+    if mal_elem_rc != "2":
+        return fail(f"a report with a NON-OBJECT `outOfScope` ELEMENT gated {mal_elem_rc}, not 2 — dropping "
+                    "the element silently is the same coercion one level in")
+
+    # ── (F) `pure` IS THE STRICTEST POLICY, NOT THE EMPTIEST ──────────────────────────────────────
+    # `pure` is a deny rule with an EMPTY effect list meaning "every effect except Unknown". An engine
+    # deriving the peek's target set by FLATTENING rules into effect names gets nothing from it, so the
+    # strictest policy silently disarms the rung while a weaker `deny <Effect>` fires on the same tree.
+    # Measured in all four engines before this arm existed.
+    if pure_rc != "2":
+        return fail(f"`pure` over a tree whose peeked fn performs an effect answered {pure_rc}, not 2 — "
+                    "`pure` denies every effect, so it cannot be WEAKER than the `deny <Effect>` that "
+                    "exits 2 on the same files; an engine flattening rules to effect names reads it as "
+                    "denying nothing")
+
+    # ── (G) THE ADVISORY VERBS FOLLOW THE GATE ────────────────────────────────────────────────────
+    # ⟨0.24⟩: "AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME
+    # BYTES", binding `unverified`, `fix-gate` "and any later sibling". ⟨0.30⟩ moved the gate; a rung that
+    # moves the gate and leaves these behind relocates its own false all-clear into the sibling verb.
+    if strict_rc != "2":
+        return fail(f"`unverified --strict` answered {strict_rc} over the report `gate --report` refuses "
+                    "at 2 — the advisory verb is LESS pessimistic than the gate over the same bytes, so "
+                    "the all-clear this rung closes on the gate is still available one verb over")
+
+    print(f"  {engine:6} -> OK        (both routes exit 2, byte-equal; ok:false + incomplete + no "
+          "violations; absent ⇒ 0; asked-and-clear ⇒ 0/0; corrupt key ⇒ 2 both shapes; `pure` ⇒ 2; "
+          "advisory --strict ⇒ 2)")
     return 0
 
 

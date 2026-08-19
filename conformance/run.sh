@@ -9190,6 +9190,15 @@ fi
 # REUSES PART 48'S FIXTURES — the same trees, re-scanned under their own --out prefixes so nothing above
 # is disturbed. The CONTROL trees ($FS/*ctl) have nothing excluded, so their peek is asked-and-clear.
 echo
+# ⟨0.30⟩ the malformed-key fixtures: a PRESENT-but-garbled `outOfScope`, in both positions. Written from
+# the engine's own real report so everything else about the document is valid — the key under test is the
+# only thing wrong with it.
+mal54() { python3 -c '
+import json,sys
+d=json.load(open(sys.argv[1]))
+d["outOfScope"]="oops"; json.dump(d,open(sys.argv[2],"w"))
+d["outOfScope"]=[123];  json.dump(d,open(sys.argv[3],"w"))
+' "$1" "$2" "$3"; }
 echo "[54] THE ⟨0.30⟩ VERDICT REACHES BOTH ROUTES IDENTICALLY  (SPEC §2 ⟨0.30⟩ / §3.1)"
 # ENGINES: rust java ts swift
 # CONTROLS: rsctl tsctl classes swctl — a tree whose peek is ASKED-AND-CLEAR, per engine; each must exit 0 on BOTH routes with byte-equal documents, because without it the part passes against an engine that answers 2 for everything. The ABSENT-key arm is a SECOND, different control: that peek never ran at all (⟨0.26⟩ cannot-answer), where these ran and found nothing (⟨0.27⟩ asked-and-clear)
@@ -9203,8 +9212,15 @@ if [ -x "$SCAN" ] && [ -n "$QUERY" ]; then
   ( cd "$FS/rsctl" && "$SCAN" . --out c54 --policy "$FS/rs/exec.pol" --gate-json "$FS/rsctl/c54a.json" >/dev/null 2>&1 ); r54cs=$?
   "$QUERY" gate --report "$FS/rsctl/c54.fs48ctl.scan.json" --policy "$FS/rs/exec.pol" \
       --gate-json "$FS/rsctl/c54b.json" >/dev/null 2>&1; r54cg=$?
+  mal54 "$FS/rs/r54.fs48.scan.json" "$FS/rs/m1.json" "$FS/rs/m2.json"
+  "$QUERY" gate --report "$FS/rs/m1.json" --policy "$FS/rs/exec.pol" >/dev/null 2>&1; r54m1=$?
+  "$QUERY" gate --report "$FS/rs/m2.json" --policy "$FS/rs/exec.pol" >/dev/null 2>&1; r54m2=$?
+  printf 'pure\n' > "$FS/rs/pure.pol"
+  ( cd "$FS/rs" && "$SCAN" . --out r54p --policy pure.pol >/dev/null 2>&1 ); r54pure=$?
+  "$QUERY" unverified --report "$FS/rs/r54.fs48.scan.json" --policy "$FS/rs/exec.pol" --strict >/dev/null 2>&1; r54st=$?
   python3 "$HERE/peek_route_equality_check.py" "rust" "$r54s" "$FS/rs/r54a.json" "$r54g" "$FS/rs/r54b.json" \
-      "$r54abs" "$r54cs" "$FS/rsctl/c54a.json" "$r54cg" "$FS/rsctl/c54b.json" || P54_OK=1
+      "$r54abs" "$r54cs" "$FS/rsctl/c54a.json" "$r54cg" "$FS/rsctl/c54b.json" \
+      "$r54m1" "$r54m2" "$r54pure" "$r54st" || P54_OK=1
 else
   echo "  rust   -> SKIP     (no candor-scan/candor-query binary — this engine was NOT asked)"
 fi
@@ -9219,8 +9235,15 @@ if [ -n "$TS_PRESENT" ]; then
       --gate-json "$FS/tsctl/c54a.json" >/dev/null 2>&1 ); t54cs=$?
   ( cd "$TS_DIR" && node query.mjs gate --report "$FS/tsctl/c54.json" --policy "$FS/ts/exec.pol" \
       --gate-json "$FS/tsctl/c54b.json" >/dev/null 2>&1 ); t54cg=$?
+  mal54 "$FS/ts/t54.json" "$FS/ts/m1.json" "$FS/ts/m2.json"
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FS/ts/m1.json" --policy "$FS/ts/exec.pol" >/dev/null 2>&1 ); t54m1=$?
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FS/ts/m2.json" --policy "$FS/ts/exec.pol" >/dev/null 2>&1 ); t54m2=$?
+  printf 'pure\n' > "$FS/ts/pure.pol"
+  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/t54p" --policy "$FS/ts/pure.pol" >/dev/null 2>&1 ); t54pure=$?
+  ( cd "$TS_DIR" && node query.mjs unverified --report "$FS/ts/t54.json" --policy "$FS/ts/exec.pol" --strict >/dev/null 2>&1 ); t54st=$?
   python3 "$HERE/peek_route_equality_check.py" "ts" "$t54s" "$FS/ts/t54a.json" "$t54g" "$FS/ts/t54b.json" \
-      "$t54abs" "$t54cs" "$FS/tsctl/c54a.json" "$t54cg" "$FS/tsctl/c54b.json" || P54_OK=1
+      "$t54abs" "$t54cs" "$FS/tsctl/c54a.json" "$t54cg" "$FS/tsctl/c54b.json" \
+      "$t54m1" "$t54m2" "$t54pure" "$t54st" || P54_OK=1
 else
   echo "  ts     -> SKIP     (candor-ts not present — this engine was NOT asked)"
 fi
@@ -9234,8 +9257,15 @@ java -jar "$JAR" "$FS/java/classes" --json "$FS/java/c54.json" --policy "$FS/jav
     --gate-json "$FS/java/c54a.json" >/dev/null 2>&1; j54cs=$?
 java -jar "$JAR" gate --report "$FS/java/c54.json" --policy "$FS/java/exec.pol" \
     --gate-json "$FS/java/c54b.json" >/dev/null 2>&1; j54cg=$?
+mal54 "$FS/java/j54.json" "$FS/java/m1.json" "$FS/java/m2.json"
+java -jar "$JAR" gate --report "$FS/java/m1.json" --policy "$FS/java/exec.pol" >/dev/null 2>&1; j54m1=$?
+java -jar "$JAR" gate --report "$FS/java/m2.json" --policy "$FS/java/exec.pol" >/dev/null 2>&1; j54m2=$?
+printf 'pure\n' > "$FS/java/pure.pol"
+java -jar "$JAR" "$FS/java" --json "$FS/java/j54p.json" --policy "$FS/java/pure.pol" >/dev/null 2>&1; j54pure=$?
+java -jar "$JAR" unverified --report "$FS/java/j54.json" --policy "$FS/java/exec.pol" --strict >/dev/null 2>&1; j54st=$?
 python3 "$HERE/peek_route_equality_check.py" "java" "$j54s" "$FS/java/j54a.json" "$j54g" "$FS/java/j54b.json" \
-    "$j54abs" "$j54cs" "$FS/java/c54a.json" "$j54cg" "$FS/java/c54b.json" || P54_OK=1
+    "$j54abs" "$j54cs" "$FS/java/c54a.json" "$j54cg" "$FS/java/c54b.json" \
+    "$j54m1" "$j54m2" "$j54pure" "$j54st" || P54_OK=1
 if [ -n "$SW_PRESENT" ]; then
   ( cd "$FS/sw" && "$SW_BIN" . --out s54 --policy exec.pol --gate-json "$FS/sw/s54a.json" >/dev/null 2>&1 ); s54s=$?
   s54rep="$(ls "$FS"/sw/s54.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
@@ -9248,8 +9278,15 @@ if [ -n "$SW_PRESENT" ]; then
   s54crep="$(ls "$FS"/swctl/c54.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
   env -u CANDOR_CONFIG "$SW_BIN" gate --report "$s54crep" --policy "$FS/sw/exec.pol" \
       --gate-json "$FS/swctl/c54b.json" >/dev/null 2>&1; s54cg=$?
+  mal54 "$s54rep" "$FS/sw/m1.json" "$FS/sw/m2.json"
+  env -u CANDOR_CONFIG "$SW_BIN" gate --report "$FS/sw/m1.json" --policy "$FS/sw/exec.pol" >/dev/null 2>&1; s54m1=$?
+  env -u CANDOR_CONFIG "$SW_BIN" gate --report "$FS/sw/m2.json" --policy "$FS/sw/exec.pol" >/dev/null 2>&1; s54m2=$?
+  printf 'pure\n' > "$FS/sw/pure.pol"
+  ( cd "$FS/sw" && "$SW_BIN" . --out s54p --policy pure.pol >/dev/null 2>&1 ); s54pure=$?
+  env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$s54rep" --policy "$FS/sw/exec.pol" --strict >/dev/null 2>&1; s54st=$?
   python3 "$HERE/peek_route_equality_check.py" "swift" "$s54s" "$FS/sw/s54a.json" "$s54g" "$FS/sw/s54b.json" \
-      "$s54abs" "$s54cs" "$FS/swctl/c54a.json" "$s54cg" "$FS/swctl/c54b.json" || P54_OK=1
+      "$s54abs" "$s54cs" "$FS/swctl/c54a.json" "$s54cg" "$FS/swctl/c54b.json" \
+      "$s54m1" "$s54m2" "$s54pure" "$s54st" || P54_OK=1
 else
   echo "  swift  -> SKIP     (candor-swift not present — this engine was NOT asked)"
 fi
