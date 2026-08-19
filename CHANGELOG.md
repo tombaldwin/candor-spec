@@ -27,6 +27,22 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   filters and scope narrow the peek exactly as they narrow the gate, matched against a project-relative
   qualifier rather than an absolute path; and the advisory verbs follow the gate's incompleteness. §3.3(c)
   states the no-`violations`-key property explicitly, as (a) already did for its own shape.
+- **PART 55 declared four engines and had never asked the fourth.** run.sh passed the generator
+  `$(dirname "$SW_BIN")/../..` — correct under the shell's LOGICAL `..`, wrong under the kernel's
+  physical one, because SwiftPM makes `.build/debug` a symlink to `.build/<triple>/debug`. It resolved
+  to `.build`, the generator probed one level too deep, found nothing and printed `swift -> SKIP (engine
+  not built)` on every run, including full runs on a machine with swift built and passing. Swift's peek
+  is a hand-mirror of the gate rather than shared code, so it is the engine the matrix most exists to
+  hold. Fixed to pass the package directory, and the generator now **exits** when `CANDOR_SWIFT` names an
+  engine whose binary is absent, rather than dropping the column — run.sh's own SW_PRESENT/SW_OK note
+  makes that distinction and this file did not honour it. Now 40 cells over 4 engines, 0 disagreements.
+- **A new shape and a vacuity ledger.** `deny Net Unknown[unresolved]` pins the reason-scoped-Unknown
+  form, unpinned until now and most consequential in the two engines whose peek is a hand-mirror. And
+  the matrix now reports how many shapes are **load-bearing** (6/10) and names the inert ones: a cell
+  whose GATE answers 0 is satisfied by a peek that also answers 0, including a peek that does nothing,
+  so a cell count alone overstates what the matrix knows. The four inert shapes are inert by design;
+  the point is that a shape going inert by ACCIDENT can no longer read as coverage.
+
 - **PART 55 answers under its own fault, and the probe registry now enumerates from disk.**
   `gen_policy_matrix.py` grew a fault hook, so `probe_check.py` can force its peek verdict to 0 and
   watch the matrix go red — a generated matrix that cannot be seen to fail is a green with no evidence
