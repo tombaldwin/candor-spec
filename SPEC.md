@@ -4439,6 +4439,44 @@ declare it via the envelope's `spec`.
   Present-and-empty stays asked-and-clear and stays exit 0; an ABSENT key is ⟨0.26⟩ *cannot answer* and
   does NOT trigger the clause, so pre-⟨0.30⟩ reports and no-policy reports are unaffected.
 
+- **0.29 (all code engines declare `0.29`; conformance-pinned four-way, PARTs 48–53)** — a **tier-1
+  additive** rung: **THE FILE SET — what a report says about code it never opened.** ⟨0.21⟩ gave the
+  report a completeness manifest, but `unanalyzed` names files an engine OPENED and could not read; it
+  said nothing about files never opened at all, and a consumer could not tell the two apart because
+  `analyzed.count` is a NUMERATOR whose denominator — the engine's file selector — was invisible.
+
+  MEASURED FOUR-WAY: a same-language source performing `Exec`, sitting outside the engine's selector,
+  under `deny Exec`. All four answered `policy ✓`, exit 0, with no note on stderr, no key in the report
+  and no exit code — a false all-clear under an explicit deny, in every engine, agreeing with each
+  other, which by this project's own standing rule is the weakest evidence of correctness available.
+
+  The envelope gains **`excluded: [{class, count, peeked, reason}]`** — THE SCOPE, the files the scan
+  chose not to OPEN, emitted whenever the engine can enumerate its own selection, `[]` INCLUDED (an
+  empty list is the positive statement *I looked and excluded nothing*, and under ⟨0.26⟩ an absent key
+  means *this producer cannot answer*) — and **`outOfScope: [{fn, path, effects, class, reason}]`**, THE
+  PEEK: an effect found in a file the gate did not judge, emitted only when a policy is CONFIGURED and
+  HONOURED and only for effects that policy DENIES. **`peeked: true` MUST mean every file of that class
+  was READ on this run**, so a file the peek opened and could not read withdraws the claim for its
+  class. Per-function **`incomplete: ["<Effect>"…]`** names the effects whose LOCATOR a unit could not
+  determine. Additive: the peek's findings did not move the verdict — a rule ⟨0.30⟩ later reverses.
+
+- **0.28 (all code engines declare `0.28`; conformance-pinned four-way, PARTs 37–39)** — a **tier-1**
+  rung: **THE REPORT SINK IS ARMED THE SAME WAY THE VERDICT SINK IS.** ⟨0.27⟩ armed `--gate-json` so a
+  run that died wrote a fail-closed document rather than leaving the previous run's green one on disk.
+  The REPORT had no such arming, so the identical hazard remained one file over: a scan that failed,
+  crashed or was killed left `report.json` from the last good run, and every consumer — the gate, the
+  query verbs, a CI wrapper — read it as current. The report sink is now armed on exit-2 causes too,
+  with a manifest-carrying empty that says why.
+
+  Also: §6.2 **`ignored: [{line, text, reason}]`** — the policy lines the parse DROPPED, in the machine
+  channel, so a consumer can see that the gate it is reading is SMALLER than the gate that was written
+  (measured four-way: all four warned per dropped line on stderr while the verdict document stayed
+  silent, so 1-of-10 rules parsing wrote `{"ok": true, "violations": []}` at exit 0 with nothing said
+  about the nine gates never asked). And SPEC §2's **row 3 split**: a report carrying NO `analyzed` key
+  is a pre-⟨0.21⟩ producer that DECLARES nothing, which is a different claim from one declaring
+  `analyzed.count: 0`, and reporting the first as the second is a FALSE disclosure — a class this
+  family rates worse than a missing one.
+
 - **0.27 (all code engines declare `0.27`; conformance-pinned four-way, PART 31)** — a **tier-1 additive**
   rung: the envelope's **`resolves`** array (§2.1) declares which optional per-function refinement surfaces
   a producer actually computes.
