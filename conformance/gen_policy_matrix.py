@@ -405,13 +405,18 @@ def main():
                           f"depends on where the tree was cloned")
 
             q = ENGINES[engine].get("query")
+            # Resolved ONCE, before the corrupt variants are written beside it — `report_at` picks the
+            # newest report in the directory, so writing a corrupt one first made the advisory arm below
+            # test THAT file and report a failure the engine had not made. The generator's own artefact,
+            # found by reproducing an ADVISORY red by hand and getting exit 2.
+            good_rp, good_doc = report_at(peek_dir) if peek_rc == 2 else (None, None)
             # ── CORRUPT KEY — fail closed on the GATE and on every advisory verb beside it. ────────
             # `outOfScope` non-emptiness is a fail-closed trigger, so a present-but-garbled key coerced to
             # its empty default becomes the claim "I looked and nothing was there". Both positions are
             # tested because the two engines found holed in review were holed in DIFFERENT ones, each
             # passing the shape the other refused.
             if peek_rc == 2 and q:
-                rp, doc = report_at(peek_dir)
+                rp, doc = good_rp, good_doc
                 if rp and doc is not None:
                     for label, bad_val in (("not-a-list", "oops"), ("bad-element", [123])):
                         cp = os.path.join(peek_dir, f"corrupt_{label}.json")
@@ -426,7 +431,7 @@ def main():
 
             # ── ADVISORY VERBS — never LESS pessimistic than the gate over the same bytes (⟨0.24⟩). ─
             if q and peek_rc == 2:
-                rp, _doc = report_at(peek_dir)
+                rp = good_rp
                 if rp:
                     for verb in ("unverified", "fix-gate"):
                         arc, _ = run(q(peek_dir, rp, verb), cwd=peek_dir)
