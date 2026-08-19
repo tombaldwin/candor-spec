@@ -27,6 +27,12 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   filters and scope narrow the peek exactly as they narrow the gate, matched against a project-relative
   qualifier rather than an absolute path; and the advisory verbs follow the gate's incompleteness. §3.3(c)
   states the no-`violations`-key property explicitly, as (a) already did for its own shape.
+- **PART 55 answers under its own fault, and the probe registry now enumerates from disk.**
+  `gen_policy_matrix.py` grew a fault hook, so `probe_check.py` can force its peek verdict to 0 and
+  watch the matrix go red — a generated matrix that cannot be seen to fail is a green with no evidence
+  behind it. `probe_check.py` also lists `gen_*.py` from the directory instead of from its own two
+  tables, which immediately surfaced two generators filed in neither; both now carry a stated reason.
+  Every workflow here declares `timeout-minutes` (release-preflight [7b]).
 - FILE-SET-DESIGN.md opens with the ⟨0.30⟩ reversal — it described the ⟨0.29⟩ design in present tense
   under a "not yet built" header, and SPEC.md sends readers to it. README.md's engine table claimed spec
   0.8. AGENTS.md gains the peek.
