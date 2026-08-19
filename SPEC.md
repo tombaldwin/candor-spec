@@ -663,9 +663,11 @@ an effect the consumer has no evidence for.** Corrected here rather than in the 
 
 So: an advisory naming the package, on the channel a corrupt report already uses. Exit code untouched,
 `--gate-json` byte-equal to `scan --policy`. Refusing with exit 2 is **not** an available reading — §3.3
-enumerates exactly two exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the target's own
-code) and a judged-nothing DEPENDENCY is neither, so an engine that refuses here has minted a third cause
-and **split the verb**.
+enumerates the exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the target's own code; ⟨0.30⟩
+an INCOMPLETE SCOPE) and a judged-nothing DEPENDENCY is none of them, so an engine that refuses here has
+minted a cause of its own and **split the verb**. *The argument is that the cause must be ENUMERATED, not
+that the list has a particular length: ⟨0.30⟩ added one deliberately, in §3.3, with a row exercising it —
+which is the difference between minting a cause and an engine inventing one.*
 
 ⟨0.24⟩ **THE CONFLICT CASE — a package chained TWICE, once judged and once not.** A `count: 0` report makes
 **no claim**, so it neither adds nor subtracts: the judged report's coverage **stands**. That is the rule,
@@ -3170,8 +3172,8 @@ verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 Two further MUSTs guard the verdict's integrity:
 
-- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two
-  exit-2 causes and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
+- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are three
+  exit-2 causes ⟨0.30⟩ and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
   unknown flag) — the gate could not be evaluated at all. ⟨0.24⟩ **SUPERSEDED: this said NO verdict is
   written, and §3.1's refusal-document clause (`107755b`, generalised by `1503368`) now requires one on
   EVERY exit-2 cause including this one.** All four engines follow the newer rule; this sentence is stale
@@ -3189,6 +3191,19 @@ Two further MUSTs guard the verdict's integrity:
   green report over unanalyzed source). A configured gate over incompletely-analyzed code MUST fail closed
   (exit ≠ 0); a real violation (exit 1) still dominates. A bare scan with no gate does not exit 2 — it
   discloses `unanalyzed` in the report (exit 0). The `analyzed: { count }` count rides EVERY verdict (Gap 1).
+  ⟨0.30⟩ **(c) AN INCOMPLETE SCOPE** — the peek found a function performing an effect the policy DENIES in
+  a file the scan deliberately did NOT open (§2's `outOfScope`). This is neither (a) nor (b): the policy
+  loaded and the files READ cleanly; what is missing is not readable bytes but the DECISION to open them.
+  The verdict is the same shape as (b) — `{ spec, ok: false, incomplete: true, outOfScope: [ … ],
+  analyzed: { count } }`, exit 2 — and for the same reason: the gate could not see enough of the tree to
+  certify it. The findings are NEVER `violations` (the gate did not judge those units) and the document
+  MUST carry `outOfScope`, because exit 2 with a silent document is the stderr-only disclosure ⟨0.21⟩
+  exists to close. A real violation (exit 1) still dominates, as in (b).
+
+  *Recorded because a reader relied on the count: this list read "there are two exit-2 causes and they
+  differ" for four rungs, and §3.1 leans on that enumeration when it rules that an engine refusing
+  elsewhere "has minted a third cause and split the verb". ⟨0.30⟩ mints one deliberately, and a superlative
+  left standing next to its own exception is how the last one of these was found.*
 - **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A
   per-member write lets a clean last member overwrite an earlier violator's verdict — shipped as
   exactly that bug in candor-scan 0.8.1, where a workspace's `gate.json` said `ok: true` while the
@@ -4397,8 +4412,10 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.30 (conformance-pinned four-way, PART 48 amended + PART 54)** — the **first NON-ADDITIVE rung**, and the only one so
-  far that can turn a previously GREEN gate into a failure. No field is added or removed: `outOfScope`
+- **0.30 (conformance-pinned four-way, PART 48 amended + PART 54)** — the **first NON-ADDITIVE rung**: the
+  first whose verdict change lands on TRUSTED, UNCHANGED inputs with no precondition. (0.24 below is the
+  first rung that could turn a green gate red at all, and says so; it needed a stale or unreadable input to
+  do it. This one needs nothing — a report that passed yesterday can exit 2 today on the same bytes.) No field is added or removed: `outOfScope`
   (§2, ⟨0.29⟩) is unchanged in shape and in emission rule. What changes is what a gate DOES with it —
   **a non-empty `outOfScope` now makes the verdict `ok: false`, `incomplete: true`, exit 2**, reversing
   ⟨0.29⟩'s "an out-of-scope finding MUST NOT move the verdict".
