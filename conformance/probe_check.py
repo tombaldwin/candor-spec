@@ -47,6 +47,8 @@ COVERED = {
     "gen_signature_monotonicity.py":  [],
     "gen_sidecar_manifest.py":        [],
     "gen_fs_kind.py":                 [],
+    # One engine is enough to reach a live cell; the fault fires on the first out-of-scope exit 2.
+    "gen_policy_matrix.py":           ["--engine", "rust"],
 }
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
@@ -62,11 +64,29 @@ UNCOVERED = {
     "gen_masking.py":              "as gen_differential.py",
     "gen_netclass.py":             "as gen_differential.py",
     "gen_policy_match.py":         "as gen_differential.py",
+    # Filed by the disk enumeration the day it was added — both had been in NEITHER set, which is the
+    # state the enumeration exists to make impossible.
+    "gen_key_shapes.py":           "harvests the wire vocabulary from live documents and asserts one "
+                                   "JSON type per key; a fault must corrupt a HARVESTED document rather "
+                                   "than a comparison, so the injection belongs at the emitter",
+    "gen_sink_surface.py":         "derives its matrix from each binary's --help and drives real argv; "
+                                   "the fault has to make a BINARY mishandle a sink, which is the "
+                                   "gen_differential.py shape one layer out",
 }
 
 
 def main():
     print("PROBE CHECK — every registered property must FAIL when its own assertion is violated")
+    # EVERY GENERATOR ON DISK MUST BE IN ONE SET OR THE OTHER. This iterated COVERED alone, so a
+    # generator in neither was invisible: not probed, and not listed as unprobed either. That is the
+    # allowlist failure this suite argues against everywhere else — `gen_policy_matrix.py` sat in that
+    # gap the day it was written, which is exactly when a new property is least trustworthy.
+    on_disk = {f for f in os.listdir(HERE) if f.startswith("gen_") and f.endswith(".py")}
+    unfiled = sorted(on_disk - set(COVERED) - set(UNCOVERED))
+    if unfiled:
+        print(f"  ✘ generator(s) in NEITHER set — probe-covered or listed as not-yet with a reason, "
+              f"there is no third option: {', '.join(unfiled)}")
+        return 1
     env = dict(os.environ, CANDOR_PROBE_FAULT="1")
     bad = []
     for gen, args in sorted(COVERED.items()):

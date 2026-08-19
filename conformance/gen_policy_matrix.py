@@ -286,6 +286,14 @@ def judge(engine, shape, placed_out, sink, parent=None):
     e = ENGINES[engine]
     d = e["build"](parent or WORK, shape, placed_out)
     rc, out = run(e["cmd"](d, sink), cwd=d)
+    # PROBE HOOK (conformance/probe_check.py). Under CANDOR_PROBE_FAULT this corrupts the PEEK's answer —
+    # the exact defect the matrix exists to catch, a peek that drops a finding the gate would make — so
+    # the suite can confirm this property still discriminates instead of trusting that it does. Without
+    # it this generator was in neither COVERED nor UNCOVERED, i.e. invisible to the check that asks
+    # whether a property can fail, which is the state every vacuous cell in here started from.
+    if os.environ.get("CANDOR_PROBE_FAULT") and placed_out and rc == 2:
+        print("PROBE: peek verdict forced to 0 (simulating a peek that drops the finding)")
+        rc = 0
     return rc, out, d
 
 
