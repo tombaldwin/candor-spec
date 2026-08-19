@@ -5,8 +5,10 @@ code, or pinned tool surface) or breaking ones (a major: an envelope reshape or 
 Implementations declare the version they implement via the report envelope's `spec` string. The version
 moves as a **ladder**: the reference engine (candor-java) leads a new rung, it is written into
 [SPEC.md](SPEC.md), then the other code engines implement it in turn and the cross-impl conformance suite
-pins the floor. Each rung is **additive** over the last — an older-version consumer that ignores the newer
-optional fields is unaffected.
+pins the floor. Each rung through ⟨0.29⟩ is **additive** over the last — an older-version consumer that
+ignores the newer optional fields is unaffected. **⟨0.30⟩ is the first exception**: it adds no field and
+removes none, but it changes what a gate DOES with an existing one, so a tree that passed under ⟨0.29⟩ can
+exit 2 under ⟨0.30⟩. Upgrading to it is a decision, not a drop-in.
 
 This file is a one-line-per-rung index. The authoritative, surface-by-surface record is **[SPEC.md §8](SPEC.md#8-changelog)**
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial

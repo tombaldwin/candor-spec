@@ -1818,12 +1818,6 @@
    "status": "pre-ledger"
   },
   {
-   "sha": "e8173c95dd1607b2",
-   "at": "3.3.1 The query command-line grammar (REQUIRED f",
-   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are two exit-",
-   "status": "pre-ledger"
-  },
-  {
    "sha": "a1ba3ec30d2a8aaf",
    "at": "3.3.1 The query command-line grammar (REQUIRED f",
    "excerpt": "- **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A per-member writ",
@@ -2745,6 +2739,12 @@
    "sha": "015d1bf263bbcb1f",
    "at": "2. The report",
    "excerpt": "**\u00a73.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new ancho",
+   "part": "PART 54"
+  },
+  {
+   "sha": "3ca64e7826e11a30",
+   "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb)",
+   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** \u2014 refined \u27e80.21\u27e9. There are three exi",
    "part": "PART 54"
   }
  ]
