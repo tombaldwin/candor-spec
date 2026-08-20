@@ -16,6 +16,35 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.31⟩ — `netPartners`: the ambient config that moved a verdict is named in it (§2 + §3.1).**
+  MEASURED in candor-ts and candor-rust alike: under `deny Net[unknown-host]` a call to `partner.example`
+  exits 1; adding `net-partner partner.example` to an ambient `.candor/config` exits 0 with `ok: true`,
+  and no key names the file, its path, or the host. §3.1 already refuses that for `unknown-alias` —
+  *"an operator reading a verdict changed by an ambient definition needs to see what the definition was"*
+  — and its reasoning reaches this key while its MUST did not.
+
+  The report envelope carries `netPartners: { config, hosts }`; the verdict carries the list of those
+  records on both routes. **`hosts` is what PARTICIPATED, not what was declared** — a config listing
+  twenty partners of which one matched discloses the one, because a list of everything declared buries
+  the line that moved the verdict.
+
+  **It is recorded in the REPORT, which is what makes it emittable at all.** `net-partner` anchors at the
+  target and `gate --report` has no target; re-classifying through the consumer's own config would make a
+  verdict depend on the reader's working directory. A verdict-only disclosure is therefore computable on
+  one route and not the other — this was implemented that way once and reverted, the producing engine's
+  own suite reporting *"pure: NOT byte-equal"*. The producer records it, both routes copy it, and they
+  agree by construction.
+
+  Separate key from `policyVocabulary` because the two ANCHOR differently (policy directory vs target),
+  so one `config` field naming one source would be false about one of them. And the match must be the
+  classifier's own: the first attempt normalised differently and `partner.example:443` never equalled the
+  declared `partner.example`, so the disclosure was silently empty on every real run while the verdicts it
+  reported on had flipped.
+
+  **PART 57** asserts four properties on candor-ts — named, byte-equal across routes, additive, and a
+  declared-but-unmatched partner disclosed nowhere. rust, java and swift SKIP with a stated reason and are
+  ratchet-counted; the ports are open work.
+
 - **⟨0.31⟩ — AN UNEVALUABLE TARGET IS THE FOURTH EXIT-2 CAUSE (§3.3).** A target that exists but holds no
   file the engine can read is a REFUSAL, not a clean scan: *"I found nothing to open"* and *"I opened
   everything and judged it"* are different claims, and exit 0 makes the second. ts, swift and java already

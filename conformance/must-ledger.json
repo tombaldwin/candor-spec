@@ -2788,6 +2788,42 @@
    "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb) ⟨0.10⟩",
    "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false",
    "part": "PART 54"
+  },
+  {
+   "sha": "3615235979562ae9",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.31⟩ `\"netPartners\": { \"config\": \"<path>\", \"hosts\": [ \"<host>\", … ] }` — ENVELOPE-level, beside `analyzed`",
+   "part": "PART 57"
+  },
+  {
+   "sha": "18bf8a61f0fc8eda",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.31⟩ **THE SAME OBLIGATION REACHES `net-partner`, AND ITS SHAPE IS `\"netPartners\": { \"config\": \"<path>\", \"ho",
+   "part": "PART 57"
+  },
+  {
+   "sha": "497d3dbf646c3d5f",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**`hosts` is what PARTICIPATED, not what was declared.** A config listing twenty partners of which one matched",
+   "part": "PART 57"
+  },
+  {
+   "sha": "22457d7f5a933bc6",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**IT IS RECORDED IN THE REPORT, AND THAT IS WHAT MAKES IT EMITTABLE AT ALL.** `net-partner` anchors at the TAR",
+   "part": "PART 57"
+  },
+  {
+   "sha": "ae98ef1b1f843b11",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**A SEPARATE KEY, NOT A FIELD ON `policyVocabulary`.** The two anchor differently — `unknown-alias` resolves a",
+   "part": "PART 57"
+  },
+  {
+   "sha": "90a6d0bd219b8f66",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**AND THE MATCH MUST BE THE CLASSIFIER'S OWN.** The engine decides `known-partner` by some host normalisation;",
+   "part": "PART 57"
   }
  ]
 }

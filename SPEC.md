@@ -703,6 +703,14 @@ already carry.
   in **neither** ⇒ **never analyzed** (candor makes no purity claim). `digest` is an opaque, **within-engine**-
   stable fingerprint of the sorted analyzed-qual set (a same-input re-scan agrees; compare same-engine only —
   qualifiers differ across engines). Present whenever the engine can enumerate its analyzed set.
+- ⟨0.31⟩ `"netPartners": { "config": "<path>", "hosts": [ "<host>", … ] }` — ENVELOPE-level, beside
+  `analyzed`: **the ambient `net-partner` declaration that MOVED a `netClass`** — the config file that
+  declared it, and the declared hosts that actually PARTICIPATED in this scan. Anchored at the TARGET, not
+  at the policy file; §3.1 sets out the two anchors and why they cannot share a key. **Omitted when
+  empty**, so a project declaring no partners — or declaring some that never matched — is byte-identical
+  to a pre-rung report. Recorded by the PRODUCER because a report-reading consumer cannot compute it: it
+  has no target to anchor at, and re-classifying these hosts through its OWN config would make the verdict
+  depend on the reader's working directory.
 - ⟨0.29⟩ `"incomplete": [ "<Effect>", … ]` — **the effects whose LOCATOR this unit could not determine**:
   its own `Fs` write whose path is a parameter, its own exec whose command is computed, its own `Db` call
   whose table is built at runtime. **Omitted when empty**, so a scan that determined everything is
@@ -2402,6 +2410,42 @@ swift's `configSources: [path]` names the file but drops the alias names, and th
 an operator reading a verdict changed by an ambient definition needs to see *what the definition was*, not
 merely that one existed. A disclosure that names the source but not the content leaves the reader knowing
 they were affected and not how.
+
+⟨0.31⟩ **THE SAME OBLIGATION REACHES `net-partner`, AND ITS SHAPE IS `"netPartners": { "config":
+"<path>", "hosts": [ … ] }` IN THE REPORT, A LIST OF THOSE RECORDS IN THE VERDICT.** The reasoning above
+already covers this key and its MUST did not reach it. MEASURED, identically in candor-ts and
+candor-rust: under `deny Net[unknown-host]` a call to `partner.example` exits **1**; adding `net-partner
+partner.example` to an ambient `.candor/config` exits **0** with `ok: true`, and no key names the file,
+its path, or the host. *An operator reading a verdict changed by an ambient definition needs to see what
+the definition was* — the argument is quoted from the clause above, and it is the same failure one key
+along.
+
+**`hosts` is what PARTICIPATED, not what was declared.** A config listing twenty partners of which one
+matched discloses the one: a declaration that changed nothing is not provenance, and a list of everything
+declared would bury the line that moved the verdict. Both negatives follow — a project declaring no
+partners, and one whose declarations never matched, carry the key nowhere and are byte-identical to a
+pre-rung report.
+
+**IT IS RECORDED IN THE REPORT, AND THAT IS WHAT MAKES IT EMITTABLE AT ALL.** `net-partner` anchors at
+the TARGET; `gate --report` has no target, and re-classifying the report's hosts through the CONSUMER's
+own config would be the re-derivation ⟨0.24⟩ forbids — it would make a verdict depend on the reader's
+working directory. So a verdict-only disclosure is computable on the scan route and not on the report
+route, which breaks §3.1's byte-equality: this was implemented that way once and reverted, with the
+producing engine's own suite reporting *"pure: NOT byte-equal"*. The producer records what participated;
+both routes copy that one record. They agree by construction, which is the shape ⟨0.30⟩'s `outOfScope`
+already uses for the same structural reason.
+
+**A SEPARATE KEY, NOT A FIELD ON `policyVocabulary`.** The two anchor differently — `unknown-alias`
+resolves against the POLICY file's directory, because vocabulary travels with the policy, while
+`net-partner` resolves against the TARGET. In one run they are two different files, so a single `config`
+naming one source for both would be false about one of them.
+
+**AND THE MATCH MUST BE THE CLASSIFIER'S OWN.** The engine decides `known-partner` by some host
+normalisation; the disclosure MUST report the partner that decision matched, by asking the same code
+rather than repeating it. The first attempt normalised differently — a declared `partner.example` never
+equalled an observed `partner.example:443` — so the disclosure came back empty on every real run while
+the verdicts it was reporting on had flipped. A disclosure normalised differently from the decision it
+reports can only be wrong, and the way to make that unwritable is one matcher with two callers.
 
 ⟨0.24⟩ **THE VERDICT'S `coverage` BLOCK IS `{ "uncovered": <n>, "packages": [ … ] }`, AND UNTIL NOW THIS
 DOCUMENT NEVER SAID SO.** §2 defines the *report's* ledger — `coverage.uncovered` as an ARRAY of
