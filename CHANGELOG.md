@@ -16,6 +16,22 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **The self-differential generators run their four engines concurrently.** Profiling the suite by its
+  silent gaps (rather than by part headers — see below) put 168s of 386s in five generators, each
+  driving four engines in sequence over workspaces that share nothing. PART 55's matrix, P3
+  trust-monotonicity and P2 chain-idempotence now run theirs in a thread pool: **386s → 351s** locally,
+  output byte-identical, and both probed generators still fail under their own injected fault, which is
+  the only thing that makes a faster gate worth having.
+- **A faster version of this was written and thrown away, correctly.** Launching all five generators from
+  the top of run.sh gave 234s — and 20 `DECLARED COVERAGE` violations, because a part's slice must name
+  the engines it declares and hoisting the invocations out left five parts claiming four engines they no
+  longer mentioned. The regex could have been satisfied with a comment naming `$JAR`; that is gaming an
+  honesty check. The audit is worth more than the 117 seconds.
+- **Two profiling methods were wrong before one was right.** Timestamping between `[NN]` headers
+  attributes a part's cost to its neighbour (work happens before the header prints), and `part.sh`
+  slices do not reproduce it — `part.sh 32` runs in 2s where the profile claimed 154s. Measuring the
+  raw silent gaps and naming the section each precedes is what actually located the cost.
+
 ## [0.30.0] — 2026-08-19
 
 - **PART 55 — the generated policy matrix.** The peek must reach the GATE's own judgement over identical

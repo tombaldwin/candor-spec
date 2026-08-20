@@ -82,6 +82,7 @@ SPEC_CLAUSES = [
     ("§2 rule 3", "A chained package is COVERED, not blind, including its silence."),
 ]
 
+import concurrent.futures
 import json
 import os
 import shutil
@@ -228,8 +229,20 @@ def main():
     ws = tempfile.mkdtemp(prefix="candor-p3trust-")
     results, skipped, broken, depinfo, refnote = {}, {}, {}, {}, {}
     armstate = {}
+    # THE FOUR ENGINES RUN CONCURRENTLY. `split_arms.run_engine` scopes every fixture to
+    # `<ws>/<engine>/<split>`, so the engines share no path and no state; each is scored only against
+    # ITSELF. Sequentially this generator was the single most expensive thing in the suite.
+    #
+    # Only the expensive call is moved. Everything below — the scoring, the ratchet, every print —
+    # still runs in the main thread in engine order, so the output is byte-identical to the sequential
+    # version and a reader diffing two runs sees nothing move.
+    _pre = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as _ex:
+        _f = {_ex.submit(sa.run_engine, e, r, ws, by_split, RUN_ARMS): e for e, r in sa.ENGINES}
+        for _fut in concurrent.futures.as_completed(_f):
+            _pre[_f[_fut]] = _fut.result()
     for eng, runner in sa.ENGINES:
-        per_split, deps, err = sa.run_engine(eng, runner, ws, by_split, RUN_ARMS)
+        per_split, deps, err = _pre[eng]
         if err:
             (skipped if sa.engine_absent(err) else broken)[eng] = err
             print("  %-6s %s -- %s" % (eng, "SKIPPED" if sa.engine_absent(err) else "FAILED ", err))
