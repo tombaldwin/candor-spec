@@ -18,6 +18,10 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.31.0] — 2026-08-20
 
+- The §2 envelope example declared `spec: "0.30"`. It is written with alignment padding, so the floor
+  bump's sweep — which matched a single space — walked past it; `release-preflight [2]`'s separate
+  bare-literal check is what caught it.
+
 - **PART 57 arm E — the ⟨0.30⟩ peek must not feed `netPartners`.** The peek re-enters the scanner over
   the files a scan EXCLUDED, and `netPartners` is not policy-derived: it comes from the participating
   hosts plus the discovered config, and the peek walks the same target. An engine accumulating into
