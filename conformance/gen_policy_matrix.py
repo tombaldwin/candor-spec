@@ -59,6 +59,7 @@ USAGE
 
 Engine resolution mirrors run.sh: CANDOR / CANDOR_JAVA / CANDOR_TS / CANDOR_SWIFT, absent ⇒ SKIP LOUDLY.
 """
+import concurrent.futures
 import json
 import os
 import shutil
@@ -351,9 +352,26 @@ def main():
     bad = 0
     cells = 0
     LOADED = {}   # shape id -> engines where the GATE fired; see the vacuity ledger at the end
-    for engine in sorted(ENGINES):
+    # ── PER-ENGINE, AND RUN CONCURRENTLY. ─────────────────────────────────────────────────────────
+    # The four engines share nothing here: each builds into its own fixed directory (rsp/tsp/jvp/swp)
+    # and every arm compares an engine only against ITSELF. Sequentially this part cost 40s of the
+    # suite's 386 — four engines waiting in line for no reason.
+    #
+    # Parallelism lives HERE rather than in run.sh. The first attempt launched all five generators from
+    # the top of the suite, which was faster still and WRONG: run.sh's DECLARED COVERAGE audit checks
+    # that a part's slice names the engines it claims to drive, and hoisting the invocation out left
+    # PART 55 declaring four engines with no engine reference in its slice — 20 vacuous claims, caught
+    # by the suite itself. The audit is right, and the property is worth more than the seconds.
+    #
+    # `print` is shadowed inside the worker so every line is buffered and replayed in engine order:
+    # concurrent engines must not interleave their output, and a matrix whose rows arrive in a
+    # different order each run is a diff nobody can read.
+    def run_engine(engine):
+        out, bad, cells, loaded = [], 0, 0, {}
+        def print(*a):
+            out.append(" ".join(str(x) for x in a))
         if only and engine != only:
-            continue
+            return None
         # ── CALIBRATION FLOOR — run BEFORE any cell of this engine is believed. ────────────────────
         # Every arm below compares the peek to the gate, so an engine that sees NOTHING agrees with
         # itself perfectly: a stub classifying nothing and exiting 0 passes every cell, and so does one
@@ -373,7 +391,10 @@ def main():
                   f"(want 1) and {'carries' if cal_net else 'does NOT carry'} Net in its report — this "
                   f"engine's column tests NOTHING until that holds, because every arm compares the peek "
                   f"to a gate that is not firing")
-            continue
+            # was `continue` when this was a loop body: abandon THIS engine, carrying the failure out.
+            # Returning the accumulated state rather than an empty one matters — `bad` was just
+            # incremented, and dropping it here would turn an uncalibrated engine into a silent pass.
+            return out, bad, cells, loaded
         for shape in SHAPES:
             cells += 1
             gate_rc, gate_out, _gd = judge(engine, shape, placed_out=False, sink=True)
@@ -381,9 +402,9 @@ def main():
             # satisfied by a peek that also answers 0 — including a peek that does nothing at all. Such
             # a cell is not wrong, but it carries no evidence about the peek's matching, and a summary
             # that prints only a cell COUNT lets a shape firing nowhere read as coverage.
-            LOADED.setdefault(shape["id"], set())
+            loaded.setdefault(shape["id"], False)
             if gate_rc != 0:
-                LOADED[shape["id"]].add(engine)
+                loaded[shape["id"]] = True
             peek_rc, peek_out, peek_dir = judge(engine, shape, placed_out=True, sink=True)
             # THE AGREEMENT INVARIANT. The gate is the oracle: whatever it decides about the in-scope
             # copy, the peek must decide about the identical out-of-scope copy. 1 <-> 2 because the
@@ -507,6 +528,27 @@ def main():
                             print(f"  {engine:6} {shape['id']:16} ADVISORY  `{verb} --strict` exits 0 over "
                                   f"the report the gate refuses at 2")
                             break
+
+        return out, bad, cells, loaded
+
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+        futs = {ex.submit(run_engine, e): e for e in sorted(ENGINES)}
+        for f in concurrent.futures.as_completed(futs):
+            results[futs[f]] = f.result()
+    for engine in sorted(ENGINES):
+        r = results.get(engine)
+        if r is None:
+            continue
+        out, b, c, ld = r
+        for ln in out:
+            print(ln)
+        bad += b; cells += c
+        for sid, fired in ld.items():
+            LOADED.setdefault(sid, set())
+            if fired:
+                LOADED[sid].add(engine)
+
     inert = sorted(sid for sid, engs in LOADED.items() if not engs)
     print(f"  policy matrix: {cells} cell(s) over {len(ENGINES) if not only else 1} engine(s), "
           f"{bad} disagreement(s)")
