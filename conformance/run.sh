@@ -9409,8 +9409,8 @@ NAME = {"rs": "rust", "ts": "ts", "sw": "swift"}
 
 def findings(eng, arm):
     """The peek's own key, read from the report the run wrote — not from stderr prose, which is not a
-    contract. An absent report is NOT read as 'no findings': it is its own failure, because the arm
-    being tested is precisely whether the run still produces a document on this path.
+    contract. Returns (findings, document_present) so the caller can tell 'a report saying nothing' from
+    'no report at all' — those are DIFFERENT answers here and the row asserts on the difference below.
 
     Each engine names its report itself (`report.json`, `report.<crate>.scan.json`,
     `report.<pkg>.Swift.json`) and drops `.callgraph`/`.hierarchy` sidecars beside it, so this globs and
@@ -9449,6 +9449,19 @@ for eng in ("rs", "ts", "sw"):
         print(f"  {NAME[eng]:6} A DIRTY   exit 2 but `outOfScope` is empty/absent — the refusal "
               f"short-circuited the peek, so the denied effect in the excluded file is never named. "
               f"That is the whole defect this row exists for.")
+    # REFUSE BEFORE AN ENVELOPE EXISTS. §3.1's byte-equality is quantified over "any report a scan
+    # produced", so an engine that REFUSES (exit 2) must produce no report — once one exists, the scan
+    # route owns the gate route's answer over it. MEASURED 2026-08-20: the first version of the ts and
+    # swift fix exited 2 from an arm AFTER the verdict was written, leaving `--gate-json` saying
+    # `ok: true` and a report that `gate --report` answered 0 over. Exit right, document green.
+    if d_rc == "2" and not d_doc:
+        bad += 1
+        print(f"  {NAME[eng]:6} A DIRTY   exit 2 but produced NO report — the findings have nowhere to "
+              f"live and `gate --report` cannot reach the same verdict")
+    if c_rc == "2" and c_doc:
+        bad += 1
+        print(f"  {NAME[eng]:6} B CLEAN   refuses at exit 2 but LEFT A REPORT — §3.1 binds any report a "
+              f"scan produced, so the gate route will answer over it and disagree with this exit code")
     # SHAPE B — the control. Same tree, clean sibling.
     #
     # candor-rust answers 0 here and THAT IS THE SPEC'S RULING, not a defect. §⟨0.24⟩: `analyzed.count == 0`
