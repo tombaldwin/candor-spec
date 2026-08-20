@@ -9502,6 +9502,118 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 57 — THE AMBIENT CONFIG THAT MOVED A VERDICT IS NAMED IN IT (SPEC §2/§3.1 ⟨0.31⟩)      [TIER 1]
+#
+# MEASURED, identically in candor-ts and candor-rust: under `deny Net[unknown-host]` a call to
+# `partner.example` exits 1; adding `net-partner partner.example` to an ambient `.candor/config` exits 0
+# with `ok: true`, and NO key names the file, its path, or the host. An operator reading that green cannot
+# tell an ambient file on disk turned a red into it — the failure §3.1's `policyVocabulary` already
+# refuses for `unknown-alias`, whose argument reaches this key and whose MUST did not.
+#
+# FOUR ROWS, and the last two are the ones that make it a contract rather than a feature:
+#   A  the report names the config AND the participating host
+#   B  §3.1 BYTE-EQUALITY — `scan --policy` and `gate --report` produce the same verdict document. The
+#      first implementation of this disclosure was REVERTED for failing exactly here: `net-partner`
+#      anchors at the target, `gate --report` has no target, so a verdict-only disclosure is computable
+#      on one route and not the other. It holds now because the PRODUCER records it in the report and
+#      both routes copy that one record.
+#   C  ADDITIVE — a project declaring no partners carries the key nowhere.
+#   D  A DECLARATION THAT CHANGED NOTHING IS NOT PROVENANCE — a partner that never matched is absent.
+#      Without D an engine passes A by dumping every declared host, which buries the line that moved the
+#      verdict in a list of everything the operator ever wrote down.
+#
+# Engines that have not shipped the rung SKIP and are counted by the ⟨0.28⟩ ratchet below, so a rung that
+# UN-SHIPS cannot look like one that never shipped.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[57] THE AMBIENT CONFIG THAT MOVED A VERDICT IS NAMED IN IT  (SPEC §2/§3.1 ⟨0.31⟩)"
+P57_OK=0
+NPD="$W/netpartner"; mkdir -p "$NPD"
+printf 'deny Net[unknown-host]\n' > "$NPD/pol"
+
+# ---- ts
+if [ -n "$TS_PRESENT" ]; then
+  for arm in used nodecl unused; do
+    d="$NPD/ts_$arm"; mkdir -p "$d/src" "$d/.candor"
+    printf '{"name":"np%s","version":"1.0.0"}\n' "$arm" > "$d/package.json"
+    printf 'export async function call() { await fetch("https://partner.example/v1"); }\n' > "$d/src/i.ts"
+    case "$arm" in
+      used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
+      unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
+      nodecl) rmdir "$d/.candor" 2>/dev/null || true ;;
+    esac
+    ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$NPD/pol" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
+    if [ "$arm" = used ]; then
+      ( cd "$TS_DIR" && node query.mjs gate --report "$d/.candor/report.json" --policy "$NPD/pol" \
+          --gate-json "$d/rep.gate.json" >/dev/null 2>&1 )
+    fi
+  done
+  python3 - "$NPD" <<'PY57' || P57_OK=1
+import json, os, sys
+base = sys.argv[1]
+bad = 0
+def rep(arm):
+    f = os.path.join(base, f"ts_{arm}", ".candor", "report.json")
+    return json.load(open(f)) if os.path.exists(f) else None
+
+# A — the config and the PARTICIPATING host are both named
+used = rep("used")
+np = (used or {}).get("netPartners")
+if not (isinstance(np, dict) and isinstance(np.get("config"), str)
+        and ".candor/config" in np["config"] and "partner.example" in (np.get("hosts") or [])):
+    bad += 1
+    print(f"  ts     A NAMED     report carries {np!r} — the config that moved the classification and "
+          f"the host it declared must both be named; naming the file alone leaves the reader knowing "
+          f"they were affected and not how")
+
+# B — §3.1 byte-equality across the two routes
+sg = os.path.join(base, "ts_used", "scan.gate.json")
+rg = os.path.join(base, "ts_used", "rep.gate.json")
+if os.path.exists(sg) and os.path.exists(rg):
+    a, b = open(sg, "rb").read(), open(rg, "rb").read()
+    if a != b:
+        bad += 1
+        print("  ts     B ROUTES    `scan --policy` and `gate --report` verdicts are NOT byte-equal — the "
+              "disclosure is computable on one route and not the other, which is exactly why the first "
+              "implementation of this key was reverted")
+else:
+    bad += 1
+    print("  ts     B ROUTES    one of the two verdict documents was not written — the row cannot compare")
+
+# C — additive
+if (rep("nodecl") or {}).get("netPartners") is not None:
+    bad += 1
+    print("  ts     C ADDITIVE   a project declaring NO partners carries the key — a pre-rung report must "
+          "be byte-identical")
+
+# D — a declaration that changed nothing is not provenance
+if (rep("unused") or {}).get("netPartners") is not None:
+    bad += 1
+    print("  ts     D UNUSED     a declared partner that never matched is disclosed — a list of everything "
+          "declared buries the one line that moved the verdict")
+
+if not bad:
+    print(f"  ts     -> OK        (named: {np['hosts']} from {os.path.basename(np['config'])}; routes "
+          f"byte-equal; absent when nothing participated)")
+sys.exit(1 if bad else 0)
+PY57
+else
+  echo "  ts     -> SKIP     (engine not built — NOT asked)"
+fi
+for e in rust java swift; do
+  echo "  $(printf '%-6s' "$e") -> SKIP     (⟨0.31⟩ netPartners not yet shipped on this engine)"
+done
+echo "PART 57 — the ambient config that moved a verdict is named in it (SPEC §2/§3.1 ⟨0.31⟩)"
+# ENGINES: ts; rust java swift: the rung is not yet shipped on them — the reference implementation landed in candor-ts first and the ports are open work, so they SKIP and the ⟨0.28⟩ ratchet counts it
+# CONTROLS: nodecl unused — `nodecl` (a project declaring no partners) proves the key is ADDITIVE rather than always-present, and `unused` (a partner declared but never matched) proves the disclosure reports what PARTICIPATED rather than what was written down; without the second an engine passes the naming row by dumping every declared host, which buries the line that moved the verdict
+if [ "$P57_OK" = 0 ]; then
+  echo "  -> MATCH — the config and the host that moved the classification are named, both routes agree"
+  echo "     byte-for-byte, and a declaration that changed nothing is disclosed nowhere"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
