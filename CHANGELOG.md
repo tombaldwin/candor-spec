@@ -16,6 +16,9 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 57 now asserts candor-rust too.** Two engines score all four properties; java and swift still
+  SKIP with a stated reason and stay ratchet-counted, so the rung cannot un-ship unnoticed.
+
 - **⟨0.31⟩ — `netPartners`: the ambient config that moved a verdict is named in it (§2 + §3.1).**
   MEASURED in candor-ts and candor-rust alike: under `deny Net[unknown-host]` a call to `partner.example`
   exits 1; adding `net-partner partner.example` to an ambient `.candor/config` exits 0 with `ok: true`,
