@@ -9464,26 +9464,18 @@ for eng in ("rs", "ts", "sw"):
               f"scan produced, so the gate route will answer over it and disagree with this exit code")
     # SHAPE B — the control. Same tree, clean sibling.
     #
-    # candor-rust answers 0 here and THAT IS THE SPEC'S RULING, not a defect. §⟨0.24⟩: `analyzed.count == 0`
-    # is "I judged nothing", and the harm it names is a DELETED DISCLOSURE, not a moved verdict —
-    # "verdict-preserving, exit unchanged, the caveat travels". candor-rust's own `gate-equivalence`
-    # row `judged-nothing` encodes it: exit code and verdict document UNMOVED.
+    # ⟨0.31⟩ ASSERTED FOR ALL THREE NOW. This was a NAMED DIVERGENCE for one day: rust answered 0 here
+    # and that was ⟨0.24⟩'s ruling (`analyzed.count == 0` is a DISCLOSURE obligation, verdict unchanged),
+    # so the row printed the split rather than scoring it. ⟨0.31⟩ supersedes that ruling FOR THE SCAN
+    # ROUTE'S OWN TARGET ONLY — a walk that admitted nothing this engine can read is an unevaluable
+    # target, the fourth §3.3 cause. A judged-nothing REPORT presented to `gate --report`, and a
+    # judged-nothing dependency, are untouched: those stay verdict-preserving, which is what the facade
+    # table in §2 depends on.
     #
-    # This was filed as a rust defect first, and a fix was written before the contract was read. It broke
-    # §3.1 route equality on the first run (scan 2 vs gate 0) — which is how the ruling surfaced at all.
-    # The standing hazard, exactly: a theory wrong in the STRICT direction produces a finding shaped like
-    # a real defect. Check which side the contract is on FIRST.
-    #
-    # What remains is a genuine CROSS-ENGINE question, and it is a SPEC question rather than an engine
-    # one: ts and swift REFUSE this shape (they decline to produce a judgement at all, as rust does for a
-    # target that does not exist), while rust judges nothing and discloses. Both are defensible under
-    # different clauses; they are not the same answer. Named here so the divergence is visible while the
-    # spec question is open.
-    if eng == "rs" and c_rc == "0":
-        print(f"  {NAME[eng]:6} B CLEAN   NAMED DIVERGENCE — judges nothing and discloses (exit 0), "
-              f"per §⟨0.24⟩ 'verdict-preserving, exit unchanged'; ts and swift REFUSE the same shape "
-              f"instead. A spec question about which convention the family wants, not an engine defect.")
-    elif c_rc != "2":
+    # The distinction is walk vs report, and it is load-bearing: keying on the report shape is what broke
+    # §3.1 route equality when this fix was first attempted (scan 2 vs gate 0), because a produced
+    # count-0 report travels into the gate route and a refusal never does.
+    if c_rc != "2":
         bad += 1
         print(f"  {NAME[eng]:6} B CLEAN   exit {c_rc}, want 2 — zero analyzable files were read, so a "
               f"green here is a gate certifying a tree it never opened")
@@ -9502,7 +9494,7 @@ sys.exit(1 if bad else 0)
 PY56
 echo "PART 56 — no analyzable source still reads what it excluded (SPEC §2 ⟨0.30⟩)"
 # ENGINES: rust ts swift; java: its target is a class directory or a jar, which has nothing beside it to peek — the same reason java flipped 0 of 14 packages when ⟨0.30⟩ was measured, so the shape this part tests cannot arise there
-# CONTROLS: shape B — the IDENTICAL tree with a CLEAN excluded sibling must still exit 2 and name nothing FOR THE ENGINES THAT REFUSE THIS SHAPE (ts, swift); without it a fix that simply stopped refusing passes shape A while answering `policy ✓` at exit 0 over a tree with zero analyzed files, which is exactly what candor-ts's first attempt did; candor-rust judges nothing and discloses instead, which §⟨0.24⟩ rules verdict-preserving and its own gate-equivalence `judged-nothing` row pins, so it is NAMED as an open spec question rather than scored; java is not asked because a class-directory/jar target has nothing beside it to peek, the same reason it flipped 0 of 14 at ⟨0.30⟩
+# CONTROLS: clean — the IDENTICAL tree with a CLEAN excluded sibling must still exit 2 and name nothing, on ALL THREE engines asked (⟨0.31⟩ brought rust into line; it was ts and swift only for one day); without it a fix that simply stopped refusing passes shape A while answering `policy ✓` at exit 0 over a tree with zero analyzed files, which is exactly what candor-ts's first attempt did; ⟨0.31⟩ now asserts the same answer from candor-rust, whose exit 0 here was ⟨0.24⟩'s ruling until the unevaluable-target cause superseded it for the scan route's own target; java is not asked because a class-directory/jar target has nothing beside it to peek, the same reason it flipped 0 of 14 at ⟨0.30⟩
 if [ "$P56_OK" = 0 ]; then
   echo "  -> MATCH — a refusal for want of analyzable source still publishes what the excluded files do,"
   echo "     and still refuses to certify; a clean sibling adds nothing"

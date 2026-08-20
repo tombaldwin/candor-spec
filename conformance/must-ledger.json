@@ -2568,12 +2568,6 @@
    "part": "PART 38"
   },
   {
-   "sha": "c8e0e9636975f8c9",
-   "at": "⟨0.28⟩ Phase 1b ruling",
-   "excerpt": "**The carve-out is the GATE VERDICT, and it is not an exception so much as a different question.** ⟨0.24⟩ rule",
-   "part": "PART 38"
-  },
-  {
    "sha": "4f3bfa54da53a140",
    "at": "⟨0.28⟩ Phase 1b ruling",
    "excerpt": "So the rule is stated over the scope, not the verb: **`ok` is withdrawn wherever it is a claim about the CODE ",
@@ -2709,18 +2703,18 @@
    "sha": "9224a7c62169e3e2",
    "at": "Contents",
    "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
-   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through \u27e80.29\u27e9, \u27e80.30\u27e9 deliberately not) and that an upgrade to \u27e80.30\u27e9 is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it describes IS exercised, by PART 48 and PART 54. Reclassified from pre-ledger because the \u27e80.30\u27e9 sentence is new text, and carrying a pre-ledger status across a reword is how the gate gets defeated."
+   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through ⟨0.29⟩, ⟨0.30⟩ deliberately not) and that an upgrade to ⟨0.30⟩ is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it describes IS exercised, by PART 48 and PART 54. Reclassified from pre-ledger because the ⟨0.30⟩ sentence is new text, and carrying a pre-ledger status across a reword is how the gate gets defeated."
   },
   {
    "sha": "66fb6633734a95c5",
    "at": "2. The report",
-   "excerpt": "- \u27e80.29\u27e9 `\"outOfScope\": [ { \"fn\": \u2026, \"path\": \u2026, \"effects\": [\"<Effect>\"\u2026], \"class\": \u2026, \"reason\": \u2026 } ]` — **THE",
+   "excerpt": "- ⟨0.29⟩ `\"outOfScope\": [ { \"fn\": …, \"path\": …, \"effects\": [\"<Effect>\"…], \"class\": …, \"reason\": … } ]` — **THE",
    "part": "PART 48"
   },
   {
    "sha": "4ee7d51d413b2fab",
    "at": "2. The report",
-   "excerpt": "- \u27e80.30\u27e9 **A NON-EMPTY `outOfScope` MAKES THE VERDICT INCOMPLETE — `ok: false`, `incomplete: true`, EXIT 2.** ",
+   "excerpt": "- ⟨0.30⟩ **A NON-EMPTY `outOfScope` MAKES THE VERDICT INCOMPLETE — `ok: false`, `incomplete: true`, EXIT 2.** ",
    "part": "PART 48"
   },
   {
@@ -2732,32 +2726,68 @@
   {
    "sha": "2418e9e6284b0ef2",
    "at": "2. The report",
-   "excerpt": "**The bound in the \u27e80.29\u27e9 clause above is what makes this affordable**: `outOfScope` is emitted only for effec",
+   "excerpt": "**The bound in the ⟨0.29⟩ clause above is what makes this affordable**: `outOfScope` is emitted only for effec",
    "part": "PART 48"
   },
   {
    "sha": "015d1bf263bbcb1f",
    "at": "2. The report",
-   "excerpt": "**\u00a73.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new ancho",
-   "part": "PART 54"
-  },
-  {
-   "sha": "8eb477ca921eb861",
-   "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb)",
-   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** \u2014 refined \u27e80.21\u27e9. There are three exi",
+   "excerpt": "**§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new ancho",
    "part": "PART 54"
   },
   {
    "sha": "8bcb218f1e6d4343",
    "at": "2. The report",
-   "excerpt": "\u27e80.30\u27e9 **THE PEEK ASKS THE GATE'S OWN MATCHER, NOT A SECOND ONE.** \u00a76.2 already requires the gate and the disc",
+   "excerpt": "⟨0.30⟩ **THE PEEK ASKS THE GATE'S OWN MATCHER, NOT A SECOND ONE.** §6.2 already requires the gate and the disc",
    "part": "PART 55"
   },
   {
    "sha": "3d63a8cca6c485cd",
    "at": "2. The report",
-   "excerpt": "\u27e80.30\u27e9 **AND THE ADVISORY VERBS FOLLOW IT.** \u27e80.24\u27e9 binds every verb that answers `ok` \u2014 `unverified`, `fix-ga",
+   "excerpt": "⟨0.30⟩ **AND THE ADVISORY VERBS FOLLOW IT.** ⟨0.24⟩ binds every verb that answers `ok` — `unverified`, `fix-ga",
    "part": "PART 55"
+  },
+  {
+   "sha": "639827bcac36dd58",
+   "at": "2. The report",
+   "excerpt": "**The carve-out is the GATE VERDICT, and it is not an exception so much as a different question.** ⟨0.24⟩ rule",
+   "part": "PART 38"
+  },
+  {
+   "sha": "ce44fca4dbd7ec20",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "⟨0.31⟩ **(d) AN UNEVALUABLE TARGET — the walk admitted no file this engine can read.** A target that exists bu",
+   "part": "PART 56"
+  },
+  {
+   "sha": "c19ea23b9f40d2d3",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "**THIS SUPERSEDES THE ⟨0.24⟩ JUDGED-NOTHING RULING FOR THE SCAN ROUTE'S OWN TARGET, AND ONLY THERE.** A judged",
+   "part": "PART 56"
+  },
+  {
+   "sha": "75397d139ec10b62",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "- **A project of this engine's kind that yields ZERO UNITS is",
+   "part": "PART 56"
+  },
+  {
+   "sha": "2f0323af4fbf4a24",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "- **The ⟨0.30⟩ peek runs FIRST.** If the excluded files hold ",
+   "part": "PART 56"
+  },
+  {
+   "sha": "6909bd68b68b150e",
+   "at": "3.3 The command-line surface (REQUIRED)",
+   "excerpt": "The refusal MUST carry a remedy naming what a target of this ",
+   "unenforced": "no row asserts remedy TEXT — PART 56 scores the exit code and the absence of a report, not the message. java's zero-class refusal is the model wording; a row would have to pin prose, which this suite deliberately does not do (the `did NOT judge` phrase in PART 48 is the one exception, and it is pinned because a consumer greps it)."
+  },
+  {
+   "sha": "35604bd79cc738f1",
+   "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb) ⟨0.10⟩",
+   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false",
+   "part": "PART 54"
   }
  ]
 }

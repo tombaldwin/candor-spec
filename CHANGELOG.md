@@ -16,6 +16,32 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.31⟩ — AN UNEVALUABLE TARGET IS THE FOURTH EXIT-2 CAUSE (§3.3).** A target that exists but holds no
+  file the engine can read is a REFUSAL, not a clean scan: *"I found nothing to open"* and *"I opened
+  everything and judged it"* are different claims, and exit 0 makes the second. ts, swift and java already
+  refused this shape **without it being enumerated** — by ⟨0.24⟩'s own doctrine that is an engine minting
+  a cause — and candor-rust answered `policy ✓`. The clause writes the cause down and brings rust into
+  line.
+
+  **It supersedes ⟨0.24⟩'s judged-nothing ruling for the SCAN ROUTE'S OWN TARGET, and only there.** A
+  judged-nothing report presented to a verb, or chained as a dependency, stays verdict-preserving — the
+  facade table in §2 depends on it. The distinction is **the walk versus the report**, and it is
+  load-bearing: a produced `count: 0` report travels into the gate route, so a refusal keyed on it splits
+  the verb (measured — an attempt keyed that way answered `scan --policy` 2 against `gate --report` 0 on
+  its first run); a refusal keyed on the walk never reaches that route, because §3.1's byte-equality is
+  quantified over *any report a scan produced* and this refusal produces none.
+
+  Three boundaries in the clause, each of which a naive form gets wrong: a project of the engine's kind
+  yielding ZERO UNITS is still an ANSWER (⟨0.24⟩'s premise, unchanged); the cause is PER-INVOCATION, never
+  per-member (a scaffolded workspace member must not redden a real workspace, and swift `binary` targets,
+  maven aggregators and ts solution roots all carry zero sources legitimately); and the ⟨0.30⟩ peek runs
+  FIRST, so an effect in an unread file is named rather than silenced by the target being unreadable.
+
+  Five locations moved together — the cause, the ⟨0.28⟩ carve-out it reconciles with, §3.1's lean on the
+  enumeration, and the exit-2 **count**, whose own footnote records that a stale count has shipped three
+  times. Seven statements classified in the MUST ledger; one recorded as unenforced with its reason (no
+  row asserts remedy TEXT, and pinning prose is something this suite deliberately does not do).
+
 - **PART 56 pins REFUSE-BEFORE-ENVELOPE.** §3.1's byte-equality is quantified over "any report a scan
   produced", so an engine that refuses at exit 2 must leave no report — once one exists, the scan route
   owns the gate route's answer over it. Measured the same day: the first ts/swift fix exited 2 from an arm
