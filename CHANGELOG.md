@@ -26,6 +26,12 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   caught the same false green in **candor-rust**, which is NAMED as a divergence every run and filed in
   candor/BACKLOG.md rather than asserted away. java is excluded with a reason: its class-directory/jar
   target has nothing beside it to peek.
+  **Correction, same day:** the row first called candor-rust's exit 0 here a filed defect. It is the
+  spec's ruling — §⟨0.24⟩ makes `analyzed.count == 0` a DISCLOSURE obligation, "verdict-preserving, exit
+  unchanged", and candor-rust's own `gate-equivalence` row `judged-nothing` pins it. A fix was written
+  before the contract was read and broke §3.1 route equality on its first run (scan 2 vs gate 0), which is
+  how the ruling surfaced. The row now names the ts/swift-vs-rust split as an open SPEC question — which
+  convention the family wants — rather than as an engine defect.
 
 - **The self-differential generators run their four engines concurrently.** Profiling the suite by its
   silent gaps (rather than by part headers — see below) put 168s of 386s in five generators, each
