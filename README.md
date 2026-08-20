@@ -18,10 +18,10 @@ exhibits, the pre-registered evals, and the prove-it-on-your-own-repo path.
 
 | Language | Repo | Engine | Status |
 |---|---|---|---|
-| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (spec 0.30)** — the **reference engine**; full mode set incl. `--gate-json`; Spring-aware; Java/Kotlin/Scala/Groovy (`jbang candor@tombaldwin/candor-java`) |
-| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (spec 0.30)** — `cargo install candor-scan` |
-| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (spec 0.30)** — project scanning, gate, queries, MCP + LSP servers; on npm (`npx -y candor-ts`) |
-| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (spec 0.30)** — receiver-typed local inference; the 4th conformance engine |
+| Java / JVM | [candor-java](https://github.com/tombaldwin/candor-java) | ASM bytecode + CHA | **shipped (spec 0.31)** — the **reference engine**; full mode set incl. `--gate-json`; Spring-aware; Java/Kotlin/Scala/Groovy (`jbang candor@tombaldwin/candor-java`) |
+| Rust | [candor-rust](https://github.com/tombaldwin/candor-rust) | dylint (HIR + CHA) + a stable `syn` scanner | **shipped (spec 0.31)** — `cargo install candor-scan` |
+| TypeScript | [candor-ts](https://github.com/tombaldwin/candor-ts) | TS compiler API | **shipped (spec 0.31)** — project scanning, gate, queries, MCP + LSP servers; on npm (`npx -y candor-ts`) |
+| Swift | [candor-swift](https://github.com/tombaldwin/candor-swift) | SwiftParser (syntactic) | **shipped (spec 0.31)** — receiver-typed local inference; the 4th conformance engine |
 | C# / .NET | _planned_ | Roslyn analyzer | planned |
 | Go | _planned_ | `go/analysis` + SSA | planned |
 
@@ -29,7 +29,7 @@ Domain engines (units are not functions; ride the version ladder on their own sc
 
 | Domain | Repo | Engine | Status |
 |---|---|---|---|
-| Agent fleets | [candor-agents](https://github.com/tombaldwin/candor-agents) | declared-vs-observed effect analysis over agent fleets (units = agents/sessions/hooks) | **shipped (spec 0.30)** — v0.8.1; `pipx install git+https://github.com/tombaldwin/candor-agents` |
+| Agent fleets | [candor-agents](https://github.com/tombaldwin/candor-agents) | declared-vs-observed effect analysis over agent fleets (units = agents/sessions/hooks) | **shipped (spec 0.31)** — v0.8.1; `pipx install git+https://github.com/tombaldwin/candor-agents` |
 
 ## Documents
 

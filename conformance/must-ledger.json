@@ -2700,10 +2700,10 @@
    "part": "PART 51"
   },
   {
-   "sha": "9224a7c62169e3e2",
+   "sha": "19587b9f1f3598b3",
    "at": "Contents",
-   "excerpt": "**Version 0.29** — all code engines declare `0.29`; the floor is conformance-pinned. How versions move (the la",
-   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through ⟨0.29⟩, ⟨0.30⟩ deliberately not) and that an upgrade to ⟨0.30⟩ is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it describes IS exercised, by PART 48 and PART 54. Reclassified from pre-ledger because the ⟨0.30⟩ sentence is new text, and carrying a pre-ledger status across a reword is how the gate gets defeated."
+   "excerpt": "**Version 0.31** \u2014 all code engines declare `0.31`; the floor is conformance-pinned. How versions move (the la",
+   "unenforced": "The versioning NARRATIVE, not an engine requirement \u2014 it states how rungs relate (additive through \u27e80.29\u27e9; \u27e80.30\u27e9 deliberately not; \u27e80.31\u27e9 additive in its `netPartners` half and NOT in its unevaluable-target half, which turns a typo'd-path pass into an exit 2) and that such an upgrade is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it DESCRIBES is exercised \u2014 by PART 48 and PART 54 for \u27e80.30\u27e9, and by PART 56 and PART 57 for \u27e80.31\u27e9. Re-hashed at the 0.31 floor bump because the paragraph gained a sentence naming \u27e80.31\u27e9's two halves; carrying a classification across a reword without re-reading it is how this gate gets defeated, which is why the sha moves by hand every time this paragraph does."
   },
   {
    "sha": "66fb6633734a95c5",
