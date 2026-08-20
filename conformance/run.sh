@@ -9881,6 +9881,121 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 58 — AN `outOfScope` ENTRY NAMES THE FILE ITS FUNCTION IS IN (SPEC §2 ⟨0.30⟩)         [TIER 1]
+#
+# MEASURED in candor-ts: with `src/one/dup.test.ts` and `src/two/dup.test.ts`, `fn_two` was disclosed at
+# `src/one/dup.test.ts`. The lookup was
+# `find(e => loc.endsWith(e.path) || loc.endsWith(basename(e.path)))` — the `||` inside a single `.find`,
+# so a BASENAME match on an earlier entry beat a FULL PATH match on a later one.
+#
+# NOT A SILENT UNDER-REPORT, which is why it needs its own row rather than riding an existing one: both
+# functions were disclosed, with the right effects and the right class, and every assertion the suite
+# already makes about `outOfScope` passed. What was wrong was a LOCATOR — the report asserting a function
+# is somewhere it is not. An operator following it lands on a different function or on nothing, and a
+# disclosure nobody can act on is worth little more than no disclosure.
+#
+# SAME-BASENAME FILES ARE NOT A CORNER CASE. `index.ts`, `mod.ts`, `dup.test.ts` repeat in every monorepo,
+# and this was found while building a multi-package fixture for an unrelated question.
+#
+# TWO ROWS, and the second is what stops the safe value passing: naming each function's own file is
+# trivially satisfied by disclosing NOTHING, so the control requires both functions still present with
+# their effect. The other three engines were measured correct before this was written — it exists to stop
+# any of them acquiring it.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[58] AN outOfScope ENTRY NAMES THE FILE ITS FUNCTION IS IN  (SPEC §2 ⟨0.30⟩)"
+P58_OK=0
+DUPD="$W/duplocator"; mkdir -p "$DUPD"
+printf 'deny Fs\n' > "$DUPD/pol"
+
+# `check_dup <engine-label> <report-json-path>` — one checker, four callers, because a per-engine copy is
+# how the arms drift apart.
+check_dup() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY58'
+import json, os, sys
+eng, rep, one_path, two_path = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+if not os.path.exists(rep):
+    print(f"  {eng:<6} -> no report at {rep} — the row cannot answer"); sys.exit(1)
+doc = json.load(open(rep))
+oos = doc.get("outOfScope") or []
+# THE LEAF OF A QUALIFIED NAME, and the engines do not spell the separator the same way: candor-rust
+# emits `examples::dup::fnTwo`, candor-ts and candor-swift emit the bare leaf. Splitting on "." alone
+# left every rust key unmatched and printed a DIVERGE whose own evidence line showed the correct
+# answer — the check was wrong, not the engine.
+import re
+leaf = lambda fn: re.split(r"[.:]+", fn or "")[-1]
+at = {leaf(e.get("fn")): e.get("path") for e in oos}
+bad = 0
+# A — each function is named by ITS OWN file
+if not (str(at.get("fnOne", "")).endswith(one_path) and str(at.get("fnTwo", "")).endswith(two_path)):
+    bad = 1
+    print(f"  {eng:<6} A LOCATOR   a function is disclosed at a file it is not in: "
+          f"{ {k: v for k, v in at.items()} }. Both excluded files share a basename, which is what a "
+          f"basename-keyed lookup collides on; an operator following this path finds a different "
+          f"function or none")
+# B — CONTROL: and not by disclosing nothing, which passes A while deleting the disclosure
+if not (len(oos) == 2 and all("Fs" in (e.get("effects") or []) for e in oos)):
+    bad = 1
+    print(f"  {eng:<6} B CONTROL   both excluded functions must still be disclosed with their effect, "
+          f"or row A is satisfied by saying nothing: {oos}")
+if not bad:
+    print(f"  {eng:<6} -> OK        (fnOne={at.get('fnOne')}, fnTwo={at.get('fnTwo')})")
+sys.exit(1 if bad else 0)
+PY58
+}
+
+# ---- ts (two test files sharing a basename in different directories)
+if [ -n "$TS_PRESENT" ]; then
+  d="$DUPD/ts"; mkdir -p "$d/src/one" "$d/src/two"
+  printf '{"name":"dup","version":"1.0.0"}\n' > "$d/package.json"
+  printf 'export function pureX() { return 1; }\n' > "$d/src/i.ts"
+  printf 'import { readFileSync } from "fs";\nexport function fnOne() { return readFileSync("/tmp/one"); }\n' > "$d/src/one/dup.test.ts"
+  printf 'import { readFileSync } from "fs";\nexport function fnTwo() { return readFileSync("/tmp/two"); }\n' > "$d/src/two/dup.test.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$DUPD/pol" >/dev/null 2>&1 )
+  check_dup ts "$d/.candor/report.json" "src/one/dup.test.ts" "src/two/dup.test.ts" || P58_OK=1
+else
+  echo "  ts     -> SKIP     (engine not built — NOT asked)"
+fi
+
+# ---- rust (two non-library targets sharing a basename)
+if [ -x "$SCAN" ]; then
+  d="$DUPD/rs"; mkdir -p "$d/src" "$d/tests" "$d/examples"
+  printf '[package]\nname="duprs"\nversion="0.0.0"\nedition="2021"\n' > "$d/Cargo.toml"
+  printf 'pub fn pure_x() -> i32 { 1 }\n' > "$d/src/lib.rs"
+  printf 'pub fn fnOne() { let _ = std::fs::read("/tmp/one"); }\n' > "$d/tests/dup.rs"
+  printf 'pub fn fnTwo() { let _ = std::fs::read("/tmp/two"); }\nfn main() {}\n' > "$d/examples/dup.rs"
+  ( cd "$d" && "$SCAN" . --policy "$DUPD/pol" >/dev/null 2>&1 )
+  RSDUP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
+  check_dup rust "${RSDUP:-$d/.candor/missing.json}" "tests/dup.rs" "examples/dup.rs" || P58_OK=1
+else
+  echo "  rust   -> SKIP     (engine not built — NOT asked)"
+fi
+
+# ---- swift (two test targets sharing a file basename)
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  d="$DUPD/sw"; mkdir -p "$d/Sources/S" "$d/Tests/ATests" "$d/Tests/BTests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "ATests", dependencies: ["S"]), .testTarget(name: "BTests", dependencies: ["S"])])\n' > "$d/Package.swift"
+  printf 'import Foundation\npublic func pureX() -> Int { return 1 }\n' > "$d/Sources/S/s.swift"
+  printf 'import Foundation\npublic func fnOne() { _ = FileManager.default.contents(atPath: "/tmp/one") }\n' > "$d/Tests/ATests/dup.swift"
+  printf 'import Foundation\npublic func fnTwo() { _ = FileManager.default.contents(atPath: "/tmp/two") }\n' > "$d/Tests/BTests/dup.swift"
+  ( cd "$d" && "$SW_BIN" . --policy "$DUPD/pol" >/dev/null 2>&1 )
+  SWDUP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
+  check_dup swift "${SWDUP:-$d/.candor/missing.json}" "Tests/ATests/dup.swift" "Tests/BTests/dup.swift" || P58_OK=1
+else
+  echo "  swift  -> SKIP     (engine not built — NOT asked)"
+fi
+
+echo "PART 58 — an outOfScope entry names the file its function is in (SPEC §2 ⟨0.30⟩)"
+# ENGINES: ts rust swift; java: its outOfScope locator is the JAR (`relativeTo(root, jar)`) with the fully-qualified fn disambiguating, so two same-named classes cannot collide on it — there is no per-source-file locator here to get wrong, and the one excluded kind that carries analysable code needs a versioned jar this harness does not build (java is pinned in its own FileSetScopeTest instead)
+# CONTROLS: B — row A ("each function is named by its own file") is trivially satisfied by disclosing NOTHING, so B requires both functions still present carrying Fs; without it an engine that dropped the whole block would pass
+if [ "$P58_OK" = 0 ]; then
+  echo "  -> MATCH — two excluded files sharing a basename are each named by their own path, and both"
+  echo "     functions are still disclosed"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
