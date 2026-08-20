@@ -16,6 +16,13 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 56 pins REFUSE-BEFORE-ENVELOPE.** §3.1's byte-equality is quantified over "any report a scan
+  produced", so an engine that refuses at exit 2 must leave no report — once one exists, the scan route
+  owns the gate route's answer over it. Measured the same day: the first ts/swift fix exited 2 from an arm
+  after the verdict was written, leaving `--gate-json` saying `ok: true` and a report `gate --report`
+  answered 0 over. Both directions are asserted (a dirty run MUST leave a report for its findings; a
+  refusing run MUST NOT), and the row was calibrated by inverting the assertion.
+
 - **PART 56 — a target with no analyzable source still reads what it excluded.** Found by corpus-testing
   the PUBLISHED 0.30.0 hours after it shipped: a declarations-only package whose `.js` performs the denied
   effect answered `no TypeScript sources`, exit 2, and named nothing, where candor-rust over the analogous
