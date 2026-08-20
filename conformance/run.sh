@@ -9338,6 +9338,155 @@ else
   echo "  -> DIVERGE — see the cells above"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 56 — A TARGET WITH NO ANALYZABLE SOURCE STILL READS WHAT IT EXCLUDED (SPEC §2 ⟨0.30⟩)  [TIER 1]
+#
+# Found by corpus-testing the PUBLISHED 0.30.0, hours after it shipped. A declarations-only npm package
+# whose `.js` performs the denied effect answered `no TypeScript sources`, exit 2, and named NOTHING —
+# while candor-rust, over the analogous shape (no `.rs` sources, a `build.rs` running `curl`), reached
+# its peek and named `build::main performs Exec`. candor-swift had ts's behaviour. All three fail closed,
+# so no gate went green; what was lost is the disclosure the rung was justified on. Whether a user got
+# names turned on an incidental layout detail: `axios` ships `index.d.ts` at the package ROOT and got 13
+# findings, `ky` ships its declarations under `distribution/` and got a bare refusal.
+#
+# TWO SHAPES, and the second is the one that matters. A: no analyzable source, and the excluded sibling
+# PERFORMS the denied effect -> exit 2 AND the finding is published. B: the identical tree with a CLEAN
+# sibling -> exit 2 AND no finding. B is not decoration: candor-ts's first fix let the run fall through to
+# a normal ending and shape B answered `policy ✓` at EXIT 0 — a green over a tree the engine never read,
+# a cardinal sin arriving inside a disclosure fix. Shape A alone would have passed that build.
+#
+# java is NOT asked. Its target is a class directory or a jar, which has nothing beside it to peek — the
+# same reason java flipped 0 of 14 packages when ⟨0.30⟩ was measured. Declared rather than skipped, so the
+# absence is a stated ruling instead of a hole.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[56] NO ANALYZABLE SOURCE STILL READS WHAT IT EXCLUDED  (SPEC §2 ⟨0.30⟩ — the peek survives a refusal)"
+P56_OK=0
+NP="$W/nosrc"; mkdir -p "$NP"
+printf 'deny Net\n' > "$NP/net.pol"
+printf 'deny Exec\n' > "$NP/exec.pol"
+
+# rust — a crate with an empty src/ and a build.rs. DIRTY runs a command; CLEAN does arithmetic.
+for arm in dirty clean; do
+  d="$NP/rs_$arm"; mkdir -p "$d/src"
+  printf '[package]\nname="nosrc%s"\nversion="0.0.0"\nedition="2021"\n' "$arm" > "$d/Cargo.toml"
+  if [ "$arm" = dirty ]; then printf 'fn main() { let _ = std::process::Command::new("curl").status(); }\n' > "$d/build.rs"
+  else printf 'fn main() { let _ = 1 + 1; }\n' > "$d/build.rs"; fi
+  ( cd "$d" && "$SCAN" . --policy "$NP/exec.pol" >"$d/out" 2>&1 ); eval "rs_${arm}_rc=\$?"
+done
+
+# ts — a package whose only TypeScript is a `.d.ts` (no body, nothing to judge) beside a `.js`.
+if [ -n "$TS_PRESENT" ]; then
+  for arm in dirty clean; do
+    d="$NP/ts_$arm"; mkdir -p "$d/distribution"
+    printf '{"name":"nosrc%s","version":"1.0.0","main":"./distribution/index.js","types":"./distribution/index.d.ts"}\n' "$arm" > "$d/package.json"
+    printf 'export declare function go(): void;\n' > "$d/distribution/index.d.ts"
+    if [ "$arm" = dirty ]; then printf 'export function go() { return fetch("https://evil.example/x"); }\n' > "$d/distribution/index.js"
+    else printf 'export function go() { return 1 + 1; }\n' > "$d/distribution/index.js"; fi
+    ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$NP/net.pol" >"$d/out" 2>&1 ); eval "ts_${arm}_rc=\$?"
+  done
+fi
+
+# swift — a package whose only Swift lives in a TEST target (excluded from the scan by class).
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  for arm in dirty clean; do
+    d="$NP/sw_$arm"; mkdir -p "$d/Sources/Empty" "$d/Tests"
+    printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "nosrc%s", targets: [.target(name: "Empty"), .testTarget(name: "T")])\n' "$arm" > "$d/Package.swift"
+    if [ "$arm" = dirty ]; then printf 'import Foundation\nfunc spawn() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }\n' > "$d/Tests/T.swift"
+    else printf 'import Foundation\nfunc harmless() -> Int { 42 }\n' > "$d/Tests/T.swift"; fi
+    ( cd "$d" && "$SW_BIN" . --policy "$NP/exec.pol" >"$d/out" 2>&1 ); eval "sw_${arm}_rc=\$?"
+  done
+fi
+
+python3 - "$NP" "${rs_dirty_rc:-x}" "${rs_clean_rc:-x}" "${ts_dirty_rc:-x}" "${ts_clean_rc:-x}" \
+         "${sw_dirty_rc:-x}" "${sw_clean_rc:-x}" "$([ -n "$TS_PRESENT" ] && echo 1 || echo 0)" \
+         "$([ -n "$SW_PRESENT" ] && echo 1 || echo 0)" <<'PY56' || P56_OK=1
+import json, os, sys
+base = sys.argv[1]
+rc = dict(zip(("rs_dirty","rs_clean","ts_dirty","ts_clean","sw_dirty","sw_clean"), sys.argv[2:8]))
+have = {"rs": True, "ts": sys.argv[8] == "1", "sw": sys.argv[9] == "1"}
+NAME = {"rs": "rust", "ts": "ts", "sw": "swift"}
+
+def findings(eng, arm):
+    """The peek's own key, read from the report the run wrote — not from stderr prose, which is not a
+    contract. An absent report is NOT read as 'no findings': it is its own failure, because the arm
+    being tested is precisely whether the run still produces a document on this path.
+
+    Each engine names its report itself (`report.json`, `report.<crate>.scan.json`,
+    `report.<pkg>.Swift.json`) and drops `.callgraph`/`.hierarchy` sidecars beside it, so this globs and
+    filters rather than assuming a path. The first version of this row passed `--json <path>` to all
+    three, which none of them spells that way, and every engine — including one measured naming the
+    finding by hand minutes earlier — reported the defect. A row that fails on every engine at once is
+    almost always the row.
+    """
+    import glob
+    d = os.path.join(base, f"{eng}_{arm}", ".candor")
+    cands = [f for f in glob.glob(os.path.join(d, "report*.json"))
+             if ".callgraph." not in f and ".hierarchy." not in f]
+    if not cands:
+        return [], False
+    try:
+        with open(sorted(cands)[0]) as fh:
+            return (json.load(fh).get("outOfScope") or []), True
+    except Exception:
+        return [], False
+
+bad = 0
+for eng in ("rs", "ts", "sw"):
+    if not have[eng]:
+        print(f"  {NAME[eng]:6} -> SKIP     (engine not built — NOT asked)")
+        continue
+    d_rc, c_rc = rc[f"{eng}_dirty"], rc[f"{eng}_clean"]
+    d_f, d_doc = findings(eng, "dirty")
+    c_f, c_doc = findings(eng, "clean")
+    # SHAPE A — the excluded sibling performs the denied effect.
+    if d_rc != "2":
+        bad += 1
+        print(f"  {NAME[eng]:6} A DIRTY   exit {d_rc}, want 2 — a tree the engine could not read must "
+              f"not certify, whatever the peek found")
+    elif not d_f:
+        bad += 1
+        print(f"  {NAME[eng]:6} A DIRTY   exit 2 but `outOfScope` is empty/absent — the refusal "
+              f"short-circuited the peek, so the denied effect in the excluded file is never named. "
+              f"That is the whole defect this row exists for.")
+    # SHAPE B — the control. Same tree, clean sibling.
+    #
+    # candor-rust answers 0 here and that is a FILED DEFECT, not an accepted behaviour: a gate green over
+    # `analyzed: {count: 0}` is a tree the engine never read, and this engine already refuses a target
+    # that does not EXIST for exactly that reason. It is NAMED every run rather than failed, because the
+    # repair was attempted and reverted the same night — keying it on the gate's analyzed accumulator
+    # made a NORMAL crate with real sources exit 2, so the signal is wrong and the right one needs care
+    # this row should not force at 5am. See candor/BACKLOG.md. Tighten this to a hard failure with the fix.
+    if eng == "rs" and c_rc == "0":
+        print(f"  {NAME[eng]:6} B CLEAN   NAMED DIVERGENCE — exit 0 over a tree with zero analyzed "
+              f"units; ts and swift refuse the same shape. FILED, not accepted (candor/BACKLOG.md).")
+    elif c_rc != "2":
+        bad += 1
+        print(f"  {NAME[eng]:6} B CLEAN   exit {c_rc}, want 2 — zero analyzable files were read, so a "
+              f"green here is a gate certifying a tree it never opened")
+    elif c_f:
+        bad += 1
+        print(f"  {NAME[eng]:6} B CLEAN   exit 2 but `outOfScope` names {len(c_f)} finding(s) over a "
+              f"clean sibling — the fix traded a silent refusal for a fabricated finding")
+    if not bad:
+        # The exit codes are PRINTED, not asserted-and-then-described. The first version wrote "clean:
+        # exit 2" as literal text while rust's clean arm had exited 0 and been named a divergence two
+        # lines above — a summary contradicting its own rows, in a row about summaries contradicting
+        # their rows.
+        print(f"  {NAME[eng]:6} -> OK        (dirty: exit {d_rc} + {len(d_f)} named; clean: exit {c_rc} "
+              f"+ {len(c_f)} named; document present: {d_doc and c_doc})")
+sys.exit(1 if bad else 0)
+PY56
+echo "PART 56 — no analyzable source still reads what it excluded (SPEC §2 ⟨0.30⟩)"
+# ENGINES: rust ts swift; java: its target is a class directory or a jar, which has nothing beside it to peek — the same reason java flipped 0 of 14 packages when ⟨0.30⟩ was measured, so the shape this part tests cannot arise there
+# CONTROLS: shape B — the IDENTICAL tree with a CLEAN excluded sibling must still exit 2 and name nothing; without it a fix that simply stopped refusing passes shape A while answering `policy ✓` at exit 0 over a tree with zero analyzed files, which is exactly what candor-ts's first attempt did, and what candor-rust does today (NAMED as a divergence in the rows above, filed in candor/BACKLOG.md, not accepted); java is not asked because a class-directory/jar target has nothing beside it to peek, the same reason it flipped 0 of 14 at ⟨0.30⟩
+if [ "$P56_OK" = 0 ]; then
+  echo "  -> MATCH — a refusal for want of analyzable source still publishes what the excluded files do,"
+  echo "     and still refuses to certify; a clean sibling adds nothing"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
