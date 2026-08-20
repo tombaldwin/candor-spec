@@ -16,6 +16,28 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 57 arm E — the ⟨0.30⟩ peek must not feed `netPartners`.** The peek re-enters the scanner over
+  the files a scan EXCLUDED, and `netPartners` is not policy-derived: it comes from the participating
+  hosts plus the discovered config, and the peek walks the same target. An engine accumulating into
+  shared state therefore files the excluded set's partner into the verdict, where the report cannot carry
+  it and `gate --report` can only answer null. Measured in candor-rust the day the key landed.
+
+  Two traps this row walked into, both of which produced a green that meant nothing. It first used the
+  part's `deny Net[unknown-host]`, but once a partner is declared the host classifies as known-partner,
+  so nothing matched and the policy-bounded peek stayed silent — arm E uses a bare `deny Net` and carries
+  its own setup control. It then checked the REPORT, and had no teeth at all: rebuilding candor-scan with
+  the guard deleted left the part green, because the report was always the correct half. The defect is in
+  the verdict, and both documents are compared now.
+
+- **PART 58 — an `outOfScope` entry names the file its function is in.** Found in candor-ts: two excluded
+  files sharing a basename, and one function disclosed at the other's path. It gets its own part
+  precisely because it is not a silent under-report — both functions were disclosed with the right
+  effects and class, and every existing assertion passed. What was wrong was a locator, and a disclosure
+  nobody can act on is worth little more than none. The control row requires both functions still
+  present, since naming each function's own file is trivially satisfied by disclosing nothing. ts, rust
+  and swift assert; java is excluded with a reason (its locator is the jar, so it has no per-source-file
+  locator to get wrong).
+
 - **PART 57 asserts ALL FOUR ENGINES — the ⟨0.31⟩ `netPartners` rung is complete.** Every engine names
   the config and the participating host, agrees byte-for-byte across `scan --policy` and `gate --report`,
   omits the key when no partner was declared, and omits it when a declared partner never matched. No
