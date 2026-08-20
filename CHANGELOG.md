@@ -16,6 +16,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 57 asserts ALL FOUR ENGINES — the ⟨0.31⟩ `netPartners` rung is complete.** Every engine names
+  the config and the participating host, agrees byte-for-byte across `scan --policy` and `gate --report`,
+  omits the key when no partner was declared, and omits it when a declared partner never matched. No
+  engine skips this row.
+
 - **PART 57 now asserts candor-java too**, and **conformance no longer runs on doc-only pushes.** Three
   CHANGELOG-only commits each bought a full 15-minute four-way suite tonight; the workflow now ignores
   root `CHANGELOG.md`/`README.md`/`BACKLOG.md` — the same licensed set `release-preflight [11]` already
