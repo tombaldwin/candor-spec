@@ -9702,9 +9702,60 @@ PY57J
 else
   echo "  java   -> SKIP     (engine not built — NOT asked)"
 fi
-echo "  swift  -> SKIP     (⟨0.31⟩ netPartners not yet shipped on this engine)" 
+# ---- swift (SwiftPM package target, its own discovery walk)
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  for arm in used nodecl unused; do
+    d="$NPD/sw_$arm"; mkdir -p "$d/Sources/S" "$d/.candor"
+    printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$d/Package.swift"
+    printf 'import Foundation\npublic func call() async throws {\n  let u = URL(string: "https://partner.example/v1")!\n  _ = try await URLSession.shared.data(from: u)\n}\n' > "$d/Sources/S/s.swift"
+    case "$arm" in
+      used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
+      unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
+      nodecl) rm -rf "$d/.candor" ;;
+    esac
+    ( cd "$d" && "$SW_BIN" . --policy "$NPD/pol" --gate-json scan.gate.json >/dev/null 2>&1 )
+    if [ "$arm" = used ]; then
+      SWREP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
+      [ -n "$SWREP" ] && ( cd "$d" && "$SW_BIN" gate --report "${SWREP#"$d/"}" --policy "$NPD/pol" \
+          --gate-json rep.gate.json >/dev/null 2>&1 )
+    fi
+  done
+  python3 - "$NPD" <<'PY57SW' || P57_OK=1
+import glob, json, os, sys
+base = sys.argv[1]
+bad = 0
+def rep(arm):
+    c = [f for f in glob.glob(os.path.join(base, f"sw_{arm}", ".candor", "report*.json"))
+         if ".callgraph." not in f and ".hierarchy." not in f]
+    return json.load(open(c[0])) if c else None
+used = rep("used"); np = (used or {}).get("netPartners")
+if not (isinstance(np, dict) and ".candor/config" in str(np.get("config"))
+        and "partner.example" in (np.get("hosts") or [])):
+    bad += 1
+    print(f"  swift  A NAMED     report carries {np!r} — the config and the host it declared must both "
+          f"be named")
+sg = os.path.join(base, "sw_used", "scan.gate.json"); rg = os.path.join(base, "sw_used", "rep.gate.json")
+if os.path.exists(sg) and os.path.exists(rg):
+    if open(sg, "rb").read() != open(rg, "rb").read():
+        bad += 1
+        print("  swift  B ROUTES    `scan --policy` and `gate --report` verdicts are NOT byte-equal")
+else:
+    bad += 1
+    print("  swift  B ROUTES    one of the two verdict documents was not written — cannot compare")
+for arm, why in (("nodecl", "C ADDITIVE  a project declaring NO partners carries the key"),
+                 ("unused", "D UNUSED    a declared partner that never matched is disclosed")):
+    if (rep(arm) or {}).get("netPartners") is not None:
+        bad += 1
+        print(f"  swift  {why}")
+if not bad:
+    print(f"  swift  -> OK        (named: {np['hosts']}; routes byte-equal; absent when nothing participated)")
+sys.exit(1 if bad else 0)
+PY57SW
+else
+  echo "  swift  -> SKIP     (engine not built — NOT asked)"
+fi
 echo "PART 57 — the ambient config that moved a verdict is named in it (SPEC §2/§3.1 ⟨0.31⟩)"
-# ENGINES: ts rust java; swift: the rung is not yet shipped on it — the reference implementation landed in candor-ts first and the ports are open work, so they SKIP and the ⟨0.28⟩ ratchet counts it
+# ENGINES: ts rust java swift
 # CONTROLS: nodecl unused — `nodecl` (a project declaring no partners) proves the key is ADDITIVE rather than always-present, and `unused` (a partner declared but never matched) proves the disclosure reports what PARTICIPATED rather than what was written down; without the second an engine passes the naming row by dumping every declared host, which buries the line that moved the verdict
 if [ "$P57_OK" = 0 ]; then
   echo "  -> MATCH — the config and the host that moved the classification are named, both routes agree"
