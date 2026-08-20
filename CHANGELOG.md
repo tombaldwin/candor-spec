@@ -16,6 +16,25 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 59 — what a refusal owes its reader.** PART 56 scores the exit code and the absence of a NEW
+  report. A four-lens release panel found three things it therefore could not see, all in the staged 0.31
+  build: a single-FILE target of the wrong kind (PART 56 only ever passes a directory) certified green on
+  one engine; the refusal document's `reason` misdescribed the cause on three of four (one said the gate
+  config failed to load when the config loaded fine; two left the arming stub, which says the run
+  crashed); and a PREVIOUS run's report survived the refusal at a named prefix, so `gate --report`
+  certified it — PART 56 checks that no new report appears and cannot see an old one surviving, which was
+  the whole defect.
+
+  Row D is the control and is not decoration: every other row is satisfied by an engine that refuses
+  EVERYTHING, so D scans a real target of each engine's kind and requires a real report with no
+  placeholder. Calibrated against both original defects.
+
+  The first version of row C seeded ts and swift at their DEFAULT prefix while seeding rust at a named
+  one, and duly reported a divergence that does not exist — rust leaves a stale report at its default
+  prefix too. §3.3.1 says "every prefix NAMED", so the row now compares like with like and the
+  default-prefix question is filed rather than asserted here. A part that asserts behaviour the spec does
+  not require is how a suite starts inventing the contract.
+
 ## [0.31.0] — 2026-08-20
 
 - The §2 envelope example declared `spec: "0.30"`. It is written with alignment padding, so the floor

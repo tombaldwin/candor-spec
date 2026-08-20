@@ -9996,6 +9996,163 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 59 — WHAT A REFUSAL OWES ITS READER (SPEC §3.3 ⟨0.31⟩ / §3.3.1 ⟨0.28⟩ / §2.1 ⟨0.24⟩)  [TIER 1]
+#
+# PART 56 scores the EXIT CODE and the absence of a new report. A four-lens release panel found three
+# things it therefore could not see, every one of them in the shipped 0.31 build:
+#
+#   A  A SINGLE-FILE TARGET OF THE WRONG KIND. PART 56 only ever passes a DIRECTORY. candor-ts admitted
+#      any file named on the command line without asking whether it parses it, so `candor-ts notes.txt`
+#      printed `policy ✓` at exit 0 with `ok:true` over a file it never read — the §3.3 cause this rung
+#      ADDS, answered green by the release that adds it. rust/java/swift refused the same input.
+#
+#   B  THE REFUSAL DOCUMENT'S `reason`. Nobody passed `--gate-json` on a refusal path, so nobody saw that
+#      three of four engines misdescribed the cause: rust said "the gate config did not load" (false —
+#      the config loaded; the TARGET could not be read), ts and java left the ARMING STUB, which says the
+#      run "failed, crashed or was killed". ⟨0.24⟩ pins this field as a string NAMING THE CAUSE, and this
+#      family rates a false disclosure worse than a missing one: it sends the reader after a crash that
+#      never happened. Only swift named it.
+#
+#   C  THE REPORT SINK. §3.3.1 ⟨0.28⟩: "refused at exit 2, with the fail-closed report written to every
+#      prefix NAMED" — so every engine here is given an EXPLICIT `--out`/`--json` sink, and the row is
+#      about that sink. The first version of this row seeded ts and swift at their DEFAULT prefix while
+#      seeding rust at a named one, and duly reported ts and swift as diverging. They were not: candor-
+#      rust leaves a stale report at its default prefix too, measured. All four behave alike, the row was
+#      comparing unlike things, and the DEFAULT-prefix case is a real question the spec's current wording
+#      does not reach — filed, not smuggled in here as a divergence. candor-rust's new refusal returned above its write phase, and `scan_target` latched
+#      the hand-back licence anyway — so a PREVIOUS run's green report survived the refusal byte-for-byte
+#      and `gate --report` then certified it at exit 0. A false green produced by the rung whose purpose
+#      is turning that green red. PART 56 checks that no NEW report appears; it cannot see an OLD one
+#      surviving, which is the whole defect.
+#
+# THE CONTROL IS ROW D, and it is not decoration: every row above is satisfied by an engine that refuses
+# EVERYTHING. D scans a real target of each engine's kind and requires a normal answer with a real report
+# and no placeholder — without it, "refuse harder" passes A–C while deleting the tool.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[59] WHAT A REFUSAL OWES ITS READER  (SPEC §3.3 ⟨0.31⟩ / §3.3.1 ⟨0.28⟩ / §2.1 ⟨0.24⟩)"
+P59_OK=0
+RFD="$W/refusal"; mkdir -p "$RFD"; printf 'deny Net\n' > "$RFD/pol"
+printf 'not code\n' > "$RFD/notes.txt"
+mkdir -p "$RFD/emptydir"
+SEED='{"candor":{"version":"seed","toolchain":"t","spec":"0.30"},"functions":[],"analyzed":{"count":7,"digest":"deadbeef"}}'
+
+# `refusal_rows <label> <run-fn>` — one checker, four callers.
+p59() {
+  local eng="$1" bad=0
+  # A — a single FILE of a kind this engine does not read
+  local a_exit="$2"
+  [ "$a_exit" = 2 ] || { bad=1; echo "  $eng    A FILE      a single-file target this engine cannot read exited $a_exit, not 2 — a typo'd path that happens to name a file is a permanent green"; }
+  # B — the refusal document names the cause, and is not the arming stub
+  local reason="$3"
+  case "$reason" in
+    *crashed*|*"did not load"*|"") bad=1; echo "  $eng    B REASON    the refusal document misdescribes the cause: '$(printf '%s' "$reason" | cut -c1-70)' — ⟨0.24⟩ requires a string NAMING it, and a wrong one sends the reader after a failure that never happened" ;;
+  esac
+  # C — a previous run's report at the named prefix was replaced, not left standing
+  local survived="$4"
+  [ "$survived" = no ] || { bad=1; echo "  $eng    C SINK      a PREVIOUS run's report survived the refusal at the named prefix — §3.3.1 ⟨0.28⟩ requires the fail-closed report written to every prefix named, and \`gate --report\` will certify what is left there"; }
+  # D — CONTROL: a real target still answers normally
+  local d_exit="$5" d_ok="$6"
+  { [ "$d_exit" = 0 ] && [ "$d_ok" = yes ]; } || { bad=1; echo "  $eng    D CONTROL   a REAL target of this engine's kind answered exit $d_exit / real-report=$d_ok — every row above is satisfied by an engine that refuses everything"; }
+  [ "$bad" = 0 ] && echo "  $eng    -> OK        (wrong-kind file refuses; the document names the cause; a stale report is replaced; a real target still answers)"
+  return $bad
+}
+
+# Each arm: run the four probes, then hand the five observations to the shared checker.
+# `seed_and_refuse <prefix-flag-value> <runner…>` is inlined per engine because the report-prefix flag
+# and the report filename differ (`--out <prefix>` fanning out per crate vs `--json <file>`).
+
+# ---- rust
+if [ -x "$SCAN" ]; then
+  d="$RFD/rs"; mkdir -p "$d/empty" "$d/real/src"
+  cp "$RFD/notes.txt" "$d/"; cp "$RFD/pol" "$d/"
+  printf '[package]\nname="rr"\nversion="0.0.0"\nedition="2021"\n' > "$d/real/Cargo.toml"
+  printf 'pub fn f() -> i32 { 1 }\n' > "$d/real/src/lib.rs"
+  ( cd "$d" && "$SCAN" notes.txt --policy pol >/dev/null 2>&1 ); A=$?
+  ( cd "$d" && rm -f g.json && "$SCAN" empty --policy pol --gate-json g.json >/dev/null 2>&1 )
+  R="$(python3 -c "import json,sys;print(json.load(open('$d/g.json')).get('reason',''))" 2>/dev/null)"
+  printf '%s\n' "$SEED" > "$d/pfx.rr.scan.json"
+  ( cd "$d" && "$SCAN" empty --policy pol --out "$d/pfx" >/dev/null 2>&1 )
+  if grep -q deadbeef "$d/pfx.rr.scan.json" 2>/dev/null; then SUR=yes; else SUR=no; fi
+  ( cd "$d" && "$SCAN" real --policy pol --out "$d/ok" >/dev/null 2>&1 ); D=$?
+  DOK=no; python3 -c "
+import json,glob,sys
+c=[f for f in glob.glob('$d/ok*.json') if '.callgraph.' not in f and '.hierarchy.' not in f]
+sys.exit(0 if c and (json.load(open(c[0])).get('analyzed') or {}).get('count',0)>0 and not json.load(open(c[0])).get('unanalyzed') else 1)" 2>/dev/null && DOK=yes
+  p59 rust "$A" "$R" "$SUR" "$D" "$DOK" || P59_OK=1
+else echo "  rust   -> SKIP     (engine not built — NOT asked)"; fi
+
+# ---- ts
+if [ -n "$TS_PRESENT" ]; then
+  d="$RFD/ts"; mkdir -p "$d/empty" "$d/real/src"
+  cp "$RFD/notes.txt" "$d/"; cp "$RFD/pol" "$d/"
+  printf '{"name":"rt","version":"1.0.0"}\n' > "$d/real/package.json"
+  printf 'export function f(){return 1;}\n' > "$d/real/src/i.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$d/notes.txt" --policy "$d/pol" >/dev/null 2>&1 ); A=$?
+  rm -f "$d/g.json"; ( cd "$TS_DIR" && node scan.mjs "$d/empty" --policy "$d/pol" --gate-json "$d/g.json" >/dev/null 2>&1 )
+  R="$(python3 -c "import json;print(json.load(open('$d/g.json')).get('reason',''))" 2>/dev/null)"
+  printf '%s\n' "$SEED" > "$d/pfx.json"
+  ( cd "$TS_DIR" && node scan.mjs "$d/empty" --policy "$d/pol" --out "$d/pfx" >/dev/null 2>&1 )
+  if grep -q deadbeef "$d/pfx.json" 2>/dev/null; then SUR=yes; else SUR=no; fi
+  ( cd "$TS_DIR" && node scan.mjs "$d/real" --policy "$d/pol" >/dev/null 2>&1 ); D=$?
+  DOK=no; python3 -c "
+import json,sys
+r=json.load(open('$d/real/.candor/report.json'))
+sys.exit(0 if (r.get('analyzed') or {}).get('count',0)>0 and not r.get('unanalyzed') else 1)" 2>/dev/null && DOK=yes
+  p59 ts "$A" "$R" "$SUR" "$D" "$DOK" || P59_OK=1
+else echo "  ts     -> SKIP     (engine not built — NOT asked)"; fi
+
+# ---- java (its wrong-kind "file" is a non-class file; its prefix flag is --json <file>)
+if [ -n "$JAR" ] && [ -f "$JAR" ]; then
+  d="$RFD/j"; mkdir -p "$d/empty" "$d/real"
+  cp "$RFD/notes.txt" "$d/"; cp "$RFD/pol" "$d/"
+  printf 'public class RJ { public int f(){ return 1; } }\n' > "$d/RJ.java"
+  javac -d "$d/real" "$d/RJ.java" 2>/dev/null
+  ( cd "$d" && java -jar "$JAR" notes.txt --policy pol >/dev/null 2>&1 ); A=$?
+  ( cd "$d" && rm -f g.json && java -jar "$JAR" empty --policy pol --gate-json g.json >/dev/null 2>&1 )
+  R="$(python3 -c "import json;print(json.load(open('$d/g.json')).get('reason',''))" 2>/dev/null)"
+  printf '%s\n' "$SEED" > "$d/rep.json"
+  ( cd "$d" && java -jar "$JAR" empty --policy pol --json rep.json >/dev/null 2>&1 )
+  if grep -q deadbeef "$d/rep.json" 2>/dev/null; then SUR=yes; else SUR=no; fi
+  ( cd "$d" && java -jar "$JAR" real --policy pol --json ok.json >/dev/null 2>&1 ); D=$?
+  DOK=no; python3 -c "
+import json,sys
+r=json.load(open('$d/ok.json'))
+sys.exit(0 if (r.get('analyzed') or {}).get('count',0)>0 and not r.get('unanalyzed') else 1)" 2>/dev/null && DOK=yes
+  p59 java "$A" "$R" "$SUR" "$D" "$DOK" || P59_OK=1
+else echo "  java   -> SKIP     (engine not built — NOT asked)"; fi
+
+# ---- swift
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  d="$RFD/sw"; mkdir -p "$d/empty" "$d/real/Sources/S"
+  cp "$RFD/notes.txt" "$d/"; cp "$RFD/pol" "$d/"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$d/real/Package.swift"
+  printf 'import Foundation\npublic func f() -> Int { return 1 }\n' > "$d/real/Sources/S/s.swift"
+  ( cd "$d" && "$SW_BIN" notes.txt --policy pol >/dev/null 2>&1 ); A=$?
+  ( cd "$d" && rm -f g.json && "$SW_BIN" empty --policy pol --gate-json g.json >/dev/null 2>&1 )
+  R="$(python3 -c "import json;print(json.load(open('$d/g.json')).get('reason',''))" 2>/dev/null)"
+  printf '%s\n' "$SEED" > "$d/pfx.S.Swift.json"
+  ( cd "$d" && "$SW_BIN" empty --policy pol --out "$d/pfx" >/dev/null 2>&1 )
+  if grep -q deadbeef "$d/pfx.S.Swift.json" 2>/dev/null; then SUR=yes; else SUR=no; fi
+  ( cd "$d/real" && "$SW_BIN" . --policy "$d/pol" >/dev/null 2>&1 ); D=$?
+  DOK=no; python3 -c "
+import json,glob,sys
+c=[f for f in glob.glob('$d/real/.candor/report*.json') if '.callgraph.' not in f and '.hierarchy.' not in f]
+sys.exit(0 if c and (json.load(open(c[0])).get('analyzed') or {}).get('count',0)>0 and not json.load(open(c[0])).get('unanalyzed') else 1)" 2>/dev/null && DOK=yes
+  p59 swift "$A" "$R" "$SUR" "$D" "$DOK" || P59_OK=1
+else echo "  swift  -> SKIP     (engine not built — NOT asked)"; fi
+
+echo "PART 59 — what a refusal owes its reader (SPEC §3.3 ⟨0.31⟩ / §3.3.1 ⟨0.28⟩ / §2.1 ⟨0.24⟩)"
+# ENGINES: rust ts java swift
+# CONTROLS: D — rows A/B/C are each satisfied by an engine that refuses EVERYTHING, so D scans a real target of each engine's kind and requires exit 0 with a report carrying analyzed.count > 0 and no `unanalyzed` placeholder; without it "refuse harder" passes the part while deleting the tool
+if [ "$P59_OK" = 0 ]; then
+  echo "  -> MATCH — a wrong-kind target refuses, the refusal document names the cause, a previous run's"
+  echo "     report does not survive it, and a real target still answers"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
