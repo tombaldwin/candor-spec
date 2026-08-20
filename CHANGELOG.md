@@ -16,6 +16,13 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 57 now asserts candor-java too**, and **conformance no longer runs on doc-only pushes.** Three
+  CHANGELOG-only commits each bought a full 15-minute four-way suite tonight; the workflow now ignores
+  root `CHANGELOG.md`/`README.md`/`BACKLOG.md` — the same licensed set `release-preflight [11]` already
+  reasons about. Deliberately narrow: `conformance/README.md` is NOT ignored, because the ledger resolves
+  `part` references out of files under `conformance/` and a README edit there can break it. An omission
+  costs a run, never a false green.
+
 - **PART 57 now asserts candor-rust too.** Two engines score all four properties; java and swift still
   SKIP with a stated reason and stay ratchet-counted, so the rung cannot un-ship unnoticed.
 
