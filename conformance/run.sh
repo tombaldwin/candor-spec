@@ -9601,11 +9601,63 @@ PY57
 else
   echo "  ts     -> SKIP     (engine not built — NOT asked)"
 fi
-for e in rust java swift; do
+# ---- rust (same three arms, its own config walk and its own report naming)
+if [ -x "$SCAN" ]; then
+  for arm in used nodecl unused; do
+    d="$NPD/rs_$arm"; mkdir -p "$d/src" "$d/.candor"
+    printf '[package]\nname="np%s"\nversion="0.0.0"\nedition="2021"\n' "$arm" > "$d/Cargo.toml"
+    printf 'pub async fn call() { let _ = reqwest::get("https://partner.example/v1").await; }\n' > "$d/src/lib.rs"
+    case "$arm" in
+      used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
+      unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
+      nodecl) rm -rf "$d/.candor" ;;
+    esac
+    ( cd "$d" && "$SCAN" . --policy "$NPD/pol" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
+    if [ "$arm" = used ]; then
+      RSREP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
+      [ -n "$RSREP" ] && ( cd "$d" && "$QUERY" gate --report "$RSREP" --policy "$NPD/pol" \
+          --gate-json "$d/rep.gate.json" >/dev/null 2>&1 )
+    fi
+  done
+  python3 - "$NPD" <<'PY57RS' || P57_OK=1
+import glob, json, os, sys
+base = sys.argv[1]
+bad = 0
+def rep(arm):
+    c = [f for f in glob.glob(os.path.join(base, f"rs_{arm}", ".candor", "report*.json"))
+         if ".callgraph." not in f and ".hierarchy." not in f]
+    return json.load(open(c[0])) if c else None
+used = rep("used"); np = (used or {}).get("netPartners")
+if not (isinstance(np, dict) and ".candor/config" in str(np.get("config"))
+        and "partner.example" in (np.get("hosts") or [])):
+    bad += 1
+    print(f"  rust   A NAMED     report carries {np!r} — the config that moved the classification and the "
+          f"host it declared must both be named")
+sg = os.path.join(base, "rs_used", "scan.gate.json"); rg = os.path.join(base, "rs_used", "rep.gate.json")
+if os.path.exists(sg) and os.path.exists(rg):
+    if open(sg, "rb").read() != open(rg, "rb").read():
+        bad += 1
+        print("  rust   B ROUTES    `scan --policy` and `gate --report` verdicts are NOT byte-equal")
+else:
+    bad += 1
+    print("  rust   B ROUTES    one of the two verdict documents was not written — cannot compare")
+for arm, why in (("nodecl", "C ADDITIVE  a project declaring NO partners carries the key"),
+                 ("unused", "D UNUSED    a declared partner that never matched is disclosed")):
+    if (rep(arm) or {}).get("netPartners") is not None:
+        bad += 1
+        print(f"  rust   {why}")
+if not bad:
+    print(f"  rust   -> OK        (named: {np['hosts']}; routes byte-equal; absent when nothing participated)")
+sys.exit(1 if bad else 0)
+PY57RS
+else
+  echo "  rust   -> SKIP     (engine not built — NOT asked)"
+fi
+for e in java swift; do
   echo "  $(printf '%-6s' "$e") -> SKIP     (⟨0.31⟩ netPartners not yet shipped on this engine)"
 done
 echo "PART 57 — the ambient config that moved a verdict is named in it (SPEC §2/§3.1 ⟨0.31⟩)"
-# ENGINES: ts; rust java swift: the rung is not yet shipped on them — the reference implementation landed in candor-ts first and the ports are open work, so they SKIP and the ⟨0.28⟩ ratchet counts it
+# ENGINES: ts rust; java swift: the rung is not yet shipped on them — the reference implementation landed in candor-ts first and the ports are open work, so they SKIP and the ⟨0.28⟩ ratchet counts it
 # CONTROLS: nodecl unused — `nodecl` (a project declaring no partners) proves the key is ADDITIVE rather than always-present, and `unused` (a partner declared but never matched) proves the disclosure reports what PARTICIPATED rather than what was written down; without the second an engine passes the naming row by dumping every declared host, which buries the line that moved the verdict
 if [ "$P57_OK" = 0 ]; then
   echo "  -> MATCH — the config and the host that moved the classification are named, both routes agree"
