@@ -9522,6 +9522,21 @@ fi
 #   D  A DECLARATION THAT CHANGED NOTHING IS NOT PROVENANCE — a partner that never matched is absent.
 #      Without D an engine passes A by dumping every declared host, which buries the line that moved the
 #      verdict in a list of everything the operator ever wrote down.
+#   E  THE ⟨0.30⟩ PEEK MUST NOT FEED IT. The peek re-enters the scanner over the files this scan did NOT
+#      judge. `netPartners` is not policy-derived — it comes from the participating hosts plus the
+#      discovered config, and the peek walks the same target — so an engine accumulating into shared
+#      state files the EXCLUDED set's partner into the verdict, while the report cannot carry it and
+#      `gate --report` can only ever answer null. MEASURED in candor-rust the day the key landed, on a
+#      crate whose only mention of the declared partner was in `build.rs`. That row carries its own SETUP
+#      CONTROL (`outOfScope` non-empty), because without it the row passes on a run where the peek read
+#      nothing at all.
+#      Arm E uses a BARE `deny Net`, not the part's `deny Net[unknown-host]`: once the partner is
+#      declared the host classifies as known-partner, so the narrow policy never matches and the
+#      policy-bounded peek stays silent. That silence looks exactly like a pass.
+#      NOT RUN FOR JAVA. Its exclusions are not a scope choice the way the others are — it reads
+#      BYTECODE, so its portable excluded kinds hold no analysable code, and the one that does
+#      (`multi-release-override`) needs a versioned jar this harness does not build. Java is pinned
+#      behaviourally in its own suite instead (FileSetScopeTest), including the over-charge control.
 #
 # Engines that have not shipped the rung SKIP and are counted by the ⟨0.28⟩ ratchet below, so a rung that
 # UN-SHIPS cannot look like one that never shipped.
@@ -9531,10 +9546,11 @@ echo "[57] THE AMBIENT CONFIG THAT MOVED A VERDICT IS NAMED IN IT  (SPEC §2/§3
 P57_OK=0
 NPD="$W/netpartner"; mkdir -p "$NPD"
 printf 'deny Net[unknown-host]\n' > "$NPD/pol"
+printf 'deny Net\n' > "$NPD/polall"   # arm E — see the note above the arm
 
 # ---- ts
 if [ -n "$TS_PRESENT" ]; then
-  for arm in used nodecl unused; do
+  for arm in used nodecl unused excluded; do
     d="$NPD/ts_$arm"; mkdir -p "$d/src" "$d/.candor"
     printf '{"name":"np%s","version":"1.0.0"}\n' "$arm" > "$d/package.json"
     printf 'export async function call() { await fetch("https://partner.example/v1"); }\n' > "$d/src/i.ts"
@@ -9542,8 +9558,12 @@ if [ -n "$TS_PRESENT" ]; then
       used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
       unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
       nodecl) rmdir "$d/.candor" 2>/dev/null || true ;;
+      excluded) printf 'net-partner partner.example\n' > "$d/.candor/config"
+                printf 'export function pure() { return 1; }\n' > "$d/src/i.ts"
+                printf 'export async function t() { await fetch("https://partner.example/v1"); }\n' > "$d/src/i.test.ts" ;;
     esac
-    ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$NPD/pol" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
+    P="$NPD/pol"; [ "$arm" = excluded ] && P="$NPD/polall"
+    ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$P" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
     if [ "$arm" = used ]; then
       ( cd "$TS_DIR" && node query.mjs gate --report "$d/.candor/report.json" --policy "$NPD/pol" \
           --gate-json "$d/rep.gate.json" >/dev/null 2>&1 )
@@ -9593,6 +9613,35 @@ if (rep("unused") or {}).get("netPartners") is not None:
     print("  ts     D UNUSED     a declared partner that never matched is disclosed — a list of everything "
           "declared buries the one line that moved the verdict")
 
+ENG = "ts"; PFX = "ts"
+# E — THE PEEK MUST NOT NAME A HOST ONLY THE EXCLUDED FILES REACHED. The ⟨0.30⟩ peek re-enters the
+# scanner over the files this scan did NOT judge. `netPartners` is not policy-derived — it comes from
+# the participating hosts plus the discovered config, and the peek walks the same target — so an engine
+# that accumulates into shared state files the excluded set's partner into the verdict, while the report
+# cannot carry it and `gate --report` can only answer null. MEASURED in candor-rust the day the key
+# landed. The `outOfScope` check is the SETUP CONTROL: without it this row passes on a run where the peek
+# never read anything, which proves nothing about what it records.
+# READ THE VERDICT, NOT THE REPORT. The first version of this row checked the report and had NO TEETH:
+# rebuilding candor-scan with the guard deleted left it green. The report was always the correct half —
+# the peek writes no report, so it cannot carry the peek's host. The defect is the engine accumulating
+# into shared verdict state, which is `scan.gate.json`. Both documents are checked now, because "the
+# report is null while the verdict names it" IS the §3.1 divergence.
+exv = {}
+_vf = os.path.join(base, f"{PFX}_excluded", "scan.gate.json")
+if os.path.exists(_vf):
+    exv = json.load(open(_vf))
+ex = rep("excluded") or {}
+if not exv.get("outOfScope"):
+    bad += 1
+    print("  %-6s E CONTROL   the peek reported nothing out of scope, so this row cannot answer its "
+          "question — the excluded file's Net must be visible for the check below to mean anything" % ENG)
+elif exv.get("netPartners") is not None or ex.get("netPartners") is not None:
+    bad += 1
+    print("  %-6s E PEEK      a partner host that only an EXCLUDED file reached is disclosed — verdict "
+          "%r, report %r. The gate judged nothing that used it, so this claims an ambient config moved a "
+          "classification that was never made, and the two routes cannot agree on it"
+          % (ENG, exv.get("netPartners"), ex.get("netPartners")))
+
 if not bad:
     print(f"  ts     -> OK        (named: {np['hosts']} from {os.path.basename(np['config'])}; routes "
           f"byte-equal; absent when nothing participated)")
@@ -9603,7 +9652,7 @@ else
 fi
 # ---- rust (same three arms, its own config walk and its own report naming)
 if [ -x "$SCAN" ]; then
-  for arm in used nodecl unused; do
+  for arm in used nodecl unused excluded; do
     d="$NPD/rs_$arm"; mkdir -p "$d/src" "$d/.candor"
     printf '[package]\nname="np%s"\nversion="0.0.0"\nedition="2021"\n' "$arm" > "$d/Cargo.toml"
     printf 'pub async fn call() { let _ = reqwest::get("https://partner.example/v1").await; }\n' > "$d/src/lib.rs"
@@ -9611,8 +9660,12 @@ if [ -x "$SCAN" ]; then
       used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
       unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
       nodecl) rm -rf "$d/.candor" ;;
+      excluded) printf 'net-partner partner.example\n' > "$d/.candor/config"
+                printf 'pub fn pure_fn() -> i32 { 1 }\n' > "$d/src/lib.rs"
+                printf 'fn main() { let _ = std::net::TcpStream::connect("partner.example:443"); }\n' > "$d/build.rs" ;;
     esac
-    ( cd "$d" && "$SCAN" . --policy "$NPD/pol" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
+    P="$NPD/pol"; [ "$arm" = excluded ] && P="$NPD/polall"
+    ( cd "$d" && "$SCAN" . --policy "$P" --gate-json "$d/scan.gate.json" >/dev/null 2>&1 )
     if [ "$arm" = used ]; then
       RSREP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
       [ -n "$RSREP" ] && ( cd "$d" && "$QUERY" gate --report "$RSREP" --policy "$NPD/pol" \
@@ -9646,6 +9699,35 @@ for arm, why in (("nodecl", "C ADDITIVE  a project declaring NO partners carries
     if (rep(arm) or {}).get("netPartners") is not None:
         bad += 1
         print(f"  rust   {why}")
+ENG = "rust"; PFX = "rs"
+# E — THE PEEK MUST NOT NAME A HOST ONLY THE EXCLUDED FILES REACHED. The ⟨0.30⟩ peek re-enters the
+# scanner over the files this scan did NOT judge. `netPartners` is not policy-derived — it comes from
+# the participating hosts plus the discovered config, and the peek walks the same target — so an engine
+# that accumulates into shared state files the excluded set's partner into the verdict, while the report
+# cannot carry it and `gate --report` can only answer null. MEASURED in candor-rust the day the key
+# landed. The `outOfScope` check is the SETUP CONTROL: without it this row passes on a run where the peek
+# never read anything, which proves nothing about what it records.
+# READ THE VERDICT, NOT THE REPORT. The first version of this row checked the report and had NO TEETH:
+# rebuilding candor-scan with the guard deleted left it green. The report was always the correct half —
+# the peek writes no report, so it cannot carry the peek's host. The defect is the engine accumulating
+# into shared verdict state, which is `scan.gate.json`. Both documents are checked now, because "the
+# report is null while the verdict names it" IS the §3.1 divergence.
+exv = {}
+_vf = os.path.join(base, f"{PFX}_excluded", "scan.gate.json")
+if os.path.exists(_vf):
+    exv = json.load(open(_vf))
+ex = rep("excluded") or {}
+if not exv.get("outOfScope"):
+    bad += 1
+    print("  %-6s E CONTROL   the peek reported nothing out of scope, so this row cannot answer its "
+          "question — the excluded file's Net must be visible for the check below to mean anything" % ENG)
+elif exv.get("netPartners") is not None or ex.get("netPartners") is not None:
+    bad += 1
+    print("  %-6s E PEEK      a partner host that only an EXCLUDED file reached is disclosed — verdict "
+          "%r, report %r. The gate judged nothing that used it, so this claims an ambient config moved a "
+          "classification that was never made, and the two routes cannot agree on it"
+          % (ENG, exv.get("netPartners"), ex.get("netPartners")))
+
 if not bad:
     print(f"  rust   -> OK        (named: {np['hosts']}; routes byte-equal; absent when nothing participated)")
 sys.exit(1 if bad else 0)
@@ -9704,7 +9786,7 @@ else
 fi
 # ---- swift (SwiftPM package target, its own discovery walk)
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
-  for arm in used nodecl unused; do
+  for arm in used nodecl unused excluded; do
     d="$NPD/sw_$arm"; mkdir -p "$d/Sources/S" "$d/.candor"
     printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$d/Package.swift"
     printf 'import Foundation\npublic func call() async throws {\n  let u = URL(string: "https://partner.example/v1")!\n  _ = try await URLSession.shared.data(from: u)\n}\n' > "$d/Sources/S/s.swift"
@@ -9712,8 +9794,14 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
       used)   printf 'net-partner partner.example\n' > "$d/.candor/config" ;;
       unused) printf 'net-partner never-called.example\n' > "$d/.candor/config" ;;
       nodecl) rm -rf "$d/.candor" ;;
+      excluded) mkdir -p "$d/Tests/STests"
+                printf 'net-partner partner.example\n' > "$d/.candor/config"
+                printf 'import Foundation\npublic func pureFn() -> Int { return 1 }\n' > "$d/Sources/S/s.swift"
+                printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S"), .testTarget(name: "STests", dependencies: ["S"])])\n' > "$d/Package.swift"
+                printf 'import Foundation\npublic func t() { let _ = URLSession.shared.dataTask(with: URL(string: "https://partner.example/v1")!) }\n' > "$d/Tests/STests/t.swift" ;;
     esac
-    ( cd "$d" && "$SW_BIN" . --policy "$NPD/pol" --gate-json scan.gate.json >/dev/null 2>&1 )
+    P="$NPD/pol"; [ "$arm" = excluded ] && P="$NPD/polall"
+    ( cd "$d" && "$SW_BIN" . --policy "$P" --gate-json scan.gate.json >/dev/null 2>&1 )
     if [ "$arm" = used ]; then
       SWREP=$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)
       [ -n "$SWREP" ] && ( cd "$d" && "$SW_BIN" gate --report "${SWREP#"$d/"}" --policy "$NPD/pol" \
@@ -9747,6 +9835,35 @@ for arm, why in (("nodecl", "C ADDITIVE  a project declaring NO partners carries
     if (rep(arm) or {}).get("netPartners") is not None:
         bad += 1
         print(f"  swift  {why}")
+ENG = "swift"; PFX = "sw"
+# E — THE PEEK MUST NOT NAME A HOST ONLY THE EXCLUDED FILES REACHED. The ⟨0.30⟩ peek re-enters the
+# scanner over the files this scan did NOT judge. `netPartners` is not policy-derived — it comes from
+# the participating hosts plus the discovered config, and the peek walks the same target — so an engine
+# that accumulates into shared state files the excluded set's partner into the verdict, while the report
+# cannot carry it and `gate --report` can only answer null. MEASURED in candor-rust the day the key
+# landed. The `outOfScope` check is the SETUP CONTROL: without it this row passes on a run where the peek
+# never read anything, which proves nothing about what it records.
+# READ THE VERDICT, NOT THE REPORT. The first version of this row checked the report and had NO TEETH:
+# rebuilding candor-scan with the guard deleted left it green. The report was always the correct half —
+# the peek writes no report, so it cannot carry the peek's host. The defect is the engine accumulating
+# into shared verdict state, which is `scan.gate.json`. Both documents are checked now, because "the
+# report is null while the verdict names it" IS the §3.1 divergence.
+exv = {}
+_vf = os.path.join(base, f"{PFX}_excluded", "scan.gate.json")
+if os.path.exists(_vf):
+    exv = json.load(open(_vf))
+ex = rep("excluded") or {}
+if not exv.get("outOfScope"):
+    bad += 1
+    print("  %-6s E CONTROL   the peek reported nothing out of scope, so this row cannot answer its "
+          "question — the excluded file's Net must be visible for the check below to mean anything" % ENG)
+elif exv.get("netPartners") is not None or ex.get("netPartners") is not None:
+    bad += 1
+    print("  %-6s E PEEK      a partner host that only an EXCLUDED file reached is disclosed — verdict "
+          "%r, report %r. The gate judged nothing that used it, so this claims an ambient config moved a "
+          "classification that was never made, and the two routes cannot agree on it"
+          % (ENG, exv.get("netPartners"), ex.get("netPartners")))
+
 if not bad:
     print(f"  swift  -> OK        (named: {np['hosts']}; routes byte-equal; absent when nothing participated)")
 sys.exit(1 if bad else 0)
@@ -9756,7 +9873,7 @@ else
 fi
 echo "PART 57 — the ambient config that moved a verdict is named in it (SPEC §2/§3.1 ⟨0.31⟩)"
 # ENGINES: ts rust java swift
-# CONTROLS: nodecl unused — `nodecl` (a project declaring no partners) proves the key is ADDITIVE rather than always-present, and `unused` (a partner declared but never matched) proves the disclosure reports what PARTICIPATED rather than what was written down; without the second an engine passes the naming row by dumping every declared host, which buries the line that moved the verdict
+# CONTROLS: nodecl unused excluded — `nodecl` (a project declaring no partners) proves the key is ADDITIVE rather than always-present, and `unused` (a partner declared but never matched) proves the disclosure reports what PARTICIPATED rather than what was written down; without the second an engine passes the naming row by dumping every declared host, which buries the line that moved the verdict
 if [ "$P57_OK" = 0 ]; then
   echo "  -> MATCH — the config and the host that moved the classification are named, both routes agree"
   echo "     byte-for-byte, and a declaration that changed nothing is disclosed nowhere"
