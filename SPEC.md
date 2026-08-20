@@ -270,7 +270,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.30" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.31" },
   "resolves":  ["fs", "incomplete"],                             // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
