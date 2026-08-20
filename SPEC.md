@@ -17,14 +17,21 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.30** — all code engines declare `0.30`; the floor is conformance-pinned. How versions
+**Version 0.31** — all code engines declare `0.31`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung through ⟨0.29⟩ is additive over the last,
 so an older-version consumer that ignores the newer optional fields is unaffected. **⟨0.30⟩ is the first
 exception and is deliberately not additive**: it adds no field and removes none, but it changes what a gate
 DOES with an existing one, and a tree that passed under ⟨0.29⟩ can exit 2 under ⟨0.30⟩. An upgrade is
-therefore a decision, not a drop-in — see the changelog entry for what flips and what provably does not. **0.23 is a tier-1 additive
+therefore a decision, not a drop-in — see the changelog entry for what flips and what provably does not.
+**⟨0.31⟩ is additive in one half and not in the other, and the halves are independent.** `netPartners`
+(§2, §3.1) is a new optional key: absent unless an ambient `net-partner` declaration actually moved a
+classification, so a consumer that ignores it is unaffected. The fourth exit-2 cause (§3.3, an
+UNEVALUABLE TARGET) is not additive for the same reason ⟨0.30⟩ is not: a target that exists and holds no
+file the engine can read was a clean pass on one engine and is a refusal on every engine now, so a
+green that came from a typo'd path becomes an exit 2. That is the direction the change exists to fix,
+and it is still a verdict that moves. **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
 `CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
@@ -1170,7 +1177,7 @@ implementation MAY fall back to that sidecar for provenance.
 `extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
 
 ```json
-{ "candor": { "version": "…", "toolchain": "…", "spec": "0.30" },
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.31" },
   "resolves": ["fs", "incomplete"],
   "functions": [ … ] }
 ```
@@ -2096,7 +2103,7 @@ a different sink.
 **(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer
 already reads as *nothing was judged, no purity licence*:
 
-    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.30" },
+    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.31" },
       "functions":  [],
       "analyzed":   { "count": 0 },
       "unanalyzed": [ { "path": "<what the run could not analyze>", "reason": "<why>" } ] }
