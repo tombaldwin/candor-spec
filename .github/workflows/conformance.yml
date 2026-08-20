@@ -17,6 +17,18 @@ name: conformance
 on:
   push:
     branches: [main]
+    # A CHANGELOG-only commit cannot change a conformance answer, and three of them tonight each bought a
+    # full 15-minute four-way run. This is the SAME licensed set release-preflight [11] already reasons
+    # about for its conformance-reuse stamp — one list, one argument, two places that must agree.
+    #
+    # DELIBERATELY NARROW. Root files only: `conformance/README.md` is NOT ignored, because the ledger
+    # resolves every `part` reference out of the files under conformance/ and a README edit there can
+    # break it — preflight's SKIP_NEVER makes the same carve-out for the same reason. Anything not listed
+    # here runs the suite, which is the safe direction: an omission costs a run, never a false green.
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'README.md'
+      - 'BACKLOG.md'
   pull_request:
   workflow_dispatch:
   schedule:
