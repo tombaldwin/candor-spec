@@ -513,7 +513,9 @@ candor-swift's `privacy-manifest --verify` emits `ok: true` beside `incomplete: 
 saying it could not see everything. That is ⟨0.27⟩'s `violations` problem under a different key.
 
 **The carve-out is the GATE VERDICT, and it is not an exception so much as a different question.** ⟨0.24⟩
-ruled explicitly that a judged-nothing report leaves the verdict and exit UNCHANGED, and candor-rust's own
+ruled explicitly that a judged-nothing report leaves the verdict and exit UNCHANGED — *and it still does;
+⟨0.31⟩'s unevaluable-target cause supersedes that ruling only for the SCAN route's own target, never for a
+report presented to a verb or chained as a dependency, which is the shape this passage is about* — and candor-rust's own
 note gives the reason: *"this report makes no claim, and inventing one for it would be the opposite
 defect."* The gate's `ok` is scoped to *did a rule I could evaluate fire* — a question a partial report can
 still answer — and `unevaluated` / `zeroMatch` / `ignored` carry what it could not evaluate. An advisory
@@ -664,7 +666,8 @@ an effect the consumer has no evidence for.** Corrected here rather than in the 
 So: an advisory naming the package, on the channel a corrupt report already uses. Exit code untouched,
 `--gate-json` byte-equal to `scan --policy`. Refusing with exit 2 is **not** an available reading — §3.3
 enumerates the exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the target's own code; ⟨0.30⟩
-an INCOMPLETE SCOPE) and a judged-nothing DEPENDENCY is none of them, so an engine that refuses here has
+an INCOMPLETE SCOPE; ⟨0.31⟩ an UNEVALUABLE TARGET, which is about the WALK and so cannot arise on a route
+that is handed a report) and a judged-nothing DEPENDENCY is none of them, so an engine that refuses here has
 minted a cause of its own and **split the verb**. *The argument is that the cause must be ENUMERATED, not
 that the list has a particular length: ⟨0.30⟩ added one deliberately, in §3.3, with a row exercising it —
 which is the difference between minting a cause and an engine inventing one.*
@@ -3064,6 +3067,42 @@ engine identically. Every implementation's scanner MUST accept:
 | `--help` / `-h` | print a usage summary that lists these flags. |
 | `--agents` | print the engine's **embedded** agent contract (item 11) — its `AGENTS.md`, prefixed by the canonical version header `<!-- candor-<engine> <version> · … -->` so a consumer can tell which build's contract it is reading. The embedded copy MUST equal the repo's `AGENTS.md` (§7 item 11's drift gate). |
 
+⟨0.31⟩ **(d) AN UNEVALUABLE TARGET — the walk admitted no file this engine can read.** A target that
+exists but holds nothing of this engine's kind is a REFUSAL (exit 2), not a clean scan: *"I found nothing
+to open"* and *"I opened everything and judged it"* are different claims, and exit 0 makes the second. A
+typo'd path in CI, a module that moved, an unbuilt project — each of these is a permanent green otherwise.
+Three engines already refused this shape before it was enumerated; this clause writes down the cause they
+were minting, and brings the fourth into line.
+
+**THIS SUPERSEDES THE ⟨0.24⟩ JUDGED-NOTHING RULING FOR THE SCAN ROUTE'S OWN TARGET, AND ONLY THERE.** A
+judged-nothing REPORT — presented to `gate --report`, or chained as a dependency — is untouched: it stays
+verdict-preserving, exit unchanged, the caveat travelling, exactly as ⟨0.24⟩ requires. The distinction is
+**the walk versus the report**, and it is load-bearing rather than tidy: a produced `analyzed.count: 0`
+report travels into the gate route, so a refusal keyed on it splits the verb (measured — an attempt keyed
+that way answered `scan --policy` 2 against `gate --report` 0 on its first run). A refusal keyed on the
+walk never reaches the gate route at all, because §3.1's byte-equality is quantified over *any report a
+scan produced* and this refusal produces none.
+
+Three boundaries, each of which a naive form gets wrong:
+
+- **A project of this engine's kind that yields ZERO UNITS is an ANSWER**, exit 0 with `analyzed.count: 0`
+  — the premise ⟨0.24⟩'s gate rule is derived from. The predicate is *zero readable files*, never *not a
+  valid project*: a `package.json` tree holding only unread JavaScript must still refuse, and a facade
+  package whose sources parse to nothing must still answer.
+- **PER-INVOCATION, never per-member.** The cause fires only when the walk admitted nothing anywhere under
+  the target. A workspace with one live member and one scaffolded one stays green, and the empty member
+  still publishes its ⟨0.24⟩ count-0 report. Per-member would redden benign layouts the languages
+  themselves define — swift `binary`/`system` targets carry zero sources by design, a maven aggregator has
+  no classes, a solution-style TypeScript root unions its members.
+- **The ⟨0.30⟩ peek runs FIRST.** If the excluded files hold an effect the policy denies, that finding is
+  the answer: it is reported, with `outOfScope` in a report, and the exit is 2 through the scope cause.
+  The refusal is the last resort, not a short-circuit — otherwise the rung that exists to name the effect
+  in the unread file is silenced by the target being unreadable, which is precisely when it matters most.
+
+The refusal MUST carry a remedy naming what a target of this engine's kind looks like: a red gate that
+tells the operator to run `mvn -q compile` is actionable, and one that only says no is the kind that gets
+switched off.
+
 **Fully offline.** candor runs fully offline: an engine MUST NOT phone home — no telemetry, no update
 checks, no network traffic of its own, under any flag or mode. The §7 item 12 self-gate is the
 machine-checked form of this promise (the engines' own declared boundary is Fs/Env only).
@@ -3190,8 +3229,8 @@ verdict some other idiomatic way, but `--gate-json` is the pinned form.
 
 Two further MUSTs guard the verdict's integrity:
 
-- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are three
-  exit-2 causes ⟨0.30⟩ and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
+- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are four
+  exit-2 causes ⟨0.31⟩ and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
   unknown flag) — the gate could not be evaluated at all. ⟨0.24⟩ **SUPERSEDED: this said NO verdict is
   written, and §3.1's refusal-document clause (`107755b`, generalised by `1503368`) now requires one on
   EVERY exit-2 cause including this one.** All four engines follow the newer rule; this sentence is stale
@@ -3222,7 +3261,9 @@ Two further MUSTs guard the verdict's integrity:
   *Recorded because a reader relied on the count: this list read "there are two exit-2 causes and they
   differ" for four rungs, and §3.1 leans on that enumeration when it rules that an engine refusing
   elsewhere "has minted a third cause and split the verb". ⟨0.30⟩ mints one deliberately, and a superlative
-  left standing next to its own exception is how the last one of these was found.*
+  left standing next to its own exception is how the last one of these was found.* ⟨0.31⟩ *mints the
+  fourth — (d) an UNEVALUABLE TARGET — and this note is the reason the count in the sentence above was
+  moved with it rather than left to be discovered. A stale count here has been shipped three times.*
 - **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A
   per-member write lets a clean last member overwrite an earlier violator's verdict — shipped as
   exactly that bug in candor-scan 0.8.1, where a workspace's `gate.json` said `ok: true` while the
