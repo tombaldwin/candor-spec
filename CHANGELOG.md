@@ -16,6 +16,17 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **PART 56 — a target with no analyzable source still reads what it excluded.** Found by corpus-testing
+  the PUBLISHED 0.30.0 hours after it shipped: a declarations-only package whose `.js` performs the denied
+  effect answered `no TypeScript sources`, exit 2, and named nothing, where candor-rust over the analogous
+  shape named the function. Fixed in candor-ts and candor-swift; this pins it. Two shapes, and the second
+  is the point: the IDENTICAL tree with a CLEAN excluded sibling must still exit 2 and name nothing —
+  without it, a fix that merely stops refusing passes shape A while answering `policy ✓` at exit 0 over a
+  tree with zero analyzed files, which is exactly what candor-ts's first attempt did. That control then
+  caught the same false green in **candor-rust**, which is NAMED as a divergence every run and filed in
+  candor/BACKLOG.md rather than asserted away. java is excluded with a reason: its class-directory/jar
+  target has nothing beside it to peek.
+
 - **The self-differential generators run their four engines concurrently.** Profiling the suite by its
   silent gaps (rather than by part headers — see below) put 168s of 386s in five generators, each
   driving four engines in sequence over workspaces that share nothing. PART 55's matrix, P3
