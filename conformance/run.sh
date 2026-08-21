@@ -10306,6 +10306,77 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# PART 61 — A TYPO'D EFFECT NAME IS REFUSED, NOT ANSWERED (SPEC §3.1) [TIER 1]
+#
+# MEASURED, all four engines: `path <fn> Fsz` printed "<fn> does not perform Fsz" and exited 0. That is
+# a typo scored as a CONFIDENT NEGATIVE, in the verb people reach for to check one specific claim — the
+# same shape as ⟨0.24⟩ §3.1's ruling that an unanswerable condition must be DISCLOSED rather than scored
+# as a satisfied one, and the same shape as a policy layer-token that binds nothing.
+#
+# THE ASYMMETRY IS THE FINDING UNDERNEATH THE FINDING. `where` has refused an unknown effect since the
+# corpus audit; `path` never grew the check. A vocabulary guard that lives in ONE verb is not a
+# vocabulary guard — so when a channel is closed, ask which OTHER verb reaches the same answer.
+# candor-swift ships no `where` at all, which is exactly why this has to be asked of `path` PER ENGINE
+# rather than inferred from a sibling that happens to be correct.
+P61=$(mktemp -d); P61_BAD=0; P61_REP=""
+cat > "$P61/a.swift" <<'SWIFTEOF'
+import Foundation
+func writesFile() { try? "x".write(toFile: "/tmp/x", atomically: true, encoding: .utf8) }
+func caller() { writesFile() }
+SWIFTEOF
+# One report, produced by swift because the fixture is Swift source, then read by EVERY engine — the
+# question is about the query verb's vocabulary, not about anyone's analysis. Named explicitly rather
+# than picked off a listing: a sidecar chosen by position would make every row ask about the wrong file.
+# THE WORK RUNS BEFORE THE MARKER, and the rows are buffered and printed after it. Not a style choice:
+# part.sh ends a slice at its marker's block, so invocations placed after the marker fall outside the
+# slice — and DECLARED COVERAGE then reads the four engines this part declares as claims it never backs.
+# Buffering keeps the engine invocations inside the slice while the OUTPUT still reads top-down.
+P61_OUT=""
+p61_row() {  # p61_row <engine> <report> <cmd...>
+  local eng="$1" rep="$2"; shift 2
+  local real typo absent
+  # Flags AFTER the positionals — the grammar every engine documents. Exit codes are read on the very
+  # next line and never through a pipe.
+  "$@" caller Fs  --report "$rep" >/dev/null 2>&1; real=$?
+  "$@" caller Fsz --report "$rep" >/dev/null 2>&1; typo=$?
+  "$@" caller Net --report "$rep" >/dev/null 2>&1; absent=$?
+  if [ "$real" = 0 ] && [ "$typo" = 2 ] && [ "$absent" = 0 ]; then
+    P61_OUT="$P61_OUT  $eng  real=0 typo=2 known-absent=0  OK
+"
+  else
+    P61_OUT="$P61_OUT  $eng  real=$real typo=$typo known-absent=$absent  FAIL (want 0/2/0)
+"
+    rc=1; P61_BAD=1
+  fi
+}
+# One report, produced by swift because the fixture is Swift source, then read by EVERY engine — the
+# question is about the query verb's vocabulary, not about anyone's analysis. Named explicitly rather
+# than picked off a listing: a sidecar chosen by position would make every row ask about the wrong file.
+if [ -n "$SW_OK" ]; then
+  "$SW_BIN" "$P61" --out "$P61/rep" >/dev/null 2>&1
+  P61_REP="$(find "$P61" -maxdepth 1 -name 'rep*.json' ! -name '*callgraph*' ! -name '*hierarchy*' \
+             ! -name '*refused*' | LC_ALL=C sort | head -1)"
+fi
+if [ -z "$P61_REP" ] || [ ! -f "$P61_REP" ]; then
+  P61_OUT="  SKIP — candor-swift absent, so the shared fixture report could not be produced
+"
+  P61_BAD=2
+else
+  p61_row "rust " "$P61_REP" "$QUERY" path
+  p61_row "java " "$P61_REP" java -jar "$JAR" path
+  if [ -n "$TS_OK" ]; then p61_row "ts   " "$P61_REP" node "$TS_DIR/query.mjs" path; fi
+  p61_row "swift" "$P61_REP" "$SW_BIN" path
+fi
+rm -rf "$P61"
+# ENGINES: rust ts swift java
+# CONTROLS: known-absent — a KNOWN effect that is simply ABSENT must still answer 0. Without it the guard is indistinguishable from "path always refuses", which would pass the typo row while destroying the verb
+echo "PART 61 — a typo'd effect name is refused, not answered (SPEC §3.1)"
+printf '%s' "$P61_OUT"
+[ "$P61_BAD" = 0 ] && echo "  -> MATCH — a typo'd effect is refused everywhere, and a known-absent one still answers"
+[ "$P61_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
+[ "$P61_BAD" = 2 ] && echo "  -> SKIP — no fixture report"
+true
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
