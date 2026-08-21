@@ -558,12 +558,6 @@
    "status": "pre-ledger"
   },
   {
-   "sha": "a59b3d8be6018395",
-   "at": "2.2 The call-graph sidecar",
-   "excerpt": "**The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`, and t",
-   "status": "pre-ledger"
-  },
-  {
    "sha": "004065778afc1647",
    "at": "2.2 The call-graph sidecar",
    "excerpt": "⟨0.7⟩ **The type-hierarchy sidecar.** Alongside the report, an engine whose language has class/interface/ prot",
@@ -2702,8 +2696,8 @@
   {
    "sha": "19587b9f1f3598b3",
    "at": "Contents",
-   "excerpt": "**Version 0.31** \u2014 all code engines declare `0.31`; the floor is conformance-pinned. How versions move (the la",
-   "unenforced": "The versioning NARRATIVE, not an engine requirement \u2014 it states how rungs relate (additive through \u27e80.29\u27e9; \u27e80.30\u27e9 deliberately not; \u27e80.31\u27e9 additive in its `netPartners` half and NOT in its unevaluable-target half, which turns a typo'd-path pass into an exit 2) and that such an upgrade is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it DESCRIBES is exercised \u2014 by PART 48 and PART 54 for \u27e80.30\u27e9, and by PART 56 and PART 57 for \u27e80.31\u27e9. Re-hashed at the 0.31 floor bump because the paragraph gained a sentence naming \u27e80.31\u27e9's two halves; carrying a classification across a reword without re-reading it is how this gate gets defeated, which is why the sha moves by hand every time this paragraph does."
+   "excerpt": "**Version 0.31** — all code engines declare `0.31`; the floor is conformance-pinned. How versions move (the la",
+   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through ⟨0.29⟩; ⟨0.30⟩ deliberately not; ⟨0.31⟩ additive in its `netPartners` half and NOT in its unevaluable-target half, which turns a typo'd-path pass into an exit 2) and that such an upgrade is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it DESCRIBES is exercised — by PART 48 and PART 54 for ⟨0.30⟩, and by PART 56 and PART 57 for ⟨0.31⟩. Re-hashed at the 0.31 floor bump because the paragraph gained a sentence naming ⟨0.31⟩'s two halves; carrying a classification across a reword without re-reading it is how this gate gets defeated, which is why the sha moves by hand every time this paragraph does."
   },
   {
    "sha": "66fb6633734a95c5",
@@ -2824,6 +2818,48 @@
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "**AND THE MATCH MUST BE THE CLASSIFIER'S OWN.** The engine decides `known-partner` by some host normalisation;",
    "part": "PART 57"
+  },
+  {
+   "sha": "ef93fe7bcc37b9d8",
+   "at": "2.2 The call-graph sidecar",
+   "excerpt": "**The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`, ⟨0.32",
+   "status": "pre-ledger"
+  },
+  {
+   "sha": "e97153228ee6fff7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "⟨0.32⟩ **AND THE DEFAULT PREFIX IS ANSWERED BY A MARKER, NOT BY ARMING IT.**",
+   "part": "PART 60"
+  },
+  {
+   "sha": "9954619be362abe7",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Arming the default prefix is NOT the answer, and this is recorded because it was tried.** An engine that ove",
+   "unenforced": "A RULING WITH ITS EVIDENCE, binding the DOCUMENT'S AUTHORS and any future implementer rather than the engines. It records WHY the obvious implementation is rejected — a run that died in argv parsing replaced a COMMITTED report in candor-rust's own repository — so the next person to have the idea meets the measurement instead of repeating it. No engine behaviour could violate it; an engine cannot fail to not-do a rejected alternative. PART 60's row A asserts the POSITIVE form that follows from it (the previous report is byte-untouched across a refusal), which is the enforceable half."
+  },
+  {
+   "sha": "d78cb4739db14fda",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "So a refusing run **MUST** write a **refusal marker** at `<prefix>.refused.json` for the prefix it would have ",
+   "part": "PART 60"
+  },
+  {
+   "sha": "ffe646f7ac72e308",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "A consumer resolving a `--report` locator **MUST** consult the marker and refuse (exit 2) when one is present ",
+   "part": "PART 60"
+  },
+  {
+   "sha": "414db48cfc0378ef",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**Why a marker rather than a check.** A consumer cannot compute this for itself. The hazard is an EV",
+   "unenforced": "THE ARGUMENT FOR THE MECHANISM, not a requirement an engine could fail. It states why no consumer-side CHECK can replace the write: the hazard is an EVENT (a refusal AFTER these bytes were written) witnessed only by the refusing run, and `analyzed.digest` is over the sorted analyzed-qual set so a changed body under an unchanged name is byte-identical. Kept because a mechanism whose alternative is not ruled out in writing gets re-proposed — this rung's own first proposed answer was the already-reverted one."
+  },
+  {
+   "sha": "8aaaf4c8db979a9c",
+   "at": "3.1 Read-only queries (SHOULD)",
+   "excerpt": "**The failure direction is deliberate.** A marker that is lost or deleted fails open — exactly as to",
+   "unenforced": "A STATEMENT OF WHICH WAY THIS FAILS, binding the reader's expectations rather than an engine. A lost marker fails OPEN (the status quo, so the rung is never worse than what it replaces); a stale one fails CLOSED (correct — the reports under it are from a scan whose successor refused). PART 60's controls C and D exercise both directions as BEHAVIOUR; this paragraph is the rationale that makes them readable as intended rather than as accidents."
   }
  ]
 }

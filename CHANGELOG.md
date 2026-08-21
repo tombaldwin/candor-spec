@@ -16,6 +16,34 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.32⟩ A REFUSAL IS RECORDED BESIDE THE REPORTS IT WOULD HAVE WRITTEN (§3.3.1).** §3.3.1's arming
+  rules cover a prefix the operator NAMED. A run given no `--out` still writes reports — to its default
+  prefix — and a refusal leaves whatever the last successful run put there, readable as current. Measured
+  in all four engines: scan a tree green, change it so it now violates, refuse for any reason, and
+  `gate --report <tree>` answers `policy ✓` at exit 0 off the previous run's bytes. The only thing
+  separating that from the covered case is whether a flag was typed.
+
+  **Arming the default prefix is NOT the answer, and the clause records why, because it was tried:** a
+  run that died in argv parsing replaced a COMMITTED report in candor-rust's own repository. Naming a
+  prefix is a declaration; a default is a convention, and a convention does not license destroying a file
+  the operator may be keeping. So the refusal is written BESIDE the reports, at `<prefix>.refused.json`,
+  and overwrites nothing. `refused` joins §2.2's family-wide reserved segment set.
+
+  Because it destroys nothing it can be written at the EARLIEST moment the prefix is known — during argv
+  parsing — which is what lets it cover the argv-death case arming structurally cannot. The earliest safe
+  moment and the earliest useful moment turn out to be the same moment.
+
+  The marker carries its own `prefix` so §3.3.1's DIRECT-FILE locator is answerable: that form accepts any
+  `.json` name whatever its dot-segments, so a consumer handed one file cannot recover the prefix from the
+  filename and reads it out of the marker instead.
+
+  **Failure direction, deliberately:** a lost marker fails OPEN (the status quo, so this is never worse
+  than what it replaces); a stale one fails CLOSED, which is correct — the reports under it are from a
+  scan whose successor refused. Pinned by PART 60, whose two controls are a completing run CLEARING the
+  marker (or every later gate refuses off it for ever — the permanent-red mirror) and a normal answer when
+  none is present (or "refuse always" passes every other row while deleting the tool). Reference-led:
+  candor-rust ships it, the other three SKIP and are ratchet-counted.
+
 ## [0.31.0] — 2026-08-20
 
 - **PART 59 — what a refusal owes its reader.** PART 56 scores the exit code and the absence of a NEW
