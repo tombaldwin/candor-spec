@@ -10153,6 +10153,94 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 60 — A REFUSAL IS RECORDED BESIDE THE REPORTS IT WOULD HAVE WRITTEN (SPEC §3.3.1 ⟨0.32⟩) [TIER 1]
+#
+# §3.3.1's arming rules cover a prefix the operator NAMED. A run given no `--out` still writes reports —
+# to its default prefix — and a refusal leaves whatever the last successful run put there, readable as
+# current. MEASURED in all four engines: scan a tree green, change it so it now violates, refuse for any
+# reason, and `gate --report <tree>` answers `policy ✓` at exit 0 off the previous run's bytes. The only
+# thing separating that from the covered case is whether a flag was typed.
+#
+# ARMING THE DEFAULT PREFIX IS NOT THE ANSWER, and the rung says so because it was tried: a run that died
+# in argv parsing replaced a COMMITTED report in candor-rust's own repository. Naming a prefix is a
+# declaration; a default is a convention, and a convention does not license destroying a file somebody may
+# be keeping. So the refusal is recorded BESIDE the reports, at `<prefix>.refused.json`, and overwrites
+# nothing.
+#
+# FOUR ROWS, and the last two are the controls:
+#   A  a refusal leaves a marker naming its cause, AND the previous report is byte-untouched
+#   B  `gate --report` over those reports REFUSES (exit 2) rather than certifying them
+#   C  CONTROL — a run that COMPLETES clears the marker, or every later gate refuses off a stale one for
+#      ever, which is the permanent-red mirror of the permanent-green this rung closes
+#   D  CONTROL — with no marker the gate answers NORMALLY (here: exit 1 on the real violation), or "refuse
+#      always" passes A and B while deleting the tool
+#
+# The marker carries its own `prefix` because §3.3.1's DIRECT-FILE locator accepts any `.json` name
+# whatever its dot-segments: a consumer handed one file cannot recover the prefix from the filename.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[60] A REFUSAL IS RECORDED BESIDE THE REPORTS IT WOULD HAVE WRITTEN  (SPEC §3.3.1 ⟨0.32⟩)"
+P60_OK=0
+MKD="$W/marker"; mkdir -p "$MKD"
+
+if [ -x "$SCAN" ] && [ -x "$QUERY" ]; then
+  d="$MKD/rs"; mkdir -p "$d/src"
+  printf '[package]\nname="mk"\nversion="0.0.0"\nedition="2021"\n' > "$d/Cargo.toml"
+  printf 'pub fn f() -> i32 { 1 }\n' > "$d/src/lib.rs"
+  printf 'deny Exec\n' > "$d/pol"
+  ( cd "$d" && "$SCAN" . --policy pol >/dev/null 2>&1 )            # green, no marker
+  RPT="$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | grep -v refused | head -1)"
+  BEFORE="$(cksum < "$RPT" 2>/dev/null)"
+  printf 'pub fn g() { let _ = std::process::Command::new("ls").status(); }\n' >> "$d/src/lib.rs"
+  ( cd "$d" && "$SCAN" . --policy pol --zzz-not-a-flag >/dev/null 2>&1 )   # refuse
+  AFTER="$(cksum < "$RPT" 2>/dev/null)"
+  MK="$d/.candor/report.refused.json"
+  if [ ! -f "$MK" ]; then
+    echo "  rust   A MARKER    a refusal left no marker at the default prefix — the reports under it are"
+    echo "                     from an earlier run and nothing says so"; P60_OK=1
+  elif [ "$BEFORE" != "$AFTER" ]; then
+    echo "  rust   A MARKER    the previous report was MODIFIED by the refusal. The marker exists so that"
+    echo "                     nothing is overwritten; arming the default prefix is the measured data loss"
+    echo "                     this rung refuses to repeat"; P60_OK=1
+  else
+    ( cd "$d" && "$QUERY" gate --report . --policy pol >/dev/null 2>&1 ); B=$?
+    [ "$B" = 2 ] || { echo "  rust   B GATE      gate --report exited $B over reports whose successor REFUSED —"
+                      echo "                     it must not certify them (want 2)"; P60_OK=1; }
+    ( cd "$d" && "$SCAN" . --policy pol >/dev/null 2>&1 )          # completes; clears
+    if [ -f "$MK" ]; then
+      echo "  rust   C CONTROL   a COMPLETING run left the marker — every later gate refuses off it for"
+      echo "                     ever, the permanent-red mirror of the permanent-green this rung closes"; P60_OK=1
+    else
+      ( cd "$d" && "$QUERY" gate --report . --policy pol >/dev/null 2>&1 ); D=$?
+      [ "$D" = 1 ] || { echo "  rust   D CONTROL   with no marker the gate answered $D, not the real violation (1) —"
+                        echo "                     'refuse always' passes A and B while deleting the tool"; P60_OK=1; }
+    fi
+    [ "$P60_OK" = 0 ] && echo "  rust   -> OK        (refusal recorded, report untouched, gate refuses, a completing run clears it)"
+  fi
+else
+  echo "  rust   -> SKIP     (engine not built — NOT asked)"
+fi
+# `SKIP — <reason>`, NOT `SKIP (<reason>)`. The ratchet's LOOSE pattern is `SKIP` followed by an em-dash
+# or a colon, and the parenthesised form used for an unbuilt engine is deliberately NOT counted — a
+# missing toolchain is not an un-shipped rung. These three ARE the un-shipped kind, so they must land in
+# the baseline: if ⟨0.32⟩ ships in an engine and later un-ships, only a counted skip makes that rise
+# visible. Written in the parenthesised form first, where the ratchet reported the same 5 skips as before
+# and the three new rows were invisible to it.
+for _e in ts java swift; do
+  echo "  candor-$_e (⟨0.32⟩ refusal marker) SKIP — not implemented in this engine yet (reference-led)"
+done
+
+echo "PART 60 — a refusal is recorded beside the reports it would have written (SPEC §3.3.1 ⟨0.32⟩)"
+# ENGINES: rust; ts java swift: ⟨0.32⟩ is reference-led and lands in candor-rust first — the engine whose default-prefix stale green was measured, and whose committed report the rejected alternative destroyed. The three SKIP rows are ratchet-counted, so an un-ship cannot look like a never-shipped
+# CONTROLS: C D — C requires a COMPLETING run to clear the marker (a marker never cleared makes every later gate refuse for ever, the permanent-red mirror of the permanent-green this closes) and D requires a normal answer when no marker is present (without it, an engine that simply always refuses passes rows A and B while being useless)
+if [ "$P60_OK" = 0 ]; then
+  echo "  -> MATCH — a refusal is recorded without overwriting anything, the gate declines to certify"
+  echo "     reports whose successor refused, and a completing run clears the record"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

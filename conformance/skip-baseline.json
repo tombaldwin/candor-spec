@@ -3,12 +3,25 @@
   "SKIP RATCHET BASELINE — see skip_ratchet.py's header.",
   "A count here may FALL freely (an engine shipped a rung). A count that RISES fails.",
   "Regenerate ONLY for a deliberate coverage change, and say so in the commit: a skip",
-  "count that drifts upward one unremarkable commit at a time stops meaning anything."
+  "count that drifts upward one unremarkable commit at a time stops meaning anything.",
+  "",
+  "2026-08-21 — the three `⟨0.32⟩ refusal marker` cells are ADDED DELIBERATELY. PART 60 is",
+  "reference-led: the rung lands in candor-rust first, so ts/java/swift score SKIP until they",
+  "port it. They are entered here rather than left uncounted because that is the whole point of",
+  "the ratchet — once a cell is in the baseline, an engine that SHIPS the rung drops its count",
+  "(fine, a fall is free) and an engine that later UN-SHIPS raises it and fails. The rows were",
+  "first written in the parenthesised `SKIP (reason)` form, which the LOOSE pattern does not",
+  "match, and the ratchet reported the same 5 skips as before with the three new rows invisible",
+  "to it. An uncounted skip is exactly the never-shipped/un-shipped confusion this file exists",
+  "to prevent."
  ],
  "skips": {
   "tally:candor-java": 1,
   "tally:candor-scan": 1,
   "tally:candor-swift": 0,
-  "tally:candor-ts": 3
+  "tally:candor-ts": 3,
+  "cell:candor-java:⟨0.32⟩ refusal marker": 1,
+  "cell:candor-swift:⟨0.32⟩ refusal marker": 1,
+  "cell:candor-ts:⟨0.32⟩ refusal marker": 1
  }
 }

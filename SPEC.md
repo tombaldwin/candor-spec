@@ -1287,7 +1287,7 @@ candidate set and prints a disclosure on every query. Noise, never a swallowed r
 *named* `hierarchy` must still resolve: it sits in the `<crate>` position, not the reserved one.
 
 **The reserved set, family-wide:** `callgraph`, `hierarchy`, `calibrated`, `layerreach`, `locs`, `gate`,
-and the `encountered-*` family. It is stated here because **the engines were already drifting on it** and
+⟨0.32⟩ `refused`, and the `encountered-*` family. It is stated here because **the engines were already drifting on it** and
 nothing said they should not: three of the four excluded these by name and one discriminated by segment
 count, but the by-name lists disagreed — one engine carved out six suffixes, another two. Cross-engine
 reading is not hypothetical (the conformance frontier differential has one engine produce and another
@@ -2654,6 +2654,47 @@ report-sink analogue of "every path named gets the refusal", under §3.3.1's arm
 *Two spellings of one rule is the habit this document has now paid for in six separate places in a single
 rung. The general form, stated once: when a rule is settled for one sink, the question is not whether it
 applies to the other — it is what makes the other different, answered in writing, or it applies.*
+
+⟨0.32⟩ **AND THE DEFAULT PREFIX IS ANSWERED BY A MARKER, NOT BY ARMING IT.**
+
+Everything above is about a prefix the operator NAMED. A run given no `--out` still writes reports — to
+its default prefix — and a refusal leaves whatever the last successful run put there, readable as
+current. MEASURED in all four engines: scan a tree green, change it so it now violates, then refuse for
+any reason; `gate --report <tree>` answers `policy ✓` at exit 0 off the previous run's bytes. The harm is
+the one this whole section exists to prevent, and the only thing separating it from the covered case is
+whether a flag was typed.
+
+**Arming the default prefix is NOT the answer, and this is recorded because it was tried.** An engine
+that overwrites reports it was never told it owned destroys data: measured, a run that died in argv
+parsing replaced a COMMITTED report in its own repository. Naming a prefix is a declaration; a default is
+a convention, and a convention does not license destroying a file the operator may be keeping.
+
+So a refusing run **MUST** write a **refusal marker** at `<prefix>.refused.json` for the prefix it would
+have written, carrying at minimum the `prefix` it belongs to, the `target` scanned, and a `reason`
+naming the cause. It overwrites no report. A run that COMPLETES its write phase **MUST** remove the
+marker for that prefix, so the marker's presence means exactly "the most recent attempt over this prefix
+refused".
+
+A consumer resolving a `--report` locator **MUST** consult the marker and refuse (exit 2) when one is
+present for the reports it is about to read:
+  · a **directory** locator → the marker beside `<dir>/.candor/report`;
+  · a **prefix** locator → `<prefix>.refused.json`;
+  · a **direct-file** locator → any `*.refused.json` in that file's directory **whose recorded `prefix`
+    covers the file**. The marker carries its prefix precisely so this case is answerable: a direct-file
+    locator accepts any `.json` name whatever its dot-segments, so the prefix cannot be recovered from
+    the filename and must be read from the marker.
+
+**Why a marker rather than a check.** A consumer cannot compute this for itself. The hazard is an EVENT —
+a refusal that happened AFTER these bytes were written — witnessed only by the run that refused. No
+function of the report and the tree recovers it: `analyzed.digest` is over the sorted analyzed-qual set,
+so a changed body under an unchanged name is byte-identical, and the §2.1 producing-build machinery is
+about producer identity, which §3.3.1 already scopes away from a verb that only READS a report. The
+defence has to be written down by the run that knows.
+
+**The failure direction is deliberate.** A marker that is lost or deleted fails open — exactly as today —
+so this is strictly better than the status quo and never worse. A marker left behind by a refusal that is
+never retried fails CLOSED, and that is the correct way round: the reports under it really are from a
+scan whose successor refused.
 
 **THE INPUT EXEMPTION COVERS THE PATH, NOT THE RUN.** Rule (2) says a sink naming an input of this run is
 refused having written NOTHING, and it outranks this refusal — for *that path*. Every OTHER path named in
