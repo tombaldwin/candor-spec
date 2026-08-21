@@ -9421,8 +9421,12 @@ def findings(eng, arm):
     """
     import glob
     d = os.path.join(base, f"{eng}_{arm}", ".candor")
+    # ⟨0.32⟩ `.refused.json` is a MARKER, not a report — SPEC §2.2's reserved set. Without this the row
+    # below reads a refusal's own marker as "the scan left a report" and fails the engine for obeying the
+    # rung. Caught the moment ⟨0.32⟩ landed in candor-ts: adding a file kind beside the reports means
+    # teaching every reader of that directory about it, and this harness is one of the readers.
     cands = [f for f in glob.glob(os.path.join(d, "report*.json"))
-             if ".callgraph." not in f and ".hierarchy." not in f]
+             if ".callgraph." not in f and ".hierarchy." not in f and not f.endswith(".refused.json")]
     if not cands:
         return [], False
     try:
@@ -10227,12 +10231,43 @@ fi
 # the baseline: if ⟨0.32⟩ ships in an engine and later un-ships, only a counted skip makes that rise
 # visible. Written in the parenthesised form first, where the ratchet reported the same 5 skips as before
 # and the three new rows were invisible to it.
-for _e in ts java swift; do
+if [ -n "$TS_PRESENT" ]; then
+  d="$MKD/ts"; mkdir -p "$d/src"
+  printf '{"name":"tm","version":"1.0.0"}\n' > "$d/package.json"
+  printf 'export function f(){return 1;}\n' > "$d/src/i.ts"
+  printf 'deny Fs\n' > "$d/pol"
+  ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$d/pol" >/dev/null 2>&1 )
+  TREP="$d/.candor/report.json"; TBEFORE="$(cksum < "$TREP" 2>/dev/null)"
+  printf 'import {readFileSync} from "fs";\nexport function g(){return readFileSync("/tmp/x");}\n' >> "$d/src/i.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$d/pol" --zzz-not-a-flag >/dev/null 2>&1 )
+  TAFTER="$(cksum < "$TREP" 2>/dev/null)"
+  TMK="$d/.candor/report.refused.json"
+  if [ ! -f "$TMK" ]; then
+    echo "  ts     A MARKER    a refusal left no marker at the default prefix"; P60_OK=1
+  elif [ "$TBEFORE" != "$TAFTER" ]; then
+    echo "  ts     A MARKER    the previous report was MODIFIED by the refusal — the marker exists so"
+    echo "                     that nothing is overwritten"; P60_OK=1
+  else
+    ( cd "$TS_DIR" && node query.mjs gate --report "$d" --policy "$d/pol" >/dev/null 2>&1 ); TB=$?
+    [ "$TB" = 2 ] || { echo "  ts     B GATE      gate --report exited $TB over reports whose successor REFUSED (want 2)"; P60_OK=1; }
+    ( cd "$TS_DIR" && node scan.mjs "$d" --policy "$d/pol" >/dev/null 2>&1 )
+    if [ -f "$TMK" ]; then
+      echo "  ts     C CONTROL   a COMPLETING run left the marker — every later gate refuses off it"; P60_OK=1
+    else
+      ( cd "$TS_DIR" && node query.mjs gate --report "$d" --policy "$d/pol" >/dev/null 2>&1 ); TD=$?
+      [ "$TD" = 1 ] || { echo "  ts     D CONTROL   with no marker the gate answered $TD, not the real violation (1)"; P60_OK=1; }
+    fi
+    [ "$P60_OK" = 0 ] && echo "  ts     -> OK        (refusal recorded, report untouched, gate refuses, a completing run clears it)"
+  fi
+else
+  echo "  ts     -> SKIP     (engine not built — NOT asked)"
+fi
+for _e in java swift; do
   echo "  candor-$_e (⟨0.32⟩ refusal marker) SKIP — not implemented in this engine yet (reference-led)"
 done
 
 echo "PART 60 — a refusal is recorded beside the reports it would have written (SPEC §3.3.1 ⟨0.32⟩)"
-# ENGINES: rust; ts java swift: ⟨0.32⟩ is reference-led and lands in candor-rust first — the engine whose default-prefix stale green was measured, and whose committed report the rejected alternative destroyed. The three SKIP rows are ratchet-counted, so an un-ship cannot look like a never-shipped
+# ENGINES: rust ts; java swift: ⟨0.32⟩ is reference-led and lands in candor-rust first — the engine whose default-prefix stale green was measured, and whose committed report the rejected alternative destroyed. The three SKIP rows are ratchet-counted, so an un-ship cannot look like a never-shipped
 # CONTROLS: C D — C requires a COMPLETING run to clear the marker (a marker never cleared makes every later gate refuse for ever, the permanent-red mirror of the permanent-green this closes) and D requires a normal answer when no marker is present (without it, an engine that simply always refuses passes rows A and B while being useless)
 if [ "$P60_OK" = 0 ]; then
   echo "  -> MATCH — a refusal is recorded without overwriting anything, the gate declines to certify"
