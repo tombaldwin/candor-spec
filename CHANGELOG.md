@@ -16,6 +16,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.31.0] — 2026-08-20
+
 - **PART 59 — what a refusal owes its reader.** PART 56 scores the exit code and the absence of a NEW
   report. A four-lens release panel found three things it therefore could not see, all in the staged 0.31
   build: a single-FILE target of the wrong kind (PART 56 only ever passes a directory) certified green on
@@ -34,8 +36,6 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   prefix too. §3.3.1 says "every prefix NAMED", so the row now compares like with like and the
   default-prefix question is filed rather than asserted here. A part that asserts behaviour the spec does
   not require is how a suite starts inventing the contract.
-
-## [0.31.0] — 2026-08-20
 
 - The §2 envelope example declared `spec: "0.30"`. It is written with alignment padding, so the floor
   bump's sweep — which matched a single space — walked past it; `release-preflight [2]`'s separate
