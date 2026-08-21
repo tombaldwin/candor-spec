@@ -13,7 +13,12 @@
   "first written in the parenthesised `SKIP (reason)` form, which the LOOSE pattern does not",
   "match, and the ratchet reported the same 5 skips as before with the three new rows invisible",
   "to it. An uncounted skip is exactly the never-shipped/un-shipped confusion this file exists",
-  "to prevent."
+  "to prevent.",
+  "",
+  "2026-08-21 (later) — candor-ts's cell is REMOVED because that engine now SHIPS the rung and its",
+  "row asserts. A fall is free, so leaving the entry at 1 would have passed the ratchet — and that is",
+  "exactly why it has to go: a baseline of 1 over an actual 0 means a later UN-SHIP rises to 1 and does",
+  "NOT fail. A stale baseline is a ratchet with its teeth filed down."
  ],
  "skips": {
   "tally:candor-java": 1,
@@ -21,7 +26,6 @@
   "tally:candor-swift": 0,
   "tally:candor-ts": 3,
   "cell:candor-java:⟨0.32⟩ refusal marker": 1,
-  "cell:candor-swift:⟨0.32⟩ refusal marker": 1,
-  "cell:candor-ts:⟨0.32⟩ refusal marker": 1
+  "cell:candor-swift:⟨0.32⟩ refusal marker": 1
  }
 }
