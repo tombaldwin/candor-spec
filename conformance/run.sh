@@ -10262,12 +10262,42 @@ if [ -n "$TS_PRESENT" ]; then
 else
   echo "  ts     -> SKIP     (engine not built — NOT asked)"
 fi
-for _e in java swift; do
-  echo "  candor-$_e (⟨0.32⟩ refusal marker) SKIP — not implemented in this engine yet (reference-led)"
-done
+echo "  java   -> N/A      (no default report prefix: a bare run persists nothing, so its report sink is"
+echo "                     always NAMED and already armed by §3.3.1 — measured, not assumed)"
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  d="$MKD/sw"; mkdir -p "$d/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$d/Package.swift"
+  printf 'import Foundation\npublic func f() -> Int { return 1 }\n' > "$d/Sources/S/s.swift"
+  printf 'deny Fs\n' > "$d/pol"
+  ( cd "$d" && "$SW_BIN" . --policy pol >/dev/null 2>&1 )
+  SREP="$(ls "$d"/.candor/report*.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | grep -v refused | head -1)"
+  SBEFORE="$(cksum < "$SREP" 2>/dev/null)"
+  printf 'import Foundation\npublic func g() { _ = FileManager.default.contents(atPath: "/tmp/x") }\n' >> "$d/Sources/S/s.swift"
+  ( cd "$d" && "$SW_BIN" . --policy pol --zzz-not-a-flag >/dev/null 2>&1 )
+  SAFTER="$(cksum < "$SREP" 2>/dev/null)"
+  SMK="$d/.candor/report.refused.json"
+  if [ ! -f "$SMK" ]; then
+    echo "  swift  A MARKER    a refusal left no marker at the default prefix"; P60_OK=1
+  elif [ "$SBEFORE" != "$SAFTER" ]; then
+    echo "  swift  A MARKER    the previous report was MODIFIED by the refusal"; P60_OK=1
+  else
+    ( cd "$d" && "$SW_BIN" gate --report . --policy pol >/dev/null 2>&1 ); SB=$?
+    [ "$SB" = 2 ] || { echo "  swift  B GATE      gate --report exited $SB over reports whose successor REFUSED (want 2)"; P60_OK=1; }
+    ( cd "$d" && "$SW_BIN" . --policy pol >/dev/null 2>&1 )
+    if [ -f "$SMK" ]; then
+      echo "  swift  C CONTROL   a COMPLETING run left the marker"; P60_OK=1
+    else
+      ( cd "$d" && "$SW_BIN" gate --report . --policy pol >/dev/null 2>&1 ); SD=$?
+      [ "$SD" = 1 ] || { echo "  swift  D CONTROL   with no marker the gate answered $SD, not the real violation (1)"; P60_OK=1; }
+    fi
+    [ "$P60_OK" = 0 ] && echo "  swift  -> OK        (refusal recorded, report untouched, gate refuses, a completing run clears it)"
+  fi
+else
+  echo "  swift  -> SKIP     (engine not built — NOT asked)"
+fi
 
 echo "PART 60 — a refusal is recorded beside the reports it would have written (SPEC §3.3.1 ⟨0.32⟩)"
-# ENGINES: rust ts; java swift: ⟨0.32⟩ is reference-led and lands in candor-rust first — the engine whose default-prefix stale green was measured, and whose committed report the rejected alternative destroyed. The three SKIP rows are ratchet-counted, so an un-ship cannot look like a never-shipped
+# ENGINES: rust ts swift; java: NOT APPLICABLE and measured so — a bare `candor-java <target>` persists NO report, so this engine has no DEFAULT prefix for a refusal to leave stale, and its `--json <file>` sink is a NAMED one already armed under §3.3.1 (verified: a green report at that path is replaced by the fail-closed placeholder on a refusal). A marker would record a hazard this engine does not have
 # CONTROLS: C D — C requires a COMPLETING run to clear the marker (a marker never cleared makes every later gate refuse for ever, the permanent-red mirror of the permanent-green this closes) and D requires a normal answer when no marker is present (without it, an engine that simply always refuses passes rows A and B while being useless)
 if [ "$P60_OK" = 0 ]; then
   echo "  -> MATCH — a refusal is recorded without overwriting anything, the gate declines to certify"

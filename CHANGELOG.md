@@ -41,8 +41,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   than what it replaces); a stale one fails CLOSED, which is correct — the reports under it are from a
   scan whose successor refused. Pinned by PART 60, whose two controls are a completing run CLEARING the
   marker (or every later gate refuses off it for ever — the permanent-red mirror) and a normal answer when
-  none is present (or "refuse always" passes every other row while deleting the tool). Reference-led:
-  candor-rust ships it, the other three SKIP and are ratchet-counted.
+  none is present (or "refuse always" passes every other row while deleting the tool).
+
+  **Complete across the family.** candor-rust, candor-ts and candor-swift ship it and assert. **candor-java
+  is N/A, measured rather than assumed:** a bare `candor-java <target>` persists NO report, so it has no
+  default prefix for a refusal to leave stale, and its `--json <file>` sink is a NAMED one already armed
+  under §3.3.1 — verified by seeding a green report there and watching a refusal replace it. A marker
+  would record a hazard that engine does not have. Both obsolete skip-baseline entries were removed with
+  it: a skip that is really an N/A erodes the ratchet exactly as a stale one does.
 
 ## [0.31.0] — 2026-08-20
 
