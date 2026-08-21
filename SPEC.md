@@ -786,6 +786,37 @@ already carry.
   `manifest` together) must not let one unreadable test file delete what it did read. An unread file the
   producer cannot attribute to a class withdraws the claim for ALL of them: fail closed.
 
+- ⟨0.33⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
+  `peeked: false` and without `judgedElsewhere: true` (below) MUST suppress `ok` and exit 2, on BOTH the
+  `scan --policy` and `gate --report` routes. ⟨0.30⟩ already ruled that a non-empty `outOfScope` does so,
+  but that keys the verdict on what the peek FOUND — and a peek that cannot open a file finds nothing,
+  which is byte-identical to finding it clean. MEASURED on candor-java: `deny Exec` answered a green pass
+  at exit 0 over a tree holding an uncompiled `Deploy.java` calling `Runtime.exec("curl … | sh")`, with
+  `excluded` reporting `peeked: false` beside it — the engine stating plainly that it never read those
+  files, and that statement moving no verdict anywhere. This is the same three-row rule the `excluded`
+  clause above already states, applied to the VERDICT rather than to the report: absence licenses a claim
+  only if the key COULD have had a body, and `peeked: false` is exactly the case where it could not.
+  A MISSING `peeked` key counts as NOT peeked — the fail-open reading of an absent disclosure is the
+  failure the key exists to prevent. This MUST NOT fire on a run whose policy was REFUSED: a refusal is
+  not a verdict, so there is nothing for incompleteness to qualify (§3.1).
+
+- ⟨0.33⟩ `"judgedElsewhere": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the
+  files of this class are copies of code this same scan already judged*, so the class hides nothing and
+  the rule above does not fire for it. The motivating case is a build tree: a jar under `build/` is a
+  derived copy of the classes just analysed, and failing a gate on it would redden every project that
+  builds one.
+  **ONLY THE PRODUCER MAY SET IT, and a consumer MUST NOT infer it from the `class` token.** The clause
+  above already says `class` tokens are ENGINE-CHOSEN and are NOT interchange vocabulary, and this is
+  where that bites: the same concept is spelled `build-output-archive` by candor-java and `build-output`
+  by candor-rust and candor-swift, so a consumer carrying its own list of "derived" names gates another
+  engine's report differently from the engine that wrote it — route equality one level up. MEASURED on a
+  candor-java build carrying such a list: an `excluded` class of `build-output-archive` exited 0 and the
+  identical entry named `build-output` exited 2.
+  The distinction is not cosmetic and cannot be recovered from a name: candor-rust's `build-script` is
+  `build.rs`, code that RUNS at build time and can perform any effect, and it MUST fail closed; its
+  `build-output` MUST NOT. Only the engine that made the exclusion knows which it made, so it MUST say
+  so in the report rather than leave every consumer to guess.
+
 - ⟨0.29⟩ **The peek MUST reach its finding through the engine's ordinary analysis path over a different FILE
   SET, never through a second one.** Two judgement paths drift, and a drifted second opinion reported as a
   warning is worse than no warning: the reader cannot tell a real finding from two code paths disagreeing.
