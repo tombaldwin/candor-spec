@@ -24,8 +24,6 @@
   "tally:candor-java": 1,
   "tally:candor-scan": 1,
   "tally:candor-swift": 0,
-  "tally:candor-ts": 3,
-  "cell:candor-java:⟨0.32⟩ refusal marker": 1,
-  "cell:candor-swift:⟨0.32⟩ refusal marker": 1
+  "tally:candor-ts": 3
  }
 }
