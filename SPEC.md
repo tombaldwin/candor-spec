@@ -786,6 +786,22 @@ already carry.
   `manifest` together) must not let one unreadable test file delete what it did read. An unread file the
   producer cannot attribute to a class withdraws the claim for ALL of them: fail closed.
 
+- ⟨0.33⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2
+  already binds the consumer; this states the consequence for the VERDICT, because the route that
+  violated it was the gate. MEASURED on candor-query 0.31.0: `gate --report` over one member refused a
+  scoped rule at exit 2, and gating the SAME member alongside an unrelated sibling exited 0 with
+  `policy ✓` — the filter read the sibling's Unknown-class set through the name join and tolerated. The
+  same join was measured charging one member's function with a class it inherits from another's. A
+  FALSE GREEN produced by adding a report, which is why this is a MUST and not a SHOULD.
+  Names legitimately repeat across packages, and they are not unique even WITHIN one report: an inherent
+  method and a trait implementation of the same name emit two entries sharing `fn`. So the unit of a
+  verdict is the `hash`-identified unit, and a verdict row MUST carry enough identity for a consumer to
+  tell two units apart — a row a reader cannot attribute to a package is not actionable, and a consumer
+  that fingerprints on name alone (candor's own SARIF action did) silently hides one finding behind
+  another. The document's ORDER is part of §3.3.1 byte-equality, so the sort key MUST include that
+  identity: without it the twin rows tie and the two routes, which accumulate in different orders,
+  produce unequal documents — the ⟨0.31⟩ `outOfScope` hazard repeated.
+
 - ⟨0.33⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
   `peeked: false` and without `judgedElsewhere: true` (below) MUST suppress `ok` and exit 2, on BOTH the
   `scan --policy` and `gate --report` routes. ⟨0.30⟩ already ruled that a non-empty `outOfScope` does so,
@@ -1919,8 +1935,15 @@ key's ROLE:
 - **SIGNATURE keys** — `functions`, `inferred`, `direct`, `unknownWhy`, `netClass`, `analyzed`,
   `unanalyzed` — carry the claim. One unreadable among them means the document's claim cannot be trusted,
   whatever this particular policy happens to ask. **Refuse.**
-- **DECORATIONS** — a coverage ledger's detail, `loc`, `hash` — carry no claim a verdict reads. Withhold the
-  decoration, disclose it, and answer. Refusing there drops a hedge to be strict about ornament.
+- **DECORATIONS** — a coverage ledger's detail, `loc`, and `hash` ON A SINGLE-REPORT ROUTE — carry no claim
+  a verdict reads. Withhold the decoration, disclose it, and answer. Refusing there drops a hedge to be
+  strict about ornament.
+  **⟨0.33⟩ `hash` IS NOT A DECORATION WHEN SEVERAL REPORTS ARE MERGED.** §2.2 requires a consumer to join
+  across reports by `hash` and never by bare `fn`, so on a multi-report route the join — and therefore
+  every accumulator the verdict is computed from — depends on it. There it is a SIGNATURE key: a report
+  set in which any entry lacks `hash` cannot be merged soundly, and the run MUST refuse rather than fall
+  back to names. This split is deliberate and narrow: one report needs no join, so `hash` really is
+  ornament there, and the ⟨0.24⟩ rule above is unchanged for that case.
 
 So the three engines are right on `netClass` and rust was right on `coverage`, for one reason rather than
 two.
