@@ -10529,22 +10529,39 @@ fi
 # yet"; these are CONFIRMED DEFECTIVE, and the two words are not interchangeable when the thing being
 # recorded is a cardinal sin. They are still SKIPs for the RATCHET (the rung is genuinely unported and
 # a hard failure would wedge the suite red), but the line says which it is.
-for eng in java ts; do
-  case "$eng" in
-    java) "$JAR" >/dev/null 2>&1; e_a=$(java -jar "$JAR" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
-          e_ab=$(java -jar "$JAR" gate --report "$P63/both/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?) ;;
-    ts)   if [ -z "$TS_OK" ]; then e_a=""; e_ab=""; else
-            e_a=$(node "$TS_DIR/query.mjs" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
-            e_ab=$(node "$TS_DIR/query.mjs" gate --report "$P63/both/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
-          fi ;;
-  esac
-  if [ -z "$e_a" ]; then P63_OUT="$P63_OUT  $eng    SKIP — engine absent\n"
-  elif [ "$e_a" = 2 ] && [ "$e_ab" = 0 ]; then
-    P63_OUT="$P63_OUT  $eng    SKIP — CONFIRMED DEFECTIVE (a=2 a+b=0: the sibling answers for a), unported\n"
+# java PORTED 2026-08-22 — it asserts alongside rust now, so its row is a real check rather than a
+# record of a defect. ts is still measured.
+java -jar "$JAR" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_j_a=$?
+java -jar "$JAR" gate --report "$P63/only-b/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_j_b_alone=$?
+java -jar "$JAR" gate --report "$P63/both/report"   --policy "$P63/pol.candor" >/dev/null 2>&1; p63_j_ab=$?
+java -jar "$JAR" gate --report "$P63/amb-ctrl/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_j_ac=$?
+java -jar "$JAR" gate --report "$P63/amb-both/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_j_ab2=$?
+if [ "$p63_j_a" = 2 ] && [ "$p63_j_b_alone" = 0 ] && [ "$p63_j_ab" = 2 ] && [ "$p63_j_ac" = 1 ] && [ "$p63_j_ab2" = 1 ]; then
+  P63_OUT="$P63_OUT  java   a=2 b-alone=0 a+b=2 amb=1/1  OK\n"
+else
+  P63_OUT="$P63_OUT  java   a=$p63_j_a b-alone=$p63_j_b_alone a+b=$p63_j_ab amb=$p63_j_ac/$p63_j_ab2  FAIL (want 2/0/2 and 1/1)\n"
+  P63_BAD=1; rc=1
+fi
+# ts PORTED 2026-08-22 — asserts alongside rust and java. Note ts's key is `hash` REFINED BY `fn`, not
+# `hash` alone: its hashes are `<package>#<local tail>` and are NOT unique (measured: 13 shared by two
+# or more distinct fns in hono alone), so bare-hash keying would have merged distinct units and
+# reopened the same borrowing INSIDE one report. The rung binds the JOIN, not one engine's spelling of
+# an identity — which is why this part asserts BEHAVIOUR and not a key format.
+if [ -n "$TS_OK" ]; then
+  node "$TS_DIR/query.mjs" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_t_a=$?
+  node "$TS_DIR/query.mjs" gate --report "$P63/only-b/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_t_b_alone=$?
+  node "$TS_DIR/query.mjs" gate --report "$P63/both/report"   --policy "$P63/pol.candor" >/dev/null 2>&1; p63_t_ab=$?
+  node "$TS_DIR/query.mjs" gate --report "$P63/amb-ctrl/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_t_ac=$?
+  node "$TS_DIR/query.mjs" gate --report "$P63/amb-both/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_t_ab2=$?
+  if [ "$p63_t_a" = 2 ] && [ "$p63_t_b_alone" = 0 ] && [ "$p63_t_ab" = 2 ] && [ "$p63_t_ac" = 1 ] && [ "$p63_t_ab2" = 1 ]; then
+    P63_OUT="$P63_OUT  ts     a=2 b-alone=0 a+b=2 amb=1/1  OK\n"
   else
-    P63_OUT="$P63_OUT  $eng    SKIP — a=$e_a a+b=$e_ab, unported\n"
+    P63_OUT="$P63_OUT  ts     a=$p63_t_a b-alone=$p63_t_b_alone a+b=$p63_t_ab amb=$p63_t_ac/$p63_t_ab2  FAIL (want 2/0/2 and 1/1)\n"
+    P63_BAD=1; rc=1
   fi
-done
+else
+  P63_OUT="$P63_OUT  ts     SKIP — engine absent\n"
+fi
 P63_OUT="$P63_OUT  swift  SKIP — the hash-keyed merge is not ported yet\n"
 rm -rf "$P63"
 # ENGINES: rust java ts; swift: not exercised — its `gate --report` merge is unported like java's and ts's, but no fixture reads a swift-shaped report set here, so measuring it would need a second fixture and this part does not pretend to have asked. rust ASSERTS while java and ts are MEASURED and reported as confirmed-defective rather than merely unported, because a SKIP reading 'not done yet' over a live cardinal sin is the wrong word
