@@ -57,7 +57,16 @@ USAGE
     python3 gen_policy_matrix.py --keep      # keep the generated workspace (prints the path)
     python3 gen_policy_matrix.py --engine ts # one engine
 
-Engine resolution mirrors run.sh: CANDOR / CANDOR_JAVA / CANDOR_TS / CANDOR_SWIFT, absent ⇒ SKIP LOUDLY.
+Engine resolution mirrors run.sh: CANDOR / CANDOR_JAVA / CANDOR_TS / CANDOR_SWIFT for source trees, AND
+the PRE-BUILT binary vars run.sh also honours — CANDOR_SCAN_BIN / CANDOR_QUERY_BIN / CANDOR_JAVA_JAR.
+Absent ⇒ SKIP LOUDLY.
+
+That second set is not a nicety: it is the ONLY shape the released-floor CI leg supplies, because that
+leg installs published artifacts (a release jar, `cargo install` from crates.io) and has no source
+checkout to point CANDOR at. This file claimed to mirror run.sh and did not, so PART 55 reported
+`NO ENGINE FOUND` there and the part DIVERGEd — for weeks, unnoticed, because released-floor runs
+weekly and nothing gates on it. The suite's own PROBE CHECK caught the resulting vacuity ("the fault
+NEVER FIRED — no live cell reached the injection point") and that too went unread.
 """
 import concurrent.futures
 import json
@@ -233,9 +242,13 @@ ENGINES = {}
 
 def discover():
     rust = _p("CANDOR", "candor-rust")
-    for cand in ("target/release/candor-scan", "target/debug/candor-scan"):
-        b = os.path.join(rust, cand)
-        if os.path.exists(b):
+    # A pre-built binary named directly wins over a source tree — same precedence as run.sh, which
+    # takes CANDOR_SCAN_BIN ahead of building from CANDOR.
+    scan_bin = os.environ.get("CANDOR_SCAN_BIN")
+    for cand in ([scan_bin] if scan_bin else []) + [
+            os.path.join(rust, c) for c in ("target/release/candor-scan", "target/debug/candor-scan")]:
+        b = cand
+        if b and os.path.exists(b):
             ENGINES["rust"] = dict(build=build_rust,
                                    cmd=lambda d, sink: [b, d, "--out", os.path.join(d, "o"),
                                                         "--policy", os.path.join(d, "pol")]
@@ -243,9 +256,11 @@ def discover():
             break
     if "rust" in ENGINES:
         rq = None
-        for cand in ("target/release/candor-query", "target/debug/candor-query"):
-            c = os.path.join(_p("CANDOR", "candor-rust"), cand)
-            if os.path.exists(c):
+        query_bin = os.environ.get("CANDOR_QUERY_BIN")
+        for c in ([query_bin] if query_bin else []) + [
+                os.path.join(_p("CANDOR", "candor-rust"), x)
+                for x in ("target/release/candor-query", "target/debug/candor-query")]:
+            if c and os.path.exists(c):
                 rq = c
                 break
         if rq:
@@ -265,8 +280,11 @@ def discover():
             "--policy", os.path.join(d, "pol"), "--strict"]
     jv = _p("CANDOR_JAVA", "candor-java")
     jars = []
+    jar_env = os.environ.get("CANDOR_JAVA_JAR")
+    if jar_env and os.path.exists(jar_env):
+        jars = [jar_env]
     libs = os.path.join(jv, "build", "libs")
-    if os.path.isdir(libs):
+    if not jars and os.path.isdir(libs):
         jars = sorted((os.path.join(libs, x) for x in os.listdir(libs) if x.endswith("-all.jar")),
                       key=os.path.getmtime, reverse=True)
     if jars and shutil.which("javac"):

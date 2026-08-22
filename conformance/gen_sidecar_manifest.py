@@ -217,11 +217,25 @@ def conjunct_a(kind, root):
     os.makedirs(full_d, exist_ok=True)
     full, err = frontier(kind, full_d, SIDECAR)
     if full is None:
-        if expected:
-            # NOT a structural N/A: this engine ships the verb, so failing to run it is the harness broken.
+        # "SHIPS THE VERB" AND "IS PRESENT IN THIS RUN" ARE DIFFERENT FACTS, and conflating them made
+        # this row FAIL on the released-floor CI leg for weeks. That leg installs PUBLISHED artifacts —
+        # a release jar, `cargo install` from crates.io — and deliberately has no candor-ts checkout
+        # (npm ships no fixtures), so `_frontier_cmd` returns "no node / query.mjs": the engine is
+        # ABSENT, which is a structural N/A, not a harness break. Every other row in this suite prints
+        # `SKIP (engine not built — NOT asked)` for that; this one scored it a hard failure, and because
+        # released-floor runs weekly and nothing gates on it, the red went unread through an entire
+        # release window — including the one where this job was the only check on the published bytes.
+        #
+        # The distinction is kept LOUD rather than silent: an engine that IS present and still cannot
+        # produce a frontier is still a harness break, which is the case the branch was written for.
+        if expected and not err.startswith("no node"):
             out["cells"].append({"arm": "reference:full", "verdict": "HARNESS",
                                  "note": "engine ships `callers --include-unknown` but produced no "
                                          "frontier: %s" % err})
+            return out
+        if expected:
+            out["applicable"] = False
+            out["note"] = "%s — engine NOT PRESENT in this run, so it was not asked" % err
             return out
         out["applicable"] = False
         out["note"] = err
