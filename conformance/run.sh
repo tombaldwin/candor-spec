@@ -10441,6 +10441,61 @@ printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 true
 
+# PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2 / §3.3.1 ⟨0.33⟩) [TIER 1]
+#
+# MEASURED on candor-query 0.31.0, and it is a FALSE GREEN produced by ADDING a report: `gate --report`
+# over member `a` refused a scoped rule at exit 2, and gating that SAME member beside an unrelated
+# sibling exited 0 with `policy ✓`. §2.2 has always required a consumer to "join across reports by
+# `hash`, never by bare `fn` (names may legitimately repeat across packages)"; the gate route did not.
+#
+# THE HARM IS NOT EFFECTS MERGING. `a::main` carries an `Unknown` with NO reachable reason — UNANSWERABLE,
+# so the gate refuses. The sibling gives that NAME a reason (`callback:`, class `indirect`), the filter
+# sees a class the rule does not deny, and TOLERATES. Union is safe for EFFECTS and unsafe for REASONS:
+# adding an effect can only add violations; adding a reason turns "I cannot say" into "I checked, it's
+# fine". That is why an ambiguous cross-package edge must contribute NOTHING rather than a union.
+#
+# THE REPORTS ARE HAND-AUTHORED ON PURPOSE. §3.1 says this verb serves a report it did not produce, so a
+# foreign or degraded member report is IN CONTRACT — and a self-produced rust set cannot reach this state
+# (an inherited Unknown always carries its callee in `calls`, SPEC.md §4), which is exactly why the
+# defect survived every corpus round.
+P63=$(mktemp -d); P63_BAD=0; P63_OUT=""
+mkdir -p "$P63/only-a" "$P63/only-b" "$P63/both"
+cat > "$P63/both/report.a.scan.json" <<'JEOF'
+{"candor":{"version":"scan-0.31.0","toolchain":"stable","spec":"0.31"},"package":"a",
+ "analyzed":{"count":1,"digest":"0000000000000000"},"resolves":["fs","incomplete"],
+ "excluded":[],"outOfScope":[],
+ "functions":[{"fn":"main","loc":"src/main.rs:1:1","inferred":["Unknown"],"direct":[],"hash":"a#main"}]}
+JEOF
+cat > "$P63/both/report.b.scan.json" <<'JEOF'
+{"candor":{"version":"scan-0.31.0","toolchain":"stable","spec":"0.31"},"package":"b",
+ "analyzed":{"count":2,"digest":"0000000000000000"},"resolves":["fs","incomplete"],
+ "excluded":[],"outOfScope":[],
+ "functions":[{"fn":"main","loc":"src/lib.rs:1:1","inferred":[],"direct":[],"hash":"b#main","calls":["quiet"]},
+              {"fn":"quiet","loc":"src/lib.rs:5:1","inferred":["Unknown"],"direct":["Unknown"],
+               "hash":"b#quiet","unknownWhy":["callback:cb"]}]}
+JEOF
+cp "$P63/both/report.a.scan.json" "$P63/only-a/"
+cp "$P63/both/report.b.scan.json" "$P63/only-b/"
+printf 'deny Unknown[dispatch]\n' > "$P63/pol.candor"
+"$QUERY" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_a=$?
+"$QUERY" gate --report "$P63/only-b/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_b_alone=$?
+"$QUERY" gate --report "$P63/both/report"   --policy "$P63/pol.candor" >/dev/null 2>&1; p63_ab=$?
+if [ "$p63_a" = 2 ] && [ "$p63_b_alone" = 0 ] && [ "$p63_ab" = 2 ]; then
+  P63_OUT="  rust   a=2 b-alone=0 a+b=2  OK   (the sibling does not answer for a)\n"
+else
+  P63_OUT="  rust   a=$p63_a b-alone=$p63_b_alone a+b=$p63_ab  FAIL (want 2/0/2)\n"
+  P63_BAD=1; rc=1
+fi
+P63_OUT="$P63_OUT  java   SKIP — the hash-keyed merge is not ported yet\n  ts     SKIP — the hash-keyed merge is not ported yet\n  swift  SKIP — the hash-keyed merge is not ported yet\n"
+rm -rf "$P63"
+# ENGINES: rust; java ts swift: NOT SHIPPED — the hash-keyed merge is implemented in candor-rust only, so this is REFERENCE-LED and the others SKIP until they port it, with the skip ratchet as what stops that skip becoming permanent
+# CONTROLS: b-alone — the sibling gated ALONE must answer 0, or the row passes for an engine that simply refuses every merge, which is the failure mode this part exists to exclude
+echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.33⟩)"
+printf '%b' "$P63_OUT"
+[ "$P63_BAD" = 0 ] && echo "  -> MATCH — adding a sibling report cannot turn a refusal into a pass"
+[ "$P63_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+true
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
