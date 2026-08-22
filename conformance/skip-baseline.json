@@ -24,6 +24,9 @@
   "tally:candor-java": 1,
   "tally:candor-scan": 1,
   "tally:candor-swift": 0,
-  "tally:candor-ts": 3
+  "tally:candor-ts": 3,
+  "line:java SKIP — the hash-keyed merge is not ported yet": 1,
+  "line:ts SKIP — the hash-keyed merge is not ported yet": 1,
+  "line:swift SKIP — the hash-keyed merge is not ported yet": 1
  }
 }
