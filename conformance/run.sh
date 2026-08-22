@@ -10486,9 +10486,30 @@ else
   P63_OUT="  rust   a=$p63_a b-alone=$p63_b_alone a+b=$p63_ab  FAIL (want 2/0/2)\n"
   P63_BAD=1; rc=1
 fi
-P63_OUT="$P63_OUT  java   SKIP — the hash-keyed merge is not ported yet\n  ts     SKIP — the hash-keyed merge is not ported yet\n  swift  SKIP — the hash-keyed merge is not ported yet\n"
+# MEASURED, not assumed: java and ts were run against these very reports and BOTH exit 0 on `a+b`
+# where they exit 2 on `a` alone — the same false green rust had. A SKIP would read as "not ported
+# yet"; these are CONFIRMED DEFECTIVE, and the two words are not interchangeable when the thing being
+# recorded is a cardinal sin. They are still SKIPs for the RATCHET (the rung is genuinely unported and
+# a hard failure would wedge the suite red), but the line says which it is.
+for eng in java ts; do
+  case "$eng" in
+    java) "$JAR" >/dev/null 2>&1; e_a=$(java -jar "$JAR" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
+          e_ab=$(java -jar "$JAR" gate --report "$P63/both/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?) ;;
+    ts)   if [ -z "$TS_OK" ]; then e_a=""; e_ab=""; else
+            e_a=$(node "$TS_DIR/query.mjs" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
+            e_ab=$(node "$TS_DIR/query.mjs" gate --report "$P63/both/report" --policy "$P63/pol.candor" >/dev/null 2>&1; echo $?)
+          fi ;;
+  esac
+  if [ -z "$e_a" ]; then P63_OUT="$P63_OUT  $eng    SKIP — engine absent\n"
+  elif [ "$e_a" = 2 ] && [ "$e_ab" = 0 ]; then
+    P63_OUT="$P63_OUT  $eng    SKIP — CONFIRMED DEFECTIVE (a=2 a+b=0: the sibling answers for a), unported\n"
+  else
+    P63_OUT="$P63_OUT  $eng    SKIP — a=$e_a a+b=$e_ab, unported\n"
+  fi
+done
+P63_OUT="$P63_OUT  swift  SKIP — the hash-keyed merge is not ported yet\n"
 rm -rf "$P63"
-# ENGINES: rust; java ts swift: NOT SHIPPED — the hash-keyed merge is implemented in candor-rust only, so this is REFERENCE-LED and the others SKIP until they port it, with the skip ratchet as what stops that skip becoming permanent
+# ENGINES: rust java ts; swift: not exercised — its `gate --report` merge is unported like java's and ts's, but no fixture reads a swift-shaped report set here, so measuring it would need a second fixture and this part does not pretend to have asked. rust ASSERTS while java and ts are MEASURED and reported as confirmed-defective rather than merely unported, because a SKIP reading 'not done yet' over a live cardinal sin is the wrong word
 # CONTROLS: b-alone — the sibling gated ALONE must answer 0, or the row passes for an engine that simply refuses every merge, which is the failure mode this part exists to exclude
 echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.33⟩)"
 printf '%b' "$P63_OUT"
