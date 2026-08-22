@@ -10477,13 +10477,51 @@ JEOF
 cp "$P63/both/report.a.scan.json" "$P63/only-a/"
 cp "$P63/both/report.b.scan.json" "$P63/only-b/"
 printf 'deny Unknown[dispatch]\n' > "$P63/pol.candor"
+# ⟨0.33⟩ THE SECOND FLIP, and it is the one the FIRST FIX CAUSED. Keying the merge on `hash` means an
+# ambiguous callee NAME resolves to nothing — right, because picking a declarer would invent a reach.
+# But dropping it SILENTLY reopened this part's own defect by another route: the caller lost the reason
+# class it would have inherited, stayed ANSWERABLE through a reason of its own, and a RED verdict went
+# GREEN by adding a report. One false green traded for another, in the commit that closed the first.
+#
+# `a` declares an effectful `helper` raising Unknown[dispatch]; `b` declares a pure `helper` (the
+# ambiguity); `c` declares `caller`, which calls `helper` and carries its OWN callback: reason — the
+# has-own-reason shape, which is the common one and the only one that flips. The fix CONTRIBUTES
+# Unknown[dispatch] at the caller's entry instead of letting the edge vanish.
+mkdir -p "$P63/amb-ctrl" "$P63/amb-both"
+cat > "$P63/amb-ctrl/report.a.scan.json" <<'JEOF'
+{"candor":{"version":"scan-0.31.0","toolchain":"stable","spec":"0.31"},"package":"a",
+ "analyzed":{"count":1,"digest":"0000000000000000"},"resolves":["fs","incomplete"],"excluded":[],"outOfScope":[],
+ "functions":[{"fn":"helper","loc":"src/lib.rs:1:1","inferred":["Exec","Unknown"],"direct":["Exec","Unknown"],
+               "unknownWhy":["dispatch:vtable"],"hash":"a#helper"}]}
+JEOF
+cat > "$P63/amb-ctrl/report.c.scan.json" <<'JEOF'
+{"candor":{"version":"scan-0.31.0","toolchain":"stable","spec":"0.31"},"package":"c",
+ "analyzed":{"count":1,"digest":"0000000000000000"},"resolves":["fs","incomplete"],"excluded":[],"outOfScope":[],
+ "functions":[{"fn":"caller","loc":"src/lib.rs:1:1","inferred":["Unknown"],"direct":["Unknown"],
+               "unknownWhy":["callback:cb"],"calls":["helper"],"hash":"c#caller"}]}
+JEOF
+cp "$P63/amb-ctrl/report.a.scan.json" "$P63/amb-ctrl/report.c.scan.json" "$P63/amb-both/" 2>/dev/null
+cat > "$P63/amb-both/report.b.scan.json" <<'JEOF'
+{"candor":{"version":"scan-0.31.0","toolchain":"stable","spec":"0.31"},"package":"b",
+ "analyzed":{"count":1,"digest":"0000000000000000"},"resolves":["fs","incomplete"],"excluded":[],"outOfScope":[],
+ "functions":[{"fn":"helper","loc":"src/lib.rs:1:1","inferred":[],"direct":[],"hash":"b#helper"}]}
+JEOF
+printf 'deny Unknown[dispatch] caller\n' > "$P63/pol-amb.candor"
+"$QUERY" gate --report "$P63/amb-ctrl/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_amb_ctrl=$?
+"$QUERY" gate --report "$P63/amb-both/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_amb_both=$?
+if [ "$p63_amb_ctrl" = 1 ] && [ "$p63_amb_both" = 1 ]; then
+  P63_OUT="$P63_OUT  rust   amb-ctrl=1 amb-both=1  OK   (an ambiguous callee contributes Unknown[dispatch], it does not vanish)\n"
+else
+  P63_OUT="$P63_OUT  rust   amb-ctrl=$p63_amb_ctrl amb-both=$p63_amb_both  FAIL (want 1/1 — 0 on amb-both is the edge vanishing silently)\n"
+  P63_BAD=1; rc=1
+fi
 "$QUERY" gate --report "$P63/only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_a=$?
 "$QUERY" gate --report "$P63/only-b/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_b_alone=$?
 "$QUERY" gate --report "$P63/both/report"   --policy "$P63/pol.candor" >/dev/null 2>&1; p63_ab=$?
 if [ "$p63_a" = 2 ] && [ "$p63_b_alone" = 0 ] && [ "$p63_ab" = 2 ]; then
-  P63_OUT="  rust   a=2 b-alone=0 a+b=2  OK   (the sibling does not answer for a)\n"
+  P63_OUT="$P63_OUT  rust   a=2 b-alone=0 a+b=2  OK   (the sibling does not answer for a)\n"
 else
-  P63_OUT="  rust   a=$p63_a b-alone=$p63_b_alone a+b=$p63_ab  FAIL (want 2/0/2)\n"
+  P63_OUT="$P63_OUT  rust   a=$p63_a b-alone=$p63_b_alone a+b=$p63_ab  FAIL (want 2/0/2)\n"
   P63_BAD=1; rc=1
 fi
 # MEASURED, not assumed: java and ts were run against these very reports and BOTH exit 0 on `a+b`
