@@ -16,6 +16,46 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.32⟩ CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (§2, §3.3).** ⟨0.30⟩'s arm keys on what
+  the peek FOUND, and a peek that cannot open a file finds nothing — byte-identical to finding it clean.
+  Measured: an unreadable `build.rs` holding `Command::new("curl")` answered exit 0 under `deny Exec`. A
+  class the scan did not read now refuses on BOTH routes with byte-equal documents. Bounded to policies
+  that carry a DENY rule: `peeked: false` also means "never asked", and reading that as unread code
+  refused trees nobody had put a question to. PART 62, with the never-asked control on both engine rows.
+
+- **⟨0.32⟩ A CONSUMER JOINS REPORTS BY `hash`, NEVER BY BARE `fn` (§2.2).** Measured in every engine:
+  `gate --report` over one member refused a scoped rule at exit 2, and the SAME member gated beside an
+  unrelated sibling exited 0 with `policy ✓` — adding a report, strictly more information, turned a red
+  verdict green. Union is safe for EFFECTS and not for REASON CLASSES: a reason set is what makes an
+  `Unknown` answerable, so borrowing one from an unrelated same-named function converts a refusal into an
+  answer. The call graph needs the same treatment — `calls` names callees by bare `fn` — and an ambiguous
+  callee CONTRIBUTES `Unknown[dispatch]` rather than vanishing. PART 63, four-way.
+
+- **⟨0.32⟩ A PEEK MAY DERIVE THE FILE SET IT READS, AND CERTIFY FROM IT (§2).** An engine that reads
+  compiled artifacts cannot otherwise answer for a tree that has not been built. Compiling a source and
+  analysing the RESULT satisfies ⟨0.29⟩'s one-judgement-path MUST exactly — one classifier, resolved
+  receivers. Two conditions: every file's derivation succeeds (a compiler that recovers from an error
+  emits a body that throws where the untranslatable code was, so effects VANISH), and the derivation runs
+  no code from the tree (this is the tool that certifies `deny Exec`; a scan must not become an
+  execution). candor-java implements it; the source-reading engines have no case. PART 65.
+
+- **⟨0.32⟩ …AND THE CLASSPATH IT DERIVED AGAINST IS PART OF THE CLAIM (§2).** A compile that succeeds
+  against the wrong version of a dependency emits bytecode the project does not build: a `static final`
+  guard folds to `false`, javac deletes the branch as unreachable, and the effect disappears. So the
+  classpath MUST come from the scanned root or an operator declaration — never from the tree's own build
+  metadata, which would let the artifact being scanned choose the inputs that shape its own derived
+  bytecode. candor-java adds `--peek-classpath`, the `peek-classpath` config key, and
+  `CANDOR_PEEK_CLASSPATH`; a declared jar registering an annotation processor withdraws certification
+  exactly as one under the root does. PART 65's dependency-outside-the-root row.
+
+- **⟨0.32⟩ A CLASS OLDER THAN ITS SOURCE IS DISCLOSED (candor-java).** Compiled is not the same question
+  as current. Measured as a live false all-clear: edit a file to add `Runtime.exec`, do not rebuild, scan
+  under `deny Exec` — exit 0, certified, because every disclosure in the report was true of the bytes
+  that were read and only which bytes those were was wrong. Rides `excluded` as `source-newer-than-class`.
+  Claimed against the NEWEST copy of a class, never the last one read: a real project's exploded war held
+  a second copy of nearly every class 14 months older, and last-one-wins reported 374 current sources
+  stale against stale copies of their own classes.
+
 - **⟨0.32⟩ A REFUSAL IS RECORDED BESIDE THE REPORTS IT WOULD HAVE WRITTEN (§3.3.1).** §3.3.1's arming
   rules cover a prefix the operator NAMED. A run given no `--out` still writes reports — to its default
   prefix — and a refusal leaves whatever the last successful run put there, readable as current. Measured
