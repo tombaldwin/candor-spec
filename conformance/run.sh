@@ -10779,9 +10779,69 @@ JEOF
     P65_BAD=1; rc=1
   fi
 fi
+
+# THE DEPENDENCY-OUTSIDE-THE-ROOT ROW, and the one the certify row above could not ask. Every fixture in
+# this part is SELF-CONTAINED — its imports all resolve within the tree — which is exactly why the whole
+# rung passed while certification was, on a real 21k-unit Gradle project, unavailable: dependencies live
+# in ~/.gradle, outside the root the peek is restricted to, so every compile failed and both source
+# classes came back `peeked: false`. This row is that project in ten lines.
+#
+# The classpath may only widen by OPERATOR DECLARATION. Resolving it from the tree's own build metadata
+# would let the artifact being scanned choose the jars its derived bytecode compiles against.
+if [ "$P65_BAD" = 0 ]; then
+  P65D=$(mktemp -d)
+  mkdir -p "$P65D/tree/com/x" "$P65D/lib/com/dep" "$P65D/out" "$P65D/tree/classes"
+  cat > "$P65D/lib/com/dep/Helper.java" <<'JEOF'
+package com.dep;
+public class Helper { public void ping() { } }
+JEOF
+  cat > "$P65D/tree/com/x/Anchor.java" <<'JEOF'
+package com.x;
+public class Anchor { public int add(int a, int b) { return a + b; } }
+JEOF
+  cat > "$P65D/tree/com/x/UsesDep.java" <<'JEOF'
+package com.x;
+import com.dep.Helper;
+public class UsesDep { public void go() { new Helper().ping(); } }
+JEOF
+  printf 'deny Exec\n' > "$P65D/pol.candor"
+  if javac -d "$P65D/out" "$P65D/lib/com/dep/Helper.java" >/dev/null 2>&1 \
+     && ( cd "$P65D/out" && jar cf "$P65D/dep.jar" com ) >/dev/null 2>&1 \
+     && javac -d "$P65D/tree/classes" "$P65D/tree/com/x/Anchor.java" >/dev/null 2>&1; then
+    # [1] the dep is unreachable → the derivation fails → NOT peeked, INCOMPLETE. Never certified.
+    java -jar "$JAR" "$P65D/tree" --policy "$P65D/pol.candor" >/dev/null 2>&1; p65d_noflag=$?
+    # [2] declared → the derivation succeeds → certified.
+    java -jar "$JAR" "$P65D/tree" --policy "$P65D/pol.candor" --peek-classpath "$P65D/dep.jar" >/dev/null 2>&1; p65d_flag=$?
+    # [3] CONTROL — a declared jar registering an annotation processor withdraws certification, exactly as
+    # one under the root does: the generated code is absent from a `-proc:none` derivation wherever the
+    # processor came from. Without this the flag is a way to buy a certification the root would refuse.
+    mkdir -p "$P65D/out/META-INF/services"
+    echo 'com.dep.NoOp' > "$P65D/out/META-INF/services/javax.annotation.processing.Processor"
+    ( cd "$P65D/out" && jar cf "$P65D/dep-proc.jar" com META-INF ) >/dev/null 2>&1
+    java -jar "$JAR" "$P65D/tree" --policy "$P65D/pol.candor" --peek-classpath "$P65D/dep-proc.jar" >/dev/null 2>&1; p65d_proc=$?
+    # [4] CONTROL — the certify row must stay FALSIFIABLE in this shape too: a denied effect in the
+    # uncompiled source still refuses under the flag, and is NAMED.
+    cat > "$P65D/tree/com/x/Bad.java" <<'JEOF'
+package com.x;
+public class Bad { public void go() throws Exception { Runtime.getRuntime().exec("id"); } }
+JEOF
+    java -jar "$JAR" "$P65D/tree" --policy "$P65D/pol.candor" --peek-classpath "$P65D/dep.jar" > "$P65D/v.txt" 2>&1; p65d_viol=$?
+    p65d_named=$(grep -c 'com.x.Bad.go' "$P65D/v.txt" 2>/dev/null || echo 0)
+    if [ "$p65d_noflag" = 2 ] && [ "$p65d_flag" = 0 ] && [ "$p65d_proc" = 2 ] \
+       && [ "$p65d_viol" = 2 ] && [ "$p65d_named" -ge 1 ]; then
+      P65_OUT="$P65_OUT  java   dep-outside-root: no-flag=2 declared=0 processor-control=2 violation=2(named)  OK
+"
+    else
+      P65_OUT="$P65_OUT  java   dep-outside-root: no-flag=$p65d_noflag declared=$p65d_flag processor-control=$p65d_proc violation=$p65d_viol(named=$p65d_named)  FAIL (want 2/0/2/2)
+"
+      P65_BAD=1; rc=1
+    fi
+  fi
+  rm -rf "$P65D"
+fi
 rm -rf "$P65"
 # ENGINES: java; rust ts swift: NOT APPLICABLE and measured so — they analyse SOURCE directly, so a source file needs no derivation to be read and this clause has no case in them, since the derived-file-set rule binds an engine that reads COMPILED artifacts and today that is java alone
-# CONTROLS: violation — a denied effect in the derived set must still be NAMED at exit 2, or the certify row passes for an engine that derives nothing; syntax-error and missing-dep — a derivation that failed must not certify, which is the one new way 0.32 can be wrong
+# CONTROLS: violation — a denied effect in the derived set must still be NAMED at exit 2, or the certify row passes for an engine that derives nothing; dep-outside-root — the shape every self-contained fixture hides, where certification is unavailable until the operator declares the classpath; processor-control — a declared jar carrying an annotation processor withdraws certification, or the flag buys a certification the root would refuse; syntax-error and missing-dep — a derivation that failed must not certify, which is the one new way 0.32 can be wrong
 echo "PART 65 — a derived file set may certify, and must not certify past a failed derivation (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P65_OUT"
 [ "$P65_BAD" = 0 ] && echo "  -> MATCH — an unbuilt tree is answered, and a failed derivation still refuses"

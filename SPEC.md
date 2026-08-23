@@ -856,6 +856,21 @@ already carry.
   cannot see generated code MUST withdraw the claim where such generation is possible rather than certify
   on less evidence than a real build has.
 
+  ⟨0.32⟩ **A derived set certifies the source against the CLASSPATH the derivation used, and that
+  classpath MUST come from the scanned root or from an operator declaration — never from the tree's own
+  build metadata — with its provenance disclosed.** The two conditions above cover whether the derivation
+  COMPLETED; this one covers what it compiled AGAINST, and the difference is a false all-clear. A compile
+  that succeeds against the wrong version of a dependency emits bytecode the project does not build: a
+  `static final` constant guarding an effect folds to `false`, javac deletes the branch as unreachable,
+  and the effect VANISHES from the derived set. That is the same disappearance error recovery causes,
+  arriving through the classpath instead.
+  
+  Resolving the classpath from the tree's own `pom.xml`, lockfile, or build script is forbidden for a
+  reason that survives any care taken over the resolver: it lets the artifact being scanned choose the
+  inputs that shape its own derived bytecode — an artifact could compile itself innocent. An operator
+  declaration puts that choice with the operator, where a wrong version is a wrong declaration in the
+  same class as a wrong `net-partner` list, rather than something the engine silently picked.
+
   *Reported as the derived class's own name, never as the analysed one: the operator asked about
   `src/com/x/Deploy.java`, and a finding filed under a scratch directory names a file they cannot open.*
 
