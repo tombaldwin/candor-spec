@@ -10385,9 +10385,9 @@ printf '%s' "$P61_OUT"
 [ "$P61_BAD" = 2 ] && echo "  -> SKIP — no fixture report"
 true
 
-# PART 62 — CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (SPEC §2 ⟨0.33⟩) [TIER 1]
+# PART 62 — CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (SPEC §2 ⟨0.32⟩) [TIER 1]
 #
-# PART 55's ⟨0.33⟩ cell is PERMISSIVE by construction — 0 and an evidenced 2 both pass — so it cannot
+# PART 55's ⟨0.32⟩ cell is PERMISSIVE by construction — 0 and an evidenced 2 both pass — so it cannot
 # pin this MUST: an engine that never ports the rule answers 0 for ever and the matrix stays green.
 # This part asserts the rule DIRECTLY. Written because the alternative is the failure this project has
 # already recorded once: a MUST that exists in the spec and in exactly one engine.
@@ -10434,14 +10434,14 @@ fi
 rm -rf "$P62"
 # ENGINES: java; rust ts: NOT APPLICABLE and measured so — their peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
 # CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; gate--report — the second route must agree from the document, since `excluded` rides the report
-echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.33⟩)"
+echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
 [ "$P62_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 [ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 true
 
-# PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2 / §3.3.1 ⟨0.33⟩) [TIER 1]
+# PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2 / §3.3.1 ⟨0.32⟩) [TIER 1]
 #
 # MEASURED on candor-query 0.31.0, and it is a FALSE GREEN produced by ADDING a report: `gate --report`
 # over member `a` refused a scoped rule at exit 2, and gating that SAME member beside an unrelated
@@ -10477,7 +10477,7 @@ JEOF
 cp "$P63/both/report.a.scan.json" "$P63/only-a/"
 cp "$P63/both/report.b.scan.json" "$P63/only-b/"
 printf 'deny Unknown[dispatch]\n' > "$P63/pol.candor"
-# ⟨0.33⟩ THE SECOND FLIP, and it is the one the FIRST FIX CAUSED. Keying the merge on `hash` means an
+# ⟨0.32⟩ THE SECOND FLIP, and it is the one the FIRST FIX CAUSED. Keying the merge on `hash` means an
 # ambiguous callee NAME resolves to nothing — right, because picking a declarer would invent a reach.
 # But dropping it SILENTLY reopened this part's own defect by another route: the caller lost the reason
 # class it would have inherited, stayed ANSWERABLE through a reason of its own, and a RED verdict went
@@ -10566,7 +10566,7 @@ P63_OUT="$P63_OUT  swift  SKIP — the hash-keyed merge is not ported yet\n"
 rm -rf "$P63"
 # ENGINES: rust java ts; swift: not exercised — its `gate --report` merge is unported like java's and ts's, but no fixture reads a swift-shaped report set here, so measuring it would need a second fixture and this part does not pretend to have asked. rust ASSERTS while java and ts are MEASURED and reported as confirmed-defective rather than merely unported, because a SKIP reading 'not done yet' over a live cardinal sin is the wrong word
 # CONTROLS: b-alone — the sibling gated ALONE must answer 0, or the row passes for an engine that simply refuses every merge, which is the failure mode this part exists to exclude
-echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.33⟩)"
+echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.32⟩)"
 printf '%b' "$P63_OUT"
 [ "$P63_BAD" = 0 ] && echo "  -> MATCH — adding a sibling report cannot turn a refusal into a pass"
 [ "$P63_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"

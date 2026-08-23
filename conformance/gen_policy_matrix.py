@@ -438,17 +438,17 @@ def main():
                           f"`outOfScope` — the exit is right for the wrong reason, which is how a peek "
                           f"that refuses everything passes a matrix that only compares exit codes")
                     continue
-            # ⟨0.33⟩ THE INVARIANT LOSES ONE CELL, DELIBERATELY, AND GAINS A CONDITION.
+            # ⟨0.32⟩ THE INVARIANT LOSES ONE CELL, DELIBERATELY, AND GAINS A CONDITION.
             #
             # `0 -> 0` said: if the gate found nothing in the in-scope copy, the peek must find nothing
-            # in the out-of-scope one. ⟨0.33⟩ adds a second reason to refuse that has nothing to do with
+            # in the out-of-scope one. ⟨0.32⟩ adds a second reason to refuse that has nothing to do with
             # FINDING anything — code the engine never READ makes the verdict INCOMPLETE — and placing a
             # file out of scope is one way to produce exactly that. So the peek may legitimately answer 2
             # where its in-scope twin answered 0.
             #
             # This is NOT relaxed to "0 or 2, either is fine", which would retire the invariant to make
             # the implementation pass. The 2 must be EVIDENCED: the report has to carry an `excluded`
-            # class the scan did not read, which is the fact ⟨0.33⟩ keys on. A peek that refuses for any
+            # class the scan did not read, which is the fact ⟨0.32⟩ keys on. A peek that refuses for any
             # other reason still fails this cell — the same discipline as the EMPTY-FINDING guard above,
             # which exists because a peek that always answers 2 passes any matrix comparing exit codes.
             if want == 0 and peek_rc == 2:
@@ -464,7 +464,7 @@ def main():
                 else:
                     bad += 1
                     print(f"  {engine:6} {shape['id']:16} UNEVIDENCED-INCOMPLETE  exit 2 where the "
-                          f"in-scope twin exited 0, and NO unread `excluded` class explains it — ⟨0.33⟩ "
+                          f"in-scope twin exited 0, and NO unread `excluded` class explains it — ⟨0.32⟩ "
                           f"is not a licence to refuse, it is a refusal with a named cause")
                     continue
             if peek_rc != want:

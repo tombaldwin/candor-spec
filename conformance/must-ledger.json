@@ -2862,28 +2862,28 @@
    "unenforced": "A STATEMENT OF WHICH WAY THIS FAILS, binding the reader's expectations rather than an engine. A lost marker fails OPEN (the status quo, so the rung is never worse than what it replaces); a stale one fails CLOSED (correct — the reports under it are from a scan whose successor refused). PART 60's controls C and D exercise both directions as BEHAVIOUR; this paragraph is the rationale that makes them readable as intended rather than as accidents."
   },
   {
-   "sha": "45e3f096490699af",
+   "sha": "85854bac96d8abf6",
    "at": "2. The report",
-   "excerpt": "- ⟨0.33⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2 alrea",
+   "excerpt": "- ⟨0.32⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with `peeked: fal",
    "unenforced": "SPECIFIED, NOT YET IMPLEMENTED — ⟨0.33⟩ is mid-flight. The defect is MEASURED (gate --report exits 2 over one member and 0 over the same member beside an unrelated sibling: a false green), and no engine keys its multi-report merge by `hash` yet, so a conformance part would fail four-way today. The part lands with the implementation; its control must be that a report set with NO name collision still gates identically, or the part passes for an engine that simply refuses every merge."
   },
   {
-   "sha": "259de39757666eb7",
+   "sha": "129801f93cab9251",
    "at": "2. The report",
-   "excerpt": "- ⟨0.33⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with `peeked: fal",
+   "excerpt": "- ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2 alrea",
    "unenforced": "SPECIFIED, IMPLEMENTED IN candor-java ONLY — rust/ts/swift pending, so a four-way part would be reference-led rather than conformance. Lands with the ports; its control is the build-script/build-output pair, which is what separates an implementation reading the producer's `judgedElsewhere` from one keyed on the class token."
   },
   {
-   "sha": "9259ea74b1a434a6",
+   "sha": "e77e57323b5d905f",
    "at": "2. The report",
-   "excerpt": "- ⟨0.33⟩ `\\\"judgedElsewhere\\\": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the files o",
+   "excerpt": "- **DECORATIONS** — a coverage ledger's detail, `loc`, and `hash` ON A SINGLE-REPORT ROUTE — carry no claim a ",
    "unenforced": "A FIELD DEFINITION, not a behaviour an engine can fail on its own — it is exercised through the INCOMPLETE rule above, which carries the enforcement. Classified here so the field cannot be removed silently."
   },
   {
-   "sha": "bcc3966f1ec10b8a",
-   "at": "3.1 Read-only queries (SHOULD)",
-   "excerpt": "- **DECORATIONS** — a coverage ledger's detail, `loc`, and `hash` ON A SINGLE-REPORT ROUTE — carry no claim a ",
-   "unenforced": "A RE-SCOPING of the ⟨0.24⟩ signature/decoration split, enforced through the multi-report merge MUST above rather than separately: an engine that keys its merge by `hash` and refuses a hashless set satisfies both, and one that does not fails the merge part first. No separate part would add coverage."
+   "sha": "c8e53fb0d7ae549f",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.32⟩ `\"judgedElsewhere\": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the files o",
+   "unenforced": "A FIELD DEFINITION, not a behaviour an engine can fail on its own — it is exercised through the INCOMPLETE rule above, which carries the enforcement. Classified here so the field cannot be removed silently."
   }
  ]
 }

@@ -786,7 +786,7 @@ already carry.
   `manifest` together) must not let one unreadable test file delete what it did read. An unread file the
   producer cannot attribute to a class withdraws the claim for ALL of them: fail closed.
 
-- ⟨0.33⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2
+- ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2
   already binds the consumer; this states the consequence for the VERDICT, because the route that
   violated it was the gate. MEASURED on candor-query 0.31.0: `gate --report` over one member refused a
   scoped rule at exit 2, and gating the SAME member alongside an unrelated sibling exited 0 with
@@ -802,7 +802,7 @@ already carry.
   identity: without it the twin rows tie and the two routes, which accumulate in different orders,
   produce unequal documents — the ⟨0.31⟩ `outOfScope` hazard repeated.
 
-- ⟨0.33⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
+- ⟨0.32⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
   `peeked: false` and without `judgedElsewhere: true` (below) MUST suppress `ok` and exit 2, on BOTH the
   `scan --policy` and `gate --report` routes. ⟨0.30⟩ already ruled that a non-empty `outOfScope` does so,
   but that keys the verdict on what the peek FOUND — and a peek that cannot open a file finds nothing,
@@ -816,7 +816,7 @@ already carry.
   failure the key exists to prevent. This MUST NOT fire on a run whose policy was REFUSED: a refusal is
   not a verdict, so there is nothing for incompleteness to qualify (§3.1).
 
-- ⟨0.33⟩ `"judgedElsewhere": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the
+- ⟨0.32⟩ `"judgedElsewhere": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the
   files of this class are copies of code this same scan already judged*, so the class hides nothing and
   the rule above does not fire for it. The motivating case is a build tree: a jar under `build/` is a
   derived copy of the classes just analysed, and failing a gate on it would redden every project that
@@ -1938,7 +1938,7 @@ key's ROLE:
 - **DECORATIONS** — a coverage ledger's detail, `loc`, and `hash` ON A SINGLE-REPORT ROUTE — carry no claim
   a verdict reads. Withhold the decoration, disclose it, and answer. Refusing there drops a hedge to be
   strict about ornament.
-  **⟨0.33⟩ `hash` IS NOT A DECORATION WHEN SEVERAL REPORTS ARE MERGED.** §2.2 requires a consumer to join
+  **⟨0.32⟩ `hash` IS NOT A DECORATION WHEN SEVERAL REPORTS ARE MERGED.** §2.2 requires a consumer to join
   across reports by `hash` and never by bare `fn`, so on a multi-report route the join — and therefore
   every accumulator the verdict is computed from — depends on it. There it is a SIGNATURE key: a report
   set in which any entry lacks `hash` cannot be merged soundly, and the run MUST refuse rather than fall
