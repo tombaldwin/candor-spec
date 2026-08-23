@@ -10463,13 +10463,24 @@ if [ "$P62R_BAD" = 0 ]; then
   chmod 644 "$P62R/build.rs"
   printf 'fn main() {}\n' > "$P62R/build.rs"
   "$SCAN" "$P62R" --out "$P62R/c" --policy "$P62R/pol.candor" >/dev/null 2>&1; p62r_ctl=$?
+  # THE SECOND OVER-CHARGE CONTROL, and it caught a defect in this rung's own first cut. `peeked: false`
+  # has TWO causes — "opened it and failed" and "never asked" — and the peek short-circuits when the
+  # policy carries no DENY rule. Reading the second cause as the first refused an UNREADABLE class under
+  # a policy that never asked about it, and (worse) a perfectly READABLE one too: three whole policy
+  # shapes, on any tree with an exclusion. A forbid-only policy over the SAME unreadable tree must
+  # answer 0.
+  chmod 000 "$P62R/build.rs" 2>/dev/null
+  printf 'forbid ui -> db\n' > "$P62R/noask.candor"
+  "$SCAN" "$P62R" --out "$P62R/n" --policy "$P62R/noask.candor" >/dev/null 2>&1; p62r_noask=$?
+  chmod 644 "$P62R/build.rs" 2>/dev/null
   # …and the two routes must be BYTE-EQUAL, not merely equal in exit code (SPEC §3.1).
   if cmp -s "$P62R/v.json" "$P62R/v2.json"; then p62r_eq=same; else p62r_eq=DIFFER; fi
-  if [ "$p62r_scan" = 2 ] && [ "$p62r_gate" = 2 ] && [ "$p62r_ctl" = 0 ] && [ "$p62r_eq" = same ]; then
-    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 verdicts=same  OK
+  if [ "$p62r_scan" = 2 ] && [ "$p62r_gate" = 2 ] && [ "$p62r_ctl" = 0 ] && [ "$p62r_eq" = same ] \
+     && [ "$p62r_noask" = 0 ]; then
+    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 never-asked-control=0 verdicts=same  OK
 "
   else
-    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl verdicts=$p62r_eq  FAIL (want 2/2/0/same)
+    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl never-asked-control=$p62r_noask verdicts=$p62r_eq  FAIL (want 2/2/0/0/same)
 "
     P62R_BAD=1; rc=1
   fi
@@ -10478,7 +10489,7 @@ chmod -R u+rwX "$P62R" 2>/dev/null; rm -rf "$P62R"
 P62_OUT="$P62_OUT$P62R_OUT"
 [ "$P62R_BAD" = 1 ] && P62_BAD=1
 # ENGINES: java rust; ts: NOT APPLICABLE and measured so — its peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire, and rust has the case ONLY in the unreadable shape (the row above), not in the declined-to-read one; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
-# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; gate--report — the second route must agree from the document, since `excluded` rides the report
+# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; readable-control — the same excluded class, readable, must answer 0; never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse; gate--report — the second route must agree from the document, since `excluded` rides the report
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
