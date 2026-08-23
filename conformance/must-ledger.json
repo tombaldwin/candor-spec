@@ -2887,6 +2887,7 @@
    "at": "2. The report",
    "excerpt": "- ⟨0.32⟩ `\"judgedElsewhere\": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the files o",
    "unenforced": "A FIELD DEFINITION, not a behaviour an engine can fail on its own — it is exercised through the INCOMPLETE rule above, which carries the enforcement. Classified here so the field cannot be removed silently."
-  }
+  },
+  {"sha": "3aa263e5c8e093fc", "at": "1. Effects", "excerpt": "⟨0.32⟩ **`Exec` charges reach to the subprocess capability, not only the launch.** Constructing or configuring", "part": "PART 66 (readBack + lookalike over-charge controls)"}
  ]
 }

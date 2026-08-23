@@ -10849,6 +10849,160 @@ printf '%s' "$P65_OUT"
 [ "$P65_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 true
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 66 — `Exec` REACHES THE SUBPROCESS CAPABILITY, NOT ONLY THE LAUNCH (SPEC §1 ⟨0.32⟩) [TIER 1]
+#
+# An invocation object carries its OWN payload — program, argv, environment — and travels fully armed.
+# The function that ASSEMBLES one therefore holds the capability exactly as the one that spawns does, and
+# splitting build from launch across two functions must not make the builder invisible.
+#
+# MEASURED on candor-java, the family's lone launch-verb ALLOWLIST (start/startPipeline/Runtime.exec):
+#
+#     public ProcessBuilder arm(String[] argv) { return new ProcessBuilder(argv); }   // deny Exec
+#     -> exit 0, `no violations`, `arm` reporting `inferred: []`
+#
+# Not a wrong rule — an ABSENT one, and absent silently: every verb nobody enumerated read as pure. That
+# is why §1 ⟨0.32⟩ states the carve-outs as a DENYLIST and forbids the enumeration.
+#
+# FIVE CELLS PER ENGINE, and the last two decide the part. A whole-type rule is trivially satisfied by
+# charging MORE — an engine answering `Exec` for everything passes armed/configured/launched and is
+# useless — so `readBack` (a read-back getter only) and `lookalike` (a project-local type that merely
+# shares the name) are the rows an over-charge fails. Each control carries a CLOCK MARKER and the checker
+# REQUIRES it to be present with a non-empty effect set: every engine omits pure functions, so "absent"
+# would otherwise pass a control that asked nothing (the PART 37 (e) failure).
+#
+# THE VERDICT IS THE TEETH, so both fixtures are also gated: the capability tree must exit 1 under
+# `deny Exec`, and the lookalike tree — same policy, same shape, project-local type — must exit 0.
+#
+# THREE CELLS ARE MEASURED-ABSENT RATHER THAN ASSERTED, named here so the gap is visible rather than
+# quietly uncovered:
+#   · ts armed/configured — node's `child_process` has NO invocation object: `spawn(cmd, args)` IS the
+#     launch, so there is no build-then-launch split to lose. ts drives launched + both controls.
+#   · swift configured — MEASURED GAP, not an inapplicability: `t.arguments = ["-x"]` on a received
+#     `Process` reports NO effect at all, so candor-swift charges construction but not configuration.
+#   · rust readBack — MEASURED OVER-CHARGE, the other direction: `c.get_program()` answers
+#     `Clock+Exec`, so candor-rust's whole-type `Command` rule has no read-back carve-out yet.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+P66_OK=0
+P66="$W/p66"; mkdir -p "$P66"
+printf 'deny Exec\n' > "$P66/deny.pol"
+p66() {  # p66 <engine> <report> <cap-rc> <look-rc> <cells…>
+  local eng="$1" rep="$2" caprc="$3" lookrc="$4"; shift 4
+  if [ "$caprc" != 1 ] || [ "$lookrc" != 0 ]; then
+    echo "  $eng  -> DIVERGE  (deny Exec: capability tree exited $caprc (want 1), lookalike tree exited $lookrc (want 0))"
+    P66_OK=1
+    return
+  fi
+  python3 "$HERE/exec_capability_check.py" "$eng" "$rep" "$@" || P66_OK=1
+}
+echo "[66] \`Exec\` REACHES THE SUBPROCESS CAPABILITY  (SPEC §1 ⟨0.32⟩ — constructing an invocation is Exec)"
+# ── rust ───────────────────────────────────────────────────────────────────────────────────────
+if [ -x "$SCAN" ]; then
+  mkdir -p "$P66/rs/src" "$P66/rsl/src"
+  printf '[package]\nname="p66"\nversion="0.0.0"\nedition="2021"\n' > "$P66/rs/Cargo.toml"
+  { printf '#![allow(non_snake_case)]\n'
+    printf 'pub fn armed(p: &str) -> std::process::Command { std::process::Command::new(p) }\n'
+    printf 'pub fn configured(c: &mut std::process::Command) { c.arg("-x"); }\n'
+    printf 'pub fn launched(c: &mut std::process::Command) { let _ = c.spawn(); }\n'
+    printf 'pub fn readBack(c: &std::process::Command) -> String { let _ = std::time::Instant::now(); c.get_program().to_string_lossy().to_string() }\n'
+  } > "$P66/rs/src/lib.rs"
+  printf '[package]\nname="p66l"\nversion="0.0.0"\nedition="2021"\n' > "$P66/rsl/Cargo.toml"
+  { printf '#![allow(non_snake_case)]\n'
+    printf 'pub struct Command { pub argv: Vec<String> }\n'
+    printf 'impl Command { pub fn new(p: &str) -> Command { Command { argv: vec![p.to_string()] } } }\n'
+    printf 'pub fn lookalike(p: &str) -> Command { let _ = std::time::Instant::now(); Command::new(p) }\n'
+  } > "$P66/rsl/src/lib.rs"
+  ( cd "$P66/rs"  && "$SCAN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_rcap=$?
+  ( cd "$P66/rsl" && "$SCAN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_rlook=$?
+  p66_rrep="$(ls "$P66"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  p66_rlrep="$(ls "$P66"/rsl/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  # rust's `readBack` cell is measured-absent (it answers Clock+Exec — the over-charge named in the
+  # header), so the lookalike tree carries this engine's over-charge control, in its own report.
+  p66 "rust" "$p66_rrep" "$p66_rcap" "$p66_rlook" armed=Exec configured=Exec launched=Exec
+  python3 "$HERE/exec_capability_check.py" "rust*" "$p66_rlrep" lookalike=noExec || P66_OK=1
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+# ── java ───────────────────────────────────────────────────────────────────────────────────────
+mkdir -p "$P66/java/x" "$P66/javal/local"
+{ printf 'package x;\npublic class A {\n'
+  printf '  public static ProcessBuilder armed(String[] argv) { return new ProcessBuilder(argv); }\n'
+  printf '  public static void configured(ProcessBuilder pb) { pb.command("sh", "-c", "id"); }\n'
+  printf '  public static Process launched(ProcessBuilder pb) throws Exception { return pb.start(); }\n'
+  printf '  public static java.util.List<String> readBack(ProcessBuilder pb) { long t = System.nanoTime(); if (t == 0) return null; return pb.command(); }\n'
+  printf '}\n'
+} > "$P66/java/x/A.java"
+{ printf 'package local;\npublic class ProcessBuilder {\n'
+  printf '  private String[] argv;\n  public ProcessBuilder(String[] argv) { this.argv = argv; }\n'
+  printf '  public String[] get() { return argv; }\n}\n'
+} > "$P66/javal/local/ProcessBuilder.java"
+{ printf 'package local;\npublic class L {\n'
+  printf '  public static ProcessBuilder lookalike(String[] argv) { long t = System.nanoTime(); if (t == 0) return null; return new ProcessBuilder(argv); }\n'
+  printf '}\n'
+} > "$P66/javal/local/L.java"
+if javac -d "$P66/java/classes" "$P66/java/x/A.java" >/dev/null 2>&1 \
+   && javac -d "$P66/javal/classes" "$P66/javal/local/ProcessBuilder.java" "$P66/javal/local/L.java" >/dev/null 2>&1; then
+  java -jar "$JAR" "$P66/java/classes"  --json "$P66/java/r.json"  --policy "$P66/deny.pol" >/dev/null 2>&1; p66_jcap=$?
+  java -jar "$JAR" "$P66/javal/classes" --json "$P66/javal/r.json" --policy "$P66/deny.pol" >/dev/null 2>&1; p66_jlook=$?
+  p66 "java" "$P66/java/r.json" "$p66_jcap" "$p66_jlook" armed=Exec configured=Exec launched=Exec readBack=noExec
+  python3 "$HERE/exec_capability_check.py" "java*" "$P66/javal/r.json" lookalike=noExec || P66_OK=1
+else
+  echo "  java   -> SKIP     (no javac to build the fixture)"
+fi
+# ── ts ─────────────────────────────────────────────────────────────────────────────────────────
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$P66/ts/src" "$P66/tsl/src"
+  printf '{"name":"p66","version":"0.0.0"}\n' > "$P66/ts/package.json"
+  { printf 'import * as cp from "node:child_process";\n'
+    printf 'export function launched(p: string): cp.ChildProcess { return cp.spawn(p, ["-x"]); }\n'
+    printf 'export function readBack(c: cp.ChildProcess): number | undefined { void Date.now(); return c.pid; }\n'
+  } > "$P66/ts/src/a.ts"
+  printf '{"name":"p66l","version":"0.0.0"}\n' > "$P66/tsl/package.json"
+  { printf 'class ChildProcess { constructor(public argv: string[]) {} }\n'
+    printf 'function spawn(cmd: string, args: string[]): ChildProcess { return new ChildProcess([cmd, ...args]); }\n'
+    printf 'export function lookalike(p: string): ChildProcess { void Date.now(); return spawn(p, ["-x"]); }\n'
+  } > "$P66/tsl/src/a.ts"
+  ( cd "$TS_DIR" && node scan.mjs "$P66/ts"  --out "$P66/ts/r"  --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_tcap=$?
+  ( cd "$TS_DIR" && node scan.mjs "$P66/tsl" --out "$P66/tsl/r" --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_tlook=$?
+  p66 "ts" "$P66/ts/r.json" "$p66_tcap" "$p66_tlook" launched=Exec readBack=noExec
+  python3 "$HERE/exec_capability_check.py" "ts*" "$P66/tsl/r.json" lookalike=noExec || P66_OK=1
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+# ── swift ──────────────────────────────────────────────────────────────────────────────────────
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$P66/sw/Sources/S" "$P66/swl/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P66/sw/Package.swift"
+  { printf 'import Foundation\n'
+    printf 'public func armed(_ p: String) -> Process { let t = Process(); t.executableURL = URL(fileURLWithPath: p); return t }\n'
+    printf 'public func launched(_ t: Process) throws { try t.run() }\n'
+    printf 'public func readBack(_ t: Process) -> [String]? { _ = Date(); return t.arguments }\n'
+  } > "$P66/sw/Sources/S/a.swift"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P66/swl/Package.swift"
+  { printf 'import Foundation\n'
+    printf 'public final class Process { public var argv: [String] = []; public init() {} }\n'
+    printf 'public func lookalike() -> Process { _ = Date(); return Process() }\n'
+  } > "$P66/swl/Sources/S/a.swift"
+  ( cd "$P66/sw"  && "$SW_BIN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_scap=$?
+  ( cd "$P66/swl" && "$SW_BIN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_slook=$?
+  p66_srep="$(ls "$P66"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  p66_slrep="$(ls "$P66"/swl/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  p66 "swift" "$p66_srep" "$p66_scap" "$p66_slook" armed=Exec launched=Exec readBack=noExec
+  python3 "$HERE/exec_capability_check.py" "swift*" "$p66_slrep" lookalike=noExec || P66_OK=1
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+# ENGINES: rust java ts swift
+# CONTROLS: readBack lookalike — readBack calls ONLY a read-back getter and lookalike uses a PROJECT-LOCAL type that merely shares the name, so an engine that satisfied the positive cells by charging everything fails both; each carries a Clock marker and the checker REQUIRES a non-empty effect set, because every engine omits pure functions and "absent" would pass a control that asked nothing (PART 37 (e)); p66_rlook p66_jlook p66_tlook p66_slook — the lookalike tree under the SAME `deny Exec` must exit 0, the verdict-level form of the same control. THREE CELLS ARE MEASURED-ABSENT, not overlooked: ts armed/configured (node's child_process has no invocation object — `spawn` IS the launch), swift configured (MEASURED GAP — `t.arguments = [...]` on a received Process reports no effect), rust readBack (MEASURED OVER-CHARGE — `get_program()` answers Clock+Exec, so the whole-type Command rule has no read-back carve-out yet)
+echo "PART 66 — \`Exec\` reaches the subprocess capability, not only the launch (SPEC §1 ⟨0.32⟩)"
+if [ "$P66_OK" = 0 ]; then
+  echo "  -> MATCH — assembling and configuring an invocation is Exec in every engine ASKED, while a"
+  echo "     read-back getter and a project-local lookalike stay uncharged"
+else
+  echo "  -> DIVERGE — see DIVERGE lines"; rc=1
+fi
+
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
