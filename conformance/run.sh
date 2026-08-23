@@ -10608,9 +10608,37 @@ if [ -n "$TS_OK" ]; then
 else
   P63_OUT="$P63_OUT  ts     SKIP — engine absent\n"
 fi
-P63_OUT="$P63_OUT  swift  SKIP — the hash-keyed merge is not ported yet\n"
+# THE SWIFT ROW. The fixtures above are named for candor-scan's report convention, and every engine
+# DISCOVERS reports by its own suffix — so the same JSON is re-laid under swift's spelling rather than
+# re-authored, which keeps the two rows asserting over identical evidence. Hand-authored is not a
+# weaker fixture here: §3.1 says this verb serves a report it did not write, and the merge is a
+# property of the DOCUMENT SET, so the bodies are exactly the input the rule is about.
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  for setdir in only-a only-b both amb-ctrl amb-both; do
+    mkdir -p "$P63/sw-$setdir"
+    for f in "$P63/$setdir"/report.*.scan.json; do
+      [ -e "$f" ] || continue
+      u=$(basename "$f"); u=${u#report.}; u=${u%.scan.json}
+      cp "$f" "$P63/sw-$setdir/report.$u.Swift.json"
+    done
+  done
+  "$SW_BIN" gate --report "$P63/sw-only-a/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_s_a=$?
+  "$SW_BIN" gate --report "$P63/sw-only-b/report" --policy "$P63/pol.candor" >/dev/null 2>&1; p63_s_b_alone=$?
+  "$SW_BIN" gate --report "$P63/sw-both/report"   --policy "$P63/pol.candor" >/dev/null 2>&1; p63_s_ab=$?
+  "$SW_BIN" gate --report "$P63/sw-amb-ctrl/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_s_ac=$?
+  "$SW_BIN" gate --report "$P63/sw-amb-both/report" --policy "$P63/pol-amb.candor" >/dev/null 2>&1; p63_s_ab2=$?
+  if [ "$p63_s_a" = 2 ] && [ "$p63_s_b_alone" = 0 ] && [ "$p63_s_ab" = 2 ] && [ "$p63_s_ac" = 1 ] && [ "$p63_s_ab2" = 1 ]; then
+    P63_OUT="$P63_OUT  swift  a=2 b-alone=0 a+b=2 amb=1/1  OK\n"
+  else
+    P63_OUT="$P63_OUT  swift  a=$p63_s_a b-alone=$p63_s_b_alone a+b=$p63_s_ab amb=$p63_s_ac/$p63_s_ab2  FAIL (want 2/0/2/1/1)\n"
+    P63_BAD=1; rc=1
+  fi
+else
+  P63_OUT="$P63_OUT  swift  SKIP — engine absent\n"
+fi
 rm -rf "$P63"
-# ENGINES: rust java ts; swift: not exercised — its `gate --report` merge is unported like java's and ts's, but no fixture reads a swift-shaped report set here, so measuring it would need a second fixture and this part does not pretend to have asked. rust ASSERTS while java and ts are MEASURED and reported as confirmed-defective rather than merely unported, because a SKIP reading 'not done yet' over a live cardinal sin is the wrong word
+# ENGINES: rust java ts swift
+# NOTE: all four ASSERT the same five cells now that the fixture set is re-laid under each engine's own report-discovery suffix; the earlier 'no swift-shaped fixture exists' note described the FIXTURE's shape, not the engine's, and re-laying the same bodies was the whole of the work it was deferring
 # CONTROLS: b-alone — the sibling gated ALONE must answer 0, or the row passes for an engine that simply refuses every merge, which is the failure mode this part exists to exclude
 echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.32⟩)"
 printf '%b' "$P63_OUT"
