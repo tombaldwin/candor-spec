@@ -839,6 +839,26 @@ already carry.
   The engines satisfy this structurally rather than by review — a recursive call into the scan entry point
   where that entry point is a callable function, and a child process of the same binary where it is not.
 
+- ⟨0.32⟩ **A peek MAY derive the file set it reads, and a class it derived may reach `peeked: true` —
+  provided every file's derivation succeeded and the derivation runs no code from the scanned tree.** The
+  clause above says the peek must not hold a SECOND judgement path; it does not say the file set must be
+  found rather than made. Compiling a source the engine cannot otherwise read, then analysing the result
+  through the ordinary path, satisfies the ⟨0.29⟩ MUST exactly — one classifier, resolved receivers, one
+  semantics — and it is the only way an engine that reads compiled artifacts can answer for a tree that
+  has not been built.
+
+  The two conditions are not decoration. **Every file, or none of the class**: a derivation that half
+  succeeded is the ⟨0.26⟩ partial-read overclaim in a new place, and a compiler that recovers from an
+  error emits a body that throws where the code it could not translate would have gone — effects VANISH
+  from that bytecode, a false all-clear with a compiler's authority behind it. **No code from the tree**:
+  the derivation must not run annotation processors, build scripts, or plugins, because this is the tool
+  that certifies `deny Exec` and a scan MUST NOT become an execution. An engine whose derivation therefore
+  cannot see generated code MUST withdraw the claim where such generation is possible rather than certify
+  on less evidence than a real build has.
+
+  *Reported as the derived class's own name, never as the analysed one: the operator asked about
+  `src/com/x/Deploy.java`, and a finding filed under a scratch directory names a file they cannot open.*
+
   *⟨0.29⟩ What this does NOT cover, recorded so it is a decision rather than a discovery: a file in no
   language the engine reads. A project whose `Exec` lives in `scripts/deploy.sh` is one where "candor says
   no Exec" remains a dangerous sentence, and no engine counts those files today — enumerating them would

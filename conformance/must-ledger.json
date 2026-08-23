@@ -185,6 +185,8 @@
    "excerpt": "`incomplete` is the one key a consumer may branch on alone and be safe under both causes; the other two name W",
    "status": "pre-ledger"
   },
+  {"sha": "f45926c9584ffc28", "at": "2. The report", "excerpt": "- ⟨0.32⟩ **A peek MAY derive the file set it reads, and a class it derived may reac", "part": "PART 65 (certify)"},
+  {"sha": "da6b3abd33c38a5d", "at": "2. The report", "excerpt": "The two conditions are not decoration. **Every file, or none of the class**: a deri", "part": "PART 65 (syntax-error + missing-dep rows)"},
   {
    "sha": "80ba485994c78f7b",
    "at": "2. The report",

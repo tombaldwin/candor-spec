@@ -10714,6 +10714,76 @@ printf '%b' "$P64_OUT"
 [ "$P64_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
 true
 
+# PART 65 — A DERIVED FILE SET MAY CERTIFY, AND MUST NOT CERTIFY PAST A FAILED DERIVATION (SPEC §2 ⟨0.32⟩) [TIER 1]
+#
+# ⟨0.32⟩ lets a peek MAKE the file set it reads: candor-java compiles a source it has no class for, then
+# analyses the result through the ordinary path. That closes the case PART 62 opens — an unbuilt tree can
+# now be ANSWERED rather than only refused — and it introduces exactly one new way to be wrong, which is
+# to certify on a derivation that did not fully succeed. Both directions are rows here.
+#
+# THE CERTIFY ROW IS THE ONE THAT CAN GO SILENT: it asserts exit 0, so an engine that quietly stopped
+# peeking would still pass it. That is why the three refusal rows sit beside it — a syntax error, a
+# missing dependency, and a real violation must each still answer 2 over the SAME tree shape.
+P65=$(mktemp -d); P65_BAD=0; P65_OUT=""
+mkdir -p "$P65/src/com/x" "$P65/build/classes/com/x"
+cat > "$P65/src/com/x/Anchor.java" <<'JEOF'
+package com.x;
+public class Anchor { public int add(int a, int b) { return a + b; } }
+JEOF
+printf 'deny Exec\n' > "$P65/pol.candor"
+javac -d "$P65/build/classes" "$P65/src/com/x/Anchor.java" >/dev/null 2>&1 || P65_BAD=3
+if [ "$P65_BAD" = 0 ]; then
+  # [1] CERTIFY — an uncompiled source with nothing denied in it. The tree has a class that WAS compiled
+  # beside a source that was not, so the exclusion exists and the peek has something to derive.
+  cat > "$P65/src/com/x/Pure.java" <<'JEOF'
+package com.x;
+public class Pure { public int twice(int a) { return a * 2; } }
+JEOF
+  java -jar "$JAR" "$P65" --policy "$P65/pol.candor" >/dev/null 2>&1; p65_certify=$?
+  # [2] A VIOLATION IN THE UNCOMPILED SOURCE — derived, analysed, and NAMED (not "something unread").
+  cat > "$P65/src/com/x/Deploy.java" <<'JEOF'
+package com.x;
+public class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("sh -c id"); } }
+JEOF
+  java -jar "$JAR" "$P65" --policy "$P65/pol.candor" --json "$P65/v.json" >/dev/null 2>&1; p65_viol=$?
+  p65_named=$(grep -c 'com.x.Deploy.go' "$P65/v.json" 2>/dev/null || echo 0)
+  rm -f "$P65/src/com/x/Deploy.java"
+  # [3] A DERIVATION THAT FAILS must not certify — the whole point of the "every file, or none" condition.
+  cat > "$P65/src/com/x/Broken.java" <<'JEOF'
+package com.x;
+public class Broken { public void go() { this is not java } }
+JEOF
+  java -jar "$JAR" "$P65" --policy "$P65/pol.candor" >/dev/null 2>&1; p65_broken=$?
+  rm -f "$P65/src/com/x/Broken.java"
+  # [4] …and neither may one that fails for a reason the tree cannot fix: a dependency that is not there.
+  cat > "$P65/src/com/x/NeedsDep.java" <<'JEOF'
+package com.x;
+import com.nowhere.Missing;
+public class NeedsDep { public void go() { new Missing().x(); } }
+JEOF
+  java -jar "$JAR" "$P65" --policy "$P65/pol.candor" >/dev/null 2>&1; p65_dep=$?
+  rm -f "$P65/src/com/x/NeedsDep.java"
+  if [ "$p65_certify" = 0 ] && [ "$p65_viol" = 2 ] && [ "$p65_named" -ge 1 ] \
+     && [ "$p65_broken" = 2 ] && [ "$p65_dep" = 2 ]; then
+    P65_OUT="  java   certify=0 violation=2(named) syntax-error=2 missing-dep=2  OK
+"
+  else
+    P65_OUT="  java   certify=$p65_certify violation=$p65_viol(named=$p65_named) syntax-error=$p65_broken missing-dep=$p65_dep  FAIL (want 0/2/2/2)
+"
+    P65_BAD=1; rc=1
+  fi
+fi
+rm -rf "$P65"
+# ENGINES: java; rust ts swift: NOT APPLICABLE and measured so — they analyse SOURCE directly, so a source file needs no derivation to be read and this clause has no case in them, since the derived-file-set rule binds an engine that reads COMPILED artifacts and today that is java alone
+# CONTROLS: violation — a denied effect in the derived set must still be NAMED at exit 2, or the certify row passes for an engine that derives nothing; syntax-error and missing-dep — a derivation that failed must not certify, which is the one new way 0.32 can be wrong
+echo "PART 65 — a derived file set may certify, and must not certify past a failed derivation (SPEC §2 ⟨0.32⟩)"
+printf '%s' "$P65_OUT"
+[ "$P65_BAD" = 0 ] && echo "  -> MATCH — an unbuilt tree is answered, and a failed derivation still refuses"
+[ "$P65_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P65_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
@@ -10725,7 +10795,7 @@ python3 "$HERE/skip_ratchet.py" "$SKIPLOG" || rc=1
 
 echo
 [ "$rc" -eq 0 ] \
-  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind and makes the verdict INCOMPLETE on BOTH routes with byte-equal documents ⟨0.30⟩ — bounded by the policy, absent when none was configured + an \`Fs\` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is \`peeked\` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class + the peek withholds its key over a policy the engine refuses, exactly as the gate withholds \`ok\`)" \
+  && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind and makes the verdict INCOMPLETE on BOTH routes with byte-equal documents ⟨0.30⟩ — bounded by the policy, absent when none was configured + an \`Fs\` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is \`peeked\` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class + the peek withholds its key over a policy the engine refuses, exactly as the gate withholds \`ok\` + a peek may DERIVE the file set it reads and certify from it, and must not certify past a derivation that failed)" \
   || echo "conformance: FAILED"
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
