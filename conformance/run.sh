@@ -10422,11 +10422,17 @@ if [ "$P62_BAD" = 0 ]; then
   java -jar "$JAR" "$P62/build/classes" --policy "$P62/pol.candor" >/dev/null 2>&1; p62_built=$?
   # THE SECOND ROUTE: §3.1 — `gate --report` must reach the same verdict from the DOCUMENT.
   java -jar "$JAR" gate --report "$P62/r.json" --policy "$P62/pol.candor" >/dev/null 2>&1; p62_gate=$?
-  if [ "$p62_root" = 2 ] && [ "$p62_built" = 0 ] && [ "$p62_gate" = 2 ]; then
-    P62_OUT="  java   scan=2 built-control=0 gate--report=2  OK
+  # THE NEVER-ASKED CONTROL, which this row lacked while rust's carried it — and the gap was not
+  # theoretical: java answered 2 over a forbid-only policy where rust answers 0, on the same tree, and
+  # conformance stayed GREEN because no java row asked. `peeked: false` under a policy with no DENY rule
+  # means the peek was never put a question, not that code went unread.
+  printf 'forbid ui -> db\n' > "$P62/noask.candor"
+  java -jar "$JAR" "$P62" --policy "$P62/noask.candor" >/dev/null 2>&1; p62_noask=$?
+  if [ "$p62_root" = 2 ] && [ "$p62_built" = 0 ] && [ "$p62_gate" = 2 ] && [ "$p62_noask" = 0 ]; then
+    P62_OUT="  java   scan=2 built-control=0 gate--report=2 never-asked-control=0  OK
 "
   else
-    P62_OUT="  java   scan=$p62_root built-control=$p62_built gate--report=$p62_gate  FAIL (want 2/0/2)
+    P62_OUT="  java   scan=$p62_root built-control=$p62_built gate--report=$p62_gate never-asked-control=$p62_noask  FAIL (want 2/0/2/0)
 "
     P62_BAD=1; rc=1
   fi
@@ -10489,7 +10495,7 @@ chmod -R u+rwX "$P62R" 2>/dev/null; rm -rf "$P62R"
 P62_OUT="$P62_OUT$P62R_OUT"
 [ "$P62R_BAD" = 1 ] && P62_BAD=1
 # ENGINES: java rust; ts: NOT APPLICABLE and measured so — its peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire, and rust has the case ONLY in the unreadable shape (the row above), not in the declined-to-read one; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
-# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; readable-control — the same excluded class, readable, must answer 0; never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse; gate--report — the second route must agree from the document, since `excluded` rides the report
+# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; never-asked-control — carried by BOTH engine rows now, since a policy with no deny rule never asks the peek and java refused where rust answered while only rust's row checked; readable-control — the same excluded class, readable, must answer 0; never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse; gate--report — the second route must agree from the document, since `excluded` rides the report
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
