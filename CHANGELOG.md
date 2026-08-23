@@ -39,6 +39,19 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   no code from the tree (this is the tool that certifies `deny Exec`; a scan must not become an
   execution). candor-java implements it; the source-reading engines have no case. PART 65.
 
+- **⟨0.32⟩ `Exec` REACHES THE SUBPROCESS CAPABILITY, NOT ONLY THE LAUNCH (§1).** An invocation object
+  carries its own payload — program, argv, environment — and travels fully armed, so constructing or
+  configuring one is `Exec` exactly as spawning it is. Measured on candor-java, the family's lone
+  launch-verb allowlist: `ProcessBuilder arm(String[] argv) { return new ProcessBuilder(argv); }` reported
+  `inferred: []` and passed `deny Exec` at exit 0 — a fully-armed invocation assembled from caller-supplied
+  argv, certified clean, because splitting build from launch across two functions left nobody holding the
+  effect. Stated as a DENYLIST (read-backs like `get_program`/`command()` carved out) with an explicit MUST
+  NOT on the allowlist form, which under-reports every verb it forgets. Bounded to invocation objects:
+  option-builders for other effects (`OpenOptions`, request builders) stay pure, their resource arriving at
+  a terminal verb charged at its own call site. PART 66, whose `readBack` and `lookalike` over-charge
+  controls are what an engine that answers `Exec` for everything fails. Corpus A/B on candor-java: 933 JVM
+  jars, 0 verdict flips and 0 functions losing an effect.
+
 - **⟨0.32⟩ …AND THE CLASSPATH IT DERIVED AGAINST IS PART OF THE CLAIM (§2).** A compile that succeeds
   against the wrong version of a dependency emits bytecode the project does not build: a `static final`
   guard folds to `false`, javac deletes the branch as unreachable, and the effect disappears. So the

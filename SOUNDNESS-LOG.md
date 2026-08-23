@@ -3156,3 +3156,85 @@ PRINTER did not share the EXIT — the sibling route inside the very function wr
 Fixed with a synchronous `fs.writeSync(1, …)` loop in the printer, so the next caller inherits it. Only
 pipes were affected, which is why a redirect to a file looked correct and only the suite's
 `execFileSync` ever saw it.
+
+
+### 2026-08-24 — `deny Exec` did not see a subprocess being ASSEMBLED (candor-java)
+
+**THE FIND.** candor-java charged `Exec` at the LAUNCH VERBS — `ProcessBuilder.start`/`startPipeline`,
+`Runtime.exec`, the `java.awt.Desktop` openers — plus the live-child control surface on
+`java.lang.Process`. Everything else on `java.lang.ProcessBuilder` read pure. Measured:
+
+```java
+public ProcessBuilder arm(String[] argv) { return new ProcessBuilder(argv); }
+public void configure(ProcessBuilder pb) { pb.directory(new java.io.File("/")); }
+```
+
+under `deny Exec`: **exit 0, `no violations`, `arm` reporting `inferred: []`**. A method that assembles a
+fully-armed invocation out of caller-supplied argv and hands it back was certified clean. Splitting build
+from launch across two methods — or two jars, which is the supply-chain form — left nobody holding the
+effect. Not a wrong rule; an ABSENT one, and absent in the silent direction: **an allowlist under-reports
+every verb nobody enumerated**.
+
+**WHY IT SURVIVED.** The type was already recognised at construction — `extractLiteralSurfaces` mines the
+`cmds` program head from `new ProcessBuilder(…)`, and the surface-incompleteness guard even wrote
+`incomplete: ["Exec"]` onto `arm` for its runtime head. So the engine knew the receiver's type, knew the
+call was Exec-shaped, and published a marker about it, while the EFFECT that marker qualifies was never
+emitted. Recognised for the LITERAL, not for the EFFECT.
+
+**THE FAMILY WAS ALREADY RIGHT.** candor-rust charges the whole `std::process::Command` type,
+candor-swift `Process()`, candor-ts the whole `child_process` module. java was the lone engine holding an
+allowlist, which is the shape SPEC §1 ⟨0.32⟩ now forbids in as many words.
+
+**THE FIX IS A DENYLIST, and the direction is the point.** The whole `java.lang.ProcessBuilder` type is
+`Exec`, with the proven-pure surface carved out by name: `environment()` (still `Env` — the child's env
+map, not an added capability), the NO-ARG read-back overloads (`command()`, `directory()`,
+`redirect{Input,Output,Error}()`, `redirectErrorStream()`), and the §4 Object protocol. The read-backs are
+keyed on the DESCRIPTOR, not the name, because each shares its name with the setter it reads back — and a
+blanket "takes no argument ⇒ pure" would have exempted `start()` and `inheritIO()`, turning the fix into a
+fresh cardinal sin. A wrong carve-out over-charges loudly; a forgotten allowlist entry under-reports
+silently.
+
+**THE OVER-CHARGE CONTROL IS THE DELIVERABLE, and it was written FIRST.** Four controls, all green BEFORE
+and AFTER the change: a read-back-getter-only method, a project-local type that merely shares the name
+`ProcessBuilder`, `environment()` staying `Env`, and an `OpenOptions`-shaped option builder for another
+effect staying pure (`HttpRequest.Builder`, `StandardOpenOption`) — the last of these is the BOUNDARY of
+the ruling, since an option builder carries no resource of its own and its file/socket arrives at a
+terminal verb charged at its own call site.
+
+**MEASURED.** JVM corpus A/B under `deny Exec` — 933 jars (the Gradle module cache, 371, plus an exploded
+production war's `WEB-INF/lib`, 562): **0 artifact-level verdict flips, 0 functions losing an effect, 0
+functions newly flagged.** uflexi's `build/classes/java/main`: byte-identical reports, unchanged verdict
+(and it holds zero `ProcessBuilder` references, so the null result is explained rather than assumed). The
+A/B harness was proved to CATCH before the null was believed — run against the gap fixture it reports
+rc 0→1 and two gained functions.
+
+**AND THE NULL RESULT WAS EXPLAINED, NOT ACCEPTED.** A bytecode census of the corpus: **21
+`ProcessBuilder` member call sites in 9 methods across 933 jars** (9 `<init>`, 9 `start`, 2
+`redirectErrorStream`, 1 `command`), and **every one of those 9 methods launches in the same body**. Three
+jars reference the type and yield no `Exec` at all in either arm, each for a reason that is correct:
+`smallrye-common-os` and `wildfly-common` read the static FIELD `ProcessBuilder$Redirect.DISCARD` (a value
+object, no program), and `ognl` holds a class LITERAL. So the change CANNOT flip anything on this corpus —
+which is the value story too: the defect is a code SHAPE (build here, launch there) that mature libraries
+happen not to use, and that a dependency growing invocation-assembly would introduce invisibly.
+
+**GATES.** `ExecInvocationCapabilityTest` (5 tests, 4 of them controls); candor-java 797 tests + 529 smoke
+checks green; conformance **PART 66**, four-way, whose `readBack` and `lookalike` cells are the
+over-charge controls and carry a Clock marker so the checker can REQUIRE them present — every engine omits
+pure functions, so "absent from the report" would have passed a control that asked nothing.
+
+**CROSS-ENGINE RESIDUALS, MEASURED WHILE BUILDING PART 66 — filed, not fixed (out of scope of this
+change), and each is why its cell in the part is measured-absent rather than asserted:**
+
+- **candor-swift charges construction but NOT configuration.** `t.arguments = ["-x"]` on a RECEIVED
+  `Process` reports no effect at all — the same half of the gap java had, in the setter direction.
+- **candor-swift misses the QUALIFIED spelling.** `Foundation.Process()` reports nothing where bare
+  `Process()` is `Exec`. A sibling-route gap: one spelling of the same constructor is invisible.
+- **candor-rust over-charges the read-back.** `c.get_program()` answers `Clock+Exec` — the whole-type
+  `Command` rule has no read-back carve-out, which is exactly what §1 ⟨0.32⟩ now requires.
+- **candor-rust over-charges an option builder for another effect.** `OpenOptions::new().read(true)…`
+  answers `Fs`, while `o.open(p)` on a RECEIVED `OpenOptions` answers nothing — the over-charge and an
+  under-report on the same type, in opposite directions.
+- **candor-rust fabricates on a shadowed local type.** A project-local `Command` in a submodule is charged
+  `Exec` when the FILE also carries `use std::process::Command;`; without that import it is correctly
+  pure. PART 66's lookalike fixture uses the unshadowed form, so the fabrication is recorded here rather
+  than pinned.

@@ -254,6 +254,22 @@ S3 bucket named "bedrock", a remote host on `:11434` stay bare `Net`) and **PART
 model-SDK surface (a curated client call is `Llm+Net`; a plain non-model `Net` call in the same module
 stays bare `Net` — the surface never bleeds).
 
+⟨0.32⟩ **`Exec` charges reach to the subprocess capability, not only the launch.** Constructing or
+configuring an invocation (`Command::new`, `new ProcessBuilder(…)`, `Process()`, and their argument/env/
+redirect setters) is `Exec`, exactly as launching (`spawn`/`start`/`run`) and controlling a live child
+(`waitFor`, `kill`, its stdio streams) are. An invocation object carries its own payload — program, argv,
+environment — and travels fully armed, so splitting build from launch across functions or crates MUST NOT
+make the builder invisible: the assembled argv is precisely what `cmds` reports, and a dependency that
+grows invocation-assembly is a supply-chain fact. This is specific to invocation objects; option-builders
+for other effects (`OpenOptions`, request builders) stay pure because their resource arrives at the
+terminal verb, which is charged at its own call site. Pure read-backs of stored state (`get_program`,
+`exitValue`, …) are carved out as named denylists; an engine MUST NOT instead enumerate launch verbs — an
+allowlist whose omissions under-report silently. Pinned four-way by **PART 66**, whose over-charge control
+holds the boundary: a read-back-only function, and a project-local type that merely shares the name, gain
+nothing. (MEASURED on candor-java, the lone engine that enumerated launch verbs: a method returning
+`new ProcessBuilder(argv)` for caller-supplied `argv` reported no effects at all and passed `deny Exec`
+with exit 0.)
+
 ## 2. The report
 
 An implementation emits, per compilation unit, a self-describing **envelope**: a provenance header
