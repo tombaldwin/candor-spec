@@ -10572,6 +10572,63 @@ printf '%b' "$P63_OUT"
 [ "$P63_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 true
 
+# PART 64 — A TRAILING SEPARATOR ANCHORS A SCOPE TO AN EXACT SEGMENT (SPEC §6.2) [TIER 1]
+#
+# A policy scope matches its LAST segment by PREFIX — deliberate and documented, so `domain` matches
+# `domain_service`. REPORTED FROM THE FIELD and reproduced four-way: `forbid aws -> app` fired 14 times
+# on honest AWS SDK calls because `app` prefix-matches `application_name`, and writing `app::` did not
+# help — every engine's segmenter drops empty parts, so `app::` became exactly `["app"]`.
+#
+# THE COST IS NOT THE FALSE POSITIVES. The reporter DELETED the rule, so the genuine violation it
+# existed to catch will never fire, and nothing in the policy file records that a boundary stopped being
+# checked. Delete-the-rule and widen-the-scope end in the same place, so silently-unchecked boundaries
+# grow with adoption — the cardinal sin arriving through the policy rather than the analyzer.
+#
+# THE LAST ROW IS THE CONTROL and it carries this part. Without `dep::` — an exact scope that DOES
+# exist and must still fire — an engine that simply fails every `::` scope passes the other three,
+# which is precisely the "gate that refuses everything" shape the fix must not become.
+P64=$(mktemp -d); P64_BAD=0; P64_OUT=""
+mkdir -p "$P64/src"
+cat > "$P64/Cargo.toml" <<'TOMLEOF'
+[package]
+name = "p64"
+version = "0.0.0"
+edition = "2021"
+TOMLEOF
+cat > "$P64/src/lib.rs" <<'RSEOF'
+pub mod aws { pub fn call() { crate::dep::application_name(); } }
+pub mod dep { pub fn application_name() { let _ = std::process::Command::new("x").status(); } }
+RSEOF
+p64_row() {  # p64_row <engine> <scope> <want> <cmd...>
+  local eng="$1" scope="$2" want="$3"; shift 3
+  printf 'deny Exec %s\n' "$scope" > "$P64/pol.candor"
+  "$@" >/dev/null 2>&1
+  local got=$?
+  if [ "$got" = "$want" ]; then
+    P64_OUT="$P64_OUT  $eng  deny Exec $scope -> $got  OK\n"
+  else
+    P64_OUT="$P64_OUT  $eng  deny Exec $scope -> $got  FAIL (want $want)\n"
+    P64_BAD=1; rc=1
+  fi
+}
+# rust is the producer AND the subject: the fixture is Rust source, so only this engine can scan it.
+# The RULE is four-way (java/ts/swift carry the same matcher, fixed in the same commit) but a four-way
+# ROW needs four fixtures, which is a separate part rather than a claim this one may make.
+p64_row "rust " "app"   1 "$SCAN" "$P64" --out "$P64/r" --policy "$P64/pol.candor"
+p64_row "rust " "app::" 0 "$SCAN" "$P64" --out "$P64/r" --policy "$P64/pol.candor"
+p64_row "rust " "dep"   1 "$SCAN" "$P64" --out "$P64/r" --policy "$P64/pol.candor"
+# dep-exact: the control — an exact scope that DOES exist must still fire.
+p64_dep_exact=1
+p64_row "rust " "dep::" "$p64_dep_exact" "$SCAN" "$P64" --out "$P64/r" --policy "$P64/pol.candor"
+rm -rf "$P64"
+# ENGINES: rust; java ts swift: NOT EXERCISED HERE — they carry the identical matcher and were fixed in the same commit, but this fixture is Rust source so only candor-scan can read it, and a four-way row would need four language fixtures. Asserting rust and saying the others are unasked beats a row that implies coverage it does not have
+# CONTROLS: p64_dep_exact — an exact scope that DOES exist must still fire, or an engine failing every `::` scope passes the other three rows
+echo "PART 64 — a trailing separator anchors a scope to an exact segment (SPEC §6.2)"
+printf '%b' "$P64_OUT"
+[ "$P64_BAD" = 0 ] && echo "  -> MATCH — prefix still matches, and a trailing separator anchors without disabling the scope"
+[ "$P64_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
+true
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
