@@ -10432,13 +10432,59 @@ if [ "$P62_BAD" = 0 ]; then
   fi
 fi
 rm -rf "$P62"
-# ENGINES: java; rust ts: NOT APPLICABLE and measured so — their peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
+
+# THE RUST ROW — a DIFFERENT SHAPE OF THE SAME MUST, and the reason this part's engine exclusion had to
+# be re-measured rather than trusted. The note above says rust cannot have the case because its peek
+# READS excluded sources. That is true only when the read SUCCEEDS. A peek that opens nothing finds
+# nothing, and "found nothing" is byte-identical to "there is nothing" — which is the exact false green
+# ⟨0.32⟩ exists to stop. So the applicable fixture for a peeking engine is an excluded file it CANNOT
+# read, not one it declines to read.
+P62R=$(mktemp -d); P62R_BAD=0; P62R_OUT=""
+mkdir -p "$P62R/src"
+printf 'fn main() {}\n' > "$P62R/src/main.rs"
+printf '[package]\nname = "p62r"\nversion = "0.1.0"\nedition = "2021"\n' > "$P62R/Cargo.toml"
+printf 'fn main() { std::process::Command::new("curl").status().unwrap(); }\n' > "$P62R/build.rs"
+printf 'deny Exec\n' > "$P62R/pol.candor"
+chmod 000 "$P62R/build.rs"
+# THE INSTRUMENT CHECK — as root, chmod 000 does not deny a read, the peek succeeds, and the row would
+# assert the rule over a fixture that never triggers it. Probe by READING, not by `[ -r ]`, which is
+# also true for root.
+if cat "$P62R/build.rs" >/dev/null 2>&1; then P62R_BAD=3; fi
+if [ "$P62R_BAD" = 0 ]; then
+  "$SCAN" "$P62R" --out "$P62R/o" --policy "$P62R/pol.candor" --gate-json "$P62R/v.json" >/dev/null 2>&1; p62r_scan=$?
+  # THE SECOND ROUTE — §3.1 from the document alone, where `excluded` is the only evidence available.
+  # …by PREFIX, not by a guessed filename: the report is named for the UNIT, so `o.u.scan.json` names a
+  # file that does not exist here and the verb REFUSES — which is also exit 2, and would have passed this
+  # row while measuring nothing. The byte-equality check below is what caught it.
+  "$QUERY" gate --report "$P62R/o" --policy "$P62R/pol.candor" --gate-json "$P62R/v2.json" >/dev/null 2>&1; p62r_gate=$?
+  # THE OVER-CHARGE CONTROL — the SAME tree with the SAME excluded class, readable. The peek runs, finds
+  # the class clean, and the verdict must be 0. Without this row the rule could refuse every scan that
+  # has a build script at all and still pass.
+  chmod 644 "$P62R/build.rs"
+  printf 'fn main() {}\n' > "$P62R/build.rs"
+  "$SCAN" "$P62R" --out "$P62R/c" --policy "$P62R/pol.candor" >/dev/null 2>&1; p62r_ctl=$?
+  # …and the two routes must be BYTE-EQUAL, not merely equal in exit code (SPEC §3.1).
+  if cmp -s "$P62R/v.json" "$P62R/v2.json"; then p62r_eq=same; else p62r_eq=DIFFER; fi
+  if [ "$p62r_scan" = 2 ] && [ "$p62r_gate" = 2 ] && [ "$p62r_ctl" = 0 ] && [ "$p62r_eq" = same ]; then
+    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 verdicts=same  OK
+"
+  else
+    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl verdicts=$p62r_eq  FAIL (want 2/2/0/same)
+"
+    P62R_BAD=1; rc=1
+  fi
+fi
+chmod -R u+rwX "$P62R" 2>/dev/null; rm -rf "$P62R"
+P62_OUT="$P62_OUT$P62R_OUT"
+[ "$P62R_BAD" = 1 ] && P62_BAD=1
+# ENGINES: java rust; ts: NOT APPLICABLE and measured so — its peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire, and rust has the case ONLY in the unreadable shape (the row above), not in the declined-to-read one; swift: pending its `judgedElsewhere` for build-output, without which every SPM project with a .build/ dir would refuse
 # CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; gate--report — the second route must agree from the document, since `excluded` rides the report
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
 [ "$P62_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 [ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
+[ "$P62R_BAD" = 3 ] && echo "  -> SKIP (rust row) — running as a user chmod 000 does not stop, so the unread case cannot be staged"
 true
 
 # PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2 / §3.3.1 ⟨0.32⟩) [TIER 1]
