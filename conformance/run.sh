@@ -8392,7 +8392,7 @@ if [ -x "$SCAN" ]; then
   printf 'forbid model -> model\n' > "$FB/rs/p.pol"
   printf 'deny Fs\n' > "$FB/rs/deny.pol"
   printf 'deny Fs\nforbid model -> model\n' > "$FB/rs/mixed.pol"
-  ( cd "$FB/rs" && "$SCAN" . --out r >/dev/null 2>&1 )
+  ( cd "$FB/rs" && "$SCAN" . --out r --policy deny.pol >/dev/null 2>&1 )
 fi
 # ts
 if [ -n "$TS_PRESENT" ]; then
@@ -8402,7 +8402,7 @@ if [ -n "$TS_PRESENT" ]; then
   printf 'forbid model -> model\n' > "$FB/ts/p.pol"
   printf 'deny Fs\n' > "$FB/ts/deny.pol"
   printf 'deny Fs\nforbid model -> model\n' > "$FB/ts/mixed.pol"
-  ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --out "$FB/ts/r" >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node scan.mjs "$FB/ts" --out "$FB/ts/r" --policy "$FB/ts/deny.pol" >/dev/null 2>&1 )
 fi
 # java
 mkdir -p "$FB/java/model"
@@ -8411,7 +8411,7 @@ javac -d "$FB/java/classes" "$FB/java/M.java" 2>/dev/null
 printf 'forbid model -> model\n' > "$FB/java/p.pol"
 printf 'deny Fs\n' > "$FB/java/deny.pol"
 printf 'deny Fs\nforbid model -> model\n' > "$FB/java/mixed.pol"
-java -jar "$JAR" "$FB/java/classes" --json "$FB/java/r.json" >/dev/null 2>&1
+java -jar "$JAR" "$FB/java/classes" --json "$FB/java/r.json" --policy "$FB/java/deny.pol" >/dev/null 2>&1
 # swift
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$FB/sw/Sources/S"
@@ -8420,9 +8420,21 @@ if [ -n "$SW_PRESENT" ]; then
   printf 'forbid model -> model\n' > "$FB/sw/p.pol"
   printf 'deny Fs\n' > "$FB/sw/deny.pol"
   printf 'deny Fs\nforbid model -> model\n' > "$FB/sw/mixed.pol"
-  ( cd "$FB/sw" && "$SW_BIN" . --out r >/dev/null 2>&1 )
+  ( cd "$FB/sw" && "$SW_BIN" . --out r --policy deny.pol >/dev/null 2>&1 )
 fi
 
+# ⟨0.32⟩ EACH FIXTURE REPORT ABOVE IS SCANNED **WITH `deny.pol`**, and that is the rung rather than a
+# tweak. These arms gate ONE report under three policies and require the deny-only arm to answer 0. A
+# report produced with NO policy carries `excluded[].peeked: false` on every class it has, so under
+# ⟨0.32⟩ a deny policy touching it REFUSES at 2 — correctly, because nothing opened those files.
+# Measured 2026-08-24: candor-swift's tree is the one with an exclusion (`manifest`, i.e. `Package.swift`,
+# which every `swift build` runs), and its deny-only arm went 0 → 2 the moment the engines closed the
+# ⟨0.32⟩ route split. The other three passed only because their fixture trees happen to exclude nothing
+# today — luck rather than design, and the same latent break PART 54's absent-key arm had.
+# THE FIX IS THE SPEC'S OWN REMEDY APPLIED TO THE SUITE: §2 ⟨0.32⟩ requires a producer in a
+# scan-then-gate pipeline to SCAN WITH THE POLICY. With `deny.pol` the peek runs, the class comes back
+# `peeked: true`, and the deny-only arm answers 0 on its merits instead of by luck. All four scans carry
+# it, so the next fixture tree that grows an exclusion does not re-break this part one engine at a time.
 p47() { # $1 engine ; $2 scan-rc ; $3 report-rc ; $4 report-path ; $5 deny-only-rc ; $6 mixed-rc ; $7 refusal text
   if [ "$2" != 1 ]; then
     echo "  $1  -> DIVERGE  (SCAN route exit $2, expected 1 — the control: if it cannot evaluate forbid at all,"
@@ -9201,14 +9213,16 @@ d["outOfScope"]=[123];  json.dump(d,open(sys.argv[3],"w"))
 ' "$1" "$2" "$3"; }
 echo "[54] THE ⟨0.30⟩ VERDICT REACHES BOTH ROUTES IDENTICALLY  (SPEC §2 ⟨0.30⟩ / §3.1)"
 # ENGINES: rust java ts swift
-# CONTROLS: rsctl tsctl classes swctl — a tree whose peek is ASKED-AND-CLEAR, per engine; each must exit 0 on BOTH routes with byte-equal documents, because without it the part passes against an engine that answers 2 for everything. The ABSENT-key arm is a SECOND, different control: that peek never ran at all (⟨0.26⟩ cannot-answer), where these ran and found nothing (⟨0.27⟩ asked-and-clear)
+# CONTROLS: rsctl tsctl classes swctl — a tree whose peek is ASKED-AND-CLEAR, per engine; each must exit 0 on BOTH routes with byte-equal documents, because without it the part passes against an engine that answers 2 for everything. The ABSENT-key arm is a SECOND, different control and ⟨0.32⟩ moved it ONTO THESE SAME CONTROL TREES: that peek never ran at all (⟨0.26⟩ cannot-answer) over a tree with `excluded: []`, where the asked-and-clear arm ran and found nothing (⟨0.27⟩). It used to scan the DIRTY tree, which made it assert `policy ✓` over the ⟨0.32⟩ central case; the check now asserts `excluded == []` on the fresh report before gating it, so a fixture tree that grows something excludable breaks loudly instead of re-aiming the arm
 P54_OK=0
 if [ -x "$SCAN" ] && [ -n "$QUERY" ]; then
   ( cd "$FS/rs" && "$SCAN" . --out r54 --policy exec.pol --gate-json "$FS/rs/r54a.json" >/dev/null 2>&1 ); r54s=$?
   "$QUERY" gate --report "$FS/rs/r54.fs48.scan.json" --policy "$FS/rs/exec.pol" \
       --gate-json "$FS/rs/r54b.json" >/dev/null 2>&1; r54g=$?
-  ( cd "$FS/rs" && "$SCAN" . --out r54n >/dev/null 2>&1 )   # NO policy ⇒ the key is absent
-  "$QUERY" gate --report "$FS/rs/r54n.fs48.scan.json" --policy "$FS/rs/exec.pol" >/dev/null 2>&1; r54abs=$?
+  # ⟨0.32⟩ THE ABSENT-KEY ARM RUNS ON THE CONTROL TREE, which has nothing excluded: NO policy ⇒ no
+  # `outOfScope` key, beside an `excluded` of `[]` ⇒ nothing unread. That isolates ⟨0.26⟩ absence.
+  ( cd "$FS/rsctl" && "$SCAN" . --out n54 >/dev/null 2>&1 )
+  "$QUERY" gate --report "$FS/rsctl/n54.fs48ctl.scan.json" --policy "$FS/rs/exec.pol" >/dev/null 2>&1; r54abs=$?
   ( cd "$FS/rsctl" && "$SCAN" . --out c54 --policy "$FS/rs/exec.pol" --gate-json "$FS/rsctl/c54a.json" >/dev/null 2>&1 ); r54cs=$?
   "$QUERY" gate --report "$FS/rsctl/c54.fs48ctl.scan.json" --policy "$FS/rs/exec.pol" \
       --gate-json "$FS/rsctl/c54b.json" >/dev/null 2>&1; r54cg=$?
@@ -9219,7 +9233,7 @@ if [ -x "$SCAN" ] && [ -n "$QUERY" ]; then
   ( cd "$FS/rs" && "$SCAN" . --out r54p --policy pure.pol >/dev/null 2>&1 ); r54pure=$?
   "$QUERY" unverified --report "$FS/rs/r54.fs48.scan.json" --policy "$FS/rs/exec.pol" --strict >/dev/null 2>&1; r54st=$?
   python3 "$HERE/peek_route_equality_check.py" "rust" "$r54s" "$FS/rs/r54a.json" "$r54g" "$FS/rs/r54b.json" \
-      "$r54abs" "$r54cs" "$FS/rsctl/c54a.json" "$r54cg" "$FS/rsctl/c54b.json" \
+      "$r54abs" "$FS/rsctl/n54.fs48ctl.scan.json" "$r54cs" "$FS/rsctl/c54a.json" "$r54cg" "$FS/rsctl/c54b.json" \
       "$r54m1" "$r54m2" "$r54pure" "$r54st" || P54_OK=1
 else
   echo "  rust   -> SKIP     (no candor-scan/candor-query binary — this engine was NOT asked)"
@@ -9229,8 +9243,8 @@ if [ -n "$TS_PRESENT" ]; then
       --gate-json "$FS/ts/t54a.json" >/dev/null 2>&1 ); t54s=$?
   ( cd "$TS_DIR" && node query.mjs gate --report "$FS/ts/t54.json" --policy "$FS/ts/exec.pol" \
       --gate-json "$FS/ts/t54b.json" >/dev/null 2>&1 ); t54g=$?
-  ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/t54n" >/dev/null 2>&1 )
-  ( cd "$TS_DIR" && node query.mjs gate --report "$FS/ts/t54n.json" --policy "$FS/ts/exec.pol" >/dev/null 2>&1 ); t54abs=$?
+  ( cd "$TS_DIR" && node scan.mjs "$FS/tsctl" --out "$FS/tsctl/n54" >/dev/null 2>&1 )
+  ( cd "$TS_DIR" && node query.mjs gate --report "$FS/tsctl/n54.json" --policy "$FS/ts/exec.pol" >/dev/null 2>&1 ); t54abs=$?
   ( cd "$TS_DIR" && node scan.mjs "$FS/tsctl" --out "$FS/tsctl/c54" --policy "$FS/ts/exec.pol" \
       --gate-json "$FS/tsctl/c54a.json" >/dev/null 2>&1 ); t54cs=$?
   ( cd "$TS_DIR" && node query.mjs gate --report "$FS/tsctl/c54.json" --policy "$FS/ts/exec.pol" \
@@ -9242,7 +9256,7 @@ if [ -n "$TS_PRESENT" ]; then
   ( cd "$TS_DIR" && node scan.mjs "$FS/ts/tsconfig.json" --out "$FS/ts/t54p" --policy "$FS/ts/pure.pol" >/dev/null 2>&1 ); t54pure=$?
   ( cd "$TS_DIR" && node query.mjs unverified --report "$FS/ts/t54.json" --policy "$FS/ts/exec.pol" --strict >/dev/null 2>&1 ); t54st=$?
   python3 "$HERE/peek_route_equality_check.py" "ts" "$t54s" "$FS/ts/t54a.json" "$t54g" "$FS/ts/t54b.json" \
-      "$t54abs" "$t54cs" "$FS/tsctl/c54a.json" "$t54cg" "$FS/tsctl/c54b.json" \
+      "$t54abs" "$FS/tsctl/n54.json" "$t54cs" "$FS/tsctl/c54a.json" "$t54cg" "$FS/tsctl/c54b.json" \
       "$t54m1" "$t54m2" "$t54pure" "$t54st" || P54_OK=1
 else
   echo "  ts     -> SKIP     (candor-ts not present — this engine was NOT asked)"
@@ -9251,8 +9265,8 @@ java -jar "$JAR" "$FS/java" --json "$FS/java/j54.json" --policy "$FS/java/exec.p
     --gate-json "$FS/java/j54a.json" >/dev/null 2>&1; j54s=$?
 java -jar "$JAR" gate --report "$FS/java/j54.json" --policy "$FS/java/exec.pol" \
     --gate-json "$FS/java/j54b.json" >/dev/null 2>&1; j54g=$?
-java -jar "$JAR" "$FS/java" --json "$FS/java/j54n.json" >/dev/null 2>&1
-java -jar "$JAR" gate --report "$FS/java/j54n.json" --policy "$FS/java/exec.pol" >/dev/null 2>&1; j54abs=$?
+java -jar "$JAR" "$FS/java/classes" --json "$FS/java/n54.json" >/dev/null 2>&1
+java -jar "$JAR" gate --report "$FS/java/n54.json" --policy "$FS/java/exec.pol" >/dev/null 2>&1; j54abs=$?
 java -jar "$JAR" "$FS/java/classes" --json "$FS/java/c54.json" --policy "$FS/java/exec.pol" \
     --gate-json "$FS/java/c54a.json" >/dev/null 2>&1; j54cs=$?
 java -jar "$JAR" gate --report "$FS/java/c54.json" --policy "$FS/java/exec.pol" \
@@ -9264,15 +9278,15 @@ printf 'pure\n' > "$FS/java/pure.pol"
 java -jar "$JAR" "$FS/java" --json "$FS/java/j54p.json" --policy "$FS/java/pure.pol" >/dev/null 2>&1; j54pure=$?
 java -jar "$JAR" unverified --report "$FS/java/j54.json" --policy "$FS/java/exec.pol" --strict >/dev/null 2>&1; j54st=$?
 python3 "$HERE/peek_route_equality_check.py" "java" "$j54s" "$FS/java/j54a.json" "$j54g" "$FS/java/j54b.json" \
-    "$j54abs" "$j54cs" "$FS/java/c54a.json" "$j54cg" "$FS/java/c54b.json" \
+    "$j54abs" "$FS/java/n54.json" "$j54cs" "$FS/java/c54a.json" "$j54cg" "$FS/java/c54b.json" \
     "$j54m1" "$j54m2" "$j54pure" "$j54st" || P54_OK=1
 if [ -n "$SW_PRESENT" ]; then
   ( cd "$FS/sw" && "$SW_BIN" . --out s54 --policy exec.pol --gate-json "$FS/sw/s54a.json" >/dev/null 2>&1 ); s54s=$?
   s54rep="$(ls "$FS"/sw/s54.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
   env -u CANDOR_CONFIG "$SW_BIN" gate --report "$s54rep" --policy "$FS/sw/exec.pol" \
       --gate-json "$FS/sw/s54b.json" >/dev/null 2>&1; s54g=$?
-  ( cd "$FS/sw" && "$SW_BIN" . --out s54n >/dev/null 2>&1 )
-  s54nrep="$(ls "$FS"/sw/s54n.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
+  ( cd "$FS/swctl" && "$SW_BIN" . --out n54 >/dev/null 2>&1 )
+  s54nrep="$(ls "$FS"/swctl/n54.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
   env -u CANDOR_CONFIG "$SW_BIN" gate --report "$s54nrep" --policy "$FS/sw/exec.pol" >/dev/null 2>&1; s54abs=$?
   ( cd "$FS/swctl" && "$SW_BIN" . --out c54 --policy "$FS/sw/exec.pol" --gate-json "$FS/swctl/c54a.json" >/dev/null 2>&1 ); s54cs=$?
   s54crep="$(ls "$FS"/swctl/c54.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
@@ -9285,7 +9299,7 @@ if [ -n "$SW_PRESENT" ]; then
   ( cd "$FS/sw" && "$SW_BIN" . --out s54p --policy pure.pol >/dev/null 2>&1 ); s54pure=$?
   env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$s54rep" --policy "$FS/sw/exec.pol" --strict >/dev/null 2>&1; s54st=$?
   python3 "$HERE/peek_route_equality_check.py" "swift" "$s54s" "$FS/sw/s54a.json" "$s54g" "$FS/sw/s54b.json" \
-      "$s54abs" "$s54cs" "$FS/swctl/c54a.json" "$s54cg" "$FS/swctl/c54b.json" \
+      "$s54abs" "$s54nrep" "$s54cs" "$FS/swctl/c54a.json" "$s54cg" "$FS/swctl/c54b.json" \
       "$s54m1" "$s54m2" "$s54pure" "$s54st" || P54_OK=1
 else
   echo "  swift  -> SKIP     (candor-swift not present — this engine was NOT asked)"
@@ -10406,6 +10420,49 @@ true
 # not fire; the honest row for them is a control that the rule does NOT misfire, not a skip. Only an
 # engine that cannot read the excluded file has the case at all, which today is candor-java (bytecode)
 # and candor-swift once its `build-output` carries `judgedElsewhere`.
+#   ⟨0.32⟩ THAT PARAGRAPH IS SUPERSEDED IN BOTH HALVES, and both corrections came from measuring rather
+#   than re-reading it. (1) A peeking engine HAS the case whenever the read FAILS — "found nothing" is
+#   byte-identical to "there is nothing" — which is why rust and ts carry full rows below, not controls.
+#   (2) swift's exclusion was wrong rather than stale: `judgedElsewhere` rides its `build-output` class
+#   and NOT its `harness-target` or `manifest`, both of which come back `peeked: false`. All four engines
+#   now carry a row. Kept rather than rewritten because an exclusion deleted without its reason is one
+#   somebody re-derives.
+#
+# ⟨0.32⟩ THE NO-POLICY-PRODUCER ROUTE, ADDED FOUR-WAY 2026-08-24, and it is where the rung actually bites.
+# `peeked: false` has two causes — the peek OPENED the files and failed, or NO PEEK RAN because the
+# producing scan carried no deny rule. From a DOCUMENT they are one state, and they leave the identical
+# hole: those files' effects are absent from `functions` because nothing looked. The carve-out is about
+# THE QUESTION BEING ASKED NOW (does the policy in force hold a deny rule?), never about the producer's
+# history (did it emit `outOfScope`?) — SPEC §2 ⟨0.32⟩. Spelling it the second way deletes the rule in
+# exactly the case it exists for, because `excluded` is MANDATORY from ⟨0.29⟩ while `outOfScope` is
+# omitted when nothing was asked. Until today only the ts row drove it; rust's and java's arms gated the
+# POLICY-PRODUCED report, which cannot see the split.
+#
+# ⟨0.32⟩ AND THE DOCUMENT ARMS. `judgedElsewhere` is the producer's own carve-out, so a gate must honour
+# it when TRUE and must NOT read a garbled value as true — a non-boolean coerced to "yes, judged" is the
+# safe-LOOKING value that deletes the rule. `pure` is a deny rule with an EMPTY effect list (§2.2 ⟨0.30⟩),
+# so an engine deriving "does this policy deny anything" by FLATTENING rules into effect NAMES gets
+# nothing from it and lets the STRICTEST policy disarm the rung — measured four-way once already, on the
+# scan route, and this is that same trap arriving on the new route.
+#
+# THE MUTATION HELPER, and its instrument check. It edits the engine's OWN report so everything except
+# the key under test is a real document, and it REFUSES a report with no unpeeked, non-judgedElsewhere
+# entry — without that, an engine whose fixture stopped producing one would pass these arms vacuously.
+mut62() { python3 -c '
+import copy, json, sys
+d = json.load(open(sys.argv[1]))
+x = d.get("excluded") or []
+if not any((not e.get("peeked")) and e.get("judgedElsewhere") is not True for e in x):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " has no unpeeked excluded entry — these arms would be vacuous")
+a = copy.deepcopy(d)
+for e in a["excluded"]:
+    if not e.get("peeked"): e["judgedElsewhere"] = True
+json.dump(a, open(sys.argv[2], "w"))
+b = copy.deepcopy(d)
+for e in b["excluded"]:
+    if not e.get("peeked"): e["judgedElsewhere"] = "yes"
+json.dump(b, open(sys.argv[3], "w"))
+' "$1" "$2" "$3"; }
 P62=$(mktemp -d); P62_BAD=0; P62_OUT=""
 mkdir -p "$P62/src/com/x" "$P62/build/classes/com/x"
 cat > "$P62/src/com/x/Deploy.java" <<'JEOF'
@@ -10432,16 +10489,72 @@ if [ "$P62_BAD" = 0 ]; then
   # means the peek was never put a question, not that code went unread.
   printf 'forbid ui -> db\n' > "$P62/noask.candor"
   java -jar "$JAR" "$P62" --policy "$P62/noask.candor" >/dev/null 2>&1; p62_noask=$?
-  if [ "$p62_root" = 2 ] && [ "$p62_built" = 0 ] && [ "$p62_gate" = 2 ] && [ "$p62_noask" = 0 ]; then
-    P62_OUT="  java   scan=2 built-control=0 gate--report=2 never-asked-control=0  OK
+  # ⟨0.32⟩ THE NO-POLICY PRODUCER, added 2026-08-24. The scan above was ASKED, so this row travelled
+  # through ⟨0.30⟩'s `outOfScope` once java's compile-peek landed (measured: that report carries
+  # `peeked: true`). This arm is the ⟨0.32⟩ half: a report produced with NO policy carries
+  # `peeked: false` and no `outOfScope`, and gating it with a deny policy must refuse.
+  java -jar "$JAR" "$P62" --json "$P62/n.json" >/dev/null 2>&1
+  java -jar "$JAR" gate --report "$P62/n.json" --policy "$P62/pol.candor" >/dev/null 2>&1; p62_nop=$?
+  # …and `pure` over the SAME report, because `pure` IS a deny rule with an empty effect list. An engine
+  # deciding "this policy denies nothing" by flattening rules to effect NAMES lets the strictest policy
+  # disarm the rung on this route exactly as it did on the scan route.
+  printf 'pure\n' > "$P62/pure.candor"
+  java -jar "$JAR" gate --report "$P62/n.json" --policy "$P62/pure.candor" >/dev/null 2>&1; p62_pure=$?
+  if [ "$p62_root" = 2 ] && [ "$p62_built" = 0 ] && [ "$p62_gate" = 2 ] && [ "$p62_noask" = 0 ] \
+     && [ "$p62_nop" = 2 ] && [ "$p62_pure" = 2 ]; then
+    P62_OUT="  java   scan=2 built-control=0 gate--report=2 never-asked-control=0 no-policy-report=2 pure-over-no-policy=2  OK
 "
   else
-    P62_OUT="  java   scan=$p62_root built-control=$p62_built gate--report=$p62_gate never-asked-control=$p62_noask  FAIL (want 2/0/2/0)
+    P62_OUT="  java   scan=$p62_root built-control=$p62_built gate--report=$p62_gate never-asked-control=$p62_noask no-policy-report=$p62_nop pure-over-no-policy=$p62_pure  FAIL (want 2/0/2/0/2/2)
+"
+    [ "$p62_nop" != 2 ] && P62_OUT="$P62_OUT         no-policy-report: the gate certified over a class the producing scan never opened. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-java, 2026-08-24, since fixed) — \`boolean scanWasAsked = envObj.has(\"outOfScope\")\` in Query.java made the whole ⟨0.32⟩ rule conditional on the PRODUCER's history; SPEC §2 ⟨0.32⟩ conditions it on the policy in force holding a deny rule (candor-rust: \`!p.rules.is_empty()\`). If this line is printing, check that conjunct first
 "
     P62_BAD=1; rc=1
   fi
 fi
 rm -rf "$P62"
+
+# ⟨0.32⟩ THE JAVA UNPEEKABLE FIXTURE, and the reason it exists as a SECOND tree. The row above was
+# written when an uncompiled `.java` was unreadable to this engine; ⟨0.32⟩'s compile-peek then made it
+# readable, so that fixture's scan/gate arms now travel through ⟨0.30⟩ (`peeked: true` + a non-empty
+# `outOfScope`) and no longer reach the clause this part is named for. Measured, not assumed. A source
+# the peek cannot COMPILE is the shape that still produces `peeked: false` under a policy, and it is
+# where the `judgedElsewhere` arms belong: they are about a gate reading the producer's carve-out, so
+# the rule has to be live for the arm to mean anything.
+P62J=$(mktemp -d); P62J_BAD=0; P62J_OUT=""
+mkdir -p "$P62J/src/com/x"
+cat > "$P62J/src/com/x/Broken.java" <<'JEOF'
+package com.x;
+public class Broken { public void go() { this is not java } }
+JEOF
+cat > "$P62J/src/com/x/Ok.java" <<'JEOF'
+package com.x;
+public class Ok { public int add(int a, int b) { return a + b; } }
+JEOF
+printf 'deny Exec\n' > "$P62J/pol.candor"
+javac -d "$P62J/build/classes" "$P62J/src/com/x/Ok.java" >/dev/null 2>&1 || P62J_BAD=3
+if [ "$P62J_BAD" = 0 ]; then
+  java -jar "$JAR" "$P62J" --policy "$P62J/pol.candor" --json "$P62J/r.json" >/dev/null 2>&1; p62j_scan=$?
+  java -jar "$JAR" gate --report "$P62J/r.json" --policy "$P62J/pol.candor" >/dev/null 2>&1; p62j_gate=$?
+  # THE PRODUCER'S CARVE-OUT, both directions. TRUE means "these files are a copy of code this scan
+  # already judged", so the class hides nothing and the gate certifies. A NON-BOOLEAN must NOT be read
+  # as true: corrupt input fails closed, or the safe-LOOKING value deletes the rule.
+  if mut62 "$P62J/r.json" "$P62J/je.json" "$P62J/jeb.json"; then
+    java -jar "$JAR" gate --report "$P62J/je.json" --policy "$P62J/pol.candor" >/dev/null 2>&1; p62j_je=$?
+    java -jar "$JAR" gate --report "$P62J/jeb.json" --policy "$P62J/pol.candor" >/dev/null 2>&1; p62j_jeb=$?
+  else
+    p62j_je=INSTRUMENT; p62j_jeb=INSTRUMENT
+  fi
+  if [ "$p62j_scan" = 2 ] && [ "$p62j_gate" = 2 ] && [ "$p62j_je" = 0 ] && [ "$p62j_jeb" = 2 ]; then
+    P62J_OUT="  java   unpeekable: scan=2 gate--report=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+"
+  else
+    P62J_OUT="  java   unpeekable: scan=$p62j_scan gate--report=$p62j_gate judgedElsewhere:true=$p62j_je judgedElsewhere:non-boolean=$p62j_jeb  FAIL (want 2/2/0/2)
+"
+    P62J_BAD=1; rc=1
+  fi
+fi
+rm -rf "$P62J"
 
 # THE RUST ROW — a DIFFERENT SHAPE OF THE SAME MUST, and the reason this part's engine exclusion had to
 # be re-measured rather than trusted. The note above says rust cannot have the case because its peek
@@ -10467,6 +10580,28 @@ if [ "$P62R_BAD" = 0 ]; then
   # file that does not exist here and the verb REFUSES — which is also exit 2, and would have passed this
   # row while measuring nothing. The byte-equality check below is what caught it.
   "$QUERY" gate --report "$P62R/o" --policy "$P62R/pol.candor" --gate-json "$P62R/v2.json" >/dev/null 2>&1; p62r_gate=$?
+  # ⟨0.32⟩ THE NO-POLICY PRODUCER — the route split rust closed 2026-08-24 (ab505c0), measured there over
+  # 795 crate×policy pairs: 90 went scan=2 → gate(no-policy report)=0 before the fix. A report written
+  # with no policy carries `peeked: false` on every class and NO `outOfScope`, and gating it with a deny
+  # policy must refuse: the carve-out is the question being asked NOW, not the producer's history.
+  "$SCAN" "$P62R" --out "$P62R/np" >/dev/null 2>&1
+  "$QUERY" gate --report "$P62R/np" --policy "$P62R/pol.candor" >/dev/null 2>&1; p62r_nop=$?
+  # …and `pure` over the same report: a deny rule with an empty effect list, which an engine flattening
+  # rules to effect NAMES reads as denying nothing.
+  printf 'pure\n' > "$P62R/pure.candor"
+  "$QUERY" gate --report "$P62R/np" --policy "$P62R/pure.candor" >/dev/null 2>&1; p62r_pure=$?
+  # THE PRODUCER'S CARVE-OUT, both directions, over the POLICY-PRODUCED report — where the rule is LIVE,
+  # so the arm is about the gate honouring `judgedElsewhere` rather than about the route above.
+  # Resolved by GLOB, never by a guessed `o.<unit>.scan.json`: a path that does not exist makes the verb
+  # refuse at 2, which would pass a fail-closed arm while measuring nothing.
+  p62r_rep=""
+  for f in "$P62R"/o.*.scan.json; do [ -f "$f" ] && p62r_rep="$f"; done
+  if [ -n "$p62r_rep" ] && mut62 "$p62r_rep" "$P62R/je.json" "$P62R/jeb.json"; then
+    "$QUERY" gate --report "$P62R/je.json" --policy "$P62R/pol.candor" >/dev/null 2>&1; p62r_je=$?
+    "$QUERY" gate --report "$P62R/jeb.json" --policy "$P62R/pol.candor" >/dev/null 2>&1; p62r_jeb=$?
+  else
+    p62r_je=INSTRUMENT; p62r_jeb=INSTRUMENT
+  fi
   # THE OVER-CHARGE CONTROL — the SAME tree with the SAME excluded class, readable. The peek runs, finds
   # the class clean, and the verdict must be 0. Without this row the rule could refuse every scan that
   # has a build script at all and still pass.
@@ -10486,26 +10621,174 @@ if [ "$P62R_BAD" = 0 ]; then
   # …and the two routes must be BYTE-EQUAL, not merely equal in exit code (SPEC §3.1).
   if cmp -s "$P62R/v.json" "$P62R/v2.json"; then p62r_eq=same; else p62r_eq=DIFFER; fi
   if [ "$p62r_scan" = 2 ] && [ "$p62r_gate" = 2 ] && [ "$p62r_ctl" = 0 ] && [ "$p62r_eq" = same ] \
-     && [ "$p62r_noask" = 0 ]; then
-    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 never-asked-control=0 verdicts=same  OK
+     && [ "$p62r_noask" = 0 ] && [ "$p62r_nop" = 2 ] && [ "$p62r_pure" = 2 ] \
+     && [ "$p62r_je" = 0 ] && [ "$p62r_jeb" = 2 ]; then
+    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 never-asked-control=0 verdicts=same no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
 "
   else
-    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl never-asked-control=$p62r_noask verdicts=$p62r_eq  FAIL (want 2/2/0/0/same)
+    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl never-asked-control=$p62r_noask verdicts=$p62r_eq no-policy-report=$p62r_nop pure-over-no-policy=$p62r_pure judgedElsewhere:true=$p62r_je judgedElsewhere:non-boolean=$p62r_jeb  FAIL (want 2/2/0/0/same/2/2/0/2)
 "
     P62R_BAD=1; rc=1
   fi
 fi
 chmod -R u+rwX "$P62R" 2>/dev/null; rm -rf "$P62R"
+
+# THE TS ROW. Its exclusion here read `NOT APPLICABLE and measured so — its peek READS the excluded
+# sources`, which was true of the SCAN route and never of the gate route: `loadGateReport` did not read
+# `excluded` at all, so a report produced WITHOUT a policy gated clean over code nothing had opened.
+# Measured pre-fix: scan=2 gate--report=0 verdicts=DIFFER. Exactly the shape the rust note one screen up
+# predicts — "true only when the read SUCCEEDS" — arriving on the other route.
+P62T=$(mktemp -d); P62T_BAD=0; P62T_OUT=""
+if [ -n "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P62T/src" "$P62T/dist"
+  printf 'export function ok(a: number): number { return a + 1 }\n' > "$P62T/src/a.ts"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P62T/tsconfig.json"
+  printf 'const cp = require("child_process"); cp.execSync("id");\n' > "$P62T/dist/shipped.js"
+  printf 'deny Exec\n' > "$P62T/pol.candor"
+  chmod 000 "$P62T/dist/shipped.js"
+  # THE INSTRUMENT CHECK, same as rust's: as root chmod 000 denies nothing, so probe by READING.
+  if cat "$P62T/dist/shipped.js" >/dev/null 2>&1; then P62T_BAD=3; fi
+  if [ "$P62T_BAD" = 0 ]; then
+    node "$TS_DIR/scan.mjs" "$P62T" --out "$P62T/s" --policy "$P62T/pol.candor" --gate-json "$P62T/v.json" >/dev/null 2>&1; p62t_scan=$?
+    # THE ROUTE THAT WAS FAILING OPEN: a report produced with NO policy, gated WITH one.
+    node "$TS_DIR/scan.mjs" "$P62T" --out "$P62T/n" >/dev/null 2>&1
+    node "$TS_DIR/query.mjs" gate --report "$P62T/n" --policy "$P62T/pol.candor" >/dev/null 2>&1; p62t_gate=$?
+    chmod 644 "$P62T/dist/shipped.js"
+    # THE OVER-CHARGE CONTROLS: readable — the peek reads it, so the class is peeked and the verdict
+    # stands on its own; never-asked — a policy with no DENY rule never puts the question, and reading
+    # `peeked: false` as unread code there refuses a tree nobody asked about.
+    # …and the readable control needs a CLEAN excluded file: re-reading one that genuinely runs
+    # `execSync` refuses correctly, which would make this row assert the opposite of a control.
+    printf 'module.exports = function add(a, b) { return a + b }\n' > "$P62T/dist/shipped.js"
+    node "$TS_DIR/scan.mjs" "$P62T" --out "$P62T/c" --policy "$P62T/pol.candor" >/dev/null 2>&1; p62t_ctl=$?
+    printf 'const cp = require("child_process"); cp.execSync("id");\n' > "$P62T/dist/shipped.js"
+    printf 'forbid ui -> db\n' > "$P62T/noask.candor"
+    chmod 000 "$P62T/dist/shipped.js"
+    node "$TS_DIR/scan.mjs" "$P62T" --out "$P62T/k" --policy "$P62T/noask.candor" >/dev/null 2>&1; p62t_noask=$?
+    chmod 644 "$P62T/dist/shipped.js"
+    # ⟨0.32⟩ `pure` OVER THE NO-POLICY REPORT — the flattening trap on the new route. `pure` is a deny
+    # rule with an EMPTY effect list, so an engine deciding "does this policy deny anything" by
+    # flattening rules into effect NAMES lets the STRICTEST policy disarm the rung.
+    printf 'pure\n' > "$P62T/pure.candor"
+    node "$TS_DIR/query.mjs" gate --report "$P62T/n" --policy "$P62T/pure.candor" >/dev/null 2>&1; p62t_pure=$?
+    # ⟨0.32⟩ THE PRODUCER'S CARVE-OUT, both directions, over the POLICY-PRODUCED report where the rule is
+    # live: TRUE certifies, a NON-BOOLEAN must not be read as true.
+    if mut62 "$P62T/s.json" "$P62T/je.json" "$P62T/jeb.json"; then
+      node "$TS_DIR/query.mjs" gate --report "$P62T/je.json" --policy "$P62T/pol.candor" >/dev/null 2>&1; p62t_je=$?
+      node "$TS_DIR/query.mjs" gate --report "$P62T/jeb.json" --policy "$P62T/pol.candor" >/dev/null 2>&1; p62t_jeb=$?
+    else
+      p62t_je=INSTRUMENT; p62t_jeb=INSTRUMENT
+    fi
+    if [ "$p62t_scan" = 2 ] && [ "$p62t_gate" = 2 ] && [ "$p62t_ctl" = 0 ] && [ "$p62t_noask" = 0 ] \
+       && [ "$p62t_pure" = 2 ] && [ "$p62t_je" = 0 ] && [ "$p62t_jeb" = 2 ]; then
+      P62T_OUT="  ts     scan=2 gate--report=2 readable-control=0 never-asked-control=0 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+"
+    else
+      P62T_OUT="  ts     scan=$p62t_scan gate--report=$p62t_gate readable-control=$p62t_ctl never-asked-control=$p62t_noask pure-over-no-policy=$p62t_pure judgedElsewhere:true=$p62t_je judgedElsewhere:non-boolean=$p62t_jeb  FAIL (want 2/2/0/0/2/0/2)
+"
+      P62T_BAD=1; rc=1
+    fi
+  fi
+fi
+chmod -R u+rwX "$P62T" 2>/dev/null; rm -rf "$P62T"
+P62_OUT="$P62_OUT$P62T_OUT"
+[ "$P62T_BAD" = 1 ] && P62_BAD=1
+
 P62_OUT="$P62_OUT$P62R_OUT"
 [ "$P62R_BAD" = 1 ] && P62_BAD=1
-# ENGINES: java rust; ts: NOT APPLICABLE and measured so — its peek READS the excluded sources, so those classes report `peeked: true` and the rule cannot fire, and rust has the case ONLY in the unreadable shape (the row above), not in the declined-to-read one; swift: NOT APPLICABLE and MEASURED so — its `build-output` class already carries `judgedElsewhere: true` (DERIVED_EXCLUSIONS in main.swift), so a repo-root scan of an SPM tree with a `.build/` directory answers 0 with 717 files correctly carved out (this note read `pending` until 2026-08-23, true when written and false by the time it was relied on)
-# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; never-asked-control — carried by BOTH engine rows now, since a policy with no deny rule never asks the peek and java refused where rust answered while only rust's row checked; readable-control — the same excluded class, readable, must answer 0; never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse; gate--report — the second route must agree from the document, since `excluded` rides the report
+
+# THE SWIFT ROW, added 2026-08-24, and its exclusion had to be RE-MEASURED rather than trusted. The old
+# `# ENGINES:` line said swift was NOT APPLICABLE because its `build-output` class carries
+# `judgedElsewhere: true`. That is true of `build-output` and false of the engine: an SPM tree's
+# `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift, which every `swift build`
+# runs) carry NO such flag, and both come back `peeked: false` from a scan with no policy. So the case
+# exists here in both shapes — an excluded file the peek cannot READ, and a report whose producer was
+# never ASKED. Measured, on this fixture, before the row was written.
+P62S=$(mktemp -d); P62S_BAD=0; P62S_OUT=""
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P62S/Sources/S" "$P62S/Tests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P62S/Package.swift"
+  printf 'public func add(_ a: Int) -> Int { a + 1 }\n' > "$P62S/Sources/S/a.swift"
+  printf 'import Foundation\npublic func helper() {\n  let p = Process()\n  p.launchPath = "/bin/ls"\n  try? p.run()\n}\n' > "$P62S/Tests/Helper.swift"
+  printf 'deny Exec\n' > "$P62S/pol.candor"
+  printf 'pure\n' > "$P62S/pure.candor"
+  printf 'forbid ui -> db\n' > "$P62S/noask.candor"
+  chmod 000 "$P62S/Tests/Helper.swift"
+  # THE INSTRUMENT CHECK, as rust's and ts's: as root chmod 000 denies nothing, so probe by READING.
+  if cat "$P62S/Tests/Helper.swift" >/dev/null 2>&1; then P62S_BAD=3; fi
+  if [ "$P62S_BAD" = 0 ]; then
+    # THE ROW: a peek that OPENED the excluded file and could not read it. "Found nothing" is
+    # byte-identical to "there is nothing", which is the false green ⟨0.32⟩ exists to stop.
+    ( cd "$P62S" && "$SW_BIN" . --out u --policy pol.candor >/dev/null 2>&1 ); p62s_scan=$?
+    p62s_rep=""
+    for f in "$P62S"/u.*.Swift.json; do
+      case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac
+      [ -f "$f" ] && p62s_rep="$f"
+    done
+    if [ -n "$p62s_rep" ]; then
+      env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p62s_rep" --policy "$P62S/pol.candor" >/dev/null 2>&1; p62s_gate=$?
+      if mut62 "$p62s_rep" "$P62S/je.json" "$P62S/jeb.json"; then
+        env -u CANDOR_CONFIG "$SW_BIN" gate --report "$P62S/je.json" --policy "$P62S/pol.candor" >/dev/null 2>&1; p62s_je=$?
+        env -u CANDOR_CONFIG "$SW_BIN" gate --report "$P62S/jeb.json" --policy "$P62S/pol.candor" >/dev/null 2>&1; p62s_jeb=$?
+      else
+        p62s_je=INSTRUMENT; p62s_jeb=INSTRUMENT
+      fi
+    else
+      p62s_gate=NOREPORT; p62s_je=NOREPORT; p62s_jeb=NOREPORT
+    fi
+    # THE NEVER-ASKED CONTROL — a forbid-only policy over the SAME unreadable tree must answer 0: with no
+    # deny rule the peek was never put a question, so `peeked: false` there means unasked, not unread.
+    ( cd "$P62S" && "$SW_BIN" . --out k --policy noask.candor >/dev/null 2>&1 ); p62s_noask=$?
+    # ⟨0.32⟩ THE NO-POLICY PRODUCER, and its `pure` twin. Both gate a report written with NO policy —
+    # `peeked: false` everywhere, no `outOfScope` — and both must refuse.
+    ( cd "$P62S" && "$SW_BIN" . --out n >/dev/null 2>&1 )
+    p62s_nrep=""
+    for f in "$P62S"/n.*.Swift.json; do
+      case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac
+      [ -f "$f" ] && p62s_nrep="$f"
+    done
+    if [ -n "$p62s_nrep" ]; then
+      env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p62s_nrep" --policy "$P62S/pol.candor" >/dev/null 2>&1; p62s_nop=$?
+      env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p62s_nrep" --policy "$P62S/pure.candor" >/dev/null 2>&1; p62s_pure=$?
+    else
+      p62s_nop=NOREPORT; p62s_pure=NOREPORT
+    fi
+    # THE OVER-CHARGE CONTROL — the SAME excluded class, readable and CLEAN. The peek runs, finds
+    # nothing, and the verdict must be 0, or the rule reddens every SPM package that has a Tests/.
+    chmod 644 "$P62S/Tests/Helper.swift"
+    printf 'public func harmless() -> Int { 1 }\n' > "$P62S/Tests/Helper.swift"
+    ( cd "$P62S" && "$SW_BIN" . --out c --policy pol.candor >/dev/null 2>&1 ); p62s_ctl=$?
+    if [ "$p62s_scan" = 2 ] && [ "$p62s_gate" = 2 ] && [ "$p62s_ctl" = 0 ] && [ "$p62s_noask" = 0 ] \
+       && [ "$p62s_nop" = 2 ] && [ "$p62s_pure" = 2 ] && [ "$p62s_je" = 0 ] && [ "$p62s_jeb" = 2 ]; then
+      P62S_OUT="  swift  scan=2 gate--report=2 readable-control=0 never-asked-control=0 no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+"
+    else
+      P62S_OUT="  swift  scan=$p62s_scan gate--report=$p62s_gate readable-control=$p62s_ctl never-asked-control=$p62s_noask no-policy-report=$p62s_nop pure-over-no-policy=$p62s_pure judgedElsewhere:true=$p62s_je judgedElsewhere:non-boolean=$p62s_jeb  FAIL (want 2/2/0/0/2/2/0/2)
+"
+      [ "$p62s_nop" != 2 ] && P62S_OUT="$P62S_OUT         no-policy-report: the gate certified over classes the producing scan never opened. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-swift, 2026-08-24, since fixed) — GateReportCLI.swift wrapped the whole ⟨0.32⟩ read in \`if obj[\"outOfScope\"] != nil\`, making the rule conditional on the PRODUCER's history; SPEC §2 ⟨0.32⟩ conditions it on the policy in force holding a deny rule (candor-rust: \`!p.rules.is_empty()\`). If this line is printing, check that conjunct first
+"
+      P62S_BAD=1; rc=1
+    fi
+  fi
+fi
+chmod -R u+rwX "$P62S" 2>/dev/null; rm -rf "$P62S"
+P62_OUT="$P62_OUT$P62S_OUT"
+[ "$P62S_BAD" = 1 ] && P62_BAD=1
+
+P62_OUT="$P62_OUT$P62J_OUT"
+[ "$P62J_BAD" = 1 ] && P62_BAD=1
+# ENGINES: java rust ts swift
+# ⟨0.32⟩ SWIFT'S EXCLUSION IS GONE, and it was wrong rather than stale. It read "NOT APPLICABLE — its `build-output` class carries `judgedElsewhere: true`", which is true of ONE class and false of the engine: an SPM tree's `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift, which every `swift build` runs) carry no such flag and come back `peeked: false`. Measured 2026-08-24 on this part's own fixture, so swift now carries a full row in both shapes — an excluded file the peek cannot READ, and a report whose producer was never ASKED
+# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; readable-control — the same excluded class, readable and CLEAN, must answer 0 (carried by rust, ts and swift); never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse (carried by all four rows); gate--report — the second route must agree from the document, since `excluded` rides the report; judgedElsewhere:true=0 — the producer's own carve-out is the over-charge control for the `judgedElsewhere:non-boolean=2` arm beside it, so refusing everything cannot pass either
+# ⟨0.32⟩ NO-POLICY-REPORT — the arm that keys the rule on the QUESTION rather than the producer's history, and the reason it was worth adding. HISTORY, not status: when this arm was first written on 2026-08-24 it was RED on two engines. rust=2 and ts=2 (fixed that morning, candor-rust ab505c0 / candor-ts 9f22581), java=0 and swift=0 — a live fail-open where `gate --report` certified over a class the producing scan never opened, because both keyed the whole ⟨0.32⟩ rule on the PRODUCER's history (java `Query.java` `scanWasAsked = envObj.has("outOfScope")`, swift `GateReportCLI.swift` wrapping the read in `if obj["outOfScope"] != nil`) instead of on the policy in force holding a deny rule. Both were fixed the same afternoon and all four rows are green; the FAIL branch still prints the mechanism rather than a bare exit code, so a regression names its own cause
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
 [ "$P62_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 [ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
+[ "$P62J_BAD" = 3 ] && echo "  -> SKIP (java unpeekable row) — no javac to build the fixture"
 [ "$P62R_BAD" = 3 ] && echo "  -> SKIP (rust row) — running as a user chmod 000 does not stop, so the unread case cannot be staged"
+[ "$P62S_BAD" = 3 ] && echo "  -> SKIP (swift row) — running as root chmod 000 does not stop, so the unread case cannot be staged"
 true
 
 # PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2 / §3.3.1 ⟨0.32⟩) [TIER 1]

@@ -23,6 +23,38 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   that carry a DENY rule: `peeked: false` also means "never asked", and reading that as unread code
   refused trees nobody had put a question to. PART 62, with the never-asked control on both engine rows.
 
+- **⟨0.32⟩ THE CARVE-OUT IS THE QUESTION BEING ASKED NOW, NEVER THE PRODUCER'S HISTORY (§2, §3.1).** The
+  clause above says the rule fires only under a policy holding a deny rule; it did not say how that is
+  DECIDED, and two engines decided it by asking whether the producing scan had emitted `outOfScope`. That
+  spelling deletes the rule in exactly the case it exists for: `excluded` is MANDATORY from ⟨0.29⟩ while
+  `outOfScope` is omitted when nothing was asked, so a no-policy report over a tree with exclusions
+  carries `peeked: false` with no `outOfScope` beside it. Measured 2026-08-24 — candor-rust and candor-ts
+  refused it, candor-java and candor-swift certified it, on identical evidence; candor-rust's own A/B over
+  795 crate×policy pairs found 90 that went scan=2 → gate=0. Such reports now fail closed, and that is the
+  rung rather than collateral: the remedy is to SCAN WITH THE POLICY, which no consumer can do for itself.
+  ⟨0.32⟩ is therefore **not additive**, and reaches further than ⟨0.30⟩ did. `pure` counts as a deny rule
+  (empty effect list). The fail direction of the carve-out is stated in §2 and is a real limitation: an
+  excluded file can hold a forbidden EDGE, and the peek is deny-only, so refusing `forbid`/`only` policies
+  would be permanent with no remedy — a disclosure obligation is written in its place, and measured as
+  implemented by NO engine today. PART 62 gains the arm four-way, plus `judgedElsewhere: true` ⇒ 0, a
+  non-boolean `judgedElsewhere` ⇒ 2, and `pure` over a no-policy report ⇒ 2.
+
+- **PART 54's absent-key arm was measuring the opposite of ⟨0.32⟩, and the FIXTURE was what was wrong.**
+  It scanned PART 48's DIRTY tree with no policy and asserted the gate stays green — `policy ✓` over the
+  rung's own central case — so it went red the day the four engines closed their route split. The two
+  rules never collided: an ABSENT `outOfScope` means *never asked* and triggers nothing (⟨0.30⟩), while a
+  PRESENT `excluded[].peeked == false` triggers ⟨0.32⟩, and that clause needs an ENTRY. The arm now runs
+  on the CONTROL trees, whose `excluded` is `[]`, with an INSTRUMENT CHECK asserting that before it gates —
+  without one the arm silently degrades back into measuring ⟨0.32⟩. The original error was mapping ⟨0.26⟩
+  *cannot answer* onto exit 0: in this family cannot-answer at VERDICT level is exit 2 INCOMPLETE.
+
+- **FILED — the CROSS-POLICY hole (`FILE-SET-DESIGN.md` §8).** `peeked: true` is true only relative to the
+  deny set the PRODUCER held, and the report does not record what that was. Scan with `deny Net` (the peek
+  reads the class in full, `peeked: true`), gate with `deny Exec`: the `Exec` in the excluded file was seen
+  and discarded as outside the producer's question, and the gate exits 0 where `scan --policy 'deny Exec'`
+  exits 2. Undetectable from the document, and it survives every ⟨0.32⟩ control because the class really
+  was read. Proposed fix: record the scan policy's deny set, or a digest, in the report.
+
 - **⟨0.32⟩ A CONSUMER JOINS REPORTS BY `hash`, NEVER BY BARE `fn` (§2.2).** Measured in every engine:
   `gate --report` over one member refused a scoped rule at exit 2, and the SAME member gated beside an
   unrelated sibling exited 0 with `policy ✓` — adding a report, strictly more information, turned a red

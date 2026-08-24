@@ -31,7 +31,18 @@ classification, so a consumer that ignores it is unaffected. The fourth exit-2 c
 UNEVALUABLE TARGET) is not additive for the same reason ⟨0.30⟩ is not: a target that exists and holds no
 file the engine can read was a clean pass on one engine and is a refusal on every engine now, so a
 green that came from a typo'd path becomes an exit 2. That is the direction the change exists to fix,
-and it is still a verdict that moves. **0.23 is a tier-1 additive
+and it is still a verdict that moves.
+**⟨0.32⟩ IS NOT ADDITIVE EITHER, and its non-additivity reaches further than ⟨0.30⟩'s.** `judgedElsewhere`
+(§2) is a new optional field, but the clause beside it changes what a gate DOES with `excluded`, a key
+MANDATORY since ⟨0.29⟩: an entry with `peeked: false` and no `judgedElsewhere: true` now suppresses `ok`
+and exits 2 under any policy holding a deny rule. So a ⟨0.29⟩-era report written with NO policy over a
+tree that has exclusions — a build script, a tests directory, a jar under the root — was a clean pass and
+is a refusal now, on the `gate --report` route in particular. **The upgrade note is the remedy: SCAN WITH
+THE POLICY.** A report produced under the same deny set carries `peeked: true` (or names what it found in
+`outOfScope`), and the refusal turns back into a definite answer; re-gating the old report cannot, because
+the peek is a producer-side act and no consumer can re-derive it from a document. A pipeline that scans
+once with no policy and gates the artifact later is the shape that flips, and it is the shape ⟨0.32⟩ exists
+to stop certifying. **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
 `CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
@@ -832,6 +843,38 @@ already carry.
   failure the key exists to prevent. This MUST NOT fire on a run whose policy was REFUSED: a refusal is
   not a verdict, so there is nothing for incompleteness to qualify (§3.1).
 
+  ⟨0.32⟩ **IT FIRES ONLY WHEN THE POLICY IN FORCE HOLDS AT LEAST ONE `deny` RULE, and the condition is the
+  QUESTION BEING ASKED NOW — never the producing scan's history.** `pure` IS a deny rule — a deny with an
+  EMPTY effect list, denying every effect except `Unknown` (§2.2 ⟨0.30⟩) — and counts. A policy carrying
+  only `forbid`/`allow`/`only` never put the peek's question, so `peeked: false` under one means UNASKED,
+  not unread, and MUST NOT refuse. **The condition MUST NOT be spelled as "did the producer emit
+  `outOfScope`".** That spelling reads the producer's silence about the QUESTION as an answer about the
+  CODE, and it deletes the rule in exactly the case it exists for: `excluded` is MANDATORY from ⟨0.29⟩
+  (§2.2 above) while `outOfScope` is omitted when no policy was configured, so a ⟨0.29⟩-era no-policy
+  report over a tree that HAS exclusions carries `peeked: false` with no `outOfScope` beside it. Such a
+  report DOES fail closed on contact with a deny policy. **That is the rung, not collateral damage** — the
+  producer never opened those files, the gate cannot open them from a document, and the hole in the
+  evidence is the same hole whichever cause put it there.
+
+  **THE FAIL DIRECTION OF THE CARVE-OUT, stated rather than left to be discovered.** It is FORCED, not
+  chosen: the peek is deny-only by the ⟨0.29⟩ bound above, so a `forbid`/`allow`/`only` policy runs no peek
+  on ANY route, and refusing such a policy would be a permanent refusal with no remedy — re-scanning with
+  that policy runs no peek either. But an excluded file can hold a forbidden EDGE or a destination no
+  `allow` list covers exactly as easily as a denied effect, so this is a REAL LIMITATION and not a proof of
+  safety. It MUST therefore be DISCLOSED rather than silent: where a policy with no deny rule is applied
+  over a report carrying unpeeked, non-`judgedElsewhere` classes, an engine MUST emit an advisory naming
+  those classes and saying this policy cannot ask about them. Exit codes do not move. *Measured
+  2026-08-24, `forbid ui -> db` over a tree with an unpeeked class: candor-rust and candor-swift print
+  `policy ✓` and say nothing about the class; candor-java prints its scan-completeness advisory naming
+  the unread files, but UNCONDITIONALLY — it is the same line a no-policy scan prints, so it carries no
+  statement that the POLICY could not ask. So **no engine emits this advisory today**, and the obligation
+  is written here to make the gap a recorded debt with a named remedy rather than an unasked question. A
+  limitation carried only as a code comment reads as CONSIDERED, which is what stops it being measured.* This is the same
+  shape as the `only`/`forbid` bound across a chained dependency — a name rule cannot see a crossing the
+  join does not carry, because the join carries EFFECTS and not EDGES — which is filed and closed on the
+  advisory channel for the identical reason: the verdict cannot move, so the bound must be visible
+  (candor `BACKLOG.md`, `[P1]`).
+
 - ⟨0.32⟩ `"judgedElsewhere": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the
   files of this class are copies of code this same scan already judged*, so the class hides nothing and
   the rule above does not fire for it. The motivating case is a build tree: a jar under `build/` is a
@@ -941,6 +984,24 @@ already carry.
   *cannot answer*, not a clear one, and it does NOT trigger this clause — a report produced with no policy
   was never asked the question, and pre-⟨0.30⟩ reports predate the key. A gate that wants this assurance
   must be given a report whose producer was configured with the policy.
+  ⟨0.32⟩ **AND AN ABSENT `outOfScope` LICENSES NOTHING IN EITHER DIRECTION.** THIS clause does not fire on
+  it; the ⟨0.32⟩ unread-class clause above may still refuse the SAME report, through the PRESENT
+  `excluded[].peeked == false`. The two keys carry different claims under opposite emission rules —
+  `outOfScope` is OMITTED when nothing was asked, `excluded` is MANDATORY from ⟨0.29⟩ whenever the engine
+  can enumerate its own file selection — so reading the absence of the first as an answer about the second
+  is the ⟨0.26⟩ collapse this format exists to prevent, and it deletes the ⟨0.32⟩ rule in precisely the
+  case that rule was written for.
+
+  ⟨0.32⟩ **A GATE CERTIFIES ONLY RELATIVE TO A REPORT WHOSE PRODUCER HELD THE GATE'S DENY SET, so a
+  producer in a scan-then-gate pipeline MUST scan with the policy.** The peek is a producer-side act over
+  a file set the consumer does not have: no consumer can re-derive it from a document, and the strongest
+  thing a gate can say over a report scanned under a weaker deny set — or none — is that it could not see
+  enough of the tree. It is the remedy a ⟨0.32⟩ refusal points at, and it is the **SAME** policy rather
+  than merely *a* policy: a report scanned under `deny Net` answers nothing about `deny Exec` in the files
+  it excluded, because the peek's own ⟨0.29⟩ bound filtered what it looked for to the PRODUCER's denied
+  effects. *A report does not today record the deny set it was scanned under, so that mismatch is not
+  detectable from the document — filed with its proposed fix (record the deny set, or a digest of it, in
+  the report) in `FILE-SET-DESIGN.md` §8 rather than asserted away.*
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);

@@ -205,3 +205,44 @@ A file the selector DID reach and whose contents the engine understood only part
 business, not this block's. And a *dependency* outside the scan root is the scan-boundary vein
 ([[candor-scan-boundary-vein]]), already closed and pinned by PART 20 — different question, and the reasons
 must not be conflated in the report or the two disclosures become one indistinct hedge.
+
+## 8. FILED, NOT IMPLEMENTED — the CROSS-POLICY hole (2026-08-24)
+
+**A `peeked: true` is only true relative to the deny set the PRODUCER held, and the report does not say
+what that was.** Found while ruling on ⟨0.32⟩'s carve-out; recorded rather than fixed, because the fix is
+a report-format change and this rung was already in flight.
+
+THE SHAPE, and it defeats every ⟨0.32⟩ arm because all of them are satisfied:
+
+    candor-scan <tree> --out A --policy 'deny Net'     the peek runs, reads the excluded class IN FULL,
+                                                      finds no Net there, and writes `peeked: true`
+    candor-query gate --report A --policy 'deny Exec'  exit 0, `policy ✓`
+    candor-scan <tree> --policy 'deny Exec'            exit 2 — there IS an Exec in that excluded file
+
+The gate is not wrong about anything it can see. `peeked: true` says the peek OPENED those files, which it
+did; ⟨0.32⟩'s unread-class rule correctly does not fire. What is missing is that the peek was BOUNDED — by
+⟨0.29⟩'s own rule, `outOfScope` carries only effects the PRODUCER's policy denies, so the `Exec` finding in
+the excluded file was seen and DISCARDED as out of the producer's question. The consumer then asks a
+different question of a report that answered the first one, and nothing in the document marks the
+difference. **Undetectable from the document**: the report records the peek's RESULT and never the policy
+it was scanned under.
+
+Note which way this fails. It is the fail-OPEN direction on the `gate --report` route — the supply-chain
+route, where a consumer gates a report someone else produced — and it survives every control ⟨0.32⟩ has,
+because the class really was read.
+
+**PROPOSED FIX: record the scan policy's DENY SET, or a digest of it, in the report.** A gate then compares
+its own deny set against the producer's and refuses (exit 2, INCOMPLETE) when the producer's does not cover
+it, exactly as an unpeeked class refuses today. A digest is enough for equality and cheaper to keep stable
+than the rule text; the full set is more useful in a message and is what a remedy would have to name. Which
+of the two is a design decision, not a detail — a digest cannot tell an operator WHICH effect went unasked.
+
+**The remedy message must say "the SAME policy", not "a policy".** ⟨0.32⟩'s existing remedy — *scan with
+the policy* — is what produces this hole when read loosely: the operator did scan with a policy. SPEC §2's
+⟨0.32⟩ producer clause already carries the corrected wording; the message an engine PRINTS has not been
+checked against it, and this is the class of gap the ⟨0.29⟩ stale-message finding came from.
+
+Cross-reference: the peek's ⟨0.29⟩ deny-set bound is what makes the whole rung affordable (SPEC §2 ⟨0.30⟩,
+"the bound in the ⟨0.29⟩ clause above is what makes this affordable"), so this is a cost OF that bound
+rather than a defect in it. Removing the bound is not the fix — an unbounded peek reports everything in
+every excluded tree, which is the noise floor rung 2 was chosen to avoid (§5.2).

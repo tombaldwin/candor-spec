@@ -27,10 +27,25 @@ WHAT EACH ARM RULES OUT
   · (B) BYTE-EQUAL     …and the two verdict documents are identical bytes, which is §3.1's own acceptance
                        test. Same exit with different documents is drift a consumer would read as two
                        different verdicts.
-  · (C) ABSENT ≠ EMPTY a report produced with NO policy carries no `outOfScope` key, and gating it must
-                       stay exit 0. ⟨0.26⟩ makes an absent key "this producer cannot answer"; treating it
-                       as a trigger would fail-close every pre-⟨0.30⟩ report on contact, which is an
-                       upgrade that breaks every existing pipeline rather than a rung.
+  · (C) ABSENT ≠ EMPTY a report produced with NO policy OVER A TREE WITH NOTHING EXCLUDED carries no
+                       `outOfScope` key beside an `excluded` of `[]`, and gating it must stay exit 0.
+                       ⟨0.26⟩ makes the absent key "this producer cannot answer" ABOUT THE PEEK; with
+                       nothing unread, ⟨0.32⟩ has no case to answer either, so the arm isolates
+                       absent-key semantics and nothing else.
+                       ⟨0.32⟩ **THE FIXTURE IS THE CONTROL TREE, and it has to be.** This arm used to scan
+                       PART 48's DIRTY tree, whose excluded class contains the denied effect — the ⟨0.32⟩
+                       central case — so it asserted `policy ✓` over exactly the report that rung refuses,
+                       and it went red the day the four engines closed their route split. The two rules
+                       never collided; the fixture was measuring the wrong one.
+                       ⟨0.32⟩ **THE ORIGINAL ERROR WAS MAPPING ⟨0.26⟩ "CANNOT ANSWER" ONTO EXIT 0.** In
+                       this family cannot-answer AT VERDICT LEVEL is exit 2 INCOMPLETE, never `policy ✓` —
+                       that is what ⟨0.21⟩, ⟨0.30⟩ and ⟨0.31⟩ each mint an exit-2 cause for. ⟨0.26⟩'s
+                       absent-vs-empty rule governs what a KEY claims, not what a VERDICT does, and this
+                       arm collapsed the two levels into one. See PART 62 for the other half: a no-policy
+                       report WITH unpeeked classes refuses under ⟨0.32⟩ on both routes.
+                       THE INSTRUMENT CHECK is not decoration. Without asserting that the fresh no-policy
+                       report really does carry `excluded: []`, this arm silently degrades back into
+                       measuring ⟨0.32⟩ the moment a fixture tree grows something excludable.
   · (D) THE CONTROL    a tree whose peek is asked-and-clear exits 0 on BOTH routes with byte-equal
                        documents. Without it the part passes against an engine that answers 2 for
                        everything — the vacuous-pass shape this suite keeps measuring in its own work,
@@ -64,15 +79,15 @@ def load(path):
 
 
 def main():
-    if len(sys.argv) < 15:
+    if len(sys.argv) < 16:
         print("usage: peek_route_equality_check.py <engine> <scan_rc> <scan_verdict> <gate_rc> "
-              "<gate_verdict> <absent_rc> <ctl_scan_rc> <ctl_scan_verdict> <ctl_gate_rc> <ctl_gate_verdict> "
-              "<mal_list_rc> <mal_elem_rc> <pure_rc> <strict_rc>")
+              "<gate_verdict> <absent_rc> <absent_report> <ctl_scan_rc> <ctl_scan_verdict> <ctl_gate_rc> "
+              "<ctl_gate_verdict> <mal_list_rc> <mal_elem_rc> <pure_rc> <strict_rc>")
         return 2
     engine = sys.argv[1].strip()
-    (scan_rc, scan_v, gate_rc, gate_v, absent_rc,
+    (scan_rc, scan_v, gate_rc, gate_v, absent_rc, absent_rep,
      ctl_scan_rc, ctl_scan_v, ctl_gate_rc, ctl_gate_v,
-     mal_list_rc, mal_elem_rc, pure_rc, strict_rc) = sys.argv[2:15]
+     mal_list_rc, mal_elem_rc, pure_rc, strict_rc) = sys.argv[2:16]
 
     def fail(msg):
         print(f"  {engine:6} -> DIVERGE  ({msg})")
@@ -127,10 +142,37 @@ def main():
                     "disclosure a machine consumer cannot see, which is the defect ⟨0.21⟩ was built for")
 
     # ── (C) ABSENT IS NOT A TRIGGER ───────────────────────────────────────────────────────────────
+    # ⟨0.32⟩ THE INSTRUMENT CHECK COMES FIRST. The arm is only about ABSENT-key semantics when the report
+    # under it has nothing unread; over a tree WITH an unpeeked class the ⟨0.32⟩ clause legitimately
+    # refuses and this arm would be asserting `policy ✓` over the rung's own central case. That is what it
+    # did until today, because it scanned PART 48's dirty tree. Assert the fixture rather than trust it:
+    # a fixture tree that grows something excludable must break this loudly, not silently re-aim the arm.
+    # An EMPTY path is its own failure: the harness resolves swift's report by glob, and a glob that
+    # matched nothing would otherwise arrive here as "not JSON" — a diagnosis of the wrong thing.
+    if not absent_rep.strip():
+        return fail("the absent-key arm was handed an EMPTY report path — the harness resolved no report "
+                    "for this engine, so the arm would score a document that was never produced")
+    abs_raw = load(absent_rep)
+    if abs_raw is None:
+        return fail(f"the absent-key arm's own report is missing ({absent_rep}) — the arm cannot be about a "
+                    "document nobody produced, and a missing fixture reads exactly like a passing one")
+    try:
+        abs_doc = json.loads(abs_raw)
+    except Exception:                                         # noqa: BLE001
+        return fail(f"the absent-key arm's report ({absent_rep}) is not JSON")
+    if "outOfScope" in abs_doc:
+        return fail("the absent-key arm's report CARRIES `outOfScope` — it was produced with a policy after "
+                    "all, so this arm is measuring the present-and-empty case (D) instead of absence")
+    if abs_doc.get("excluded") != []:
+        return fail(f"the absent-key arm's report has `excluded` = {json.dumps(abs_doc.get('excluded'))[:120]}, "
+                    "not `[]` — this arm MUST run over a control tree with nothing excluded, or it stops "
+                    "testing ⟨0.26⟩ absence and starts asserting the opposite of ⟨0.32⟩ (see PART 62)")
     if absent_rc != "0":
-        return fail(f"gating a report produced with NO policy exited {absent_rc}, not 0 — that report was "
-                    "never ASKED the scope question, so its missing key is ⟨0.26⟩'s 'cannot answer', not a "
-                    "finding. Treating absence as a trigger fail-closes every pre-⟨0.30⟩ report on contact")
+        return fail(f"gating a NO-POLICY report whose `excluded` is `[]` exited {absent_rc}, not 0 — an ABSENT "
+                    "`outOfScope` must not trigger anything: absence is ⟨0.26⟩'s cannot-answer FOR THE PEEK, "
+                    "and with nothing unread ⟨0.32⟩ has no case either. A no-policy report WITH unpeeked "
+                    "classes is the other half and it REFUSES under ⟨0.32⟩ (PART 62) — this arm is the "
+                    "over-charge control for that rule, not a licence for it")
 
     # ── (D) THE CONTROL ───────────────────────────────────────────────────────────────────────────
     if ctl_scan_rc != "0" or ctl_gate_rc != "0":
@@ -178,8 +220,8 @@ def main():
                     "the all-clear this rung closes on the gate is still available one verb over")
 
     print(f"  {engine:6} -> OK        (both routes exit 2, byte-equal; ok:false + incomplete + no "
-          "violations; absent ⇒ 0; asked-and-clear ⇒ 0/0; corrupt key ⇒ 2 both shapes; `pure` ⇒ 2; "
-          "advisory --strict ⇒ 2)")
+          "violations; absent over `excluded: []` ⇒ 0; asked-and-clear ⇒ 0/0; corrupt key ⇒ 2 both "
+          "shapes; `pure` ⇒ 2; advisory --strict ⇒ 2)")
     return 0
 
 
