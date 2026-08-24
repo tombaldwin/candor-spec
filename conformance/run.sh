@@ -10335,9 +10335,13 @@ RSEOF
 # question is about the query verb's vocabulary, not about anyone's analysis. Named explicitly rather
 # than picked off a listing: a sidecar chosen by position would make every row ask about the wrong file.
 # THE WORK RUNS BEFORE THE MARKER, and the rows are buffered and printed after it. Not a style choice:
-# part.sh ends a slice at its marker's block, so invocations placed after the marker fall outside the
-# slice — and DECLARED COVERAGE then reads the four engines this part declares as claims it never backs.
-# Buffering keeps the engine invocations inside the slice while the OUTPUT still reads top-down.
+# part.sh ends a slice at the end of its marker's OUTPUT — the flush, the guarded result lines, the
+# closing `true` — and an engine invocation is none of those, so work placed after the marker falls
+# outside the slice, and DECLARED COVERAGE then reads the four engines this part declares as claims it
+# never backs. Buffering keeps the invocations inside the slice while the OUTPUT still reads top-down.
+# (This said "ends a slice at its marker's BLOCK" until 2026-08-24, when part.sh did exactly that: it
+# knew only the `if … fi` verdict shape, so the buffered rows below landed in PART 62's slice and
+# `part.sh 66` died on an inherited `$P65_OUT`. Accurate about the constraint, wrong about the rule.)
 P61_OUT=""
 p61_row() {  # p61_row <engine> <report> <cmd...>
   local eng="$1" rep="$2"; shift 2
