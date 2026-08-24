@@ -83,7 +83,13 @@ pub fn reads_only() { let _ = fs::read_to_string("/tmp/a"); }
 pub fn writes_only() { let _ = fs::write("/tmp/b", "x"); }
 pub fn copies() { let _ = fs::copy("/tmp/a", "/tmp/b"); }
 pub fn reaches_writer() { writes_only(); }
-pub fn undetermined() { let _ = std::fs::OpenOptions::new(); }
+// ⟨0.32⟩ THE FIXTURE MUST NOT DEPEND ON AN OVER-CHARGE. This read `OpenOptions::new()` alone and
+// relied on the bare BUILDER being Fs — which SPEC §1's Exec-capability paragraph now forbids for
+// option-builders of other effects: their resource arrives at the TERMINAL verb, charged at its own
+// call site. Once candor-rust stopped over-charging the setter chain this went pure, and `mixed()`
+// published `fs: ["write"]` for a function performing no Fs of its own — §2's forbidden partial
+// claim. The fixture was wrong, not the engine. Verified on BOTH the pre-fix and post-fix engines.
+pub fn undetermined() { let _ = std::fs::OpenOptions::new().read(true).open("/tmp/a"); }
 pub fn mixed() { writes_only(); undetermined(); }
 '''
 
