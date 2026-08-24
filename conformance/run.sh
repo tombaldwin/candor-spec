@@ -93,7 +93,25 @@ TS_OK=""
 if command -v node >/dev/null 2>&1 && [ -f "$TS_DIR/scan.mjs" ]; then
   TS_PRESENT=1
   ( cd "$TS_DIR" && { [ -d node_modules ] || npm install --no-fund --no-audit >/dev/null 2>&1; } )
-  ( cd "$TS_DIR" && node scan.mjs Cases.ts "$W/ts" 2>/dev/null )
+  # ⟨0.32⟩ THE FIXTURE IS SCANNED FROM A COPY, as the rust ($W/rust) and java ($W/jout) fixtures already
+  # are, and the reason is the ⟨0.32⟩ descriptive hedge rather than tidiness. Scanned IN PLACE inside the
+  # candor-ts checkout, a scan of the single file `Cases.ts` publishes
+  # `excluded: [{class: "not-a-parsed-source", count: 29, peeked: false}]` — 29 sibling files of the
+  # repository that this run never opened, which is TRUE and is exactly what the key is for. Once the
+  # descriptive verbs began hedging on it (2026-08-24, four-way), `show` and `map` correctly answered
+  # with SPEC §2 ⟨0.28⟩ Rung A's CAVEAT DOCUMENT instead of their result document — and PART 5, which
+  # compares the healthy SHAPES, then raised `KeyError: 0` on a document that has no index 0.
+  #
+  # The fixture is the thing to fix, not the assertion: PART 5's question is whether four engines'
+  # HEALTHY documents carry the same keys, and asking it over a report one engine honestly cannot
+  # complete is a question with no answer. The copy carries a `package.json` naming `candor-ts` so the
+  # report's `package` — and therefore every entry `hash` — stays byte-identical to the in-place scan;
+  # MEASURED, the only difference between the two reports is `excluded: []` against the 29-file class.
+  # The out prefix is UNCHANGED, so the 33 other uses of `$W/ts` and its three sidecars are untouched.
+  mkdir -p "$W/tsfx"
+  cp "$TS_DIR/Cases.ts" "$W/tsfx/Cases.ts" 2>/dev/null
+  printf '{"name":"candor-ts","version":"0.0.0"}\n' > "$W/tsfx/package.json"
+  ( cd "$TS_DIR" && node scan.mjs "$W/tsfx/Cases.ts" "$W/ts" 2>/dev/null )
   [ -s "$W/ts.json" ] && TS_OK=1
 fi
 
@@ -1715,7 +1733,22 @@ done
 python3 - "$W" <<'PY' || rc=1
 import json, os, sys
 W = sys.argv[1]
-load = lambda q, e: json.load(open(f"{W}/{e}_{q}.json"))
+def load(q, e):
+    with open(f"{W}/{e}_{q}.json") as f:
+        d = json.load(f)
+    # ⟨0.32⟩ A ⟨0.28⟩ RUNG A CAVEAT DOCUMENT IS NOT A SHAPE — SAY SO, DO NOT RAISE ON IT. SPEC §2 ⟨0.28⟩:
+    # "a verb whose pinned shape cannot carry the caveat MUST emit the caveat document instead of its
+    # result document", so `show` and `map` answer `{"incomplete": true, …}` over a report that declares
+    # unread source, unread CLASSES (⟨0.32⟩) or a count-0 manifest. That is CORRECT behaviour and this
+    # part cannot compare shapes across it. Before this guard the caveat document reached `rs[0]` and the
+    # harness died with `KeyError: 0` — an engine-agnostic crash reported as a conformance FAILURE.
+    # A fixture that has drifted into incompleteness is the cause; the message names it.
+    if isinstance(d, dict) and d.get("incomplete") is True and q in ("show", "map"):
+        print(f"FAIL: {e}_{q}.json is the ⟨0.28⟩ Rung A CAVEAT document, not a result document — the "
+              f"fixture report this part queries is INCOMPLETE (unread source, an unread `excluded` "
+              f"class, or `analyzed.count: 0`), so there is no shape here to compare. Fix the FIXTURE.")
+        raise SystemExit(1)
+    return d
 ts = os.path.exists(f"{W}/t_show.json")
 print("\n[5] QUERY-SHAPE differential  (show/where/callers/map JSON shape agrees across engines"
       + (", incl. candor-ts" if ts else "") + ")")
@@ -11736,6 +11769,156 @@ printf '%s' "$P67_OUT"
 [ "$P67J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 [ "$P67T_RAN" = 0 ] && echo "  -> SKIP (ts row) — candor-ts: not present on this runner"
 [ "$P67S_RAN" = 0 ] && echo "  -> SKIP (swift row) — candor-swift: not present on this runner"
+true
+
+# ====================================================================================================
+# PART 68 — A VERDICT ROW CARRIES THE UNIT IT IS ABOUT (SPEC §2 ⟨0.32⟩)                       [TIER 1]
+# ====================================================================================================
+#
+# THE OTHER MUST IN PART 63's CLAUSE, AND NOTHING WAS ASSERTING IT. §2 ⟨0.32⟩ states two things in one
+# block: a multi-report verdict must be computed over `hash`-keyed units (PART 63), AND *"a verdict row
+# MUST carry enough identity for a consumer to tell two units apart… the sort key MUST include that
+# identity."* The MUST ledger pointed BOTH at PART 63, which drives exit codes only and never opens the
+# verdict document — so the row half was marked covered by a part that cannot see it. That is the shape
+# this suite exists to make unwritable, arriving inside the ledger rather than inside an engine.
+#
+# THE DEFECT, MEASURED 2026-08-24 on candor-ts, candor-java and candor-swift at HEAD (candor-rust had
+# closed it the day before, at `a8f8902`): two reports whose members both declare `go` and both violate
+# `deny Exec` produced two BYTE-IDENTICAL rows —
+#
+#     { "rule": "AS-EFF-006", "fn": "go", "effects": ["Exec"], "detail": "`go` performs { Exec } …" },
+#     { "rule": "AS-EFF-006", "fn": "go", "effects": ["Exec"], "detail": "`go` performs { Exec } …" }
+#
+# No hash, no package, no loc. A reader cannot tell two broken members from one listed twice, and a
+# consumer that fingerprints on name alone — candor's own SARIF action did — hides one finding behind
+# the other. Names are not unique even WITHIN one report: an inherent method and a trait implementation
+# of the same name emit two entries sharing `fn`, and candor-swift's `#1` overload disambiguator exists
+# for exactly that collision.
+#
+# THE ORDER IS HALF THE CLAUSE, which is why the spec states it separately and why `rev` is a row here
+# and not a nicety. `(rule, detail)` TIES on the twins — `detail` is rendered from the NAME — so their
+# order was whatever each route happened to accumulate in, and §3.3.1 makes the document's ORDER part of
+# the byte-equality between `scan --policy` and `gate --report`. `rev` re-lays the SAME two reports
+# under swapped file names: an engine ordering by identity answers identically, an engine ordering by
+# whatever `readdir` handed it does not. The reversal is on DISK rather than in an argument, because the
+# discovery walk is the thing whose order must not reach the document.
+#
+# THE FIXTURE IS HAND-AUTHORED, as PART 63's is and for its reason: §3.1 says this verb serves a report
+# it did not produce, and the twin case is a property of the DOCUMENT SET.
+#
+# IT ASSERTS `hash` BY NAME. §3.3.1 ⟨0.24⟩ requires a field entering a machine-consumed document to have
+# its name and shape pinned in the rung that introduces it — "a MUST that says 'disclose X' without
+# saying what X is called is four independent guesses with a conformance failure scheduled" — and all
+# four engines chose §2.2's join key. Pinning the behaviour alone would leave the next engine free to
+# call it `unit`.
+P68=$(mktemp -d); P68_BAD=0; P68_OUT=""
+mkdir -p "$P68/twin" "$P68/rev" "$P68/one" "$P68/nohash"
+p68_member() {   # $1 dir ; $2 file stem ; $3 package ; $4 hash line (may be empty)
+  cat > "$P68/$1/report.$2.scan.json" <<JEOF
+{"candor":{"version":"t","toolchain":"t","spec":"0.31"},"package":"$3",
+ "analyzed":{"count":1,"digest":"0000000000000000"},"resolves":["fs","incomplete"],
+ "excluded":[],"outOfScope":[],
+ "functions":[{"fn":"go","loc":"src/lib.rs:1:1","inferred":["Exec"],"direct":["Exec"]$4}]}
+JEOF
+}
+p68_member twin   a a ',"hash":"a#go"'
+p68_member twin   b b ',"hash":"b#go"'
+# THE REVERSAL IS THE FILE NAME, NOT THE CONTENT: `a#go` is written to the stem that sorts LAST and
+# `b#go` to the one that sorts FIRST, so a document whose rows follow the discovery walk comes out in
+# the opposite order from `twin` while one keyed on identity is unchanged.
+p68_member rev    z a ',"hash":"a#go"'
+p68_member rev    a b ',"hash":"b#go"'
+p68_member one    a a ',"hash":"a#go"'
+# THE HASHLESS CONTROL — a producer with NO identity to give. ⟨0.26⟩: absent is *this producer cannot
+# answer*, and a row that invented an id from the name would be the §2.2 name-join wearing the new
+# key's clothes. Without this row the cheapest way to pass every row above is to synthesise one.
+p68_member nohash a a ''
+printf 'deny Exec\n' > "$P68/pol.candor"
+cat > "$P68/check.py" <<'PYEOF'
+import json, sys
+label, twin, rev, one, nohash = sys.argv[1:6]
+BASE = {"rule", "fn", "effects", "detail"}
+def rows(p):
+    with open(p) as f:
+        return json.load(f)["violations"]
+def bad(msg):
+    print(f"  {label:<6} FAIL — {msg}")
+    sys.exit(1)
+try:
+    t, r, o, n = rows(twin), rows(rev), rows(one), rows(nohash)
+except Exception as e:                                     # a missing/again-refused document is a FAIL,
+    bad(f"could not read a verdict document: {e}")         # never a silent pass
+if len(t) != 2:
+    bad(f"the twin set must yield 2 rows, got {len(t)}: {t}")
+if t[0] == t[1]:
+    bad(f"THE DEFECT — two byte-identical rows a reader cannot tell apart: {t[0]}")
+h = [x.get("hash") for x in t]
+if not all(isinstance(x, str) and x for x in h):
+    bad(f"a row carries no `hash` — §2's identity is the field, and §3.3.1 pins its name: {t}")
+if len(set(h)) != 2:
+    bad(f"both rows claim the SAME unit: {h}")
+if h != sorted(h):
+    bad(f"the sort key does not include the identity (rows out of identity order): {h}")
+if [x.get("fn") for x in t] != ["go", "go"]:
+    bad(f"`fn` must stay the NAME on both rows — identity is ADDED, never substituted: {t}")
+if [ (x.get("rule"), x.get("hash")) for x in r ] != [ (x.get("rule"), x.get("hash")) for x in t ]:
+    bad(f"the row order followed the DISCOVERY WALK, not the identity: twin={h} rev={[x.get('hash') for x in r]}")
+if len(o) != 1 or set(o[0]) != BASE | {"hash"}:
+    bad(f"a single-unit row's key set must be exactly {sorted(BASE | {'hash'})}, got {sorted(set(o[0])) if o else o}")
+if len(n) != 1 or set(n[0]) != BASE:
+    bad(f"a producer with NO `hash` must OMIT the field (⟨0.26⟩), got {sorted(set(n[0])) if n else n}")
+print(f"  {label:<6} twin=2 distinct, identity-ordered; rev order unchanged; single={sorted(set(o[0]))}; hashless omits  OK")
+PYEOF
+p68_run() {   # $1 label ; $2.. the gate command PREFIX (everything before the flags)
+  local label="$1"; shift
+  local d
+  for d in twin rev one nohash; do
+    "$@" gate --report "$P68/$d/report" --policy "$P68/pol.candor" \
+         --gate-json "$P68/$d.verdict.json" >/dev/null 2>&1
+  done
+  if python3 "$P68/check.py" "$label" "$P68/twin.verdict.json" "$P68/rev.verdict.json" \
+             "$P68/one.verdict.json" "$P68/nohash.verdict.json" > "$P68/$label.out" 2>&1; then
+    P68_OUT="$P68_OUT$(cat "$P68/$label.out")\n"
+  else
+    P68_OUT="$P68_OUT$(cat "$P68/$label.out")\n"; P68_BAD=1; rc=1
+  fi
+}
+p68_run rust "$QUERY"
+p68_run java java -jar "$JAR"
+if [ -n "$TS_OK" ]; then p68_run ts node "$TS_DIR/query.mjs"
+else P68_OUT="$P68_OUT  ts     SKIP — engine absent\n"; fi
+# THE SWIFT ROW re-lays the SAME bodies under swift's own discovery suffix, exactly as PART 63 does:
+# every engine finds reports by its own spelling, and re-authoring them would stop the two rows
+# asserting over identical evidence.
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  for d in twin rev one nohash; do
+    mkdir -p "$P68/sw-$d"
+    for f in "$P68/$d"/report.*.scan.json; do
+      [ -e "$f" ] || continue
+      u=$(basename "$f"); u=${u#report.}; u=${u%.scan.json}
+      cp "$f" "$P68/sw-$d/report.$u.Swift.json"
+    done
+  done
+  for d in twin rev one nohash; do
+    "$SW_BIN" gate --report "$P68/sw-$d/report" --policy "$P68/pol.candor" \
+              --gate-json "$P68/sw-$d.verdict.json" >/dev/null 2>&1
+  done
+  if python3 "$P68/check.py" swift "$P68/sw-twin.verdict.json" "$P68/sw-rev.verdict.json" \
+             "$P68/sw-one.verdict.json" "$P68/sw-nohash.verdict.json" > "$P68/swift.out" 2>&1; then
+    P68_OUT="$P68_OUT$(cat "$P68/swift.out")\n"
+  else
+    P68_OUT="$P68_OUT$(cat "$P68/swift.out")\n"; P68_BAD=1; rc=1
+  fi
+else
+  P68_OUT="$P68_OUT  swift  SKIP — engine absent\n"
+fi
+rm -rf "$P68"
+# ENGINES: rust java ts swift
+# CONTROLS: one nohash rev — `one`: a SINGLE-unit verdict must still answer and its row key set is pinned EXACTLY, so an engine that grew a sixth field fails here rather than passing a by-name assertion, and an engine that refuses every multi-report set cannot score the twin row by refusing this one too. `nohash`: a producer with NO identity to give must OMIT the field — ⟨0.26⟩'s *cannot answer* — so the twin row cannot be passed by synthesising an id from the name, which is the §2.2 join the clause forbids. `rev`: the same two reports under swapped file stems, which is what separates "the sort key includes the identity" from "the discovery walk happened to be alphabetical"
+echo "PART 68 — a verdict row carries the unit it is about (SPEC §2 ⟨0.32⟩)"
+printf '%b' "$P68_OUT"
+[ "$P68_BAD" = 0 ] && echo "  -> MATCH — two units sharing a name produce two rows a consumer can tell apart, in identity order, on every engine"
+[ "$P68_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 true
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a

@@ -2892,7 +2892,7 @@
    "sha": "129801f93cab9251",
    "at": "2. The report",
    "excerpt": "- ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2 alrea",
-   "part": "PART 63"
+   "part": "PART 63 (the hash-keyed join) + PART 68 (the verdict-row identity and its sort key — this block states TWO MUSTs, and PART 63 drives exit codes only: it never opens the verdict document, so the row half was marked covered by a part that cannot see it)"
   },
   {
    "sha": "e77e57323b5d905f",
