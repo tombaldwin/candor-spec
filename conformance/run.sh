@@ -10884,8 +10884,10 @@ true
 #     launch, so there is no build-then-launch split to lose. ts drives launched + both controls.
 #   · swift configured — MEASURED GAP, not an inapplicability: `t.arguments = ["-x"]` on a received
 #     `Process` reports NO effect at all, so candor-swift charges construction but not configuration.
-#   · rust readBack — MEASURED OVER-CHARGE, the other direction: `c.get_program()` answers
-#     `Clock+Exec`, so candor-rust's whole-type `Command` rule has no read-back carve-out yet.
+#   · rust readBack — CLOSED 2026-08-24 (candor-rust 9cbd732) and now ASSERTED below. It answered
+#     `Clock+Exec`: the getters were on the carve-out list, but only as far as the next `.`, so
+#     `c.get_program().to_str()` re-attributed to the base receiver. Left here as the record of why
+#     the cell was ever measured-absent — a note that stops being true is the trap this file keeps.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 P66_OK=0
@@ -10921,9 +10923,13 @@ if [ -x "$SCAN" ]; then
   ( cd "$P66/rsl" && "$SCAN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_rlook=$?
   p66_rrep="$(ls "$P66"/rs/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
   p66_rlrep="$(ls "$P66"/rsl/r.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
-  # rust's `readBack` cell is measured-absent (it answers Clock+Exec — the over-charge named in the
-  # header), so the lookalike tree carries this engine's over-charge control, in its own report.
-  p66 "rust" "$p66_rrep" "$p66_rcap" "$p66_rlook" armed=Exec configured=Exec launched=Exec
+  # ⟨0.32⟩ rust's `readBack` cell is now ASSERTED. It was measured-absent when this part was written
+  # because the engine answered `Clock+Exec` on a read-back-only function — the over-charge the §1
+  # clause forbids, carved out since (candor-rust 9cbd732: the getters were on the carve-out list but
+  # only as far as the next `.`, so `c.get_program().to_str()` re-attributed to the base receiver).
+  # The `Clock` is the fixture's own `Instant::now()` vacuity marker and is expected; what must be
+  # absent is `Exec`.
+  p66 "rust" "$p66_rrep" "$p66_rcap" "$p66_rlook" armed=Exec configured=Exec launched=Exec readBack=noExec
   python3 "$HERE/exec_capability_check.py" "rust*" "$p66_rlrep" lookalike=noExec || P66_OK=1
 else
   echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
