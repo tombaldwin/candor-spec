@@ -78,6 +78,29 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   implemented by NO engine today. PART 62 gains the arm four-way, plus `judgedElsewhere: true` ⇒ 0, a
   non-boolean `judgedElsewhere` ⇒ 2, and `pure` over a no-policy report ⇒ 2.
 
+- **PART 67 — THE ADVISORY VERBS REFUSE WHEREVER THE GATE DOES (§3.1 ⟨0.24⟩), four-way.** ⟨0.32⟩ shipped
+  its new verdict cause into `gate --report` on all four engines and into NEITHER of the two advisory
+  verbs that answer `ok` over the identical bytes: `fix-gate --strict` exited 0 printing *"no deny/pure
+  boundary crossings ✓"* and `unverified --strict` exited 0 printing *"every function … PROVABLY clean ✓"*
+  over reports the gate beside them refused. Fixed four-way the same day (candor-rust `9bf3f2f`,
+  candor-swift `2bf8de7`, candor-java `3682835`, candor-ts `9f22581`) with **nothing asserting it** — PART
+  62 pins the CAUSE and drives the gate route only. The part is named for the RELATION rather than for
+  ⟨0.32⟩ because this is the third time a new verdict cause reached the gate and not these two verbs
+  (⟨0.24⟩ `unanalyzed`, ⟨0.30⟩ `outOfScope`, ⟨0.32⟩ `excluded[].peeked`), so the fourth needs a fixture
+  here and not a rewrite. One tree per engine scanned TWICE — once with `deny Exec`, once with no policy —
+  so the only difference between the two reports is whether the peek was ever put the question; the
+  excluded file is CLEAN in both, which is what makes the refusal attributable to the document rather than
+  to content. Six cells per engine: 2/2/2 over the unread report, 0/0/0 over the peeked control, the
+  control being half the row because an engine that refuses everything scores a perfect 2/2/2. Falsified
+  against binaries built from the commits BEFORE the fixes (rust `9bf3f2f^` reddens at 2/0/0, java
+  `3682835^` at 0/0/0), and guarded by an instrument check that FAILS a fixture carrying any `Unknown` —
+  `unverified --strict` has its own exit 1 there, which is neither 2 nor 0 and reads as the verb handling
+  the case. Two §3.1 statements move from `pre-ledger` to part-named in the MUST ledger. Two further
+  routes are pinned in the same part: candor-java's `--parallel`, which cannot gate and is therefore
+  asserted on the DOCUMENT it writes (`excluded` byte-equal to a standalone scan, all three verbs
+  refusing over it), and candor-ts's MCP `candor_gate`, measured rather than assumed to inherit from the
+  reader it shares with the CLI.
+
 - **PART 54's absent-key arm was measuring the opposite of ⟨0.32⟩, and the FIXTURE was what was wrong.**
   It scanned PART 48's DIRTY tree with no policy and asserted the gate stays green — `policy ✓` over the
   rung's own central case — so it went red the day the four engines closed their route split. The two

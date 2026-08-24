@@ -11303,6 +11303,320 @@ else
 fi
 
 
+
+# ====================================================================================================
+# PART 67 — THE ADVISORY VERBS REFUSE WHEREVER THE GATE DOES (SPEC §3.1 ⟨0.24⟩)                [TIER 2]
+# ====================================================================================================
+#
+# THE MUST IS A RELATION, NOT A BEHAVIOUR. SPEC §3.1 ⟨0.24⟩: *"AN ADVISORY VERB MUST NEVER BE LESS
+# SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME BYTES"*, and *"THE SAME RULE BINDS EVERY
+# ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later sibling"*. §2 ⟨0.30⟩ restates
+# it for that rung's own trigger and spells out the consequence: `--strict` answers 2 wherever
+# `gate --report` would. Both §3.1 statements sat in the MUST ledger as `pre-ledger` until this part; they
+# are now part-named, which is most of the reason to write a row at all — a clause classified as "it
+# predates the gate" is a clause nothing has ever asked.
+#
+# WHY THIS PART EXISTS, and it is not hypothetical. ⟨0.32⟩ made an unread exclusion class a verdict
+# cause, and on 2026-08-24 all four engines shipped that cause into `gate --report` and NOT into the two
+# advisory verbs that answer `ok` over the identical bytes:
+#
+#     gate --report <no-policy report> --policy <deny Exec>   -> 2
+#     fix-gate   --strict   (same report, same policy)        -> 0   "no deny/pure boundary crossings ✓"
+#     unverified --strict   (same report, same policy)        -> 0   "every function … PROVABLY clean ✓"
+#
+# Fixed the same day in candor-rust `9bf3f2f`, candor-swift `2bf8de7`, candor-java `3682835`
+# (`Query.java`'s `ReportCompleteness.unpeeked`) and candor-ts `9f22581` (`query-core.mjs`). NOTHING
+# ASSERTED IT. PART 62 pins the ⟨0.32⟩ CAUSE and drives `gate --report` only; no row anywhere ran a
+# `--strict` verb over an unread report, so the fix was four commits with no gate under them — which is
+# how this same defect survived in one engine while three others closed it.
+#
+# THE THIRD TIME, WHICH IS WHY THE PART IS NAMED FOR THE RELATION AND NOT FOR ⟨0.32⟩. candor-java's own
+# `ReportCompleteness` comments record ⟨0.24⟩ doing this for `unanalyzed` and ⟨0.30⟩ doing it again for
+# `outOfScope` — *"the second time, which says the ARM is what a new verdict cause needs, not a note
+# telling the next person to remember"*. ⟨0.32⟩ is the third. A part keyed on ⟨0.32⟩ would need rewriting
+# for the fourth; this one needs only a new fixture, because what it asserts is the relation. It is
+# [TIER 2] for the same reason PARTs 12b/12c are: the divergence it catches is in the TOOL surfaces, and
+# `gate --report` — the tier-1 half — is pinned by PART 62 and appears here only as the reference.
+#
+# THE FIXTURE: ONE TREE, TWO REPORTS, and the tree is byte-identical between them. Each engine's fixture
+# holds one analysed function performing `Fs` and one file in an EXCLUDED class that is entirely CLEAN —
+# a no-op Cargo build script, an uncompiled but pure `.java`, a `dist/` CJS module that only adds, an SPM
+# `Tests/` helper returning 1. It is scanned TWICE, once WITH `deny Exec` and once with no policy at all,
+# so the ONLY difference between the two reports is whether the producer's peek was ever put the
+# question: `excluded[].peeked` is `false` in one and `true` in the other (measured on all four).
+# That isolation is the point. An engine that refuses the row is refusing on the DOCUMENT's own statement
+# that nothing looked — it cannot be refusing on content, because there is no bad content anywhere in the
+# tree, and the control proves it by answering 0 over the same bytes. `peeked: false` and "looked and
+# found nothing" are the two states ⟨0.32⟩ exists to keep apart, and here they are one tree.
+#
+# THE OVER-CHARGE CONTROL IS HALF THE ROW. Six cells per engine, not three: an engine that refuses every
+# report scores a perfect 2/2/2 and has deleted both verbs. The control demands the pre-existing
+# NON-REFUSAL answer over the peeked report, and that answer is 0 rather than 1 BY CONSTRUCTION and by
+# measurement — the tree holds no `Exec` at all, so `fix-gate` has no crossing to plan and `unverified`
+# no hole to name.
+#
+# `gate --report` IS IN THE ROW ON PURPOSE, even though PART 62 already pins it. The MUST compares two
+# readers "over the same bytes", so both sides must be measured in the same run over the same report: a
+# row asserting the advisory verbs against a hard-coded 2 stops being a relation the moment the gate's
+# own answer moves, and would then pin two verbs to a number the thing they must track no longer says.
+#
+# THE TRAP, MEASURED, and `ck67` is what stands between this part and falling into it: `unverified
+# --strict` HAS ITS OWN EXIT 1 — an `Unknown` hole in the analysed set — so an arm built over a fixture
+# with such a hole watches the verb answer non-zero and reads that as the rule firing. It is not; it is
+# the verb doing its ordinary job while the ⟨0.32⟩ cause goes on being ignored, and the two are
+# indistinguishable if the row only asks "did it refuse?". `ck67` therefore REFUSES a fixture whose
+# reports carry any `Unknown`, and refuses an empty `functions` array too (a verb that certifies nothing
+# passes its cell without asking anything). The cells assert the EXACT codes 2 and 0, so an
+# Unknown-driven 1 fails rather than passes — the checker exists so that it fails with a diagnosis.
+#
+# FALSIFIED against binaries built from the commits BEFORE the fixes, not by reasoning about them.
+# candor-rust at `9bf3f2f^` over this fixture's row report: `gate --report` 2, `fix-gate --strict` 0
+# printing `no deny/pure boundary crossings in this report ✓`, `unverified --strict` 0 printing `every
+# function in a pure/deny layer is PROVABLY clean (no Unknown holes) ✓`. That is the blocker exactly, and
+# it is the ISOLATED case — rust's gate-route fix (`ab505c0`) had already landed, so the gate was at 2
+# while both siblings certified. candor-java at `3682835^`: all three answered 0, that engine having
+# closed both halves in one commit. Both controls answered 0/0/0 pre-fix and post-fix, so the control is
+# not what moved.
+p67() {   # <engine> <row gate> <row fix-gate> <row unverified> <ctl gate> <ctl fix-gate> <ctl unverified>
+  if [ "$2" = 2 ] && [ "$3" = 2 ] && [ "$4" = 2 ] && [ "$5" = 0 ] && [ "$6" = 0 ] && [ "$7" = 0 ]; then
+    P67_OUT="$P67_OUT  $1  unread-report: gate=2 fix-gate--strict=2 unverified--strict=2   peeked-control: gate=0 fix-gate--strict=0 unverified--strict=0  OK
+"
+  else
+    P67_OUT="$P67_OUT  $1  unread-report: gate=$2 fix-gate--strict=$3 unverified--strict=$4   peeked-control: gate=$5 fix-gate--strict=$6 unverified--strict=$7  FAIL (want 2/2/2 then 0/0/0)
+"
+    if [ "$2" = 2 ] && { [ "$3" != 2 ] || [ "$4" != 2 ]; }; then
+      P67_OUT="$P67_OUT         THE GATE REFUSED AND AN ADVISORY VERB CERTIFIED OVER THE SAME BYTES — SPEC §3.1 ⟨0.24⟩, the exact shape closed four-way on 2026-08-24 (candor-rust \`9bf3f2f\`, candor-swift \`2bf8de7\`, candor-java \`3682835\`, candor-ts \`9f22581\`). The verb's incompleteness set is missing a cause the gate has: find where THIS engine unions its report-completeness arms (java \`ReportCompleteness.incomplete()\`, ts \`advisoryAnswer\`) and check the newest verdict cause is one of them. A cause reaching the gate and not these two verbs has now happened three times — ⟨0.24⟩ \`unanalyzed\`, ⟨0.30⟩ \`outOfScope\`, ⟨0.32⟩ \`excluded[].peeked\`
+"
+    fi
+    if [ "$5" != 0 ] || [ "$6" != 0 ] || [ "$7" != 0 ]; then
+      P67_OUT="$P67_OUT         THE OVER-CHARGE CONTROL MOVED — this tree holds no \`Exec\` anywhere and its excluded class came back \`peeked: true\`, so a non-zero here is a verb refusing a report it CAN answer. That direction passes the three cells beside it while deleting the feature, which is why the control is half the row
+"
+    fi
+    P67_BAD=1; rc=1
+  fi
+}
+# THE INSTRUMENT CHECK, and it FAILS rather than skips: a fixture that cannot ask this part's question
+# must redden, because a vacuous green here is the same false all-clear the part is about. Four ways a
+# fixture goes vacuous — a row report with nothing unpeeked, a control that is still unread (a second
+# copy of the row, not a control), an empty `functions` array (`unverified` certifies the empty set
+# without asking), and an `Unknown` anywhere (the trap in the header).
+ck67() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+def unread(d):
+    return [e.get("class") for e in (d.get("excluded") or [])
+            if e.get("peeked") is not True and e.get("judgedElsewhere") is not True]
+row, ctl = load(sys.argv[1]), load(sys.argv[2])
+if not unread(row):
+    sys.exit("     INSTRUMENT: the row report " + sys.argv[1] + " declares no unpeeked, "
+             "non-judgedElsewhere class — every refusal cell below would be vacuous")
+if unread(ctl):
+    sys.exit("     INSTRUMENT: the control report " + sys.argv[2] + " STILL declares " + str(unread(ctl))
+             + " unread — that is a second copy of the row, not an over-charge control")
+for tag, d in (("row", row), ("control", ctl)):
+    fns = d.get("functions") or []
+    if not fns:
+        sys.exit("     INSTRUMENT: the " + tag + " report judged NOTHING — `unverified` certifies an "
+                 "empty set without asking, so its cell would pass over a fixture with no content")
+    holes = [f.get("fn") for f in fns
+             if any("Unknown" in str(x) for x in (f.get("inferred") or []) + (f.get("direct") or []))]
+    if holes:
+        sys.exit("     INSTRUMENT: the " + tag + " report carries an Unknown hole in " + str(holes)
+                 + " — THE TRAP THIS CHECK EXISTS FOR: `unverified --strict` exits 1 over its OWN finding "
+                 "there, which is neither 2 nor 0 and reads as the verb handling the ⟨0.32⟩ case")
+' "$1" "$2"; }
+P67_BAD=0; P67_OUT=""
+# Reports are written OUTSIDE the scanned tree throughout. A `--out` prefix inside it makes the second
+# scan of the pair read the first one's report as a file of the project, so the two runs this part
+# compares would no longer be over identical bytes — which is the one property every cell rests on.
+
+# ── THE RUST ROW ─────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `build-script`: it runs on every `cargo build`, the scan does not judge it as
+# crate runtime behaviour, and here it is a no-op `println!`.
+P67R="$W/p67r"; mkdir -p "$P67R/tree/src"
+printf '[package]\nname = "p67r"\nversion = "0.1.0"\nedition = "2021"\n' > "$P67R/tree/Cargo.toml"
+printf 'pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }\n' > "$P67R/tree/src/lib.rs"
+printf 'fn main() { println!("cargo:rerun-if-changed=build.rs"); }\n' > "$P67R/tree/build.rs"
+printf 'deny Exec\n' > "$P67R/pol.candor"
+"$SCAN" "$P67R/tree" --out "$P67R/n" >/dev/null 2>&1
+"$SCAN" "$P67R/tree" --out "$P67R/c" --policy "$P67R/pol.candor" >/dev/null 2>&1
+# Resolved by GLOB, never by a guessed `n.<crate>.scan.json`: a path that does not exist makes every verb
+# REFUSE at 2, which passes three of these six cells while measuring nothing — PART 62 was bitten by
+# exactly that and caught it only through a byte-equality check beside the exit codes.
+p67r_n=""; for f in "$P67R"/n.*.scan.json; do case "$f" in *callgraph*) continue;; esac; [ -f "$f" ] && p67r_n="$f"; done
+p67r_c=""; for f in "$P67R"/c.*.scan.json; do case "$f" in *callgraph*) continue;; esac; [ -f "$f" ] && p67r_c="$f"; done
+if [ -n "$p67r_n" ] && [ -n "$p67r_c" ] && ck67 "$p67r_n" "$p67r_c"; then
+  "$QUERY" gate       --report "$P67R/n" --policy "$P67R/pol.candor"           >/dev/null 2>&1; p67r_g1=$?
+  "$QUERY" fix-gate   --report "$P67R/n" --policy "$P67R/pol.candor" --strict  >/dev/null 2>&1; p67r_f1=$?
+  "$QUERY" unverified --report "$P67R/n" --policy "$P67R/pol.candor" --strict  >/dev/null 2>&1; p67r_u1=$?
+  "$QUERY" gate       --report "$P67R/c" --policy "$P67R/pol.candor"           >/dev/null 2>&1; p67r_g0=$?
+  "$QUERY" fix-gate   --report "$P67R/c" --policy "$P67R/pol.candor" --strict  >/dev/null 2>&1; p67r_f0=$?
+  "$QUERY" unverified --report "$P67R/c" --policy "$P67R/pol.candor" --strict  >/dev/null 2>&1; p67r_u0=$?
+  p67 "rust " "$p67r_g1" "$p67r_f1" "$p67r_u1" "$p67r_g0" "$p67r_f0" "$p67r_u0"
+else
+  P67_OUT="$P67_OUT  rust   INSTRUMENT — the two reports these cells compare were not produced; see the line above
+"
+  P67_BAD=1; rc=1
+fi
+
+# ── THE JAVA ROW ─────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `source-without-class`: `Extra.java` has no compiled class under the scanned
+# path. It is PURE, so ⟨0.32⟩'s compile-peek finds nothing when it is asked and the control answers 0;
+# with no policy the peek never runs and the class comes back `peeked: false`.
+P67J="$W/p67j"; P67J_SKIP=0; mkdir -p "$P67J/tree/src/com/x" "$P67J/tree/build/classes"
+cat > "$P67J/tree/src/com/x/Lib.java" <<'JEOF'
+package com.x;
+import java.nio.file.*;
+public class Lib { public String load() throws Exception { return new String(Files.readAllBytes(Paths.get("/etc/hosts"))); } }
+JEOF
+cat > "$P67J/tree/src/com/x/Extra.java" <<'JEOF'
+package com.x;
+public class Extra { public int add(int a, int b) { return a + b; } }
+JEOF
+printf 'deny Exec\n' > "$P67J/pol.candor"
+javac -d "$P67J/tree/build/classes" "$P67J/tree/src/com/x/Lib.java" >/dev/null 2>&1 || P67J_SKIP=1
+if [ "$P67J_SKIP" = 0 ]; then
+  java -jar "$JAR" "$P67J/tree" --json "$P67J/n.json" >/dev/null 2>&1
+  java -jar "$JAR" "$P67J/tree" --policy "$P67J/pol.candor" --json "$P67J/c.json" >/dev/null 2>&1
+  if ck67 "$P67J/n.json" "$P67J/c.json"; then
+    java -jar "$JAR" gate       --report "$P67J/n.json" --policy "$P67J/pol.candor"          >/dev/null 2>&1; p67j_g1=$?
+    java -jar "$JAR" fix-gate   --report "$P67J/n.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67j_f1=$?
+    java -jar "$JAR" unverified --report "$P67J/n.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67j_u1=$?
+    java -jar "$JAR" gate       --report "$P67J/c.json" --policy "$P67J/pol.candor"          >/dev/null 2>&1; p67j_g0=$?
+    java -jar "$JAR" fix-gate   --report "$P67J/c.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67j_f0=$?
+    java -jar "$JAR" unverified --report "$P67J/c.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67j_u0=$?
+    p67 "java " "$p67j_g1" "$p67j_f1" "$p67j_u1" "$p67j_g0" "$p67j_f0" "$p67j_u0"
+  else
+    P67_OUT="$P67_OUT  java   INSTRUMENT — the two reports these cells compare were not produced; see the line above
+"
+    P67_BAD=1; rc=1
+  fi
+  # ── THE `--parallel` PRODUCER ROUTE (java only), and why it is a DOCUMENT arm rather than a gate one.
+  # `--parallel <out-dir> <target>…` is the one route in this family that produces reports and CANNOT
+  # gate: it takes no `--policy`, and its own usage text says so ("report-generation only … GATING still
+  # needs a per-jar run"). So the ⟨0.24⟩ question here is not "does it refuse" but "does the document it
+  # writes carry the evidence the verbs refuse ON" — a producer that dropped `excluded` would hand every
+  # downstream gate a clean pass over code nothing opened, and would do it in silence, a route with no
+  # policy having no verdict to go red. That route also earned the check: ⟨0.32⟩ found it leaking an
+  # ORDINARY report for an unevaluable target where the single-target path refused, so "the same engine
+  # underneath" has already been false here once. Asserted as BYTE-EQUALITY of `excluded` against the
+  # standalone no-policy report — that verb's own stated contract is byte-identity with a standalone run —
+  # plus the three verbs over the parallel-written document.
+  P67JP="$W/p67jp"; mkdir -p "$P67JP"
+  java -jar "$JAR" --parallel "$P67JP" "$P67J/tree" >/dev/null 2>&1
+  if [ -f "$P67JP/tree.json" ] && python3 -c '
+import json, sys
+a, b = json.load(open(sys.argv[1])), json.load(open(sys.argv[2]))
+if a.get("excluded") != b.get("excluded"):
+    sys.exit("     `--parallel` wrote a DIFFERENT `excluded` key than the standalone scan of the same "
+             "target: " + json.dumps(a.get("excluded")) + " vs " + json.dumps(b.get("excluded")))
+' "$P67JP/tree.json" "$P67J/n.json"; then
+    java -jar "$JAR" gate       --report "$P67JP/tree.json" --policy "$P67J/pol.candor"          >/dev/null 2>&1; p67jp_g=$?
+    java -jar "$JAR" fix-gate   --report "$P67JP/tree.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67jp_f=$?
+    java -jar "$JAR" unverified --report "$P67JP/tree.json" --policy "$P67J/pol.candor" --strict >/dev/null 2>&1; p67jp_u=$?
+    if [ "$p67jp_g" = 2 ] && [ "$p67jp_f" = 2 ] && [ "$p67jp_u" = 2 ]; then
+      P67_OUT="$P67_OUT  java   --parallel-written report: \`excluded\` byte-equal to the standalone · gate=2 fix-gate--strict=2 unverified--strict=2  OK
+"
+    else
+      P67_OUT="$P67_OUT  java   --parallel-written report: gate=$p67jp_g fix-gate--strict=$p67jp_f unverified--strict=$p67jp_u  FAIL (want 2/2/2)
+"
+      P67_BAD=1; rc=1
+    fi
+  else
+    P67_OUT="$P67_OUT  java   --parallel-written report: MISSING, or NOT byte-equal on \`excluded\` — a producing route that drops the key hands every downstream gate a clean pass over code nothing opened  FAIL
+"
+    P67_BAD=1; rc=1
+  fi
+fi
+
+# ── THE TS ROW ───────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `outside-the-tsconfig-program`: a shipped `dist/` CJS module the program does not
+# include. It only adds two numbers, so the peek finds nothing when it is asked.
+P67T="$W/p67t"; P67T_RAN=0
+if [ -n "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  P67T_RAN=1
+  mkdir -p "$P67T/tree/src" "$P67T/tree/dist"
+  printf 'import * as fs from "fs"\nexport function load(p: string): string { return fs.readFileSync(p, "utf8") }\n' > "$P67T/tree/src/a.ts"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P67T/tree/tsconfig.json"
+  printf 'module.exports = function add(a, b) { return a + b }\n' > "$P67T/tree/dist/shipped.js"
+  printf 'deny Exec\n' > "$P67T/pol.candor"
+  node "$TS_DIR/scan.mjs" "$P67T/tree" --out "$P67T/n" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P67T/tree" --out "$P67T/c" --policy "$P67T/pol.candor" >/dev/null 2>&1
+  if ck67 "$P67T/n.json" "$P67T/c.json"; then
+    node "$TS_DIR/query.mjs" gate       --report "$P67T/n" --policy "$P67T/pol.candor"          >/dev/null 2>&1; p67t_g1=$?
+    node "$TS_DIR/query.mjs" fix-gate   --report "$P67T/n" --policy "$P67T/pol.candor" --strict >/dev/null 2>&1; p67t_f1=$?
+    node "$TS_DIR/query.mjs" unverified --report "$P67T/n" --policy "$P67T/pol.candor" --strict >/dev/null 2>&1; p67t_u1=$?
+    node "$TS_DIR/query.mjs" gate       --report "$P67T/c" --policy "$P67T/pol.candor"          >/dev/null 2>&1; p67t_g0=$?
+    node "$TS_DIR/query.mjs" fix-gate   --report "$P67T/c" --policy "$P67T/pol.candor" --strict >/dev/null 2>&1; p67t_f0=$?
+    node "$TS_DIR/query.mjs" unverified --report "$P67T/c" --policy "$P67T/pol.candor" --strict >/dev/null 2>&1; p67t_u0=$?
+    p67 "ts   " "$p67t_g1" "$p67t_f1" "$p67t_u1" "$p67t_g0" "$p67t_f0" "$p67t_u0"
+  else
+    P67_OUT="$P67_OUT  ts     INSTRUMENT — the two reports these cells compare were not produced; see the line above
+"
+    P67_BAD=1; rc=1
+  fi
+  # ── THE MCP GATE ROUTE (ts only), MEASURED here rather than inherited on paper. `candor_gate` is a
+  # second consumer of `loadGateReport`, the same reader `gate --report` uses, so it was BELIEVED to
+  # inherit ⟨0.32⟩ for free — and "believed to inherit" is exactly what was said about this engine
+  # enforcing the rule on both of its CLI routes, which PART 62's ts row records as false
+  # (`scan=2 gate--report=0`, pre-fix). A shared helper is a reason to expect inheritance, never evidence
+  # of it: that CLI defect was not in the reader either, it was in the caller ignoring what the reader
+  # returned. The surface has no exit code, so the assertion is on the DOCUMENT, over both reports —
+  # see `mcp_gate_probe.mjs` for what each half asserts and why `ok` is checked as "not true".
+  if node "$HERE/mcp_gate_probe.mjs" "$TS_DIR/mcp.mjs" "$P67T/n" "$P67T/c" "$P67T/pol.candor" > "$P67T/mcp.txt" 2>&1; then
+    P67_OUT="$P67_OUT  ts     MCP \`candor_gate\`: unread-report ok NOT true + incomplete:true + \`unread\` names the class · peeked-control ok:true unhedged  OK
+"
+  else
+    P67_OUT="$P67_OUT  ts     MCP \`candor_gate\`: FAIL — $(cat "$P67T/mcp.txt")
+"
+    P67_BAD=1; rc=1
+  fi
+fi
+
+# ── THE SWIFT ROW ────────────────────────────────────────────────────────────────────────────────
+# Two excluded classes here, `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift,
+# which every `swift build` runs). The helper under Tests/ returns 1 and does nothing else.
+P67S="$W/p67s"; P67S_RAN=0
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  P67S_RAN=1
+  mkdir -p "$P67S/tree/Sources/S" "$P67S/tree/Tests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P67S/tree/Package.swift"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\n' > "$P67S/tree/Sources/S/a.swift"
+  printf 'public func harmless() -> Int { 1 }\n' > "$P67S/tree/Tests/Helper.swift"
+  printf 'deny Exec\n' > "$P67S/pol.candor"
+  ( cd "$P67S/tree" && env -u CANDOR_CONFIG "$SW_BIN" . --out ../n >/dev/null 2>&1 )
+  ( cd "$P67S/tree" && env -u CANDOR_CONFIG "$SW_BIN" . --out ../c --policy ../pol.candor >/dev/null 2>&1 )
+  p67s_n=""; for f in "$P67S"/n.*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p67s_n="$f"; done
+  p67s_c=""; for f in "$P67S"/c.*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p67s_c="$f"; done
+  if [ -n "$p67s_n" ] && [ -n "$p67s_c" ] && ck67 "$p67s_n" "$p67s_c"; then
+    env -u CANDOR_CONFIG "$SW_BIN" gate       --report "$p67s_n" --policy "$P67S/pol.candor"          >/dev/null 2>&1; p67s_g1=$?
+    env -u CANDOR_CONFIG "$SW_BIN" fix-gate   --report "$p67s_n" --policy "$P67S/pol.candor" --strict >/dev/null 2>&1; p67s_f1=$?
+    env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$p67s_n" --policy "$P67S/pol.candor" --strict >/dev/null 2>&1; p67s_u1=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate       --report "$p67s_c" --policy "$P67S/pol.candor"          >/dev/null 2>&1; p67s_g0=$?
+    env -u CANDOR_CONFIG "$SW_BIN" fix-gate   --report "$p67s_c" --policy "$P67S/pol.candor" --strict >/dev/null 2>&1; p67s_f0=$?
+    env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$p67s_c" --policy "$P67S/pol.candor" --strict >/dev/null 2>&1; p67s_u0=$?
+    p67 "swift" "$p67s_g1" "$p67s_f1" "$p67s_u1" "$p67s_g0" "$p67s_f0" "$p67s_u0"
+  else
+    P67_OUT="$P67_OUT  swift  INSTRUMENT — the two reports these cells compare were not produced; see the line above
+"
+    P67_BAD=1; rc=1
+  fi
+fi
+# ENGINES: rust java ts swift
+# CONTROLS: p67r_g0 p67j_g0 p67t_g0 p67s_g0 ck67 — the peeked-control cells: the SAME tree scanned WITH the policy, so every excluded class comes back `peeked: true`, must answer 0 on all three verbs. Without them an engine that refuses every report scores a perfect 2/2/2 having deleted `fix-gate` and `unverified` entirely, which is the direction a fabrication-fix fails in. The MCP arm carries its own control inside `mcp_gate_probe.mjs` (the peeked report must come back `ok: true` and UNHEDGED), and the `--parallel` arm's control is the byte-equality check that runs before its three cells — a route that wrote no `excluded` key at all would otherwise pass by refusing. ck67 — the instrument check, which FAILS (never skips) a fixture that cannot ask the question: nothing unpeeked in the row report, a control that is still unread, an empty `functions` array, or an `Unknown` anywhere, the last being the trap that makes `unverified --strict`'s own exit 1 look like the ⟨0.32⟩ rule firing
+# ⟨0.32⟩ A MEASURED GAP THIS PART DELIBERATELY DOES NOT PIN — candor-ts's LSP diagnostics route. Written here rather than as a code comment because a limitation carried as a comment reads as CONSIDERED, and that is what stops it being measured. The MCP arm above shares `loadGateReport` with the CLI gate and DOES inherit ⟨0.32⟩; `lsp.mjs` does not — it reads `Q.loadReport` and calls `evaluatePolicy` directly, and the string `peeked` does not occur anywhere in that file. MEASURED 2026-08-24 on this part's own ts fixture, driven over real LSP stdio: `didOpen` over the no-policy report under `deny Exec` publishes `diagnostics: []` and NO `window/logMessage`, byte-indistinguishable from the peeked control where `gate --report` answers 0. The instrument was proven FIRST — `deny Fs` over the SAME report at the SAME locator draws its AS-EFF-006 squiggle, so the route resolved both report and policy and the empty result is the answer, not a mis-wired probe. That surface has no exit code, so its obligation is the disclosure channel `lsp.mjs` already carries three of (a judged-nothing report, a zero-rule policy, dropped policy lines); ⟨0.32⟩ has none, and squiggles are this surface's entire vocabulary. NO ROW IS WRITTEN because the fix belongs to candor-ts and this suite must not go red on an engine defect it cannot fix; the row lands with the fix, and its control must be that the peeked report draws NO such warning, or the part passes for an engine that warns unconditionally
+echo "PART 67 — the advisory verbs refuse wherever the gate does (SPEC §3.1 ⟨0.24⟩)"
+printf '%s' "$P67_OUT"
+[ "$P67_BAD" = 0 ] && echo "  -> MATCH — over a report whose producer never opened an excluded class, \`gate --report\`, \`fix-gate --strict\` and \`unverified --strict\` all refuse; over the same tree scanned WITH the policy, all three answer"
+[ "$P67_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P67J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
+[ "$P67T_RAN" = 0 ] && echo "  -> SKIP (ts row) — candor-ts: not present on this runner"
+[ "$P67S_RAN" = 0 ] && echo "  -> SKIP (swift row) — candor-swift: not present on this runner"
+true
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

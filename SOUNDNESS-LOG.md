@@ -3238,3 +3238,95 @@ change), and each is why its cell in the part is measured-absent rather than ass
   `Exec` when the FILE also carries `use std::process::Command;`; without that import it is correctly
   pure. PART 66's lookalike fixture uses the unshadowed form, so the fabrication is recorded here rather
   than pinned.
+
+### 2026-08-24 — the advisory verbs certified what the gate had just started refusing, and the editor still does
+
+**THE FIND, in one shape.** ⟨0.32⟩ made an unread exclusion class a verdict cause. All four engines
+shipped it into `gate --report` and into NEITHER of the two advisory verbs that answer `ok` over the
+identical bytes:
+
+    gate --report <no-policy report> --policy <deny Exec>   -> 2
+    fix-gate   --strict   (same report, same policy)        -> 0   "no deny/pure boundary crossings ✓"
+    unverified --strict   (same report, same policy)        -> 0   "every function … PROVABLY clean ✓"
+
+`--strict` is how CI consumes both verbs, so this is a green CI step over code the producing scan never
+opened, printed with a tick. Fixed four-way on the day (candor-rust `9bf3f2f`, candor-swift `2bf8de7`,
+candor-java `3682835`, candor-ts `9f22581`).
+
+**THE THIRD TIME, WHICH IS THE ACTUAL FINDING.** candor-java's own `ReportCompleteness` comments record
+⟨0.24⟩ doing this for `unanalyzed` and ⟨0.30⟩ doing it again for `outOfScope`, and say so in as many
+words — *"the second time, which says the ARM is what a new verdict cause needs, not a note telling the
+next person to remember"*. ⟨0.32⟩ is the third, and it happened in a file that carries that sentence.
+A verdict cause is added at the gate and the two siblings are a separate edit nobody's checklist names.
+
+**AND NOTHING ASSERTED THE FIX.** PART 62 pins the ⟨0.32⟩ CAUSE and drives `gate --report` only; no row
+anywhere ran a `--strict` verb over an unread report. Four commits with no gate under them, which is
+exactly how this defect survived in one engine while three others closed it. Closed by **PART 67**, named
+for the RELATION (§3.1 ⟨0.24⟩: *"AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE
+GATE OVER THE SAME BYTES"*) rather than for ⟨0.32⟩, so the fourth cause needs a fixture and not a rewrite.
+Two §3.1 statements moved from `pre-ledger` to part-named in the MUST ledger — both had been correct,
+prominent and unasked since ⟨0.24⟩.
+
+**THE TRAP, and it nearly cost half the blocker.** `unverified --strict` HAS ITS OWN EXIT 1 — an
+`Unknown` hole in the analysed set. Over a fixture carrying one, the verb answers non-zero and that reads
+as the rule firing when it is the verb doing its ordinary job while the ⟨0.32⟩ cause goes on being
+ignored. The two are indistinguishable if the row only asks *"did it refuse?"*. PART 67's `ck67` therefore
+REFUSES a fixture whose reports carry any `Unknown`, and refuses an empty `functions` array too — a verb
+that certifies the empty set passes its cell without asking anything.
+
+**FALSIFIED AGAINST PRE-FIX BINARIES, not by reasoning about them.** candor-query built at `9bf3f2f^` over
+PART 67's own fixture: gate 2, `fix-gate --strict` 0, `unverified --strict` 0, with both ticks printed —
+the isolated advisory case, rust's gate-route fix (`ab505c0`) having already landed. candor-java at
+`3682835^`: all three 0, that engine having closed both halves in one commit. The over-charge control
+answered 0/0/0 on both, before and after, so the control is not what moved.
+
+**THE FIXTURE SHAPE WORTH REUSING.** One tree, scanned TWICE — once with the policy, once without — so the
+only difference between the two reports is whether the peek was ever put the question, and the excluded
+file is CLEAN in both. That makes the refusal attributable to the DOCUMENT's own statement that nothing
+looked, rather than to content: `peeked: false` and "looked and found nothing" are the two states ⟨0.32⟩
+exists to keep apart, and here they are literally the same bytes on disk.
+
+**TWO ROUTES CHECKED AND CLEAN, both now pinned in PART 67 rather than reasoned about:**
+
+- **candor-java `--parallel`.** It is the one route in the family that produces reports and CANNOT gate
+  (no `--policy`; its own usage text says "report-generation only"). So the question is whether the
+  DOCUMENT it writes carries the evidence — a producer that dropped `excluded` would hand every downstream
+  gate a clean pass in silence, a route with no policy having no verdict to go red. MEASURED: `excluded`
+  byte-equal to a standalone no-policy scan of the same target, and all three verbs refuse over it. Worth
+  asking rather than assuming: ⟨0.32⟩ had already caught this arm writing an ORDINARY report for an
+  unevaluable target where the single-target path refused.
+- **candor-ts's MCP `candor_gate`.** Shares `loadGateReport` with the CLI gate and DOES inherit ⟨0.32⟩:
+  `ok` not true, `incomplete: true`, `unread` naming the class, against a peeked control that answers
+  `ok: true` unhedged. Measured rather than inherited on paper, because *"believed to inherit"* is exactly
+  what was said about this engine enforcing the rule on both of its CLI routes — and PART 62's ts row
+  records that as false (`scan=2 gate--report=0`, pre-fix). A shared helper is a reason to expect
+  inheritance, never evidence of it: that CLI defect was not in the reader either, it was in the caller
+  ignoring what the reader returned.
+
+**OPEN — candor-ts's LSP diagnostics route is fail-open on ⟨0.32⟩, and it is the least visible surface in
+the family.** `lsp.mjs` does NOT share `loadGateReport`; it reads `Q.loadReport` and calls
+`evaluatePolicy` directly, and the string `peeked` does not occur anywhere in that file. MEASURED on PART
+67's ts fixture over real LSP stdio: `didOpen` over the no-policy report under `deny Exec` publishes
+`diagnostics: []` and NO `window/logMessage` — byte-indistinguishable from the peeked control, where
+`gate --report` legitimately answers 0. The instrument was proven FIRST, because a broken probe's negative
+is indistinguishable from a real one: `deny Fs` over the SAME report at the SAME locator draws its
+AS-EFF-006 squiggle, so the route resolved both report and policy and the empty result is the answer.
+The surface has no exit code, so its obligation is the disclosure channel that file already carries three
+of — a judged-nothing report, a zero-rule policy, dropped policy lines — and ⟨0.32⟩ has none. Squiggles
+are this surface's entire vocabulary, which is what makes a missing one the quietest false all-clear the
+project has. **NOT FIXED HERE** — the fix belongs to candor-ts, and the conformance suite must not go red
+on an engine defect it cannot repair; PART 67 records the measurement in place of a row, and the row lands
+with the fix. Its control must be that the PEEKED report draws no such warning, or the part passes for an
+engine that warns unconditionally.
+
+**A DISCLOSURE DIVERGENCE, noted while measuring, not a fail-open.** candor-java's `fix-gate --strict`
+exits 2 correctly over the unread report and its `--json` body carries `incomplete: true`, but the TEXT
+channel prints *"the report(s) named on stderr judged nothing (or could not be re-read)"* — the by-
+elimination branch, since `unpeeked` has no prose of its own there. `analyzed.count` is 3 on that report,
+so the sentence is false about the only thing it says. candor-rust and candor-ts both NAME the unread
+class in their human channel. The exit and the machine document are right; the human one names the wrong
+cause.
+
+**GATES.** conformance **PART 67**, four-way, six cells per engine plus the `--parallel` and MCP arms;
+`conformance/mcp_gate_probe.mjs` (its own over-charge control inside); `ck67`, whose five failure modes
+were each falsified by hand.

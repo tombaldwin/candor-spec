@@ -990,7 +990,7 @@
    "sha": "a5ff53cc259a3e2d",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "⟨0.24⟩ **AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER THE SAME BYTES.** ",
-   "status": "pre-ledger"
+   "part": "PART 67"
   },
   {
    "sha": "a11b8cd85cf8979d",
@@ -1002,7 +1002,7 @@
    "sha": "aea12799222da986",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "⟨0.24⟩ **THE SAME RULE BINDS EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later s",
-   "status": "pre-ledger"
+   "part": "PART 67"
   },
   {
    "sha": "55a603323f6a8c5f",
