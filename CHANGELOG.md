@@ -16,6 +16,39 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.32⟩ THE VERDICT-ROW IDENTITY MUST NOW HAS AN ARM — PART 68 — AND THE MUST LEDGER HAD BEEN
+  OVERSTATING ITS COVERAGE.** §2 ⟨0.32⟩ states TWO MUSTs in one block: a multi-report verdict must be
+  computed over `hash`-keyed units, AND *"a verdict row MUST carry enough identity for a consumer to
+  tell two units apart… the sort key MUST include that identity."* The ledger classified the whole block
+  as `"part": "PART 63"` — and PART 63 drives EXIT CODES only; it never opens the verdict document. The
+  row half was recorded as exercised by a part that structurally cannot see it, which is the shape this
+  ledger exists to make unwritable, arriving inside the ledger itself.
+
+  MEASURED 2026-08-24, the row half was live in ONE engine: `gate --report` over two reports whose
+  members both declare `go` and both violate `deny Exec` gave candor-java, candor-ts and candor-swift two
+  BYTE-IDENTICAL rows (candor-rust had closed it the day before). All three have since shipped `hash`
+  beside `fn`. PART 68 drives four engines over four cells — TWIN (two rows, DISTINCT, each carrying a
+  non-empty identity, in identity order), REV, ONE and NOHASH. `rev` re-lays the SAME two bodies under
+  SWAPPED file stems, which is what separates *the sort key includes the identity* from *the discovery
+  walk happened to be alphabetical*; `one` pins a single-unit row's key set EXACTLY; `nohash` requires a
+  producer with no identity to OMIT the field, without which the cheapest way to pass is to synthesise
+  one from the name — the §2.2 join the clause forbids, wearing the new key's clothes. The instrument was
+  proven with three mutants over a PASSING document before it was believed. The ledger now names both
+  parts and says why the old value was wrong.
+
+- **PART 5's ts fixture had drifted into incompleteness, and the ⟨0.32⟩ descriptive hedge found it.** The
+  same day's four-way ruling made the descriptive verbs hedge over an `excluded` class the scan never
+  opened. candor-ts's fixture is scanned IN PLACE inside its own checkout, so a scan of the single file
+  `Cases.ts` publishes `excluded: [{class: "not-a-parsed-source", count: 29, peeked: false}]` — 29 sibling
+  files this run never opened, which is TRUE and is what the key is for. `show` and `map` then correctly
+  answered with §2 ⟨0.28⟩ Rung A's CAVEAT DOCUMENT instead of their result document, and PART 5 — which
+  compares the HEALTHY shapes — died with `KeyError: 0`. The fixture is now scanned from a copy under
+  `$W/tsfx`, exactly as the rust and java fixtures already are, carrying a `package.json` that keeps the
+  report's `package` (and every entry `hash`) byte-identical; measured, the only difference is
+  `excluded: []`. And PART 5's loader now recognises the Rung A shape and FAILS with a sentence naming
+  the cause, because a fixture drifting into incompleteness is a recurring event and `KeyError: 0` says
+  nothing about it.
+
 - **⟨0.32⟩ UPGRADE IN THIS ORDER — POLICY FIRST, ENGINE SECOND.** ⟨0.32⟩ is not additive, and the shape
   that flips is the commonest CI layout there is: a SCAN step that produces a report and a LATER GATE step
   that judges it. The order below is the difference between a zero-red upgrade and a pipeline that goes
