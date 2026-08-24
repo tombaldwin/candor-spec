@@ -16,6 +16,45 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.32⟩ UPGRADE IN THIS ORDER — POLICY FIRST, ENGINE SECOND.** ⟨0.32⟩ is not additive, and the shape
+  that flips is the commonest CI layout there is: a SCAN step that produces a report and a LATER GATE step
+  that judges it. The order below is the difference between a zero-red upgrade and a pipeline that goes
+  red on artifacts nobody can repair.
+
+  1. **FIRST, while still on 0.31**, add your policy to the SCAN step — `--policy <file>`, or
+     `CANDOR_POLICY` — the SAME policy the gate step already uses. This is safe on 0.31: the peek runs, the
+     excluded classes come back `peeked: true`, and if anything DOES go red it is a real finding in code
+     the scan was previously not asked about. Nothing about it depends on the new engine.
+  2. **THEN bump the engine pin.** Nothing new goes red: the reports your scan step now produces already
+     carry the evidence ⟨0.32⟩ asks for.
+
+  **Upgrading the engine FIRST instead** makes `gate --report` exit 2 (INCOMPLETE) over any report produced
+  without a policy on a tree that has tests, build scripts, `.d.ts` files or a `dist/` — because the report
+  says, correctly, that the scan never opened them. That INCLUDES reports ARCHIVED BEFORE the upgrade, and
+  **no consumer can repair one**: the remedy is to re-produce it with the policy, which needs the sources.
+
+  Measured end to end on candor-ts, with the control beside it — a tree carrying a `.d.ts` and a test file,
+  under `deny Exec`:
+
+      0.31 scan WITH the policy   -> exit 0, `peeked: true`  ->  gate at ⟨0.32⟩ -> exit 0   ← the ordered path
+      0.31 scan with NO policy    -> exit 0, `peeked: false` ->  gate at ⟨0.32⟩ -> exit 2   ← the control
+
+  **Scan and gate with the SAME policy.** A report produced under one policy does not answer another: the
+  peek reads a class only as far as the PRODUCER'S deny set required, and the report does not record what
+  that set was, so `peeked: true` earned under `deny Net` can certify nothing about `Exec`. That hole is
+  FILED, not implemented — `FILE-SET-DESIGN.md` §8 — and until it is closed the same-policy discipline is
+  the only thing standing in for it.
+
+  **candor-ts carries one extra caveat, and it reaches ONE-STEP pipelines too.** ⟨0.32⟩ widened its
+  excluded census to walk what the analysis walk walks: `dist`, `build`, `out`, `coverage`, `.next` and
+  dot-directories used to be skipped by the census alone, so the two halves of one report disagreed about
+  which files exist. Those files now appear in `excluded` (as `not-a-parsed-source`, or
+  `outside-the-tsconfig-program` when a tsconfig is in play), and the peek reads them. Measured, byte-
+  identical `child_process` code under `deny Exec` in one `candor-ts <dir> --policy` invocation:
+  `candor-ts@0.31.0` answered exit 0 `policy ✓`; ⟨0.32⟩ answers exit 2 naming `dist/shipped.js`. So do NOT
+  read "one-step pipelines are untouched" as covering ts — a shipped `dist/` that performs a denied effect
+  was invisible and now is not. That is the rung working, and it is still a new red.
+
 - **⟨0.32⟩ CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (§2, §3.3).** ⟨0.30⟩'s arm keys on what
   the peek FOUND, and a peek that cannot open a file finds nothing — byte-identical to finding it clean.
   Measured: an unreadable `build.rs` holding `Command::new("curl")` answered exit 0 under `deny Exec`. A
