@@ -10463,6 +10463,84 @@ for e in b["excluded"]:
     if not e.get("peeked"): e["judgedElsewhere"] = "yes"
 json.dump(b, open(sys.argv[3], "w"))
 ' "$1" "$2" "$3"; }
+
+# ⟨0.32⟩ THE `peeked` CORRUPTION CELL, added 2026-08-24 — the SIBLING key, and a false all-clear shipped
+# through the gap it left the same day. `judgedElsewhere: non-boolean` has had an arm in all four rows
+# below since this rung landed. `peeked` — read two lines earlier by the same reader, and the flag the
+# whole rung turns on — had no corruption arm ANYWHERE in this file. candor-java read it as
+# `has("peeked") && isJsonPrimitive() && getAsBoolean()`, and the Gson `getAsBoolean` call on a JSON
+# string is `Boolean.parseBoolean`, so `"peeked": "true"` came back TRUE, reached
+# `if (peeked || judgedElsewhere) continue;` and carved the class out: same bytes but for one value's
+# TYPE, exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr. Fixed in candor-java `0d9e7fc`;
+# what let it ship was that the sibling was pinned and this one was not, so it is pinned here.
+#
+# THE SHAPES ARE ENUMERATED, NEVER REASONED ABOUT. Measured on the PRE-FIX java build: only the STRING
+# was fail-open. `1`, `0` and `null` coerced to `false` and refused — the right exit for the wrong
+# reason, which is a PASS that proves nothing and is exactly where "this key coerces safely" stops
+# looking. So every shape §2.2 does not permit is driven: a truthy string, a falsy string, a truthy and
+# a falsy number, JSON null, an object, an array — and ABSENT, which is NOT corruption but §2's
+# cannot-answer default, and must stay a refusal rather than become an impeachment.
+#
+# WHAT THIS CELL CAN AND CANNOT SEE, written down because it changes how a green row reads. "Impeached
+# the document" and "coerced to false" are INDISTINGUISHABLE by exit code here — both refuse — so the
+# assertion is the one direction that is observable AND is the cardinal sin: no non-boolean may produce
+# a CERTIFICATION where the genuine `false` refuses. The arm therefore reports the SET of shapes that
+# answered anything but 2, so a regression names the shape that broke it instead of a bare exit code.
+#
+# THE TWO OVER-CHARGE CONTROLS ARE HALF THE CELL. A genuine `true` must still certify — that is the
+# legitimate ⟨0.32⟩ carve-out, and without it this arm passes for an engine that refuses every document
+# — and a genuine `false` must still refuse. Both travel the SAME rewrite-and-round-trip path as the
+# corrupt shapes, so the pair doubles as the proof that the key REACHES the verdict on this fixture: 0
+# against 2 over documents differing in one value. An engine ignoring `peeked` cannot pass them.
+#
+# MEASURED FOUR-WAY 2026-08-24, on each row's own fixture, before this cell was written: every shape
+# above refuses on rust, java, ts and swift, and `bool-true` certifies on all four. So the cell lands
+# GREEN — it records the history of a defect already closed rather than a status, which is its whole
+# job. The pre-fix java build is the only measurement in this file where any of these answered 0.
+#
+# THE SHAPE SET is named ONCE and consumed twice, by the writer and by the loop that drives them; the
+# two controls are named explicitly because they are asserted separately.
+P62PK_SHAPES="str-true str-false int-1 int-0 null object array absent"
+mut62p() { python3 -c '
+import copy, json, sys
+d = json.load(open(sys.argv[1])); out = sys.argv[2]
+x = d.get("excluded") or []
+if not any((not e.get("peeked")) and e.get("judgedElsewhere") is not True for e in x):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " has no unpeeked, non-judgedElsewhere excluded entry — the peeked arms would be vacuous")
+SHAPES = {"bool-true": True, "bool-false": False, "str-true": "true", "str-false": "false",
+          "int-1": 1, "int-0": 0, "null": None, "object": {}, "array": []}
+for name in sys.argv[3:]:
+    if name != "absent" and name not in SHAPES:
+        sys.exit("INSTRUMENT: no such peeked shape: " + name)
+    a = copy.deepcopy(d)
+    for e in a["excluded"]:
+        if (not e.get("peeked")) and e.get("judgedElsewhere") is not True:
+            if name == "absent":
+                e.pop("peeked", None)
+            else:
+                e["peeked"] = SHAPES[name]
+    json.dump(a, open(out + "." + name + ".json", "w"))
+' "$@"; }
+# THE DRIVER. Takes the engine gate command and appends `gate --report <file> --policy <policy>`, which
+# is the ONE spelling all four share, so no row needs its own copy of the loop. Sets P62PK_CERT (the
+# shapes that did NOT refuse, or `none-certified`), P62PK_TRUE and P62PK_FALSE.
+p62pk() {
+  P62PK_PRE="$1"; P62PK_POL="$2"; shift 2
+  P62PK_CERT=""
+  for P62PK_S in $P62PK_SHAPES; do
+    "$@" gate --report "$P62PK_PRE.$P62PK_S.json" --policy "$P62PK_POL" >/dev/null 2>&1
+    P62PK_RC=$?
+    [ "$P62PK_RC" = 2 ] || P62PK_CERT="$P62PK_CERT $P62PK_S=$P62PK_RC"
+  done
+  [ -n "$P62PK_CERT" ] || P62PK_CERT=none-certified
+  "$@" gate --report "$P62PK_PRE.bool-true.json"  --policy "$P62PK_POL" >/dev/null 2>&1; P62PK_TRUE=$?
+  "$@" gate --report "$P62PK_PRE.bool-false.json" --policy "$P62PK_POL" >/dev/null 2>&1; P62PK_FALSE=$?
+}
+# The FAIL-branch explainer, shared by all four rows: a regression here must name its own cause wherever
+# it lands, not only in the row where the defect was first measured. Single-quoted so the backticks stay
+# literal, and free of apostrophes for the same reason.
+P62PK_WHY='         peeked-corrupt: a NON-BOOLEAN `excluded[].peeked` CERTIFIED where the genuine `false` refuses — the ⟨0.32⟩ unread-code refusal deleted by a value TYPE. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-java, 2026-08-24, fixed in `0d9e7fc`): `Query.readEnvelope` read the key as `isJsonPrimitive() && getAsBoolean()`, and the Gson `getAsBoolean` call on a string is `Boolean.parseBoolean`, so `"true"` carved the class out silently. ONE RULE PER READER: ABSENT takes the §2 default, PRESENT-BUT-NOT-THE-§2-SHAPE impeaches the document
+'
 P62=$(mktemp -d); P62_BAD=0; P62_OUT=""
 mkdir -p "$P62/src/com/x" "$P62/build/classes/com/x"
 cat > "$P62/src/com/x/Deploy.java" <<'JEOF'
@@ -10545,12 +10623,22 @@ if [ "$P62J_BAD" = 0 ]; then
   else
     p62j_je=INSTRUMENT; p62j_jeb=INSTRUMENT
   fi
-  if [ "$p62j_scan" = 2 ] && [ "$p62j_gate" = 2 ] && [ "$p62j_je" = 0 ] && [ "$p62j_jeb" = 2 ]; then
-    P62J_OUT="  java   unpeekable: scan=2 gate--report=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+  # ⟨0.32⟩ THE `peeked` CORRUPTION ARM — this is the engine and this is the fixture the shipped defect
+  # was measured on, so the row that would have caught it lives here.
+  if mut62p "$P62J/r.json" "$P62J/pk" bool-true bool-false $P62PK_SHAPES; then
+    p62pk "$P62J/pk" "$P62J/pol.candor" java -jar "$JAR"
+    p62j_pk="$P62PK_CERT"; p62j_pkt="$P62PK_TRUE"; p62j_pkf="$P62PK_FALSE"
+  else
+    p62j_pk=INSTRUMENT; p62j_pkt=INSTRUMENT; p62j_pkf=INSTRUMENT
+  fi
+  if [ "$p62j_scan" = 2 ] && [ "$p62j_gate" = 2 ] && [ "$p62j_je" = 0 ] && [ "$p62j_jeb" = 2 ] \
+     && [ "$p62j_pk" = none-certified ] && [ "$p62j_pkt" = 0 ] && [ "$p62j_pkf" = 2 ]; then
+    P62J_OUT="  java   unpeekable: scan=2 gate--report=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2 peeked-corrupt=none-certified peeked-bool-true=0 peeked-bool-false=2  OK
 "
   else
-    P62J_OUT="  java   unpeekable: scan=$p62j_scan gate--report=$p62j_gate judgedElsewhere:true=$p62j_je judgedElsewhere:non-boolean=$p62j_jeb  FAIL (want 2/2/0/2)
+    P62J_OUT="  java   unpeekable: scan=$p62j_scan gate--report=$p62j_gate judgedElsewhere:true=$p62j_je judgedElsewhere:non-boolean=$p62j_jeb peeked-corrupt=$p62j_pk peeked-bool-true=$p62j_pkt peeked-bool-false=$p62j_pkf  FAIL (want 2/2/0/2 then none-certified/0/2)
 "
+    [ "$p62j_pk" != none-certified ] && P62J_OUT="$P62J_OUT$P62PK_WHY"
     P62J_BAD=1; rc=1
   fi
 fi
@@ -10602,6 +10690,13 @@ if [ "$P62R_BAD" = 0 ]; then
   else
     p62r_je=INSTRUMENT; p62r_jeb=INSTRUMENT
   fi
+  # ⟨0.32⟩ THE `peeked` CORRUPTION ARM, over the SAME policy-produced report the arms above use.
+  if [ -n "$p62r_rep" ] && mut62p "$p62r_rep" "$P62R/pk" bool-true bool-false $P62PK_SHAPES; then
+    p62pk "$P62R/pk" "$P62R/pol.candor" "$QUERY"
+    p62r_pk="$P62PK_CERT"; p62r_pkt="$P62PK_TRUE"; p62r_pkf="$P62PK_FALSE"
+  else
+    p62r_pk=INSTRUMENT; p62r_pkt=INSTRUMENT; p62r_pkf=INSTRUMENT
+  fi
   # THE OVER-CHARGE CONTROL — the SAME tree with the SAME excluded class, readable. The peek runs, finds
   # the class clean, and the verdict must be 0. Without this row the rule could refuse every scan that
   # has a build script at all and still pass.
@@ -10622,12 +10717,14 @@ if [ "$P62R_BAD" = 0 ]; then
   if cmp -s "$P62R/v.json" "$P62R/v2.json"; then p62r_eq=same; else p62r_eq=DIFFER; fi
   if [ "$p62r_scan" = 2 ] && [ "$p62r_gate" = 2 ] && [ "$p62r_ctl" = 0 ] && [ "$p62r_eq" = same ] \
      && [ "$p62r_noask" = 0 ] && [ "$p62r_nop" = 2 ] && [ "$p62r_pure" = 2 ] \
-     && [ "$p62r_je" = 0 ] && [ "$p62r_jeb" = 2 ]; then
-    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 never-asked-control=0 verdicts=same no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+     && [ "$p62r_je" = 0 ] && [ "$p62r_jeb" = 2 ] \
+     && [ "$p62r_pk" = none-certified ] && [ "$p62r_pkt" = 0 ] && [ "$p62r_pkf" = 2 ]; then
+    P62R_OUT="  rust   scan=2 gate--report=2 readable-control=0 never-asked-control=0 verdicts=same no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2 peeked-corrupt=none-certified peeked-bool-true=0 peeked-bool-false=2  OK
 "
   else
-    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl never-asked-control=$p62r_noask verdicts=$p62r_eq no-policy-report=$p62r_nop pure-over-no-policy=$p62r_pure judgedElsewhere:true=$p62r_je judgedElsewhere:non-boolean=$p62r_jeb  FAIL (want 2/2/0/0/same/2/2/0/2)
+    P62R_OUT="  rust   scan=$p62r_scan gate--report=$p62r_gate readable-control=$p62r_ctl never-asked-control=$p62r_noask verdicts=$p62r_eq no-policy-report=$p62r_nop pure-over-no-policy=$p62r_pure judgedElsewhere:true=$p62r_je judgedElsewhere:non-boolean=$p62r_jeb peeked-corrupt=$p62r_pk peeked-bool-true=$p62r_pkt peeked-bool-false=$p62r_pkf  FAIL (want 2/2/0/0/same/2/2/0/2 then none-certified/0/2)
 "
+    [ "$p62r_pk" != none-certified ] && P62R_OUT="$P62R_OUT$P62PK_WHY"
     P62R_BAD=1; rc=1
   fi
 fi
@@ -10679,13 +10776,24 @@ if [ -n "$TS_DIR" ] && [ -f "$TS_DIR/scan.mjs" ]; then
     else
       p62t_je=INSTRUMENT; p62t_jeb=INSTRUMENT
     fi
+    # ⟨0.32⟩ THE `peeked` CORRUPTION ARM. ts refuses every shape today by comparing `!== true` rather
+    # than by impeaching the document — an outcome this cell cannot tell from an impeachment, and does
+    # not need to: what it asserts is that no shape CERTIFIES.
+    if mut62p "$P62T/s.json" "$P62T/pk" bool-true bool-false $P62PK_SHAPES; then
+      p62pk "$P62T/pk" "$P62T/pol.candor" node "$TS_DIR/query.mjs"
+      p62t_pk="$P62PK_CERT"; p62t_pkt="$P62PK_TRUE"; p62t_pkf="$P62PK_FALSE"
+    else
+      p62t_pk=INSTRUMENT; p62t_pkt=INSTRUMENT; p62t_pkf=INSTRUMENT
+    fi
     if [ "$p62t_scan" = 2 ] && [ "$p62t_gate" = 2 ] && [ "$p62t_ctl" = 0 ] && [ "$p62t_noask" = 0 ] \
-       && [ "$p62t_pure" = 2 ] && [ "$p62t_je" = 0 ] && [ "$p62t_jeb" = 2 ]; then
-      P62T_OUT="  ts     scan=2 gate--report=2 readable-control=0 never-asked-control=0 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+       && [ "$p62t_pure" = 2 ] && [ "$p62t_je" = 0 ] && [ "$p62t_jeb" = 2 ] \
+       && [ "$p62t_pk" = none-certified ] && [ "$p62t_pkt" = 0 ] && [ "$p62t_pkf" = 2 ]; then
+      P62T_OUT="  ts     scan=2 gate--report=2 readable-control=0 never-asked-control=0 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2 peeked-corrupt=none-certified peeked-bool-true=0 peeked-bool-false=2  OK
 "
     else
-      P62T_OUT="  ts     scan=$p62t_scan gate--report=$p62t_gate readable-control=$p62t_ctl never-asked-control=$p62t_noask pure-over-no-policy=$p62t_pure judgedElsewhere:true=$p62t_je judgedElsewhere:non-boolean=$p62t_jeb  FAIL (want 2/2/0/0/2/0/2)
+      P62T_OUT="  ts     scan=$p62t_scan gate--report=$p62t_gate readable-control=$p62t_ctl never-asked-control=$p62t_noask pure-over-no-policy=$p62t_pure judgedElsewhere:true=$p62t_je judgedElsewhere:non-boolean=$p62t_jeb peeked-corrupt=$p62t_pk peeked-bool-true=$p62t_pkt peeked-bool-false=$p62t_pkf  FAIL (want 2/2/0/0/2/0/2 then none-certified/0/2)
 "
+      [ "$p62t_pk" != none-certified ] && P62T_OUT="$P62T_OUT$P62PK_WHY"
       P62T_BAD=1; rc=1
     fi
   fi
@@ -10733,8 +10841,16 @@ if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
       else
         p62s_je=INSTRUMENT; p62s_jeb=INSTRUMENT
       fi
+      # ⟨0.32⟩ THE `peeked` CORRUPTION ARM, over the same policy-produced report.
+      if mut62p "$p62s_rep" "$P62S/pk" bool-true bool-false $P62PK_SHAPES; then
+        p62pk "$P62S/pk" "$P62S/pol.candor" env -u CANDOR_CONFIG "$SW_BIN"
+        p62s_pk="$P62PK_CERT"; p62s_pkt="$P62PK_TRUE"; p62s_pkf="$P62PK_FALSE"
+      else
+        p62s_pk=INSTRUMENT; p62s_pkt=INSTRUMENT; p62s_pkf=INSTRUMENT
+      fi
     else
       p62s_gate=NOREPORT; p62s_je=NOREPORT; p62s_jeb=NOREPORT
+      p62s_pk=NOREPORT; p62s_pkt=NOREPORT; p62s_pkf=NOREPORT
     fi
     # THE NEVER-ASKED CONTROL — a forbid-only policy over the SAME unreadable tree must answer 0: with no
     # deny rule the peek was never put a question, so `peeked: false` there means unasked, not unread.
@@ -10759,12 +10875,14 @@ if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
     printf 'public func harmless() -> Int { 1 }\n' > "$P62S/Tests/Helper.swift"
     ( cd "$P62S" && "$SW_BIN" . --out c --policy pol.candor >/dev/null 2>&1 ); p62s_ctl=$?
     if [ "$p62s_scan" = 2 ] && [ "$p62s_gate" = 2 ] && [ "$p62s_ctl" = 0 ] && [ "$p62s_noask" = 0 ] \
-       && [ "$p62s_nop" = 2 ] && [ "$p62s_pure" = 2 ] && [ "$p62s_je" = 0 ] && [ "$p62s_jeb" = 2 ]; then
-      P62S_OUT="  swift  scan=2 gate--report=2 readable-control=0 never-asked-control=0 no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2  OK
+       && [ "$p62s_nop" = 2 ] && [ "$p62s_pure" = 2 ] && [ "$p62s_je" = 0 ] && [ "$p62s_jeb" = 2 ] \
+       && [ "$p62s_pk" = none-certified ] && [ "$p62s_pkt" = 0 ] && [ "$p62s_pkf" = 2 ]; then
+      P62S_OUT="  swift  scan=2 gate--report=2 readable-control=0 never-asked-control=0 no-policy-report=2 pure-over-no-policy=2 judgedElsewhere:true=0 judgedElsewhere:non-boolean=2 peeked-corrupt=none-certified peeked-bool-true=0 peeked-bool-false=2  OK
 "
     else
-      P62S_OUT="  swift  scan=$p62s_scan gate--report=$p62s_gate readable-control=$p62s_ctl never-asked-control=$p62s_noask no-policy-report=$p62s_nop pure-over-no-policy=$p62s_pure judgedElsewhere:true=$p62s_je judgedElsewhere:non-boolean=$p62s_jeb  FAIL (want 2/2/0/0/2/2/0/2)
+      P62S_OUT="  swift  scan=$p62s_scan gate--report=$p62s_gate readable-control=$p62s_ctl never-asked-control=$p62s_noask no-policy-report=$p62s_nop pure-over-no-policy=$p62s_pure judgedElsewhere:true=$p62s_je judgedElsewhere:non-boolean=$p62s_jeb peeked-corrupt=$p62s_pk peeked-bool-true=$p62s_pkt peeked-bool-false=$p62s_pkf  FAIL (want 2/2/0/0/2/2/0/2 then none-certified/0/2)
 "
+      [ "$p62s_pk" != none-certified ] && P62S_OUT="$P62S_OUT$P62PK_WHY"
       [ "$p62s_nop" != 2 ] && P62S_OUT="$P62S_OUT         no-policy-report: the gate certified over classes the producing scan never opened. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-swift, 2026-08-24, since fixed) — GateReportCLI.swift wrapped the whole ⟨0.32⟩ read in \`if obj[\"outOfScope\"] != nil\`, making the rule conditional on the PRODUCER's history; SPEC §2 ⟨0.32⟩ conditions it on the policy in force holding a deny rule (candor-rust: \`!p.rules.is_empty()\`). If this line is printing, check that conjunct first
 "
       P62S_BAD=1; rc=1
@@ -10779,8 +10897,10 @@ P62_OUT="$P62_OUT$P62J_OUT"
 [ "$P62J_BAD" = 1 ] && P62_BAD=1
 # ENGINES: java rust ts swift
 # ⟨0.32⟩ SWIFT'S EXCLUSION IS GONE, and it was wrong rather than stale. It read "NOT APPLICABLE — its `build-output` class carries `judgedElsewhere: true`", which is true of ONE class and false of the engine: an SPM tree's `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift, which every `swift build` runs) carry no such flag and come back `peeked: false`. Measured 2026-08-24 on this part's own fixture, so swift now carries a full row in both shapes — an excluded file the peek cannot READ, and a report whose producer was never ASKED
-# CONTROLS: built-control — the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; readable-control — the same excluded class, readable and CLEAN, must answer 0 (carried by rust, ts and swift); never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse (carried by all four rows); gate--report — the second route must agree from the document, since `excluded` rides the report; judgedElsewhere:true=0 — the producer's own carve-out is the over-charge control for the `judgedElsewhere:non-boolean=2` arm beside it, so refusing everything cannot pass either
+# CONTROLS: built-control peeked-bool-true peeked-bool-false — built-control: the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; peeked-bool-true / peeked-bool-false: the two over-charge controls of the `peeked-corrupt` arm, and they are half of it — a GENUINE `true` must still certify (the legitimate ⟨0.32⟩ carve-out; without it the arm passes for an engine that refuses every document) and a GENUINE `false` must still refuse, both travelling the identical rewrite-and-round-trip path as the corrupt shapes, which is also what proves the key REACHES the verdict on that fixture: 0 against 2 over documents differing in one value; readable-control — the same excluded class, readable and CLEAN, must answer 0 (carried by rust, ts and swift); never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse (carried by all four rows); gate--report — the second route must agree from the document, since `excluded` rides the report; judgedElsewhere:true=0 — the producer's own carve-out is the over-charge control for the `judgedElsewhere:non-boolean=2` arm beside it, so refusing everything cannot pass either
 # ⟨0.32⟩ NO-POLICY-REPORT — the arm that keys the rule on the QUESTION rather than the producer's history, and the reason it was worth adding. HISTORY, not status: when this arm was first written on 2026-08-24 it was RED on two engines. rust=2 and ts=2 (fixed that morning, candor-rust ab505c0 / candor-ts 9f22581), java=0 and swift=0 — a live fail-open where `gate --report` certified over a class the producing scan never opened, because both keyed the whole ⟨0.32⟩ rule on the PRODUCER's history (java `Query.java` `scanWasAsked = envObj.has("outOfScope")`, swift `GateReportCLI.swift` wrapping the read in `if obj["outOfScope"] != nil`) instead of on the policy in force holding a deny rule. Both were fixed the same afternoon and all four rows are green; the FAIL branch still prints the mechanism rather than a bare exit code, so a regression names its own cause
+# ⟨0.32⟩ PEEKED-CORRUPT — the cell added 2026-08-24 because its ABSENCE let a cardinal sin ship that morning, and the shape of the gap is the lesson: `judgedElsewhere: non-boolean` was pinned FOUR-WAY in the rows above from the day this rung landed, while `peeked` — the sibling key, read two lines earlier by the same reader, and the one the whole rung turns on — had no corruption arm anywhere in this file. candor-java coerced `"peeked": "true"` through Gson to boolean TRUE, carved the class out, and deleted the ⟨0.32⟩ refusal silently: exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr (fixed in `0d9e7fc`). THE SHAPES ARE ENUMERATED because reasoning about the class gets it wrong — on the pre-fix build ONLY the string was fail-open; `1`, `0` and `null` coerced to `false` and refused for the WRONG REASON, which is a pass that proves nothing. MEASURED HERE 2026-08-24 on each row's own fixture, and unlike the no-policy-report arm this one landed GREEN: `str-true` `str-false` `int-1` `int-0` `null` `object` `array` and ABSENT all refuse at 2 on rust, java, ts and swift, and `bool-true` certifies at 0 on all four. WHAT A GREEN ROW DOES NOT SAY: "impeached the document" and "coerced to false" are indistinguishable by exit code here (both refuse), so what is asserted is the one observable direction, which is also the cardinal sin — no non-boolean may CERTIFY where the genuine `false` refuses
+# ⟨0.32⟩ THE SIBLING KEY WAS RE-MEASURED RATHER THAN TRUSTED while this cell was written, because four rows elsewhere were found green today while asserting something other than what they claimed. `judgedElsewhere` was driven over the SAME ten shapes on all four engines (2026-08-24): `bool-true` certifies at 0 and every one of `bool-false` `str-true` `str-false` `str-yes` `int-1` `int-0` `null` `object` `array` refuses at 2, four-way. So the existing `judgedElsewhere:true=0` / `judgedElsewhere:non-boolean=2` pair is exercising what it says — the 0/2 split over one changed value is what proves the key is read at all — and its `"yes"` probe is representative of the wider set rather than a lucky single shape. No new row was needed there; the finding is that the sibling was sound and the gap was the unpinned key beside it
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
