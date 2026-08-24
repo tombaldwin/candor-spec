@@ -7,6 +7,46 @@ the fix, and the gates. Entries sit in chronological order; new ones append at t
 are append-only history — corrections are appended, never edited in. The index table in
 SOUNDNESS.md §8.1 is the one-line-per-entry view.
 
+### 2026-08-24 — `"peeked": "true"` deleted a refusal: the coercion class, four instances (candor-java `0d9e7fc`)
+
+**The sin.** `Query.readEnvelope` read `excluded[].peeked` with `getAsBoolean()`. Gson answers
+`Boolean.parseBoolean` on a JSON *string*, so `"peeked": "true"` — a string where a boolean belongs —
+came back `true`, hit `if (peeked || judgedElsewhere) continue;` and DELETED the ⟨0.32⟩ unread-code
+refusal. Exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr. Four-way on identical bytes:
+java 0, rust 2, ts 2, swift 2.
+
+**Why it survived.** The SAME commit that shipped it hardened `judgedElsewhere` against exactly this,
+its comment calling that key "the ONE key here that can DELETE a refusal" — one block below the key it
+left coercing. The comment is part of why nobody looked up. Conformance had `judgedElsewhere:
+non-boolean` cells FOUR-WAY and no `peeked` cell at all: **the sibling key was pinned and this one was
+not.**
+
+**Only a STRING was fail-open.** `1`, `0` and `null` coerce to `false` and refused anyway — *for the
+wrong reason*. Reasoning about the class would have stopped at "this coerces safely"; the shapes had
+to be enumerated.
+
+**The class, not the instance.** The sweep's generalisable statement: *every top-level shape check on
+these keys had landed and every member/field read beneath it still coerced.* Four more instances, each
+measured turning a violation into a pass — `inferred` as string/null/mixed-array, `interfaceUnion:
+"true"`, `fn: {}` (exit 1 → 0), and `unanalyzed: [123]` (exit 2 → 0).
+
+**The search bias worth remembering.** All four were found because they MOVED AN EXIT CODE — a biased
+sample of exactly the wrong kind, since the readers are shared, so any key with no exit-code
+consequence sits behind the identical coercion where no exit-driven search reaches it (`unitKind`, 14
+of 15 array keys, `entryPoint`, `unresolved`, four of `outOfScope`'s five fields). The fix pins the
+READER's argument list, so adding a key without a row makes the claim false.
+
+**The over-charge backed out.** `excluded[].class` was hardened in the first draft and should not have
+been — nothing decides on that token. That would have been a fail-closed regression shipped inside a
+fail-open repair; it withholds and answers, with a control row saying why.
+
+**Pinned:** PART 62's `peeked`-corruption cell, four-way over `"true"`/`"false"`/`1`/`0`/`null`/`{}`/
+`[]`/absent plus the `bool-true`/`bool-false` over-charge pair (candor-spec `3d3af89`). All four engines
+clean on every shape at HEAD; the arm was falsified by injecting `bool-true` into the shape set. This is
+the FOURTH type-coercion bug to delete a refusal in this family — JS truthiness, Foundation bridging
+integer `1` to a number `as? Bool` accepts, `Gson.getAsBoolean` on `judgedElsewhere`, and now on
+`peeked`. **Read the value's own type tag; a bare cast coerces.**
+
 ### 2026-06-18 — the seam-class era: rounds 1–17, the find-rate narrative
 
 *(Moved here 2026-07-09 from SOUNDNESS.md §6 metric 4, which now keeps only the compressed lede.
