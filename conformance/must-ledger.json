@@ -2697,10 +2697,10 @@
    "part": "PART 51"
   },
   {
-   "sha": "19587b9f1f3598b3",
+   "sha": "fd5ae8ef76ff44b8",
    "at": "Contents",
    "excerpt": "**Version 0.31** — all code engines declare `0.31`; the floor is conformance-pinned. How versions move (the la",
-   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through ⟨0.29⟩; ⟨0.30⟩ deliberately not; ⟨0.31⟩ additive in its `netPartners` half and NOT in its unevaluable-target half, which turns a typo'd-path pass into an exit 2) and that such an upgrade is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it DESCRIBES is exercised — by PART 48 and PART 54 for ⟨0.30⟩, and by PART 56 and PART 57 for ⟨0.31⟩. Re-hashed at the 0.31 floor bump because the paragraph gained a sentence naming ⟨0.31⟩'s two halves; carrying a classification across a reword without re-reading it is how this gate gets defeated, which is why the sha moves by hand every time this paragraph does."
+   "unenforced": "The versioning NARRATIVE, not an engine requirement — it states how rungs relate (additive through ⟨0.29⟩; ⟨0.30⟩ deliberately not; ⟨0.31⟩ additive in its `netPartners` half and NOT in its unevaluable-target half, which turns a typo'd-path pass into an exit 2; and ⟨0.32⟩ not additive either, reaching further than ⟨0.30⟩ because it changes what a gate DOES with `excluded` — a key MANDATORY since ⟨0.29⟩ — so a no-policy report over a tree with exclusions was a clean pass and is a refusal, with SCAN WITH THE POLICY as the named remedy) and that such an upgrade is a decision rather than a drop-in. It binds the DOCUMENT'S AUTHORS and the reader, the same standard as 033b20bcea03bc93: no engine behaviour could violate it, and the behaviour it DESCRIBES is exercised — by PART 48 and PART 54 for ⟨0.30⟩, by PART 56 and PART 57 for ⟨0.31⟩, and by PART 62 for ⟨0.32⟩, whose no-policy-report arm IS the flip this paragraph warns about. Re-hashed at the 0.31 floor bump because the paragraph gained a sentence naming ⟨0.31⟩'s two halves, and again for ⟨0.32⟩'s; carrying a classification across a reword without re-reading it is how this gate gets defeated, which is why the sha moves by hand every time this paragraph does."
   },
   {
    "sha": "66fb6633734a95c5",
@@ -2727,10 +2727,28 @@
    "part": "PART 48"
   },
   {
-   "sha": "015d1bf263bbcb1f",
+   "sha": "a8a79661a759dcb6",
    "at": "2. The report",
    "excerpt": "**§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and unlike the `net-partner` attempt it needs no new ancho",
    "part": "PART 54"
+  },
+  {
+   "sha": "112b663fe856626b",
+   "at": "2. The report",
+   "excerpt": "⟨0.32⟩ **A GATE CERTIFIES ONLY RELATIVE TO A REPORT WHOSE PRODUCER HELD THE GATE'S DENY SET, so a producer in ",
+   "part": "PART 62"
+  },
+  {
+   "sha": "1f2713d659def841",
+   "at": "2. The report",
+   "excerpt": "⟨0.32⟩ **IT FIRES ONLY WHEN THE POLICY IN FORCE HOLDS AT LEAST ONE `deny` RULE, and the condition is the QUEST",
+   "part": "PART 62"
+  },
+  {
+   "sha": "395c2490771279fd",
+   "at": "2. The report",
+   "excerpt": "**THE FAIL DIRECTION OF THE CARVE-OUT, stated rather than left to be discovered.** It is FORCED, not chosen: t",
+   "unenforced": "SPLIT CLASSIFICATION, and the honest half is the second one. The BEHAVIOUR this paragraph justifies — a policy with no deny rule must NOT refuse for want of a peek — is exercised: PART 62's never-asked control, on all four engine rows, gates a forbid-only policy over a tree with an unread class and requires 0. What is NOT exercised is the DISCLOSURE obligation it adds: `an engine MUST emit an advisory naming those classes`. MEASURED 2026-08-24 with `forbid ui -> db` over a tree carrying an unpeeked class — candor-rust, candor-java and candor-swift all print `policy ✓` / `no violations` and say nothing about the class, so NO ENGINE EMITS IT and a four-way row would fail four-way today. Recorded as a debt with a named remedy rather than left as a silence, because the failure this whole ledger exists for is a clause that is correct, prominent and inert. The row lands with the implementation; its control must be that a policy WITH a deny rule does not also emit the advisory (it refuses instead), or the part passes for an engine that warns unconditionally."
   },
   {
    "sha": "8bcb218f1e6d4343",
