@@ -11,12 +11,15 @@
 # on them sliced at the wrong line and mislabelled a section — so boundaries come instead from the two
 # markers that are unambiguous because the suite PRINTS them:
 #
-#   echo "[35] …"        a part's OPENING header   (25 of these)
-#   echo "PART 35 — …"   a part's CLOSING verdict  (19 of these; 5 parts have both)
+#   echo "[35] …"        a part's OPENING header   (44 of these)
+#   echo "PART 35 — …"   a part's CLOSING verdict  (48 of these; 24 parts have both)
 #
-# A part runs from the end of the previous part's block to its own last marker. Every slice is then
-# CHECKED rather than trusted: it must contain markers for exactly one part id — zero would pass
-# vacuously, two would run a neighbour and score it under the wrong name — and it must parse.
+# A part runs from the end of the previous part's block to the end of its own last marker's OUTPUT.
+# That last clause is load-bearing: a part PRINTS ITS ROWS AFTER ITS MARKER, so ending a slice at the
+# marker line cuts the part's own results away and hands them to the next slice (see `block_end`).
+# Every slice is then CHECKED rather than trusted: it must contain markers for exactly one part id —
+# zero would pass vacuously, two would run a neighbour and score it under the wrong name — and it must
+# parse.
 #
 # WHAT A SLICE MAY CARRY: an id's slice can include adjacent work that has NO marker of its own (PARTs
 # 1–6 print their results a different way). That makes a filtered run slower than the part alone, never
@@ -105,21 +108,67 @@ for line_no, pid, kind in marks:
     else:
         groups.append((pid, [(line_no, kind)]))
 
-# A verdict is scored by an `if … fi` that must travel with its own part, never head the next slice.
-def block_end(i):
-    j, depth, opened = i + 1, 0, False
-    while j < len(L):
+# A part's ROWS ARE PRINTED AFTER ITS MARKER, so the marker line is the START of a part's output, not
+# the end of it. Everything up to and including the part's last printed line — its verdict TAIL — must
+# travel with that part, never head the next slice. Two tail shapes exist and both are scored here:
+#
+#   echo "PART 47 — …"                   echo "PART 61 — …"           ← the marker
+#   # ENGINES: …                         printf '%s' "$P61_OUT"       ← the part's OWN rows, flushed
+#   if [ "$P47_OK" = 0 ]; then           [ "$P61_BAD" = 0 ] && echo "  -> MATCH …"
+#     echo "  -> MATCH …"                [ "$P61_BAD" = 1 ] && echo "  -> DIVERGE …"
+#   else                                 true
+#     echo "  -> DIVERGE …"; rc=1
+#   fi
+#
+# The second is the ⟨0.32⟩ accumulator idiom (PARTs 61–65). The scanner used to stop dead at its
+# `printf` — neither a block opener nor one of the forms it skipped — and returned the MARKER line as
+# the end. Measured consequence: each of those parts lost its own rows to the FOLLOWING slice, and
+# `part.sh 66` died on `$P65_OUT: unbound variable` because it had inherited PART 65's flush.
+#
+# TWO RULES KEEP THIS FROM ANNEXING A NEIGHBOUR. It commits an end only at a line it POSITIVELY
+# recognises as output — blank lines and comments are carried as PENDING, so a slice stops at its last
+# printed line rather than absorbing the next part's banner. And it never looks past `limit`, the line
+# before the next part's first printed marker. An idiom this scanner does not know can therefore only
+# UNDER-reach — a slice missing its own tail, which `--check` and the full suite both show — and can
+# never silently swallow a part that follows.
+TAIL = re.compile(r'^(printf\b|echo\b|true\b|:\s|&&|\|\||\[[ \[])')
+
+def _block_close(i, limit):
+    """The line closing the compound statement opened at line `i`, or None if it does not close by `limit`."""
+    j, depth = i, 0
+    while j <= limit:
         s = L[j].strip()
         if re.match(r'^(if|for|while|case)\b', s):
-            depth += 1; opened = True
+            depth += 1
         elif s in ("fi", "done", "esac"):
             depth -= 1
-            if opened and depth <= 0:
+            if depth <= 0:
                 return j
-        elif not opened and s and not s.startswith(("&&", "||", "echo", "#")):
-            return j - 1            # the verdict echo was not followed by a block at all
         j += 1
-    return min(i + 1, len(L) - 1)
+    return None
+
+def block_end(i, limit):
+    end, j = i, i + 1
+    while j <= limit:
+        s = L[j].strip()
+        if s == "" or s.startswith("#"):
+            # Skippable only BEFORE any output has been accepted — that is the `# ENGINES:` / `# CONTROLS:`
+            # note that sits between a marker and its scoring block. AFTER output, a blank or a comment is
+            # the gap before the next part's banner, and stepping over it let PART 65's slice reach into
+            # PART 66's setup. So it ends the tail instead.
+            if end != i:
+                return end
+            j += 1; continue
+        if re.match(r'^(if|for|while|case)\b', s):
+            # The scoring block ENDS the tail. Scanning on past its `fi` for more output would let a
+            # slice absorb whatever unmarked work sits between the parts — measured: it pulled the
+            # shared CLAUSE CHECK out of PART 24's range and into PART 23's.
+            k = _block_close(j, limit)
+            return k if k is not None else end  # unterminated: stop rather than guess
+        if TAIL.match(s):
+            end, j = j, j + 1; continue
+        return end                              # the tail is over — this line is the next part's work
+    return end                                  # ran to the ceiling: the tail is the rest of the range
 
 # The PREAMBLE is everything before the first marker: `set -u`, rc=0, $W, engine discovery, and PART 1's
 # own body. It is prepended to every filtered run — without it a part fails on an unset variable, which
@@ -128,12 +177,15 @@ preamble = list(range(0, marks[0][0]))
 
 sections, prev_end = [], marks[0][0] - 1
 for idx, (pid, ms) in enumerate(groups):
+    # A slice can never reach the next part's first printed marker: that is the hard ceiling on every
+    # boundary rule below, so a rule that guesses wrong loses lines instead of stealing a neighbour's.
+    nxt = groups[idx + 1][1][0][0] if idx + 1 < len(groups) else tail_at
+    limit = min(nxt - 1, tail_at - 1)
     last_line, last_kind = ms[-1]
-    if last_kind == "ver":
-        end = block_end(last_line)
-    else:
-        end = (groups[idx + 1][1][0][0] - 1) if idx + 1 < len(groups) else tail_at - 1
-    end = min(end, tail_at - 1)
+    # A part whose LAST marker is its opening header owns everything up to the ceiling (its rows are
+    # printed there and it has no verdict line of its own). A part that ends on a `PART n` verdict owns
+    # that verdict's tail and stops — the rest of the range is the NEXT part's setup.
+    end = block_end(last_line, limit) if last_kind == "ver" else limit
     sections.append((pid, prev_end + 1, end))
     prev_end = end
 
@@ -182,6 +234,18 @@ for pid, s, e in chosen:
     if inside != [pid]:
         sys.exit(f"part.sh: the slice computed for part {pid} carries markers for {inside} — refusing to "
                  f"run a range this file cannot justify. Run conformance/run.sh.")
+    # A SLICE MUST OUTLIVE ITS OWN VERDICT MARKER. The marker OPENS a part's output; the rows come after
+    # it. A slice ending exactly on its `PART n` line has therefore lost every row it computed to the NEXT
+    # slice — which is precisely how PARTs 61–65 broke, silently, for as long as `block_end` did not know
+    # their tail shape: `--check` passed (each slice still held one id and still parsed) and only running
+    # PART 66 and watching it die on `$P65_OUT` showed it. Made loud here so the next unrecognised tail
+    # idiom is caught by `--check` on the commit that introduces it.
+    last_mark = max(i for i, _, _ in marks if s <= i <= e)
+    if last_mark == e and next(k for i, _, k in marks if i == last_mark) == "ver":
+        sys.exit(f"part.sh: the slice computed for part {pid} ENDS on its own `PART {pid}` marker, so every "
+                 f"row it prints after that line falls into the NEXT slice — the part would score nothing "
+                 f"and its neighbour would inherit its output. `block_end` does not recognise this part's "
+                 f"verdict-tail shape; teach it that shape rather than moving the boundary by hand.")
 
 # Keep the trailing crash-vs-divergence diagnosis; drop the `conformance: OK / FAILED` verdict itself — a
 # filtered run has no standing to print either. It is backslash-continued, so consume the continuation.
