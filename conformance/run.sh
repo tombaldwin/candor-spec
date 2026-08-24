@@ -10987,6 +10987,7 @@ if [ -n "$SW_PRESENT" ]; then
   { printf 'import Foundation\n'
     printf 'public func armed(_ p: String) -> Process { let t = Process(); t.executableURL = URL(fileURLWithPath: p); return t }\n'
     printf 'public func launched(_ t: Process) throws { try t.run() }\n'
+    printf 'public func configured(_ t: Process, _ argv: [String]) { t.arguments = argv }\n'
     printf 'public func readBack(_ t: Process) -> [String]? { _ = Date(); return t.arguments }\n'
   } > "$P66/sw/Sources/S/a.swift"
   printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P66/swl/Package.swift"
@@ -10998,7 +10999,12 @@ if [ -n "$SW_PRESENT" ]; then
   ( cd "$P66/swl" && "$SW_BIN" . --out r --policy "$P66/deny.pol" >/dev/null 2>&1 ); p66_slook=$?
   p66_srep="$(ls "$P66"/sw/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
   p66_slrep="$(ls "$P66"/swl/r.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)"
-  p66 "swift" "$p66_srep" "$p66_scap" "$p66_slook" armed=Exec launched=Exec readBack=noExec
+  # ⟨0.32⟩ swift's `configured` cell is now ASSERTED. It was measured-absent because setting
+  # `arguments`/`executableURL` on a RECEIVED `Process` charged nothing — the setter half of the same
+  # gap java had in the construction direction. Closed in candor-swift fdd8a4b, whose read-back
+  # carve-out is the ACCESS DIRECTION (property write charges, property read does not) — Swift's
+  # equivalent of java keying its carve-out on the descriptor rather than the name.
+  p66 "swift" "$p66_srep" "$p66_scap" "$p66_slook" armed=Exec configured=Exec launched=Exec readBack=noExec
   python3 "$HERE/exec_capability_check.py" "swift*" "$p66_slrep" lookalike=noExec || P66_OK=1
 else
   echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
