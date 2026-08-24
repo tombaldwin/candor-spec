@@ -2886,13 +2886,13 @@
    "sha": "85854bac96d8abf6",
    "at": "2. The report",
    "excerpt": "- ⟨0.32⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with `peeked: fal",
-   "unenforced": "SPECIFIED, NOT YET IMPLEMENTED — ⟨0.33⟩ is mid-flight. The defect is MEASURED (gate --report exits 2 over one member and 0 over the same member beside an unrelated sibling: a false green), and no engine keys its multi-report merge by `hash` yet, so a conformance part would fail four-way today. The part lands with the implementation; its control must be that a report set with NO name collision still gates identically, or the part passes for an engine that simply refuses every merge."
+   "part": "PART 62"
   },
   {
    "sha": "129801f93cab9251",
    "at": "2. The report",
    "excerpt": "- ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2 alrea",
-   "unenforced": "SPECIFIED, IMPLEMENTED IN candor-java ONLY — rust/ts/swift pending, so a four-way part would be reference-led rather than conformance. Lands with the ports; its control is the build-script/build-output pair, which is what separates an implementation reading the producer's `judgedElsewhere` from one keyed on the class token."
+   "part": "PART 63"
   },
   {
    "sha": "e77e57323b5d905f",
