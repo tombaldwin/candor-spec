@@ -86,7 +86,7 @@ def main() -> int:
     # A floor bump rewrites the prose spelling and leaves the JSON spelling in the code fences: at 0.30
     # candor-java's release preflight caught `"spec":    "0.30"` by hand (the alignment padding had also
     # defeated a hand sweep for the exact string `"spec": "0.30"`), and at ⟨0.32⟩ THREE fences in this
-    # file still said `"spec": "0.31"` while line 20 said `**Version 0.32**`. Those fences are what an
+    # file still said `"spec": "<prior floor>"` while line 20 said `**Version 0.32**`. Those fences are what an
     # implementer copies, so a stale one teaches the wrong contract from the document that defines it.
     #
     # DELIBERATELY JSON-ONLY, unlike the sweep the engines now run over their READMEs. This file is dense
