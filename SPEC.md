@@ -297,7 +297,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.31" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.32" },
   "resolves":  ["fs", "incomplete"],                             // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
@@ -1425,7 +1425,7 @@ implementation MAY fall back to that sidecar for provenance.
 `extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
 
 ```json
-{ "candor": { "version": "…", "toolchain": "…", "spec": "0.31" },
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.32" },
   "resolves": ["fs", "incomplete"],
   "functions": [ … ] }
 ```
@@ -2358,7 +2358,7 @@ a different sink.
 **(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer
 already reads as *nothing was judged, no purity licence*:
 
-    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.31" },
+    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.32" },
       "functions":  [],
       "analyzed":   { "count": 0 },
       "unanalyzed": [ { "path": "<what the run could not analyze>", "reason": "<why>" } ] }

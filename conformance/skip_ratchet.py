@@ -88,6 +88,30 @@ CELL = re.compile(r"^\s*(candor-[a-z]+)\s*\(([^)]+)\)\s+SKIP")
 # skipped cells, so the total was not a skip count — and worse, rewording a verdict line would have read
 # as one key vanishing and another appearing, i.e. a spurious RISE. A result line always separates the
 # token from its reason with an em dash or a colon; a sentence about skipping does not.
+#
+# THE PUNCTUATION IS ALSO WHAT KEEPS A RUNNER-ABSENCE SKIP OUT OF THE COUNT, and that is a rule, not a
+# happy accident of the regex. Two different facts wear the word SKIP:
+#
+#   · REFERENCE-LED — "this engine has not shipped the rung." A rung, watchable, and the whole reason
+#     this gate exists. Written `… SKIP — reason`, and COUNTED.
+#   · RUNNER-ABSENCE — "this leg does not have this engine." A property of the LEG, not the engine.
+#     Written `… -> SKIP     (reason)`, and NOT counted. PART 47's rows are the canonical spelling;
+#     PARTs 63, 67 and 68 follow it.
+#
+# WHY ABSENCE MUST NOT BE COUNTED. There is one baseline file and two legs: ubuntu carries three engines
+# (no swift toolchain on those runners) and macos four. A count of swift's absence is true on one leg and
+# false on the other, so baselining it puts a runner condition in a file that is supposed to hold rungs —
+# and it has to be raised again for every future part that gains a swift row, which is exactly the number
+# that "drifts upward one unremarkable commit at a time" this header warns about.
+# MEASURED 2026-08-25: PARTs 63 and 68 landed with the em-dash spelling and reddened the ubuntu leg at
+# `line:swift SKIP — engine absent` skipped 2, baseline 0 — while the macOS leg scored all four cells of
+# both parts OK. The coverage had not dropped; the wording had.
+#
+# AND ABSENCE IS ALREADY RATCHETED, harder than a skip count could be, which is why declining to count it
+# loses nothing: [6]/[6c] FAIL outright when an engine is PRESENT but produced no report (the
+# TS_PRESENT-vs-TS_OK split), and CONFORMANCE_REQUIRE_ALL=1 on the macOS leg FAILs when an engine is
+# absent at all. A row's `if [ -n "$SW_OK" ]` can therefore only fall through when the engine is
+# structurally absent on this leg, or the suite is ALREADY red.
 LOOSE = re.compile(r"\bSKIP\b\s*[—:]")
 VERDICT = re.compile(r"^\s*->")
 # An engine the RUNNER does not have. The suite already announces this itself, loudly and on purpose —

@@ -11143,7 +11143,19 @@ if [ -n "$TS_OK" ]; then
     P63_BAD=1; rc=1
   fi
 else
-  P63_OUT="$P63_OUT  ts     SKIP — engine absent\n"
+  # THE SPELLING OF THIS LINE IS LOAD-BEARING, and PART 47's rows are the convention it follows. A
+  # RUNNER-ABSENCE skip goes in the parenthesised `SKIP (reason)` form, which skip_ratchet.py's LOOSE
+  # pattern does NOT count; a REFERENCE-LED skip — "this engine has not shipped the rung" — goes in the
+  # em-dash form, which it does. Those are different facts and only the second is a rung to watch.
+  # MEASURED 2026-08-25: written as `SKIP — engine absent`, these two rows reddened the ubuntu leg
+  # (`line:swift SKIP — engine absent` skipped 2, baseline 0) while the macOS leg scored all four cells
+  # OK — a leg-local runner condition landing in a baseline both legs share, which would then need
+  # raising again for every future part that gains a swift row.
+  # THE ABSENCE IS ALREADY RATCHETED, harder than a skip count can: [6]/[6c] FAIL outright when an
+  # engine is PRESENT but produced no report, and CONFORMANCE_REQUIRE_ALL=1 (the macOS leg) FAILs when
+  # it is absent at all. By the time this branch runs, the engine is either structurally absent on this
+  # leg or the suite is already red — so the counted form adds no detection, only a number that drifts.
+  P63_OUT="$P63_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)\n"
 fi
 # THE SWIFT ROW. The fixtures above are named for candor-scan's report convention, and every engine
 # DISCOVERS reports by its own suffix — so the same JSON is re-laid under swift's spelling rather than
@@ -11171,7 +11183,8 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
     P63_BAD=1; rc=1
   fi
 else
-  P63_OUT="$P63_OUT  swift  SKIP — engine absent\n"
+  # Parenthesised deliberately — the ts branch above carries the argument.
+  P63_OUT="$P63_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)\n"
 fi
 rm -rf "$P63"
 # ENGINES: rust java ts swift
@@ -11993,7 +12006,9 @@ p68_run() {   # $1 label ; $2 report-dir prefix ; $3.. the gate command PREFIX (
 p68_run rust "" "$QUERY"
 p68_run java "" java -jar "$JAR"
 if [ -n "$TS_OK" ]; then p68_run ts "" node "$TS_DIR/query.mjs"
-else P68_OUT="$P68_OUT  ts     SKIP — engine absent\n"; fi
+# Parenthesised deliberately — a RUNNER-ABSENCE skip is not a rung the ratchet can watch, and the
+# em-dash form makes it one. PART 63's ts branch carries the full argument and the measurement.
+else P68_OUT="$P68_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)\n"; fi
 # THE SWIFT ROW re-lays the SAME bodies under swift's own discovery suffix, exactly as PART 63 does:
 # every engine finds reports by its own spelling, and re-authoring them would stop the two rows
 # asserting over identical evidence. That is the ONLY thing that differs, so it is a REPORT-DIR PREFIX
@@ -12011,7 +12026,8 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   done
   p68_run swift sw- "$SW_BIN"
 else
-  P68_OUT="$P68_OUT  swift  SKIP — engine absent\n"
+  # Parenthesised deliberately — see PART 63's ts branch.
+  P68_OUT="$P68_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)\n"
 fi
 rm -rf "$P68"
 # ENGINES: rust java ts swift

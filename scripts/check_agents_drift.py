@@ -79,7 +79,54 @@ def main() -> int:
                             if key in entry and not isinstance(entry[key], list):
                                 err(f"envelope example entry's `{key}` must be an array")
 
-    # 3 — AGENTS.md must not reintroduce the stale claims the 2026-07 review caught.
+    # 3 — SPEC.md's OWN envelope examples must declare the floor SPEC.md itself declares.
+    #
+    # THE HOLE THIS CLOSES, measured twice. Every check above reads AGENTS.md and holds it against
+    # SPEC.md's `**Version X.Y**` line — so SPEC.md is the AUTHORITY here and nothing ever reads it back.
+    # A floor bump rewrites the prose spelling and leaves the JSON spelling in the code fences: at 0.30
+    # candor-java's release preflight caught `"spec":    "0.30"` by hand (the alignment padding had also
+    # defeated a hand sweep for the exact string `"spec": "0.30"`), and at ⟨0.32⟩ THREE fences in this
+    # file still said `"spec": "0.31"` while line 20 said `**Version 0.32**`. Those fences are what an
+    # implementer copies, so a stale one teaches the wrong contract from the document that defines it.
+    #
+    # DELIBERATELY JSON-ONLY, unlike the sweep the engines now run over their READMEs. This file is dense
+    # with PROSE rung references — `⟨0.27⟩`, "measured at spec 0.28", clause histories — that are true
+    # statements about the past and must not move. A prose sweep here would be a false-positive machine.
+    # The `"spec": "X.Y"` form inside a fence is always an ENVELOPE EXAMPLE, i.e. always a claim about the
+    # CURRENT contract, so restricting to it is not a weakening: it is the whole class.
+    #
+    # The exemption is per-LINE, because that is where this document already puts the marker (§3.3.1's
+    # replaced-source-file example ends `(measured at spec 0.28, informative)` and the `"spec": "0.28"` it
+    # annotates sits earlier on the same line). Keying on the family's `, informative)` marker rather than
+    # on a list of tolerated old versions means a legitimate annotation never needs this gate edited.
+    json_spec = re.compile(r'"spec"\s*:\s*"(\d+\.\d+)"')
+    for lineno, line in enumerate(spec_text.splitlines(), 1):
+        if ", informative)" in line:
+            continue
+        for sm in json_spec.finditer(line):
+            if sm.group(1) != floor:
+                err(f"SPEC.md:{lineno} carries an envelope example declaring spec {sm.group(1)!r} while "
+                    f"SPEC.md declares the floor as {floor!r} — `{line.strip()[:110]}`. If it is a "
+                    f"historical illustration, annotate the line `(measured at spec {sm.group(1)}, "
+                    f"informative)`; otherwise bump it.")
+
+    # 3b — AND THE CHECK ABOVE MUST BE ABLE TO FAIL. It reads clean when the document is clean, when the
+    # pattern has stopped matching, and when the exemption swallows everything — three states, one
+    # output. So both halves are exercised on a fixture before the document's silence is read as evidence.
+    probe_hit = [m.group(1)
+                 for ln in ('  "candor": { "toolchain": "x", "spec":    "0.9" },',
+                            '{ "spec": "0.7", "ok": false }')
+                 for m in json_spec.finditer(ln)]
+    probe_exempt = [m.group(1)
+                    for ln in ('{ "spec": "0.28", … }   <- (measured at spec 0.28, informative)',)
+                    if ", informative)" not in ln
+                    for m in json_spec.finditer(ln)]
+    if probe_hit != ["0.9", "0.7"] or probe_exempt != []:
+        err(f"CONTROL FAILED — the SPEC.md envelope sweep no longer discriminates (matched {probe_hit}, "
+            f"want ['0.9', '0.7']; matches on an exempted line {probe_exempt}, want []). Until that is "
+            f"fixed the check above is VACUOUS and its silence is not evidence.")
+
+    # 4 — AGENTS.md must not reintroduce the stale claims the 2026-07 review caught.
     for stale in ("JSON array, one object per function", "(0.5 draft)"):
         if stale in agents_text:
             err(f"AGENTS.md contains the stale phrase {stale!r} (the pre-envelope wording)")
