@@ -16,6 +16,35 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.32⟩ THE DESCRIPTIVE HEDGE NAMES `callers`, `impact` AND `path` — AND THE PIN THAT WAS MISSING IS
+  THE ONE THAT CATCHES A REVERT.** §2 Rung A's ⟨0.32⟩ narrowing shipped for `show`/`map`, which OVER-hedged
+  (the caveat replaced the answer). These three are the same clause read from the other side: they answered
+  FLAT at exit 0 with no caveat on either channel over a report declaring an unread `excluded` class, in
+  candor-rust, candor-ts and candor-java alike — an empty `direct` saying *nothing calls this*, an
+  `affectedCount: 0` saying *safe to edit*, an empty `path` saying *this function does not reach that
+  effect*, each asserted over code nobody read. That is the cardinal-sin direction, and §2 now says so
+  beside the over-hedge one rather than filing it as more of the same. Their root key sets are already
+  fixed, so nothing nests and the caveat keys join them at the root; candor-swift ships only `path` of the
+  three and already hedged on both the populated and the EMPTY arm.
+
+  **Conformance now fails BOTH reverts, and neither guard covers the other.** PART 40's oracle scored any
+  document carrying a live disclosure key as `PASS hedged` before looking at anything else, so a hedge that
+  ATE the answer was invisible; the two-entry `_rk` map that closed that for `show`/`map` is now
+  `DESCRIPTIVE_RESULT`, derived from the oracle's own result-key table so the two cannot drift, with
+  `whatif` the single deliberate omission because it answers `ok`. The OPPOSITE revert — back to a flat
+  answer — never reaches that guard at all: carrying no disclosure key, the document falls through to
+  `SKIP answers-from-the-stale-half`, and at the old baseline of 1/1/3/0 a full revert would have scored
+  EXACTLY THE BASELINE and passed. Those four PART 40 tallies are now 0 (the 5 skips were precisely these
+  cells), so a rise reddens the run. Both directions were falsified with a mutant engine rather than
+  asserted: one shim produced `FAIL … descriptive-hedge-substituted-for-the-result` with PART 40 the only
+  red part in the suite; the other left PART 40 GREEN and reddened the skip ratchet instead.
+
+  **Filed, measured, and NOT fixed** (SOUNDNESS.md R54/R55): `diff` has no completeness reader in any of
+  the three engines that ship it, and needs `gains`' PREFIXED dual-locator shape rather than this one —
+  a bare `incomplete` cannot say WHICH of its two reports was partial. rust's `receipt` has none either,
+  and TSV has nowhere a caveat has been *ruled* to go; the three candidate shapes and their costs are in
+  the register, to be ruled in SPEC before any engine moves.
+
 - **⚠ PART 68 SCORED A CRASHED ENGINE ON THE PREVIOUS ENGINE'S LEFTOVER BYTES.** Its rust, java and ts
   legs ran SEQUENTIALLY into the same four verdict paths, never deleted between engines, with every
   engine's stderr discarded. An engine emitting WRONG rows was caught, because it overwrote; an engine
@@ -67,8 +96,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   opened. candor-ts's fixture is scanned IN PLACE inside its own checkout, so a scan of the single file
   `Cases.ts` publishes `excluded: [{class: "not-a-parsed-source", count: 29, peeked: false}]` — 29 sibling
   files this run never opened, which is TRUE and is what the key is for. `show` and `map` then correctly
-  answered with §2 ⟨0.28⟩ Rung A's CAVEAT DOCUMENT instead of their result document, and PART 5 — which
-  compares the HEALTHY shapes — died with `KeyError: 0`. The fixture is now scanned from a copy under
+  answered with §2 Rung A's CAVEAT DOCUMENT instead of their result document, and PART 5 — which
+  compares the HEALTHY shapes — died with `KeyError: 0`. (⟨0.32⟩ has since NARROWED Rung A: those two now
+  answer their result AND the caveat, so the shape PART 5 refuses is `{"functions"|"modules": …,
+  "incomplete": true}` rather than the caveat alone. The root is an object either way, so the fixture
+  finding and both halves of the fix below are unchanged.) The fixture is now scanned from a copy under
   `$W/tsfx`, exactly as the rust and java fixtures already are, carrying a `package.json` that keeps the
   report's `package` (and every entry `hash`) byte-identical; measured, the only difference is
   `excluded: []`. And PART 5's loader now recognises the Rung A shape and FAILS with a sentence naming

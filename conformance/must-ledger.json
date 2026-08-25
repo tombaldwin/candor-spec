@@ -2451,16 +2451,16 @@
    "part": "PART 40 — the (artifact state × read verb) matrix is where both halves of the narrowing are scored, so the paragraph stating it and the blockquote below it share a row."
   },
   {
-   "sha": "0a726f9675543ed0",
+   "sha": "b83173d9f93d1f38",
    "at": "⟨0.28⟩ Phase 1 ruling",
-   "excerpt": "> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — result NESTED under a key of its > o",
-   "part": "PART 40 — the ⟨0.32⟩ descriptive-hedge row: a hedged `show` must carry `functions` and a hedged `map` must carry `modules`, PRESENT (empty is fine) beside the caveat. Added with this clause, because without it the narrowing is inert in the suite — a revert to substitution still scores PASS hedged, and PART 42's shape table cannot see it either since the container simply leaves the harvest."
+   "excerpt": "> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — caveat keys at the ROOT, the > resul",
+   "part": "PART 40 — the ⟨0.32⟩ descriptive-hedge row, RE-CONFIRMED against the part after the clause gained its second shape rather than carried across. The old wording ruled only the NESTED shape and the row implemented only that (a two-entry `_rk` map for `show`/`map`); the clause now also rules the ROOT shape, for the verbs whose key set is already fixed, so the row is now `DESCRIPTIVE_RESULT` — derived from the oracle's own RESULT_KEYS so the two tables cannot drift, `whatif` removed because it answers `ok`, `show`/`map` overridden to their nested containers. A hedged descriptive document must carry at least one of its result keys, PRESENT (empty is fine) beside the caveat. Without this row the clause is inert in the suite: a revert to substitution still scores PASS hedged, and PART 42's shape table cannot see it either since the container simply leaves the harvest. Which cells actually arm it was MEASURED 2026-08-25, not assumed — `callers` on rust/java/ts, `impact` and `path` on ts, and the seven already-conforming verbs on every engine that ships them."
   },
   {
-   "sha": "685a489ca4935513",
+   "sha": "67bf35a5e81cbdee",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "**`ok` is the line, and it is the same line the paragraph on withdrawing `ok` draws from the other side.** `ok",
-   "part": "PART 40 — both sides of the line land in one matrix: over the same armed / count-0 states `whatif` must NOT answer and `show`/`map` MUST. The `--strict` and gate halves the paragraph also names are pinned by PARTs 62 and 67; PART 40 is the row that fails if the line itself moves."
+   "part": "PART 40 — both sides of the line land in one matrix: over the same armed / count-0 states `whatif` must NOT answer and the descriptive verbs MUST. Re-confirmed after the paragraph's closing measurement grew the other half of the enumeration (`callers`/`impact`/`path` carried no caveat at all): PART 40 is still the row, and it is now the row on both sides of it, since `whatif` is the one verb `DESCRIPTIVE_RESULT` deliberately omits and the three named here are three of the entries it gained. The `--strict` and gate halves the paragraph also names are pinned by PARTs 62 and 67; PART 40 is the row that fails if the line itself moves."
   },
   {
    "sha": "4a5ffaac61599eba",
@@ -2485,6 +2485,29 @@
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "⟨0.32⟩ **AND THE NESTING CLOSES THAT DEFERRED COLLISION RATHER THAN REOPENING IT** — the one thing worth check",
    "part": "PART 42 — the key-shape table is where the two positions are proved distinct: with the ⟨0.32⟩ `(\"map\", \"$.modules\")` declaration and RESULT_CONTAINERS, `$.incomplete` is a boolean of the ROOT and the user's module names are `$.modules.*`, agreeing across java, rust and ts with no type conflict. PART 40's descriptive-hedge row is what fails if an engine stops nesting; PART 42 is what fails if the two namespaces are ever flattened back together."
+  },
+  {
+   "sha": "1c2f54c2944ae754",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "⟨0.32⟩ **AND THE SAME RULING HAS A SILENT HALF: `callers`, `impact` AND `path`.** `show` and `map` were found ",
+   "part": "PART 40 — the three verbs are three of the entries `DESCRIPTIVE_RESULT` gained, so the OVER-hedge direction (caveat without result) FAILs by name on any engine that reverts. The UNDER-hedge direction this paragraph is actually about — answering flat with no caveat — is scored by the same part through its skip tallies: a flat answer over `armedlive` falls out of the hedged branch to `SKIP answers-from-the-stale-half`, and `skip-baseline.json`'s four PART 40 tallies were dropped to 0 in the same commit (they were 1/1/3/0, and the 5 were exactly these cells) so a rise FAILs the ratchet. Both directions, in one part, which is why the pair is recorded together."
+  },
+  {
+   "sha": "d4e0eb18b5ae660c",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "— and nothing on the human channel either, while `where` and `reachable` read the same bytes through the same ",
+   "part": "PART 40 — this is the paragraph that says which direction is the cardinal sin, and the ratchet is what enforces it: with the four PART 40 tallies at 0 in `skip-baseline.json`, an engine that goes back to answering `callers`/`impact`/`path` flat over a state where nothing was judged returns that cell to `SKIP answers-from-the-stale-half`, the tally rises above its baseline, and `skip_ratchet.py` FAILs the run naming the engine. Recorded against the ratchet rather than against a FAIL line because the oracle deliberately treats that cell as a rung nobody had shipped — which stopped being true this morning, and the baseline is where that fact is written down."
+  },
+  {
+   "sha": "53a2ac0274b05cca",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "They are DESCRIPTIVE by the test above and take the ruling unchanged. **Their key set at the root is FIXED, so",
+   "part": "PART 40 — the ROOT half of `DESCRIPTIVE_RESULT`: for these three the required keys are RESULT_KEYS verbatim, with no container to un-mask, which is what this paragraph asserts is possible. PART 42 carries the other half of the claim — that a root key set which is NOT a user namespace can hold the caveat beside it: its (A) rows would show a type conflict and its (B) vocabulary check would show an unnamed key if a `direct`/`affected`/`path` root ever collided with the caveat set."
+  },
+  {
+   "sha": "e973d9a51cc789bb",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "unenforced": "SPLIT CLASSIFICATION, and the honest half is the second one. The SURFACE claim — candor-swift ships only `path` of the three — IS exercised: PART 40's `SV_SWIFT` declaration is checked in the strict direction, so if candor-swift ever gains `callers` or `impact` the declared-absent cell answers exit 0 with a document and FAILs as a stale declaration. What is NOT exercised by any conformance row is the EMPTY-ARM claim, which is the sharper one. PART 40 drives a single fixed pair (`path <fn> Fs`) over states it derives from each engine's own report, and cannot choose whether the chain that comes back is populated or empty — so no cell deliberately asserts `path: []` beside a caveat, and a cell that happens to be empty asserts it by luck, which is not an assertion. It is pinned instead in each engine, by name and by design, because it is a SEPARATE emit site there (three of them in candor-rust and candor-java): candor-swift `testPathsEmptyChainCarriesTheHedgeToo` (699d511) and the sibling rows added with candor-rust 76c88ad, candor-ts 88cf087 and candor-java 3969da3. Recorded as a debt rather than left as a silence: the conformance row that would close it needs a fixture whose `(fn, effect)` pair is KNOWN not to reach — a second argv pair in the matrix, not a rewrite — and its control must be that the populated arm still hedges, or the row passes for an engine that answers empty to everything."
   },
   {
    "sha": "3873277b76978626",
