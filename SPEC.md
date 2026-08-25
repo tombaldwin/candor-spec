@@ -492,9 +492,11 @@ MEASURED at HEAD on a two-function crate with one `tests/` directory, scanned un
 reproduced identically in candor-rust, candor-ts and candor-java, and through candor-ts's MCP tools it
 reaches an AGENT. So the rule is stated over the condition rather than the verb, for the sixth time:
 
-> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — result NESTED under a key of its
-> own, caveat keys at the ROOT beside it. A verb is DESCRIPTIVE when it sets no verdict, answers no `ok`,
-> and carries no exit-code obligation. A verb that answers `ok` keeps the substitution above.
+> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — caveat keys at the ROOT, the
+> result beside them: NESTED under a key of its own where the verb's pinned shape has nowhere else to put
+> it (`show`, `map`), at that same ROOT where the verb's key set is already fixed (`callers`, `impact`,
+> `path`). A verb is DESCRIPTIVE when it sets no verdict, answers no `ok`, and carries no exit-code
+> obligation. A verb that answers `ok` keeps the substitution above.
 
     show      healthy → [ … ]            hedging → { "functions": [ … ],        "incomplete": true, … }
     map       healthy → { "<mod>": … }   hedging → { "modules": { "<mod>": … }, "incomplete": true, … }
@@ -507,7 +509,8 @@ rule to protect. So `gate` and `gate --report` are untouched, and `whatif`, `fix
 the finding, because a policy that asked nothing produced no questions to answer. MEASURED, rather than
 assumed, by driving every descriptive verb over such a report: `show` and `map` are the ONLY two that
 substituted in any engine — `where`, `containment`, `reachable`, `blindspots` and `tour` already carry
-`incomplete: true` BESIDE their data. candor-swift ships neither `show` nor `map`.
+`incomplete: true` BESIDE their data, and `callers`, `impact` and `path` carried no caveat AT ALL, which
+is the SILENT half of this same class and is ruled below. candor-swift ships neither `show` nor `map`.
 
 Relative to the shape it replaces this is ADDITIVE: the caveat keys stay exactly where ⟨0.28⟩ put them, at
 the root, and a key carrying the result appears beside them. It does not move ⟨0.32⟩'s non-additivity note.
@@ -539,6 +542,41 @@ now lives one level down, under `modules`: a module literally named `incomplete`
 caveat is a key of the ROOT, and neither can displace the other at any depth. MEASURED on candor-rust with
 a module named exactly that. The cell ⟨0.28⟩ left open is closed by the shape, not by a naming convention,
 which is what the bullet above asked for and could not have.
+
+⟨0.32⟩ **AND THE SAME RULING HAS A SILENT HALF: `callers`, `impact` AND `path`.** `show` and `map` were
+found by a reader watching an answer VANISH, which is why they were ruled first and alone. Driving the
+rest of the surface found the other direction of the same clause. ⟨0.28⟩ widened §2's re-disclosure MUST
+to *any verb whose output could be read as a negative finding about the code — a verdict, an empty result
+set, or a zero count*, enumerated six verbs, and skipped these three; ⟨0.32⟩'s unread-class cause then
+made the gap fire on approximately every no-policy report. MEASURED on the same fixture, identically in
+candor-rust, candor-ts and candor-java:
+
+    callers wrapper --json   { "of": […], "direct": ["top"], "transitive": ["top"] }   exit 0   no caveat
+    impact  wrapper --json   { "fn": …, "affectedCount": 1, "affected": ["top"], … }   exit 0   no caveat
+    path    top Fs  --json   { "fn": …, "effect": "Fs", "path": [ …3 steps… ] }        exit 0   no caveat
+
+— and nothing on the human channel either, while `where` and `reachable` read the same bytes through the
+same module and hedged. **This half is the CARDINAL SIN direction and the one above is not**, which is
+why it is written down beside it rather than filed as more of the same: `show` and `map` deleted an answer
+they were entitled to give, and these three gave an answer they were not. An empty `direct` says *nothing
+calls this*; an `affectedCount: 0` says *safe to edit*; an empty `path` says *this function does not reach
+that effect* — the precise reassurance the verb is asked for, asserted over code nobody read.
+
+They are DESCRIPTIVE by the test above and take the ruling unchanged. **Their key set at the root is
+FIXED, so there is nothing to nest and no collision to avoid** — `{of, direct, transitive}`,
+`{fn, affectedCount, affected, entryPoints}`, `{fn, effect, path}` are not a user namespace the way `map`'s
+module table is, so the caveat keys join them at that same root and the shape argument three paragraphs up
+does not need re-running:
+
+    callers   healthy → { "of": …, "direct": …, … }        hedging → the same keys + "incomplete": true, …
+    impact    healthy → { "fn": …, "affectedCount": …, … } hedging → the same keys + "incomplete": true, …
+    path      healthy → { "fn": …, "effect": …, "path": …} hedging → the same keys + "incomplete": true, …
+
+candor-swift ships only `path` of the three, and its `path` already answered the data AND the caveat
+before this rung — on the populated arm and on the EMPTY one. **The EMPTY arm is the sharper claim and is
+a SEPARATE emit site**, three of them in candor-rust and in candor-java, so it is pinned as its own row in
+each engine rather than inferred from the populated one: `path: []` beside a caveat says *not found, and
+not everything was looked at*, where `path: []` alone says *it is not there*.
 
 ⟨0.28⟩ **AND `privacy-manifest`'s OWN TWO KEYS, PINNED HERE BECAUSE DRIVING THE VERB IS WHAT FOUND THEM.**
 The verb's document is `{ "reached": [ … ], "required": { … } }` — `reached` the privacy-relevant surfaces

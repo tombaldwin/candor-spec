@@ -7787,6 +7787,46 @@ fi
 #     but it answered exit 0 with a JSON document — the declaration is STALE`, part DIVERGE. Restored.
 #     That is the direction that matters: the surface list can only shrink below the truth by failing.
 #
+# ⟨0.32⟩ AND `PASS hedged` IS NOT A FREE PASS: A HEDGE THAT ATE THE ANSWER IS A FAIL (DESCRIPTIVE_RESULT).
+#
+# This part's oracle scores a live disclosure key FIRST, before anything else — which is right for the
+# property it was built for (no determined negative) and blind to the property SPEC §2 ⟨0.32⟩ added: a
+# DESCRIPTIVE verb — no verdict, no `ok`, no exit-code obligation — MUST return its result AND the
+# caveat. A document that carries only the caveat scored `PASS hedged`, so a REVERT TO WITHHOLDING was
+# invisible here, and invisible in PART 42 too (a withheld container simply leaves the harvest). The
+# rung landed for `show`/`map` at candor-spec a1fe5a4 with a two-entry `_rk` map; it landed for
+# `callers`/`impact`/`path` this morning (rust 76c88ad + siblings), whose results stay at the ROOT with
+# nothing to nest, so the map became the wrong shape. It is now DESCRIPTIVE_RESULT, derived from
+# RESULT_KEYS — see the table for the two adjustments and why `whatif` is the one verb left out.
+#
+# WHERE IT IS ARMED, MEASURED RATHER THAN ASSUMED (2026-08-25, every cell that reaches the hedged branch
+# on all four engines, captured by dumping the key set from inside the branch on a full green run):
+#   rust   armed/armedlive/count0 × where map blindspots reachable containment tour show, + callers on
+#          armedlive — `impact` and `path` REFUSE (exit 2, no such function in an emptied report), so
+#          they are not armed on this engine and no assertion may be claimed for them here.
+#   java   the same set, and the same two refusals.
+#   ts     the same, PLUS `impact` and `path` on armedlive, both carrying their root result keys.
+#   swift  `tour` only — its `path` refuses on all three states, and it ships neither of the other two.
+# So the guard bites on 3 engines × `callers` and on ts × `impact`/`path`; the eight verbs that were
+# already conforming are pinned by the same line at no extra cost, which is the point of stating it over
+# the CONDITION rather than the instance for the seventh time.
+#
+# FALSIFIED BOTH WAYS BEFORE IT WAS BELIEVED, and the red direction through the real harness, not only in
+# isolation — a guard proven only against documents its author typed is a guard proven against its author:
+#   · MUTANT ENGINE, IN-SUITE. `CANDOR_QUERY_BIN` pointed at a shim that execs the real candor-query and,
+#     WHEN AND ONLY WHEN the document already carries a live `incomplete`, deletes `direct`/`transitive`
+#     from it — i.e. candor-rust reverted to withholding on exactly the path ⟨0.32⟩ rules, with healthy
+#     output byte-untouched so the intact controls still answer. Result: `FAIL candor-scan
+#     [armedlive/callers]: descriptive-hedge-substituted-for-the-result … none of direct/transitive is
+#     present`, `candor-scan pass=65 skip=0 fail=1`, PART 40 DIVERGE — with java/ts/swift green beside it
+#     at 66/66/12, and PART 40 THE ONLY PART IN THE WHOLE SUITE THAT TURNED RED. Both halves matter: the
+#     first says the guard fires, the second says it fires on the thing it names rather than on anything
+#     that moves. Shim removed.
+#   · EVERY GUARDED VERB, IN ISOLATION, over the key sets measured above rather than invented ones: with
+#     the result keys present the oracle prints `PASS hedged`; with them deleted it prints FAIL NAMING
+#     THE VERB. 10 verbs × both directions. The control is `whatif`: with ITS result keys deleted it must
+#     still print `PASS hedged`, because ⟨0.32⟩ leaves it on the substituting side — and it does.
+#
 # THE PROBE RUNS FROM A DEDICATED EMPTY DIRECTORY. Engines walk UP from the cwd when discovering
 # reports and candor-swift's scan fallback resolves its "target" against it, so a cell whose locator
 # should resolve to nothing could otherwise find this repo. Measured behaviour-neutral for the rust
@@ -7811,6 +7851,29 @@ RESULT_KEYS = {"where":{"directly","inherited"}, "callers":{"direct","transitive
                "whatif":{"affected","violations"}, "blindspots":{"sources","totalUnknown"},
                "reachable":{"effects","entryPoints"}, "containment":{"ambient","contained"},
                "tour":{"reaches"}}
+# ⟨0.32⟩ THE SAME KEYS READ FROM THE OTHER SIDE: what a DESCRIPTIVE verb must still be carrying when it
+# hedges (SPEC §2 ⟨0.32⟩). `dn()` below asks whether these keys are EMPTY; the hedged branch asks whether
+# they are THERE AT ALL, which is the ⟨0.32⟩ contract — result BESIDE the caveat, never instead of it.
+#
+# DERIVED from RESULT_KEYS rather than written out, so the two tables cannot drift into disagreeing about
+# what a verb's result is. Two adjustments, each for a stated reason:
+#   · `show` and `map` NEST (§2 ⟨0.32⟩'s shape table) — their result rides under a key of its own, and for
+#     `map` that nesting is what closes ⟨0.28⟩'s deferred collision, so the ROOT key set is the wrong
+#     question for them. `map` is `None` in RESULT_KEYS for a different reason entirely (its root IS the
+#     user namespace, so `dn()` cannot name result keys) and MUST be overridden here, not inherited.
+#   · `whatif` is REMOVED, and it is the only removal. It answers `ok` under `--strict` and SPEC §2 ⟨0.32⟩
+#     leaves it on the substituting side of the line — pinning "result beside the caveat" for it would pin
+#     the OPPOSITE of the ruling. (Measured 2026-08-25: all four engines' `whatif` in fact hedges beside
+#     `affected`/`violations` today, so this exclusion costs nothing observable and is a statement about
+#     which side of the `ok` line the verb sits on, not about what it currently emits.)
+# `callers`/`impact`/`path` keep their result keys at the ROOT — there is nothing to nest — so for them
+# the ⟨0.32⟩ contract is exactly RESULT_KEYS presence, which is why this table is one line rather than a
+# second hand-written map. ANY of a verb's result keys present is enough, the same "present" `dn()` uses:
+# a revert to withholding drops ALL of them, and demanding all would redden an engine that legitimately
+# emits a subset (rust and java answer `impact` with three keys, and a fourth engine need not).
+DESCRIPTIVE_RESULT = {k: v for k, v in RESULT_KEYS.items() if k != "whatif"}
+DESCRIPTIVE_RESULT["show"] = {"functions"}
+DESCRIPTIVE_RESULT["map"]  = {"modules"}
 def _empty(v):
     if isinstance(v,bool): return True
     if isinstance(v,(list,dict,str)): return len(v)==0
@@ -7853,15 +7916,16 @@ def _hedged(k, v):
     return bool(v)
 if isinstance(doc, dict) and any(_hedged(k, doc[k]) for k in (DISCLOSURE & set(doc))):
     # ⟨0.32⟩ A DESCRIPTIVE VERB RETURNS ITS RESULT *AND* THE CAVEAT — SPEC §2 ⟨0.32⟩, which narrows
-    # ⟨0.28⟩ Rung A's substitution to the verbs that answer `ok`. `show` and `map` answer none, so a
-    # hedged document from them must still carry the result, nested under its own key (EMPTY is fine —
-    # the key's PRESENCE is the contract; over an armed report there is nothing to put in it). Without
-    # this row the narrowing is inert here: a revert to substitution would still score `PASS hedged`,
-    # and PART 42's shape table cannot see it either, because the container just leaves the harvest.
-    _rk = {"show": "functions", "map": "modules"}.get(verb)
-    if _rk is not None and _rk not in doc:
-        print("FAIL descriptive-hedge-substituted-for-the-result (SPEC §2 ⟨0.32⟩: a verb that answers "
-              "no `ok` emits `%s` BESIDE the caveat, never instead of it)" % _rk)
+    # ⟨0.28⟩ Rung A's substitution to the verbs that answer `ok`. A descriptive verb answers none, so a
+    # hedged document from it must still carry the result (EMPTY is fine — the key's PRESENCE is the
+    # contract; over an armed report there is nothing to put in it). Without this row the narrowing is
+    # inert here: a revert to substitution would still score `PASS hedged`, and PART 42's shape table
+    # cannot see it either, because the container just leaves the harvest.
+    _rk = DESCRIPTIVE_RESULT.get(verb)
+    if _rk is not None and not (_rk & set(doc)):
+        print("FAIL descriptive-hedge-substituted-for-the-result (SPEC §2 ⟨0.32⟩: `%s` answers no `ok`, "
+              "so it emits its result BESIDE the caveat, never instead of it — none of %s is present)"
+              % (verb, "/".join(sorted(_rk))))
         raise SystemExit
     print("PASS hedged"); raise SystemExit
 def dn():
