@@ -16,6 +16,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.32.0] — 2026-08-25
+
 - **⟨0.32⟩ THE DESCRIPTIVE HEDGE NAMES `callers`, `impact` AND `path` — AND THE PIN THAT WAS MISSING IS
   THE ONE THAT CATCHES A REVERT.** §2 Rung A's ⟨0.32⟩ narrowing shipped for `show`/`map`, which OVER-hedged
   (the caveat replaced the answer). These three are the same clause read from the other side: they answered
