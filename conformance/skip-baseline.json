@@ -86,13 +86,23 @@
   "the SKIP-probe key is still correct on its own terms: the key's job is only to say whether this",
   "engine has PORTED the rung, and `sc69`'s probe already answers that `yes` independent of the",
   "downstream INSTRUMENT failure. Leaving it at 1 would hide a real un-ship of the PRODUCER half were",
-  "one ever to happen, exactly the failure mode this file exists to prevent."
+  "one ever to happen, exactly the failure mode this file exists to prevent.",
+  "",
+  "2026-08-26 — candor-rust's ⟨0.33⟩ `scannedUnder` cell is ALSO DELETED, for the reason the two notes",
+  "above give: candor-rust now emits `scannedUnder` (SPEC §2 ⟨0.33⟩) on `candor-scan --policy`, and",
+  "`candor-query gate --report`/`fix-gate --strict`/`unverified --strict` refuse a report whose peek",
+  "answered a different question, so `sc69`'s probe of this engine's own policy-scanned report reads",
+  "`yes` and the SKIP text this key matches can no longer print for rust. `conformance/part.sh 69` prints",
+  "`rust cross-policy=2 same-policy=0 subset=0 no-peek=0 pure=2 pure-ctl=0 fix-gate--strict=2",
+  "unverified--strict=2 fix-ctl=0 unv-ctl=0 scannedUnder-corrupt=none-certified tour-no-policy=0 OK` —",
+  "byte-for-byte the java reference row — so unlike swift's residual, rust's row itself is clean; nothing",
+  "is filed here beyond the key deletion. Leaving it at 1 would hide a real un-ship of the PRODUCER or",
+  "CONSUMER half were one ever to happen, exactly the failure mode this file exists to prevent."
  ],
  "skips": {
   "tally:candor-java": 0,
   "tally:candor-scan": 0,
   "tally:candor-swift": 0,
-  "tally:candor-ts": 0,
-  "line:rust SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1
+  "tally:candor-ts": 0
  }
 }
