@@ -1088,9 +1088,104 @@ already carry.
   enough of the tree. It is the remedy a ⟨0.32⟩ refusal points at, and it is the **SAME** policy rather
   than merely *a* policy: a report scanned under `deny Net` answers nothing about `deny Exec` in the files
   it excluded, because the peek's own ⟨0.29⟩ bound filtered what it looked for to the PRODUCER's denied
-  effects. *A report does not today record the deny set it was scanned under, so that mismatch is not
-  detectable from the document — filed with its proposed fix (record the deny set, or a digest of it, in
-  the report) in `FILE-SET-DESIGN.md` §8 rather than asserted away.*
+  effects. ⟨0.33⟩ **That mismatch WAS undetectable from the document, and the clause below makes it
+  detectable** — the report now records the deny set it was scanned under, so a gate can compare rather
+  than assume. *This paragraph said the opposite through ⟨0.32⟩ ("filed with its proposed fix in
+  `FILE-SET-DESIGN.md` §8 rather than asserted away"), and the sentence is rewritten rather than deleted
+  because a MUST whose remedy is undetectable and a MUST whose remedy is checked are different contracts.*
+
+- ⟨0.33⟩ `"scannedUnder": { "deny": [ "<expanded rule>", … ] }` — **THE QUESTION THE PEEK WAS PUT.**
+  `peeked: true` is true only relative to the deny set the PRODUCER held, because the ⟨0.29⟩ bound above
+  filters the peek to effects that policy DENIES. Without this key a consumer gating with a DIFFERENT deny
+  set gets a definite answer to a question nobody asked, and it fails OPEN on the `gate --report` route —
+  past every ⟨0.32⟩ control, because the class really was read. MEASURED on candor-java 0.32.1:
+  `scan --policy 'deny Net'` over a tree whose excluded source runs `Runtime.exec("id")` writes
+  `peeked: true` beside `outOfScope: []` at exit 0; `scan --policy 'deny Exec'` over the SAME tree exits
+  2; and `gate --report <the first report> --policy 'deny Exec'` answered exit 0, `no violations`.
+
+  **THE EMISSION RULE IS `outOfScope`'s, and deliberately the same one**: PRESENT iff a policy was
+  CONFIGURED and HONOURED, ABSENT when no policy was configured, and ABSENT over a policy the engine
+  REFUSED — for the reason §3.1 withholds `ok`, since recording the rules a refused parse produced would
+  publish a question that was never put. Present-and-empty is a claim (*a policy stood and it denied
+  nothing*), which is why the two states must not collapse.
+
+  **THE RECORDED RULES ARE THE EXPANDED FORM THE MATCHER USED — post-alias, post-`.candor/config`,
+  never the raw policy line.** ⟨0.30⟩'s *THE PEEK ASKS THE GATE'S OWN MATCHER, NOT A SECOND ONE* exists
+  because all four engines had flattened the rules into a set of effect NAMES, which disarmed the
+  strictest policy; recording names here would reintroduce that defect one layer out. Raw text is wrong
+  for a sharper reason, and it is a FAIL-OPEN: §3.1 already notes that alias expansion breaks
+  byte-equality, so two configs defining `unknown-alias corp` DIFFERENTLY give the identical raw line
+  `deny Unknown[corp]` two meanings, and comparing the raw text reads a producer that asked the WEAKER
+  question as having answered the stronger one. (Raw text also fails closed on the mirror case — one rule
+  written `deny Unknown[corp]` and `deny Unknown[native,reflect]` — but that direction only costs a
+  refusal.) Each element is one RULE — a rule denying several
+  effects is ONE element, not one per effect — rendered in the engine's canonical §6.2 spelling: effect
+  names in the document's own order, `Unknown[…]`/`Net[…]` filter tokens sorted, the scope appended, and
+  `pure` spelled `pure` (a deny rule with an EMPTY effect list). The list is deduplicated and sorted, so
+  two runs of one policy produce one document. **`unevaluated` carries the RAW line and this key carries
+  the EXPANDED one, and that is not an inconsistency**: `unevaluated` quotes what the operator wrote back
+  at them, while this is evidence about what was asked.
+
+- ⟨0.33⟩ **A GATE MUST REFUSE A REPORT WHOSE PEEK ANSWERED A DIFFERENT QUESTION — `ok: false`,
+  `incomplete: true`, EXIT 2.** The condition, in full: the report carries at least one `excluded` entry
+  with `peeked: true` and without `judgedElsewhere: true`, AND the gate's own expanded deny rule set is
+  NOT a subset of that report's `scannedUnder.deny`. The refusal MUST name the rules the producer was
+  never asked about, and its remedy MUST say re-scan under **the SAME policy** — not *a* policy, which is
+  the loose reading that produces this hole, because the operator did scan with a policy.
+
+  **`judgedElsewhere: true` EXCLUDES AN ENTRY FROM THE PRECONDITION, and that is a soundness argument
+  rather than leniency.** ⟨0.32⟩ defines it as *the files of this class are copies of code this same scan
+  already judged*, so their effects are in `functions` with a full, POLICY-INDEPENDENT effect set: the
+  gate can answer any deny rule from them without consulting the peek at all, and refusing would gain no
+  evidence. It is also the same producer statement ⟨0.32⟩ already trusts completely, and reading one
+  field two ways in two clauses is how a consumer comes to gate a report differently from the engine that
+  wrote it.
+
+  **THE CONDITION IS PER REPORT, NEVER OVER THE UNION OF A REPORT SET.** `scannedUnder` and `peeked` are
+  facts about ONE producing scan; unioned, a policy-scanned report's deny set answers for a no-policy
+  sibling's peeked classes, which is §2.2's name-join hazard arriving on a different key.
+
+  **AN ABSENT `scannedUnder` IS THE EMPTY SET FOR THIS TEST, so a pre-⟨0.33⟩ report carrying `peeked: true`
+  fails closed.** That is the rung and not collateral damage, exactly as ⟨0.32⟩'s no-policy case was: the
+  producer's silence about the QUESTION must never be read as an answer about the CODE, and the remedy is
+  exact — re-scan with a current engine under the gate's own policy. It costs nothing on the reports that
+  matter, because under the ⟨0.29⟩ bound a class only reaches `peeked: true` when the producing scan held
+  a deny rule, so a `peeked: true` class beside no `scannedUnder` identifies a pre-rung producer precisely.
+
+  **SUBSET IS DECIDED BY VERBATIM MATCH OVER THE CANONICAL EXPANDED FORM, and that is a deliberate SOUND
+  UNDER-APPROXIMATION of coverage.** A producer's `deny Net` genuinely subsumes a consumer's
+  `deny Net in app::x`, and this refuses that anyway. Refusing is the safe direction and the remedy is
+  exact. An engine MUST NOT attempt semantic rule subsumption: scopes and class filters make containment
+  undecidable in general, and an ALLOWLIST of "provably narrower" forms under-reports whatever nobody
+  thought of — the shape this document rejects everywhere else it appears.
+
+  **THE CONDITION IS COVERAGE, NOT EQUALITY, and that is why the key is the RULE SET and not a digest.**
+  A producer that scanned under `deny Net` and `deny Exec` fully answers a consumer asking only
+  `deny Net`, and MUST NOT be refused. A digest can decide only equality — same implementation cost,
+  strictly worse answer, and it cannot name what went unasked in the remedy. Digests are for integrity;
+  this is semantic coverage.
+
+  **TWO CARVE-OUTS ARE STRUCTURAL RATHER THAN WRITTEN, and an engine that spells them separately has
+  written the rule twice.** A gate whose policy holds NO deny rule has an empty set, which is a subset of
+  everything, so it never fires — the same carve-out ⟨0.32⟩ states explicitly, arriving for free. And a
+  report with NO `peeked: true` entry never fires either, which is the OVER-CHARGE CONTROL and is load
+  bearing: **the effect sets of ANALYZED code are policy-independent, and only the PEEK was bounded**, so
+  refusing a report whose scan excluded nothing — or excluded only classes it never opened, which ⟨0.32⟩
+  already refuses on its own terms — would redden every scan-then-gate pipeline in the family for a
+  difference that changed no evidence.
+
+  **§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and like ⟨0.30⟩ and unlike the reverted
+  `net-partner` attempt it needs NO new anchor.** On `scan --policy P` the producer and the consumer are
+  one run, so the recorded set IS `P`, `P ⊆ P` holds, and the rule cannot fire — the scan route's verdict
+  document is byte-unchanged. The refusal exists only on `gate --report`, which has no scan-route twin to
+  be byte-unequal to.
+
+  ⟨0.33⟩ **AND THE ADVISORY VERBS FOLLOW IT.** ⟨0.24⟩ binds every verb that answers `ok` — `unverified`,
+  `fix-gate`, and any later sibling — to be *at least as pessimistic as the gate over the same bytes*, and
+  ⟨0.30⟩ had to say so again for `outOfScope` while ⟨0.32⟩ shipped four engines whose `--strict` verbs
+  certified over an unread class the gate refused. This is the fourth cause; `--strict` answers 2 wherever
+  `gate --report` would. It needs no separate deny-rule conjunct for the reason above: a verb carrying no
+  policy has an empty rule set, which is a subset of everything.
 
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);

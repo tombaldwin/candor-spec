@@ -46,13 +46,25 @@
   "",
   "`line:swift SKIP — the hash-keyed merge` also read 0 on the same run and is DELIBERATELY LEFT",
   "AT 1: it is a different rung, nothing in this commit shipped it, and freezing a fall nobody",
-  "attributed is how a baseline starts asserting things its author did not measure."
+  "attributed is how a baseline starts asserting things its author did not measure.",
+  "",
+  "2026-08-25 — the three ⟨0.33⟩ `scannedUnder` cells are ADDED DELIBERATELY. PART 69 is reference-led:",
+  "the rung lands in candor-java first, so rust/ts/swift score SKIP until they port it. They are entered",
+  "here rather than left uncounted for the reason the 2026-08-21 note gives — an uncounted skip is the",
+  "never-shipped/un-shipped confusion this file exists to prevent. Each cell FALLS to 0 as its engine",
+  "ports the rung (a fall is free) and the entry must then be DELETED, not left at 1: a baseline of 1",
+  "over an actual 0 lets a later un-ship rise to 1 and pass. PART 69's skips are PROBED — the row asks",
+  "whether that engine's own policy-scanned report carries `scannedUnder` — so the line disappears on",
+  "the porting commit with no edit to run.sh, and this file is the only thing that then needs pruning."
  ],
  "skips": {
   "tally:candor-java": 0,
   "tally:candor-scan": 0,
   "tally:candor-swift": 0,
   "tally:candor-ts": 0,
-  "line:swift SKIP — the hash-keyed merge is not ported yet": 1
+  "line:swift SKIP — the hash-keyed merge is not ported yet": 1,
+  "line:rust SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1,
+  "line:ts SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1,
+  "line:swift SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1
  }
 }

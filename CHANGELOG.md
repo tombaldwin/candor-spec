@@ -16,6 +16,39 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⟨0.33⟩ THE CROSS-POLICY HOLE — `scannedUnder`, and a gate that refuses a peek it did not
+  commission.** `excluded[].peeked: true` was only ever true *relative to the deny set the producer
+  held* — ⟨0.29⟩ bounds the peek to effects that policy DENIES — and the report never recorded what that
+  set was. A consumer gating with a different deny set therefore got a definite answer to a question
+  nobody asked, and it failed OPEN on `gate --report`, the supply-chain route, past every ⟨0.32⟩
+  control, because the class really was read. Measured on candor-java 0.32.1 over a tree whose excluded
+  source runs `Runtime.exec("id")`: `scan --policy 'deny Net'` exits 0 with `peeked: true` and
+  `outOfScope: []`; `scan --policy 'deny Exec'` over the same tree exits 2; and
+  `gate --report <the first report> --policy 'deny Exec'` answered exit 0, `no violations`.
+
+  The envelope gains **`scannedUnder: { "deny": [ "<expanded rule>", … ] }`** under exactly
+  `outOfScope`'s emission rule — present iff a policy was CONFIGURED and HONOURED, absent when none was
+  configured, absent over a policy the engine REFUSED. The rules are recorded in the **expanded form the
+  matcher used**, one element per rule, deduplicated and sorted: effect NAMES would reintroduce the
+  flattening defect ⟨0.30⟩ closed one layer down (`pure` names nothing), and raw policy text fails OPEN —
+  two configs defining `unknown-alias corp` differently give the identical line `deny Unknown[corp]` two
+  meanings, so comparing raw text reads a producer that asked the weaker question as having answered the
+  stronger one. A gate whose own expanded deny set is not a
+  subset of it, over a report carrying any `peeked: true` class, answers `ok: false`, `incomplete: true`,
+  exit 2, names the rules that went unasked, and points at re-scanning under **the SAME** policy. The
+  ⟨0.24⟩ advisory verbs follow, as ⟨0.30⟩ and ⟨0.32⟩ each had to be amended to say.
+
+  **NOT ADDITIVE, in the ⟨0.32⟩ direction and for the same reason.** An absent `scannedUnder` is the
+  EMPTY SET for the subset test, so a pre-⟨0.33⟩ report carrying `peeked: true` fails closed — the
+  producer's silence about the QUESTION must not be read as an answer about the CODE. It identifies a
+  pre-rung producer precisely (under the ⟨0.29⟩ bound a class reaches `peeked: true` only when the
+  producing scan held a deny rule) and the remedy is exact. §3.1 route equality holds BY CONSTRUCTION:
+  on `scan --policy P` the producer and the consumer are one run, so `P ⊆ P` and the rule cannot fire.
+  Conformance PART 69, reference-led — candor-java ships it; rust, ts and swift SKIP on a PROBE of their
+  own reports until they port it, so the rows start asserting on the porting commit rather than on an
+  edit here. The floor declaration is NOT moved: `**Version 0.32**` says *all code engines declare
+  0.32*, and that stays true until the three ports land (the bump is the umbrella's `spec-bump.sh`).
+
 - **`check_agents_drift.py` now sweeps README.md and AGENTS.md for prose spec claims.** Checks 2 and 3
   read one JSON envelope in AGENTS.md and every JSON fence in SPEC.md; nothing ever read README.md, whose
   family table states the contract FIVE times as `**shipped (spec X.Y)**` and which is the first document
