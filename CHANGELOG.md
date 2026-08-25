@@ -16,6 +16,32 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **⚠ PART 68 SCORED A CRASHED ENGINE ON THE PREVIOUS ENGINE'S LEFTOVER BYTES.** Its rust, java and ts
+  legs ran SEQUENTIALLY into the same four verdict paths, never deleted between engines, with every
+  engine's stderr discarded. An engine emitting WRONG rows was caught, because it overwrote; an engine
+  that CRASHED BEFORE WRITING was scored on whatever its predecessor had left there. MEASURED 2026-08-25:
+  with the java leg pointed at a nonexistent jar, the part printed `java … OK` and the suite exited 0.
+  The swift leg was immune only by accident — it lays its reports under its own `sw-` spelling for
+  PART 63's reason, and so happened to write its own sinks.
+
+  This is the false all-clear the suite exists to prevent, arriving inside the suite. A green cell has to
+  mean *this engine answered*; here it could mean *some engine answered, once*.
+
+  The sinks are now per-engine and deleted before each run, an absent or empty document FAILS THE CELL
+  NAMING THE ENGINE instead of falling through, and the engine's stderr is kept so the failure quotes the
+  reason rather than sending the reader back to re-run the suite by hand. **Falsified in both directions**:
+  with a nonexistent jar the java cell reads `FAIL — wrote no verdict document for: twin rev one nohash …
+  Error: Unable to access jarfile`, the part prints `-> DIVERGE` and the run exits 1; with the jar
+  restored all four engines are green again. The swift leg now goes through the SAME runner, with its
+  report-dir spelling as an argument rather than a private copy of the loop — a discipline an engine can
+  be added without is one the next engine WILL be added without, which is exactly how this leg came to be
+  the only safe one and to be so by accident.
+
+  **The class was swept, and PART 68 was the only instance.** Everywhere else that drives several engines
+  into a sink either derives the path from the engine label, uses a per-engine scratch directory, or
+  already does delete-then-assert-non-empty (`zr_probe`, `ign_probe`, `vd_gate_probe`, `lr_probe`). That
+  last is the harness's house pattern; PART 68 was the one place carrying neither half of it.
+
 - **⟨0.32⟩ THE VERDICT-ROW IDENTITY MUST NOW HAS AN ARM — PART 68 — AND THE MUST LEDGER HAD BEEN
   OVERSTATING ITS COVERAGE.** §2 ⟨0.32⟩ states TWO MUSTs in one block: a multi-report verdict must be
   computed over `hash`-keyed units, AND *"a verdict row MUST carry enough identity for a consumer to

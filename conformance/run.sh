@@ -11869,27 +11869,57 @@ if len(n) != 1 or set(n[0]) != BASE:
     bad(f"a producer with NO `hash` must OMIT the field (⟨0.26⟩), got {sorted(set(n[0])) if n else n}")
 print(f"  {label:<6} twin=2 distinct, identity-ordered; rev order unchanged; single={sorted(set(o[0]))}; hashless omits  OK")
 PYEOF
-p68_run() {   # $1 label ; $2.. the gate command PREFIX (everything before the flags)
-  local label="$1"; shift
-  local d
+# THE SINK IS PER-ENGINE, AND ITS ABSENCE IS THE ENGINE'S FAILURE — NOT A FALL-THROUGH TO ITS
+# PREDECESSOR'S BYTES. This ran rust, java and ts SEQUENTIALLY into the same four paths, never deleting
+# them between engines and discarding every engine's stderr. An engine emitting WRONG rows was caught,
+# because it overwrote; an engine that CRASHED BEFORE WRITING was scored on whatever the previous engine
+# had left there. MEASURED 2026-08-25: with the java leg pointed at a nonexistent jar, this part printed
+# `java … OK` and exited 0, on rust's documents. The swift leg below was immune only by accident — it
+# lays its reports under its own `sw-` spelling for PART 63's reason and so writes its own sinks.
+#
+# BOTH HALVES MATTER AND NEITHER IS SUFFICIENT. Per-engine paths mean there are no foreign bytes to read;
+# the existence assertion means an absent document FAILS THE CELL NAMING THE ENGINE rather than passing
+# quietly. The engine's stderr is KEPT and its first line quoted into that failure, because "wrote no
+# verdict" without the reason sends the reader back to re-run the suite by hand to find out why. This is
+# the shape the rest of the harness already uses (`zr_probe`, `ign_probe`, `vd_gate_probe`): delete the
+# sink, run, treat an empty sink as the failure it is. A missing jar cannot reach here — line 84 refuses
+# to start the suite without one — so an unwritten document is always a defect, never a runner condition.
+p68_run() {   # $1 label ; $2 report-dir prefix ; $3.. the gate command PREFIX (everything before the flags)
+  local label="$1" pfx="$2"; shift 2
+  local d miss="" first="" why
   for d in twin rev one nohash; do
-    "$@" gate --report "$P68/$d/report" --policy "$P68/pol.candor" \
-         --gate-json "$P68/$d.verdict.json" >/dev/null 2>&1
+    rm -f "$P68/$label.$d.verdict.json"
+    "$@" gate --report "$P68/$pfx$d/report" --policy "$P68/pol.candor" \
+         --gate-json "$P68/$label.$d.verdict.json" >/dev/null 2>"$P68/$label.$d.err"
+    if [ ! -s "$P68/$label.$d.verdict.json" ]; then
+      miss="$miss $d"; [ -n "$first" ] || first="$d"
+    fi
   done
-  if python3 "$P68/check.py" "$label" "$P68/twin.verdict.json" "$P68/rev.verdict.json" \
-             "$P68/one.verdict.json" "$P68/nohash.verdict.json" > "$P68/$label.out" 2>&1; then
+  if [ -n "$miss" ]; then
+    # `tr -d '\\'` because P68_OUT is rendered with `printf '%b'` further down, and a backslash in an
+    # engine's stack trace would be read as an escape rather than printed.
+    why=$(head -1 "$P68/$label.$first.err" 2>/dev/null | tr -d '\\' | cut -c1-140)
+    [ -n "$why" ] || why="(the engine printed nothing on stderr)"
+    P68_OUT="$P68_OUT  $(printf '%-6s' "$label") FAIL — wrote no verdict document for:$miss. This engine did not answer this part at all, so nothing below is evidence about it. First line of its stderr: $why\n"
+    P68_BAD=1; rc=1; return
+  fi
+  if python3 "$P68/check.py" "$label" "$P68/$label.twin.verdict.json" "$P68/$label.rev.verdict.json" \
+             "$P68/$label.one.verdict.json" "$P68/$label.nohash.verdict.json" > "$P68/$label.out" 2>&1; then
     P68_OUT="$P68_OUT$(cat "$P68/$label.out")\n"
   else
     P68_OUT="$P68_OUT$(cat "$P68/$label.out")\n"; P68_BAD=1; rc=1
   fi
 }
-p68_run rust "$QUERY"
-p68_run java java -jar "$JAR"
-if [ -n "$TS_OK" ]; then p68_run ts node "$TS_DIR/query.mjs"
+p68_run rust "" "$QUERY"
+p68_run java "" java -jar "$JAR"
+if [ -n "$TS_OK" ]; then p68_run ts "" node "$TS_DIR/query.mjs"
 else P68_OUT="$P68_OUT  ts     SKIP — engine absent\n"; fi
 # THE SWIFT ROW re-lays the SAME bodies under swift's own discovery suffix, exactly as PART 63 does:
 # every engine finds reports by its own spelling, and re-authoring them would stop the two rows
-# asserting over identical evidence.
+# asserting over identical evidence. That is the ONLY thing that differs, so it is a REPORT-DIR PREFIX
+# argument and not a second copy of the runner: the sink discipline above must not be something an engine
+# can be added without — a private copy is exactly how this leg came to be the only one that could not be
+# scored on a predecessor's bytes, and it got there by accident rather than by rule.
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
   for d in twin rev one nohash; do
     mkdir -p "$P68/sw-$d"
@@ -11899,16 +11929,7 @@ if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
       cp "$f" "$P68/sw-$d/report.$u.Swift.json"
     done
   done
-  for d in twin rev one nohash; do
-    "$SW_BIN" gate --report "$P68/sw-$d/report" --policy "$P68/pol.candor" \
-              --gate-json "$P68/sw-$d.verdict.json" >/dev/null 2>&1
-  done
-  if python3 "$P68/check.py" swift "$P68/sw-twin.verdict.json" "$P68/sw-rev.verdict.json" \
-             "$P68/sw-one.verdict.json" "$P68/sw-nohash.verdict.json" > "$P68/swift.out" 2>&1; then
-    P68_OUT="$P68_OUT$(cat "$P68/swift.out")\n"
-  else
-    P68_OUT="$P68_OUT$(cat "$P68/swift.out")\n"; P68_BAD=1; rc=1
-  fi
+  p68_run swift sw- "$SW_BIN"
 else
   P68_OUT="$P68_OUT  swift  SKIP — engine absent\n"
 fi
