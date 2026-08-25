@@ -18,6 +18,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.32.0] — 2026-08-25
 
+- **The ⟨0.32⟩ bump left `spec 0.31` in five README rows and three SPEC.md envelope examples.** The rows
+  described what was *published*, which is why they read as correct — but they move with the cut, like
+  every other staged version string. The three envelope fences sat under a `**Version 0.32**` header:
+  the drift gate holds AGENTS.md *against* SPEC.md and never read SPEC.md back, so the document defining
+  the contract was internally inconsistent and no gate could see it. `check_agents_drift.py` now sweeps
+  SPEC.md's own `"spec": "X.Y"` fences against its declared floor, with a control proving the
+  `, informative)` exemption discriminates.
+
 - **⟨0.32⟩ THE DESCRIPTIVE HEDGE NAMES `callers`, `impact` AND `path` — AND THE PIN THAT WAS MISSING IS
   THE ONE THAT CATCHES A REVERT.** §2 Rung A's ⟨0.32⟩ narrowing shipped for `show`/`map`, which OVER-hedged
   (the caveat replaced the answer). These three are the same clause read from the other side: they answered
