@@ -8,7 +8,8 @@
   "  \"status\": \"pre-ledger\"   — existed before the ledger did (the baseline freeze).",
   "Adding a NEW entry as pre-ledger defeats the gate; a reviewer of this diff should refuse it.",
   "`sha` anchors the whitespace-normalised block text: editing the clause orphans the entry,",
-  "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative."
+  "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative.",
+  "⟨2026-08-25⟩ The ten ⟨0.33⟩ cross-policy statements are classified to PART 69, which drives all four of the design's controls plus the `pure` flattening arm and the `scannedUnder` corruption arm. The ⟨0.32⟩ producer-must-scan-with-the-policy entry was RE-CONFIRMED rather than re-frozen: its row (PART 62) is unchanged and only its trailing sentence moved — it used to say the mismatch was undetectable from the document, which ⟨0.33⟩ makes false."
  ],
  "entries": [
   {
@@ -185,9 +186,24 @@
    "excerpt": "`incomplete` is the one key a consumer may branch on alone and be safe under both causes; the other two name W",
    "status": "pre-ledger"
   },
-  {"sha": "4ad854c491a4a7df", "at": "2. The report", "excerpt": "⟨0.32⟩ **A derived set certifies the source against t", "part": "PART 65 (dep-outside-root + processor-control)"},
-  {"sha": "f45926c9584ffc28", "at": "2. The report", "excerpt": "- ⟨0.32⟩ **A peek MAY derive the file set it reads, and a class it derived may reac", "part": "PART 65 (certify)"},
-  {"sha": "da6b3abd33c38a5d", "at": "2. The report", "excerpt": "The two conditions are not decoration. **Every file, or none of the class**: a deri", "part": "PART 65 (syntax-error + missing-dep rows)"},
+  {
+   "sha": "4ad854c491a4a7df",
+   "at": "2. The report",
+   "excerpt": "⟨0.32⟩ **A derived set certifies the source against t",
+   "part": "PART 65 (dep-outside-root + processor-control)"
+  },
+  {
+   "sha": "f45926c9584ffc28",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.32⟩ **A peek MAY derive the file set it reads, and a class it derived may reac",
+   "part": "PART 65 (certify)"
+  },
+  {
+   "sha": "da6b3abd33c38a5d",
+   "at": "2. The report",
+   "excerpt": "The two conditions are not decoration. **Every file, or none of the class**: a deri",
+   "part": "PART 65 (syntax-error + missing-dep rows)"
+  },
   {
    "sha": "80ba485994c78f7b",
    "at": "2. The report",
@@ -2780,7 +2796,7 @@
    "part": "PART 54"
   },
   {
-   "sha": "112b663fe856626b",
+   "sha": "1ebeb43449c8dcd8",
    "at": "2. The report",
    "excerpt": "⟨0.32⟩ **A GATE CERTIFIES ONLY RELATIVE TO A REPORT WHOSE PRODUCER HELD THE GATE'S DENY SET, so a producer in ",
    "part": "PART 62"
@@ -2953,6 +2969,83 @@
    "excerpt": "- ⟨0.32⟩ `\"judgedElsewhere\": <bool>` — OPTIONAL in an `excluded` entry, default false. TRUE means *the files o",
    "unenforced": "A FIELD DEFINITION, not a behaviour an engine can fail on its own — it is exercised through the INCOMPLETE rule above, which carries the enforcement. Classified here so the field cannot be removed silently."
   },
-  {"sha": "3aa263e5c8e093fc", "at": "1. Effects", "excerpt": "⟨0.32⟩ **`Exec` charges reach to the subprocess capability, not only the launch.** Constructing or configuring", "part": "PART 66 (readBack + lookalike over-charge controls)"}
+  {
+   "sha": "3aa263e5c8e093fc",
+   "at": "1. Effects",
+   "excerpt": "⟨0.32⟩ **`Exec` charges reach to the subprocess capability, not only the launch.** Constructing or configuring",
+   "part": "PART 66 (readBack + lookalike over-charge controls)"
+  },
+  {
+   "sha": "f66679056783ba9c",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.33⟩ `\\\"",
+   "part": "PART 69"
+  },
+  {
+   "sha": "fd271065c05af672",
+   "at": "2. The report",
+   "excerpt": "**THE EMISSION RULE IS `outOfScope`'s, and deliberately the same one**: PRESENT iff a policy was CONFIGURED an",
+   "part": "PART 69"
+  },
+  {
+   "sha": "e7f67efcb735019c",
+   "at": "2. The report",
+   "excerpt": "**THE RECORDED RULES ARE THE EXPANDED FORM THE MATCHER USED — post-alias, post-`.candor/config`, never the raw",
+   "part": "PART 69"
+  },
+  {
+   "sha": "60c3c9fd9347d90c",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.33⟩ **A GATE MUST REFUSE A REPORT WHOSE PEEK ANSWERED A DIFFERENT QUESTION — `ok: false`, `incomplete: tr",
+   "part": "PART 69"
+  },
+  {
+   "sha": "49c535f2b1f3feb5",
+   "at": "2. The report",
+   "excerpt": "**AN ABSENT `scannedUnder` IS THE EMPTY SET FOR THIS TEST, so a pre-⟨0.33⟩ report carrying `peeked: true` fail",
+   "part": "PART 69"
+  },
+  {
+   "sha": "6867c01975703bd2",
+   "at": "2. The report",
+   "excerpt": "**SUBSET IS DECIDED BY VERBATIM MATCH OVER THE CANONICAL EXPANDED FORM, and that is a deliberate SOUND UNDER-A",
+   "part": "PART 69"
+  },
+  {
+   "sha": "4fd29bf784473f57",
+   "at": "2. The report",
+   "excerpt": "**THE CONDITION IS COVERAGE, NOT EQUALITY, and that is why the key is the RULE SET and not a digest.** A produ",
+   "part": "PART 69"
+  },
+  {
+   "sha": "7fa6b69a8dcd44fa",
+   "at": "2. The report",
+   "excerpt": "**TWO CARVE-OUTS ARE STRUCTURAL RATHER THAN WRITTEN, and an engine that spells them separately has written the",
+   "part": "PART 69"
+  },
+  {
+   "sha": "1e0a803e83c1261c",
+   "at": "2. The report",
+   "excerpt": "**§3.1 ROUTE EQUALITY IS SATISFIED BY CONSTRUCTION, and like ⟨0.30⟩ and unlike the reverted `net-partner` atte",
+   "part": "PART 69"
+  },
+  {
+   "sha": "e06e15c399314034",
+   "at": "2. The report",
+   "excerpt": "⟨0.33⟩ **AND THE ADVISORY VERBS FOLLOW IT.** ⟨0.24⟩ binds every verb that answers `ok` — `unverified`, `fix-ga",
+   "part": "PART 69"
+  },
+  {
+   "sha": "1448ba1068c89a04",
+   "at": "2. The report",
+   "excerpt": "**`judgedElsewhere: true` EXCLUDES AN ENTRY FROM THE PRECONDITION, and that is a soundness argument rather tha",
+   "part": "PART 69"
+  },
+  {
+   "sha": "1f04c4d66f0689de",
+   "at": "2. The report",
+   "excerpt": "**THE CONDITION IS PER REPORT, NEVER OVER THE UNION OF A REPORT SET.** `scannedUnder` and `peeked` are facts a",
+   "unenforced": "PART 69 drives ONE report per gate invocation, so no cell distinguishes a per-report test from a union over a set. The BEHAVIOUR is pinned in candor-java's own suite (`UnreadCodeRouteTest`), and the harm it prevents is already exercised one key over — PART 63 gates a member beside an unrelated sibling and requires the sibling not to answer for it, which is the same hazard on `hash`. Recorded as a debt with a named remedy rather than left as a silence: the row that closes it needs a locator resolving to TWO reports whose producers held DIFFERENT deny sets, and its control must be that the same pair under the SAME deny set still certifies, or the row passes for an engine that refuses every report set."
+  }
  ]
 }

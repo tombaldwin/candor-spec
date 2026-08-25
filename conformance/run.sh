@@ -12037,6 +12037,450 @@ printf '%b' "$P68_OUT"
 [ "$P68_BAD" = 0 ] && echo "  -> MATCH — two units sharing a name produce two rows a consumer can tell apart, in identity order, on every engine"
 [ "$P68_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
 true
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 69 — A GATE MUST NOT ANSWER FROM A PEEK THAT WAS PUT A DIFFERENT QUESTION (SPEC §2 ⟨0.33⟩) [TIER 1]
+#
+# `excluded[].peeked: true` is true only RELATIVE to the deny set the PRODUCER held: ⟨0.29⟩ bounds the
+# peek to effects that policy DENIES, so a class read under `deny Net` says nothing about `Exec` in those
+# same files. Until ⟨0.33⟩ the report did not record the question, so a consumer gating with a DIFFERENT
+# deny set got a definite answer to something nobody asked — and it fails OPEN, on the `gate --report`
+# route, which is the SUPPLY-CHAIN route where the producer is somebody else.
+#
+# MEASURED on candor-java 0.32.1 (HEAD 0a5fc2f), a tree whose excluded source runs `Runtime.exec("id")`:
+#
+#     candor <tree> --policy 'deny Net'  --json A   -> exit 0, `peeked: true`, `outOfScope: []`
+#     candor <tree> --policy 'deny Exec'            -> exit 2      (there IS an Exec out there)
+#     candor gate --report A --policy 'deny Exec'   -> exit 0, `no violations`      <- THE HOLE
+#
+# It survives every ⟨0.32⟩ control, because the class really WAS read: the unread-class rule correctly
+# does not fire, and ⟨0.30⟩'s `outOfScope` arm sees an empty block because the peek discarded the `Exec`
+# as out of the PRODUCER's question. Filed at `FILE-SET-DESIGN.md` §8 on 2026-08-24 and closed by the
+# ⟨0.33⟩ `scannedUnder` key.
+#
+# REFERENCE-LED, AND THE SKIP IS PROBED RATHER THAN DECLARED. The rung lands in candor-java first, so
+# rust/ts/swift score SKIP until they port it — and each row DETECTS that by asking whether the engine's
+# own policy-scanned report carries `scannedUnder`, never by a hard-coded list. A declared exclusion goes
+# stale silently; a probed one flips to asserting the moment the port lands. An engine that ships the
+# PRODUCER half and not the consumer half is scored and FAILS, which is the right answer: half the rung
+# is the fail-open half.
+#
+# THE FOUR CONTROLS ARE THE DELIVERABLE, and control 3 is written first because it is the one a careless
+# implementation gets wrong in the LOUD direction:
+#
+#   3. NO peeked class + differing policies      -> 0.  Analysed code's effect sets are POLICY-INDEPENDENT;
+#                                                       only the PEEK was ever bounded. Refusing here
+#                                                       reddens every scan-then-gate pipeline in the family.
+#   1. the SAME policy, peeked classes present   -> 0.  If this reddens the rung is unusable and we have
+#                                                       shipped noise.
+#   2. consumer's rules a strict SUBSET          -> 0.  A producer that held `deny Net` AND `deny Exec`
+#                                                       fully answers a consumer asking one of them. This
+#                                                       is why the key is the RULE SET and not a DIGEST:
+#                                                       a digest can decide only equality and would refuse
+#                                                       a narrowing at the same implementation cost.
+#   4. producer `deny Net`, consumer `deny Exec` -> 2, naming `deny Exec`.
+#
+# FOUR TREES PER ENGINE, and each exists because ONE tree cannot ask all four questions without a
+# DIFFERENT cause answering — measured while writing this part, not anticipated:
+#   A  analysed EFFECTFUL (not denied) + an excluded class the peek READS, performing `Exec`
+#   B  the same with the excluded class CLEAN. Control 2 needs a producer whose policy is a SUPERSET,
+#      and over tree A that producer's own peek FINDS the `Exec` -> ⟨0.30⟩'s `outOfScope` arm exits 2 and
+#      the cell scores a dominating cause instead of this one.
+#   C  analysed PURE + the excluded `Exec`. The `pure` arm needs a tree with no real violation: `pure`
+#      denies every effect, so over tree A it exits 1 on `Ok.load` and dominates.
+#   D  analysed EFFECTFUL + NO exclusions at all -> control 3.
+#
+# THE `pure` ARM IS THE FLATTENING TRAP ARRIVING ONE LAYER OUT. `pure` is a deny rule with an EMPTY
+# effect list (§2.2 ⟨0.30⟩), so an engine deciding coverage by reducing rules to effect NAMES gets
+# NOTHING from it — and an empty set is a subset of everything, which lets the STRICTEST policy in the
+# family certify over a peek that never asked its question. All four engines made exactly this mistake
+# once already, on the peek itself, which is why ⟨0.30⟩ had to write "THE PEEK ASKS THE GATE'S OWN
+# MATCHER, NOT A SECOND ONE". Its own control sits beside it: `pure` against a producer that WAS asked
+# `pure` must certify, or the arm passes for an engine that refuses every `pure` policy.
+#
+# THE CORRUPTION ARM RUNS UNDER THE COVERING POLICY, and that is not a detail. Under `deny Exec` the
+# genuine value already refuses, so every garbled shape would "pass" while measuring nothing. Driven
+# under `deny Net` — which the genuine value COVERS — a shape that certifies shows up as a 0 where the
+# honest answer is 2. The fail-open direction here is the MIRROR of `peeked`'s: there the safe-looking
+# coercion was "no exclusions", here it would be "the producer held these rules".
+#
+# WHAT THIS PART DOES NOT ASK, recorded so it is a decision rather than a discovery. The ⟨0.32⟩
+# never-asked carve-out (a policy with NO deny rule must not refuse) is UNOBSERVABLE on the
+# `gate --report` route: §3.1 refuses an `allow`/`forbid`/`only`-only policy there for its own reasons,
+# exit 2 either way, so a cell would be green while asserting something other than what it claims — the
+# shape found four times in this suite in one day. Under ⟨0.33⟩ that carve-out is STRUCTURAL rather than
+# written (an empty rule set is a subset of everything), and the observable half of it is the last cell:
+# a DESCRIPTIVE verb carrying no policy must not gain a hedge over a peeked report.
+p69() {   # <engine> <row> <ctl1> <ctl2> <ctl3> <pure> <pure-ctl> <fix> <unv> <fix-ctl> <unv-ctl> <corrupt> <tour>
+  if [ "$2" = 2 ] && [ "$3" = 0 ] && [ "$4" = 0 ] && [ "$5" = 0 ] && [ "$6" = 2 ] && [ "$7" = 0 ] \
+     && [ "$8" = 2 ] && [ "$9" = 2 ] && [ "${10}" = 0 ] && [ "${11}" = 0 ] \
+     && [ "${12}" = none-certified ] && [ "${13}" = 0 ]; then
+    P69_OUT="$P69_OUT  $1  cross-policy=2 same-policy=0 subset=0 no-peek=0 pure=2 pure-ctl=0 fix-gate--strict=2 unverified--strict=2 fix-ctl=0 unv-ctl=0 scannedUnder-corrupt=none-certified tour-no-policy=0  OK
+"
+  else
+    P69_OUT="$P69_OUT  $1  cross-policy=$2 same-policy=$3 subset=$4 no-peek=$5 pure=$6 pure-ctl=$7 fix-gate--strict=$8 unverified--strict=$9 fix-ctl=${10} unv-ctl=${11} scannedUnder-corrupt=${12} tour-no-policy=${13}  FAIL (want 2/0/0/0/2/0/2/2/0/0/none-certified/0)
+"
+    [ "$2" != 2 ] && P69_OUT="$P69_OUT         cross-policy: THE GATE CERTIFIED FROM A PEEK THAT WAS PUT A DIFFERENT QUESTION — SPEC §2 ⟨0.33⟩. The report says a class was READ, so ⟨0.32⟩ does not fire and ⟨0.30⟩ sees an empty \`outOfScope\`, because the ⟨0.29⟩ bound filtered the peek to the PRODUCER's denied effects. Check that this engine (a) emits \`scannedUnder\` from the rules the peek MATCHED WITH, and (b) refuses when its own expanded deny set is not a subset of it. An ABSENT \`scannedUnder\` is the EMPTY SET for that test, never a licence
+"
+    [ "$6" != 2 ] && P69_OUT="$P69_OUT         pure: THE STRICTEST POLICY IN THE FAMILY CERTIFIED. \`pure\` is a deny rule with an EMPTY effect list, so an engine deriving coverage by FLATTENING rules into effect NAMES gets nothing from it and compares equal to the empty set. This is the defect ⟨0.30⟩ closed on the peek itself, four-way, arriving one layer out — record the EXPANDED RULE, never the effect names
+"
+    { [ "$8" != 2 ] || [ "$9" != 2 ]; } && [ "$2" = 2 ] && P69_OUT="$P69_OUT         THE GATE REFUSED AND AN ADVISORY VERB CERTIFIED OVER THE SAME BYTES — SPEC §3.1 ⟨0.24⟩, and this is the FOURTH cause to arrive at \`gate --report\` and not at its siblings (⟨0.24⟩ \`unanalyzed\`, ⟨0.30⟩ \`outOfScope\`, ⟨0.32⟩ \`excluded[].peeked\`, now this). Find where THIS engine unions its report-completeness arms — java \`ReportCompleteness.incomplete()\`, ts \`advisoryAnswer\` — and add the new one there rather than at the gate's exit site
+"
+    [ "${12}" != none-certified ] && P69_OUT="$P69_OUT         scannedUnder-corrupt: a NON-§2 \`scannedUnder\` MANUFACTURED COVERAGE the producer never claimed — the fail-open direction of this key, and the mirror of \`peeked\`'s. Shapes that did not refuse: ${12}. ONE RULE PER READER: ABSENT takes the §2 default (the EMPTY set, which refuses), PRESENT-BUT-NOT-THE-§2-SHAPE impeaches the document
+"
+    { [ "$3" != 0 ] || [ "$4" != 0 ] || [ "$5" != 0 ] || [ "$7" != 0 ] || [ "${10}" != 0 ] || [ "${11}" != 0 ] || [ "${13}" != 0 ]; } && P69_OUT="$P69_OUT         AN OVER-CHARGE CONTROL MOVED — and the controls are the deliverable, not the trimming. same-policy/subset must certify or a scan-then-gate pipeline cannot pass at all; no-peek must certify because ANALYSED code's effect sets are policy-independent and only the PEEK was bounded; fix-ctl/unv-ctl must certify or the two cells beside them pass for a verb that refuses everything; tour-no-policy must stay 0 because a verb carrying no policy has an EMPTY rule set, which is a subset of everything
+"
+    P69_BAD=1; rc=1
+  fi
+}
+# THE INSTRUMENT CHECK — it FAILS rather than skips, because a vacuous green here is the same false
+# all-clear the part is about. Six ways a fixture goes vacuous, every one of them met while this part was
+# being written: tree A with no peeked class (every cell measures nothing); tree A whose `outOfScope` is
+# NOT empty (the producer's own policy found something, so a refusal could be ⟨0.30⟩'s arm and not this
+# one); tree A with an empty `functions` (`unverified` certifies the empty set without asking); tree A
+# carrying an `Unknown` (`unverified --strict` exits 1 on its OWN finding, which reads as this rung
+# firing — PART 67's trap); tree C whose analysed code is NOT pure (`pure` exits 1 on a real violation
+# and dominates); tree D that declares exclusions anyway (a second copy of the row, not control 3).
+ck69() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+A, B, C, D = (load(p) for p in sys.argv[1:5])
+def peeked(d):
+    return [e.get("class") for e in (d.get("excluded") or []) if e.get("peeked") is True]
+for tag, d in (("A", A), ("B", B), ("C", C)):
+    if not peeked(d):
+        sys.exit("     INSTRUMENT: tree " + tag + " reports no `peeked: true` class — every cell "
+                 "below would be vacuous, because this rung only speaks about a class that WAS read")
+    if d.get("outOfScope") != []:
+        sys.exit("     INSTRUMENT: tree " + tag + " carries outOfScope=" + json.dumps(d.get("outOfScope"))
+                 + ", not [] — the producer own policy FOUND something, so a refusal below could be the "
+                 "⟨0.30⟩ arm rather than this rung")
+if peeked(D) or (D.get("excluded") or []):
+    sys.exit("     INSTRUMENT: tree D declares exclusions " + json.dumps(D.get("excluded"))
+             + " — that is a second copy of the row, not control 3")
+if not (A.get("functions") or []):
+    sys.exit("     INSTRUMENT: tree A judged NOTHING — `unverified` certifies an empty set without "
+             "asking, so its cell would pass over a fixture with no content")
+holes = [f.get("fn") for f in (A.get("functions") or [])
+         if "Unknown" in (f.get("inferred") or []) + (f.get("direct") or [])]
+if holes:
+    sys.exit("     INSTRUMENT: tree A carries an Unknown hole in " + json.dumps(holes)
+             + " — THE TRAP PART 67 RECORDS: `unverified --strict` exits 1 over its OWN finding there, "
+             "which is neither 2 nor 0 and reads as this rung firing")
+if C.get("functions"):
+    sys.exit("     INSTRUMENT: tree C analysed code is not pure ("
+             + json.dumps([f.get("fn") for f in C["functions"]]) + ") — `pure` would exit 1 on a REAL "
+             "violation and dominate the arm")
+' "$@"; }
+# THE PROBE that decides SKIP vs ASSERT, asked of the engine own report rather than of a list here.
+sc69() { python3 -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("noreport"); raise SystemExit
+print("yes" if isinstance(d.get("scannedUnder"), dict) else "no")
+' "$1"; }
+# THE CORRUPTION SHAPES, named once and consumed twice (by the writer and by the driver). Enumerated,
+# never reasoned about: this codebase has four measured cases of a JSON coercion deleting a refusal, and
+# in every one the shapes that were fail-open were not the shapes anyone predicted.
+P69C_SHAPES="str array number bool null empty-object deny-str deny-number deny-null deny-object deny-mixed deny-nested"
+mut69() { python3 -c '
+import copy, json, sys
+d = json.load(open(sys.argv[1])); out = sys.argv[2]
+if not any(e.get("peeked") is True for e in (d.get("excluded") or [])):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " has no peeked class — the corruption arms would be vacuous")
+if not isinstance(d.get("scannedUnder"), dict):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " carries no `scannedUnder` object to corrupt")
+SHAPES = {"str": "deny Net", "array": ["deny Net"], "number": 7, "bool": True, "null": None,
+          "empty-object": {}, "deny-str": {"deny": "deny Net"}, "deny-number": {"deny": 7},
+          "deny-null": {"deny": None}, "deny-object": {"deny": {"a": 1}},
+          "deny-mixed": {"deny": ["deny Net", 7]}, "deny-nested": {"deny": [["deny Net"]]}}
+for name in sys.argv[3:]:
+    if name not in SHAPES:
+        sys.exit("INSTRUMENT: no such scannedUnder shape: " + name)
+    a = copy.deepcopy(d); a["scannedUnder"] = SHAPES[name]
+    json.dump(a, open(out + "." + name + ".json", "w"))
+' "$@"; }
+# THE DRIVER. Appends `gate --report <file> --policy <policy>`, the ONE spelling all four share, so no
+# row carries its own copy of the loop. Run under the COVERING policy — see the header.
+p69c() {
+  P69C_PRE="$1"; P69C_POL="$2"; shift 2
+  P69C_CERT=""
+  for P69C_S in $P69C_SHAPES; do
+    "$@" gate --report "$P69C_PRE.$P69C_S.json" --policy "$P69C_POL" >/dev/null 2>&1
+    P69C_RC=$?
+    [ "$P69C_RC" = 2 ] || P69C_CERT="$P69C_CERT $P69C_S=$P69C_RC"
+  done
+  [ -n "$P69C_CERT" ] || P69C_CERT=none-certified
+}
+P69_BAD=0; P69_OUT=""
+P69="$W/p69"; mkdir -p "$P69"
+printf 'deny Net\n'            > "$P69/net.candor"
+printf 'deny Exec\n'           > "$P69/exec.candor"
+printf 'deny Net\ndeny Exec\n' > "$P69/both.candor"
+printf 'pure\n'                > "$P69/pure.candor"
+
+# ── THE JAVA ROW — the reference engine, and the one the hole was measured on ────────────────────
+# The excluded class is `source-without-class`: a JVM source with no compiled class beside it, which
+# ⟨0.32⟩'s compile-peek COMPILES and analyses, so it comes back `peeked: true`. Its only effect is
+# `Exec`, and the argument is `id` rather than a URL so no `Net` charge blurs the two policies together.
+P69J="$P69/java"; P69J_BAD=0
+if [ -n "$JAR" ]; then
+  mkdir -p "$P69J"
+  p69j_mk() {   # <dir> <analysed-body> <excluded-source-or-NONE>
+    mkdir -p "$1/build/classes" "$1/src/com/x"
+    printf 'package com.x;\npublic class Ok {\n%s\n}\n' "$2" > "$1/src/com/x/Ok.java"
+    javac -d "$1/build/classes" "$1/src/com/x/Ok.java" >/dev/null 2>&1 || return 1
+    # The analysed source is REMOVED once compiled: left behind it is itself a `source-without-class`
+    # member, so the exclusion class would describe two files instead of the one under test.
+    rm -f "$1/src/com/x/Ok.java"
+    if [ "$3" = NONE ]; then rm -rf "$1/src"
+    else printf 'package com.x;\npublic class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("id"); } }\n' > "$1/src/com/x/Deploy.java"; fi
+    return 0
+  }
+  p69j_fs='  public String load() throws Exception { return java.nio.file.Files.readString(java.nio.file.Path.of("/etc/hosts")); }'
+  p69j_pure='  public int add(int a, int b) { return a + b; }'
+  p69j_mk "$P69J/A" "$p69j_fs"   EXEC || P69J_BAD=3
+  p69j_mk "$P69J/B" "$p69j_fs"   NONE || P69J_BAD=3
+  p69j_mk "$P69J/C" "$p69j_pure" EXEC || P69J_BAD=3
+  p69j_mk "$P69J/D" "$p69j_fs"   NONE || P69J_BAD=3
+  # Tree B needs an excluded class that is READ and CLEAN — the same shape as A with a harmless body.
+  if [ "$P69J_BAD" = 0 ]; then
+    mkdir -p "$P69J/B/src/com/x"
+    printf 'package com.x;\npublic class Deploy { public int go() { return 1; } }\n' > "$P69J/B/src/com/x/Deploy.java"
+  fi
+  if [ "$P69J_BAD" = 0 ]; then
+    java -jar "$JAR" "$P69J/A" --policy "$P69/net.candor"  --json "$P69J/rA.json" >/dev/null 2>&1
+    java -jar "$JAR" "$P69J/B" --policy "$P69/both.candor" --json "$P69J/rB.json" >/dev/null 2>&1
+    java -jar "$JAR" "$P69J/C" --policy "$P69/net.candor"  --json "$P69J/rC.json" >/dev/null 2>&1
+    java -jar "$JAR" "$P69J/D" --policy "$P69/net.candor"  --json "$P69J/rD.json" >/dev/null 2>&1
+    p69j_has=$(sc69 "$P69J/rA.json")
+    if [ "$p69j_has" != yes ]; then
+      P69_OUT="$P69_OUT  java   SKIP — ⟨0.33⟩ \`scannedUnder\` is not emitted by this engine yet (probed, not declared)
+"
+    elif ck69 "$P69J/rA.json" "$P69J/rB.json" "$P69J/rC.json" "$P69J/rD.json"; then
+      java -jar "$JAR" gate --report "$P69J/rA.json" --policy "$P69/exec.candor" >/dev/null 2>&1; p69j_row=$?
+      java -jar "$JAR" gate --report "$P69J/rA.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69j_c1=$?
+      java -jar "$JAR" gate --report "$P69J/rB.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69j_c2=$?
+      java -jar "$JAR" gate --report "$P69J/rD.json" --policy "$P69/exec.candor" >/dev/null 2>&1; p69j_c3=$?
+      java -jar "$JAR" gate --report "$P69J/rC.json" --policy "$P69/pure.candor" >/dev/null 2>&1; p69j_pu=$?
+      java -jar "$JAR" gate --report "$P69J/rC.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69j_puc=$?
+      java -jar "$JAR" fix-gate   --report "$P69J/rA.json" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69j_fx=$?
+      java -jar "$JAR" unverified --report "$P69J/rA.json" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69j_uv=$?
+      java -jar "$JAR" fix-gate   --report "$P69J/rA.json" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69j_fxc=$?
+      java -jar "$JAR" unverified --report "$P69J/rA.json" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69j_uvc=$?
+      java -jar "$JAR" tour --report "$P69J/rA.json" >/dev/null 2>&1; p69j_tr=$?
+      if mut69 "$P69J/rA.json" "$P69J/cm" $P69C_SHAPES; then
+        p69c "$P69J/cm" "$P69/net.candor" java -jar "$JAR"
+        p69j_cm="$P69C_CERT"
+      else
+        p69j_cm=INSTRUMENT
+      fi
+      p69 java "$p69j_row" "$p69j_c1" "$p69j_c2" "$p69j_c3" "$p69j_pu" "$p69j_puc" \
+          "$p69j_fx" "$p69j_uv" "$p69j_fxc" "$p69j_uvc" "$p69j_cm" "$p69j_tr"
+    else
+      P69_BAD=1; rc=1
+    fi
+  fi
+fi
+
+# ── THE RUST ROW ─────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `build-script`: `build.rs` RUNS on every `cargo build` and the scan does not
+# judge it as crate runtime behaviour, but candor-scan's peek READS it — so under a policy it comes back
+# `peeked: true`, which is exactly the state this rung is about.
+P69R="$P69/rust"; mkdir -p "$P69R"
+p69r_mk() {   # <dir> <lib body> <build.rs body or NONE>
+  mkdir -p "$1/src"
+  printf '[package]\nname = "p69"\nversion = "0.1.0"\nedition = "2021"\n' > "$1/Cargo.toml"
+  printf '%s\n' "$2" > "$1/src/lib.rs"
+  [ "$3" = NONE ] || printf '%s\n' "$3" > "$1/build.rs"
+}
+p69r_fs='pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }'
+p69r_pure='pub fn add(a: i32, b: i32) -> i32 { a + b }'
+p69r_exec='fn main() { let _ = std::process::Command::new("id").status(); }'
+p69r_clean='fn main() { println!("cargo:rerun-if-changed=build.rs"); }'
+p69r_mk "$P69R/A" "$p69r_fs"   "$p69r_exec"
+p69r_mk "$P69R/B" "$p69r_fs"   "$p69r_clean"
+p69r_mk "$P69R/C" "$p69r_pure" "$p69r_exec"
+p69r_mk "$P69R/D" "$p69r_fs"   NONE
+p69r_pick() { p69r_hit=""; for f in "$1".*.scan.json; do case "$f" in *callgraph*|*hierarchy*) continue;; esac; [ -f "$f" ] && p69r_hit="$f"; done; }
+"$SCAN" "$P69R/A" --out "$P69R/oA" --policy "$P69/net.candor"  >/dev/null 2>&1
+"$SCAN" "$P69R/B" --out "$P69R/oB" --policy "$P69/both.candor" >/dev/null 2>&1
+"$SCAN" "$P69R/C" --out "$P69R/oC" --policy "$P69/net.candor"  >/dev/null 2>&1
+"$SCAN" "$P69R/D" --out "$P69R/oD" --policy "$P69/net.candor"  >/dev/null 2>&1
+# Resolved by GLOB, never by a guessed `oA.<crate>.scan.json`: a path that does not exist makes every
+# verb REFUSE at exit 2, which passes the refusal cells while measuring nothing. PART 62 was bitten by
+# exactly that and caught it only through a byte-equality check standing beside the exit codes.
+p69r_pick "$P69R/oA"; p69r_A="$p69r_hit"
+p69r_pick "$P69R/oB"; p69r_B="$p69r_hit"
+p69r_pick "$P69R/oC"; p69r_C="$p69r_hit"
+p69r_pick "$P69R/oD"; p69r_D="$p69r_hit"
+if [ -z "$p69r_A" ] || [ -z "$p69r_B" ] || [ -z "$p69r_C" ] || [ -z "$p69r_D" ]; then
+  P69_OUT="$P69_OUT  rust   SKIP — candor-scan produced no report for one of the four trees (probed)
+"
+elif [ "$(sc69 "$p69r_A")" != yes ]; then
+  P69_OUT="$P69_OUT  rust   SKIP — ⟨0.33⟩ \`scannedUnder\` is not emitted by this engine yet (probed, not declared)
+"
+elif ck69 "$p69r_A" "$p69r_B" "$p69r_C" "$p69r_D"; then
+  "$QUERY" gate --report "$p69r_A" --policy "$P69/exec.candor" >/dev/null 2>&1; p69r_row=$?
+  "$QUERY" gate --report "$p69r_A" --policy "$P69/net.candor"  >/dev/null 2>&1; p69r_c1=$?
+  "$QUERY" gate --report "$p69r_B" --policy "$P69/net.candor"  >/dev/null 2>&1; p69r_c2=$?
+  "$QUERY" gate --report "$p69r_D" --policy "$P69/exec.candor" >/dev/null 2>&1; p69r_c3=$?
+  "$QUERY" gate --report "$p69r_C" --policy "$P69/pure.candor" >/dev/null 2>&1; p69r_pu=$?
+  "$QUERY" gate --report "$p69r_C" --policy "$P69/net.candor"  >/dev/null 2>&1; p69r_puc=$?
+  "$QUERY" fix-gate   --report "$p69r_A" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69r_fx=$?
+  "$QUERY" unverified --report "$p69r_A" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69r_uv=$?
+  "$QUERY" fix-gate   --report "$p69r_A" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69r_fxc=$?
+  "$QUERY" unverified --report "$p69r_A" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69r_uvc=$?
+  "$QUERY" tour --report "$p69r_A" >/dev/null 2>&1; p69r_tr=$?
+  if mut69 "$p69r_A" "$P69R/cm" $P69C_SHAPES; then
+    p69c "$P69R/cm" "$P69/net.candor" "$QUERY"
+    p69r_cm="$P69C_CERT"
+  else
+    p69r_cm=INSTRUMENT
+  fi
+  p69 rust "$p69r_row" "$p69r_c1" "$p69r_c2" "$p69r_c3" "$p69r_pu" "$p69r_puc" \
+      "$p69r_fx" "$p69r_uv" "$p69r_fxc" "$p69r_uvc" "$p69r_cm" "$p69r_tr"
+else
+  P69_BAD=1; rc=1
+fi
+
+# ── THE TS ROW ───────────────────────────────────────────────────────────────────────────────────
+# The excluded class is the shipped `dist/` CJS module: not part of the TypeScript program the scan
+# analyses, but candor-ts's peek READS it, so under a policy it comes back `peeked: true`.
+P69T="$P69/ts"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P69T"
+  p69t_mk() {   # <dir> <src body> <dist body or NONE>
+    mkdir -p "$1/src"
+    printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$1/tsconfig.json"
+    printf '%s\n' "$2" > "$1/src/a.ts"
+    if [ "$3" != NONE ]; then mkdir -p "$1/dist"; printf '%s\n' "$3" > "$1/dist/shipped.js"; fi
+  }
+  p69t_fs='import * as fs from "fs"
+export function load(): string { return fs.readFileSync("/etc/hosts", "utf8") }'
+  p69t_pure='export function add(a: number, b: number): number { return a + b }'
+  p69t_exec='const cp = require("child_process"); module.exports = function go() { cp.execSync("id") }'
+  p69t_clean='module.exports = function add(a, b) { return a + b }'
+  p69t_mk "$P69T/A" "$p69t_fs"   "$p69t_exec"
+  p69t_mk "$P69T/B" "$p69t_fs"   "$p69t_clean"
+  p69t_mk "$P69T/C" "$p69t_pure" "$p69t_exec"
+  p69t_mk "$P69T/D" "$p69t_fs"   NONE
+  node "$TS_DIR/scan.mjs" "$P69T/A" --out "$P69T/rA" --policy "$P69/net.candor"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P69T/B" --out "$P69T/rB" --policy "$P69/both.candor" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P69T/C" --out "$P69T/rC" --policy "$P69/net.candor"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P69T/D" --out "$P69T/rD" --policy "$P69/net.candor"  >/dev/null 2>&1
+  if [ "$(sc69 "$P69T/rA.json")" != yes ]; then
+    P69_OUT="$P69_OUT  ts     SKIP — ⟨0.33⟩ \`scannedUnder\` is not emitted by this engine yet (probed, not declared)
+"
+  elif ck69 "$P69T/rA.json" "$P69T/rB.json" "$P69T/rC.json" "$P69T/rD.json"; then
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rA.json" --policy "$P69/exec.candor" >/dev/null 2>&1; p69t_row=$?
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rA.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69t_c1=$?
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rB.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69t_c2=$?
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rD.json" --policy "$P69/exec.candor" >/dev/null 2>&1; p69t_c3=$?
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rC.json" --policy "$P69/pure.candor" >/dev/null 2>&1; p69t_pu=$?
+    node "$TS_DIR/query.mjs" gate --report "$P69T/rC.json" --policy "$P69/net.candor"  >/dev/null 2>&1; p69t_puc=$?
+    node "$TS_DIR/query.mjs" fix-gate   --report "$P69T/rA.json" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69t_fx=$?
+    node "$TS_DIR/query.mjs" unverified --report "$P69T/rA.json" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69t_uv=$?
+    node "$TS_DIR/query.mjs" fix-gate   --report "$P69T/rA.json" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69t_fxc=$?
+    node "$TS_DIR/query.mjs" unverified --report "$P69T/rA.json" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69t_uvc=$?
+    node "$TS_DIR/query.mjs" tour --report "$P69T/rA.json" >/dev/null 2>&1; p69t_tr=$?
+    if mut69 "$P69T/rA.json" "$P69T/cm" $P69C_SHAPES; then
+      p69c "$P69T/cm" "$P69/net.candor" node "$TS_DIR/query.mjs"
+      p69t_cm="$P69C_CERT"
+    else
+      p69t_cm=INSTRUMENT
+    fi
+    p69 ts "$p69t_row" "$p69t_c1" "$p69t_c2" "$p69t_c3" "$p69t_pu" "$p69t_puc" \
+        "$p69t_fx" "$p69t_uv" "$p69t_fxc" "$p69t_uvc" "$p69t_cm" "$p69t_tr"
+  else
+    P69_BAD=1; rc=1
+  fi
+else
+  P69_OUT="$P69_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+
+# ── THE SWIFT ROW ────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `harness-target` — `Tests/`, which CI runs and the scan does not judge as
+# library behaviour. candor-swift's peek READS it, so under a policy it comes back `peeked: true`.
+P69S="$P69/swift"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P69S"
+  p69s_mk() {   # <dir> <source body> <Tests body or NONE>
+    mkdir -p "$1/Sources/S"
+    printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$1/Package.swift"
+    printf '%s\n' "$2" > "$1/Sources/S/a.swift"
+    if [ "$3" != NONE ]; then mkdir -p "$1/Tests"; printf '%s\n' "$3" > "$1/Tests/Helper.swift"; fi
+  }
+  p69s_fs='import Foundation
+public func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }'
+  p69s_pure='public func add(_ a: Int, _ b: Int) -> Int { a + b }'
+  p69s_exec='import Foundation
+public func helper() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }'
+  p69s_clean='public func harmless() -> Int { 1 }'
+  p69s_mk "$P69S/A" "$p69s_fs"   "$p69s_exec"
+  p69s_mk "$P69S/B" "$p69s_fs"   "$p69s_clean"
+  p69s_mk "$P69S/C" "$p69s_pure" "$p69s_exec"
+  p69s_mk "$P69S/D" "$p69s_fs"   NONE
+  ( cd "$P69S/A" && "$SW_BIN" . --out oA --policy "$P69/net.candor"  >/dev/null 2>&1 )
+  ( cd "$P69S/B" && "$SW_BIN" . --out oB --policy "$P69/both.candor" >/dev/null 2>&1 )
+  ( cd "$P69S/C" && "$SW_BIN" . --out oC --policy "$P69/net.candor"  >/dev/null 2>&1 )
+  ( cd "$P69S/D" && "$SW_BIN" . --out oD --policy "$P69/net.candor"  >/dev/null 2>&1 )
+  p69s_pick() { p69s_hit=""; for f in "$1"/o"$2".*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p69s_hit="$f"; done; }
+  p69s_pick "$P69S/A" A; p69s_A="$p69s_hit"
+  p69s_pick "$P69S/B" B; p69s_B="$p69s_hit"
+  p69s_pick "$P69S/C" C; p69s_C="$p69s_hit"
+  p69s_pick "$P69S/D" D; p69s_D="$p69s_hit"
+  if [ -z "$p69s_A" ] || [ -z "$p69s_B" ] || [ -z "$p69s_C" ] || [ -z "$p69s_D" ]; then
+    P69_OUT="$P69_OUT  swift  SKIP — candor-swift produced no report for one of the four trees (probed)
+"
+  elif [ "$(sc69 "$p69s_A")" != yes ]; then
+    P69_OUT="$P69_OUT  swift  SKIP — ⟨0.33⟩ \`scannedUnder\` is not emitted by this engine yet (probed, not declared)
+"
+  elif ck69 "$p69s_A" "$p69s_B" "$p69s_C" "$p69s_D"; then
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_A" --policy "$P69/exec.candor" >/dev/null 2>&1; p69s_row=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_A" --policy "$P69/net.candor"  >/dev/null 2>&1; p69s_c1=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_B" --policy "$P69/net.candor"  >/dev/null 2>&1; p69s_c2=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_D" --policy "$P69/exec.candor" >/dev/null 2>&1; p69s_c3=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_C" --policy "$P69/pure.candor" >/dev/null 2>&1; p69s_pu=$?
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p69s_C" --policy "$P69/net.candor"  >/dev/null 2>&1; p69s_puc=$?
+    env -u CANDOR_CONFIG "$SW_BIN" fix-gate   --report "$p69s_A" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69s_fx=$?
+    env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$p69s_A" --policy "$P69/exec.candor" --strict >/dev/null 2>&1; p69s_uv=$?
+    env -u CANDOR_CONFIG "$SW_BIN" fix-gate   --report "$p69s_A" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69s_fxc=$?
+    env -u CANDOR_CONFIG "$SW_BIN" unverified --report "$p69s_A" --policy "$P69/net.candor"  --strict >/dev/null 2>&1; p69s_uvc=$?
+    env -u CANDOR_CONFIG "$SW_BIN" tour --report "$p69s_A" >/dev/null 2>&1; p69s_tr=$?
+    if mut69 "$p69s_A" "$P69S/cm" $P69C_SHAPES; then
+      p69c "$P69S/cm" "$P69/net.candor" env -u CANDOR_CONFIG "$SW_BIN"
+      p69s_cm="$P69C_CERT"
+    else
+      p69s_cm=INSTRUMENT
+    fi
+    p69 swift "$p69s_row" "$p69s_c1" "$p69s_c2" "$p69s_c3" "$p69s_pu" "$p69s_puc" \
+        "$p69s_fx" "$p69s_uv" "$p69s_fxc" "$p69s_uvc" "$p69s_cm" "$p69s_tr"
+  else
+    P69_BAD=1; rc=1
+  fi
+else
+  P69_OUT="$P69_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P69"
+# ENGINES: rust java ts swift
+# CONTROLS: p69j_c1 p69j_c2 p69j_c3 p69j_puc p69j_fxc p69j_uvc p69j_tr p69r_c1 p69r_c2 p69r_c3 p69r_puc p69r_fxc p69r_uvc p69r_tr p69t_c1 p69t_c2 p69t_c3 p69t_puc p69t_fxc p69t_uvc p69t_tr p69s_c1 p69s_c2 p69s_c3 p69s_puc p69s_fxc p69s_uvc p69s_tr — same-policy (c1): a report gated under the policy it was SCANNED under must certify, or the scan-then-gate pipeline this rung exists to protect cannot pass at all; subset (c2): a producer holding `deny Net` AND `deny Exec` fully answers a consumer asking one of them, which is the control that decides RULE SET over DIGEST — a digest can only test equality and would redden this; no-peek (c3): differing policies over a report that peeked NOTHING must certify, because analysed code's effect sets are policy-independent and only the PEEK was bounded — the loud-direction over-charge a careless implementation ships, which is why the design names it first; pure-ctl (puc): `deny Net` over the SAME pure-tree report must certify, or the `pure` cell beside it passes for an engine that refuses every strict policy; fix-ctl/unv-ctl (fxc/uvc): the two advisory verbs under the SAME policy must still answer 0, or their refusal cells pass for a verb that refuses everything, and the 0-against-2 split over one changed policy is also what proves the key REACHES those verbs; tour (tr): a DESCRIPTIVE verb carrying no policy has an EMPTY rule set, which is a subset of everything, so it must not gain a hedge — the observable half of the never-asked carve-out, whose gate-route half §3.1 makes unaskable (an allow/forbid/only-only policy refuses there for its own reasons)
+# ⟨0.33⟩ THE SKIPS ARE PROBED, NEVER DECLARED, and that is a deliberate departure from the `# ENGINES:` prose that carried earlier reference-led parts. A declared exclusion goes stale in silence — this suite has recorded two that did — while a probe (does this engine's own policy-scanned report carry `scannedUnder`?) flips the row to ASSERTING on the commit that ports the rung, with no edit here. An engine that ships the PRODUCER half and not the CONSUMER half is scored and FAILS, which is right: half of this rung is the fail-open half
+# ⟨0.33⟩ FALSIFIED AGAINST A PRE-FIX BINARY, not reasoned about. candor-java built from HEAD `0a5fc2f` (the commit before this rung) over this part's own trees: cross-policy=0, pure=0, fix-gate--strict=0, unverified--strict=0 — four RED cells, the fail-open in all four channels — while same-policy=0, subset=0, no-peek=0, pure-ctl=0, fix-ctl=0, unv-ctl=0 and tour=0 were ALREADY GREEN, so the controls are not what moved. Post-fix every cell is as the row above requires. The `scannedUnder-corrupt` cell cannot be falsified against that binary (the key does not exist there, so every shape reads as ABSENT and refuses); it is falsified instead by its own control — the GENUINE value certifies at 0 over the identical bytes where all twelve corrupt shapes refuse at 2, which is what proves the cell reads the key at all rather than refusing everything
+echo "PART 69 — a gate must not answer from a peek that was put a DIFFERENT question (SPEC §2 ⟨0.33⟩)"
+printf '%s' "$P69_OUT"
+[ "$P69_BAD" = 0 ] && echo "  -> MATCH — a report answers only for the deny set its producer held, and still certifies for every rule that set covers"
+[ "$P69_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P69J_BAD" = 3 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
+true
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

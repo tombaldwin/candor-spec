@@ -206,7 +206,17 @@ business, not this block's. And a *dependency* outside the scan root is the scan
 ([[candor-scan-boundary-vein]]), already closed and pinned by PART 20 — different question, and the reasons
 must not be conflated in the report or the two disclosures become one indistinct hedge.
 
-## 8. FILED, NOT IMPLEMENTED — the CROSS-POLICY hole (2026-08-24)
+## 8. THE CROSS-POLICY hole (filed 2026-08-24, CLOSED as ⟨0.33⟩ 2026-08-25)
+
+> **CLOSED.** The rung is SPEC §2 ⟨0.33⟩ (`scannedUnder` + the cross-policy refusal) and conformance
+> PART 69. The section below is the FILING, kept verbatim as the record of what was known before the
+> design decisions were taken — the "which of the two" question it leaves open is answered by
+> **the full rule set, not a digest**, because the safe-to-answer condition is COVERAGE
+> (`consumer ⊆ producer`) and a digest can decide only EQUALITY: it would refuse a legitimate narrowing
+> at the same implementation cost, and it cannot name what went unasked in the remedy. The rules are
+> recorded in the EXPANDED form the matcher used, because effect NAMES would reintroduce the flattening
+> defect ⟨0.30⟩ closed one layer down. Reference-led: candor-java ships it, the other three port from
+> the spec text. The floor declaration does not move until they do.
 
 **A `peeked: true` is only true relative to the deny set the PRODUCER held, and the report does not say
 what that was.** Found while ruling on ⟨0.32⟩'s carve-out; recorded rather than fixed, because the fix is
