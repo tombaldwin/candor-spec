@@ -290,6 +290,46 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   would record a hazard that engine does not have. Both obsolete skip-baseline entries were removed with
   it: a skip that is really an N/A erodes the ratchet exactly as a stale one does.
 
+- **A RUNNER-ABSENCE SKIP IS NOT A RUNG, and PARTs 63 and 68 spelled it as though it were.** Both new
+  ⟨0.32⟩ rows printed `swift SKIP — engine absent`, which is the ratchet's COUNTED form. The ubuntu leg
+  carries three engines by design (no swift toolchain on those runners), so it reddened at
+  `line:swift SKIP — engine absent` skipped 2, baseline 0 — while the macOS leg scored all four cells of
+  both parts OK. The coverage had not dropped; the wording had.
+
+  **Re-baselining would have been the wrong fix, and this is the argument.** There is one baseline file
+  and two legs, so a count of swift's absence is true on one and false on the other — a runner condition
+  filed where rungs live, and one that would need raising again for every future part that gains a swift
+  row. That is the number "drifting upward one unremarkable commit at a time" `skip_ratchet.py`'s own
+  header warns about. **Nothing is lost by declining to count it, because absence is already ratcheted
+  harder:** `[6]`/`[6c]` FAIL outright when an engine is PRESENT but produced no report (the
+  `TS_PRESENT`-vs-`TS_OK` split), and `CONFORMANCE_REQUIRE_ALL=1` on the macOS leg FAILs when one is
+  absent at all. A row's `if [ -n "$SW_OK" ]` can only fall through when the engine is structurally absent
+  on this leg, or the suite is already red.
+
+  So the four rows move to the PARENTHESISED `-> SKIP     (…)` form the other fifteen absence sites (PART
+  47's rows, PART 67's) have always used, which the LOOSE pattern does not match — still loud in the log,
+  no longer a rung. The distinction is now written where the next person classifying a skip will be:
+  reference-led ("this engine has not shipped the rung") takes the em dash and is COUNTED; runner-absence
+  takes the parentheses and is not. **The ratchet keeps its teeth** — measured on a run with `CANDOR_TS`
+  and `CANDOR_SWIFT` pointed at nonexistent paths: both rows print, the suite's own "not present on this
+  runner" declaration is picked up, and the counted set is EMPTY where it was 2, while a reference-led
+  `candor-scan (a) SKIP — …` line still keys and counts unchanged.
+
+- **The drift gate held AGENTS.md against SPEC.md and never read SPEC.md back, so three of this file's own
+  envelope examples still said `"spec": "0.31"` under a `**Version 0.32**` header.** Those fences are what
+  an implementer copies, so a stale one teaches the wrong contract from the document that defines it — and
+  this is the second bump it has happened on: at 0.30 candor-java's release preflight caught
+  `"spec":    "0.30"` by hand, whose alignment padding had also defeated a sweep for the exact string.
+
+  `check_agents_drift.py` now sweeps SPEC.md's own `"spec": "X.Y"` fences against the floor SPEC.md
+  declares. Deliberately JSON-only, unlike the sweep the engines now run over their READMEs: this file is
+  dense with prose rung references that are true about the past and must not move, so a prose sweep here
+  would be a false-positive machine — while `"spec": "X.Y"` inside a fence is always a CURRENT-contract
+  claim. Historical illustrations keep the `(measured at spec X.Y, informative)` marker §3.3.1 already
+  uses, exempted per LINE because that is where this document puts it. A CONTROL exercises both halves on
+  a fixture first: the check reads clean when the document is clean, when the pattern has stopped
+  matching, and when the exemption swallows everything, and those three must not be one output.
+
 ## [0.31.0] — 2026-08-20
 
 - **PART 59 — what a refusal owes its reader.** PART 56 scores the exit code and the absence of a NEW
