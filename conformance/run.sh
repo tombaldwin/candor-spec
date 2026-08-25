@@ -1736,17 +1736,22 @@ W = sys.argv[1]
 def load(q, e):
     with open(f"{W}/{e}_{q}.json") as f:
         d = json.load(f)
-    # ⟨0.32⟩ A ⟨0.28⟩ RUNG A CAVEAT DOCUMENT IS NOT A SHAPE — SAY SO, DO NOT RAISE ON IT. SPEC §2 ⟨0.28⟩:
-    # "a verb whose pinned shape cannot carry the caveat MUST emit the caveat document instead of its
-    # result document", so `show` and `map` answer `{"incomplete": true, …}` over a report that declares
-    # unread source, unread CLASSES (⟨0.32⟩) or a count-0 manifest. That is CORRECT behaviour and this
-    # part cannot compare shapes across it. Before this guard the caveat document reached `rs[0]` and the
-    # harness died with `KeyError: 0` — an engine-agnostic crash reported as a conformance FAILURE.
-    # A fixture that has drifted into incompleteness is the cause; the message names it.
+    # ⟨0.32⟩ A HEDGING `show`/`map` DOCUMENT IS NOT THE SHAPE THIS PART COMPARES — SAY SO, DO NOT RAISE
+    # ON IT. SPEC §2 ⟨0.32⟩ narrows ⟨0.28⟩ Rung A for the DESCRIPTIVE verbs: over a report that declares
+    # unread source, unread CLASSES (⟨0.32⟩) or a count-0 manifest, `show` answers
+    # `{"functions": [...], "incomplete": true, …}` and `map` answers `{"modules": {...}, …}` — the
+    # result NESTED, the caveat at the root. That is CORRECT behaviour, and the root is an OBJECT
+    # either way, so this part still cannot index it: before the guard the hedging document reached
+    # `rs[0]` and the harness died with `KeyError: 0`, an engine-agnostic crash reported as a
+    # conformance FAILURE. (The narrowing does not make the guard unnecessary. It could be taught to
+    # descend into `functions`/`modules` instead — deliberately not done: this part exists to compare
+    # the HEALTHY pinned shapes across engines, and a fixture that has drifted into incompleteness is
+    # a fixture fault to fix, not a state to accommodate. The message names that cause.)
     if isinstance(d, dict) and d.get("incomplete") is True and q in ("show", "map"):
-        print(f"FAIL: {e}_{q}.json is the ⟨0.28⟩ Rung A CAVEAT document, not a result document — the "
-              f"fixture report this part queries is INCOMPLETE (unread source, an unread `excluded` "
-              f"class, or `analyzed.count: 0`), so there is no shape here to compare. Fix the FIXTURE.")
+        print(f"FAIL: {e}_{q}.json is a ⟨0.32⟩ HEDGING document (result nested under "
+              f"`{'functions' if q == 'show' else 'modules'}`, caveat at the root), not the healthy "
+              f"shape — the fixture report this part queries is INCOMPLETE (unread source, an unread "
+              f"`excluded` class, or `analyzed.count: 0`). There is no shape here to compare. Fix the FIXTURE.")
         raise SystemExit(1)
     return d
 ts = os.path.exists(f"{W}/t_show.json")
@@ -7847,6 +7852,17 @@ def _hedged(k, v):
     if isinstance(v,(list,dict)): return len(v) > 0   # unanalyzed / unevaluated / coverage / …
     return bool(v)
 if isinstance(doc, dict) and any(_hedged(k, doc[k]) for k in (DISCLOSURE & set(doc))):
+    # ⟨0.32⟩ A DESCRIPTIVE VERB RETURNS ITS RESULT *AND* THE CAVEAT — SPEC §2 ⟨0.32⟩, which narrows
+    # ⟨0.28⟩ Rung A's substitution to the verbs that answer `ok`. `show` and `map` answer none, so a
+    # hedged document from them must still carry the result, nested under its own key (EMPTY is fine —
+    # the key's PRESENCE is the contract; over an armed report there is nothing to put in it). Without
+    # this row the narrowing is inert here: a revert to substitution would still score `PASS hedged`,
+    # and PART 42's shape table cannot see it either, because the container just leaves the harvest.
+    _rk = {"show": "functions", "map": "modules"}.get(verb)
+    if _rk is not None and _rk not in doc:
+        print("FAIL descriptive-hedge-substituted-for-the-result (SPEC §2 ⟨0.32⟩: a verb that answers "
+              "no `ok` emits `%s` BESIDE the caveat, never instead of it)" % _rk)
+        raise SystemExit
     print("PASS hedged"); raise SystemExit
 def dn():
     if not isinstance(doc, dict): return isinstance(doc, list) and len(doc)==0
