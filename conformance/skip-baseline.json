@@ -64,7 +64,6 @@
   "tally:candor-ts": 0,
   "line:swift SKIP — the hash-keyed merge is not ported yet": 1,
   "line:rust SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1,
-  "line:ts SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1,
   "line:swift SKIP — ⟨<n>.<n>⟩ `scannedUnder` is not emitted by this engine yet (probed, not declared)": 1
  }
 }
