@@ -16,6 +16,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **`check_agents_drift.py` now sweeps README.md and AGENTS.md for prose spec claims.** Checks 2 and 3
+  read one JSON envelope in AGENTS.md and every JSON fence in SPEC.md; nothing ever read README.md, whose
+  family table states the contract FIVE times as `**shipped (spec X.Y)**` and which is the first document
+  a reader of the spec meets. Each of the four code engines gained a sweep of its own README at ⟨0.32⟩;
+  the repo that DEFINES the version was the one left without one. The floor is derived from SPEC.md's
+  `**Version X.Y**` line, the `(spec X.Y, informative)` marker is the escape hatch for a deliberate
+  historical note, and a control fixture runs first so a silent sweep cannot be read as a clean one.
+  SPEC.md itself stays JSON-only, for the reason check 3 already states: its prose is dense with true
+  statements about past rungs.
+
 ## [0.32.1] — 2026-08-25
 
 - **No contract change — the floor stays 0.32, and a patch is a build id rather than a rung.**

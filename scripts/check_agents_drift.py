@@ -126,6 +126,59 @@ def main() -> int:
             f"want ['0.9', '0.7']; matches on an exempted line {probe_exempt}, want []). Until that is "
             f"fixed the check above is VACUOUS and its silence is not evidence.")
 
+    # 3c — README.md's FAMILY TABLE, and every other prose spec claim in the two docs.
+    #
+    # THE HOLE THIS CLOSES. Checks 2 and 3 read one JSON envelope in AGENTS.md and every JSON fence in
+    # SPEC.md. Nothing in this repo ever read README.md, whose family table states the contract FIVE
+    # times — once per engine, as `**shipped (spec X.Y)**` — and which is the first document a reader of
+    # the spec meets. Each of the four code engines gained a sweep of its own README at ⟨0.32⟩; the
+    # repo that DEFINES the version was the one left without one.
+    #
+    # PROSE IS SAFE HERE, unlike in SPEC.md. Check 3's header explains why SPEC.md is deliberately
+    # JSON-only: that file is dense with true statements about past rungs. README.md and AGENTS.md are
+    # not — they describe the CURRENT contract — so the wider sweep the engines run is the right one,
+    # with the family's `(spec X.Y, informative)` marker as the escape hatch for a deliberate historical
+    # note.
+    #
+    # THE GRAMMAR is the family's shared one: `spec` + one to EIGHT of [-: "*)\]] + <digits>.<digits>.
+    # Eight, not four, because SPEC.md's own aligned `"spec":    "0.32"` needs six; `)` and `]`, because
+    # candor-swift's README says `[candor-spec](…) 0.32`. Both were live in shipped documents that every
+    # gate in the family read clean over.
+    claim = re.compile(r'spec[-: "*)\]]{1,8}(\d+\.\d+)')
+
+    def claims(text: str) -> list[tuple[str, str]]:
+        return [(m.group(1), text[m.start():m.end() + 16]) for m in claim.finditer(text)
+                if not text[m.end():m.end() + 16].startswith(", informative)")]
+
+    # THE CONTROL FIRST, same fixture as the four engines carry, so a grammar that quietly narrows in
+    # one repo reddens rather than going silent. A sweep that matches nothing reads exactly like a
+    # sweep over a clean document.
+    ctl = [v for v, _ in claims(
+        'carrying `unitKind` (spec 0.8, informative); ordinary\n'
+        'This project is on candor-java 9.9.9 (spec 0.9).\n'
+        'a section reference, spec §6.1, is not a version\n'
+        'the gate prints { "spec": "0.7", "ok": true }\n'
+        'and the hyphenated attributive spec-0.6 form\n'
+        'an aligned envelope column, { "spec":    "0.5" }\n'
+        'a markdown link [candor-spec](https://example.org/candor-spec) 0.4\n')]
+    if ctl != ["0.9", "0.7", "0.6", "0.5", "0.4"]:
+        err(f"CONTROL FAILED — the prose spec-claim sweep no longer discriminates (flagged {ctl}, want "
+            f"['0.9', '0.7', '0.6', '0.5', '0.4']). Until that is fixed the README/AGENTS sweep below "
+            f"is VACUOUS and its silence is not evidence.")
+    else:
+        for name, text in (("README.md", None), ("AGENTS.md", agents_text)):
+            if text is None:
+                try:
+                    text = (ROOT / name).read_text(encoding="utf-8")
+                except OSError as e:
+                    err(f"cannot read {name}: {e}")
+                    continue
+            for version, ctx in claims(text):
+                if version != floor:
+                    err(f"{name} claims spec {version} but SPEC.md declares the floor as {floor} — at "
+                        f'"{ctx}". If that is a historical marker naming the rung a feature arrived '
+                        f'at, write it "(spec {version}, informative)"; otherwise bump it.')
+
     # 4 — AGENTS.md must not reintroduce the stale claims the 2026-07 review caught.
     for stale in ("JSON array, one object per function", "(0.5 draft)"):
         if stale in agents_text:
