@@ -2439,28 +2439,52 @@
    "part": "PART 37 (e)"
   },
   {
-   "sha": "4e4e99e8b047ceec",
+   "sha": "26f4423ed8726f96",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "> **A verb whose pinned shape cannot carry the caveat MUST emit the CAVEAT DOCUMENT INSTEAD of its result > do",
-   "part": "PART 40"
+   "part": "PART 40 — re-confirmed at ⟨0.32⟩, which NARROWED this MUST to the verbs that answer `ok`. The row that exercised the old wording still exercises this one and is now the stricter half of a pair: PART 40's oracle FAILS a non-empty answer from `whatif` over an armed / count-0 report, which is this substitution; the descriptive verbs are carved out by the ⟨0.32⟩ row added beside it in the same oracle. Re-read against the part rather than carried across, per this gate's own rule."
   },
   {
-   "sha": "baa04c43fb78122e",
+   "sha": "20e03b3e230362c2",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "⟨0.32⟩ **AND THE SUBSTITUTION IS NARROWED, BECAUSE IT CARRIED ACROSS A PREMISE THAT DOES NOT TRAVEL WITH IT.**",
+   "part": "PART 40 — the (artifact state × read verb) matrix is where both halves of the narrowing are scored, so the paragraph stating it and the blockquote below it share a row."
+  },
+  {
+   "sha": "0a726f9675543ed0",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — result NESTED under a key of its > o",
+   "part": "PART 40 — the ⟨0.32⟩ descriptive-hedge row: a hedged `show` must carry `functions` and a hedged `map` must carry `modules`, PRESENT (empty is fine) beside the caveat. Added with this clause, because without it the narrowing is inert in the suite — a revert to substitution still scores PASS hedged, and PART 42's shape table cannot see it either since the container simply leaves the harvest."
+  },
+  {
+   "sha": "685a489ca4935513",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "**`ok` is the line, and it is the same line the paragraph on withdrawing `ok` draws from the other side.** `ok",
+   "part": "PART 40 — both sides of the line land in one matrix: over the same armed / count-0 states `whatif` must NOT answer and `show`/`map` MUST. The `--strict` and gate halves the paragraph also names are pinned by PARTs 62 and 67; PART 40 is the row that fails if the line itself moves."
+  },
+  {
+   "sha": "4a5ffaac61599eba",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "- **Healthy output is untouched.** The document changes only on the path that is currently answering falsely. ",
-   "part": "PART 40"
+   "part": "PART 40 (the intact controls, which FAIL unless the verb answers a result document over a good report) + PART 5, which compares the healthy `show`/`map` shapes across engines and refuses a hedging document outright. Re-confirmed at ⟨0.32⟩ against the narrowed shape: the property is unchanged and both rows still carry it."
   },
   {
-   "sha": "cbb02665a2cb9efe",
+   "sha": "77577021a4e2c310",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "- **The type change is LOUD, and that is the point.** A consumer doing `for (const x of doc)` over `show` gets",
-   "part": "PART 40"
+   "part": "PART 40 (the hedged root is an OBJECT — the ⟨0.32⟩ row indexes it by key) + PART 5 (the healthy `show` root is an ARRAY — it indexes `rs[0]` and its guard fails on a dict). Re-confirmed at ⟨0.32⟩: the loudness survives the narrowing because the root is an object exactly when the verb hedges, which is what the two rows straddle."
   },
   {
    "sha": "033b20bcea03bc93",
    "at": "⟨0.28⟩ Phase 1 ruling",
    "excerpt": "- **It needs no reserved-key convention**, which matters because §2.2's `@`-prefix precedent DOES NOT TRANSFER",
    "unenforced": "PERMANENT — no row is possible, and that is a CLASSIFICATION not a backlog item. This block binds the DOCUMENT'S AUTHORS, not the engines: it records why §2.2's `@`-prefix precedent was rejected for `map` (npm scoped packages make `@incomplete` a key a real ts module could own) and closes with a principle for future rungs — a convention airtight in one namespace and merely unlikely in another is a deferred collision. No engine behaviour could violate it; an engine cannot fail to not-use a convention. A row asserting 'no @-prefixed reserved key appears' would pin the ABSENCE OF A REJECTED ALTERNATIVE, and PART 42's (B) already fails any unpinned key including @-prefixed ones, so the real protection is elsewhere. DO NOT go looking for the missing row. Two things were considered and rejected rather than left unsaid: un-bolding the kernel so the extractor stops seeing it (changing the artifact to satisfy the instrument, and the bold is arguably right since the principle IS the claim), and adding a third disposition so the count reaches 0 (`unenforced` works because it is uncomfortable — a softer adjacent label is a way to launder a genuinely unexercised MUST out of the headline number, which is an escape hatch in the gate built to prevent them). If a CLASS of author-binding clauses is ever established by hand classification — a regex proxy over the pre-ledger set over-matched and settled nothing — a ratcheted disposition becomes worth its cost. One entry does not."
+  },
+  {
+   "sha": "1c453ace868333c3",
+   "at": "⟨0.28⟩ Phase 1 ruling",
+   "excerpt": "⟨0.32⟩ **AND THE NESTING CLOSES THAT DEFERRED COLLISION RATHER THAN REOPENING IT** — the one thing worth check",
+   "part": "PART 42 — the key-shape table is where the two positions are proved distinct: with the ⟨0.32⟩ `(\"map\", \"$.modules\")` declaration and RESULT_CONTAINERS, `$.incomplete` is a boolean of the ROOT and the user's module names are `$.modules.*`, agreeing across java, rust and ts with no type conflict. PART 40's descriptive-hedge row is what fails if an engine stops nesting; PART 42 is what fails if the two namespaces are ever flattened back together."
   },
   {
    "sha": "3873277b76978626",

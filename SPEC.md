@@ -469,25 +469,76 @@ the function. The same reasoning applies to the document as a whole, so the rule
 being invented:
 
 > **A verb whose pinned shape cannot carry the caveat MUST emit the CAVEAT DOCUMENT INSTEAD of its result
-> document.** Not a result document with the caveat omitted, and not an empty result of the pinned shape.
+> document, WHEREVER THE RESULT IS ITSELF A CLAIM ABOUT THE CODE** — the verbs that answer `ok`, and the
+> zero-rule-policy case below. Not a result document with the caveat omitted, and not an empty result of
+> the pinned shape. ⟨0.32⟩ narrows this to those verbs; a DESCRIPTIVE verb is ruled the other way, below.
 
-    show      healthy → [ … ]            hedging → { "incomplete": true, "unanalyzed": […] }
-    map       healthy → { "<mod>": … }   hedging → { "incomplete": true, "judgedNothing": […] }
+⟨0.32⟩ **AND THE SUBSTITUTION IS NARROWED, BECAUSE IT CARRIED ACROSS A PREMISE THAT DOES NOT TRAVEL WITH
+IT.** The generalisation above took `unanswerable`'s rule up one level, from a RESULT SET to a DOCUMENT,
+and kept the reason unexamined. `unanswerable` substitutes because `direct: []` beside a hedge *still says*
+nobody calls the function: that result set is a CLAIM, and a claim beside a caveat is still a claim.
+`show`'s rows and `map`'s module table are not claims of that kind. They are what the scan DID see, and
+they stay true beside a caveat saying it did not see everything. Withholding them buys no soundness and
+deletes the answer — the ⟨0.24⟩ over-charge control read from the other side: the SAFE-looking value
+passes the defect assertion while deleting the feature.
 
-Three properties make this the right shape rather than merely a shape:
+MEASURED at HEAD on a two-function crate with one `tests/` directory, scanned under no policy — one
+`excluded` entry with `peeked: false`, which is approximately every no-policy scan of a tree carrying
+`tests/`, `benches/`, `examples/` or a build script:
+
+    show wrapper --json   { "incomplete": true }   exit 0    the rows are GONE
+    map          --json   { "incomplete": true }   exit 0    the map is GONE
+
+reproduced identically in candor-rust, candor-ts and candor-java, and through candor-ts's MCP tools it
+reaches an AGENT. So the rule is stated over the condition rather than the verb, for the sixth time:
+
+> ⟨0.32⟩ **A DESCRIPTIVE VERB MUST RETURN ITS RESULT *AND* THE CAVEAT** — result NESTED under a key of its
+> own, caveat keys at the ROOT beside it. A verb is DESCRIPTIVE when it sets no verdict, answers no `ok`,
+> and carries no exit-code obligation. A verb that answers `ok` keeps the substitution above.
+
+    show      healthy → [ … ]            hedging → { "functions": [ … ],        "incomplete": true, … }
+    map       healthy → { "<mod>": … }   hedging → { "modules": { "<mod>": … }, "incomplete": true, … }
+
+**`ok` is the line, and it is the same line the paragraph on withdrawing `ok` draws from the other side.**
+`ok` is the claim a hedged input cannot support; where there is no `ok` there is no claim for a pessimism
+rule to protect. So `gate` and `gate --report` are untouched, and `whatif`, `fix-gate`, `unverified` and
+`fix` under `--strict` keep refusing over the same bytes (⟨0.24⟩'s "never LESS sensitive than the gate").
+**The zero-rule-policy ruling below is UNCHANGED and stays a substitution** — there the absent result IS
+the finding, because a policy that asked nothing produced no questions to answer. MEASURED, rather than
+assumed, by driving every descriptive verb over such a report: `show` and `map` are the ONLY two that
+substituted in any engine — `where`, `containment`, `reachable`, `blindspots` and `tour` already carry
+`incomplete: true` BESIDE their data. candor-swift ships neither `show` nor `map`.
+
+Relative to the shape it replaces this is ADDITIVE: the caveat keys stay exactly where ⟨0.28⟩ put them, at
+the root, and a key carrying the result appears beside them. It does not move ⟨0.32⟩'s non-additivity note.
+
+Three properties made the ⟨0.28⟩ shape the right shape rather than merely a shape. ⟨0.32⟩ re-checked each
+against the narrowed shape rather than assuming it survived, because a property cited in a ruling and not
+re-measured under its amendment is how a clause goes quietly false:
 
 - **Healthy output is untouched.** The document changes only on the path that is currently answering
-  falsely. Every engine measured byte-identity for this rung and none of it is spent.
+  falsely. Every engine measured byte-identity for this rung and none of it is spent — re-measured for
+  the ⟨0.32⟩ shape against the pre-change binaries: over an intact report `show` still answers a bare
+  ARRAY and `map` a bare module table, byte for byte.
 - **The type change is LOUD, and that is the point.** A consumer doing `for (const x of doc)` over `show`
-  gets a TypeError, not a silent zero-iteration loop. Today `show` answers `[]` over a report whose own
-  manifest names a file it could not read — *nothing performs this effect*, asserted about code nobody
-  examined. Trading a silent wrong answer for a noisy stop is this document's standing preference, and it
-  is the one case where breaking a consumer is the CORRECT outcome: the consumer was being lied to.
+  gets a TypeError, not a silent zero-iteration loop — and still does under ⟨0.32⟩, because the root is
+  an OBJECT exactly when the verb hedges and an ARRAY exactly when it does not. Before the rung `show`
+  answered `[]` over a report whose own manifest names a file it could not read — *nothing performs this
+  effect*, asserted about code nobody examined. Trading a silent wrong answer for a noisy stop is this
+  document's standing preference, and it is the one case where breaking a consumer is the CORRECT
+  outcome: the consumer was being lied to.
 - **It needs no reserved-key convention**, which matters because §2.2's `@`-prefix precedent DOES NOT
   TRANSFER here. That convention is safe for the sidecar because a `@`-prefixed key cannot collide with a
   TYPE name. `map` is keyed by MODULE names, and an npm scoped package is spelled `@scope/name` — so
   `@incomplete` is a key a real ts module could own. A convention that is airtight in one namespace and
   merely unlikely in another is not a convention; it is a deferred collision.
+
+⟨0.32⟩ **AND THE NESTING CLOSES THAT DEFERRED COLLISION RATHER THAN REOPENING IT** — the one thing worth
+checking before believing a shape that puts a reserved key beside a user namespace. `map`'s user namespace
+now lives one level down, under `modules`: a module literally named `incomplete` is a key of `modules`, the
+caveat is a key of the ROOT, and neither can displace the other at any depth. MEASURED on candor-rust with
+a module named exactly that. The cell ⟨0.28⟩ left open is closed by the shape, not by a naming convention,
+which is what the bullet above asked for and could not have.
 
 ⟨0.28⟩ **AND `privacy-manifest`'s OWN TWO KEYS, PINNED HERE BECAUSE DRIVING THE VERB IS WHAT FOUND THEM.**
 The verb's document is `{ "reached": [ … ], "required": { … } }` — `reached` the privacy-relevant surfaces

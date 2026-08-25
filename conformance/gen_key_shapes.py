@@ -59,13 +59,27 @@ false positives (every new fixture module a "new unpinned key") and an ignored g
     1:8 on a neighbouring problem, and a declaration is checked both ways here: a NOSURF verb that
     starts answering fails loudly (below), and a masked position that vanishes simply stops matching.
   · EXCEPT the six ⟨0.28⟩-pinned caveat keys (incomplete/unanalyzed/judgedNothing and their
-    baseline-prefixed forms), which are reserved vocabulary EVERYWHERE — measured: the engines emit
-    them INTO map's module namespace, the very collision SPEC §2 ⟨0.28⟩ leaves as a known-open cell,
-    so the gate must see them there or it is blind at the exact position the caveat travels.
+    baseline-prefixed forms), which are reserved vocabulary EVERYWHERE — measured: the engines emitted
+    them INTO map's module namespace, the very collision SPEC §2 ⟨0.28⟩ then left as a known-open cell,
+    so the gate must see them there or it is blind at the exact position the caveat travels. (⟨0.32⟩
+    moved map's user names one level down and closed that cell; the keys stay reserved EVERYWHERE
+    because the caveat still travels into other user namespaces, and because a gate that stops looking
+    where a hazard used to live is how the hazard comes back.)
+  · AND EXCEPT the RESULT CONTAINER — ⟨0.32⟩, and it is the same hazard from the other side.
+    `map` healthy is keyed by module name at `$`; `map` hedging is `{"modules": {…}, "incomplete":
+    true}`, so at that same `$` the key `modules` is ENGINE vocabulary and the user's names have moved
+    to `$.modules`. Masked as user data, the container is invisible to (B) and the module names under
+    it are harvested as vocabulary — MEASURED before RESULT_CONTAINERS existed: `app`, the fixture's
+    own module name, arrived in the table from rust/map with four phantom (A) rows (`$.*.app`,
+    `$.*.app.effects`, `$.*.app.effects[]`, `$.*.app.functions`), and passed (B) only because SPEC.md
+    happens to spell `app` in backticks as an example module. A user name certified by a prose
+    backtick is precisely the false negative this file exists to prevent.
 
 MEASURED FALSE-POSITIVE COUNT with this line, on the real four-engine corpus, day one: (A) 0, (B) 0
 beyond the 7 grandfathered. Without the mixed-namespace exception, (A) reports 2 phantom rows from
-map's root; without USER_POSITIONS at all, every fixture module name becomes a (B) mint.
+map's root; without USER_POSITIONS at all, every fixture module name becomes a (B) mint. ⟨0.32⟩ with
+RESULT_CONTAINERS and the `("map", "$.modules")` declaration: (A) 0, (B) 0 beyond the grandfathered
+list, `app` gone from the table, and `modules` correctly harvested from java, rust and ts.
 
 VERB COVERAGE is per-engine DECLARED, never probed-and-guessed: candor-swift ships only
 {path, tour, gains, fix, fix-gate, unverified} of the disclosure verbs, and — measured — feeding it
@@ -266,11 +280,24 @@ RESERVED_EVERYWHERE = {"incomplete", "unanalyzed", "judgedNothing", "noManifest"
 # Object positions whose KEYS are the user's own names, not engine vocabulary (header: the
 # user-namespace line). Paths use `.` segments with `[]` for array elements and `*` for masked keys.
 USER_POSITIONS = {
-    ("map",         "$"),                          # keyed by module name
+    ("map",         "$"),                          # keyed by module name — the HEALTHY shape
+    ("map",         "$.modules"),                  # ⟨0.32⟩ keyed by module name — the HEDGING shape
     ("containment", "$.contained[].placement"),    # keyed by layer/owner name
     ("containment", "$.ambient"),                  # never populated by this fixture; conservative
     ("reachable",   "$.effects"),                  # never populated by this fixture; conservative
 }
+
+# ⟨0.32⟩ RESULT CONTAINERS — the key a DESCRIPTIVE verb nests its result under when it hedges, at a
+# position whose keys are otherwise the user's (header: the result-container bullet). Without this the
+# `("map", "$.modules")` declaration above is INERT — `modules` is itself masked to `*` at `$`, so the
+# path `$.modules` is never reached and the entry never matches. Measured that way round before it was
+# written: adding the declaration alone changed nothing, and `app` stayed in the vocabulary table.
+#
+# The container is present exactly when the caveat is (SPEC §2 ⟨0.32⟩: "result NESTED under a key of
+# its own, caveat keys at the ROOT beside it"), so that sibling is the test rather than the key name
+# alone. Keying on the name alone would un-mask a real module named `modules` in the HEALTHY shape,
+# where `$` is still the user's namespace — the deferred-collision mistake, reintroduced in the gate.
+RESULT_CONTAINERS = {("map", "$"): "modules"}
 
 
 def run(cmd, cwd, env):
@@ -389,8 +416,11 @@ def collect(cells):
         shapes[(verb, path)][jtype(node)].add(engine)
         if isinstance(node, dict):
             user = (verb, path) in USER_POSITIONS
+            # ⟨0.32⟩ the result container is engine vocabulary at a user position — but only in the
+            # hedging shape, which is identified by the caveat sitting beside it, never by name alone.
+            container = RESULT_CONTAINERS.get((verb, path)) if "incomplete" in node else None
             for k, v in node.items():
-                if user and k not in RESERVED_EVERYWHERE:
+                if user and k not in RESERVED_EVERYWHERE and k != container:
                     walk(verb, engine, v, path + ".*")
                 else:
                     vocab[k].add((engine, verb))
