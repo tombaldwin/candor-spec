@@ -12417,6 +12417,17 @@ if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
     printf '%s\n' "$2" > "$1/Sources/S/a.swift"
     if [ "$3" != NONE ]; then mkdir -p "$1/Tests"; printf '%s\n' "$3" > "$1/Tests/Helper.swift"; fi
   }
+  # Tree D is control 3 — NO exclusions at all — and cannot be built by `p69s_mk … NONE` the way the
+  # other three engines' D trees are: `Classifier.isHarnessPath` treats `Package.swift` itself as the
+  # `manifest` class UNCONDITIONALLY (candor-swift's build.rs analog), so every SPM package tree has at
+  # least one excluded, peeked file the moment a deny/pure rule stands — the SAME shape the corrupt-A
+  # tree exists to probe, not control 3. MEASURED on a from-clean `swift build` (rm -rf .build; verified
+  # `ls -lT` timestamps the binary after that rebuild): a BARE directory of `.swift` files with no
+  # `Package.swift` at all scans as an ad hoc single-target program and reports `"excluded": []`. That
+  # mirrors what A/B/C's own D already does on rust (no `build.rs` file) and ts (no `dist/`) — omit the
+  # thing that would be classified, rather than declaring it absent — so D here omits `Package.swift`
+  # and the `Sources/S` nesting it exists to justify, putting the source directly in the tree root.
+  p69s_mkD() { mkdir -p "$1"; printf '%s\n' "$2" > "$1/a.swift"; }
   p69s_fs='import Foundation
 public func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }'
   p69s_pure='public func add(_ a: Int, _ b: Int) -> Int { a + b }'
@@ -12426,7 +12437,7 @@ public func helper() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run()
   p69s_mk "$P69S/A" "$p69s_fs"   "$p69s_exec"
   p69s_mk "$P69S/B" "$p69s_fs"   "$p69s_clean"
   p69s_mk "$P69S/C" "$p69s_pure" "$p69s_exec"
-  p69s_mk "$P69S/D" "$p69s_fs"   NONE
+  p69s_mkD "$P69S/D" "$p69s_fs"
   ( cd "$P69S/A" && "$SW_BIN" . --out oA --policy "$P69/net.candor"  >/dev/null 2>&1 )
   ( cd "$P69S/B" && "$SW_BIN" . --out oB --policy "$P69/both.candor" >/dev/null 2>&1 )
   ( cd "$P69S/C" && "$SW_BIN" . --out oC --policy "$P69/net.candor"  >/dev/null 2>&1 )
