@@ -16,6 +16,19 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.32.1] — 2026-08-25
+
+- **No contract change — the floor stays 0.32, and a patch is a build id rather than a rung.**
+  `git diff v0.32..HEAD -- SPEC.md` is empty, which is how this family decides a patch mechanically, and
+  the conformance suite pins the same floor on both sides of it. An engine declaring `spec 0.32` is
+  conformant across 0.32.1 in either direction; no consumer needs to do anything.
+
+  The tag exists because the family line carries ONE number. candor-java's v0.32.0 native binaries were
+  never published — `native.yml`'s parity gate failed the build after the image reported `0 functions`
+  over a tree the jar found 210 in — and `ENGINE_PIN`, which `candor update` and the Homebrew formula
+  resolve for every engine at once, cannot move for one repo alone. So the family moves together, and the
+  contract sits still while it does.
+
 ## [0.32.0] — 2026-08-25
 
 - **The ⟨0.32⟩ bump left `spec 0.31` in five README rows and three SPEC.md envelope examples.** The rows
