@@ -2769,7 +2769,7 @@
    "sha": "66fb6633734a95c5",
    "at": "2. The report",
    "excerpt": "- ⟨0.29⟩ `\"outOfScope\": [ { \"fn\": …, \"path\": …, \"effects\": [\"<Effect>\"…], \"class\": …, \"reason\": … } ]` — **THE",
-   "part": "PART 48"
+   "part": "PART 48; PART 71"
   },
   {
    "sha": "4ee7d51d413b2fab",
@@ -2985,7 +2985,7 @@
    "sha": "fd271065c05af672",
    "at": "2. The report",
    "excerpt": "**THE EMISSION RULE IS `outOfScope`'s, and deliberately the same one**: PRESENT iff a policy was CONFIGURED an",
-   "part": "PART 69"
+   "part": "PART 69; PART 71 — PART 69 touches this only incidentally (its own trees are all configured-and-honoured, so the PRESENT half holds by construction); PART 71 is what exercises the ABSENT-no-policy and ABSENT-refused halves this statement also makes, over a tree with nothing excluded"
   },
   {
    "sha": "e7f67efcb735019c",
