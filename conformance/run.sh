@@ -12935,6 +12935,323 @@ printf '%s' "$P70_OUT"
 [ "$P70J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 true
 
+
+# ====================================================================================================
+# PART 71 — `outOfScope`/`scannedUnder`: PRESENT IFF A POLICY WAS CONFIGURED AND HONOURED (SPEC §2 ⟨0.29⟩/⟨0.33⟩) [TIER 1]
+# ====================================================================================================
+#
+# THE RULE, stated once for each key and never falsified until now. ⟨0.29⟩ on `outOfScope`: "Emitted only
+# when a policy is CONFIGURED and HONOURED... With no policy the key is ABSENT: nothing was asked, so `[]`
+# would be a claim. Over a policy the engine REFUSES, the key is ABSENT... Present-and-empty is
+# asked-and-clear." ⟨0.33⟩ on `scannedUnder`: "THE EMISSION RULE IS `outOfScope`'s, and deliberately the
+# same one." Two states, and they MUST NOT collapse: an ABSENT key is the ⟨0.26⟩ *cannot answer*; a
+# PRESENT-and-empty one is *asked, and clear* — a claim about the run, not a hedge about it.
+#
+# MEASURED, over a tree the scan reads IN FULL — nothing excluded, so PART 69's own peeked-class machinery
+# never fires — with `--policy 'deny Exec'` and nothing in the tree performing `Exec`:
+#
+#     candor-java 0.33.0, candor-scan HEAD  ->  outOfScope: []  +  scannedUnder: {"deny": ["deny Exec"]}
+#     candor-ts HEAD, candor-swift HEAD     ->  NEITHER key
+#
+# Every existing question this family has asked about these two keys was put over a tree WITH an excluded,
+# peeked class (PART 48, PART 69), so an implementation that ties emission to "did the peek find a class to
+# look at" rather than to "was a policy configured and honoured" reads as correct there and is silent here.
+# It fails CLOSED — an absent key is the honest *cannot answer*, never a false certification — but it is
+# still a false statement about what was asked: a consumer reading `scannedUnder` to decide whether a
+# `gate --report` may trust this producer's peek (⟨0.33⟩'s own consumer-side MUST, PART 69) sees "never
+# asked" over a report that in fact was.
+#
+# NO EXISTING ROW PINS IT. PART 48's `file_set_check.py` requires `outOfScope` present over a tree that
+# DOES carry an excluded class; PART 69's `ck69` requires trees A/B/C to carry a `peeked: true` class and
+# checks tree D only for `excluded` being empty, and its own control 3 (`no-peek`) reads EXIT CODES, never
+# the keys — a producer that emits neither key still exits 0 over a clean tree and 2 over a violating one,
+# so that control passes straight over an engine that never learned to emit them at all.
+#
+# REFERENCE-LED, AND THE SKIP IS PROBED, exactly as PART 69 and PART 70 do it: rather than declaring which
+# engines are done, each row asks its OWN honoured-policy report whether it carries EITHER key at all.
+# Neither present -> this engine has not shipped unconditional emission for the no-exclusion case -> SKIP.
+# Either present -> score every cell, so an engine that ships one key and not its sibling — the ⟨0.33⟩ half
+# without the ⟨0.29⟩ half, or the reverse — is scored and FAILS rather than skipped, the same
+# half-shipped-fails-open posture PART 69 already established for the producer/consumer split.
+#
+# THREE CELLS, and the two controls are the deliverable:
+#
+#   honoured    a policy is configured, parses, and is honoured, over a tree with nothing excluded and
+#               nothing performing the denied effect -> `outOfScope: []` and `scannedUnder` naming the
+#               policy's expanded rules, BOTH PRESENT. This is the cell ts/swift fail today.
+#   no-policy   NO `--policy` flag at all -> BOTH ABSENT. Reasoned about FIRST, because it is the LOUD
+#               direction: an engine that emits `outOfScope: []` unconditionally — the fix a careless port
+#               of the honoured cell above ships — commits a FRESH false claim in the OPPOSITE direction:
+#               "asked and clear" over a run that was never asked anything. Passing `honoured` by failing
+#               `no-policy` is the exact shape ⟨0.29⟩ itself calls out: "`[]` would be a claim."
+#   refused     a policy IS configured but cannot be READ (a nonexistent path) -> BOTH ABSENT, exit 2.
+#               SPEC §3.1: the peek is a producer reading the policy, and it may not certify relative to a
+#               gate that evaluated nothing — recording "asked and clear", or naming rules, over a question
+#               the engine never actually read would publish an answer nobody put. MEASURED against
+#               candor-java 0.33.0 and candor-scan HEAD: both already get this right — their `--json`
+#               report over an unreadable policy path omits both keys, matching their `--gate-json`
+#               refusal — so this control is the proof that the honoured cell is not merely "always print
+#               the keys", the same over-charge discipline PART 69's own controls apply one layer over.
+#
+#   A MEASURED GAP THIS PART DELIBERATELY DOES NOT PIN, recorded rather than silently dropped: a policy
+#   that PARSES but yields ZERO RULES (⟨0.28⟩'s own refusal — an all-comments file, say) is a DIFFERENT
+#   case from an unreadable one. MEASURED on both candor-java 0.33.0 and candor-scan HEAD: their `--json`
+#   REPORT documents over a zero-rule policy carry `outOfScope: []` and `scannedUnder: {"deny": []}`
+#   PRESENT — not absent — even though the SAME run's `--gate-json` verdict correctly refuses (`ok:false,
+#   refused:true`). Whether the REPORT route owes the zero-rule case the same withholding ⟨0.29⟩ writes for
+#   an unreadable one is a real, open question this row does not adjudicate — filed here rather than
+#   asserted either way, because asserting an answer from the instrument rather than the spec is exactly
+#   the mistake ⟨0.24⟩'s own standing rule warns against ("a MUST that says 'disclose X' without saying
+#   what X is called is four independent guesses" applies just as hard to inventing the boundary of X).
+#
+# A TREE WITH EXCLUSIONS IS DELIBERATELY OUT OF SCOPE HERE, and that is a decision, not an oversight: this
+# row's own fixture carries none, and PART 69 already owns the peeked-class shape end to end. The
+# instrument check below refuses the fixture if it ever grows one, so the two rows cannot silently drift
+# into measuring the same thing under two names.
+sc71() { python3 -c '
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("noreport"); raise SystemExit
+print("yes" if ("outOfScope" in d or "scannedUnder" in d) else "no")
+' "$1"; }
+# THE INSTRUMENT CHECK — it FAILS rather than skips, because a vacuous green here is the same false
+# all-clear this part is about. Three ways this fixture goes vacuous: the honoured tree carries an
+# `excluded` entry (PART 69's shape, not this one); the honoured tree judged NOTHING (`functions` empty,
+# so the honoured cell would pass over a fixture with no content); the refused run did not actually refuse,
+# or refused into a document that itself carries no `functions` (so it cannot be told apart from an
+# unrelated empty document).
+ck71() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+hon, ref, refrc = sys.argv[1], sys.argv[2], sys.argv[3]
+H = load(hon)
+if H.get("excluded"):
+    sys.exit("     INSTRUMENT: the honoured fixture carries excluded=" + json.dumps(H.get("excluded"))
+             + " -- that is PART 69 own peeked-class shape, not the no-exclusion rung this part measures")
+if not (H.get("functions") or []):
+    sys.exit("     INSTRUMENT: the honoured fixture judged NOTHING -- functions is empty, so the honoured "
+             "cell would pass over a fixture with no content")
+if refrc != "2":
+    sys.exit("     INSTRUMENT: the refused fixture exited " + refrc + ", not 2 -- an unreadable policy "
+             "path must refuse, or this cell is not testing a refusal at all")
+R = load(ref)
+if not (R.get("functions") or []):
+    sys.exit("     INSTRUMENT: the refused fixture own document carries no functions -- cannot tell "
+             "whether this is the refused-report shape this cell measures or an unrelated empty document")
+' "$@"; }
+# THE HONOURED CELL: `outOfScope` present-and-empty, `scannedUnder` present and naming the policy's
+# EXPANDED rules (never raw text, never effect names alone — the ⟨0.30⟩/⟨0.33⟩ flattening trap).
+p71h_check() { python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+want = json.loads(sys.argv[2])
+if "outOfScope" not in d: sys.exit(1)
+if d.get("outOfScope") != []: sys.exit(2)
+if "scannedUnder" not in d: sys.exit(3)
+su = d.get("scannedUnder")
+if not isinstance(su, dict) or sorted(su.get("deny") or []) != sorted(want): sys.exit(4)
+sys.exit(0)
+' "$1" "$2"; }
+# THE TWO CONTROLS SHARE ONE CHECKER, because they assert the identical fact (both keys ABSENT) over two
+# different reasons a policy could fail to be honoured (never configured; configured but unreadable). One
+# checker cannot silently diverge from its twin the way two hand-written copies could.
+p71_absent_check() { python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+if "outOfScope" in d: sys.exit(1)
+if "scannedUnder" in d: sys.exit(2)
+sys.exit(0)
+' "$1"; }
+p71() {   # <engine> <honoured> <no-policy> <refused>
+  if [ "$2" = 0 ] && [ "$3" = 0 ] && [ "$4" = 0 ]; then
+    P71_OUT="$P71_OUT  $1  honoured=0 no-policy=0 refused=0  OK
+"
+  else
+    P71_OUT="$P71_OUT  $1  honoured=$2 no-policy=$3 refused=$4  FAIL (want 0/0/0)
+"
+    case "$2" in
+      1) P71_OUT="$P71_OUT         honoured: \`outOfScope\` is ABSENT over a policy that was CONFIGURED and HONOURED, with nothing excluded — SPEC §2 ⟨0.29⟩ requires PRESENT-and-empty here (\"asked and clear\"); an ABSENT key collapses this into the ⟨0.26⟩ cannot-answer state, a DIFFERENT claim about a DIFFERENT run
+" ;;
+      2) P71_OUT="$P71_OUT         honoured: \`outOfScope\` is present but NON-EMPTY over a tree with nothing excluded and nothing performing the denied effect — nothing should have been found to peek
+" ;;
+      3) P71_OUT="$P71_OUT         honoured: \`scannedUnder\` is ABSENT over a policy that was CONFIGURED and HONOURED — SPEC §2 ⟨0.33⟩ requires it to name the expanded deny rules the peek was put, deliberately the SAME emission rule as \`outOfScope\`
+" ;;
+      4) P71_OUT="$P71_OUT         honoured: \`scannedUnder.deny\` does not name the policy own expanded rule set — recording names or raw text here reintroduces the ⟨0.30⟩/⟨0.33⟩ flattening defect one layer out
+" ;;
+    esac
+    case "$3" in
+      1) P71_OUT="$P71_OUT         no-policy: \`outOfScope\` is PRESENT with no policy configured at all — nothing was asked, so this is a FRESH FALSE CLAIM in the opposite direction from the honoured-cell defect: present-and-empty over a run that was never asked anything
+" ;;
+      2) P71_OUT="$P71_OUT         no-policy: \`scannedUnder\` is PRESENT with no policy configured at all — the same fresh false claim, one key over
+" ;;
+    esac
+    case "$4" in
+      1) P71_OUT="$P71_OUT         refused: \`outOfScope\` is PRESENT over a policy this engine could not read — SPEC §3.1: the peek is a producer reading the policy, and it may not certify relative to a gate that evaluated nothing
+" ;;
+      2) P71_OUT="$P71_OUT         refused: \`scannedUnder\` is PRESENT over a policy this engine could not read — the same rule, the ⟨0.33⟩ half
+" ;;
+    esac
+    P71_BAD=1; rc=1
+  fi
+}
+P71_BAD=0; P71_OUT=""
+P71="$W/p71"; mkdir -p "$P71"
+printf 'deny Exec\n' > "$P71/exec.candor"
+P71_MISSING="$P71/does-not-exist.candor"
+P71_WANT='["deny Exec"]'
+
+# ── THE JAVA ROW ─────────────────────────────────────────────────────────────────────────────────
+P71J="$P71/java"
+if [ -n "$JAR" ]; then
+  mkdir -p "$P71J/build/classes" "$P71J/src/com/y"
+  printf 'package com.y;\npublic class Ok {\n  public String load() throws Exception { return java.nio.file.Files.readString(java.nio.file.Path.of("/etc/hosts")); }\n}\n' > "$P71J/src/com/y/Ok.java"
+  if javac -d "$P71J/build/classes" "$P71J/src/com/y/Ok.java" >/dev/null 2>&1; then
+    rm -rf "$P71J/src"
+    java -jar "$JAR" "$P71J" --policy "$P71/exec.candor" --json "$P71J/honoured.json" >/dev/null 2>&1
+    if [ "$(sc71 "$P71J/honoured.json")" != yes ]; then
+      P71_OUT="$P71_OUT  java   SKIP — neither key is emitted over a no-exclusion honoured policy yet (probed, not declared)
+"
+    else
+      java -jar "$JAR" "$P71J"                         --json "$P71J/nopolicy.json" >/dev/null 2>&1
+      java -jar "$JAR" "$P71J" --policy "$P71_MISSING" --json "$P71J/refused.json"  >/dev/null 2>&1; p71j_refrc=$?
+      if ck71 "$P71J/honoured.json" "$P71J/refused.json" "$p71j_refrc"; then
+        p71h_check "$P71J/honoured.json" "$P71_WANT"; p71j_h=$?
+        p71_absent_check "$P71J/nopolicy.json"; p71j_n=$?
+        p71_absent_check "$P71J/refused.json"; p71j_r=$?
+        p71 java "$p71j_h" "$p71j_n" "$p71j_r"
+      else
+        P71_BAD=1; rc=1
+      fi
+    fi
+  else
+    P71_OUT="$P71_OUT  java   SKIP — no javac to build the fixture
+"
+  fi
+fi
+
+# ── THE RUST ROW ─────────────────────────────────────────────────────────────────────────────────
+P71R="$P71/rust"; mkdir -p "$P71R/src"
+printf '[package]\nname = "p71"\nversion = "0.1.0"\nedition = "2021"\n' > "$P71R/Cargo.toml"
+printf 'pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }\n' > "$P71R/src/lib.rs"
+p71r_pick() { p71r_hit=""; for f in "$1".*.scan.json; do case "$f" in *callgraph*|*hierarchy*) continue;; esac; [ -f "$f" ] && p71r_hit="$f"; done; }
+"$SCAN" "$P71R" --out "$P71R/honoured" --policy "$P71/exec.candor" >/dev/null 2>&1
+p71r_pick "$P71R/honoured"; p71r_hon="$p71r_hit"
+if [ -z "$p71r_hon" ]; then
+  P71_OUT="$P71_OUT  rust   SKIP — candor-scan produced no report (probed)
+"
+elif [ "$(sc71 "$p71r_hon")" != yes ]; then
+  P71_OUT="$P71_OUT  rust   SKIP — neither key is emitted over a no-exclusion honoured policy yet (probed, not declared)
+"
+else
+  "$SCAN" "$P71R" --out "$P71R/nopolicy" >/dev/null 2>&1
+  p71r_pick "$P71R/nopolicy"; p71r_np="$p71r_hit"
+  "$SCAN" "$P71R" --out "$P71R/refused" --policy "$P71_MISSING" >/dev/null 2>&1; p71r_refrc=$?
+  p71r_pick "$P71R/refused"; p71r_rf="$p71r_hit"
+  if [ -z "$p71r_np" ] || [ -z "$p71r_rf" ]; then
+    P71_OUT="$P71_OUT  rust   SKIP — candor-scan produced no report for one of the control trees (probed)
+"
+  elif ck71 "$p71r_hon" "$p71r_rf" "$p71r_refrc"; then
+    p71h_check "$p71r_hon" "$P71_WANT"; p71r_h=$?
+    p71_absent_check "$p71r_np"; p71r_n=$?
+    p71_absent_check "$p71r_rf"; p71r_r=$?
+    p71 rust "$p71r_h" "$p71r_n" "$p71r_r"
+  else
+    P71_BAD=1; rc=1
+  fi
+fi
+
+# ── THE TS ROW ───────────────────────────────────────────────────────────────────────────────────
+P71T="$P71/ts"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P71T/src"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P71T/tsconfig.json"
+  printf 'import * as fs from "fs"\nexport function load(): string { return fs.readFileSync("/etc/hosts", "utf8") }\n' > "$P71T/src/a.ts"
+  node "$TS_DIR/scan.mjs" "$P71T" --out "$P71T/honoured" --policy "$P71/exec.candor" >/dev/null 2>&1
+  if [ "$(sc71 "$P71T/honoured.json")" != yes ]; then
+    P71_OUT="$P71_OUT  ts     SKIP — neither key is emitted over a no-exclusion honoured policy yet (probed, not declared)
+"
+  else
+    node "$TS_DIR/scan.mjs" "$P71T" --out "$P71T/nopolicy" >/dev/null 2>&1
+    node "$TS_DIR/scan.mjs" "$P71T" --out "$P71T/refused" --policy "$P71_MISSING" >/dev/null 2>&1; p71t_refrc=$?
+    if ck71 "$P71T/honoured.json" "$P71T/refused.json" "$p71t_refrc"; then
+      p71h_check "$P71T/honoured.json" "$P71_WANT"; p71t_h=$?
+      p71_absent_check "$P71T/nopolicy.json"; p71t_n=$?
+      p71_absent_check "$P71T/refused.json"; p71t_r=$?
+      p71 ts "$p71t_h" "$p71t_n" "$p71t_r"
+    else
+      P71_BAD=1; rc=1
+    fi
+  fi
+else
+  P71_OUT="$P71_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+
+# ── THE SWIFT ROW ────────────────────────────────────────────────────────────────────────────────
+# Bare directory, no `Package.swift` — PART 69's own tree-D construction, and for the same reason:
+# `Classifier.isHarnessPath` treats `Package.swift` itself as the `manifest` class unconditionally the
+# moment a deny/pure rule stands, so a real SwiftPM package would grow an excluded, peeked class this row
+# does not want. MEASURED (see PART 69): a bare directory of `.swift` files with no `Package.swift`
+# reports `"excluded": []`.
+P71S="$P71/swift"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P71S"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\n' > "$P71S/a.swift"
+  ( cd "$P71S" && "$SW_BIN" . --out honoured --policy "$P71/exec.candor" >/dev/null 2>&1 )
+  p71s_pick() { p71s_hit=""; for f in "$1".*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p71s_hit="$f"; done; }
+  p71s_pick "$P71S/honoured"; p71s_hon="$p71s_hit"
+  if [ -z "$p71s_hon" ]; then
+    P71_OUT="$P71_OUT  swift  SKIP — candor-swift produced no report (probed)
+"
+  elif [ "$(sc71 "$p71s_hon")" != yes ]; then
+    P71_OUT="$P71_OUT  swift  SKIP — neither key is emitted over a no-exclusion honoured policy yet (probed, not declared)
+"
+  else
+    ( cd "$P71S" && "$SW_BIN" . --out nopolicy >/dev/null 2>&1 )
+    p71s_pick "$P71S/nopolicy"; p71s_np="$p71s_hit"
+    ( cd "$P71S" && "$SW_BIN" . --out refused --policy "$P71_MISSING" >/dev/null 2>&1 ); p71s_refrc=$?
+    p71s_pick "$P71S/refused"; p71s_rf="$p71s_hit"
+    if [ -z "$p71s_np" ] || [ -z "$p71s_rf" ]; then
+      P71_OUT="$P71_OUT  swift  SKIP — candor-swift produced no report for one of the control trees (probed)
+"
+    elif ck71 "$p71s_hon" "$p71s_rf" "$p71s_refrc"; then
+      p71h_check "$p71s_hon" "$P71_WANT"; p71s_h=$?
+      p71_absent_check "$p71s_np"; p71s_n=$?
+      p71_absent_check "$p71s_rf"; p71s_r=$?
+      p71 swift "$p71s_h" "$p71s_n" "$p71s_r"
+    else
+      P71_BAD=1; rc=1
+    fi
+  fi
+else
+  P71_OUT="$P71_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P71"
+# ENGINES: rust java ts swift
+# CONTROLS: p71_absent_check ck71 sc71 — p71_absent_check, applied to the no-policy AND the refused
+# documents, is the deliverable: without it an engine that emits `outOfScope: []`/`scannedUnder`
+# unconditionally scores a pass on the honoured cell while making a FRESH false claim in both the
+# no-policy and the refused-policy directions — the fix-introduces-the-class-it-closes shape this project
+# keeps finding in its own repairs. ck71 is the instrument check, which FAILS (never skips) a fixture that
+# cannot ask the question: an honoured tree carrying `excluded` entries (PART 69's shape, not this one), an
+# honoured tree that judged nothing, or a refused run that did not actually refuse or refused into a
+# document with no `functions` of its own. sc71 is the probed skip: it reads whether an engine has shipped
+# unconditional emission for the no-exclusion case at all, never a declared list, so a porting commit
+# starts asserting with no edit here.
+echo "PART 71 — outOfScope/scannedUnder are present iff a policy was configured and honoured (SPEC §2 ⟨0.29⟩/⟨0.33⟩)"
+printf '%s' "$P71_OUT"
+[ "$P71_BAD" = 0 ] && echo "  -> MATCH — both keys are PRESENT (and correct) over an honoured policy, and BOTH ABSENT with no policy configured or over one this engine could not read — the two states never collapse"
+[ "$P71_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
