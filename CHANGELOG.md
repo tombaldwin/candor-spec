@@ -17,6 +17,11 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 ## Unreleased
 
 ## [0.33.0] — 2026-08-26
+- **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
+  R54 (`diff`) and R55 (`receipt`) still read `SILENT (open)` while four commits had closed them.
+  The ledger entry for ⟨0.33⟩'s strictly-absent `scannedUnder` case claimed it was "pinned in the
+  engines' own suites" — true of rust, java and swift, and not of candor-ts, which had no such test.
+  A register that reads as considered is worse than one that reads as open.
 
 - **MIGRATING TO ⟨0.33⟩ — who it breaks, what it costs, and the one command that discharges it.**
   ⟨0.33⟩ is NOT ADDITIVE. The cost was measured before the cut rather than estimated: **32 real
