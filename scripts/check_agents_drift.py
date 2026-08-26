@@ -141,9 +141,9 @@ def main() -> int:
     # note.
     #
     # THE GRAMMAR is the family's shared one: `spec` + one to EIGHT of [-: "*)\]] + <digits>.<digits>.
-    # Eight, not four, because SPEC.md's own aligned `"spec":    "0.32"` needs six; `)` and `]`, because
-    # candor-swift's README says `[candor-spec](…) 0.32`. Both were live in shipped documents that every
-    # gate in the family read clean over.
+    # Eight, not four, because SPEC.md's own aligned `"spec":    "0.32"` needs six (spec 0.32, informative).
+    # `)` and `]`, because candor-swift's README says `[candor-spec](…) 0.32`. Both were live in
+    # shipped documents that every gate in the family read clean over.
     claim = re.compile(r'spec[-: "*)\]]{1,8}(\d+\.\d+)')
 
     def claims(text: str) -> list[tuple[str, str]]:
