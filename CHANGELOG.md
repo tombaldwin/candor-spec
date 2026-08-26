@@ -103,6 +103,14 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   SPEC.md itself stays JSON-only, for the reason check 3 already states: its prose is dense with true
   statements about past rungs.
 
+- **The claim grammar's own example carries the `, informative)` marker.** The comment explaining why the
+  grammar takes one to EIGHT separators quotes SPEC.md's aligned `"spec":    "0.32"` as the six-separator
+  case — a historical illustration, not a claim about this repo's floor. `release-preflight` [2b] cannot
+  tell the two apart, and from 0.33 onward it read that line as a bare-literal spec assertion left behind
+  by the bump. The family's escape hatch is the marker this very file implements, so it is applied here:
+  the illustration keeps its concrete version (which spellings were live in shipped documents at 0.32 is
+  the point of the sentence) without becoming a release-day false positive at every rung.
+
 ## [0.32.1] — 2026-08-25
 
 - **No contract change — the floor stays 0.32, and a patch is a build id rather than a rung.**
