@@ -16,6 +16,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.33.0] — 2026-08-26
+
 - **MIGRATING TO ⟨0.33⟩ — who it breaks, what it costs, and the one command that discharges it.**
   ⟨0.33⟩ is NOT ADDITIVE. The cost was measured before the cut rather than estimated: **32 real
   third-party projects, 67 reports, 402 report×policy pairs, all four engines**, published **0.32.1**
