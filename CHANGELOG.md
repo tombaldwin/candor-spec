@@ -16,6 +16,42 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+- **MIGRATING TO ⟨0.33⟩ — who it breaks, what it costs, and the one command that discharges it.**
+  ⟨0.33⟩ is NOT ADDITIVE. The cost was measured before the cut rather than estimated: **32 real
+  third-party projects, 67 reports, 402 report×policy pairs, all four engines**, published **0.32.1**
+  binaries as the producer against **0.33** HEAD as the consumer.
+
+  **WHO IS AFFECTED.** Anyone gating a **STORED** report that a pre-0.33 engine produced — a report
+  committed to a repo, cached between CI jobs, or published by a dependency and gated downstream. A
+  pipeline that scans and gates in ONE run under ONE policy is **unaffected**: producer and consumer
+  are the same run, so the recorded deny set IS the gate's, `P ⊆ P` holds by construction, and §3.1
+  route equality means the scan route's verdict is byte-unchanged.
+
+  **THE COST.** Of the 265 pairs that exit 0 under 0.32.1, **202 — 76.2% — become exit 2** under 0.33
+  with the policy unchanged. That is not a rate to sample against; it is decided by one bit in the
+  report. A report carrying any `peeked: true` class refuses **202 of 202**. A report carrying none
+  passes **63 of 63**. **26 of the 32 projects** have at least one such class, so most repositories
+  with a stored report will meet this on their first 0.33 gate.
+
+  **THE REMEDY, and it discharges the cost in full.** Re-scan with a 0.33 engine **under the SAME
+  policy the gate applies** — not merely *a* policy. That loose wording is the reading this rung
+  exists to close: it is what let a peek bounded by `deny Net` be read as an answer about `Exec`.
+  All **265 of 265** pairs green under 0.32.1 are green again after the re-scan. No residual tax, no
+  permanently-refusing configuration, nothing to suppress or waive.
+
+  **AND THE UNCOMFORTABLE PART, stated rather than softened.** The operators this hits are precisely
+  the ones who followed ⟨0.32⟩'s own remedy — *scan with the policy* — because that is what puts a
+  `peeked: true` class into a report in the first place. They migrated one rung ago and are being
+  asked to migrate again, for a hole that remedy did not close. The wording was the defect and the
+  wording is the fix: the rule is now the SAME policy, and `scannedUnder` is what makes it checkable
+  instead of advisory.
+
+  **WHICH WAY IT FAILS: CLOSED.** An absent `scannedUnder` is the EMPTY SET for the subset test, so a
+  pre-⟨0.33⟩ report beside a `peeked: true` class refuses rather than certifies. Two controls say the
+  refusal is not indiscriminate: **62 pairs** whose producer's deny set genuinely covers the gate's
+  produced **0 refusals** — legitimate narrowing is not over-charged — and over the full cross-policy
+  sweep of **918 gates**, **529 refuse correctly and none fails open**.
+
 - **⟨0.33⟩ THE CROSS-POLICY HOLE — `scannedUnder`, and a gate that refuses a peek it did not
   commission.** `excluded[].peeked: true` was only ever true *relative to the deny set the producer
   held* — ⟨0.29⟩ bounds the peek to effects that policy DENIES — and the report never recorded what that
