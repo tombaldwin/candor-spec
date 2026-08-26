@@ -42,7 +42,20 @@ THE POLICY.** A report produced under the same deny set carries `peeked: true` (
 `outOfScope`), and the refusal turns back into a definite answer; re-gating the old report cannot, because
 the peek is a producer-side act and no consumer can re-derive it from a document. A pipeline that scans
 once with no policy and gates the artifact later is the shape that flips, and it is the shape ⟨0.32⟩ exists
-to stop certifying. **0.23 is a tier-1 additive
+to stop certifying.
+**⟨0.33⟩ IS NOT ADDITIVE EITHER, and the report it flips is one that ALREADY scanned with a policy.**
+`scannedUnder` (§2) is a new optional key, but the clause beside it reads that key's ABSENCE as the EMPTY
+deny set. So a report produced by any pre-⟨0.33⟩ engine — including one scanned under the very policy the
+gate now holds — carries no record of the question its peek was put, and a gate meeting it over a class
+marked `peeked: true` (without `judgedElsewhere: true`) answers `ok: false`, `incomplete: true`, exit 2.
+It fails CLOSED, which is the direction the rung exists for: the hole it closes was a definite answer to a
+question nobody asked, on the `gate --report` supply-chain route, past every ⟨0.32⟩ control because the
+class really was read. The cost is bounded to exactly those reports — under ⟨0.29⟩'s bound a class reaches
+`peeked: true` only when the PRODUCING scan held a deny rule, so `peeked: true` beside no `scannedUnder`
+identifies a pre-rung producer precisely, and a report that peeked nothing never fires at all.
+**The remedy is ⟨0.32⟩'s made exact: RE-SCAN UNDER THE SAME POLICY** — the same one, not *a* policy, which
+is the loose reading that produced this hole, because the operator who hits it did scan with a policy.
+**0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
 `CANDOR_WORKSPACE_CHAIN`) so a CHAINED consumer's cross-package interface/protocol/trait dispatch resolves to
