@@ -12492,6 +12492,449 @@ printf '%s' "$P69_OUT"
 [ "$P69J_BAD" = 3 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 true
 
+
+# ====================================================================================================
+# PART 70 — `whatif` WITHDRAWS `ok` FOR EVERY CAUSE THE GATE REFUSES ON (SPEC §3.1 ⟨0.24⟩)   [TIER 2]
+# ====================================================================================================
+#
+# THE MUST IS ALREADY IN THE DOCUMENT — nothing here is a new rung, which is the whole reason this is a
+# PART and not a clause. SPEC §3.1 ⟨0.24⟩: *"`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not
+# answer `true`, and it does not answer `false` either"*, and, two clauses down, *"THE SAME RULE BINDS
+# EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later sibling. `0075987`
+# ruled it for `whatif` and I scoped it to `whatif`, which is the eighth time this document has been
+# scoped to the verb its defect was found in."* The law itself is a RELATION over BYTES rather than a
+# list of causes: *"AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER
+# THE SAME BYTES."*
+#
+# ⟨0.24⟩ established it over `unanalyzed`. THREE further causes of incompleteness have been added since,
+# and every one of them was written as an amendment that re-enumerates the siblings BY HAND:
+#
+#     ⟨0.30⟩  a non-empty `outOfScope`            "AND THE ADVISORY VERBS FOLLOW IT"
+#     ⟨0.32⟩  an unread class (`peeked: false`)   the four-way defect PART 67 was written for
+#     ⟨0.33⟩  cross-policy (`scannedUnder`)       "This is the fourth cause; `--strict` answers 2
+#                                                  wherever `gate --report` would"
+#
+# Each of those THREE names `unverified` and `fix-gate` — the two that carry `--strict`, and the two
+# whose defect was in front of the author — and none of them names `whatif`. That omission licenses
+# nothing: `whatif` is the verb the law was FIRST ruled for and the one the general clause was
+# generalised AWAY from, so it is bound by the general law rather than by any enumeration. And a FOURTH
+# ⟨0.32⟩ clause settles it in so many words — the one carving the DESCRIPTIVE verbs out of the
+# substitution — *"`ok` is the line … So `gate` and
+# `gate --report` are untouched, and `whatif`, `fix-gate`, `unverified` and `fix` under `--strict` keep
+# refusing over the same bytes (⟨0.24⟩'s 'never LESS sensitive than the gate')"* — where `whatif` is
+# named FIRST. A row was written rather than a clause because the reading was checked before anything
+# was built on it: if the document scoped `whatif` OUT of the three later causes this part would be
+# asserting a rung nobody has ruled.
+#
+# THE SHAPE IS NOT THE REFUSAL'S, AND THAT IS THE POINT OF THE CONTROLS. ⟨0.24⟩ is explicit: the field
+# is OMITTED, `incomplete: true` takes its place, and *"the `affected` and `violations` arrays still
+# ship: a partial answer that says it is partial is worth more than a refusal, and `whatif` is consulted
+# BEFORE an edit, where the alternative is the operator guessing."* It is *"deliberately NOT the refusal
+# document's shape (`ok: false` + `refused: true`, §3.1): there, `ok: false` is TRUE — the gate did not
+# pass — whereas here neither value is. A shape is copied for its reasoning, not for its familiarity."*
+# So the cells assert an ANSWER with its `ok` withdrawn, never a refusal: `affected` non-empty,
+# `violations` non-empty, no `refused`, and an exit that is not 2. `whatif` has no `--strict` and the
+# document pins no exit for it — the exit cell is a GUARD on the direction of the fix, not a defect
+# cell, and it is green four-way today.
+#
+# MEASURED AT HEAD, 2026-08-26, and the premise this part was commissioned on turned out to be WRONG in
+# two of its four cells — which is why each CAUSE is scored separately rather than one verdict per
+# engine. Over this part's own fixtures (`gate --report` answers 2 on every cause, on every engine):
+#
+#                       ⟨0.30⟩ outOfScope   ⟨0.32⟩ unread class   ⟨0.33⟩ cross-policy
+#     candor-java       ok withdrawn OK     ok withdrawn OK       ok withdrawn OK
+#     candor-scan       ok withdrawn OK     ok withdrawn OK       `ok: false`          <- RED
+#     candor-ts         `ok: false`  RED    `ok: false`  RED      `ok: false`          <- RED
+#     candor-swift      — ships no `whatif` verb at all (`ALL ACTIONS` has nine, and this is not one)
+#
+# candor-scan already carries two of the three; a per-engine verdict would have parked those two behind
+# one SKIP and stopped watching them, which is the un-ship hazard `skip_ratchet.py` exists for arriving
+# through the granularity of the row rather than through its absence.
+#
+# THE FIXTURE: TWO TREES PER ENGINE, FOUR REPORTS, and the analysed code is byte-identical across all
+# four. Tree A holds one analysed function performing `Fs` (`load`) and its caller (`top`), plus ONE
+# file in an EXCLUDED class that runs a subprocess — a `build.rs`, an uncompiled `.java`, a shipped
+# `dist/` CJS module, an SPM `Tests/` helper. It is scanned THREE times and the only thing that differs
+# is the question the producer's peek was put:
+#
+#     A, no policy          -> `excluded[].peeked: false`                  the ⟨0.32⟩ cause
+#     A, `deny Net`         -> `peeked: true`, `outOfScope: []`,           the ⟨0.33⟩ cause, gated
+#                              `scannedUnder: {deny:["deny Net"]}`         under `deny Exec`
+#     A, `deny Exec`        -> `outOfScope` names the excluded `Exec`      the ⟨0.30⟩ cause
+#     D, `deny Exec`        -> `excluded: []` — nothing was left unread    THE CONTROL
+#
+# Tree D is tree A with the excluded file simply ABSENT, never with a key declaring it absent, so the
+# control is a report the engine had no reason to hedge over. The three cause reports and the control
+# analyse the SAME two functions, which `ck70` checks: an engine cannot pass a cause cell by having
+# analysed something different.
+#
+# THE OVER-CHARGE CONTROL IS WRITTEN FIRST AND IS THE DELIVERABLE. An implementation that withdraws `ok`
+# UNCONDITIONALLY passes all three cause cells while deleting the verb's answer, and that is the
+# direction a fabrication-fix fails in — measured four times in this project. So the control demands the
+# ORDINARY answer over the complete report, in BOTH polarities, because one polarity is not an answer:
+#
+#     whatif <load> Exec  over D under `deny Exec`  ->  `ok: false`, `violations` names load AND top
+#     whatif <load> Net   over D under `deny Exec`  ->  `ok: true`,  `violations` EMPTY
+#
+# The second is the sharper one: an engine that answers `ok: false` to everything satisfies the first
+# cell and the three cause cells above it. Both also assert `incomplete` is ABSENT over the control, so
+# an engine cannot hedge its way through them either. The controls run EVEN WHEN THE CAUSE CELLS SKIP —
+# deliberately, and it is the one place this part departs from PART 69's all-or-nothing row: a port that
+# lands the withdrawal by deleting `ok` outright reddens the control on the same commit that would
+# otherwise have quietly turned three SKIPs into three passes.
+#
+# THE SKIPS ARE PROBED, NEVER DECLARED, and the probe is STRICTLY WEAKER than the cell — which is the
+# only construction that leaves a skipped cell with teeth. The probe asks: does this engine's `whatif`
+# emit an `incomplete` KEY over this report at all? An engine that has not ported the cause emits
+# neither the key nor the withdrawal and SKIPS. An engine that emits `incomplete: true` and leaves
+# `ok: false` standing beside it is SCORED and FAILS — the half-ported shape, and it is the FAIL-OPEN
+# half, exactly as PART 69 scores an engine that ships the producer half and not the consumer half. A
+# probe that simply asked "would the cell pass?" would be a row that cannot fail, which is what a false
+# all-clear looks like here.
+#
+# THE VERB PROBE IS THE SAME CONSTRUCTION ONE LEVEL OUT. §3.1/§3.2 queries are SHOULD and candor-swift
+# ships a documented SUBSET (`path`/`tour`/`gains`/`fix`/`fix-gate`/`unverified`/`privacy-manifest`/
+# `gate`/`parsepolicy`); driven with `whatif` it reads the verb as a scan TARGET and refuses at exit 2
+# with an `unanalyzed` document. So the row asks for a `whatif` DOCUMENT over the control report — an
+# object carrying `affected` — and skips the engine when it does not get one. Declared instead, that
+# exclusion would go stale in silence on the day swift gains the verb; probed, the row starts asserting
+# on that commit with no edit here.
+#
+# FALSIFIED AGAINST TODAY'S UNMODIFIED BINARIES, not against a mutant, which is unusually cheap here
+# because three engines are non-conformant at HEAD. With the skip probes REMOVED (every cell forced to
+# score) the part prints, on candor-scan 0.32.1 / candor-java 0.32.1 / candor-ts 0.32.1 built at the
+# ⟨0.33⟩ declaration:
+#
+#     java   outOfScope=OK        unread-class=OK        cross-policy=OK
+#     rust   outOfScope=OK        unread-class=OK        cross-policy=FAIL `ok` is PRESENT (false)
+#     ts     outOfScope=FAIL …    unread-class=FAIL …    cross-policy=FAIL `ok` is PRESENT (false)
+#
+# — four RED cells over unmodified code, with `gate --report` answering 2 on all nine and both controls
+# green on all three engines, so the controls are not what moved. That is the relation this part exists
+# for, seen from the failing side.
+#
+# THE TWO CELLS THAT CANNOT BE FALSIFIED THAT WAY GET A MUTANT EACH, because a cell nothing has ever
+# made fail is a cell asserting whatever it happens to read. Both are `CANDOR_QUERY_BIN` shims over
+# candor-scan that touch `whatif` documents ONLY, and both are removed:
+#
+#   · DELETE `ok` UNCONDITIONALLY — the over-charge, the direction a fabrication-fix fails in.
+#     `control: violating=FAIL … clean=FAIL `ok` is ABSENT over a COMPLETE report`, WHILE that engine's
+#     cross-policy cause cell stayed parked at SKIP. That pairing is the point: the parking cannot be
+#     used to smuggle in a fix that deletes the verb.
+#   · ADD `incomplete: true` AND LEAVE `ok` STANDING — the half-ported shape, and the fail-open half.
+#     rust's cross-policy cell moved SKIP -> `FAIL ok is PRESENT (false)`, which is the property the
+#     probe is built on: it is strictly WEAKER than the cell, so it parks the unported engine and
+#     scores the half-ported one.
+p70() {   # <engine> <outOfScope> <unread> <cross> <ctl-violating> <ctl-clean> <gate exits> <whatif exits>
+  P70_OUT="$P70_OUT  $1  outOfScope=$2 unread-class=$3 cross-policy=$4   control: violating=$5 clean=$6   (gate $7 · whatif exit $8)
+"
+  for P70_T in "$2" "$3" "$4" "$5" "$6"; do
+    case "$P70_T" in
+      OK|SKIP) ;;
+      *) P70_BAD=1; rc=1 ;;
+    esac
+  done
+  case "$5$6" in
+    *FAIL*) P70_OUT="$P70_OUT         THE OVER-CHARGE CONTROL MOVED — this report left NOTHING unread (\`excluded: []\`), so \`whatif\` owes it an ordinary answer with \`ok\` present. An engine that withdraws \`ok\` unconditionally passes all three cause cells beside this one while DELETING the verb, which is the direction a fabrication-fix fails in. Both polarities are asserted on purpose: an engine answering \`ok: false\` to everything satisfies the violating cell alone
+" ;;
+  esac
+  case "$2$3$4" in
+    *FAIL*) P70_OUT="$P70_OUT         THE GATE REFUSED AND \`whatif\` ANSWERED OVER THE SAME BYTES — SPEC §3.1 ⟨0.24⟩, the general law, not one of the causes: an advisory verb may be LESS certain than the gate, never MORE. \`whatif\` is the verb ⟨0.24⟩ ruled it for FIRST; ⟨0.30⟩, ⟨0.32⟩ and ⟨0.33⟩ each re-enumerated \`unverified\`/\`fix-gate\` by hand and none of them re-named it. Find where THIS engine unions its report-completeness arms for the \`--strict\` siblings (java \`ReportCompleteness.incomplete()\`, ts \`advisoryAnswer\`) — those already carry all four causes, four-way, since PARTs 67 and 69 — and give \`whatif\` the SAME union rather than a second one beside it. \`ok\` is OMITTED, never \`false\`: on an advisory verb \`false\` asserts a hole the analysis never found
+" ;;
+  esac
+}
+# THE CELL CHECKER — one token per cell, so four engines are scored by one implementation. Prints
+# NOVERB (no `whatif` here), SKIP (probed: no `incomplete` key, i.e. the cause is unported), OK, or
+# FAIL with what was wrong. The probe and the assertion live in the same place ON PURPOSE, because the
+# thing that makes the skip safe is that the probe is STRICTLY WEAKER than the assertion, and that is
+# only checkable if both are written down together.
+w70() { python3 -c '
+import json, sys
+mode, path, wexit, gexit = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+try:
+    d = json.load(open(path))
+except Exception:
+    d = None
+if not isinstance(d, dict) or "affected" not in d:
+    print("NOVERB"); raise SystemExit
+bad = []
+if mode == "cause":
+    # The RELATION is measured, never hard-coded: the gate must be refusing over these same bytes, or
+    # this cell is comparing the verb against a number the thing it must track no longer says.
+    if gexit != "2":
+        print("FAIL `gate --report` answered " + gexit + ", not 2, over the SAME report — the reference this cell compares against MOVED. That is PART 62/67/69 territory: fix the gate cause first, because with the gate answering there is nothing for the verb to be less certain than")
+        raise SystemExit
+    if "incomplete" not in d:
+        print("SKIP"); raise SystemExit
+    if "ok" in d:
+        bad.append("`ok` is PRESENT (" + json.dumps(d["ok"]) + ") — it must be OMITTED")
+    if d.get("incomplete") is not True:
+        bad.append("`incomplete` is " + json.dumps(d.get("incomplete")) + ", not true")
+    if d.get("refused") is True:
+        bad.append("`refused: true` — the REFUSAL document, and this is deliberately NOT that shape")
+    if wexit == "2":
+        bad.append("exit 2 — a refusal. `whatif` is consulted BEFORE an edit and a partial answer beats one")
+    if not isinstance(d.get("affected"), list) or not d["affected"]:
+        bad.append("`affected` is missing or empty — it still ships, withdrawn `ok` or not")
+    if not isinstance(d.get("violations"), list) or not d["violations"]:
+        bad.append("`violations` is missing or empty over a hypothetical this policy DENIES — the partial answer was deleted along with the claim")
+else:
+    want = (mode == "ctl-clean")
+    if gexit != "0":
+        bad.append("`gate --report` answered " + gexit + " over the CONTROL report, which left nothing unread — every cell beside it is vacuous if this one refuses")
+    if "ok" not in d:
+        bad.append("`ok` is ABSENT over a COMPLETE report — THE OVER-CHARGE: withdrawing it unconditionally passes every cause cell while deleting the answer")
+    elif d["ok"] is not want:
+        bad.append("`ok` is " + json.dumps(d["ok"]) + ", want " + json.dumps(want))
+    if "incomplete" in d:
+        bad.append("`incomplete` is present over a report that left nothing unread")
+    if not d.get("affected"):
+        bad.append("`affected` is empty — the blast radius is two functions in this fixture")
+    if want and d.get("violations"):
+        bad.append("`violations` is non-empty over a hypothetical the policy does NOT deny: " + json.dumps(d["violations"]))
+    if not want and not d.get("violations"):
+        bad.append("`violations` is empty over a hypothetical the policy DENIES")
+print("OK" if not bad else "FAIL " + "; ".join(bad))
+' "$@"; }
+# THE INSTRUMENT CHECK, and it FAILS rather than skips: a fixture that cannot ask this part's question
+# must redden, because a vacuous green here is the same false all-clear the part is about. Six ways it
+# goes vacuous, each met while this part was written — a cause report that does not actually carry its
+# cause; a control that is itself incomplete (a second copy of a cause, not a control); a control whose
+# peek WAS put a question (⟨0.33⟩ would then fire on it); an empty `functions`; the four reports
+# disagreeing about what was analysed, which would let an engine pass a cause cell over other code; and
+# a function name this engine's reports do not carry, which is the one that goes vacuous through the
+# SKIP side — `whatif` about nobody answers nothing, and the verb probe reads nothing as NO VERB.
+ck70() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+UNREAD, NET, SCOPE, CTL = (load(p) for p in sys.argv[1:5])
+def unread(d):
+    return [e.get("class") for e in (d.get("excluded") or [])
+            if e.get("peeked") is not True and e.get("judgedElsewhere") is not True]
+def peeked(d):
+    return [e.get("class") for e in (d.get("excluded") or []) if e.get("peeked") is True]
+if not unread(UNREAD):
+    sys.exit("     INSTRUMENT: the no-policy report " + sys.argv[1] + " declares no unpeeked, "
+             "non-judgedElsewhere class — the ⟨0.32⟩ cell would be vacuous")
+if not peeked(NET):
+    sys.exit("     INSTRUMENT: the deny-Net report " + sys.argv[2] + " reports no `peeked: true` class "
+             "— the ⟨0.33⟩ cell only speaks about a class that WAS read")
+if NET.get("outOfScope") != []:
+    sys.exit("     INSTRUMENT: the deny-Net report carries outOfScope="
+             + json.dumps(NET.get("outOfScope")) + ", not [] — the ⟨0.30⟩ cause would be firing there "
+             "too and the ⟨0.33⟩ cell would score whichever dominates")
+if not isinstance(NET.get("scannedUnder"), dict) or NET["scannedUnder"].get("deny") != ["deny Net"]:
+    sys.exit("     INSTRUMENT: the deny-Net report records scannedUnder="
+             + json.dumps(NET.get("scannedUnder")) + ", not the deny set it was scanned under — the "
+             "⟨0.33⟩ cell needs a producer whose question is ON THE DOCUMENT (PART 69 pins this key)")
+if not SCOPE.get("outOfScope"):
+    sys.exit("     INSTRUMENT: the deny-Exec report " + sys.argv[3] + " carries an EMPTY or absent "
+             "`outOfScope` — the peek did not reach the excluded subprocess and the ⟨0.30⟩ cell is vacuous")
+if unread(CTL) or peeked(CTL) or (CTL.get("excluded") or []):
+    sys.exit("     INSTRUMENT: the control report " + sys.argv[4] + " declares excluded="
+             + json.dumps(CTL.get("excluded")) + " — a control must have left NOTHING unread and had "
+             "NOTHING peeked, or it is a fourth copy of the row")
+if CTL.get("outOfScope"):
+    sys.exit("     INSTRUMENT: the control report carries a non-empty `outOfScope` — it is incomplete, "
+             "so it cannot be the over-charge control")
+sets = []
+for tag, d in (("no-policy", UNREAD), ("deny-Net", NET), ("deny-Exec", SCOPE), ("control", CTL)):
+    fns = sorted(f.get("fn") for f in (d.get("functions") or []))
+    if not fns:
+        sys.exit("     INSTRUMENT: the " + tag + " report judged NOTHING — `whatif` over an empty "
+                 "universe answers about nothing and every cell passes without asking")
+    sets.append((tag, fns))
+if len({tuple(f) for _, f in sets}) != 1:
+    sys.exit("     INSTRUMENT: the four reports analysed DIFFERENT function sets "
+             + json.dumps({t: f for t, f in sets}) + " — the trees must differ only in the EXCLUDED "
+             "file, or a cause cell is scored over other code")
+# AND THE NAME THIS ROW ASKS ABOUT MUST BE IN THEM. Without this, a wrong per-engine spelling makes
+# `whatif` answer nothing, the verb probe reads that as NO VERB, and the engine skips FOREVER with a
+# reason that is false — the silent-vacuity shape PART 37 row (e) shipped, arriving through the SKIP
+# side rather than the PASS side.
+if sys.argv[5] not in sets[0][1]:
+    sys.exit("     INSTRUMENT: `" + sys.argv[5] + "` is not a function of these reports "
+             + json.dumps(sets[0][1]) + " — every `whatif` below would answer about nothing, and the "
+             "verb probe would report that as this engine having no `whatif` at all")
+' "$1" "$2" "$3" "$4" "$5"; }
+# THE ROW DRIVER. Every engine spells the same five invocations, so the loop lives here once rather
+# than four times: three cause cells (each with its `gate --report` reference) and two controls.
+P70_BAD=0; P70_OUT=""
+P70="$W/p70"; mkdir -p "$P70"
+printf 'deny Net\n'  > "$P70/net.candor"
+printf 'deny Exec\n' > "$P70/exec.candor"
+# <engine label> <fn> <report:no-policy> <report:deny-Net> <report:deny-Exec> <report:control> <cmd…>
+p70run() {
+  P70L="$1"; P70FN="$2"; P70RU="$3"; P70RN="$4"; P70RS="$5"; P70RC="$6"; shift 6
+  if ! ck70 "$P70RU" "$P70RN" "$P70RS" "$P70RC" "$P70FN"; then P70_BAD=1; rc=1; return; fi
+  "$@" whatif "$P70FN" Exec --report "$P70RC" --policy "$P70/exec.candor" --json > "$P70/probe.json" 2>/dev/null
+  if [ "$(w70 ctl-violating "$P70/probe.json" 0 0)" = NOVERB ]; then
+    P70_OUT="$P70_OUT  $P70L  SKIP — this engine exposes no \`whatif\` verb (probed, not declared)
+"
+    return
+  fi
+  "$@" gate --report "$P70RS" --policy "$P70/exec.candor" >/dev/null 2>&1; P70GS=$?
+  "$@" gate --report "$P70RU" --policy "$P70/exec.candor" >/dev/null 2>&1; P70GU=$?
+  "$@" gate --report "$P70RN" --policy "$P70/exec.candor" >/dev/null 2>&1; P70GN=$?
+  "$@" gate --report "$P70RC" --policy "$P70/exec.candor" >/dev/null 2>&1; P70GC=$?
+  "$@" whatif "$P70FN" Exec --report "$P70RS" --policy "$P70/exec.candor" --json > "$P70/s.json" 2>/dev/null; P70WS=$?
+  "$@" whatif "$P70FN" Exec --report "$P70RU" --policy "$P70/exec.candor" --json > "$P70/u.json" 2>/dev/null; P70WU=$?
+  "$@" whatif "$P70FN" Exec --report "$P70RN" --policy "$P70/exec.candor" --json > "$P70/n.json" 2>/dev/null; P70WN=$?
+  "$@" whatif "$P70FN" Exec --report "$P70RC" --policy "$P70/exec.candor" --json > "$P70/cv.json" 2>/dev/null; P70WCV=$?
+  "$@" whatif "$P70FN" Net  --report "$P70RC" --policy "$P70/exec.candor" --json > "$P70/cc.json" 2>/dev/null; P70WCC=$?
+  P70S="$(w70 cause "$P70/s.json" "$P70WS" "$P70GS")"
+  P70U="$(w70 cause "$P70/u.json" "$P70WU" "$P70GU")"
+  P70N="$(w70 cause "$P70/n.json" "$P70WN" "$P70GN")"
+  P70CV="$(w70 ctl-violating "$P70/cv.json" "$P70WCV" "$P70GC")"
+  P70CC="$(w70 ctl-clean     "$P70/cc.json" "$P70WCC" "$P70GC")"
+  p70 "$P70L" "$P70S" "$P70U" "$P70N" "$P70CV" "$P70CC" \
+      "$P70GS/$P70GU/$P70GN/$P70GC" "$P70WS/$P70WU/$P70WN/$P70WCV/$P70WCC"
+  # One line per SKIPPED cell, in the em-dash form the ratchet counts: a cause that un-ships must RISE
+  # against `skip-baseline.json` rather than reappear as a fresh, unremarkable line.
+  [ "$P70S" = SKIP ] && P70_OUT="$P70_OUT  $P70L  SKIP — ⟨0.30⟩ outOfScope: \`whatif\` emits no \`incomplete\` key over this report (probed, not declared)
+"
+  [ "$P70U" = SKIP ] && P70_OUT="$P70_OUT  $P70L  SKIP — ⟨0.32⟩ unread class: \`whatif\` emits no \`incomplete\` key over this report (probed, not declared)
+"
+  [ "$P70N" = SKIP ] && P70_OUT="$P70_OUT  $P70L  SKIP — ⟨0.33⟩ cross-policy: \`whatif\` emits no \`incomplete\` key over this report (probed, not declared)
+"
+  true
+}
+
+# ── THE RUST ROW ─────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `build-script`: `build.rs` runs on every `cargo build` and the scan does not
+# judge it as crate runtime behaviour, but candor-scan's peek READS it under a policy.
+P70R="$P70/rust"; mkdir -p "$P70R"
+p70r_mk() {   # <dir> <build.rs body or NONE>
+  mkdir -p "$1/src"
+  printf '[package]\nname = "p70"\nversion = "0.1.0"\nedition = "2021"\n' > "$1/Cargo.toml"
+  printf 'pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }\npub fn top() -> String { load() }\n' > "$1/src/lib.rs"
+  [ "$2" = NONE ] || printf 'fn main() { let _ = std::process::Command::new("id").status(); }\n' > "$1/build.rs"
+}
+p70r_mk "$P70R/A" EXEC
+p70r_mk "$P70R/D" NONE
+# Reports are written OUTSIDE the scanned tree: an `--out` prefix inside it makes the second scan of
+# the pair read the first one's report as a file of the project, and the four documents this row
+# compares would no longer be over identical bytes.
+"$SCAN" "$P70R/A" --out "$P70R/oU"                                >/dev/null 2>&1
+"$SCAN" "$P70R/A" --out "$P70R/oN" --policy "$P70/net.candor"     >/dev/null 2>&1
+"$SCAN" "$P70R/A" --out "$P70R/oS" --policy "$P70/exec.candor"    >/dev/null 2>&1
+"$SCAN" "$P70R/D" --out "$P70R/oC" --policy "$P70/exec.candor"    >/dev/null 2>&1
+# Resolved by GLOB, never by a guessed `oU.<crate>.scan.json`: a path that does not exist makes every
+# verb REFUSE at exit 2, which passes the cause cells while measuring nothing (PART 62 was bitten by
+# exactly that, and caught it only through a byte-equality check beside the exit codes).
+p70r_pick() { p70r_hit=""; for f in "$1".*.scan.json; do case "$f" in *callgraph*|*hierarchy*) continue;; esac; [ -f "$f" ] && p70r_hit="$f"; done; }
+p70r_pick "$P70R/oU"; p70r_U="$p70r_hit"
+p70r_pick "$P70R/oN"; p70r_N="$p70r_hit"
+p70r_pick "$P70R/oS"; p70r_S="$p70r_hit"
+p70r_pick "$P70R/oC"; p70r_C="$p70r_hit"
+if [ -n "$p70r_U" ] && [ -n "$p70r_N" ] && [ -n "$p70r_S" ] && [ -n "$p70r_C" ]; then
+  p70run "rust " load "$p70r_U" "$p70r_N" "$p70r_S" "$p70r_C" "$QUERY"
+else
+  P70_OUT="$P70_OUT  rust   INSTRUMENT — candor-scan produced no report for one of the four states
+"
+  P70_BAD=1; rc=1
+fi
+
+# ── THE JAVA ROW ─────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `source-without-class`: a JVM source with no compiled class under the scanned
+# path, which ⟨0.32⟩'s peek COMPILES and analyses, so under a policy it comes back `peeked: true`. Its
+# only effect is `Exec`, and the argument is `id` rather than a URL so no `Net` charge blurs the two
+# policies together.
+P70J="$P70/java"; P70J_SKIP=0; mkdir -p "$P70J"
+p70j_mk() {   # <dir> <excluded-source-or-NONE>
+  mkdir -p "$1/build/classes" "$1/src/com/x"
+  printf 'package com.x;\npublic class Ok {\n  public String load() throws Exception { return java.nio.file.Files.readString(java.nio.file.Path.of("/etc/hosts")); }\n  public String top() throws Exception { return load(); }\n}\n' > "$1/src/com/x/Ok.java"
+  javac -d "$1/build/classes" "$1/src/com/x/Ok.java" >/dev/null 2>&1 || return 1
+  # The analysed source is REMOVED once compiled: left behind it is itself a `source-without-class`
+  # member, so the exclusion class would describe two files instead of the one under test.
+  rm -f "$1/src/com/x/Ok.java"
+  if [ "$2" = NONE ]; then rm -rf "$1/src"
+  else printf 'package com.x;\npublic class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("id"); } }\n' > "$1/src/com/x/Deploy.java"; fi
+  return 0
+}
+p70j_mk "$P70J/A" EXEC || P70J_SKIP=1
+p70j_mk "$P70J/D" NONE || P70J_SKIP=1
+if [ "$P70J_SKIP" = 0 ]; then
+  java -jar "$JAR" "$P70J/A" --json "$P70J/oU.json"                             >/dev/null 2>&1
+  java -jar "$JAR" "$P70J/A" --policy "$P70/net.candor"  --json "$P70J/oN.json" >/dev/null 2>&1
+  java -jar "$JAR" "$P70J/A" --policy "$P70/exec.candor" --json "$P70J/oS.json" >/dev/null 2>&1
+  java -jar "$JAR" "$P70J/D" --policy "$P70/exec.candor" --json "$P70J/oC.json" >/dev/null 2>&1
+  p70run "java " com.x.Ok.load "$P70J/oU.json" "$P70J/oN.json" "$P70J/oS.json" "$P70J/oC.json" java -jar "$JAR"
+fi
+
+# ── THE TS ROW ───────────────────────────────────────────────────────────────────────────────────
+# The excluded class is `outside-the-tsconfig-program`: a shipped `dist/` CJS module the program does
+# not include, which candor-ts's peek READS under a policy.
+P70T="$P70/ts"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P70T"
+  p70t_mk() {   # <dir> <dist body or NONE>
+    mkdir -p "$1/src"
+    printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$1/tsconfig.json"
+    printf 'import * as fs from "fs"\nexport function load(): string { return fs.readFileSync("/etc/hosts", "utf8") }\nexport function top(): string { return load() }\n' > "$1/src/a.ts"
+    if [ "$2" != NONE ]; then mkdir -p "$1/dist"; printf 'const cp = require("child_process"); module.exports = function go() { cp.execSync("id") }\n' > "$1/dist/shipped.js"; fi
+  }
+  p70t_mk "$P70T/A" EXEC
+  p70t_mk "$P70T/D" NONE
+  node "$TS_DIR/scan.mjs" "$P70T/A" --out "$P70T/oU"                             >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P70T/A" --out "$P70T/oN" --policy "$P70/net.candor"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P70T/A" --out "$P70T/oS" --policy "$P70/exec.candor" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P70T/D" --out "$P70T/oC" --policy "$P70/exec.candor" >/dev/null 2>&1
+  p70run "ts   " src.a.load "$P70T/oU.json" "$P70T/oN.json" "$P70T/oS.json" "$P70T/oC.json" node "$TS_DIR/query.mjs"
+else
+  P70_OUT="$P70_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+
+# ── THE SWIFT ROW ────────────────────────────────────────────────────────────────────────────────
+# The excluded classes are `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift,
+# which every `swift build` runs). The control tree is a BARE directory of `.swift` files with no
+# Package.swift: `Classifier.isHarnessPath` treats the manifest as an excluded class UNCONDITIONALLY
+# whenever a deny rule stands, so an SPM package can never be the `excluded: []` control — the same
+# fixture finding PART 69's tree D records, applied here from the start rather than discovered.
+P70S_DIR="$P70/swift"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P70S_DIR/A/Sources/S" "$P70S_DIR/A/Tests" "$P70S_DIR/D"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P70S_DIR/A/Package.swift"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\npublic func top() -> String { load() }\n' > "$P70S_DIR/A/Sources/S/a.swift"
+  printf 'import Foundation\npublic func helper() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }\n' > "$P70S_DIR/A/Tests/Helper.swift"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\npublic func top() -> String { load() }\n' > "$P70S_DIR/D/a.swift"
+  ( cd "$P70S_DIR/A" && env -u CANDOR_CONFIG "$SW_BIN" . --out "$P70S_DIR/oU"                             >/dev/null 2>&1 )
+  ( cd "$P70S_DIR/A" && env -u CANDOR_CONFIG "$SW_BIN" . --out "$P70S_DIR/oN" --policy "$P70/net.candor"  >/dev/null 2>&1 )
+  ( cd "$P70S_DIR/A" && env -u CANDOR_CONFIG "$SW_BIN" . --out "$P70S_DIR/oS" --policy "$P70/exec.candor" >/dev/null 2>&1 )
+  ( cd "$P70S_DIR/D" && env -u CANDOR_CONFIG "$SW_BIN" . --out "$P70S_DIR/oC" --policy "$P70/exec.candor" >/dev/null 2>&1 )
+  p70s_pick() { p70s_hit=""; for f in "$1".*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p70s_hit="$f"; done; }
+  p70s_pick "$P70S_DIR/oU"; p70s_U="$p70s_hit"
+  p70s_pick "$P70S_DIR/oN"; p70s_N="$p70s_hit"
+  p70s_pick "$P70S_DIR/oS"; p70s_S="$p70s_hit"
+  p70s_pick "$P70S_DIR/oC"; p70s_C="$p70s_hit"
+  if [ -n "$p70s_U" ] && [ -n "$p70s_N" ] && [ -n "$p70s_S" ] && [ -n "$p70s_C" ]; then
+    p70run "swift" load "$p70s_U" "$p70s_N" "$p70s_S" "$p70s_C" env -u CANDOR_CONFIG "$SW_BIN"
+  else
+    P70_OUT="$P70_OUT  swift  INSTRUMENT — candor-swift produced no report for one of the four states
+"
+    P70_BAD=1; rc=1
+  fi
+else
+  P70_OUT="$P70_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P70"
+# ENGINES: rust java ts swift
+# CONTROLS: P70CV P70CC ck70 w70 — P70CV/P70CC: the two over-charge controls, driven over a report whose `excluded` is EMPTY, in BOTH polarities. `whatif <fn> Exec` under `deny Exec` must answer `ok: false` WITH a non-empty `violations`, and `whatif <fn> Net` under the same policy must answer `ok: true` with an EMPTY one; both must carry no `incomplete`. Without them an engine that withdraws `ok` unconditionally — or answers `ok: false` to everything — scores three passes on the cause cells while deleting the verb, which is the direction a fabrication-fix fails in and is measured four times in this project. They run even when the cause cells SKIP, so a port that lands the withdrawal by deleting `ok` reddens on the same commit. ck70 — the instrument check, which FAILS (never skips) a fixture that cannot ask the question: a cause report not carrying its cause, a control that is itself incomplete or whose peek WAS put a question, an empty `functions`, the four reports disagreeing about what was analysed, or a function name these reports do not carry — that last one guards the SKIP side, where a wrong per-engine spelling makes `whatif` answer nothing and the verb probe reports it as this engine having no `whatif`. w70 — carries the `gate --report` reference INTO every cell: a cause cell whose gate does not answer 2 FAILS rather than scoring the verb against a hard-coded number, because the MUST is a relation between two readers of the same bytes
+# ⟨0.33⟩ THE SKIPS ARE PROBED, NEVER DECLARED, and the probe is strictly WEAKER than the cell it guards: it asks whether `whatif` emits an `incomplete` KEY at all, while the cell asserts the withdrawal of `ok` beside it. An engine that has ported neither SKIPS; one that emits the key and leaves `ok: false` standing is SCORED and FAILS, which is the fail-open half — the same rule PART 69 applies to an engine shipping the producer half without the consumer half. The verb probe one level out is the same construction: the row asks for a `whatif` DOCUMENT over the control report and skips the engine that does not produce one, so candor-swift's documented verb subset costs a stale declaration nobody re-reads instead of a line here
+# ⟨0.33⟩ A MEASURED GAP THIS PART DELIBERATELY DOES NOT PIN — the MANIFEST beside the withdrawal. ⟨0.24⟩ writes the shape as *"`incomplete: true` plus the `unanalyzed` manifest take its place"*, and over these three later causes candor-java emits `incomplete: true` and NOTHING ELSE: no `outOfScope`, no `excluded`, no name for the class it could not see. MEASURED, not assumed. It is not asserted here because the document pins no key for it on this verb — ⟨0.24⟩'s own standing rule is that "a MUST that says 'disclose X' without saying what X is called is four independent guesses", and inventing one in a conformance row is exactly that, from the instrument rather than from the spec. Written down rather than left as a code comment, because a limitation carried as a comment reads as CONSIDERED and stops being measured
+echo "PART 70 — \`whatif\` withdraws \`ok\` for every cause the gate refuses on (SPEC §3.1 ⟨0.24⟩)"
+printf '%s' "$P70_OUT"
+[ "$P70_BAD" = 0 ] && echo "  -> MATCH — over a report the gate refuses, \`whatif\` omits \`ok\` and still ships \`affected\` and \`violations\`; over a complete one it answers ordinarily, in both polarities"
+[ "$P70_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P70J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
+true
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

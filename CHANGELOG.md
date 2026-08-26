@@ -44,10 +44,16 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   pre-rung producer precisely (under the ⟨0.29⟩ bound a class reaches `peeked: true` only when the
   producing scan held a deny rule) and the remedy is exact. §3.1 route equality holds BY CONSTRUCTION:
   on `scan --policy P` the producer and the consumer are one run, so `P ⊆ P` and the rule cannot fire.
-  Conformance PART 69, reference-led — candor-java ships it; rust, ts and swift SKIP on a PROBE of their
-  own reports until they port it, so the rows start asserting on the porting commit rather than on an
-  edit here. The floor declaration is NOT moved: `**Version 0.32**` says *all code engines declare
-  0.32*, and that stays true until the three ports land (the bump is the umbrella's `spec-bump.sh`).
+  Conformance PART 69, reference-led — candor-java shipped it first, and candor-scan, candor-ts and
+  candor-swift have since ported it. Each row PROBES that engine's own policy-scanned report for
+  `scannedUnder` rather than reading a list here, so every one started asserting on its porting commit
+  with no edit to `run.sh`; the three baseline entries were then deleted one at a time, each with the
+  measurement that attributed the fall. **The DECLARATION has moved and the FLOOR has not.** SPEC.md's
+  header now reads `**Version 0.33**` and all four code engines print `spec 0.33`; the released floor
+  stays 0.32, because the spec repo tags `vX.Y` when the floor rises and there is no `v0.33`. *These two
+  sentences said the opposite through the declaration bump — that the rung was reference-led and that
+  the header still read 0.32 — which is the same sequencing error the bump made in the MUST ledger: a
+  claim about the current state, written before the commit that changed it, and not re-read after.*
 
 - **`check_agents_drift.py` now sweeps README.md and AGENTS.md for prose spec claims.** Checks 2 and 3
   read one JSON envelope in AGENTS.md and every JSON fence in SPEC.md; nothing ever read README.md, whose

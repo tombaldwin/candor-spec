@@ -940,13 +940,13 @@
    "sha": "6cecfc49675f3a47",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "⟨0.24⟩ **`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not answer `true`, and it does not answer `fa",
-   "status": "pre-ledger"
+   "part": "PART 70 — the row drives `whatif` over an incomplete report on every route that reaches it and asserts `ok` ABSENT beside `incomplete: true`, once per CAUSE. The clause was ruled over `unanalyzed`; ⟨0.30⟩, ⟨0.32⟩ and ⟨0.33⟩ each added a cause and each re-enumerated `unverified`/`fix-gate` by hand without re-naming `whatif`, so this statement is what those three amendments inherit through the general law. It left `pre-ledger` when the part was written rather than when the clause was: a statement classified as 'it predates the gate' is a statement nothing has ever asked, and this one was being violated by two engines at HEAD the day the row landed."
   },
   {
    "sha": "a72d629187cc4e2d",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "So the field is **omitted**, and `incomplete: true` plus the `unanalyzed` manifest take its place. A consumer ",
-   "status": "pre-ledger"
+   "part": "PART 70 — three of this block's four claims are cells: the field is OMITTED (not `false`), `incomplete: true` stands in its place, and the shape is deliberately NOT the refusal document's (`refused` must be absent and the exit must not be 2, asserted beside a non-empty `affected`/`violations`, because a partial answer beats a refusal here). THE FOURTH IS DELIBERATELY NOT ASSERTED and the part says so in its own header: the MANIFEST beside the withdrawal. Over the three later causes candor-java emits `incomplete: true` and names nothing — no `outOfScope`, no `excluded` — and the document pins no key for a manifest on THIS verb, so a row asserting one would be minting a name from the instrument rather than reading it from the spec, which is ⟨0.24⟩'s own 'four independent guesses'. Recorded here rather than left to a reader of the part, because a split classification that lives only in a comment is how a half-exercised clause reads as an exercised one."
   },
   {
    "sha": "fb493d0a76c8c5f1",
