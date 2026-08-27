@@ -13677,6 +13677,411 @@ printf '%s' "$P73_OUT"
 true
 
 
+# ====================================================================================================
+# PART 74 — A THIRD-PARTY LAZY ITERATOR MUST BE CHARGED AT CONSTRUCTION WHEN ITS ITERATION VERB IS
+#           RECEIVER-TYPING-BLOCKED (candor-rust; SPEC §4 "must never report a function as effect-free
+#           when it could not actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE CORPUS FIND, candor-rust only. `walkdir::WalkDir` recursive directory traversal is lazy — the
+# actual `read_dir`+`stat` I/O runs in `IntoIter::next`, driving the iterator — so classify.rs charged
+# `Fs` there. But candor-scan's receiver-typing (`ctor_type`/`resolve_recv_type`) hard-BLOCKS the
+# `.into_iter()` verb everywhere, a guard against fabricating onto a DIFFERENT std type
+# (`Vec::into_iter()` -> `std::vec::IntoIter`) with no per-crate exception for a SAME-crate return like
+# `walkdir::IntoIter`. So no idiomatic usage — a bare `for entry in WalkDir::new(p) { … }`,
+# `.into_iter().count()`, walkdir's own README `.filter_map(|e| e.ok())` form, or an untyped
+# `let it = …into_iter(); it.next()` — ever reached a TYPED `IntoIter` receiver, and `deny Fs` exited 0,
+# `policy ✓`, over code that plainly walks the filesystem. Fixed in candor-rust `e6ac9ee` (parent
+# `8734b87`) by charging at `WalkDir::new` (construction) instead — an ordinary `Expr::Call` needing no
+# receiver typing at all, mirroring the already-modeled `ignore::WalkBuilder::build`/`glob::glob`. Swept
+# for the one other same-shape victim in `19ce144` (`ignore::Walk::new`, a second constructor on the
+# already-modeled crate — the other nine fixes in that commit are a different bug, missing verb
+# spellings, not this construction/iteration split).
+#
+# NOT A CROSS-ENGINE ROW, checked rather than assumed. This is a RUST-SPECIFIC mechanism: candor-rust
+# resolves calls syntactically (`syn`, no real type-checker) and hard-blocks a short list of iterator
+# VERB NAMES to stop a coarse crate rule fabricating onto a std collection's iterator — the exact
+# apparatus that produced this hole. MEASURED against candor-java: `java.nio.file.Files.walk`/`.list`
+# (the JVM's own lazy-Stream directory walk) are charged directly at the PRODUCING call itself
+# (`Candor.java`'s `fsKind`, `case "walk": case "list": … return List.of("read")`), because the JVM
+# bytecode this engine reads names the concrete `java.nio.file.Files.walk` invocation directly — there is
+# no separate "blocked verb on an inferred receiver type" step for java to fall into, so it is not
+# exposed to this MECHANISM (a different claim from "audited for every lazy-iterator shape", which this
+# pass did not attempt). candor-ts resolves through the real TypeScript type-checker rather than a
+# syntactic blocklist, so the same mechanism does not apply there either — not otherwise audited.
+# candor-swift shares candor-rust's syntax-only resolution style (SwiftSyntax, no type-checker) and DOES
+# have a receiver-typing split for iteration (`CallCollector.swift`'s `makeIterator`/`next` edges) — but
+# only for LOCAL `Sequence`/`IteratorProtocol` conformers, not a third-party-package classify table the
+# way candor-rust's `classify(crate_name, path)` works; whether an equivalent third-party SPM package
+# shape exists is UNAUDITED, filed to BACKLOG.md rather than assumed clean.
+#
+# SIX CELLS, MEASURED against candor-rust `8734b87` (immediately before the fix `e6ac9ee`) and at HEAD:
+#
+#   defect-forloop   `for entry in WalkDir::new(".") { … }`. PRE-FIX: `walk` ABSENT from `functions`
+#                     (silently pure — no blind reach either). POST-FIX: `inferred == ["Fs"]`.
+#   defect-count      `WalkDir::new(".").into_iter().count()`. Same pre/post as above — a second,
+#                     independently-idiomatic silent form, not just a rephrasing of the first.
+#   defect-untyped-next  `let mut it = WalkDir::new(".").into_iter(); … it.next() …` with NO type
+#                     annotation on `it`. Same pre/post as above.
+#   ctrl-typed-next   an EXPLICIT `let it: walkdir::IntoIter = …` annotation — the ONE shape the OLD rule
+#                     already caught, because a `syn::Pat::Type` annotation bypasses the receiver-typing
+#                     blocklist. UNCHANGED pre- and post-fix: `inferred == ["Fs"]` on BOTH — proves the
+#                     fix is ADDITIVE (a second charging point), not a relocation that would have left
+#                     this shape newly blind.
+#   ctrl-ignore       `ignore::WalkBuilder::new(".").build()` — the sibling crate ALREADY charged at
+#                     construction before this fix touched anything. UNCHANGED pre- and post-fix:
+#                     `inferred == ["Fs"]` on both — the over-charge control: if this cell had moved, the
+#                     "fix" would have touched the general construction-charge mechanism, not the
+#                     walkdir-specific rule.
+#   ctrl-vec-iter     a plain `std::vec::Vec::into_iter()`/`.next()` chain — the entire reason the
+#                     receiver-typing blocklist exists. UNCHANGED pre- and post-fix: `count_it` ABSENT
+#                     from `functions` both times (a pure fn with no blind reach is omitted entirely, so
+#                     absence IS the pass here, not a `[]` entry). If this cell had GAINED an effect, the
+#                     fix would have widened the blocklist exception rather than narrowing the
+#                     walkdir-specific charge point — the over-charge this row's control exists to catch.
+#
+# THE INSTRUMENT CHECK folds into the assertion itself, as PART 73's does: each cell names the exact
+# expected `inferred` set (or the function's expected absence), so a fixture that stopped exercising its
+# own shape fails the comparison directly rather than passing vacuously.
+ck74() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+want = sys.argv[2]
+if want == "-":
+    print("absent" if not fns else "present:" + ",".join(sorted(fns)))
+else:
+    f = fns.get(want)
+    print(json.dumps(sorted(f.get("inferred") or [])) if f else "absent")
+' "$1" "$2"; }
+p74() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P74_OUT="$P74_OUT  rust   $1  got=$2  OK
+"
+  else
+    P74_OUT="$P74_OUT  rust   $1  got=$2 want=$3  FAIL
+"
+    P74_BAD=1; rc=1
+  fi
+}
+P74_BAD=0; P74_OUT=""
+P74="$W/p74"
+mkdir -p "$P74/forloop/src" "$P74/count/src" "$P74/untypednext/src" "$P74/typednext/src" "$P74/ignorectrl/src" "$P74/veciterctrl/src"
+p74_cargo() { printf '[package]\nname = "%s"\nversion = "0.1.0"\nedition = "2021"\n%s\n' "$2" "$3" > "$1/Cargo.toml"; }
+p74_cargo "$P74/forloop"      p74forloop      '[dependencies]
+walkdir = "2"'
+p74_cargo "$P74/count"        p74count        '[dependencies]
+walkdir = "2"'
+p74_cargo "$P74/untypednext"  p74untypednext  '[dependencies]
+walkdir = "2"'
+p74_cargo "$P74/typednext"    p74typednext    '[dependencies]
+walkdir = "2"'
+p74_cargo "$P74/ignorectrl"   p74ignorectrl   '[dependencies]
+ignore = "0.4"'
+p74_cargo "$P74/veciterctrl"  p74veciterctrl  ''
+printf 'use walkdir::WalkDir;\npub fn walk() -> usize {\n    let mut n = 0;\n    for entry in WalkDir::new(".") {\n        let _ = entry;\n        n += 1;\n    }\n    n\n}\n' > "$P74/forloop/src/lib.rs"
+printf 'use walkdir::WalkDir;\npub fn walk() -> usize {\n    WalkDir::new(".").into_iter().count()\n}\n' > "$P74/count/src/lib.rs"
+printf 'use walkdir::WalkDir;\npub fn walk() -> usize {\n    let mut it = WalkDir::new(".").into_iter();\n    let mut n = 0;\n    while let Some(entry) = it.next() {\n        let _ = entry;\n        n += 1;\n    }\n    n\n}\n' > "$P74/untypednext/src/lib.rs"
+printf 'use walkdir::WalkDir;\npub fn walk() -> usize {\n    let mut it: walkdir::IntoIter = WalkDir::new(".").into_iter();\n    let mut n = 0;\n    while let Some(entry) = it.next() {\n        let _ = entry;\n        n += 1;\n    }\n    n\n}\n' > "$P74/typednext/src/lib.rs"
+printf 'pub fn walk() {\n    let _w = ignore::WalkBuilder::new(".").build();\n}\n' > "$P74/ignorectrl/src/lib.rs"
+printf 'pub fn count_it() -> usize {\n    let v: Vec<i32> = vec![1, 2, 3];\n    let mut it = v.into_iter();\n    let mut n = 0;\n    while let Some(x) = it.next() {\n        n += x as usize;\n    }\n    n\n}\n' > "$P74/veciterctrl/src/lib.rs"
+p74_forloop=$("$SCAN" "$P74/forloop" --json 2>/dev/null | ck74 /dev/stdin walk)
+p74_count=$("$SCAN" "$P74/count" --json 2>/dev/null | ck74 /dev/stdin walk)
+p74_untypednext=$("$SCAN" "$P74/untypednext" --json 2>/dev/null | ck74 /dev/stdin walk)
+p74_typednext=$("$SCAN" "$P74/typednext" --json 2>/dev/null | ck74 /dev/stdin walk)
+p74_ignorectrl=$("$SCAN" "$P74/ignorectrl" --json 2>/dev/null | ck74 /dev/stdin walk)
+p74_veciterctrl=$("$SCAN" "$P74/veciterctrl" --json 2>/dev/null | ck74 /dev/stdin -)
+p74 defect-forloop      "$p74_forloop"     '["Fs"]'
+p74 defect-count        "$p74_count"       '["Fs"]'
+p74 defect-untyped-next "$p74_untypednext" '["Fs"]'
+p74 ctrl-typed-next     "$p74_typednext"   '["Fs"]'
+p74 ctrl-ignore         "$p74_ignorectrl"  '["Fs"]'
+p74 ctrl-vec-iter       "$p74_veciterctrl" absent
+rm -rf "$P74"
+# ENGINES: rust; java: `java.nio.file.Files.walk`/`.list` are charged at the PRODUCING call directly (bytecode names the concrete invocation), so this MECHANISM — a syntactic receiver-typing blocklist blinding a same-crate iterator verb — does not apply, and it is not otherwise audited for every lazy-iterator shape; ts: resolves through the real TypeScript type-checker rather than a syntactic verb blocklist, so the same mechanism does not apply, and it is not otherwise audited; swift: shares candor-rust's syntax-only resolution style and has an analogous receiver-typing split for ITERATION, but only for local `Sequence`/`IteratorProtocol` conformers, not a third-party-package classify table — whether an equivalent third-party SPM package shape exists is UNAUDITED, filed to BACKLOG.md
+# CONTROLS: p74_typednext p74_ignorectrl p74_veciterctrl — ctrl-typed-next proves the fix is ADDITIVE (a second charging point at construction) rather than a relocation that would have left the already-working typed-annotation shape newly blind; ctrl-ignore proves the fix did not touch the GENERAL construction-charge mechanism the sibling `ignore` crate already relies on; ctrl-vec-iter proves the fix did not widen the receiver-typing blocklist itself, which is the whole reason it exists (stopping a coarse crate rule from fabricating an effect onto a std collection's iterator)
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-rust `8734b87` (immediately before `e6ac9ee`, built in a
+# throwaway clone rather than a worktree so the tracked checkout was never touched): `defect-forloop`,
+# `defect-count` and `defect-untyped-next` all read `absent` where HEAD reads `["Fs"]` — three RED cells,
+# the fail-open in three independently-idiomatic forms. `ctrl-typed-next`, `ctrl-ignore` and
+# `ctrl-vec-iter` were ALREADY at their wanted values on that same binary, so the controls are not what
+# moved.
+echo "PART 74 — a third-party lazy iterator is charged at construction when its iteration verb is receiver-typing-blocked (candor-rust; SPEC §4)"
+printf '%s' "$P74_OUT"
+[ "$P74_BAD" = 0 ] && echo "  -> MATCH — every idiomatic WalkDir traversal form charges Fs at construction, the narrower typed-receiver shape still fires independently, and neither the sibling ignore-crate charge nor the std-Vec iterator blocklist moved"
+[ "$P74_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
+# ====================================================================================================
+# PART 75 — AN OVERLOADED PROTOCOL-EXTENSION PROVIDED MEMBER MUST RESOLVE OR UNION THROUGH A CONCRETE
+#           RECEIVER, NEVER VANISH (candor-swift; SPEC §4 "must never report a function as effect-free
+#           when it could not actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE CORPUS FIND, candor-swift only, part of the dispatch-arc/provided-method vein (R32–R44). Driver.swift's
+# "PROTOCOL-EXTENSION DEFAULT via a CONCRETE receiver" arm (`s.run(...)` where the conforming type `S`
+# declares no `run` of its own) called bare `resolveQual("\(sup).\(member)")` with NO `overloadedBases`
+# check — unlike its own sibling arms three lines up (the `call.typed` branch) and the existential-receiver
+# `protoDispatches` arm, both of which already route an overloaded base through `matchOverloads`.
+# `resolveQual` can only name an UNAMBIGUOUS simple->full mapping, so a protocol extension declaring a
+# second, UNRELATED overload of the same provided-member name made the lookup ambiguous, and the call
+# site's ONLY edge to the provided member was dropped — not even `Unknown`. A/B: adding one unrelated
+# `func run()` beside a `Runner` extension's `Exec`-performing `run(times:)` turned `deny Exec` from
+# exit 1 into exit 0 over IDENTICAL call behaviour. Fixed in candor-swift `bcb4bc8` (parent `a9ab1a6`) by
+# routing the same branch through `matchOverloads`, using the `argc`/`argTypes` already captured at the
+# call site: an arity-discriminated call resolves precisely, and a genuinely ambiguous one (this engine
+# does not model argument LABELS, so `run(x:)` and `run(y:)` of the same arity look identical to it) gets
+# the sound UNION rather than a drop.
+#
+# NEAR BUT NOT INSIDE THE PART 73 COMMIT RANGE — recorded so the relationship is a decision, not a gap.
+# `bcb4bc8` and PART 73's `098a035` are siblings from the same 2026-08-27 fix wave, both filed by the
+# corpus round that produced them, but they are DIFFERENT DEFECTS on different code paths (an overload
+# resolution drop vs. a conditionally-compiled declaration shadow) and PART 73 already carries its own
+# cross-engine question; this part is the row for `bcb4bc8` specifically.
+#
+# NOT A CROSS-ENGINE ROW IN THIS PASS — not because the shape is swift-only (dispatch through a provided
+# protocol-extension member with overload resolution exists in every OOP-ish engine this family has), but
+# because auditing java/rust/ts's own overload-resolution-through-a-default-member code paths for the
+# identical "ambiguous lookup silently drops instead of disclosing/unioning" shape was not attempted this
+# pass — UNAUDITED, filed to BACKLOG.md rather than assumed clean or assumed unique to swift.
+#
+# FOUR CELLS, MEASURED against candor-swift `a9ab1a6` (immediately before the fix `bcb4bc8`) and at HEAD:
+#
+#   defect            the repro above: `run()` (pure) beside `run(times:)` (`Exec`), called via a
+#                      CONCRETE (non-protocol-typed) receiver. PRE-FIX: `useS` ABSENT from `functions`
+#                      (silently pure — the cardinal sin, not even `Unknown`). POST-FIX:
+#                      `inferred == ["Exec"]`.
+#   ctrl-local-override  a genuine LOCAL override of `run(times:)` on the concrete conformer, beside the
+#                      SAME two-overload extension. Must win over BOTH provided overloads regardless of
+#                      this fix — the earlier `resolveQual(call.path)`/`overloadedBases` check in the
+#                      `call.typed` arm is untouched by it. UNCHANGED pre- and post-fix: `useS` ABSENT
+#                      (pure) on BOTH — the over-charge control: if this cell had moved, the fix would
+#                      have touched local-override precedence, not the concrete-receiver default arm.
+#   ctrl-non-overloaded  the SAME `run(times:)` provided member with NO sibling overload at all — the
+#                      shape that worked correctly even before this fix (only a SECOND overload made
+#                      `resolveQual` ambiguous). UNCHANGED pre- and post-fix: `inferred == ["Exec"]` on
+#                      BOTH — proves the fix is about the OVERLOADED case specifically, not a change to
+#                      how a concrete receiver reaches a provided member at all.
+#   union              a genuinely ambiguous pair, same arity, label-only distinguished (`run(x:)` doing
+#                      `Exec`, `run(y:)` doing `Env`) — the engine does not model argument labels, so
+#                      neither call syntax discriminates them. PRE-FIX: `useS` ABSENT (dropped, same
+#                      cardinal sin as `defect`). POST-FIX: `inferred == ["Env", "Exec"]` — the two
+#                      readings UNION, because resolution is genuinely AMBIGUOUS here, not failed; a
+#                      pick-one guess would silently omit whichever branch it didn't choose.
+#
+# THE INSTRUMENT CHECK folds into the assertion itself, as PART 73's does: each cell names the exact
+# expected `inferred` set (or the function's expected absence), so a fixture that stopped exercising its
+# own shape fails the comparison directly rather than passing vacuously.
+ck75() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+f = fns.get("useS")
+print(json.dumps(sorted(f.get("inferred") or [])) if f else "absent")
+' "$1"; }
+p75() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P75_OUT="$P75_OUT  swift  $1  got=$2  OK
+"
+  else
+    P75_OUT="$P75_OUT  swift  $1  got=$2 want=$3  FAIL
+"
+    P75_BAD=1; rc=1
+  fi
+}
+P75_BAD=0; P75_OUT=""
+P75="$W/p75"
+mkdir -p "$P75/defect" "$P75/localoverride" "$P75/nonoverloaded" "$P75/union"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  printf 'import Foundation\nprotocol Runner {}\nextension Runner {\n    func run() { print("pure") }\n    func run(times: Int) {\n        for _ in 0..<times {\n            let p = Process()\n            p.launchPath = "/bin/echo"\n            try? p.run()\n        }\n    }\n}\nstruct S: Runner {}\nfunc useS() {\n    let s = S()\n    s.run(times: 3)\n}\n' > "$P75/defect/a.swift"
+  printf 'import Foundation\nprotocol Runner {}\nextension Runner {\n    func run() { print("pure") }\n    func run(times: Int) {\n        let p = Process()\n        p.launchPath = "/bin/echo"\n        try? p.run()\n    }\n}\nstruct S: Runner {\n    func run(times: Int) { print("pure override") }\n}\nfunc useS() {\n    let s = S()\n    s.run(times: 3)\n}\n' > "$P75/localoverride/a.swift"
+  printf 'import Foundation\nprotocol Runner {}\nextension Runner {\n    func run(times: Int) {\n        for _ in 0..<times {\n            let p = Process()\n            p.launchPath = "/bin/echo"\n            try? p.run()\n        }\n    }\n}\nstruct S: Runner {}\nfunc useS() {\n    let s = S()\n    s.run(times: 3)\n}\n' > "$P75/nonoverloaded/a.swift"
+  printf 'import Foundation\nprotocol Runner {}\nextension Runner {\n    func run(x: Int) {\n        let p = Process()\n        p.launchPath = "/bin/echo"\n        try? p.run()\n    }\n    func run(y: Int) {\n        _ = ProcessInfo.processInfo.environment["PATH"]\n    }\n}\nstruct S: Runner {}\nfunc useS() {\n    let s = S()\n    s.run(x: 3)\n}\n' > "$P75/union/a.swift"
+  ( cd "$P75/defect"        && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P75/localoverride" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P75/nonoverloaded" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P75/union"         && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  p75_defect=$(ck75 "$P75/defect/out.json")
+  p75_local=$(ck75 "$P75/localoverride/out.json")
+  p75_nonov=$(ck75 "$P75/nonoverloaded/out.json")
+  p75_union=$(ck75 "$P75/union/out.json")
+  p75 defect               "$p75_defect" '["Exec"]'
+  p75 ctrl-local-override  "$p75_local"  absent
+  p75 ctrl-non-overloaded  "$p75_nonov"  '["Exec"]'
+  p75 union                "$p75_union"  '["Env", "Exec"]'
+else
+  P75_OUT="$P75_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P75"
+# ENGINES: swift; rust: an analogous overload-resolution-through-a-default-member shape is UNAUDITED for this pass, filed to BACKLOG.md rather than assumed clean; java: same — UNAUDITED, not assumed unique to swift; ts: same — UNAUDITED, not assumed unique to swift
+# CONTROLS: p75_local p75_nonov — ctrl-local-override proves the fix left LOCAL-OVERRIDE PRECEDENCE untouched (a genuine override must still win over both provided overloads, on both binaries); ctrl-non-overloaded proves the fix is about the OVERLOADED case specifically — a concrete receiver reaching a SINGLE, non-overloaded provided member worked before this fix and must still work identically after it, or the "fix" would really be a change to concrete-receiver dispatch in general
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `a9ab1a6` (immediately before `bcb4bc8`, built in a
+# throwaway clone rather than a worktree so the tracked checkout was never touched): `defect` and `union`
+# both read `absent` where HEAD reads `["Exec"]` and `["Env", "Exec"]` respectively — two RED cells, the
+# fail-open in both the arity-discriminable and the genuinely-ambiguous case. `ctrl-local-override` and
+# `ctrl-non-overloaded` were ALREADY at their wanted values on that same binary, so the controls are not
+# what moved.
+echo "PART 75 — an overloaded protocol-extension provided member resolves or unions through a concrete receiver, never vanishes (candor-swift; SPEC §4)"
+printf '%s' "$P75_OUT"
+[ "$P75_BAD" = 0 ] && echo "  -> MATCH — a concrete receiver reaching an overloaded protocol-extension default resolves precisely when arity discriminates and unions when genuinely ambiguous, a local override still wins, and the non-overloaded case is unmoved"
+[ "$P75_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
+# ====================================================================================================
+# PART 76 — A CROSS-FILE CALL SHADOWED BY THE PACKAGE'S OWN CO-LOCATED .d.ts MUST RESOLVE ONTO THE REAL
+#           SIBLING IMPLEMENTATION OR DISCLOSE Unknown, NEVER VANISH (candor-ts; SPEC §4 "must never
+#           report a function as effect-free when it could not actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE CORPUS FIND, candor-ts only, MEASURED live against got@15.1.0's published tarball: `deny Rand`
+# exits 1 scanning the git-tag source (17 violations) but exits 0 scanning the IDENTICAL release's
+# compiled dist at the same `analyzed.count` — the `candor-ts node_modules/X --allow-js` shape nearly
+# every real scan of an npm dependency takes is the WEAKER one. ROOT CAUSE: npm ships `dist/foo.js`
+# beside `dist/foo.d.ts`, and TypeScript's own module resolution treats the co-located `.d.ts` as
+# authoritative for every CROSS-FILE importer of `foo.js` — even one this same scan (`--allow-js`) is
+# analysing as project source. A same-file reference is unaffected (never crosses a module boundary), but
+# a cross-file call (the ordinary case for a helper imported from a sibling module) resolves the
+# checker's signature onto a node IN THE `.d.ts` instead. `declModule` is RIGHT to call that file's module
+# foreign to `projectFiles` (`.d.ts` files are deliberately excluded from the walk) — but
+# `crossesPackageBoundary` is ALSO (correctly) false for it, since the `.d.ts` describes the scan's own
+# package — so neither disclosure fires and the call vanishes with no edge and no `Unknown`. Fixed in
+# candor-ts `5b9cfd5` (parent `965a521`) by asking the SIBLING IMPLEMENTATION FILE (same directory, same
+# basename, an extension this scan actually analysed) for its own module symbol directly and redirecting
+# an unambiguous match onto the real declaration; an ambiguous or unminted match still discloses `Unknown`
+# rather than dropping.
+#
+# NOT A CROSS-ENGINE ROW, checked rather than assumed. This mechanism is specific to how TypeScript's
+# module resolution treats a co-located `.d.ts` as authoritative over a `.js` it sits beside, which is
+# what makes "the scan's own analysed source" and "a foreign declaration file" the SAME FILE PAIR for
+# TypeScript's checker but not for this engine's file walk — a split that exists only because npm ships
+# `.d.ts` sidecars and `--allow-js` asks this engine to read the implementation they describe as project
+# source. candor-java reads compiled `.class` bytecode directly — signature and body are the same
+# artifact, so there is no separate declaration-only file to shadow anything. candor-rust's `syn`-based
+# scan reads `.rs` source directly with no declaration/implementation split for its OWN crate's code (a
+# `.rs` file is never "authoritative-but-foreign" the way a `.d.ts` is). candor-swift reads `.swift`
+# source directly for a package's own targets; a `.swiftinterface` (the nearest analogue) describes a
+# BINARY framework boundary, not a same-package source pairing, so it is a different shape rather than a
+# confirmed-absent one. None of the three is AUDITED for a generalised "declaration artifact silently
+# shadows the real same-package implementation" class beyond this reasoning — filed to BACKLOG.md rather
+# than assumed clean, per the original ask.
+#
+# FOUR CELLS, MEASURED against candor-ts `965a521` (immediately before the fix `5b9cfd5`, built in a
+# throwaway clone with its own `npm install` rather than a worktree so the tracked checkout was never
+# touched) and at HEAD. Every fixture uses a NAMED top-level `function` declaration for the implementation
+# (an anonymous function EXPRESSION assigned to `exports.name` does not mint the same declaration unit —
+# confirmed while building this row, not assumed):
+#
+#   defect          `helper.js` exports `calcDelay` (`Math.random()`, i.e. `Rand`) alongside a co-located
+#                   `helper.d.ts` declaring the same name; `index.js` calls it CROSS-FILE via
+#                   `require("./helper")`. PRE-FIX: `useHelper` ABSENT from `functions` (silently
+#                   pure — the cardinal sin, not even `Unknown`). POST-FIX: `inferred == ["Rand"]` — a
+#                   full RESOLUTION onto the real implementation, not a hedge.
+#   ambiguous-unminted  the `.d.ts` declares `calcDelay`, but the sibling `helper.js` exports that name
+#                   bound to a DIFFERENTLY-NAMED function (`computeDelay`) — the redirect's own export-name
+#                   lookup finds no matching declaration in the sibling to redirect onto. PRE-FIX:
+#                   `useHelper` ABSENT (the identical silent drop). POST-FIX: `inferred == ["Unknown"]` —
+#                   disclosed, never fabricated and never dropped, the fix's OTHER stated branch.
+#   ctrl-no-sibling `helper.js` with NO co-located `.d.ts` at all — there is no shadow to hit; the ordinary
+#                   cross-file same-package call path (unrelated to this fix) resolves it already.
+#                   UNCHANGED pre- and post-fix: `inferred == ["Rand"]` on BOTH — the over-charge control:
+#                   if this cell had moved, the "fix" would have touched ordinary same-package resolution,
+#                   not the `.d.ts`-shadow-specific redirect.
+#   ctrl-same-file  a call INSIDE the file that declares the callee (`helper.js`'s own `useHelper` calling
+#                   its sibling `calcDelay`), with the SAME co-located `.d.ts` present — a same-file
+#                   reference never crosses a module boundary, so the shadow this row is about does not
+#                   apply to it. UNCHANGED pre- and post-fix: `inferred == ["Rand"]` on both.
+#
+# THE INSTRUMENT CHECK folds into the assertion itself, as PARTs 73/75 do: each cell names the exact
+# expected `inferred` set (or the function's expected absence), so a fixture that stopped exercising its
+# own shape fails the comparison directly rather than passing vacuously.
+ck76() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+hit = None
+for name, f in fns.items():
+    if name == "useHelper" or name.endswith(".useHelper"):
+        hit = f; break
+print(json.dumps(sorted(hit.get("inferred") or [])) if hit else "absent")
+' "$1"; }
+p76() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P76_OUT="$P76_OUT  ts     $1  got=$2  OK
+"
+  else
+    P76_OUT="$P76_OUT  ts     $1  got=$2 want=$3  FAIL
+"
+    P76_BAD=1; rc=1
+  fi
+}
+P76_BAD=0; P76_OUT=""
+P76="$W/p76"
+mkdir -p "$P76/defect/src" "$P76/unminted/src" "$P76/nosibling/src" "$P76/samefile/src"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf 'function calcDelay() { return Math.random(); }\nexports.calcDelay = calcDelay;\n' > "$P76/defect/src/helper.js"
+  printf 'export declare function calcDelay(): number;\n' > "$P76/defect/src/helper.d.ts"
+  printf 'const { calcDelay } = require("./helper");\nfunction useHelper() { return calcDelay(); }\nmodule.exports = { useHelper };\n' > "$P76/defect/src/index.js"
+
+  printf 'function computeDelay() { return Math.random(); }\nexports.calcDelay = computeDelay;\n' > "$P76/unminted/src/helper.js"
+  printf 'export declare function calcDelay(): number;\n' > "$P76/unminted/src/helper.d.ts"
+  printf 'const { calcDelay } = require("./helper");\nfunction useHelper() { return calcDelay(); }\nmodule.exports = { useHelper };\n' > "$P76/unminted/src/index.js"
+
+  printf 'function calcDelay() { return Math.random(); }\nexports.calcDelay = calcDelay;\n' > "$P76/nosibling/src/helper.js"
+  printf 'const { calcDelay } = require("./helper");\nfunction useHelper() { return calcDelay(); }\nmodule.exports = { useHelper };\n' > "$P76/nosibling/src/index.js"
+
+  printf 'function calcDelay() { return Math.random(); }\nfunction useHelper() { return calcDelay(); }\nexports.calcDelay = calcDelay;\nexports.useHelper = useHelper;\n' > "$P76/samefile/src/helper.js"
+  printf 'export declare function calcDelay(): number;\nexport declare function useHelper(): number;\n' > "$P76/samefile/src/helper.d.ts"
+
+  node "$TS_DIR/scan.mjs" "$P76/defect"    --allow-js --json > "$P76/defect.json"    2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P76/unminted"  --allow-js --json > "$P76/unminted.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P76/nosibling" --allow-js --json > "$P76/nosibling.json" 2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P76/samefile"  --allow-js --json > "$P76/samefile.json"  2>/dev/null
+  p76_defect=$(ck76 "$P76/defect.json")
+  p76_unminted=$(ck76 "$P76/unminted.json")
+  p76_nosibling=$(ck76 "$P76/nosibling.json")
+  p76_samefile=$(ck76 "$P76/samefile.json")
+  p76 defect              "$p76_defect"    '["Rand"]'
+  p76 ambiguous-unminted  "$p76_unminted"  '["Unknown"]'
+  p76 ctrl-no-sibling     "$p76_nosibling" '["Rand"]'
+  p76 ctrl-same-file      "$p76_samefile"  '["Rand"]'
+else
+  P76_OUT="$P76_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P76"
+# ENGINES: ts; java: reads compiled `.class` bytecode directly (signature and body are the same artifact, no separate declaration-only file to shadow anything), so this MECHANISM does not apply, and it is not otherwise audited for a generalised declaration-shadow class; rust: `syn`-based source scan has no declaration/implementation split for its OWN crate's code, so this MECHANISM does not apply, and it is not otherwise audited; swift: reads `.swift` source directly for a package's own targets — the nearest analogue (`.swiftinterface`) describes a BINARY framework boundary, a different shape rather than a confirmed-absent one, so UNAUDITED, filed to BACKLOG.md
+# CONTROLS: p76_nosibling p76_samefile — ctrl-no-sibling proves the fix did not touch ORDINARY same-package cross-file resolution (a `.js` with no co-located `.d.ts` has no shadow to hit and was never broken); ctrl-same-file proves the fix is about the CROSS-FILE case specifically, since a same-file reference never crosses the module boundary the `.d.ts`-preference rule governs
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-ts `965a521` (immediately before `5b9cfd5`, built in a
+# throwaway clone with its own `npm install` so the tracked checkout was never touched): `defect` and
+# `ambiguous-unminted` both read `absent` where HEAD reads `["Rand"]` and `["Unknown"]` respectively —
+# two RED cells, the fail-open in both the unambiguous-resolution and the disclose-rather-than-guess
+# branch. `ctrl-no-sibling` and `ctrl-same-file` were ALREADY at their wanted values on that same binary,
+# so the controls are not what moved.
+echo "PART 76 — a cross-file call shadowed by the package's own co-located .d.ts resolves onto the real sibling or discloses Unknown, never vanishes (candor-ts; SPEC §4)"
+printf '%s' "$P76_OUT"
+[ "$P76_BAD" = 0 ] && echo "  -> MATCH — an unambiguous cross-file call shadowed by the package's own .d.ts resolves onto the real sibling implementation, a genuinely unminted match discloses Unknown rather than dropping, and neither the no-sibling nor the same-file case moved"
+[ "$P76_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
