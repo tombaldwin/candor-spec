@@ -826,7 +826,7 @@
    "sha": "efdaecae60f96fd7",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "**EQUIVALENCE IS THE ACCEPTANCE TEST, AND IT IS BYTE-LEVEL.** For any report a scan produced, `gate --report <",
-   "status": "pre-ledger"
+   "part": "PART 72"
   },
   {
    "sha": "9f47a7c647e74e12",

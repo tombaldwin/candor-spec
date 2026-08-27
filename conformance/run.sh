@@ -13252,6 +13252,431 @@ printf '%s' "$P71_OUT"
 true
 
 
+# ====================================================================================================
+# PART 72 — A VIOLATION THAT DOMINATES AN INCOMPLETENESS CAUSE STAYS BYTE-EQUAL ACROSS BOTH GATE ROUTES
+#           (SPEC §3.1 ⟨0.24⟩) [TIER 1]
+# ====================================================================================================
+#
+# SPEC.md §3.1 ⟨0.24⟩, verbatim, and it has sat `"status": "pre-ledger"` in must-ledger.json since the
+# ledger was frozen — no row anywhere in this suite has ever asked it: **"EQUIVALENCE IS THE ACCEPTANCE
+# TEST, AND IT IS BYTE-LEVEL. For any report a scan produced, `gate --report <it> --policy P` MUST produce
+# a `--gate-json` document byte-equal to `scan --policy P`'s […] Anything less than byte-equality lets the
+# two routes drift into two gates."**
+#
+# WHY THIS PART EXISTS RATHER THAN RE-USING PART 48/62/69, stated so the overlap is a decision. Those
+# three parts already drive `scan --policy` against `gate --report` exhaustively — PART 48/62 over an
+# UNREAD class alone (plus a dozen corruption shapes of `peeked`/`judgedElsewhere`), PART 69 over
+# MISMATCHED producer/consumer policies. None of them puts a REAL VIOLATION in the analysed code AT THE
+# SAME TIME as a peeked, matching-policy exclusion and then asks whether the two ROUTES still agree
+# BYTE-FOR-BYTE rather than merely on the EXIT CODE — which is exactly the gap this SPEC paragraph names
+# and exactly the shape a corpus round would hit first: a dependency with one real crossing and one class
+# it could not fully read.
+#
+# MEASURED, four-way, before this row was written, and this is why it is a MUTANT-FALSIFIED row rather
+# than a pre-fix-binary one: the property ALREADY HOLDS, both at HEAD and on each engine's OWN pre-⟨0.32⟩
+# route-split commit (candor-rust `a3bf792`, candor-ts `396d6f4`, candor-java `dd0a503`, and confirmed at
+# HEAD for candor-swift). The historical fail-open those commits fixed (candor-java `3682835` et al.,
+# PART 62's own "NO-POLICY-PRODUCER ROUTE") was about a report produced WITH NO POLICY AT ALL gated
+# afterwards — a different condition from this row's, which holds the SAME policy across both the
+# producing scan and both gate calls. Building a mutant is PART 69's author's own remedy for exactly this
+# situation ("where a probe-based skip means a pre-fix binary would skip rather than redden, build a
+# mutant") — restated here for a row that would not even SKIP on an old binary, it would pass, because the
+# property was never broken in this condition. A row that cannot go red on any binary is not evidence by
+# itself; the two mutants below are what make it one.
+#
+# THE FIXTURE, per engine: a CLEAN tree (one analysed function performing `Fs`, nothing excluded — the
+# over-charge control, because an engine that answers "refuse" unconditionally would make both routes
+# trivially equal without being correct) and a COMBINED tree (one analysed function performing `Exec` —
+# the real, dominating violation — plus a second file the scan does not READ but does PEEK, also
+# performing `Exec` under the SAME `deny Exec` policy — the completeness cause the violation must
+# dominate). Both routes are driven from files produced WITH `--policy` in force, matching the SPEC
+# paragraph's own precondition ("for any report a scan produced").
+#
+# THE INSTRUMENT CHECK, failing rather than skipping a vacuous fixture: the clean tree must actually
+# certify with nothing to say, and the combined tree must actually carry a non-empty `violations`, an
+# `incomplete: true`, and a non-empty `outOfScope` — otherwise the "dominates" half of this row's claim is
+# untested and a green cell would mean nothing.
+ck72() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+clean, combined = load(sys.argv[1]), load(sys.argv[2])
+if clean.get("ok") is not True:
+    sys.exit("     INSTRUMENT: the clean fixture does not certify (ok=" + json.dumps(clean.get("ok"))
+             + ") -- it must have nothing to say under `deny Exec`, or it is not the over-charge control this row needs")
+if clean.get("violations"):
+    sys.exit("     INSTRUMENT: the clean fixture already carries violations -- it is not clean")
+if clean.get("incomplete"):
+    sys.exit("     INSTRUMENT: the clean fixture is already incomplete -- it carries an exclusion this cell does not want")
+if not (combined.get("violations") or []):
+    sys.exit("     INSTRUMENT: the combined fixture carries no violations -- this row would not be testing a real violation dominating anything")
+if combined.get("incomplete") is not True:
+    sys.exit("     INSTRUMENT: the combined fixture is not incomplete -- it carries no peeked class for the violation to dominate")
+if not (combined.get("outOfScope") or []):
+    sys.exit("     INSTRUMENT: the combined fixture carries no outOfScope entry -- the completeness cause this row exists to combine with a violation is absent")
+' "$1" "$2"; }
+# THE EQUALITY CHECK IS STRUCTURAL, NOT TEXTUAL — the obligation is on the VALUE (candor-java's own
+# `UnreadCodeRouteTest` states this precisely: "the condition is applied to the VALUE precisely so this
+# cannot drift"), and candor-swift's `--gate-json` sorts keys alphabetically where the other three do not,
+# so a byte-for-byte text diff would report a false divergence on that engine alone.
+eq72() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        print("load-error:" + p + ":" + str(exc)); raise SystemExit
+a, b = load(sys.argv[1]), load(sys.argv[2])
+if a == b:
+    print("equal")
+else:
+    ks = sorted(set(a) | set(b))
+    print("diverge:" + ",".join(k for k in ks if a.get(k) != b.get(k)))
+' "$1" "$2"; }
+# THE TWO MUTANTS, applied to the COMBINED tree's own two-step intermediate report (the one a `gate
+# --report` call actually reads) — not reasoned about, cut from the same report every route already
+# agrees on. `hv` (hide-violation) deletes the denied effect from every analysed function's `inferred`/
+# `direct`, simulating a report whose real crossing was stripped in transit. `hc` (hide-completeness)
+# empties `outOfScope`/`excluded`, simulating a report whose peek record was stripped — the SAME `analyzed`
+# and `functions` otherwise, so a checker that only compared exit codes would call `hc` innocent: the exit
+# stays 1 either way, because the violation alone already dominates it, and only the DOCUMENT loses
+# `incomplete`/`outOfScope` — which is the whole reason this row asserts byte-equality and not exit parity.
+mut72() { python3 -c '
+import copy, json, sys
+d = json.load(open(sys.argv[1])); out = sys.argv[2]; effect = sys.argv[3]
+fns = d.get("functions") or []
+if not any(effect in (f.get("inferred") or []) for f in fns):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " carries no analysed function reaching " + effect
+             + " -- the hide-violation mutant would be vacuous")
+if not (d.get("outOfScope") or []):
+    sys.exit("INSTRUMENT: " + sys.argv[1] + " carries no outOfScope entry -- the hide-completeness mutant would be vacuous")
+hv = copy.deepcopy(d)
+for f in hv.get("functions") or []:
+    f["inferred"] = [e for e in (f.get("inferred") or []) if e != effect]
+    f["direct"] = [e for e in (f.get("direct") or []) if e != effect]
+json.dump(hv, open(out + ".hv.json", "w"))
+hc = copy.deepcopy(d)
+hc["outOfScope"] = []
+hc["excluded"] = []
+json.dump(hc, open(out + ".hc.json", "w"))
+' "$1" "$2" "$3"; }
+p72() {   # <engine> <clean-eq:0=equal> <combined-eq:0=equal> <hv:0=diverged> <hc:0=diverged>
+  if [ "$2" = 0 ] && [ "$3" = 0 ] && [ "$4" = 0 ] && [ "$5" = 0 ]; then
+    P72_OUT="$P72_OUT  $1  clean=equal combined=equal hide-violation=diverged hide-completeness=diverged  OK
+"
+  else
+    P72_OUT="$P72_OUT  $1  clean-eq=$2 combined-eq=$3 hv-diverged=$4 hc-diverged=$5  FAIL (want 0/0/0/0)
+"
+    [ "$2" != 0 ] && P72_OUT="$P72_OUT         clean: the two routes are NOT byte-equal over a tree with nothing to say — SPEC §3.1 ⟨0.24⟩ binds this unconditionally, not only over a violation or an exclusion
+"
+    [ "$3" != 0 ] && P72_OUT="$P72_OUT         combined: THE TWO ROUTES DISAGREE OVER A TREE WHERE A VIOLATION DOMINATES A PEEKED EXCLUSION — SPEC §3.1 ⟨0.24⟩'s MUST, unenforced anywhere else in this suite. Diff the two \`--gate-json\` documents directly
+"
+    [ "$4" != 0 ] && P72_OUT="$P72_OUT         hide-violation: the mutant that DELETES the denied effect from the analysed function did not change the verdict — this cell's equality check cannot be trusted; it is not discriminating anything
+"
+    [ "$5" != 0 ] && P72_OUT="$P72_OUT         hide-completeness: the mutant that EMPTIES \`outOfScope\`/\`excluded\` did not change the document — same vacuity, the other direction
+"
+    P72_BAD=1; rc=1
+  fi
+}
+P72_BAD=0; P72_OUT=""
+P72="$W/p72"; mkdir -p "$P72"
+printf 'deny Exec\n' > "$P72/exec.candor"
+
+# ── THE JAVA ROW ─────────────────────────────────────────────────────────────────────────────────
+P72J="$P72/java"
+if [ -n "$JAR" ]; then
+  mkdir -p "$P72J/clean/build/classes" "$P72J/clean/src/com/x" "$P72J/combined/build/classes" "$P72J/combined/src/com/x"
+  printf 'package com.x;\npublic class Ok {\n  public String load() throws Exception { return java.nio.file.Files.readString(java.nio.file.Path.of("/etc/hosts")); }\n}\n' > "$P72J/clean/src/com/x/Ok.java"
+  javac -d "$P72J/clean/build/classes" "$P72J/clean/src/com/x/Ok.java" >/dev/null 2>&1
+  rm -rf "$P72J/clean/src"
+  printf 'package com.x;\npublic class Ok {\n  public String load() throws Exception { return java.nio.file.Files.readString(java.nio.file.Path.of("/etc/hosts")); }\n}\n' > "$P72J/combined/src/com/x/Ok.java"
+  printf 'package com.x;\npublic class Bad {\n  public void go() throws Exception { Runtime.getRuntime().exec("id"); }\n}\n' > "$P72J/combined/src/com/x/Bad.java"
+  javac -d "$P72J/combined/build/classes" "$P72J/combined/src/com/x/Ok.java" "$P72J/combined/src/com/x/Bad.java" >/dev/null 2>&1
+  rm -f "$P72J/combined/src/com/x/Ok.java" "$P72J/combined/src/com/x/Bad.java"
+  printf 'package com.x;\npublic class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("id"); } }\n' > "$P72J/combined/src/com/x/Deploy.java"
+  java -jar "$JAR" "$P72J/clean"    --policy "$P72/exec.candor" --gate-json "$P72J/clean_one.json"    >/dev/null 2>&1
+  java -jar "$JAR" "$P72J/combined" --policy "$P72/exec.candor" --gate-json "$P72J/combined_one.json" >/dev/null 2>&1
+  java -jar "$JAR" "$P72J/clean"    --json "$P72J/clean_rep.json"    --policy "$P72/exec.candor" >/dev/null 2>&1
+  java -jar "$JAR" "$P72J/combined" --json "$P72J/combined_rep.json" --policy "$P72/exec.candor" >/dev/null 2>&1
+  java -jar "$JAR" gate --report "$P72J/clean_rep.json"    --policy "$P72/exec.candor" --gate-json "$P72J/clean_two.json"    >/dev/null 2>&1
+  java -jar "$JAR" gate --report "$P72J/combined_rep.json" --policy "$P72/exec.candor" --gate-json "$P72J/combined_two.json" >/dev/null 2>&1
+  if ck72 "$P72J/clean_one.json" "$P72J/combined_one.json"; then
+    p72j_clean=$(eq72 "$P72J/clean_one.json" "$P72J/clean_two.json"); [ "$p72j_clean" = equal ] && p72j_ce=0 || p72j_ce=1
+    p72j_comb=$(eq72 "$P72J/combined_one.json" "$P72J/combined_two.json"); [ "$p72j_comb" = equal ] && p72j_be=0 || p72j_be=1
+    if mut72 "$P72J/combined_rep.json" "$P72J/mut" Exec; then
+      java -jar "$JAR" gate --report "$P72J/mut.hv.json" --policy "$P72/exec.candor" --gate-json "$P72J/mut_hv.json" >/dev/null 2>&1
+      java -jar "$JAR" gate --report "$P72J/mut.hc.json" --policy "$P72/exec.candor" --gate-json "$P72J/mut_hc.json" >/dev/null 2>&1
+      p72j_hv=$(eq72 "$P72J/combined_one.json" "$P72J/mut_hv.json"); case "$p72j_hv" in diverge*) p72j_hvr=0 ;; *) p72j_hvr=1 ;; esac
+      p72j_hc=$(eq72 "$P72J/combined_one.json" "$P72J/mut_hc.json"); case "$p72j_hc" in diverge*) p72j_hcr=0 ;; *) p72j_hcr=1 ;; esac
+      p72 java "$p72j_ce" "$p72j_be" "$p72j_hvr" "$p72j_hcr"
+    else
+      P72_BAD=1; rc=1
+    fi
+  else
+    P72_BAD=1; rc=1
+  fi
+fi
+
+# ── THE RUST ROW ─────────────────────────────────────────────────────────────────────────────────
+P72R="$P72/rust"
+mkdir -p "$P72R/clean/src" "$P72R/combined/src"
+printf '[package]\nname = "p72clean"\nversion = "0.1.0"\nedition = "2021"\n' > "$P72R/clean/Cargo.toml"
+printf 'pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }\n' > "$P72R/clean/src/lib.rs"
+printf '[package]\nname = "p72combined"\nversion = "0.1.0"\nedition = "2021"\n' > "$P72R/combined/Cargo.toml"
+printf 'pub fn go() { let _ = std::process::Command::new("id").status(); }\n' > "$P72R/combined/src/lib.rs"
+printf 'fn main() { let _ = std::process::Command::new("id").status(); }\n' > "$P72R/combined/build.rs"
+p72r_pick() { p72r_hit=""; for f in "$1".*.scan.json; do case "$f" in *callgraph*|*hierarchy*) continue;; esac; [ -f "$f" ] && p72r_hit="$f"; done; }
+"$SCAN" "$P72R/clean"    --out "$P72R/clean_one"    --policy "$P72/exec.candor" --gate-json "$P72R/clean_one.json"    >/dev/null 2>&1
+"$SCAN" "$P72R/combined" --out "$P72R/combined_one" --policy "$P72/exec.candor" --gate-json "$P72R/combined_one.json" >/dev/null 2>&1
+"$SCAN" "$P72R/clean"    --out "$P72R/clean_rep"    --policy "$P72/exec.candor" >/dev/null 2>&1
+"$SCAN" "$P72R/combined" --out "$P72R/combined_rep" --policy "$P72/exec.candor" >/dev/null 2>&1
+p72r_pick "$P72R/clean_rep";    p72r_crep="$p72r_hit"
+p72r_pick "$P72R/combined_rep"; p72r_brep="$p72r_hit"
+if [ -z "$p72r_crep" ] || [ -z "$p72r_brep" ]; then
+  P72_OUT="$P72_OUT  rust   SKIP — candor-scan produced no report for one of the two trees (probed)
+"
+else
+  "$QUERY" gate --report "$p72r_crep" --policy "$P72/exec.candor" --gate-json "$P72R/clean_two.json"    >/dev/null 2>&1
+  "$QUERY" gate --report "$p72r_brep" --policy "$P72/exec.candor" --gate-json "$P72R/combined_two.json" >/dev/null 2>&1
+  if ck72 "$P72R/clean_one.json" "$P72R/combined_one.json"; then
+    p72r_clean=$(eq72 "$P72R/clean_one.json" "$P72R/clean_two.json"); [ "$p72r_clean" = equal ] && p72r_ce=0 || p72r_ce=1
+    p72r_comb=$(eq72 "$P72R/combined_one.json" "$P72R/combined_two.json"); [ "$p72r_comb" = equal ] && p72r_be=0 || p72r_be=1
+    if mut72 "$p72r_brep" "$P72R/mut" Exec; then
+      "$QUERY" gate --report "$P72R/mut.hv.json" --policy "$P72/exec.candor" --gate-json "$P72R/mut_hv.json" >/dev/null 2>&1
+      "$QUERY" gate --report "$P72R/mut.hc.json" --policy "$P72/exec.candor" --gate-json "$P72R/mut_hc.json" >/dev/null 2>&1
+      p72r_hv=$(eq72 "$P72R/combined_one.json" "$P72R/mut_hv.json"); case "$p72r_hv" in diverge*) p72r_hvr=0 ;; *) p72r_hvr=1 ;; esac
+      p72r_hc=$(eq72 "$P72R/combined_one.json" "$P72R/mut_hc.json"); case "$p72r_hc" in diverge*) p72r_hcr=0 ;; *) p72r_hcr=1 ;; esac
+      p72 rust "$p72r_ce" "$p72r_be" "$p72r_hvr" "$p72r_hcr"
+    else
+      P72_BAD=1; rc=1
+    fi
+  else
+    P72_BAD=1; rc=1
+  fi
+fi
+
+# ── THE TS ROW ───────────────────────────────────────────────────────────────────────────────────
+P72T="$P72/ts"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P72T/clean/src" "$P72T/combined/src" "$P72T/combined/dist"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P72T/clean/tsconfig.json"
+  printf 'import * as fs from "fs"\nexport function load(): string { return fs.readFileSync("/etc/hosts", "utf8") }\n' > "$P72T/clean/src/a.ts"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P72T/combined/tsconfig.json"
+  printf 'import { execSync } from "child_process"\nexport function go(): void { execSync("id") }\n' > "$P72T/combined/src/a.ts"
+  printf 'const cp = require("child_process"); module.exports = function go() { cp.execSync("id") }\n' > "$P72T/combined/dist/shipped.js"
+  node "$TS_DIR/scan.mjs" "$P72T/clean"    --policy "$P72/exec.candor" --gate-json "$P72T/clean_one.json"    >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P72T/combined" --policy "$P72/exec.candor" --gate-json "$P72T/combined_one.json" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P72T/clean"    --out "$P72T/clean_rep"    --policy "$P72/exec.candor" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P72T/combined" --out "$P72T/combined_rep" --policy "$P72/exec.candor" >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P72T/clean_rep.json"    --policy "$P72/exec.candor" --gate-json "$P72T/clean_two.json"    >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P72T/combined_rep.json" --policy "$P72/exec.candor" --gate-json "$P72T/combined_two.json" >/dev/null 2>&1
+  if ck72 "$P72T/clean_one.json" "$P72T/combined_one.json"; then
+    p72t_clean=$(eq72 "$P72T/clean_one.json" "$P72T/clean_two.json"); [ "$p72t_clean" = equal ] && p72t_ce=0 || p72t_ce=1
+    p72t_comb=$(eq72 "$P72T/combined_one.json" "$P72T/combined_two.json"); [ "$p72t_comb" = equal ] && p72t_be=0 || p72t_be=1
+    if mut72 "$P72T/combined_rep.json" "$P72T/mut" Exec; then
+      node "$TS_DIR/query.mjs" gate --report "$P72T/mut.hv.json" --policy "$P72/exec.candor" --gate-json "$P72T/mut_hv.json" >/dev/null 2>&1
+      node "$TS_DIR/query.mjs" gate --report "$P72T/mut.hc.json" --policy "$P72/exec.candor" --gate-json "$P72T/mut_hc.json" >/dev/null 2>&1
+      p72t_hv=$(eq72 "$P72T/combined_one.json" "$P72T/mut_hv.json"); case "$p72t_hv" in diverge*) p72t_hvr=0 ;; *) p72t_hvr=1 ;; esac
+      p72t_hc=$(eq72 "$P72T/combined_one.json" "$P72T/mut_hc.json"); case "$p72t_hc" in diverge*) p72t_hcr=0 ;; *) p72t_hcr=1 ;; esac
+      p72 ts "$p72t_ce" "$p72t_be" "$p72t_hvr" "$p72t_hcr"
+    else
+      P72_BAD=1; rc=1
+    fi
+  else
+    P72_BAD=1; rc=1
+  fi
+else
+  P72_OUT="$P72_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+
+# ── THE SWIFT ROW ────────────────────────────────────────────────────────────────────────────────
+P72S="$P72/swift"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P72S/clean/Sources/S" "$P72S/combined/Sources/S" "$P72S/combined/Tests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P72S/clean/Package.swift"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\n' > "$P72S/clean/Sources/S/a.swift"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P72S/combined/Package.swift"
+  printf 'import Foundation\npublic func go() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }\n' > "$P72S/combined/Sources/S/a.swift"
+  printf 'import Foundation\npublic func helper() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }\n' > "$P72S/combined/Tests/Helper.swift"
+  p72s_pick() { p72s_hit=""; for f in "$1".*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && p72s_hit="$f"; done; }
+  ( cd "$P72S/clean"    && env -u CANDOR_CONFIG "$SW_BIN" . --out one --policy "$P72/exec.candor" --gate-json "$P72S/clean_one.json"    >/dev/null 2>&1 )
+  ( cd "$P72S/combined" && env -u CANDOR_CONFIG "$SW_BIN" . --out one --policy "$P72/exec.candor" --gate-json "$P72S/combined_one.json" >/dev/null 2>&1 )
+  ( cd "$P72S/clean"    && env -u CANDOR_CONFIG "$SW_BIN" . --out rep --policy "$P72/exec.candor" >/dev/null 2>&1 )
+  ( cd "$P72S/combined" && env -u CANDOR_CONFIG "$SW_BIN" . --out rep --policy "$P72/exec.candor" >/dev/null 2>&1 )
+  p72s_pick "$P72S/clean/rep";    p72s_crep="$p72s_hit"
+  p72s_pick "$P72S/combined/rep"; p72s_brep="$p72s_hit"
+  if [ -z "$p72s_crep" ] || [ -z "$p72s_brep" ]; then
+    P72_OUT="$P72_OUT  swift  SKIP — candor-swift produced no report for one of the two trees (probed)
+"
+  else
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p72s_crep" --policy "$P72/exec.candor" --gate-json "$P72S/clean_two.json"    >/dev/null 2>&1
+    env -u CANDOR_CONFIG "$SW_BIN" gate --report "$p72s_brep" --policy "$P72/exec.candor" --gate-json "$P72S/combined_two.json" >/dev/null 2>&1
+    if ck72 "$P72S/clean_one.json" "$P72S/combined_one.json"; then
+      p72s_clean=$(eq72 "$P72S/clean_one.json" "$P72S/clean_two.json"); [ "$p72s_clean" = equal ] && p72s_ce=0 || p72s_ce=1
+      p72s_comb=$(eq72 "$P72S/combined_one.json" "$P72S/combined_two.json"); [ "$p72s_comb" = equal ] && p72s_be=0 || p72s_be=1
+      if mut72 "$p72s_brep" "$P72S/mut" Exec; then
+        env -u CANDOR_CONFIG "$SW_BIN" gate --report "$P72S/mut.hv.json" --policy "$P72/exec.candor" --gate-json "$P72S/mut_hv.json" >/dev/null 2>&1
+        env -u CANDOR_CONFIG "$SW_BIN" gate --report "$P72S/mut.hc.json" --policy "$P72/exec.candor" --gate-json "$P72S/mut_hc.json" >/dev/null 2>&1
+        p72s_hv=$(eq72 "$P72S/combined_one.json" "$P72S/mut_hv.json"); case "$p72s_hv" in diverge*) p72s_hvr=0 ;; *) p72s_hvr=1 ;; esac
+        p72s_hc=$(eq72 "$P72S/combined_one.json" "$P72S/mut_hc.json"); case "$p72s_hc" in diverge*) p72s_hcr=0 ;; *) p72s_hcr=1 ;; esac
+        p72 swift "$p72s_ce" "$p72s_be" "$p72s_hvr" "$p72s_hcr"
+      else
+        P72_BAD=1; rc=1
+      fi
+    else
+      P72_BAD=1; rc=1
+    fi
+  fi
+else
+  P72_OUT="$P72_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P72"
+# ENGINES: rust java ts swift
+# CONTROLS: p72j_ce p72r_ce p72t_ce p72s_ce ck72 — the CLEAN tree's own route-equality (ce, "clean-eq" in
+# the aggregator) is the over-charge control: an engine that answers refuse-everything, or that ties its
+# two routes together by literally reusing one code path regardless of input, would still look identical
+# ACROSS THE TWO MUTANTS without this — ck72 additionally fails (never skips) a fixture where the clean
+# tree is not actually clean or the combined tree does not actually carry both a violation and a peeked
+# completeness cause, which is the vacuity this row exists to avoid measuring past.
+# MUTANT-FALSIFIED, NOT PRE-FIX-BINARY-FALSIFIED — recorded here because a reader expecting the usual
+# transcript needs to know why. Measured against candor-rust `a3bf792`, candor-ts `396d6f4` and
+# candor-java `dd0a503` (each engine's own commit immediately before its ⟨0.32⟩ route-split fix) and at
+# HEAD for all four: the clean and combined cells are ALREADY equal on every one of those binaries — the
+# historical fail-open they fixed was a report produced WITH NO POLICY gated afterwards (PART 62's own
+# "no-policy-producer route"), a different condition from this row's, which holds one policy across both
+# routes throughout. So no historical binary reddens this property, and a row that only ever showed green
+# on real binaries would be exactly the "well the row must be vacuous" shape this project has hit before.
+# The two mutants close that: `hv` (strip the denied effect from the report's own analysed function) and
+# `hc` (empty `outOfScope`/`excluded`) are BOTH built from the identical, otherwise-genuine two-step report
+# PART 62/69 already prove these engines produce correctly, so a cell that fails to diverge on either one
+# proves the equality CHECK itself is not discriminating anything — measured, before this row's checkers
+# were hardened, `hc` alone changing the DOCUMENT (losing `incomplete`/`outOfScope`) while leaving the EXIT
+# CODE at 1 unchanged (the violation alone already forces it), which is why this row asserts byte-equality
+# of the document and not parity of the exit code.
+echo "PART 72 — a violation that dominates an incompleteness cause stays byte-equal across both gate routes (SPEC §3.1 ⟨0.24⟩)"
+printf '%s' "$P72_OUT"
+[ "$P72_BAD" = 0 ] && echo "  -> MATCH — \`gate --report\` over a report produced with the SAME policy the gate applies reproduces \`scan --policy\`'s verdict document byte-for-byte, whether the tree is clean or a real violation dominates a peeked completeness cause, and two independent mutants prove the check would catch it if it did not"
+[ "$P72_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
+# ====================================================================================================
+# PART 73 — A CONDITIONALLY-COMPILED DECLARATION MUST NOT PERMANENTLY SHADOW THE FREE-FUNCTION HEURISTIC
+#           (candor-swift; SPEC §4 "must never report a function as effect-free when it could not
+#           actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE ifhedge-A CORPUS FIND, candor-swift only. `#if os(Windows) func getenv(_:) { … } #endif` beside
+# `func realUsage() { return getenv("PATH") }`, in the SAME module, no `#else`: this engine's syntactic
+# scan reads every `#if` branch unconditionally (SwiftSyntax's default visitor descends into an
+# `IfConfigDeclSyntax` regardless of which branch, if any, a real build would keep), so the Windows-only
+# stub was exactly as visible as an unconditional declaration and permanently shadowed the free-function
+# `Env` heuristic for `getenv` — for every build, including the one that never contains the stub.
+# `deny Env` exited 0, `policy ✓`, `realUsage` absent from `functions` — not even an `Unknown`, which is
+# the general SPEC §4 rule this specific mechanism violates: an effect the engine's OWN heuristic would
+# otherwise have charged must not silently vanish because an inactive `#if` branch declared the same name.
+#
+# NOT A CROSS-ENGINE ROW, and that is recorded rather than assumed. `#if`-gated declarations are a
+# Swift-specific surface; the analogue nearest another engine is candor-rust's `#[cfg(...)]` attribute,
+# which is UNAUDITED for the identical shadow shape — filed to BACKLOG.md rather than asserted clean,
+# because "no engine analogue" and "unaudited" are different claims and this row does not have the
+# evidence for the first. candor-java and candor-ts have no compile-time conditional-declaration construct
+# (a runtime `if`/`process.platform` check is not equivalent — both branches are always live code there).
+#
+# THE FOUR CELLS, each MEASURED against candor-swift `bcb4bc8` (the commit immediately before the fix,
+# `098a035`) and at HEAD:
+#
+#   defect          the repro above. PRE-FIX: `realUsage` ABSENT from `functions` (silently pure).
+#                   POST-FIX: `inferred == ["Env"]`.
+#   ctrl-unaffected the identical call with NO `#if` block at all — the sibling that proves the fix is
+#                   about the CONDITIONAL declaration specifically. UNCHANGED pre- and post-fix:
+#                   `inferred == ["Env"]` on both binaries — the over-charge control: if this cell had
+#                   MOVED, the "fix" would have been a change to the heuristic itself, not to the shadow.
+#   ctrl-unconditional  an UNCONDITIONAL same-module `getenv` — the reason the shadow mechanism exists at
+#                   all: a project's own free function of a collision-prone name must never be fabricated
+#                   as the platform call. UNCHANGED pre- and post-fix: `realUsage` absent both times (a
+#                   real, unambiguous declaration resolves to its own pure body). Narrowing the shadow to
+#                   the CONDITIONAL case must not regress this, and MEASURED confirms it does not.
+#   ctrl-union      the conditional stub performs a real effect of its own (`NSLog` — `Log`) rather than
+#                   `fatalError`. PRE-FIX: `inferred == ["Log"]` only — the heuristic's `Env` contribution
+#                   was already lost to the shadow, so only the ordinary call edge into the stub survived.
+#                   POST-FIX: `inferred == ["Env", "Log"]` — the two readings UNION, because resolution is
+#                   CONDITIONAL here (the call may genuinely reach the real platform function on a build
+#                   without the stub), not failed, so this is not a pick-one situation.
+#
+# THE INSTRUMENT CHECK folds into the assertion itself: each cell names the EXACT expected `inferred` set
+# (or its absence), so a fixture that stopped exercising its own shape fails the comparison directly
+# rather than passing vacuously — there is no separate "did this fire at all" question here the way there
+# is over a peeked-class fixture, because `getenv`'s charge is a bare free-function call with nothing else
+# in the tree to misattribute it to.
+ck73() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+f = fns.get("realUsage")
+print(json.dumps(sorted(f.get("inferred") or [])) if f else "absent")
+' "$1"; }
+p73() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P73_OUT="$P73_OUT  swift  $1  got=$2  OK
+"
+  else
+    P73_OUT="$P73_OUT  swift  $1  got=$2 want=$3  FAIL
+"
+    P73_BAD=1; rc=1
+  fi
+}
+P73_BAD=0; P73_OUT=""
+P73="$W/p73"; mkdir -p "$P73/defect" "$P73/unaffected" "$P73/unconditional" "$P73/union"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  printf '#if os(Windows)\nfunc getenv(_ name: String) -> String? { fatalError("no getenv on windows shim") }\n#endif\nfunc realUsage() -> String? {\n    return getenv("PATH")\n}\n' > "$P73/defect/a.swift"
+  printf 'func realUsage() -> String? {\n    return getenv("PATH")\n}\n' > "$P73/unaffected/a.swift"
+  printf 'func getenv(_ name: String) -> String? { return nil }\nfunc realUsage() -> String? {\n    return getenv("PATH")\n}\n' > "$P73/unconditional/a.swift"
+  printf 'import Foundation\n#if os(Windows)\nfunc getenv(_ name: String) -> String? {\n    NSLog("windows shim reached for %%@", name)\n    return nil\n}\n#endif\nfunc realUsage() -> String? {\n    return getenv("PATH")\n}\n' > "$P73/union/a.swift"
+  ( cd "$P73/defect"        && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P73/unaffected"    && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P73/unconditional" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P73/union"         && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  p73_defect=$(ck73 "$P73/defect/out.json")
+  p73_unaff=$(ck73 "$P73/unaffected/out.json")
+  p73_uncond=$(ck73 "$P73/unconditional/out.json")
+  p73_union=$(ck73 "$P73/union/out.json")
+  p73 defect          "$p73_defect" '["Env"]'
+  p73 ctrl-unaffected "$p73_unaff"  '["Env"]'
+  p73 ctrl-unconditional "$p73_uncond" absent
+  p73 ctrl-union       "$p73_union" '["Env", "Log"]'
+else
+  P73_OUT="$P73_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P73"
+# ENGINES: swift; rust: no MEASURED analogous defect — candor-rust's `#[cfg(...)]`-gated shadow is UNAUDITED, filed to BACKLOG.md rather than assumed clean; java: no user-facing compile-time conditional-declaration construct exists in the JVM bytecode this engine reads; ts: no compile-time conditional-declaration construct exists (a runtime branch is not equivalent — both sides are live code)
+# CONTROLS: p73_unaff p73_uncond — ctrl-unaffected proves the fix is about the CONDITIONAL declaration
+# specifically and not a coincidental change to the heuristic itself (it must read EXACTLY as it did
+# before, on both the pre-fix and post-fix binary); ctrl-unconditional proves the shadow mechanism itself
+# still fires for a REAL, unambiguous same-module declaration — without it this row would pass for an
+# engine that deleted the shadow entirely rather than narrowed it to the conditional case
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `bcb4bc8` (immediately before `098a035`): `defect`
+# read `absent` where HEAD reads `["Env"]`, and `ctrl-union` read `["Log"]` where HEAD reads
+# `["Env", "Log"]` — two RED cells. `ctrl-unaffected` and `ctrl-unconditional` were ALREADY at their
+# wanted values on that same binary, so the controls are not what moved.
+echo "PART 73 — a conditionally-compiled declaration must not permanently shadow the free-function heuristic (candor-swift; SPEC §4)"
+printf '%s' "$P73_OUT"
+[ "$P73_BAD" = 0 ] && echo "  -> MATCH — an inactive \`#if\` branch's declaration unions with the heuristic instead of permanently shadowing it, a real unconditional declaration still shadows exactly as before, and an unrelated call is unaffected"
+[ "$P73_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
