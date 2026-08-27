@@ -18,6 +18,31 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.33.0] — 2026-08-26
 
+- **PART 72 pins §3.1's byte-level route-equality MUST — unclassified in must-ledger.json since the
+  ledger was frozen, and unexercised by any row despite PART 48/62/69 already driving `scan --policy`
+  against `gate --report` exhaustively.** None of those puts a REAL violation in the analysed code at
+  the same time as a peeked, matching-policy exclusion and then compares the two routes' `--gate-json`
+  documents BYTE-FOR-BYTE rather than by exit code alone — exactly the gap the SPEC paragraph names and
+  a corpus round would hit first (one real crossing, one class it could not fully read). MEASURED: the
+  property already holds at HEAD and on each engine's own pre-⟨0.32⟩ route-split commit, so this row is
+  MUTANT-FALSIFIED rather than pre-fix-binary-falsified — two independent corruptions of an otherwise
+  genuine two-step report (stripping the violation; emptying `outOfScope`/`excluded`) both change the
+  verdict document, one of them (`outOfScope`/`excluded`) WITHOUT changing the exit code, which is the
+  concrete reason this row asserts document equality and not exit parity. Four-way; the clean tree is
+  the over-charge control.
+- **PART 73 pins candor-swift's `#if`-gated free-function shadow fix (the ifhedge-A corpus find).** A
+  same-module `#if os(Windows) func getenv(_:) { … } #endif` with no `#else` permanently shadowed the
+  `Env` heuristic for every build, including the one that never contains the stub — `deny Env` exited 0
+  over code that reaches `Env` on every real platform. Fixed by tracking conditionally-compiled
+  declarations separately, so a name shadowed ONLY by a conditional declaration unions the heuristic's
+  charge with the declaration's own effects instead of suppressing it. Falsified against candor-swift
+  `bcb4bc8` (immediately before the fix): the defect cell read `absent` where HEAD reads `["Env"]`, and
+  a fourth cell (the conditional stub performing a real `Log` effect of its own) read `["Log"]` where
+  HEAD unions to `["Env", "Log"]`. Two controls travel the same pre/post-fix binaries UNCHANGED: an
+  unconditional same-module `getenv` still shadows exactly as before, and the same call with no `#if`
+  block at all is unmoved. Swift-only — candor-rust's `#[cfg(...)]` analogue is UNAUDITED, filed to
+  BACKLOG.md rather than assumed clean; java and ts have no compile-time conditional-declaration
+  construct.
 - **PART 71 pins the ⟨0.30⟩/⟨0.33⟩ emission rule that two engines contradicted on day one.**
   `outOfScope` and `scannedUnder` are present **iff a policy was CONFIGURED and HONOURED** — and
   present-and-empty is a claim ("asked and clear"), which must not collapse into the ⟨0.26⟩ *cannot
