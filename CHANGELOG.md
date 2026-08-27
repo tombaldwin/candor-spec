@@ -14,9 +14,39 @@ This file is a one-line-per-rung index. The authoritative, surface-by-surface re
 (each surface is also tagged inline with the ⟨0.8⟩/⟨0.7⟩/⟨0.6⟩ rung that introduced it); the adversarial
 evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)**.
 
+**A `## [X.Y.Z]` heading here is a build, not a new GitHub release.** This repo's GitHub release is
+tagged at the floor alone (`vX.Y`, no patch component — the spec has no patch axis), so
+`release.sh` cuts one release per rung and correctly skips every patch build after it: the tag already
+exists. That leaves a real question — where does a patch cycle's own notes get published? — answered by
+`scripts/publish-floor-notes.sh`: it folds every `## [X.Y.<patch>]` section for the current floor into
+that floor's existing release notes (never a new tag, never touching SPEC.md), so the release stays the
+complete record of everything shipped while that floor held, not a snapshot frozen at the day it was cut.
+Run it after any patch-cycle commit that adds a section here.
+
 ## Unreleased
 
 ## [0.33.1] — 2026-08-27
+
+- **The patch-cycle notes above had nowhere to be announced, and now do.** This section's six
+  conformance rows (PARTs 71-76) were the first CHANGELOG content added after `release.sh` cut
+  `v0.33` — a patch build for a repo whose GitHub release is tagged at the floor alone, so the cut
+  correctly SKIPPED candor-spec (`v0.33` already released) and this section sat written but
+  unpublished. Added `scripts/publish-floor-notes.sh`: it folds every `## [0.33.<patch>]` section into
+  the existing `v0.33` release's notes (`gh release edit -F`, body only — no tag, title, or SPEC.md
+  touched), so the release becomes the running record of everything shipped under the floor rather than
+  a snapshot of the day it was cut. Run once against this repo's real `v0.33` release as part of this
+  change: the notes above are now live at
+  https://github.com/tombaldwin/candor-spec/releases/tag/v0.33. Considered and rejected: a decoupled
+  build tag on candor-spec (`v0.33+build.1`) puts a patch-shaped axis on the one tag this repo
+  deliberately has none of, and needs the umbrella's `release.sh`/`release-verify.sh` to learn a second
+  tag scheme for one repo out of seven; rolling the notes into the next contract rung's release instead
+  would publish them, whenever that rung lands, described as work done under a version they were not
+  shipped with. Same gap does NOT exist for candor-agents or any other family repo — every other repo's
+  GitHub release is tagged at the family build version (`vX.Y.Z`, e.g. candor-agents' `v0.33.1`), which
+  moves on every cut, so `release.sh` never skips them for this reason. Filed for the umbrella: `rel
+  candor-spec "v$SPEC"` in `bin/release.sh` could call this script right after its skip branch, so the
+  fold-in happens automatically on every cut instead of by hand; not done here since that file is
+  umbrella-owned.
 
 - **PART 76 pins candor-ts's own-`.d.ts`-shadow fix (the got@15.1.0 corpus find).** npm ships
   `dist/foo.js` beside `dist/foo.d.ts`, and TypeScript's module resolution treats the co-located
