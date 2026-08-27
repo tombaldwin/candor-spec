@@ -27,6 +27,61 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.33.1] — 2026-08-27
 
+- **PART 78 pins candor-ts's dynamic-re-export disclosure fix (`2365827`), the fifth "neither voice
+  fired" instance.** `Object.keys(impl).forEach(k => exports[k] = impl[k])` (and its
+  `Object.defineProperty` descriptor twin) binds an export name to a runtime string no static matcher
+  can read, so three individually-correct decisions — the alias join finds no match, the covered-package
+  arm (SPEC §2 rule 3) declines because the package IS chained, and `unanswerableKey` correctly says the
+  key is answerable — compounded into total silence: a real `fs.writeFileSync` reachable only through the
+  forwarded name read `policy ✓` at exit 0. Fixed by naming the pattern in the producer's own report
+  (`dynamicReexport.count`, never a fabricated per-name entry) and disclosing `Unknown`
+  (`reflect:dynamic-reexport:<pkg>`) on every consumer call into a package that set it, at
+  `disclosureTail`. Falsified against candor-ts `73100d9` (immediately before the fix, built in a
+  throwaway clone): the producer's own `dynamicReexport` key and both consumer calls (`defect-run`,
+  `defect-runOther`) all read `absent` where HEAD discloses. THE OVER-CHARGE CONTROL IS HALF THE ROW: the
+  genuinely pure `other()`, forwarded through the identical loop, gains the same `Unknown` and never a
+  fabricated `Fs`. Three further controls travel both binaries UNCHANGED: an ordinary CJS export gains no
+  `dynamicReexport` key, a `Symbol.toStringTag` ESM-interop stamp (a MEASURED real false-positive source
+  on a published bundle) is never mistaken for a dynamic forward, and ordinary (non-dynamic) dep-chaining
+  stays concrete end-to-end. TS-only — no module-object export surface exists to mutate this way in
+  rust/java/swift, structurally absent rather than unaudited.
+
+- **PART 77 pins candor-swift's macro-disclosure fix (`dc27915`) and, with it, corrects a FALSE immunity
+  claim in SOUNDNESS.md.** The "macro / codegen reach" scorecard row had read "—" (immune by
+  construction) for swift since its first commit, reasoned about only for rust's `macro_rules!`; Swift's
+  own compiler-plugin macro system (`@Observable`, `#Preview`, Swift Testing, any `#freestanding`/
+  `#attached` macro) was never examined. A freestanding macro with no trailing closure and any attached
+  macro attribute (func or type) scanned clean under `deny Net`: exit 0, `functions: []` — no visitor
+  existed for `MacroExpansionExprSyntax` at all. Fixed by routing both forms into the existing
+  `Unknown`/`unknownWhy` vocabulary (`macro:<name>` / `macro:@<Attr>`); a trailing-closure macro is
+  unaffected (already caught concretely). Falsified against candor-swift `70274c3` (immediately before
+  the fix): all three defect cells (freestanding, attached-func, attached-type) read `absent` where HEAD
+  discloses `Unknown`. Five controls travel both binaries UNCHANGED, incl. the over-charge control that
+  mattered most in practice — the compiler-builtin freestanding-literal denylist (`#file`/`#fileID`/
+  `#isolation`/…) and a local `@resultBuilder`/`@globalActor` gain nothing; the first denylist cut had
+  missed `fileID`/`isolation` and produced 101 hits of noise across swift-nio and Nimble before that gap
+  was closed. SOUNDNESS.md's row is corrected to reflect all four non-rust engines were re-audited, not
+  assumed clean: swift's cell moves `—` → `🟡` (fixed, R56 closed); ts's own macro-adjacent mechanism
+  (an anonymous decorator minting no unit) is a DIFFERENT, still-open finding (R57, `—` → `⚫`, filed
+  against candor-ts, not fixed here); java's bytecode-based construction holds for Lombok but is
+  UNMEASURED for annotation-processor-generated separate-file codegen (R58, `—` → `🔴`). Full prose:
+  SOUNDNESS-LOG.md, 2026-08-27 entry.
+
+- **`conformance/part_declarations.py`'s `# ENGINES:` parser had a silent-misparse trap: a reason
+  containing its own `;` could mint a bogus exclusion clause with zero errors.** The parser splits an
+  `# ENGINES:` line's exclusions on `;`, so a reason needing its own semicolon for ordinary prose
+  ("...macro path; java has no macro system") got cut there — and if the accidental tail happened to
+  start with a real engine name followed by `:` (an easy coincidence: "rust"/"java"/"ts"/"swift" are all
+  ordinary English words), the tail silently parsed as its OWN, unintended exclusion clause. PLANTED AND
+  CONFIRMED: `rust swift; ts: ...macro path; java: has no macro system` parsed with ZERO errors to
+  `listed={rust,swift} excluded={ts,java}` — a fully-accounted-for, checker-green declaration nobody
+  wrote, the exact "green row asserting less than it claims" shape this project has found four times
+  before, now living in the tool that checks for it. Fixed by requiring a literal `;` inside a reason to
+  be escaped as `\;`; the parser now splits only on an UN-escaped `;`, so a bare `;` is unambiguously
+  always a new clause. Checked every existing `# ENGINES:`/`# CONTROLS:` declaration in `run.sh` (78 at
+  the time) for the coincidence: none is currently misparsing — the two agents who hit this while writing
+  PARTs 74-76 restructured around it (an em dash for the aside) rather than shipping the ambiguous form.
+
 - **The patch-cycle notes above had nowhere to be announced, and now do.** This section's six
   conformance rows (PARTs 71-76) were the first CHANGELOG content added after `release.sh` cut
   `v0.33` — a patch build for a repo whose GitHub release is tagged at the floor alone, so the cut
