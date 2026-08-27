@@ -3370,3 +3370,80 @@ cause.
 **GATES.** conformance **PART 67**, four-way, six cells per engine plus the `--parallel` and MCP arms;
 `conformance/mcp_gate_probe.mjs` (its own over-charge control inside); `ck67`, whose five failure modes
 were each falsified by hand.
+
+### 2026-08-27 — the macro/codegen row's "—" was never independently reasoned about, for three of four engines
+
+**The sin (swift, CLOSED same day).** §4's `macro / codegen reach` seam has read "—" (N/A, immune by
+construction) across java/ts/swift/agents since the scorecard's first commit. The row's prose only ever
+discussed rust's `macro_rules!`/`cfg_if!` — "java/swift/ts lack C-style macros" is true of C-style macros
+and false of Swift's compiler-plugin macro system. Measured: `#urlFetch("https://danger.example.com")`
+(freestanding) and `@Observable class Store` / `@MyBodyMacro func doThing()` (attached — the shape
+SwiftData/`@Model`, Observation/`@Observable`, and Swift Testing actually take) scanned clean under `deny
+Net`: exit 0, `functions: []`, zero disclosure. No visitor existed for `MacroExpansionExprSyntax` at all,
+and no attribute-handling path treated a decl's own custom attributes as a possible attached macro.
+
+**The fix (candor-swift `dc27915`).** Both forms route into the existing `Unknown`/`unknownWhy`
+vocabulary (`"macro:<name>"` / `"macro:@Attr"`) rather than resolving what the macro does — a syntax-only
+engine cannot run a compiler plugin, so disclosing the miss is the sound move, not guessing at it. A
+trailing-closure macro (`#Preview { ... }`) is unaffected: the existing `ClosureExprSyntax` visitor
+already walks it regardless of what syntactically contains it, so double-disclosing there would regress a
+concrete catch to a vague one beside it — measured in first testing (it double-counted `#Preview { … }`)
+and gated out. An attached macro attribute on a func/init/type is handled the same way, and for a TYPE
+attribute the disclosure propagates onto every member the scan already collected for that type (Swift
+admits exactly two explanations for a capitalized type-level attribute — a global actor or an attached
+macro — so the two carve-outs, `@resultBuilder`/`@globalActor`, are exhaustive, not heuristic).
+**Over-charge control, the real work here**: a first denylist cut of compiler-builtin freestanding
+literals (`#file`/`#line`/…) MISSED `fileID` (SE-0274) and `isolation` (SE-0420) — the 13-package
+before/after corpus diff surfaced 93 `fileID` and 8 `isolation` hits (swift-nio and Nimble default nearly
+every logging/assertion parameter to one or the other), which would have been exactly the noise this fix
+exists to prevent. Residual: a macro-decorated type with zero source-declared members has no function to
+attach the disclosure to (the same pre-existing gap any compiler-synthesized member already has); an
+EXTERNAL (non-local) `@resultBuilder`/`@globalActor` is conservatively treated as a possible macro — sound
+(over-discloses, never under-reports), unmeasured precision cost. 13-package corpus (Alamofire,
+CryptoSwift, Nimble, PromiseKit, Quick, ReactiveSwift, RxSwift, swift-algorithms, swift-collections,
+swift-nio, swift-syntax, SwiftyJSON, Swinject) byte-identical post-fix; the nested `swift-syntax/Examples`
+package (real macro usage a root scan doesn't cross) confirms the mechanism end-to-end with zero
+fabrication. swift test 892/892, smoke.sh 148/148, fuzz.py 25/25, self-gate all pass. R56.
+
+**ts's "—" is ALSO false, and open (R57) — candor-spec does not own candor-ts, so this is a finding, not a
+fix.** A NAMED decorator factory is sound: `enclosing()` in scan.mjs (`ts.isDecorator(p) → null`)
+deliberately keeps a decorator application's call site from wiring onto the decorated declaration, so the
+factory's own effects land on its own unit rather than mis-attributing onto the thing it decorates (tested,
+test.mjs:5102-5126). But an ANONYMOUS decorator — a function literal sitting directly in decorator
+position with no top-level name (`@((_t,_k,_d) => { fs.readFileSync("/etc/hosts"); }) method(){}`) — mints
+no unit at all, because the same `isDecorator` guard that correctly stops a named factory from being
+mis-wired never mints a synthetic unit for the unnamed literal either. Live-reproduced: `deny Fs` over a
+fixture with exactly this shape exits 0, `"violations": []`, nothing in the 16-function report — a real
+filesystem read at class-definition/module-load time, completely invisible. Do not conflate this with the
+already-known, already-DISCLOSED limitation at SOUNDNESS-LOG.md:1478-1481 (a decorator that WRAPS a method
+to inject an effect at call time reads pure on the true call path, but the effect still surfaces on the
+decorator's own unit — mis-attributed, not silent). Bundler-time codegen (babel-plugin-macros, loader-
+injected code) is NOT a coherent seam for this row: code a preprocessor hasn't generated yet simply isn't
+in the file candor-ts opens, true of any static source scanner for any preprocessor in any language —
+that belongs with scan-boundary/staleness concerns, not this one.
+
+**java's "—" holds for ONE mechanism, unmeasured for another (R58, open, not marked SILENT).**
+candor-java reads compiled `.class` files (`Loader.java`'s directory walk), never source, with no
+`generated`/annotation-processor path exclusion. Lombok (`@Data`/`@Builder`) rewrites bytecode inside the
+SAME `javac` invocation a user runs before scanning, so it is genuinely immune by construction — the
+rust-deep shape (seeing post-expansion code), verified by reading `Loader.java` rather than assumed from
+"java lacks macros". But an annotation processor that emits a SEPARATE `.java` file compiled to its OWN
+`.class` (Dagger, Room, AutoValue, MapStruct) is a different mechanism the bytecode argument doesn't cover
+for free: Gradle/Maven land those generated `.class` files in the same output directory
+(`build/classes/java/main`) the README tells users to point candor-java at, and nothing in the loader's
+walk special-cases or drops them — plausible, but never checked against a real annotation-processor
+project. Unlike R57 there is no reproduction either way, so this is logged as UNMEASURED rather than
+rounded up to immune (this row's own original mistake) or down to a confirmed sin.
+
+**Why this happened.** The scorecard's "—" cells across java/ts/swift/agents were pasted identically at
+the row's creation and never revisited per engine — the exact shape the corpus brief's rule 9 warns about
+("an audit's boundary must not be drawn around its own trigger"): the original author reasoned about ONE
+mechanism (rust's macros) and let the verdict stand for three engines it never examined. Widening the
+audit past its own trigger — asking what java's and ts's actual macro/codegen-adjacent mechanisms even
+ARE, rather than trusting the pasted "—" — is what found R57 and R58; the same discipline had already
+found R56 by the time the audit reached ts and java.
+
+**GATES.** R56 gated by candor-swift's own regression suite (`MacroDisclosureProcessTests.swift`) and its
+13-package corpus diff; a cross-engine conformance PART for the macro-disclosure vocabulary is deferred
+(no fix exists yet for ts/java to conform against). R57/R58 have no gate — they are open findings, filed
+against candor-ts and candor-java respectively.

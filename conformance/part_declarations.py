@@ -43,6 +43,25 @@ THE DECLARATION, one per slice, in the slice's own lines:
   · every un-annotated slice is an ERROR, never a skip — a half-annotated file makes this checker
     lie, so the set was completed in one pass and can only stay complete.
 
+THE SEMICOLON TRAP (found while writing PARTs 74-76, fixed here) — an ENGINES exclusion's reason is
+free text, and `;` is the clause separator, so a reason that needs its OWN `;` ("...macro path; java
+has no macro system") gets cut there. If the tail happens to start with a real engine name followed by
+`:` — an easy coincidence, since "rust"/"java"/"ts"/"swift" are ordinary English words too — the tail
+silently parses as its OWN, unintended exclusion clause: `rust swift; ts: ...macro path; java: has no
+macro system` parses with ZERO errors to `listed={rust,swift} excluded={ts,java}`, a fully-accounted-for,
+checker-green declaration nobody actually wrote. This is the exact failure this suite exists to catch —
+a green row asserting less than it claims — living in the tool that validates rows. A reason whose
+accidental tail has NO colon still fails loudly (`... has no reason`), but that was luck, not design.
+
+Fix: a literal `;` inside a reason MUST be escaped as `\;` — prefer rephrasing with an em dash (`—`,
+already this file's own house style for asides) over reaching for `\;` at all. The parser splits ONLY on
+an un-escaped `;`; `\;` always survives into the reason text as a literal `;`. This makes a bare `;`
+unambiguous by construction: it is ALWAYS a new clause, never prose, so the only way to get a semicolon
+INTO a reason is to say so explicitly. It does not (cannot) rescue an author who uses a bare `;` in prose
+without realizing they needed to escape it — no parser can recover an intent it was never told — so the
+house style of preferring `—` for asides remains the real defense; `\;` exists for the rare case a literal
+semicolon is unavoidable.
+
 CONTROLS is mandatory-but-honest-about-being-weak: this file checks PRESENCE and that each named
 identifier exists in the slice's EXECUTABLE lines (a control that exists only in a comment is the
 vacuity again). It does NOT check that the control proves what the prose says — no script can. What it
@@ -110,15 +129,41 @@ def sections():
     return out
 
 
+def split_clauses(text, pid, fails):
+    """Split ENGINES text into clauses on ';', the documented clause separator — but a bare ';'
+    inside a REASON is a live trap: a reason that needs its own semicolon ("...macro path; java
+    has no macro system...") gets cut at that point, and if the tail happens to start with a
+    real engine name followed by ':' (an easy coincidence — "java"/"rust"/"swift"/"ts" all read
+    as ordinary English words too), the tail silently parses as its own, unintended exclusion
+    clause. Measured: `rust swift; ts: ...macro path; java: has no macro system...` parses with
+    ZERO errors to listed={rust,swift} excluded={java,ts} — a fully-accounted-for, checker-green
+    declaration nobody wrote. A reason that has no colon in its tail still fails (loudly, if
+    confusingly) via the existing "has no reason" check below, but that is luck, not design.
+
+    Fix: a literal ';' inside a reason MUST be escaped as '\\;' — split only on UNESCAPED ';',
+    then unescape each clause. This makes the grammar unambiguous instead of guessing: a bare
+    ';' always starts a new clause, ‘\\;’ is always prose. An author who forgets to escape and
+    happens to hit the coincidence above is a residual we cannot fully close by pattern alone —
+    but the far more common case (forgetting to escape where the tail has NO colon) now fails
+    exactly as before, and the documented, correct way to write a semicolon in a reason no
+    longer has an unsafe reading at all.
+    """
+    return [f.strip() for f in re.split(r'(?<!\\);', text)]
+
+
+def unescape_clause(s):
+    return s.replace("\\;", ";")
+
+
 def parse_engines(text, pid, fails):
     """Return (listed, excluded) engine sets, or None after recording failures."""
     if text.startswith("none"):
-        rest = text[len("none"):].strip()
+        rest = unescape_clause(text[len("none"):].strip())
         if not (rest.startswith("—") or rest.startswith("--")) or len(rest) < 4:
             fails.append(f"{pid}: `ENGINES: none` needs a reason (`none — <why no engine runs here>`)")
             return None
         return set(), set(ENGINES)
-    fields = [f.strip() for f in text.split(";")]
+    fields = [unescape_clause(f) for f in split_clauses(text, pid, fails)]
     listed = fields[0].split()
     bad = [e for e in listed if e not in ENGINES]
     if bad or not listed:

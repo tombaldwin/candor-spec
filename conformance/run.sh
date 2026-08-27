@@ -14082,6 +14082,371 @@ printf '%s' "$P76_OUT"
 true
 
 
+# ====================================================================================================
+# PART 77 — A SWIFT COMPILER-PLUGIN MACRO MUST DISCLOSE UNKNOWN, NEVER VANISH (candor-swift; SPEC §4
+#           "must never report a function as effect-free when it could not actually determine that")
+#           [TIER 2]
+# ====================================================================================================
+#
+# THE SIN, candor-swift only, found auditing SOUNDNESS.md's "macro / codegen reach" scorecard row — its
+# "—" (N/A, immune by construction) had been pasted across java/ts/swift/agents since the row's first
+# commit, and the surrounding prose only ever discussed rust's `macro_rules!`/`cfg_if!`. Swift has its
+# OWN, unrelated macro mechanism (compiler-plugin macros — SwiftData `@Model`, Observation's
+# `@Observable`, Swift Testing, and any `#freestanding`/`#attached` macro), and "java/swift/ts lack
+# C-style macros" is true of C-style macros and false of this one. `#urlFetch("https://danger.example.com")`
+# (freestanding, no trailing closure) and `@MyBodyMacro func doThing() { }` / `@Observable class Store`
+# (attached — a func, or a type reaching its own already-collected members) all scanned clean under
+# `deny Net`: exit 0, `functions: []` — no visitor existed for `MacroExpansionExprSyntax` at all, and no
+# attribute-handling path treated a decl's own custom attributes as a possible attached macro.
+#
+# FIXED in candor-swift `dc27915`: both forms route into the EXISTING `Unknown`/`unknownWhy` vocabulary
+# (`"macro:<name>"` / `"macro:@<Attr>"`) rather than resolving what the macro does — a syntax-only engine
+# cannot run a compiler plugin, so disclosing the miss is the sound move. A trailing-closure macro
+# (`#Preview { ... }`) is UNAFFECTED: its closure body is ordinary Swift the existing `ClosureExprSyntax`
+# visitor already walks, and the first cut of this fix regressed that concrete catch to a vague one
+# riding beside it (measured while building it) before being gated out. THE OVER-CHARGE CONTROL IS MOST
+# OF THE WORK: a first denylist cut of compiler-builtin freestanding literals (`#file`/`#line`/…) MISSED
+# `#fileID` (SE-0274) and `#isolation` (SE-0420) — the 13-package before/after corpus diff surfaced 93
+# `fileID` and 8 `isolation` hits (swift-nio and Nimble default nearly every logging/assertion parameter
+# to one or the other), which would have been exactly the noise this fix exists to prevent. A LOCAL
+# `@resultBuilder`/`@globalActor` is the other pair of carve-outs — Swift admits exactly two explanations
+# for an unresolved capitalized attribute (a func/init: result builder or macro; a type: global actor or
+# macro), so these two are exhaustive, not heuristic.
+#
+# NOT A CROSS-ENGINE ROW: this compiler-plugin macro system has no analogue outside Swift. rust has its
+# OWN, separate macro-reach seam (`macro_rules!`/proc-macro expansion, R48 — a textually different
+# mechanism, already closed) tracked by its own per-engine regression, not this row. java reads compiled
+# `.class` bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue at all.
+# ts has no compiler-plugin macro system of its own — its closest analogue (an ANONYMOUS decorator
+# expression minting no unit) is a DIFFERENT mechanism, found the same audit sweep, and is tracked as its
+# own open residual (SOUNDNESS.md R57) rather than folded into this row.
+#
+# EIGHT CELLS, MEASURED against candor-swift `70274c3` (immediately before the fix `dc27915`) and at
+# HEAD — ported directly from the fix's own regression suite (CandorCoreTests/MacroDisclosureProcessTests.swift)
+# so the conformance row and the engine's own gate assert the identical shapes:
+#
+#   defect-freestanding    `#urlFetch("...")`, no trailing closure. PRE-FIX: `doThing` ABSENT from
+#                           `functions` (silently pure — the cardinal sin, not even `Unknown`). POST-FIX:
+#                           `inferred == ["Unknown"]`, `unknownWhy == ["macro:urlFetch"]`.
+#   defect-attached-func   `@MyBodyMacro func doThing() { }`. Same PRE-FIX absence; POST-FIX
+#                           `inferred == ["Unknown"]`, `unknownWhy == ["macro:@MyBodyMacro"]` — a
+#                           DIFFERENT syntax shape (a decl attribute, not a `#`-expression) hitting the
+#                           same sin.
+#   defect-attached-type   `@Observable class Store { var count = 0; func bump() { count += 1 } }`. Same
+#                           PRE-FIX absence for `Store.bump`; POST-FIX the disclosure propagates onto the
+#                           type's EXISTING member: `Store.bump` gets `inferred == ["Unknown"]`,
+#                           `unknownWhy == ["macro:@Observable"]`.
+#   ctrl-trailing-closure   `#Preview { makeRequest() }` where `makeRequest` does a real `URLSession`
+#                           call. UNCHANGED pre- and post-fix: `<main>`'s `inferred == ["Net"]` with no
+#                           `unknownWhy` on BOTH — the regression-from-precise-to-vague control: if this
+#                           cell had gained `Unknown`, the fix would have double-disclosed beside an
+#                           already-concrete catch instead of leaving it alone.
+#   ctrl-namealike          a function merely NAMED `urlFetch` (no macro), and `@MainActor func onMain()`
+#                           (a builtin decl-attribute, not a macro). UNCHANGED pre- and post-fix: both
+#                           ABSENT (pure, no blind reach) on BOTH binaries — over-fabrication control: a
+#                           name-alike or a compiler-recognized builtin attribute must gain nothing.
+#   ctrl-builtin-literals   `#file`/`#line`/`#function`/`#fileID` as default-parameter literals, and
+#                           `#isolation` as a default-isolated-parameter literal. UNCHANGED pre- and
+#                           post-fix: both functions ABSENT on BOTH binaries — the exact denylist gap
+#                           (`fileID`/`isolation`) MEASURED missing from the first cut before landing here
+#                           already fixed to closed.
+#   ctrl-local-resultbuilder  a LOCALLY-declared `@resultBuilder` type whose `buildBlock` does a real
+#                           `URLSession` call, applied to a func via `@NetBuilder`. UNCHANGED pre- and
+#                           post-fix: `build`'s `inferred == ["Net"]` with no `unknownWhy` on BOTH — an
+#                           unresolved-macro-candidate attribute must not shadow a real, resolved
+#                           `@resultBuilder`.
+#   ctrl-local-globalactor  a LOCALLY-declared `@globalActor` type (`@globalActor actor DBActor`) applied
+#                           to a func via `@DBActor`. UNCHANGED pre- and post-fix: `onDB` ABSENT on BOTH —
+#                           isolation-checking only, not a macro.
+#
+ck77() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+name = sys.argv[2]
+f = fns.get(name)
+if f is None:
+    print("absent")
+else:
+    inf = sorted(f.get("inferred") or [])
+    why = sorted(f.get("unknownWhy") or [])
+    print(json.dumps(inf) + "|" + (json.dumps(why) if why else "-"))
+' "$1" "$2"; }
+ck77abs() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn") for f in (d.get("functions") or [])}
+leaked = [n for n in sys.argv[2:] if n in fns]
+print("both-absent" if not leaked else "PRESENT:" + ",".join(leaked))
+' "$1" "$2" "$3"; }
+p77() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P77_OUT="$P77_OUT  swift  $1  got=$2  OK
+"
+  else
+    P77_OUT="$P77_OUT  swift  $1  got=$2 want=$3  FAIL
+"
+    P77_BAD=1; rc=1
+  fi
+}
+P77_BAD=0; P77_OUT=""
+P77="$W/p77"
+mkdir -p "$P77/freestanding" "$P77/attachedfunc" "$P77/attachedtype" "$P77/trailingclosure" "$P77/namealike" "$P77/builtinliterals" "$P77/resultbuilder" "$P77/globalactor"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  printf 'import Foundation\n@freestanding(expression)\nmacro urlFetch(_ s: String) -> String = #externalMacro(module: "MyMacros", type: "URLFetchMacro")\nfunc doThing() {\n    let result = #urlFetch("https://danger.example.com")\n    print(result)\n}\n' > "$P77/freestanding/a.swift"
+  printf 'import Foundation\n@MyBodyMacro\nfunc doThing() {\n}\n' > "$P77/attachedfunc/a.swift"
+  printf 'import Foundation\n@Observable\nclass Store {\n    var count = 0\n    func bump() {\n        count += 1\n    }\n}\n' > "$P77/attachedtype/a.swift"
+  printf 'import Foundation\nfunc makeRequest() {\n    URLSession.shared.dataTask(with: URL(string: "https://example.com")!) { _, _, _ in }.resume()\n}\n#Preview {\n    makeRequest()\n}\n' > "$P77/trailingclosure/a.swift"
+  printf 'import Foundation\nfunc urlFetch(_ s: String) -> String { return s }\nstruct Observable {}\n@MainActor\nfunc onMain() { print("main") }\n' > "$P77/namealike/a.swift"
+  printf 'import Foundation\nfunc logSite(file: String = #file, line: Int = #line, fn: String = #function,\n              id: String = #fileID) {\n    print(file, line, fn, id)\n}\nfunc onActor(isolation: isolated (any Actor)? = #isolation) async {\n    print(isolation as Any)\n}\n' > "$P77/builtinliterals/a.swift"
+  printf 'import Foundation\n@resultBuilder\nstruct NetBuilder {\n    static func buildBlock(_ parts: String...) -> String {\n        URLSession.shared.dataTask(with: URL(string: "https://example.com")!) { _, _, _ in }.resume()\n        return parts.joined()\n    }\n}\n@NetBuilder\nfunc build() -> String {\n    "a"\n}\n' > "$P77/resultbuilder/a.swift"
+  printf 'import Foundation\n@globalActor\nactor DBActor {\n    static let shared = DBActor()\n}\n@DBActor\nfunc onDB() { print("db") }\n' > "$P77/globalactor/a.swift"
+  ( cd "$P77/freestanding"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/attachedfunc"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/attachedtype"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/trailingclosure" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/namealike"      && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/builtinliterals" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/resultbuilder"  && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P77/globalactor"    && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  p77_freestanding=$(ck77 "$P77/freestanding/out.json" doThing)
+  p77_attachedfunc=$(ck77 "$P77/attachedfunc/out.json" doThing)
+  p77_attachedtype=$(ck77 "$P77/attachedtype/out.json" Store.bump)
+  p77_trailing=$(ck77 "$P77/trailingclosure/out.json" '<main>')
+  p77_namealike=$(ck77abs "$P77/namealike/out.json" urlFetch onMain)
+  p77_builtin=$(ck77abs "$P77/builtinliterals/out.json" logSite onActor)
+  p77_resultbuilder=$(ck77 "$P77/resultbuilder/out.json" build)
+  p77_globalactor=$(ck77abs "$P77/globalactor/out.json" onDB onDB)
+  p77 defect-freestanding       "$p77_freestanding" '["Unknown"]|["macro:urlFetch"]'
+  p77 defect-attached-func      "$p77_attachedfunc" '["Unknown"]|["macro:@MyBodyMacro"]'
+  p77 defect-attached-type      "$p77_attachedtype" '["Unknown"]|["macro:@Observable"]'
+  p77 ctrl-trailing-closure     "$p77_trailing"     '["Net"]|-'
+  p77 ctrl-namealike            "$p77_namealike"    'both-absent'
+  p77 ctrl-builtin-literals     "$p77_builtin"      'both-absent'
+  p77 ctrl-local-resultbuilder  "$p77_resultbuilder" '["Net"]|-'
+  p77 ctrl-local-globalactor    "$p77_globalactor"  'both-absent'
+else
+  P77_OUT="$P77_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P77"
+# ENGINES: swift; rust: has its own SEPARATE macro-reach mechanism (macro_rules!/proc-macro expansion, R48, already closed) — a different KIND of macro, not this Swift compiler-plugin shape; java: reads compiled bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue; ts: has no compiler-plugin macro system of its own — its own separate, still-open codegen gap (an anonymous decorator, R57) is a different mechanism and is not this row
+# CONTROLS: p77_trailing p77_namealike p77_builtin p77_resultbuilder p77_globalactor — ctrl-trailing-closure proves the fix did not regress an already-concrete catch to a vague one riding beside it; ctrl-namealike proves a name-alike function and a builtin decl-attribute gain nothing; ctrl-builtin-literals proves the compiler-builtin freestanding literal denylist (incl. the fileID/isolation gap MEASURED missing from the first cut) stays silent; ctrl-local-resultbuilder proves an unresolved-macro-candidate attribute does not shadow a real, resolved @resultBuilder; ctrl-local-globalactor proves a locally-declared @globalActor is not treated as an attached macro
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `70274c3` (immediately before `dc27915`, built in a
+# throwaway clone so the tracked checkout was never touched): `defect-freestanding`, `defect-attached-func`
+# and `defect-attached-type` all read `absent` where HEAD reads `["Unknown"]|[...]` — three RED cells, the
+# cardinal sin in three independently-idiomatic macro shapes (a `#`-expression, a decl attribute on a
+# func, a decl attribute on a type reaching its existing member). All five control cells
+# (`ctrl-trailing-closure`, `ctrl-namealike`, `ctrl-builtin-literals`, `ctrl-local-resultbuilder`,
+# `ctrl-local-globalactor`) were ALREADY at their wanted values on that same binary, so the controls are
+# not what moved.
+echo "PART 77 — a Swift compiler-plugin macro discloses Unknown, never vanishes (candor-swift; SPEC §4)"
+printf '%s' "$P77_OUT"
+[ "$P77_BAD" = 0 ] && echo "  -> MATCH — a freestanding macro with no trailing closure and an attached macro attribute (func or type) both disclose Unknown naming the macro, a trailing-closure macro stays concrete, and a name-alike function, a builtin decl-attribute, the compiler-builtin freestanding literals, and a local @resultBuilder/@globalActor all gain nothing"
+[ "$P77_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
+# ====================================================================================================
+# PART 78 — A DYNAMIC RE-EXPORT LOOP MUST DISCLOSE UNKNOWN, NEVER LET THE JOIN MISS SILENTLY
+#           (candor-ts; SPEC §2 rule 3 / §4) [TIER 2]
+# ====================================================================================================
+#
+# THE SIN, candor-ts only — the FIFTH "neither voice fired" instance (`1d4f648`, filed not fixed at the
+# time). `Object.keys(impl).forEach(k => { exports[k] = impl[k]; })` (and its `Object.defineProperty`
+# descriptor twin) binds an export name to a RUNTIME STRING no static per-statement matcher can read, so
+# it cannot be resolved into an alias the way an ordinary CJS re-export is — minting a key for a
+# dynamically-computed name would be fabrication, not analysis. Left unhandled, three individually
+# correct decisions compound into silence: the named-alias join finds no match for the forwarded name, the
+# covered-package arm (SPEC §2 rule 3: a covered package's silence under a key IS that key's purity claim)
+# declines because the package IS chained and covered, and `unanswerableKey` correctly says the key is
+# answerable (it isn't abstract, just dynamically bound) — so NOTHING disclosed. A consumer app chaining
+# such a dependency via `--dep-inits` under `deny Fs Unknown` read `policy ✓` at exit 0 with a REAL
+# `fs.writeFileSync` reachable through the forwarded name.
+#
+# FIXED in candor-ts `2365827`: the producer's own walk now recognises three spellings of "this module
+# performs a dynamic re-export" (a bracket write `exports[k] = impl[k]` with a non-literal key, the
+# `Object.defineProperty(exports, k, …)` descriptor twin, and the whole-object `module.exports = { [k]:
+# impl[k] }` form) and counts them into the report's `dynamicReexport` envelope field — never naming a
+# single forwarded key, only that the pattern exists at all. A consumer chaining a package with that flag
+# set gets every call reaching it marked `Unknown` (`reflect:dynamic-reexport:<pkg>`) at `disclosureTail`,
+# the one place SPEC §2 rule 3's silence-is-purity reading is applied — rather than trusting that silence
+# when the package's own export surface cannot be statically enumerated. THE OVER-CHARGE CONTROL IS HALF
+# THE ROW: a genuinely PURE function forwarded through the same dynamic loop must gain `Unknown` too
+# (disclose, not resolve) but must NEVER gain a fabricated concrete effect — the honest answer either way,
+# since the fix cannot tell which forwarded name is pure without doing the very resolution it refuses to
+# guess at. A `Symbol.toStringTag`/well-known-symbol descriptor stamp (the esbuild/Rollup/tsup ESM-interop
+# marker, MEASURED as a real false-positive source on `@simple-git/args-pathspec`'s published bundle) is
+# excluded — a fixed, statically-known key an ordinary `import { name }` can never bind to in the first
+# place, so flagging it would mark ordinary bundled packages "dynamic" for no reason.
+#
+# NOT A CROSS-ENGINE ROW: this is a CommonJS/bundler interop shape (`exports`/`module.exports` mutated
+# through a runtime loop) with no equivalent in candor-rust (no module-object export surface to mutate at
+# all), candor-java (bytecode's class member list is fixed at compile time, never runtime-computed), or
+# candor-swift (no `exports` object; a Swift module's public surface is declared, not assigned to at
+# runtime) — not merely unaudited, structurally absent in the other three.
+#
+# SEVEN CELLS, MEASURED against candor-ts `73100d9` (immediately before the fix `2365827`) and at HEAD —
+# ported directly from the fix's own regression suite (test.mjs's "THE FIFTH 'neither voice fired'
+# INSTANCE" block) plus one additional control (`ctrl-clean-chain`) proving ORDINARY dep-chaining is
+# untouched end-to-end, not just at the producer's own report:
+#
+#   producer-dynamic     the dep's OWN standalone report (bracket-write form, `rkit`). PRE-FIX: no
+#                         `dynamicReexport` key at all (the field did not exist). POST-FIX:
+#                         `dynamicReexport.count == 1` — the pattern is named, never a fabricated
+#                         per-name entry for the forwarded `thing`/`other`.
+#   producer-descriptor   the SAME pattern, descriptor-form (`Object.defineProperty(exports, key, {get(){
+#                         ...}})` — the shape date-fns's published `fp.cjs` ships at scale). Same pre/post
+#                         as `producer-dynamic` — a second, independently-idiomatic spelling of the sin,
+#                         not a rephrasing of the first.
+#   ctrl-clean-producer   an ORDINARY CJS export (`exports.thing = function() {...}`, no runtime loop).
+#                         UNCHANGED pre- and post-fix: no `dynamicReexport` key on either binary — the
+#                         envelope field is additive-only, so a package with nothing dynamic to report
+#                         stays byte-identical.
+#   ctrl-symbol-stamp     the `Symbol.toStringTag` ESM-interop stamp beside an ordinary export. UNCHANGED
+#                         pre- and post-fix: no `dynamicReexport` key on either binary — a well-known
+#                         symbol key is not a forwarded NAME and must not be mistaken for one.
+#   defect-run            the consumer app, chained via `--dep-inits`, calling `thing()` (which reaches a
+#                         real `fs.writeFileSync` ONLY through the dynamic forward). PRE-FIX: `src.app.run`
+#                         ABSENT from `functions` (silently pure — the cardinal sin, not even `Unknown`,
+#                         `policy ✓` over live filesystem I/O). POST-FIX: `inferred == ["Unknown"]`,
+#                         `unknownWhy == ["reflect:dynamic-reexport:rkit"]`.
+#   defect-runOther       THE OVER-CHARGE CONTROL, same fixture: `runOther()` calls `other()`, which is
+#                         GENUINELY PURE, forwarded through the identical dynamic loop. Same PRE-FIX
+#                         absence (the cardinal sin again — a pure call dropped for the same wrong reason
+#                         as an effectful one). POST-FIX: `inferred == ["Unknown"]` — disclosed, NEVER a
+#                         fabricated `Fs` riding along with `run`'s.
+#   ctrl-clean-chain      a SEPARATE consumer app chaining `ckit` (the ordinary, non-dynamic dep) the same
+#                         way. UNCHANGED pre- and post-fix: `inferred == ["Fs"]` with NO `unknownWhy` on
+#                         BOTH — ordinary dep-chaining through SPEC §2 rule 3 is untouched end-to-end, not
+#                         merely at the producer's own report.
+#
+ck78() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+name = sys.argv[2]
+f = fns.get(name)
+if f is None:
+    print("absent")
+else:
+    inf = sorted(f.get("inferred") or [])
+    why = sorted(f.get("unknownWhy") or [])
+    print(json.dumps(inf) + "|" + (json.dumps(why) if why else "-"))
+' "$1" "$2"; }
+ck78dr() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+dr = d.get("dynamicReexport")
+print("absent" if dr is None else "count:" + str(dr.get("count")))
+' "$1"; }
+p78() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P78_OUT="$P78_OUT  ts     $1  got=$2  OK
+"
+  else
+    P78_OUT="$P78_OUT  ts     $1  got=$2 want=$3  FAIL
+"
+    P78_BAD=1; rc=1
+  fi
+}
+P78_BAD=0; P78_OUT=""
+P78="$W/p78"
+mkdir -p "$P78/dep" "$P78/descdep" "$P78/cleandep" "$P78/stampdep" \
+         "$P78/app/src" "$P78/app/node_modules/rkit" \
+         "$P78/cleanapp/src" "$P78/cleanapp/node_modules/ckit"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf '{"name":"rkit","version":"1.0.0","main":"index.js","types":"index.d.ts"}\n' > "$P78/dep/package.json"
+  printf 'export declare function thing(): void;\nexport declare function other(): void;\n' > "$P78/dep/index.d.ts"
+  printf '"use strict";\nconst fs = require("fs");\nfunction _thingImpl() { return fs.writeFileSync("/tmp/x", "y"); }\nfunction _otherImpl() { return 42; }\nconst impl = { thing: _thingImpl, other: _otherImpl };\nObject.keys(impl).forEach(function (k) { exports[k] = impl[k]; });\n' > "$P78/dep/index.js"
+
+  printf '{"name":"dkit","version":"1.0.0","main":"index.js","types":"index.d.ts"}\n' > "$P78/descdep/package.json"
+  printf 'export declare function thing(): void;\n' > "$P78/descdep/index.d.ts"
+  printf '"use strict";\nconst fs = require("fs");\nconst impl = { thing: function () { return fs.writeFileSync("/tmp/x", "y"); } };\nObject.keys(impl).forEach(function (key) {\n  Object.defineProperty(exports, key, { enumerable: true, get: function () { return impl[key]; } });\n});\n' > "$P78/descdep/index.js"
+
+  printf '{"name":"ckit","version":"1.0.0","main":"index.js","types":"index.d.ts"}\n' > "$P78/cleandep/package.json"
+  printf 'export declare function thing(): void;\n' > "$P78/cleandep/index.d.ts"
+  printf '"use strict";\nconst fs = require("fs");\nexports.thing = function () { return fs.writeFileSync("/tmp/x", "y"); };\n' > "$P78/cleandep/index.js"
+
+  printf '{"name":"stampkit","version":"1.0.0","main":"index.js","types":"index.d.ts"}\n' > "$P78/stampdep/package.json"
+  printf 'export declare function thing(): void;\n' > "$P78/stampdep/index.d.ts"
+  printf '"use strict";\nObject.defineProperty(exports, Symbol.toStringTag, { value: "Module" });\nconst fs = require("fs");\nexports.thing = function () { return fs.writeFileSync("/tmp/x", "y"); };\n' > "$P78/stampdep/index.js"
+
+  printf '{"name":"consumer-app","version":"1.0.0"}\n' > "$P78/app/package.json"
+  printf 'import { thing, other } from "rkit";\nexport function run() { thing(); }\nexport function runOther() { other(); }\n' > "$P78/app/src/app.ts"
+  cp "$P78/dep/package.json" "$P78/app/node_modules/rkit/package.json"
+  cp "$P78/dep/index.d.ts" "$P78/app/node_modules/rkit/index.d.ts"
+  cp "$P78/dep/index.js" "$P78/app/node_modules/rkit/index.js"
+
+  printf '{"name":"consumer-clean-app","version":"1.0.0"}\n' > "$P78/cleanapp/package.json"
+  printf 'import { thing } from "ckit";\nexport function run() { thing(); }\n' > "$P78/cleanapp/src/app.ts"
+  cp "$P78/cleandep/package.json" "$P78/cleanapp/node_modules/ckit/package.json"
+  cp "$P78/cleandep/index.d.ts" "$P78/cleanapp/node_modules/ckit/index.d.ts"
+  cp "$P78/cleandep/index.js" "$P78/cleanapp/node_modules/ckit/index.js"
+
+  node "$TS_DIR/scan.mjs" "$P78/dep"      --allow-js --json > "$P78/dep.json"      2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P78/descdep"  --allow-js --json > "$P78/descdep.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P78/cleandep" --allow-js --json > "$P78/cleandep.json" 2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P78/stampdep" --allow-js --json > "$P78/stampdep.json" 2>/dev/null
+  ( cd "$P78/app"      && node "$TS_DIR/scan.mjs" . --dep-inits --json > app.json      2>/dev/null )
+  ( cd "$P78/cleanapp" && node "$TS_DIR/scan.mjs" . --dep-inits --json > cleanapp.json 2>/dev/null )
+
+  p78_dep=$(ck78dr "$P78/dep.json")
+  p78_desc=$(ck78dr "$P78/descdep.json")
+  p78_clean=$(ck78dr "$P78/cleandep.json")
+  p78_stamp=$(ck78dr "$P78/stampdep.json")
+  p78_run=$(ck78 "$P78/app/app.json" src.app.run)
+  p78_runother=$(ck78 "$P78/app/app.json" src.app.runOther)
+  p78_cleanchain=$(ck78 "$P78/cleanapp/cleanapp.json" src.app.run)
+  p78 producer-dynamic    "$p78_dep"        'count:1'
+  p78 producer-descriptor "$p78_desc"       'count:1'
+  p78 ctrl-clean-producer "$p78_clean"      'absent'
+  p78 ctrl-symbol-stamp   "$p78_stamp"      'absent'
+  p78 defect-run          "$p78_run"        '["Unknown"]|["reflect:dynamic-reexport:rkit"]'
+  p78 defect-runOther     "$p78_runother"   '["Unknown"]|["reflect:dynamic-reexport:rkit"]'
+  p78 ctrl-clean-chain    "$p78_cleanchain" '["Fs"]|-'
+else
+  P78_OUT="$P78_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P78"
+# ENGINES: ts; rust: no module-object export surface (`exports`/`module.exports`) exists to mutate through a runtime loop — structurally absent, not unaudited; java: a class's member list is fixed at compile time from bytecode, never runtime-computed, so this MECHANISM does not apply; swift: a module's public surface is declared, not assigned to at runtime — no `exports` object exists to write into, structurally absent
+# CONTROLS: p78_clean p78_stamp p78_cleanchain — ctrl-clean-producer proves the dynamicReexport envelope field is additive-only (an ordinary CJS export gains nothing on either binary); ctrl-symbol-stamp proves a well-known-symbol descriptor key (the esbuild/Rollup/tsup ESM-interop stamp, a MEASURED real false-positive source) is never mistaken for a dynamic forward; ctrl-clean-chain proves ORDINARY dep-chaining through SPEC §2 rule 3 is untouched end-to-end (concrete Fs, no Unknown) on both binaries, not merely at the producer's own report
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-ts `73100d9` (immediately before `2365827`, built in a
+# throwaway clone with its own `npm install` so the tracked checkout was never touched): `producer-dynamic`
+# and `producer-descriptor` both read `absent` where HEAD reads `count:1` (the field did not exist at
+# all), and `defect-run`/`defect-runOther` both read `absent` (function missing from `functions` entirely)
+# where HEAD reads `["Unknown"]|[...]` — four RED cells, the fail-open at BOTH the producer's own report
+# and the consumer's join, over BOTH an effectful and a genuinely pure forwarded call. `ctrl-clean-producer`,
+# `ctrl-symbol-stamp` and `ctrl-clean-chain` were ALREADY at their wanted values on that same binary, so
+# the controls are not what moved.
+echo "PART 78 — a dynamic re-export loop discloses Unknown, never lets the join miss silently (candor-ts; SPEC §2 rule 3 / §4)"
+printf '%s' "$P78_OUT"
+[ "$P78_BAD" = 0 ] && echo "  -> MATCH — a dynamic re-export loop (bracket-write or descriptor form) is named in the producer's own report and marks every consumer call into it Unknown, a genuinely pure forwarded call gains the same disclosure and never a fabricated concrete effect, and neither an ordinary export, a well-known-symbol stamp, nor ordinary (non-dynamic) dep-chaining moved"
+[ "$P78_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
