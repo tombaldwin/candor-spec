@@ -18,6 +18,48 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## [0.33.0] — 2026-08-26
 
+- **PART 76 pins candor-ts's own-`.d.ts`-shadow fix (the got@15.1.0 corpus find).** npm ships
+  `dist/foo.js` beside `dist/foo.d.ts`, and TypeScript's module resolution treats the co-located
+  `.d.ts` as authoritative for every CROSS-FILE importer of `foo.js` — even one this scan
+  (`--allow-js`) is analysing as its own project source. `declModule` correctly called that `.d.ts`
+  foreign, and `crossesPackageBoundary` correctly called it the scan's own package, so neither
+  disclosure fired and the call vanished with no edge and no `Unknown`. Fixed by asking the sibling
+  IMPLEMENTATION file for its own module symbol and redirecting an unambiguous match onto the real
+  declaration; an ambiguous or unminted match still discloses `Unknown` rather than dropping.
+  Falsified against candor-ts `965a521` (immediately before the fix): the unambiguous-resolution cell
+  and the disclose-rather-than-guess cell both read `absent` where HEAD reads `["Rand"]` and
+  `["Unknown"]` respectively. Two controls travel both binaries UNCHANGED: a `.js` with no co-located
+  `.d.ts` was never broken, and a same-file reference (never crossing the module boundary) is
+  unaffected. TS-only in this pass — java/rust/swift have no comparable declaration-vs-implementation
+  split for their OWN source (reasoning recorded, not exhaustively audited); filed to BACKLOG.md.
+- **PART 75 pins candor-swift's overloaded-protocol-extension-provided-member fix, a sibling of PART
+  73 from the same fix wave but a different code path.** A concrete (non-protocol-typed) receiver
+  reaching a protocol extension's provided member called bare `resolveQual` with no `overloadedBases`
+  check, unlike its own sibling dispatch arms — so a protocol extension declaring a SECOND, unrelated
+  overload of the same member name made the lookup ambiguous and the call's only edge vanished, not
+  even `Unknown`. Fixed by routing the same branch through `matchOverloads`: an arity-discriminated
+  call resolves precisely, and a genuinely ambiguous one (this engine does not model argument labels)
+  gets the sound UNION rather than a drop. Falsified against candor-swift `a9ab1a6` (immediately
+  before the fix): the defect cell and a genuinely-ambiguous-pair cell both read `absent` where HEAD
+  reads `["Exec"]` and `["Env", "Exec"]` respectively. Two controls travel both binaries UNCHANGED: a
+  genuine local override still wins over both provided overloads, and the non-overloaded case (a
+  single provided member, no sibling) is unmoved. Swift-only in this pass — an analogous shape in the
+  other three engines' own overload-resolution-through-a-default-member code paths is UNAUDITED, filed
+  to BACKLOG.md rather than assumed unique to swift.
+- **PART 74 pins candor-rust's WalkDir construction-site charging fix.** `walkdir::WalkDir`'s lazy
+  disk read happens in `IntoIter::next`, but candor-scan's receiver-typing hard-blocks the
+  `.into_iter()` verb everywhere (a guard against fabricating onto a different std type, with no
+  per-crate exception for a same-crate return) — so no idiomatic usage (a for-loop, `.count()`, an
+  untyped `.next()`) ever reached a typed `IntoIter` receiver, and `deny Fs` exited 0 over code that
+  walks the filesystem. Fixed by charging at `WalkDir::new` (construction) instead, mirroring the
+  already-modeled `ignore::WalkBuilder::build`/`glob::glob`. Falsified against candor-rust `8734b87`
+  (immediately before the fix): three independently-idiomatic silent forms (for-loop, `.count()`,
+  untyped `.next()`) all read `absent` where HEAD reads `["Fs"]`. Three controls travel both binaries
+  UNCHANGED: the narrower typed-annotation shape the old rule already caught, the sibling `ignore`
+  crate's already-modeled construction charge, and the std-`Vec` iterator the receiver-typing
+  blocklist exists to protect. Rust-only — java's bytecode charges the producing call directly so the
+  mechanism does not apply there; ts resolves through a real type-checker rather than a syntactic verb
+  blocklist; swift's third-party-package analogue is UNAUDITED, filed to BACKLOG.md.
 - **PART 72 pins §3.1's byte-level route-equality MUST — unclassified in must-ledger.json since the
   ledger was frozen, and unexercised by any row despite PART 48/62/69 already driving `scan --policy`
   against `gate --report` exhaustively.** None of those puts a REAL violation in the analysed code at
