@@ -17,6 +17,18 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 ## Unreleased
 
 ## [0.33.0] — 2026-08-26
+
+- **PART 71 pins the ⟨0.30⟩/⟨0.33⟩ emission rule that two engines contradicted on day one.**
+  `outOfScope` and `scannedUnder` are present **iff a policy was CONFIGURED and HONOURED** — and
+  present-and-empty is a claim ("asked and clear"), which must not collapse into the ⟨0.26⟩ *cannot
+  answer* an ABSENT key means. Measured over a policy-scanned tree with NO exclusions: java and rust
+  emitted both keys; **candor-ts and candor-swift emitted neither.** Both were code defects, not
+  fixture gaps — each gated its emission block on an extra clause with no basis in SPEC (`policyPath
+  && excludedFiles.length`, `!peekRules.isEmpty && !peekable.isEmpty`), so "nothing to exclude" was
+  read as "nobody asked". Fixed in candor-ts `a34b273` and candor-swift `5f5240b`. The row's controls
+  are the deliverable: NO policy → both keys ABSENT, and a REFUSED policy → both ABSENT, because
+  emitting `[]` there would be a fresh false claim in the opposite direction. Falsified against
+  pre-fix worktrees of both engines rather than against already-fixed code.
 - **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
   R54 (`diff`) and R55 (`receipt`) still read `SILENT (open)` while four commits had closed them.
   The ledger entry for ⟨0.33⟩'s strictly-absent `scannedUnder` case claimed it was "pinned in the
