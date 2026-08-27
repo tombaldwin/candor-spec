@@ -64,7 +64,7 @@ gate) · 🔴 unchecked · ⚫ known residual (see §5) · — N/A (immune by co
 | **fire-and-forget / spawned task** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢⁴ |
 | **gate-evasion / literal-masking (policy fail-closed)** | 🟢 | 🟡 | 🟢 | 🟢 | 🟢 | 🟡² |
 | **implicit-conversion (effect via format/concat/interpolation)** | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | — |
-| FFI / extern / opaque foreign call | 🟡 | 🟢¹ | 🟡 | 🟡 | — | — |
+| FFI / extern / opaque foreign call | ⚫⁷ | ⚫⁸ | 🟡⁹ | 🟡¹⁰ | ⚫¹¹ | — |
 | macro / codegen reach | 🟡 | 🟢¹ | 🔴⁵ | ⚫⁶ | 🟡 | — |
 
 ¹ "🟢" here = clean/correct *by construction* (verified) — but still needs a *cross-engine standing* cell to be
@@ -89,19 +89,104 @@ of scope here — candor-spec doesn't own candor-ts). A named decorator factory'
 correctly (`ts.isDecorator` guards `enclosing()` in scan.mjs on purpose, tested). An ANONYMOUS decorator
 expression with no top-level name mints no unit at all: live-reproduced, `deny Fs` over a fixture with an
 effectful inline decorator exits 0 with `violations: []` — no `Unknown`, no disclosure. See R57.
-**Where the scorecard stands (2026-07-09; macro/codegen row corrected 2026-08-27):** 🟢 is the plurality — the
-basic-indirection, lazy-init, fire-and-forget, gate-evasion and implicit-conversion rows are cross-engine-standing
-(§7b). The remaining 🟡/🔴/⚫ rows — key-collision, deferred-iterator, FFI, macro — are per-engine by their
-nature (§7b: deferred-iterator can't share a compilation unit across engines; FFI has no clean ts idiom;
-key-collision and macro are engine-structural seams), each held by standing per-engine regression tests, plus
-rust-deep's gate-evasion cell (the policy differential gates the user-facing engines; deep's policy surface
-stays per-engine). **The macro/codegen row's four non-rust cells had never been independently reasoned about —
-the surrounding prose only ever discussed rust's `macro_rules!`/`cfg_if!`, and "—" was pasted across java/ts/
-swift/agents identically since the row's first commit.** swift's was a FALSE immunity claim (a real silent
-under-report, FIXED same day the mistake was found — `dc27915`, R56); ts's is ALSO false and still open (R57);
-java's construction argument holds for one mechanism (Lombok) but is unmeasured for another (R58); agents has
-no macro/codegen concept at all (a fleet definition, not source) and its "—" stands. The roadmap (§7) tracks
-what's left. The FFI row has the same "—" shape for swift/agents, unaudited by this pass — named, not fixed.
+⁷ rust-scan's FFI cell was 🟡 (checked-once, no cross-engine gate) until the 2026-08-27 audit — the DIRECT
+mechanism (`extern "C" { fn system(..); }`, the bindgen shape) is genuinely CLOSED: `decls.rs`'s `ForeignMod`
+handling records every declared name so a call to it DISCLOSES `Unknown` (`native:extern fn`), MEASURED —
+live-reproduced against `target/release/candor-scan` 0.33.1, a fixture calling `system(cmd)` through a local
+`extern "C"` block reads `run_cmd`'s `inferred == ["Unknown"]`, `unknownWhy == ["native:extern fn"]`, and
+`#[link(name = "c")]` (the attribute bindgen output actually carries) changes nothing — `ForeignMod` handling
+doesn't key on it. But the SAME AUDIT found a live, unfixed sin one layer down: `libc`/`nix`/`rustix` are
+CALIBRATED_CRATES (`candor-classify/src/lib.rs`), so a call into them that the syscall-name table doesn't
+classify is treated as "this calibrated crate answered, and the answer is nothing" rather than "unresolved
+external" — and the classifier DELIBERATELY excludes the generic fd verbs (`read`/`write`/`close`/`ioctl`/…)
+because "a fixed label would mis-categorise as often as it helps" (the table's own comment, unchanged). The
+comment reads as a disclosed trade-off ("an honest no-classify… beats emitting the WRONG effect") but the
+measured behaviour is not disclosure — it is silence: `fn drain(fd: i32) { libc::read(fd, buf, 64); }` with
+no accompanying classified `open`/`socket` in the same function produces `"functions": []` — `drain` and its
+caller `main` are BOTH ABSENT from the report, no `Unknown`, no `invisible`, nothing (`scan.rs`'s emission
+gate is `if inf.is_empty() && !has_blind { continue; }`, and an unclassified-but-calibrated-crate call sets
+neither). This is the exact "a documented limitation is not a measured one" trap (a prior finding, restated
+here because it recurred): the comment describes an accepted precision trade-off, the binary produces the
+cardinal sin. See R59. rust-scan's cell moves 🟡→⚫ for this reason, not for the (now-verified-sound) direct
+`extern` path.
+
+⁸ rust-deep's "🟢¹" (verified-by-construction) was NEVER MEASURED against the direct-extern seam and the
+2026-08-27 audit found it FALSE — the opposite of rust-scan's cell: rust-deep's coverage-envelope machinery
+correctly discloses `"invisible": ["libc"]` for the SAME unclassified-`libc::read` fixture that rust-scan
+drops silently (its `invisible` key is crate-name-keyed, and a crate name exists to attach it to), but a
+LOCAL `extern "C" { fn system(..); }` declaration (bindgen's shape, `#[link(name="c")]` or not) has no
+crate name to hang an `invisible` off — MEASURED via `cargo dylint --lib-path` against the nightly dylib
+(`d0c906d`): the fixture's own callgraph sidecar shows `"run_cmd":["system"]` (the deep engine's HIR walk
+DOES see the call) but the effect report is `"functions": []` — zero disclosure for a function the engine's
+own callgraph proves it visited. This directly contradicts the row's prior claim that rust-deep is
+"clean/correct by construction" for FFI: the ONE mechanism that construction argument was actually about
+(a local, bodiless foreign declaration) is the one it silently drops. See R60. Cell moves 🟢¹→⚫.
+
+⁹ java's FFI cell was independently measured 2026-08-27 across the three real mechanisms named in the
+audit (native methods, a JNA-style `Library` interface with zero local/CHA-visible implementations, and
+Panama's `java.lang.foreign`/`MethodHandle.invoke`) and all three are CLOSED, sound: `ACC_NATIVE` always
+discloses `Unknown` (`native:<name>`, `Candor.java`'s `registerMethod`); an interface with NO implementing
+class anywhere (the JNA `Native.load(Lib.class, …)` shape — the real implementation is a runtime dynamic
+proxy, never a `.class` file) resolves through the ordinary zero-CHA-target dispatch path to `Unknown`
+(`dispatch:Lib.deleteAllFiles`); and a Panama downcall (`Linker.downcallHandle(...).invoke(...)`, built
+`--enable-preview --release 21`, stable since JDK 22)
+is caught by the REFLECTION disclosure path (`reflect:java.lang.foreign.SymbolLookup.find`,
+`reflect:java.lang.invoke.MethodHandle.invoke`) rather than a dedicated FFI rule — sound, not by
+construction-reasoning but by measurement against `build/libs/candor-java-0.33.1-all.jar` on JDK 21.
+Stays 🟡 (measured sound, no cross-engine gate — this seam has no shared-compilation-unit shape, §7b).
+
+¹⁰ ts's FFI cell was independently measured 2026-08-27 across four mechanisms (a literal
+`require('./addon.node')` with an untyped member call; the same addon typed via a co-located `.d.ts`
+ambient declaration — the realistic N-API shape, e.g. `better-sqlite3`/`sharp`; `WebAssembly.instantiate`
++ a call through `instance.exports`; and legacy `process.binding(...)`) and all four are CLOSED, sound: the
+untyped case falls through the generic unresolved-call-on-an-untyped-value path (`callback:addon.wipeDisk`);
+the typed ambient declaration is caught by the SAME body-less-declaration disclosure PART 46 (R46, ⟨0.24⟩)
+already ships for any ambient/`.d.ts` signature (`native:wipeDisk`) — an N-API addon's `.d.ts` is
+structurally identical to axios's, so the fix that closed that vein closes this one too, for free; WASM
+export calls and `process.binding` both fall through the same untyped-value callback path. Measured against
+`scan.mjs` at candor-ts HEAD (`fbb9ea2`). Stays 🟡 (measured sound, no cross-engine gate).
+
+¹¹ swift's "—" (immune by construction) was FALSE, found by the SAME 2026-08-27 audit and — unlike R56's
+same-shaped macro finding — **NOT fixed here** (out of scope: candor-spec doesn't own candor-swift). Three
+independently-idiomatic C-interop mechanisms all read silent-pure, zero disclosure, live-reproduced against
+`.build/release/candor-swift` 0.33.1: (1) a raw POSIX/Darwin/Glibc free function reached via `import Darwin`
+— `system("rm -rf /tmp/x")` and `unlink("/tmp/x")` both produce `"functions": []`, and `deny Exec`/`deny Fs`
+both exit 0 ("policy ✓") over code that runs them, while the MODELED `Process`/`Foundation` API charges
+`Exec` correctly in the same file (control, unaffected) — `kappaFree`'s own comment documents the omission
+as deliberate ("process/fs names… under-report the rare direct-syscall program beats a wrong label on a
+common one") without registering that Darwin/Glibc are `PLATFORM_MODULES`, which get NO ledger naming and NO
+`Unknown` fallback for an unmodeled member (the κ-batch covered-module shape, stated in this file's own
+comments, just never connected to this call site); (2) `@_silgen_name("system")` — Swift's raw
+compiler-level C-symbol-linkage declaration, bypassing `import` entirely — same silent result; (3)
+`dlopen`/`dlsym` + `unsafeBitCast` to a `@convention(c)` function type, then calling it — same silent
+result, and arguably the most dangerous of the three (dynamic loading of arbitrary code). No generic
+"unresolved call through an opaque/foreign value" fallback exists in candor-swift's dispatch model for any
+of the three — unlike rust's `native:extern fn` or ts's `callback:`/`native:` paths, there is nothing to
+disclose through. See R61. Cell moves —→⚫.
+
+**Where the scorecard stands (2026-07-09; macro/codegen row corrected 2026-08-27; FFI row corrected
+2026-08-27, same sweep):** 🟢 is the plurality — the basic-indirection, lazy-init, fire-and-forget,
+gate-evasion and implicit-conversion rows are cross-engine-standing (§7b). The remaining 🟡/🔴/⚫ rows —
+key-collision, deferred-iterator, FFI, macro — are per-engine by their nature (§7b: deferred-iterator can't
+share a compilation unit across engines; FFI has no clean ts idiom; key-collision and macro are
+engine-structural seams), each held by standing per-engine regression tests, plus rust-deep's gate-evasion
+cell (the policy differential gates the user-facing engines; deep's policy surface stays per-engine). **The
+macro/codegen row's four non-rust cells had never been independently reasoned about — the surrounding prose
+only ever discussed rust's `macro_rules!`/`cfg_if!`, and "—" was pasted across java/ts/swift/agents
+identically since the row's first commit.** swift's was a FALSE immunity claim (a real silent under-report,
+FIXED same day the mistake was found — `dc27915`, R56); ts's is ALSO false and still open (R57); java's
+construction argument holds for one mechanism (Lombok) but is unmeasured for another (R58); agents has no
+macro/codegen concept at all (a fleet definition, not source) and its "—" stands. The roadmap (§7) tracks
+what's left. **The FFI row had the identical shape — four non-rust cells never independently measured, two
+of them (rust-deep's "🟢¹", swift's "—") simply wrong — and the 2026-08-27 audit found: rust-scan's direct
+`extern` path is genuinely sound but its `libc`-calibrated generic-fd-verb path is a live, unfixed silent
+sin (R59); rust-deep, the engine billed as "the sound gate" for exactly this kind of miss, silently drops a
+local `extern "C"` declaration its own callgraph proves it visited (R60) — WORSE than rust-scan on the same
+mechanism; java and ts are both genuinely CLOSED across every mechanism tested (native methods / JNA-style
+zero-impl dispatch / Panama for java; native addons both untyped and `.d.ts`-typed / WASM / legacy
+`process.binding` for ts); swift's "—" was as false as its macro row (R56) but, unlike R56, remains OPEN
+(R61) — candor-spec doesn't own candor-swift; and agents genuinely has no FFI concept (a fleet definition
+has no foreign-function boundary) so its "—" stands, unlike the other five cells which all moved.**
 
 ## 5. Residual register (known blind spots)
 
@@ -155,6 +240,9 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
 | ~~R56~~ | swift | **the §4 macro/codegen row's "—" was a FALSE immunity claim** — a Swift compiler-plugin macro (`@Observable`, `#Preview`, Swift Testing, `#urlFetch(...)`) scanned clean under `deny Net`: exit 0, `functions: []`, zero disclosure. No visitor existed for `MacroExpansionExprSyntax` at all, and no attribute path treated a decl's own attributes as a possible attached macro. Found 2026-08-27 while auditing the row's prose (which only ever discussed rust's macros — "—" had been pasted across java/ts/swift/agents identically since the scorecard's first commit, never independently reasoned about per engine). **FIXED same day (`dc27915`)**: both forms route into the existing `Unknown`/`unknownWhy` vocabulary (`"macro:<name>"` / `"macro:@Attr"`); a trailing-closure macro (`#Preview { ... }`) stays concrete (already caught via ordinary closure-body walking); a type attribute's disclosure propagates onto the type's existing members. Denylists compiler-builtin freestanding literals (`#file`/`#line`/…, MEASURED to need `fileID`/`isolation` after a first-cut miss produced 101 hits of noise on swift-nio/Nimble) and locally-declared `@resultBuilder`/`@globalActor` (the two other explanations Swift admits for a capitalized decl-attribute) — **the over-charge control this fix needed**: a denylist cut that is too narrow drowns real macros in noise, one that is too wide silently re-opens the hole. Residual: a macro-decorated type with zero source-declared members has no function to attach the disclosure to (the same pre-existing gap any compiler-synthesized member has); an EXTERNAL (non-local) `@resultBuilder`/`@globalActor` is conservatively treated as a possible macro — sound (over-discloses, never under-reports), unmeasured precision cost. 13-package corpus byte-identical post-fix; swift test 892/892, fuzz.py 25/25. | ~~SILENT~~ CLOSED | — | commit candor-swift `dc27915`; conformance PART pending (item 3 of this session) |
 | R57 | ts | **an ANONYMOUS decorator expression discloses nothing** — `@((_t,_k,_d) => { fs.readFileSync(...) })` (an inline decorator function literal with no top-level name) mints no unit at all for the effect inside it. A NAMED decorator factory is sound (its effects land on the factory's own unit — `ts.isDecorator(p) → null` in `enclosing()`, scan.mjs, deliberately keeps a decorator application's call site from wiring onto the decorated declaration, tested at test.mjs:5102-5126); this is the narrower, unnamed-literal case that visitor never covers. Live-reproduced 2026-08-27: `deny Fs` over a fixture with exactly this shape exits 0, `"violations": []`, nothing in the 16-function report. Same audit sweep that found and fixed swift's R56 (identical shape: a real effect, zero disclosure, hiding behind a "—" pasted without engine-specific reasoning) — **NOT fixed here**: candor-spec doesn't own candor-ts. A separate, already-known limitation (a decorator that WRAPS a method to inject an effect at call time, `descriptor.value = function(){ ... }`) is DISCLOSED, not silent (SOUNDNESS-LOG.md:1478-1481) — mis-attributed but not invisible; don't conflate the two. | SILENT (open) | low-med, unmeasured incidence | candor-ts: mint a synthetic unit for an anonymous decorator-position function literal (mirror the named-factory path) so its body is visited and its effects charged, same vocabulary as any other unnamed closure |
 | R58 | java | **annotation-processor-generated SOURCE codegen is unmeasured, not confirmed clean** — candor-java reads compiled `.class` files (`Loader.java`), never source, so Lombok (`@Data`/`@Builder`, which rewrites bytecode in the SAME `javac` invocation) is immune by construction, the rust-deep shape. But a processor that emits a separate `.java` file compiled to its own `.class` (Dagger, Room, AutoValue, MapStruct) is a different mechanism: those `.class` files land in the same output directory (`build/classes/java/main`) the README tells users to point candor-java at, and nothing in `Loader.java`'s walk special-cases or drops them — so the construction argument is plausible but has never been checked against a real annotation-processor project. Found 2026-08-27 in the same sweep as R56/R57 (the row's "—" cells had never been independently reasoned about per engine). Not marked SILENT — no reproduction exists either way, unlike R57's confirmed live repro — logged as its own category rather than rounded up to immune or down to a confirmed sin. | UNMEASURED | — | compile a small Dagger or Room sample, point candor-java at its output directory, confirm the generated `.class` files are read and their effects (if any) attributed; then reclassify as CLOSED (immune) or SILENT (a real gap) |
+| R59 | rust-scan | **a `libc`/`nix`/`rustix` call the syscall-name table deliberately leaves unclassified silently vanishes when no CLASSIFIED sibling call establishes the effect in the same function** — `libc`/`nix`/`rustix` are `CALIBRATED_CRATES`, so an unmatched call into them reads as "this calibrated crate answered: nothing" rather than "unresolved external". `candor-classify/src/lib.rs` deliberately skips the generic fd verbs (`read`/`write`/`close`/`lseek`/`dup`/`fcntl`/`ioctl`/`poll`/`select`/`epoll*`/`mmap`) "because a fixed label would mis-categorise as often as it helps… an honest no-classify (under-report) beats emitting the WRONG effect" — a comment that reads as a disclosed precision trade-off but the MEASURED behaviour is total silence, not disclosure. Found auditing the FFI scorecard row (2026-08-27, same sweep as the extern-block audit below). Live-reproduced against `target/release/candor-scan` 0.33.1: `fn drain(fd: i32) -> usize { unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 64) as usize } }` called from `main(drain(0))` (reading stdin — a real effect) produces `"functions": []`; NEITHER function appears, not even as `invisible`/`Unknown`/`incomplete`. `scan.rs`'s emission gate is `if inf.is_empty() && !has_blind { continue; }` — an unclassified-but-calibrated-crate call sets neither `inf` nor `has_blind`, so the function is dropped exactly like a genuinely pure one. CONTRAST: when a classified sibling call establishes the effect first (`libc::open` then `libc::read` on the same fd, in the same function), the composite reads correctly (`inferred: ["Fs"]`) — the gap is isolated to a function whose ENTIRE effectful surface is an unclassified verb, e.g. a raw-fd read/write loop in an event-reactor-style crate (mio-adjacent) that receives its fd from elsewhere (a param, a struct field) rather than opening/socketing it locally. A prior corpus round's negative control ("0 candidates" across nix/rustls-native-certs/etc., SOUNDNESS-LOG.md 2026-0x) did not exercise this exact isolated shape — real code nearly always has a proximate classified call, which is why the design comment's trade-off has held up in practice even though the underlying mechanism is unsound. | SILENT (open) | low-med (rare in practice — MEASURED real-world incidence via a prior corpus round is near-zero because a classified sibling call is nearly always proximate — but genuinely silent, not merely imprecise, when it occurs) | the comment's own framing needs correcting first (it is not "honest no-classify", it is silent); a real fix needs either an `invisible`-style crate-level disclosure for ANY unmatched call into a `CALIBRATED_CRATES` member (mirrors what rust-deep already does for this exact fixture, see R60/⁸) or narrowing the calibrated-crate contract so "answered: nothing" is only trusted for functions the table's own coverage differential actually exercised |
+| R60 | rust-deep | **a local `extern "C" { .. }` foreign-function declaration (the bindgen/direct-FFI shape, `#[link(name="c")]` or bare) is silently dropped even though the engine's own callgraph proves it visited the call** — found auditing the FFI scorecard row (2026-08-27); this is the mechanism the row's prior "🟢¹ verified by construction" claim was actually about, and it was never measured until this pass. Live-reproduced via `cargo dylint --lib-path <libcandor@nightly-2026-06-14-….dylib>` (nightly `d0c906d`) against a fixture identical in shape to rust-scan's own `native:extern fn` regression fixture (`tests.rs:6950`): `extern "C" { fn system(cmd: *const c_char) -> i32; } fn run_cmd() { unsafe { system(c.as_ptr()); } }`. The report is `"functions": []` — but the SAME run's callgraph sidecar reads `{"main":["run_cmd"],"run_cmd":["system"]}`, proving the HIR walk reached the call; the effect layer simply attaches nothing to it. CONTRAST, same audit: the SAME binary correctly discloses `"invisible": ["libc"]` for an unclassified `libc::read` call (R59's rust-scan fixture) — rust-deep's `invisible` machinery is crate-name-keyed, and a `libc::` call has a crate name to hang the disclosure off; a bare `extern "C"` block declared IN the local crate has none, so the identical coverage-envelope mechanism that correctly saves the libc case has nothing to attach to for this one. This makes rust-deep, the engine documented elsewhere as "the sound gate" for exactly the misses the syntactic scanner accepts, WORSE than rust-scan on this specific seam — rust-scan's `decls.rs` `ForeignMod` handling discloses `Unknown`/`native:extern fn` for the identical shape. | SILENT (open) | med (rust-deep is positioned as the soundness backstop specifically for seams the stable scanner under-reports; a hole in exactly that role is higher-priority than its severity-by-incidence alone would suggest — bindgen-generated FFI crates are common in systems Rust) | give a local `ForeignMod`/foreign-item declaration its own disclosure path in the deep engine, independent of the crate-name-keyed `invisible` mechanism — e.g. treat every foreign-item call as `Unknown` unconditionally, mirroring rust-scan's unconditional `native:extern fn` rather than trying to route it through coverage-ledger crate naming |
+| R61 | swift | **raw C-interop through `import Darwin`/`import Glibc`, `@_silgen_name`, and `dlopen`/`dlsym` all read silent-pure — the FFI row's "—" (immune by construction) was FALSE**, the identical shape to R56's macro-row finding (found the same 2026-08-27 audit) but, unlike R56, **NOT fixed here** (out of scope: candor-spec doesn't own candor-swift). THREE independently-idiomatic mechanisms, all live-reproduced against `.build/release/candor-swift` 0.33.1, all producing `"functions": []` (zero disclosure) and both `deny Exec`/`deny Fs` exiting 0 ("policy ✓") over code that performs the effect: (1) `import Darwin; func f() { system("rm -rf /tmp/x") }` and the Fs analog `unlink("/tmp/x")` — `kappaFree`'s own comment in `Classifier.swift` documents the omission of `system`/`fork`/`mkdir`/`rename`/`unlink` as deliberate ("collision-prone… under-report the rare direct-syscall program beats a wrong label on a common one") without registering that `Darwin`/`Glibc` are `PLATFORM_MODULES` — modules that get NO ledger naming and NO `Unknown` fallback for an unmodeled member at all (the κ-batch "covered-module silent-pure" shape, documented in this same file for Foundation/Security, never connected to the C-interop boundary itself); the MODELED `Process`/Foundation API stays correctly charged in the same file (control, unaffected — this is not "Exec is broken", it is specifically the raw-C-call path). (2) `@_silgen_name("system") func c_system(_: UnsafePointer<CChar>) -> Int32` — Swift's compiler-level direct-symbol-linkage declaration, bypassing `import` entirely — same silent result. (3) `dlopen(path, RTLD_NOW)` + `dlsym(handle, "sym")` + `unsafeBitCast(sym, to: SomeCFn.self)` + calling it — same silent result, arguably the highest-severity of the three (dynamic loading of arbitrary code at runtime). No generic "unresolved call through an opaque/foreign value" fallback exists anywhere in candor-swift's dispatch model — unlike rust's `native:extern fn` or ts's `callback:`/`native:` disclosure paths, there is no vocabulary slot to route any of the three through. | SILENT (open) | med-high (raw Darwin/Glibc imports are the standard route for POSIX-level systems code in Swift on Linux/server-side Swift; `dlopen`/`dlsym` is the standard plugin-loading idiom; unlike R56's macro finding, none of the three has a Foundation-idiomatic safe alternative candor-swift already models, so incidence in Swift systems/CLI code is plausibly non-trivial, unmeasured) | mirror rust-scan's `native:extern fn` treatment: any call to a free function whose declaration/import comes from a `PLATFORM_MODULE` with no matching `kappaFree`/`kappaMember` rule should disclose `Unknown` rather than silently returning `nil`, closing the general covered-module gap this finding shares with `@_silgen_name` and `dlopen`/`dlsym`'s opaque-function-pointer call (a distinct, second fallback needed for calls through a value with no static Swift declaration at all) |
 
 ## 6. The metric (track these four; each "step forward" moves one)
 

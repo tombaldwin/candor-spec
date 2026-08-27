@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS.md's FFI/extern scorecard row had the same "—"-pasted-across-non-rust-cells shape the macro
+  row was just corrected for, and it was NOT the same verdict on every cell.** Measured per engine against
+  live fixtures and published/HEAD binaries rather than reasoned from the row's prose: rust-scan's direct
+  `extern "C"` handling is genuinely sound (`native:extern fn`), but a `libc`/`nix`/`rustix` call the
+  syscall-name table deliberately leaves unclassified silently vanishes with zero disclosure when no
+  classified sibling call is nearby (R59, open). rust-deep's prior "verified by construction" claim was
+  **false** — its own callgraph proves it visits a local `extern "C"` declaration, but the effect layer
+  attaches nothing to it (R60, open) — worse than rust-scan on the identical seam, in the engine positioned
+  as the soundness backstop. swift's "—" was as false as the macro row's: raw `import Darwin`/`Glibc`
+  free-function calls, `@_silgen_name`, and `dlopen`/`dlsym` + a function-pointer call all read silent-pure,
+  `deny Exec`/`deny Fs` passing at exit 0 over code that performs the effect (R61, open). java and ts were
+  independently re-measured across native methods / JNA-style zero-impl dispatch / Panama (java) and native
+  addons (untyped + `.d.ts`-typed) / WASM / `process.binding` (ts) and are genuinely CLOSED. None of
+  R59/R60/R61 is fixed here — candor-spec doesn't own candor-rust or candor-swift; filed against each.
+  Full prose: SOUNDNESS-LOG.md, 2026-08-27 FFI-row entry.
+
 ## [0.33.1] — 2026-08-27
 
 - **PART 78 pins candor-ts's dynamic-re-export disclosure fix (`2365827`), the fifth "neither voice
