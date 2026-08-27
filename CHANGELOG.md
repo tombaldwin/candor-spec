@@ -16,6 +16,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
+## [0.33.1] — 2026-08-27
+
 - **PART 76 pins candor-ts's own-`.d.ts`-shadow fix (the got@15.1.0 corpus find).** npm ships
   `dist/foo.js` beside `dist/foo.d.ts`, and TypeScript's module resolution treats the co-located
   `.d.ts` as authoritative for every CROSS-FILE importer of `foo.js` — even one this scan
