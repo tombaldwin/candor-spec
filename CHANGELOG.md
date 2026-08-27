@@ -16,8 +16,6 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
 
 ## Unreleased
 
-## [0.33.0] — 2026-08-26
-
 - **PART 76 pins candor-ts's own-`.d.ts`-shadow fix (the got@15.1.0 corpus find).** npm ships
   `dist/foo.js` beside `dist/foo.d.ts`, and TypeScript's module resolution treats the co-located
   `.d.ts` as authoritative for every CROSS-FILE importer of `foo.js` — even one this scan
@@ -96,6 +94,8 @@ evidence behind the soundness posture is **[SOUNDNESS-LOG.md](SOUNDNESS-LOG.md)*
   are the deliverable: NO policy → both keys ABSENT, and a REFUSED policy → both ABSENT, because
   emitting `[]` there would be a fresh false claim in the opposite direction. Falsified against
   pre-fix worktrees of both engines rather than against already-fixed code.
+
+## [0.33.0] — 2026-08-26
 - **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
   R54 (`diff`) and R55 (`receipt`) still read `SILENT (open)` while four commits had closed them.
   The ledger entry for ⟨0.33⟩'s strictly-absent `scannedUnder` case claimed it was "pinned in the
