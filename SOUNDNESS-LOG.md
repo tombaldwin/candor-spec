@@ -3570,3 +3570,99 @@ row is not evidence until it reddens a pre-fix binary (or a mutant, where a prob
 than redden)", and asserting CLOSED behaviour with a real mutation-based falsification (patching a scratch
 clone to remove the disclosure, rebuilding, confirming red) is real work that deserves its own pass rather
 than being rushed into this one.
+
+### 2026-08-28 — R64's two closed shapes re-verified, and the four-way byte-equality blind spot has a row
+
+**R64 close-out.** candor-ts `b4c3a22` closed two of R64's three shapes (a raw effect directly in a
+decorator's own ARGUMENT, `@Decorate(fs.readFileSync(...))`; a closure nested in a NAMED factory's
+argument DATA, `@Factory({ init: () => { fs.readFileSync(...) } })` — the real TypeORM
+`@Column({ default: () => … })` idiom) the day after R57's own fix (`0a5d493`) shipped and was pinned by
+PART 81. Per this file's own rule 12 ("a cited BACKLOG/SOUNDNESS entry is a snapshot, verify it against
+HEAD"), the closure was NOT taken on trust: built candor-ts `9a8a5c7` (immediately pre-fix) and `b4c3a22`
+in a throwaway clone under scratch, and ran all three R64 shapes plus a literal-decorator-argument control
+and a pure-local-function-argument control against both binaries independently. Pre-fix: all five read
+`functions: []`/`ok:true`/zero violations. Post-fix: the two claimed-fixed shapes read
+`inferred:["Fs"]`/`paths:["/etc/hosts"]` on a minted `<decorator-arg>@…` unit and fail `deny Fs`
+(AS-EFF-006); the third shape (an external body-less decorator reference) and both over-charge controls
+are byte-for-byte UNCHANGED. Matches the commit's own claims exactly, independently reproduced rather than
+quoted. SOUNDNESS.md's R64 row rewritten: shapes 1/2 `~~SILENT~~ CLOSED`, shape 3 still `SILENT (open)`,
+and shape 3's rationale replaced — it used to read "low, unmeasured real-world incidence"; `b4c3a22`'s own
+experiment measured a blanket-fix simulation against three real corpora with dependencies genuinely
+installed and found it byte-identical to the shipped fix on two (a real NestJS+TypeORM app, TypeORM's own
+513-file functional suite) but **+42 report rows on a base of 80 (+52%)** on a real Angular app — the
+"would flood real framework code" argument is no longer folklore, it is a measured, framework-specific
+number. PART 82 (conformance/run.sh) pins both fixed shapes, both over-charge controls, and shape 3 as a
+DOCUMENTED-OPEN cell that asserts the current silent value rather than a wanted one — falsified against
+`9a8a5c7` the same way, four cells reddening pre-fix, two controls and the open cell unmoved. Cross-engine:
+argued fresh rather than assumed from R57's own ruling — none of rust/swift/java permits an arbitrary
+RUNTIME expression inside a decorator/attribute argument (rust attribute-macro args are unevaluated token
+streams; swift compiler-plugin macro args are compile-time AST; java annotation element values must be
+compile-time constants, JLS 9.7.1), so the construct these two shapes depend on does not exist in any of
+the three.
+
+**The four-way byte-equality blind spot, verified before acting on it.** The claim handed down (every
+byte-equality suite in the family scopes its rule to a name matching NOTHING ANYWHERE) was checked against
+each file directly rather than trusted: this suite's PART 32/36 use `zzz_no_such_layer`/`zzz.nomatch`;
+candor-java's `GateReportVerbTest.scanAndGateProduceByteEqualVerdictDocuments` uses `pure app.Nothing`
+("scope matches nothing" per its own comment); candor-ts's `POLICIES` corpus (test.mjs ~8747) has
+`scoped_none` (`pure ZzzNoSuchScope`) beside `scoped` (`deny Fs src.app.readIt`, and `readIt` genuinely
+performs `Fs` — a real but EFFECTFUL match, not the missing quadrant); candor-swift's
+`testGateJsonIsByteEqualToTheScanRoute` carries `pure ZzzNoSuchScope` only. All four confirmed by reading
+the actual files, not by re-summarising the filing.
+
+Built the missing quadrant fresh — a rule scoped to a REAL function that is pure on BOTH routes — against
+throwaway-clone builds of all four engines at HEAD (candor-rust `caca530`, candor-java `fee92bd`,
+candor-ts `b4c3a22`, candor-swift `328a67f`), not against whatever binary happened to be sitting in
+`target/`/`.build/` (the R60 lesson: `cargo build --release` at candor-rust's OWN root builds the dylint
+lint, not `candor-scan`/`candor-query` — its own Cargo.toml says so in a comment, `-p candor-scan
+-p candor-query` is required). Fixture: `add_numbers`/`write_something` (rust), `app.Svc.addNumbers`/
+`app.Svc.writeSomething` (java), `src.e.addNumbers`/`src.e.writeSomething` (ts), bare `addNumbers`/
+`writeSomething` (swift) — a pure sibling and an effectful sibling in the same file, so the fixture cannot
+be answered by an engine that finds no functions at all.
+
+**It does not pass cleanly, in all four.** `deny Fs <pure-fn>`: the SCAN route (`ok:true`,
+`violations:[]`, no `zeroMatch` key) and the REPORT route over that scan's own report (`ok:true`,
+`violations:[]`, but `zeroMatch:["deny Fs <pure-fn>"]`) diverge in exactly one key, in every engine.
+Mechanism, read from source rather than guessed: a report's `functions` array carries only
+effectful/incomplete entries (§2.1's purity-by-absence design) — a pure function has NO entry there at
+all. The scan route computes `zeroMatch` from the full in-memory analysed-function set, built before that
+emission gate drops pure entries; the report route computes it from the persisted `functions` array alone,
+where the same pure function simply does not appear, so the identical rule reads as unbound. `ok`,
+`violations` and `analyzed.count` never move on either route — a FALSE DISCLOSURE (a rule that bound a
+real function reported as binding nothing), never an under-report. This independent measurement matches
+BACKLOG.md's own same-day finding (`add_numbers`/`write_something`, byte diff a single `zeroMatch` key)
+almost exactly, arrived at before reading that entry's numbers, which is the useful kind of agreement.
+
+PART 83 (conformance/run.sh) adds the quadrant, deliberately NOT resolving the underlying §3.1 question —
+that ruling is Tom's, open in BACKLOG.md's "CURRENT QUEUE" item 1 (options A-D priced there). The row pins
+the CURRENT MEASURED divergence (scan silent, report false-`zeroMatch`) rather than a wanted value, pairs
+each defect cell with a control scoped to the sibling EFFECTFUL function (proving the divergence stays
+confined to the pure-matched quadrant — both routes byte-equal, one `AS-EFF-006`, no `zeroMatch` on
+either), and says explicitly in its own comment what to do when it goes red: if the REPORT route stops
+falsely emitting `zeroMatch`, that is the ruling landing a fix, not a regression — rewrite the row's wanted
+value and update this file, do not loosen the assertion to keep the suite green.
+
+**A checker that could not fail, caught by its own mutation control.** The first draft of PART 83's python
+checkers used single-quoted Python string literals for dict keys (`s.get('ok')`) inside a python source
+that is ITSELF the body of a bash single-quoted string (`python3 -c '...'`). Bash single quotes cannot
+nest — the embedded apostrophes silently close and reopen the outer quoted string, and because every
+occurrence hugs a bare identifier with no surrounding whitespace, bash reassembles the pieces into ONE
+argument with the quote CHARACTERS themselves stripped (`s.get('ok')` arrives at Python as the bare,
+undefined name `s.get(ok)`). The PASSING path never touched this: `bad.append(...)` is only evaluated when
+a check actually fires, so every real-measured-state cell printed a clean `OK` and the row read green.
+Only a deliberate mutation control (feeding the checker a synthetic "divergence closed" document and a
+synthetic "routes now differ" document) reached the buggy branches and turned up a Python `NameError`
+instead of the intended `FAIL: ...` line — exactly the failure mode this suite's own `run.sh` preamble
+warns about for its shell-level checkers ("a checker crash must not masquerade as an engine disagreement"),
+reproduced here at the Python-literal level instead. Fixed by pulling every dict lookup into a plain
+variable before building any message string, so no quote character ever appears inside an f-string/string
+build — verified by re-running both mutation controls (now printing correct `FAIL:` lines) and the real
+four-engine measurement (still printing correct `OK:` lines) against the corrected checkers before this
+row was considered done. Not caught by `bash -n` (that only validates surrounding shell syntax, not that
+python receives the source the author intended) or by the row's own success path — only by attacking it.
+
+**GATES.** PART 82 and PART 83 are both new, falsified against pre-fix/pre-existing states as described
+above. Neither introduces a new SKIP key for `skip_ratchet.py`: both spell an absent-engine SKIP in the
+existing runner-absence form (`-> SKIP     (candor-X: not present on this runner — NOT asked)`, matching
+PART 81's own wording) rather than the reference-led form the ratchet counts, and on this machine (ts and
+swift both present) neither branch fires at all.

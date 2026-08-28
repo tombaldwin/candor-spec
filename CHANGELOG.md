@@ -25,6 +25,50 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS.md R64 (ts decorator-argument shapes): two of three closed, verified independently, and the
+  third's rejection rationale is now MEASURED rather than folklore.** candor-ts `b4c3a22` mints a
+  `<decorator-arg>@<pos>` unit for a raw effect or closure embedded directly in a decorator's own ARGUMENT
+  DATA (`@Decorate(fs.readFileSync(...))`; `@Factory({ init: () => { fs.readFileSync(...) } })`, the real
+  TypeORM `@Column({ default: () => … })` idiom) — shapes R57's own fix (`0a5d493`) left uncovered because
+  it only reached the decorator VALUE, never its arguments. RE-VERIFIED HERE, not taken on the commit or its
+  suite: built candor-ts `9a8a5c7` (immediately pre-fix) and `b4c3a22` in a throwaway clone, ran both fixed
+  shapes, the still-open third shape (an external body-less decorator reference), and two over-charge
+  controls (a literal decorator argument; an argument calling a genuinely pure local function) against both
+  binaries. Pre-fix: all five read `functions: []`/`ok:true`/no violations. Post-fix: the two fixed shapes
+  disclose `Fs` and fail `deny Fs` (AS-EFF-006); the third shape and both controls are UNCHANGED. The third
+  shape's rejection is no longer an unmeasured assumption: `b4c3a22`'s own experiment found a blanket
+  variant simulating the rejected fix byte-identical to the shipped fix on 2 of 3 real corpora (a real
+  NestJS+TypeORM app, TypeORM's own 513-file functional suite) but **+42 report rows on a base of 80
+  (+52%)** on a real Angular app — every bare `@Injectable()`/`@Component()`/`@Pipe()` gained its own row.
+  PART 82 (conformance/run.sh) pins both fixed shapes, both over-charge controls, and the third shape as a
+  DOCUMENTED-OPEN cell (asserts the CURRENT silent value, not a wanted one — a conformance row pins wanted
+  behaviour, not a sin). Cross-engine: structurally ts-only — rust's attribute-macro arguments are
+  unevaluated token streams, swift's compiler-plugin macro arguments are compile-time AST, and java
+  requires annotation element values to be compile-time constants (JLS 9.7.1), so none of the three permits
+  an arbitrary runtime call inside a decorator/attribute argument for an effect to hide inside.
+
+- **The four-way byte-equality blind spot: every family suite tested the wrong kind of miss, never the
+  wrong kind of hit — and the missing quadrant does not pass cleanly.** Verified independently before
+  acting on it: this suite's own PART 32/36 scope their zero-match fixtures to `zzz_no_such_layer`/
+  `zzz.nomatch`; java's `GateReportVerbTest` uses `pure app.Nothing`; ts's `POLICIES` corpus has
+  `scoped_none` (`pure ZzzNoSuchScope`) beside `scoped` (`deny Fs src.app.readIt`, a real but EFFECTFUL
+  function); swift's `testGateJsonIsByteEqualToTheScanRoute` uses `pure ZzzNoSuchScope` only — four
+  independent suites, all exercising a rule that binds NOTHING ANYWHERE, none exercising a rule that binds
+  a REAL function that is genuinely pure on both routes. PART 83 (conformance/run.sh) adds that quadrant,
+  built fresh in throwaway clones of all four engines rather than against whatever binary happened to be on
+  disk, and it does NOT pass cleanly: the persisted report's `functions` array omits pure entries entirely
+  (§2.1's purity-by-absence design), so `gate --report`'s `zeroMatch` computation — built from that array
+  alone — cannot tell "bound a real, pure function" from "bound nothing", and wrongly emits
+  `zeroMatch: ["<rule>"]` for a rule the SCAN route (which sees the full in-memory analysed-function set
+  before pure entries are dropped) correctly reads as bound. Measured, fresh, in all four engines; `ok`,
+  `violations` and `analyzed.count` never move, so this is a FALSE DISCLOSURE, never an under-report. PART
+  83 records this as the CURRENT measured state rather than resolving it — the §3.1 ruling on how to treat
+  it is Tom's, open in BACKLOG.md's "CURRENT QUEUE" item 1 — and pairs each defect cell with a control
+  scoped to the sibling EFFECTFUL function, proving the divergence stays confined to the pure-matched
+  quadrant (both routes byte-equal, `AS-EFF-006`, no `zeroMatch`) rather than a general scan/report split.
+  Not gated behind the pending ruling and not scoped away from the quadrant — either would recreate the
+  exact blind spot this row exists to close.
+
 - **⟨0.34⟩ ITEM 1 gets its SPEC clause and its conformance PART, after shipping four-way with neither.**
   candor-rust `f10bb82`, candor-ts `9a8a5c7`, candor-swift `fd704b5` and candor-java `fee92bd` all cited
   "SPEC §2 ⟨0.34⟩" in comments the same day `grep -c '0\.34' SPEC.md` returned 0 — the port ran ahead of the
