@@ -15080,7 +15080,463 @@ echo "PART 81 — an anonymous decorator expression is charged to a minted unit,
 printf '%s' "$P81_OUT"
 [ "$P81_BAD" = 0 ] && echo "  -> MATCH — an anonymous decorator's own effect is charged to a position-keyed unit and fails \`deny Fs\`, the named-factory path already covering the same shape is untouched, and a genuinely pure anonymous decorator gains no fabricated effect"
 [ "$P81_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+# ====================================================================================================
+# PART 82 — A RAW EFFECT OR CLOSURE EMBEDDED DIRECTLY IN A DECORATOR'S OWN ARGUMENT DATA MUST NOT
+#           VANISH; A CALL THROUGH AN EXTERNAL BODY-LESS DECORATOR REFERENCE STAYS DOCUMENTED-OPEN
+#           (candor-ts; SPEC §4 "must never report a function as effect-free when it could not actually
+#           determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE SIN (SOUNDNESS.md R64, filed 2026-08-28 live-reproducing PART 81's own R57 pinning row — not part
+# of R57's original filing). R57's fix (`0a5d493`) mints a unit for an ANONYMOUS decorator VALUE (direct,
+# or a factory's callee) but never reaches into a factory's ARGUMENTS, so `enclosing()`'s
+# `if (ts.isDecorator(p)) return null` guard still drops three narrower shapes with nothing minted before
+# the climb reaches it: (1) a raw effect evaluated directly as a decorator's ARGUMENT
+# (`@Decorate(fs.readFileSync(...))` — no function value exists anywhere to hang a unit on, unlike R57's
+# shape); (2) a closure nested in a NAMED factory's argument DATA rather than its call chain
+# (`@Factory({ init: () => { fs.readFileSync(...) } })` — the real TypeORM `@Column({ default: () => …
+# })` idiom; the closure's ancestor chain runs through an object literal and the factory CALL, never
+# through the factory's own body); (3) a call through an EXTERNAL body-less decorator reference whose own
+# (unread) implementation performs the effect (`import { ExternalDecorator } from "extlib";
+# @ExternalDecorator() class …`). Live-reproduced against candor-ts `0a5d493` (R57's own fix, immediately
+# before R64's): all three read `functions: []`, `deny Fs` exit 0, `ok:true` — the cardinal sin, not even
+# `Unknown`.
+#
+# FIXED FOR SHAPES 1 AND 2 in candor-ts `b4c3a22`: `enclosing()` now tracks the child it climbed FROM at
+# each step (`prev`). When the current node is the decorator's own call/new-expression and `prev` is one
+# of ITS ARGUMENTS (not the callee), it mints a `<decorator-arg>@<pos>` unit instead of falling through to
+# the Decorator guard — every effect anywhere in ONE decorator's argument list shares that one unit. The
+# decorator's own top-level application (shape 3, and R57's original case) is untouched: the guard still
+# returns `null` there, exactly as before.
+#
+# SHAPE 3 IS LEFT OPEN HERE, DELIBERATELY, ON A MEASURED RATIONALE: `b4c3a22`'s commit measured an
+# experimental blanket variant simulating the rejected fix against three real corpora with dependencies
+# genuinely installed — byte-identical to the shipped narrow fix on a real NestJS+TypeORM app
+# (`lujakob/nestjs-realworld-example-app`) and on TypeORM's own 513-file functional test suite, but +42
+# report rows on a base of 80 (+52%) on a real Angular app (`gothinkster/angular-realworld-example-app`):
+# every bare `@Injectable()`/`@Component()`/`@Pipe()` application gained its own row. R57's own commit
+# rejected a blanket fix on the ARGUMENT that it would flood real framework code but never measured that
+# against decorator-bearing code; this is now a measured trade-off, true for one framework and false for
+# two others, not folklore. This row therefore does NOT assert shape 3 stays silent (a conformance row
+# pins WANTED behaviour, not a sin) — it is checked below and reported as a DOCUMENTED-OPEN case.
+#
+# RE-VERIFIED HERE independently, not taken on the fix's commit message or its own test suite: every cell
+# below was run against BOTH candor-ts `9a8a5c7` (immediately before `b4c3a22`) and HEAD, built in a
+# throwaway clone so the tracked checkout was never touched.
+#
+#   defect-shape1-argliteral   `@Decorate(fs.readFileSync("/etc/hosts")) class Thing {}` where `Decorate`
+#                              is a named local factory — the raw effect sits directly in the decorator's
+#                              OWN call argument, not inside the factory's body. PRE-FIX: no function in
+#                              the report carries `Fs` anywhere and `deny Fs` exits 0. POST-FIX: a
+#                              `<decorator-arg>@…`-named unit carries `inferred: ["Fs"]` /
+#                              `paths: ["/etc/hosts"]`, and `deny Fs` exits 1 on AS-EFF-006.
+#   defect-shape2-argclosure   `@Factory({ init: () => { fs.readFileSync("/etc/hosts"); } })
+#                              class Thing {}` — the TypeORM `@Column({ default: () => … })` idiom: a
+#                              closure nested in the factory's argument DATA. Same pre/post-fix shape as
+#                              shape 1.
+#   shape3-external-open       `import { ExternalDecorator } from "extlib"; @ExternalDecorator()
+#                              class Thing {}`, `extlib` a real (fixture) dependency whose own
+#                              `ExternalDecorator` implementation calls `fs.readFileSync` and is never
+#                              read by the scan. NOT asserted as a defect to fix — asserted as
+#                              DOCUMENTED-OPEN: `functions: []` / `deny Fs` exit 0 / `ok:true` on BOTH
+#                              binaries. If this cell ever turns red (starts disclosing), that is a
+#                              closure to celebrate, not a regression — update SOUNDNESS.md R64, do not
+#                              "fix" this row to keep it green.
+#   ctrl-arg-literal           THE FIRST OVER-CHARGE CONTROL: `@Decorate("just-a-string") class Thing {}`
+#                              — a decorator argument that is a plain literal, no call and no effect at
+#                              all. Unchanged pre- and post-fix: no function anywhere carries `Fs`,
+#                              `deny Fs` exits 0. Without this cell an engine that mints a
+#                              `<decorator-arg>` unit for EVERY decorator argument regardless of content
+#                              would pass shape 1/2 equally well.
+#   ctrl-arg-purefn            THE SECOND OVER-CHARGE CONTROL: `@Decorate(pureHelper(1))
+#                              class Thing {}` where `pureHelper` is a genuinely pure local function
+#                              (`return x + 1`) called FROM the decorator argument position. Unchanged
+#                              pre- and post-fix: no `Fs` anywhere, `deny Fs` exits 0. Without this cell an
+#                              engine that mints a `<decorator-arg>` unit and then folds in Unknown/every
+#                              effect reachable from ANY call in the argument (rather than what that call
+#                              actually does) would pass shape 1/2 while fabricating on this case.
+#
+# NOT A CROSS-ENGINE ROW, same ruling as PART 81/R57 and argued fresh for these three shapes: all three
+# require a decorator ARGUMENT to be a RUNTIME expression evaluated at class-definition time by the
+# language itself, with an arbitrary function call permitted inside it. rust's attribute-macro arguments
+# are TOKEN STREAMS consumed at compile time — nothing in `#[my_macro(some_expr)]` is ever *evaluated*,
+# so there is no runtime call to hide; swift's compiler-plugin macros (R56/PART 77) are the same
+# compile-time AST-rewrite shape, no argument expression runs; java requires annotation element values to
+# be COMPILE-TIME CONSTANT expressions (JLS 9.7.1) — a call to any non-constant method in an annotation
+# argument is a compile error, so the language itself forbids the shape R64 depends on. None of the three
+# has "a decorator/attribute argument that is an arbitrary runtime expression" for an effect to hide
+# inside — structurally absent, not merely unaudited.
+#
+ck82() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = d.get("functions") or []
+name_contains = sys.argv[2] if len(sys.argv) > 2 else None
+hit = None
+for f in fns:
+    n = f.get("fn") or ""
+    if name_contains is not None:
+        if name_contains in n:
+            hit = f; break
+    else:
+        continue
+if hit is None:
+    print("absent")
+else:
+    inf = sorted(hit.get("inferred") or [])
+    paths = sorted(hit.get("paths") or [])
+    print(json.dumps(inf) + "|" + (json.dumps(paths) if paths else "-"))
+' "$1" "$2"; }
+ck82nofs() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = d.get("functions") or []
+any_fs = any("Fs" in (f.get("inferred") or []) for f in fns)
+print("has-fs" if any_fs else "no-fs")
+' "$1"; }
+ck82gate() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+ok = d.get("ok")
+viol = d.get("violations") or []
+rules = sorted(v.get("rule") for v in viol)
+print(("ok" if ok else "notok") + "|count:" + str(len(viol)) + "|" + (json.dumps(rules) if rules else "-"))
+' "$1"; }
+p82() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P82_OUT="$P82_OUT  ts     $1  got=$2  OK
+"
+  else
+    P82_OUT="$P82_OUT  ts     $1  got=$2 want=$3  FAIL
+"
+    P82_BAD=1; rc=1
+  fi
+}
+P82_BAD=0; P82_OUT=""
+P82="$W/p82"
+mkdir -p "$P82/shape1/src" "$P82/shape2/src" "$P82/shape3/src" "$P82/shape3/node_modules/extlib" \
+         "$P82/ctrllit/src" "$P82/ctrlpure/src"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf 'deny Fs\n' > "$P82/shape1/deny-fs.policy"
+  printf 'import fs from "node:fs";\nfunction Decorate(_arg: any) { return function (_t: any) {}; }\n@Decorate(fs.readFileSync("/etc/hosts"))\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P82/shape1/src/e.ts"
 
+  printf 'deny Fs\n' > "$P82/shape2/deny-fs.policy"
+  printf 'import fs from "node:fs";\nfunction Factory(_opts: any) { return function (_t: any) {}; }\n@Factory({ init: () => { fs.readFileSync("/etc/hosts"); } })\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P82/shape2/src/e.ts"
+
+  printf 'deny Fs\n' > "$P82/shape3/deny-fs.policy"
+  printf 'import { ExternalDecorator } from "extlib";\n@ExternalDecorator()\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P82/shape3/src/e.ts"
+  printf '{"name": "extlib", "version": "1.0.0", "main": "index.js", "types": "index.d.ts"}' > "$P82/shape3/node_modules/extlib/package.json"
+  printf 'const fs = require("fs");\nfunction ExternalDecorator() {\n  fs.readFileSync("/etc/hosts");\n  return function (_t) {};\n}\nmodule.exports = { ExternalDecorator };\n' > "$P82/shape3/node_modules/extlib/index.js"
+  printf 'export declare function ExternalDecorator(): ClassDecorator;\n' > "$P82/shape3/node_modules/extlib/index.d.ts"
+
+  printf 'deny Fs\n' > "$P82/ctrllit/deny-fs.policy"
+  printf 'function Decorate(_arg: any) { return function (_t: any) {}; }\n@Decorate("just-a-string")\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P82/ctrllit/src/e.ts"
+
+  printf 'deny Fs\n' > "$P82/ctrlpure/deny-fs.policy"
+  printf 'function pureHelper(x: number) { return x + 1; }\nfunction Decorate(_arg: any) { return function (_t: any) {}; }\n@Decorate(pureHelper(1))\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P82/ctrlpure/src/e.ts"
+
+  node "$TS_DIR/scan.mjs" "$P82/shape1"  --json > "$P82/shape1.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P82/shape2"  --json > "$P82/shape2.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P82/shape3"  --json > "$P82/shape3.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P82/ctrllit" --json > "$P82/ctrllit.json" 2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P82/ctrlpure" --json > "$P82/ctrlpure.json" 2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P82/shape1"  --policy "$P82/shape1/deny-fs.policy"  --gate-json "$P82/shape1.gate.json"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P82/shape2"  --policy "$P82/shape2/deny-fs.policy"  --gate-json "$P82/shape2.gate.json"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P82/shape3"  --policy "$P82/shape3/deny-fs.policy"  --gate-json "$P82/shape3.gate.json"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P82/ctrllit" --policy "$P82/ctrllit/deny-fs.policy" --gate-json "$P82/ctrllit.gate.json" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P82/ctrlpure" --policy "$P82/ctrlpure/deny-fs.policy" --gate-json "$P82/ctrlpure.gate.json" >/dev/null 2>&1
+
+  p82_shape1=$(ck82 "$P82/shape1.json" "<decorator-arg>")
+  p82_shape1_gate=$(ck82gate "$P82/shape1.gate.json")
+  p82_shape2=$(ck82 "$P82/shape2.json" "<decorator-arg>")
+  p82_shape2_gate=$(ck82gate "$P82/shape2.gate.json")
+  p82_shape3=$(ck82nofs "$P82/shape3.json")
+  p82_shape3_gate=$(ck82gate "$P82/shape3.gate.json")
+  p82_ctrllit=$(ck82nofs "$P82/ctrllit.json")
+  p82_ctrllit_gate=$(ck82gate "$P82/ctrllit.gate.json")
+  p82_ctrlpure=$(ck82nofs "$P82/ctrlpure.json")
+  p82_ctrlpure_gate=$(ck82gate "$P82/ctrlpure.gate.json")
+
+  p82 defect-shape1-argliteral      "$p82_shape1"      '["Fs"]|["/etc/hosts"]'
+  p82 defect-shape1-argliteral-gate "$p82_shape1_gate" 'notok|count:1|["AS-EFF-006"]'
+  p82 defect-shape2-argclosure      "$p82_shape2"      '["Fs"]|["/etc/hosts"]'
+  p82 defect-shape2-argclosure-gate "$p82_shape2_gate" 'notok|count:1|["AS-EFF-006"]'
+  p82 shape3-external-open          "$p82_shape3"      'no-fs'
+  p82 shape3-external-open-gate     "$p82_shape3_gate" 'ok|count:0|-'
+  p82 ctrl-arg-literal              "$p82_ctrllit"     'no-fs'
+  p82 ctrl-arg-literal-gate         "$p82_ctrllit_gate" 'ok|count:0|-'
+  p82 ctrl-arg-purefn               "$p82_ctrlpure"    'no-fs'
+  p82 ctrl-arg-purefn-gate          "$p82_ctrlpure_gate" 'ok|count:0|-'
+else
+  P82_OUT="$P82_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P82"
+# ENGINES: ts; rust java swift: none has a decorator/attribute ARGUMENT that is an arbitrary RUNTIME
+# expression (rust attribute-macro args are unevaluated token streams; swift compiler-plugin macro args
+# are compile-time AST, not executed; java annotation element values must be compile-time constants,
+# JLS 9.7.1, so a non-constant method call is a compile error) — structurally absent, not unaudited (see
+# the row's own comment above)
+# CONTROLS: p82_ctrllit p82_ctrlpure — ctrl-arg-literal proves a decorator argument with no call/effect at
+# all mints nothing; ctrl-arg-purefn is THE OVER-CHARGE CONTROL proving the newly-minted <decorator-arg>
+# unit does not fabricate an effect for a call it does not actually make, so this row cannot pass by an
+# engine that blanket-flags every decorator-argument call as `Fs`
+# shape3-external-open is a DOCUMENTED-OPEN case, not a wanted-behaviour assertion: SOUNDNESS.md R64
+# records it SILENT on a MEASURED rationale (an experimental blanket fix simulating what would close it
+# was byte-identical to the shipped fix on 2 of 3 real corpora but added +42 report rows on a base of 80,
+# +52%, on a real Angular app — every bare `@Injectable()`/`@Component()`/`@Pipe()` gained its own row).
+# If this cell ever turns red, that is R64 closing, not this row regressing — do not "fix" the row to keep
+# the cell at `no-fs`.
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-ts `9a8a5c7` (immediately before `b4c3a22`, built in a
+# throwaway clone so the tracked checkout was never touched): `defect-shape1-argliteral` and
+# `defect-shape2-argclosure` both read `absent` (no function in the report carried `Fs` anywhere) where
+# HEAD reads `["Fs"]|["/etc/hosts"]`, and their `-gate` cells read `ok|count:0|-` (exit 0,
+# `violations: []`) where HEAD reads `notok|count:1|["AS-EFF-006"]` — four RED cells, the cardinal sin at
+# both the report and the gate. `shape3-external-open`, `shape3-external-open-gate`, `ctrl-arg-literal`,
+# `ctrl-arg-literal-gate`, `ctrl-arg-purefn` and `ctrl-arg-purefn-gate` were ALREADY at their current
+# values on that same pre-fix binary — the two controls and the documented-open cell are not what moved.
+echo "PART 82 — a raw effect or closure in a decorator's own argument data is charged to a minted unit; an external body-less decorator reference stays documented-open (candor-ts; SPEC §4)"
+printf '%s' "$P82_OUT"
+[ "$P82_BAD" = 0 ] && echo "  -> MATCH — both fixed argument shapes are charged and fail \`deny Fs\`, neither over-charge control gains a fabricated effect, and the external-reference shape reads at its current documented-open value"
+[ "$P82_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+
+# ====================================================================================================
+# PART 83 — THE MISSING BYTE-EQUALITY QUADRANT: A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH
+#           ROUTES. RECORDS THE MEASURED zeroMatch DIVERGENCE RATHER THAN RESOLVING IT — the §3.1
+#           ruling is Tom's, open (BACKLOG.md "CURRENT QUEUE" item 1) (SPEC §3.1/§4) [TIER 1]
+# ====================================================================================================
+#
+# THE BLIND SPOT (BACKLOG.md, filed 2026-08-28). Every byte-equality test in the family scopes its
+# policy rule to a name that matches NOTHING ANYWHERE: this suite's own PART 32/36 use
+# `zzz_no_such_layer`/`zzz.nomatch`; java's `GateReportVerbTest` uses `pure app.Nothing`; ts's
+# `POLICIES` corpus has `scoped_none` (`pure ZzzNoSuchScope`, absent everywhere) beside `scoped`
+# (`deny Fs src.app.readIt`, a real but EFFECTFUL function — the rule fires, it does not merely bind);
+# swift's `testGateJsonIsByteEqualToTheScanRoute` uses `pure ZzzNoSuchScope` only. RE-VERIFIED HERE,
+# independently, by reading each suite named above at HEAD rather than taking the filing on trust (the
+# grep hits and the surrounding fixture code are quoted above from the actual files, not summarised).
+# Four independent suites, all exercising the WRONG kind of miss (a typo'd scope that binds nothing) —
+# none exercises the wrong kind of HIT: a rule that binds a REAL function which is genuinely pure on
+# BOTH the scan route and the `gate --report` route.
+#
+# THAT QUADRANT DOES NOT PASS CLEANLY, MEASURED HERE INDEPENDENTLY (matching BACKLOG.md's own
+# same-day measurement, reproduced fresh in a throwaway build for this row rather than copied from it):
+# a report's `functions` array carries only effectful/incomplete entries (§2.1's purity-by-absence
+# design) — a PURE function is not merely unflagged, it has NO ENTRY AT ALL. The SCAN route computes
+# `zeroMatch` from the full in-memory analyzed-function set, built BEFORE that emission gate drops pure
+# entries, so a rule scoped to a real pure function counts as bound and `zeroMatch` is absent. The
+# REPORT route computes `zeroMatch` from the persisted report's `functions` array alone — where the
+# same pure function has no entry — so the identical rule reads as UNBOUND and `zeroMatch` fires. The
+# two routes disagree over IDENTICAL bytes for the SAME policy, in ALL FOUR ENGINES, confined to
+# exactly one key: `zeroMatch`. `ok`, `violations` and `analyzed.count` never move — this is a FALSE
+# DISCLOSURE (a rule that bound a real function reported as binding nothing), never an under-report;
+# no effect is fabricated or hidden. It nonetheless breaks §3.1's byte-equality MUST as literally
+# written, in a case no existing suite (this one included, before this row) could see.
+#
+# THIS ROW RECORDS THE DIVERGENCE RATHER THAN RESOLVING IT, DELIBERATELY. BACKLOG.md prices four fix
+# options (A widen the wire format to carry pure names — reopens the ⟨0.21⟩ purity-by-absence trade-off
+# family-wide; B narrow the scan route — deletes a true observation; C suppress on the report route —
+# swallows the genuine typo case PART 32/36 already pin; D a narrow SPEC carve-out on §3.1 scoped to
+# this one condition, RECOMMENDED, mirroring the ⟨0.24⟩ manifest-limitation precedent) and leaves the
+# choice to Tom (BACKLOG.md "CURRENT QUEUE" item 1) — nothing here is blocked on that ruling, but this
+# row must not paper over the quadrant by avoiding it or by skipping until the ruling lands (that is
+# exactly how the blind spot arose in four independent suites already). So the assertions below pin the
+# CURRENT MEASURED STATE, not a wanted one: the defect cells below PASS when the divergence is exactly
+# what was measured (scan route silent, report route wrongly claims zero-match) and FAIL — loudly, as a
+# finding to chase, never a row to quietly relax — the moment either side's behaviour changes. If this
+# row ever goes red because the REPORT route stops emitting a false `zeroMatch`, that is the ruling
+# landing a fix, not a regression: update SOUNDNESS.md/BACKLOG.md and rewrite this row's wanted value,
+# do not delete or loosen it to make the suite green again.
+#
+#   defect-<engine>            `deny Fs <scope>` where `<scope>` names a REAL, always-pure function
+#                              (`addNumbers`/`add_numbers`, alongside a sibling `writeSomething`/
+#                              `write_something` that is genuinely effectful, so the fixture cannot be
+#                              answered by an engine that finds no functions at all). Scan route: `ok`
+#                              true, `violations` empty, NO `zeroMatch` key. Report route (`gate
+#                              --report` over the SAME scan's own report): `ok` true, `violations`
+#                              empty, `zeroMatch` equal to exactly `["deny Fs <scope>"]` — the false
+#                              disclosure. Also asserts the two documents differ in NO OTHER key, so a
+#                              future change that widens the divergence past `zeroMatch` alone is caught
+#                              here rather than discovered by a consumer.
+#   control-<engine>           the SAME fixture, `deny Fs <writeSomething-scope>` — a rule scoped to
+#                              the SIBLING function, which genuinely performs `Fs`. Scan and report
+#                              routes must be BYTE-EQUAL (both `ok:false`, one `AS-EFF-006` violation,
+#                              no `zeroMatch` key on either) — proving the divergence measured above is
+#                              confined to the pure-matched quadrant, not a general scan/report split.
+#                              Without this cell, an engine whose two routes disagree on EVERY policy
+#                              would pass the defect cell just as well.
+#
+ck83_defect() {   # <scan.json> <report.json> <scope-literal, exactly as written in the policy line>
+  python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        print("FAIL: INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+        sys.exit(1)
+s = load(sys.argv[1]); r = load(sys.argv[2]); scope = sys.argv[3]
+bad = []
+s_ok, s_viol, s_has_zm, s_zm = s.get("ok"), s.get("violations"), "zeroMatch" in s, s.get("zeroMatch")
+r_ok, r_viol, r_zm = r.get("ok"), r.get("violations"), r.get("zeroMatch")
+# NOTE: dict-key literals are pulled into plain variables above, never spelled INSIDE an f-string brace
+# below — this file is itself single-quoted from the outside (see the enclosing `python3 -c ...`), and a
+# quote character nested inside an f-string expression collides with that outer quoting the same way an
+# apostrophe inside a shell single-quoted string always has. Measured the hard way while writing this row:
+# the naive f-string form parsed and ran silently, every PASSING cell stayed green, and only a deliberate
+# mutation control (see BOTH controls this row carries) surfaced a Python NameError instead of a FAIL line
+# on the one branch that is supposed to catch a real divergence — a checker that cannot fail proves nothing.
+if s_ok is not True: bad.append("scan route ok=" + repr(s_ok) + ", want True")
+if s_viol != []: bad.append("scan route violations=" + repr(s_viol) + ", want []")
+if s_has_zm: bad.append("scan route now carries zeroMatch=" + repr(s_zm) + " — the measured divergence (2026-08-28) has changed on the SCAN side; update SOUNDNESS.md/BACKLOG before touching this row")
+if r_ok is not True: bad.append("report route ok=" + repr(r_ok) + ", want True")
+if r_viol != []: bad.append("report route violations=" + repr(r_viol) + ", want []")
+if r_zm != [scope]: bad.append("report route zeroMatch=" + repr(r_zm) + ", want [" + repr(scope) + "] — if this is now ABSENT the §3.1 ruling may have landed a fix; update SOUNDNESS.md/BACKLOG and the wanted value here, do not just delete the assertion")
+s_keys, r_keys = set(s.keys()), set(r.keys())
+extra = (r_keys - s_keys) - {"zeroMatch"}
+missing = s_keys - r_keys
+if extra: bad.append("report route carries EXTRA keys beyond zeroMatch: " + repr(sorted(extra)) + " — the divergence has spread past the one key this row measured")
+if missing: bad.append("report route is MISSING keys the scan route carries: " + repr(sorted(missing)))
+if bad:
+    for b in bad: print("FAIL: " + b)
+    sys.exit(1)
+print("OK — scan route: no zeroMatch; report route: zeroMatch==[" + scope + "]; no other key differs (current measured divergence, unruled)")
+' "$1" "$2" "$3"
+}
+ck83_control() {   # <scan.json> <report.json>
+  python3 -c '
+import json, sys
+sb = open(sys.argv[1], "rb").read(); rb = open(sys.argv[2], "rb").read()
+bad = []
+if sb != rb: bad.append("scan and report routes are NOT byte-equal for an effectful scoped rule — the divergence has spread beyond the pure-matched quadrant this row isolates")
+try:
+    d = json.loads(sb)
+except Exception as exc:
+    print("FAIL: INSTRUMENT: cannot parse " + sys.argv[1] + " (" + str(exc) + ")")
+    sys.exit(1)
+d_ok = d.get("ok")   # pulled into a plain variable — see the comment in ck83_defect above for why
+if d_ok is not False: bad.append("ok=" + repr(d_ok) + ", want False — the control must actually fire")
+rules = sorted(v.get("rule") for v in (d.get("violations") or []))
+if "AS-EFF-006" not in rules: bad.append("violations do not carry AS-EFF-006: " + repr(rules))
+if "zeroMatch" in d: bad.append("a FIRING scoped rule carries zeroMatch — the fixture is not proven to bind a real function")
+if bad:
+    for b in bad: print("FAIL: " + b)
+    sys.exit(1)
+print("OK — scan and report routes byte-equal, both fire AS-EFF-006, neither carries zeroMatch")
+' "$1" "$2"
+}
+p83() {   # <engine> <cell> <checker output>
+  local engine="$1" cell="$2" out="$3"
+  if printf '%s' "$out" | grep -q '^FAIL'; then
+    P83_OUT="$P83_OUT  $engine  $cell
+$(printf '%s' "$out" | sed 's/^/     /')
+"
+    P83_BAD=1; rc=1
+  else
+    P83_OUT="$P83_OUT  $engine  $cell  $out
+"
+  fi
+}
+P83_BAD=0; P83_OUT=""
+P83="$W/p83"
+mkdir -p "$P83/rust/src" "$P83/java/app" "$P83/java/classes" "$P83/ts/src" "$P83/swift/src"
+
+# ---- rust ------------------------------------------------------------------------------------------
+printf '[package]\nname = "p83"\nversion = "0.0.0"\nedition = "2021"\n' > "$P83/rust/Cargo.toml"
+printf 'pub fn add_numbers(a: i32, b: i32) -> i32 { a + b }\npub fn write_something() { std::fs::write("/tmp/x", "y").unwrap(); }\n' > "$P83/rust/src/lib.rs"
+printf 'deny Fs add_numbers\n' > "$P83/rust/defect.policy"
+printf 'deny Fs write_something\n' > "$P83/rust/control.policy"
+"$SCAN" "$P83/rust" --policy "$P83/rust/defect.policy"  --gate-json "$P83/rust.defect.scan.json"  >/dev/null 2>&1
+"$SCAN" "$P83/rust" --policy "$P83/rust/control.policy" --gate-json "$P83/rust.control.scan.json" >/dev/null 2>&1
+RUST_P83_REPORT="$(ls "$P83"/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+"$QUERY" gate --report "$RUST_P83_REPORT" --policy "$P83/rust/defect.policy"  --gate-json "$P83/rust.defect.report.json"  >/dev/null 2>&1
+"$QUERY" gate --report "$RUST_P83_REPORT" --policy "$P83/rust/control.policy" --gate-json "$P83/rust.control.report.json" >/dev/null 2>&1
+p83 rust defect-pure-scoped-zeromatch  "$(ck83_defect  "$P83/rust.defect.scan.json"  "$P83/rust.defect.report.json"  'deny Fs add_numbers')"
+p83 rust control-effectful-scoped-byteequal "$(ck83_control "$P83/rust.control.scan.json" "$P83/rust.control.report.json")"
+
+# ---- java ------------------------------------------------------------------------------------------
+cat > "$P83/java/app/Svc.java" <<'JAVASRC'
+package app;
+import java.nio.file.*;
+public class Svc {
+  public int addNumbers(int a, int b) { return a + b; }
+  public void writeSomething() throws Exception { Files.writeString(Path.of("/tmp/x"), "y"); }
+}
+JAVASRC
+javac -d "$P83/java/classes" "$P83/java/app/Svc.java" 2>/dev/null || { echo "FAIL: javac on the PART 83 java fixture"; rc=1; }
+printf 'deny Fs app.Svc.addNumbers\n' > "$P83/java/defect.policy"
+printf 'deny Fs app.Svc.writeSomething\n' > "$P83/java/control.policy"
+java -jar "$JAR" "$P83/java/classes" --policy "$P83/java/defect.policy"  --gate-json "$P83/java.defect.scan.json"  >/dev/null 2>&1
+java -jar "$JAR" "$P83/java/classes" --policy "$P83/java/control.policy" --gate-json "$P83/java.control.scan.json" >/dev/null 2>&1
+java -jar "$JAR" "$P83/java/classes" --json "$P83/java.report.json" >/dev/null 2>&1
+java -jar "$JAR" gate --report "$P83/java.report.json" --policy "$P83/java/defect.policy"  --gate-json "$P83/java.defect.report.json"  >/dev/null 2>&1
+java -jar "$JAR" gate --report "$P83/java.report.json" --policy "$P83/java/control.policy" --gate-json "$P83/java.control.report.json" >/dev/null 2>&1
+p83 java defect-pure-scoped-zeromatch  "$(ck83_defect  "$P83/java.defect.scan.json"  "$P83/java.defect.report.json"  'deny Fs app.Svc.addNumbers')"
+p83 java control-effectful-scoped-byteequal "$(ck83_control "$P83/java.control.scan.json" "$P83/java.control.report.json")"
+
+# ---- ts (present-but-broken must FAIL, never SKIP — TS_PRESENT vs TS_OK) ---------------------------
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf 'import fs from "node:fs";\nexport function addNumbers(a: number, b: number) { return a + b; }\nexport function writeSomething() { fs.writeFileSync("/tmp/x", "y"); }\n' > "$P83/ts/src/e.ts"
+  printf 'deny Fs src.e.addNumbers\n' > "$P83/ts/defect.policy"
+  printf 'deny Fs src.e.writeSomething\n' > "$P83/ts/control.policy"
+  node "$TS_DIR/scan.mjs" "$P83/ts" --policy "$P83/ts/defect.policy"  --gate-json "$P83/ts.defect.scan.json"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P83/ts" --policy "$P83/ts/control.policy" --gate-json "$P83/ts.control.scan.json" >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P83/ts/.candor/report.json" --policy "$P83/ts/defect.policy"  --gate-json "$P83/ts.defect.report.json"  >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P83/ts/.candor/report.json" --policy "$P83/ts/control.policy" --gate-json "$P83/ts.control.report.json" >/dev/null 2>&1
+  p83 ts   defect-pure-scoped-zeromatch  "$(ck83_defect  "$P83/ts.defect.scan.json"  "$P83/ts.defect.report.json"  'deny Fs src.e.addNumbers')"
+  p83 ts   control-effectful-scoped-byteequal "$(ck83_control "$P83/ts.control.scan.json" "$P83/ts.control.report.json")"
+else
+  P83_OUT="$P83_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+
+# ---- swift (present-but-broken must FAIL, never SKIP — SW_PRESENT vs SW_OK) ------------------------
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  printf 'import Foundation\nfunc addNumbers(_ a: Int, _ b: Int) -> Int { return a + b }\nfunc writeSomething() { try? "y".write(toFile: "/tmp/x", atomically: true, encoding: .utf8) }\n' > "$P83/swift/src/e.swift"
+  printf 'deny Fs addNumbers\n' > "$P83/swift/defect.policy"
+  printf 'deny Fs writeSomething\n' > "$P83/swift/control.policy"
+  "$SW_BIN" "$P83/swift" --policy "$P83/swift/defect.policy"  --gate-json "$P83/swift.defect.scan.json"  >/dev/null 2>&1
+  "$SW_BIN" "$P83/swift" --policy "$P83/swift/control.policy" --gate-json "$P83/swift.control.scan.json" >/dev/null 2>&1
+  "$SW_BIN" "$P83/swift" --out "$P83/swiftrep/report" >/dev/null 2>&1
+  SWIFT_P83_REPORT="$(ls "$P83"/swiftrep/report.*.Swift.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)"
+  "$SW_BIN" gate --report "$SWIFT_P83_REPORT" --policy "$P83/swift/defect.policy"  --gate-json "$P83/swift.defect.report.json"  >/dev/null 2>&1
+  "$SW_BIN" gate --report "$SWIFT_P83_REPORT" --policy "$P83/swift/control.policy" --gate-json "$P83/swift.control.report.json" >/dev/null 2>&1
+  p83 swift defect-pure-scoped-zeromatch  "$(ck83_defect  "$P83/swift.defect.scan.json"  "$P83/swift.defect.report.json"  'deny Fs addNumbers')"
+  p83 swift control-effectful-scoped-byteequal "$(ck83_control "$P83/swift.control.scan.json" "$P83/swift.control.report.json")"
+else
+  P83_OUT="$P83_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P83"
+# ENGINES: rust java ts swift
+# CONTROLS: control-effectful-scoped-byteequal — proves the divergence is confined to the pure-matched
+# quadrant (an engine whose two routes disagree on every policy would fail this control while still
+# passing a naive defect-only row); the defect cell's own no-other-key check is the second control,
+# ruling out the divergence quietly spreading to `ok`/`violations`/`analyzed`
+# NOT PAPERED OVER: the defect cells assert the CURRENT measured value, not a wanted one — see the
+# row's own comment above for why, and what to do when it changes. This is DELIBERATE per the brief
+# that produced this row: gating it behind the pending §3.1 ruling, or writing it to pass by scoping
+# away from the quadrant, would recreate the exact blind spot this row exists to close.
+# THE §3.1 RULING ITSELF IS OPEN (BACKLOG.md "CURRENT QUEUE" item 1, Tom's) — this row RECORDS the
+# measured divergence for the ruling to act on; it does not resolve it.
+echo "PART 83 — a policy rule scoped to a real, pure-on-both-routes function: the report route's false zeroMatch disclosure, measured and recorded (not resolved) across all four engines (SPEC §3.1/§4)"
+printf '%s' "$P83_OUT"
+[ "$P83_BAD" = 0 ] && echo "  -> MATCH — every engine's defect cell reads at its current measured value (scan silent, report falsely claims zeroMatch) and every control cell is byte-equal across routes"
+[ "$P83_BAD" != 0 ] && echo "  -> DIVERGE — see the row above (a red defect cell may mean the §3.1 ruling landed a fix; a red control cell is a genuine new divergence)"
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
