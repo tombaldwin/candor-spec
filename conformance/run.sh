@@ -15356,8 +15356,10 @@ printf '%s' "$P82_OUT"
 
 # ====================================================================================================
 # PART 83 — THE MISSING BYTE-EQUALITY QUADRANT: A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH
-#           ROUTES. RECORDS THE MEASURED zeroMatch DIVERGENCE RATHER THAN RESOLVING IT — the §3.1
-#           ruling is Tom's, open (BACKLOG.md "CURRENT QUEUE" item 1) (SPEC §3.1/§4) [TIER 1]
+#           ROUTES. PINS THE MEASURED zeroMatch DIVERGENCE AS SPEC'D BEHAVIOUR — Tom's ruling D landed
+#           at candor-spec `3601c04`: SPEC §3.1's ⟨0.34⟩ carve-out now RULES this exact divergence IN,
+#           so a red defect cell going forward means the ruling changed, never that this row is stale
+#           (SPEC §3.1/§4) [TIER 1]
 # ====================================================================================================
 #
 # THE BLIND SPOT (BACKLOG.md, filed 2026-08-28). Every byte-equality test in the family scopes its
@@ -15386,20 +15388,22 @@ printf '%s' "$P82_OUT"
 # no effect is fabricated or hidden. It nonetheless breaks §3.1's byte-equality MUST as literally
 # written, in a case no existing suite (this one included, before this row) could see.
 #
-# THIS ROW RECORDS THE DIVERGENCE RATHER THAN RESOLVING IT, DELIBERATELY. BACKLOG.md prices four fix
-# options (A widen the wire format to carry pure names — reopens the ⟨0.21⟩ purity-by-absence trade-off
-# family-wide; B narrow the scan route — deletes a true observation; C suppress on the report route —
-# swallows the genuine typo case PART 32/36 already pin; D a narrow SPEC carve-out on §3.1 scoped to
-# this one condition, RECOMMENDED, mirroring the ⟨0.24⟩ manifest-limitation precedent) and leaves the
-# choice to Tom (BACKLOG.md "CURRENT QUEUE" item 1) — nothing here is blocked on that ruling, but this
-# row must not paper over the quadrant by avoiding it or by skipping until the ruling lands (that is
-# exactly how the blind spot arose in four independent suites already). So the assertions below pin the
-# CURRENT MEASURED STATE, not a wanted one: the defect cells below PASS when the divergence is exactly
-# what was measured (scan route silent, report route wrongly claims zero-match) and FAIL — loudly, as a
-# finding to chase, never a row to quietly relax — the moment either side's behaviour changes. If this
-# row ever goes red because the REPORT route stops emitting a false `zeroMatch`, that is the ruling
-# landing a fix, not a regression: update SOUNDNESS.md/BACKLOG.md and rewrite this row's wanted value,
-# do not delete or loosen it to make the suite green again.
+# THIS ROW ORIGINALLY RECORDED THE DIVERGENCE RATHER THAN RESOLVING IT, DELIBERATELY, WHILE THE RULING
+# WAS OPEN. BACKLOG.md priced four fix options (A widen the wire format to carry pure names — reopens
+# the ⟨0.21⟩ purity-by-absence trade-off family-wide; B narrow the scan route — deletes a true
+# observation; C suppress on the report route — swallows the genuine typo case PART 32/36 already pin;
+# D a narrow SPEC carve-out on §3.1 scoped to this one condition, mirroring the ⟨0.24⟩
+# manifest-limitation precedent) and left the choice to Tom. TOM RULED D (candor-spec `3601c04`, SPEC
+# §3.1's ⟨0.34⟩ carve-out) — this row's assertions below did not have to change, because the carve-out
+# rules IN exactly the state this row already measured, but what the row now PINS did: it is no longer
+# a measurement awaiting a ruling, it is the ruling's own conformance row. So the assertions below pin the
+# RULED, SPEC'D STATE: the defect cells below PASS when the divergence is exactly the carve-out permits
+# (scan route silent, report route wrongly claims zero-match) and FAIL — loudly, as a finding to chase,
+# never a row to quietly relax — the moment either side's behaviour changes. If this row ever goes red
+# because the REPORT route stops emitting a false `zeroMatch`, that is an engine going BEYOND what the
+# carve-out currently sanctions (implementing option A/B/C above instead of relying on D) — update
+# SPEC.md's carve-out clause, SOUNDNESS.md and BACKLOG.md, and rewrite this row's wanted value; do not
+# delete or loosen it to make the suite green again.
 #
 #   defect-<engine>            `deny Fs <scope>` where `<scope>` names a REAL, always-pure function
 #                              (`addNumbers`/`add_numbers`, alongside a sibling `writeSomething`/
@@ -15453,7 +15457,7 @@ if missing: bad.append("report route is MISSING keys the scan route carries: " +
 if bad:
     for b in bad: print("FAIL: " + b)
     sys.exit(1)
-print("OK — scan route: no zeroMatch; report route: zeroMatch==[" + scope + "]; no other key differs (current measured divergence, unruled)")
+print("OK — scan route: no zeroMatch; report route: zeroMatch==[" + scope + "]; no other key differs (⟨0.34⟩ §3.1 carve-out, ruling D)")
 ' "$1" "$2" "$3"
 }
 ck83_control() {   # <scan.json> <report.json>
@@ -15566,16 +15570,17 @@ rm -rf "$P83"
 # quadrant (an engine whose two routes disagree on every policy would fail this control while still
 # passing a naive defect-only row); the defect cell's own no-other-key check is the second control,
 # ruling out the divergence quietly spreading to `ok`/`violations`/`analyzed`
-# NOT PAPERED OVER: the defect cells assert the CURRENT measured value, not a wanted one — see the
-# row's own comment above for why, and what to do when it changes. This is DELIBERATE per the brief
-# that produced this row: gating it behind the pending §3.1 ruling, or writing it to pass by scoping
-# away from the quadrant, would recreate the exact blind spot this row exists to close.
-# THE §3.1 RULING ITSELF IS OPEN (BACKLOG.md "CURRENT QUEUE" item 1, Tom's) — this row RECORDS the
-# measured divergence for the ruling to act on; it does not resolve it.
-echo "PART 83 — a policy rule scoped to a real, pure-on-both-routes function: the report route's false zeroMatch disclosure, measured and recorded (not resolved) across all four engines (SPEC §3.1/§4)"
+# NOT PAPERED OVER: the defect cells assert the RULED, SPEC'D value, not merely an observed one — see
+# the row's own comment above for why, and what to do when it changes. This is DELIBERATE per the brief
+# that produced this row: gating it behind the (then-pending) §3.1 ruling, or writing it to pass by
+# scoping away from the quadrant, would recreate the exact blind spot this row exists to close.
+# THE §3.1 RULING LANDED (candor-spec `3601c04`, Tom's ruling D) — SPEC §3.1's ⟨0.34⟩ carve-out now
+# RULES the measured divergence IN; this row pins that carve-out as SPEC'd behaviour, not merely a
+# measurement on file for a ruling still to come.
+echo "PART 83 — a policy rule scoped to a real, pure-on-both-routes function: the report route's false zeroMatch disclosure, SPEC'd as a ⟨0.34⟩ §3.1 carve-out (Tom's ruling D) and pinned four-way (SPEC §3.1/§4)"
 printf '%s' "$P83_OUT"
 [ "$P83_BAD" = 0 ] && echo "  -> MATCH — every engine's defect cell reads at its current measured value (scan silent, report falsely claims zeroMatch) and every control cell is byte-equal across routes"
-[ "$P83_BAD" != 0 ] && echo "  -> DIVERGE — see the row above (a red defect cell may mean the §3.1 ruling landed a fix; a red control cell is a genuine new divergence)"
+[ "$P83_BAD" != 0 ] && echo "  -> DIVERGE — see the row above (a red defect cell may mean an engine changed behaviour beyond the ⟨0.34⟩ carve-out; a red control cell is a genuine new divergence)"
 
 # ====================================================================================================
 # PART 84 — verb_reject: `--policy` is a USAGE ERROR (exit 2) on every verb whose pinned §3.1/§3.2      [TIER 1]

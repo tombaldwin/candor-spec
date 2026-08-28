@@ -55,6 +55,18 @@ class really was read. The cost is bounded to exactly those reports — under �
 identifies a pre-rung producer precisely, and a report that peeked nothing never fires at all.
 **The remedy is ⟨0.32⟩'s made exact: RE-SCAN UNDER THE SAME POLICY** — the same one, not *a* policy, which
 is the loose reading that produced this hole, because the operator who hits it did scan with a policy.
+**⟨0.34⟩ IS NOT ADDITIVE EITHER, and what it breaks is a flag that was previously ACCEPTED AND IGNORED.**
+Two of its three parts cost a consumer nothing: the cross-policy refusal's remedy now names the real cause
+when the report predates ⟨0.33⟩ (message-only — verdict, exit code and the gate document are byte-identical,
+§3.1), and the `zeroMatch` carve-out RELAXES §3.1's byte-equality rather than tightening it, describing a
+divergence that was already there in all four engines. The third does break: `--policy` on a descriptive
+verb — `show`, `where`, `callers`, `map`, `diff`, `containment`, `reachable`, `path`, `impact`,
+`blindspots`, `tour`, and `rewire` where exposed — is now an exit-2 usage error, where before it was taken
+and silently dropped. None of those verbs' pinned §3.1 shapes carries a policy-derived field, so the answer
+never depended on the flag; an operator who passed one received a verdict computed without it and was told
+nothing. It fails CLOSED, and the cost is bounded exactly to invocations that pass the flag — every other
+invocation of those verbs is byte-identical to ⟨0.33⟩. **The remedy names the verb that does the job:**
+`gate --report <locator> --policy <file>`, or `whatif`/`fix`/`fix-gate`/`unverified` for a pre-edit check.
 **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind

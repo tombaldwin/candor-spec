@@ -426,6 +426,29 @@ Run it after any patch-cycle commit that adds a section here.
   engine binaries over source fixtures rather than taking a JSON document directly, so "feed it a poison
   document" does not apply the same way; extending the gate to them is future work.
 
+- **The versioning-narrative paragraph gains its ⟨0.34⟩ sentence — the gap `bin/spec-bump.sh 0.34`
+  left behind, closed.** The bare declare-bump above landed the version literal but, unlike the
+  ⟨0.31⟩/⟨0.32⟩/⟨0.33⟩ bumps, added no sentence saying ⟨0.34⟩ is non-additive, even though it genuinely
+  is. Added, checked word-for-word against ⟨0.34⟩'s own SPEC clauses and against PART 80/83/84 rather
+  than assumed from its own wording: two of ⟨0.34⟩'s three parts cost a consumer nothing (the ⟨0.33⟩
+  cross-policy refusal's cause-naming fix for a report predating ⟨0.33⟩ is message-only — verdict, exit
+  code and the gate document stay byte-identical; the `zeroMatch` §3.1 carve-out RELAXES byte-equality
+  rather than tightening it), and the third breaks: `--policy` on any of the twelve verbs with no
+  policy-derived field is now an exit-2 usage error where it was silently accepted before, bounded to
+  invocations that pass the flag. The first draft of this insertion added a blank line before the
+  following `**0.23 is a tier-1...**` block, splitting what has always been ONE continuous
+  versioning-narrative paragraph (every ⟨0.30⟩–⟨0.33⟩ sentence was appended with no blank line) into
+  two — which orphaned the existing MUST-ledger entry AND left the `0.23...` rung-history block
+  unclassified for the first time, three findings from one formatting slip. Fixed by removing the
+  blank line (restoring the single block, matching every prior rung's own shape) rather than writing a
+  second classification entry for a split that should never have existed; `conformance/must-ledger.json`
+  re-hashed to the merged block's new sha, with PART 80/83/84 added to the entry's exercised-by list
+  for ⟨0.34⟩'s three parts. Also corrected PART 83's own header comment and its two `echo`/`print`
+  lines in `conformance/run.sh`, which still read "records the divergence rather than resolving it" /
+  "the §3.1 ruling is Tom's, open" / "unruled" — stale since `3601c04` landed the ruling itself, despite
+  that commit's own message claiming the rewrite had happened. `must_ledger.py`: 517/517 classified, 12
+  unenforced. `conformance/run.sh`: OK. `conformance/mutation-gate.sh`: OK.
+
 ## [0.33.0] — 2026-08-26
 - **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
   R54 (`diff`) and R55 (`receipt`) still read `SILENT (open)` while four commits had closed them.
