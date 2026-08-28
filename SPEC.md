@@ -3443,7 +3443,7 @@ and exit code are UNCHANGED by it, and that a SCOPELESS `deny` is exempt (it bin
 construction, so it can never be this kind of typo). ⟨0.27⟩ The `zeroMatch` verdict key is pinned by
 conformance **PART 36** on all five engines, both routes.
 
-⟨0.35⟩ **THE CARVE-OUT: `zeroMatch` OVER A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH ROUTES IS
+⟨0.34⟩ **THE CARVE-OUT: `zeroMatch` OVER A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH ROUTES IS
 EXEMPT FROM §3.1's BYTE-EQUALITY MUST, AND THE EXEMPTION HAS ONE CAUSE.** §2.1's report omits pure
 functions entirely — a function that performs nothing is not flagged clean, it has NO ENTRY — and that
 same omission is what lets a `--report`-only consumer answer at all: the wire only ever carries the
@@ -3776,7 +3776,7 @@ engine exposes, it MUST accept:
   gained` policy at scan time (`AS-EFF-005`, §6) — so a `--policy` passed to `gains` is an exit-2 error naming
   that gate, never a silently-dropped flag that lets the run exit 0.
 
-⟨0.35⟩ **AND THE RULE IS NOT `gains`'s ALONE — IT NAMES EVERY VERB WHOSE PINNED SHAPE CARRIES NO
+⟨0.34⟩ **AND THE RULE IS NOT `gains`'s ALONE — IT NAMES EVERY VERB WHOSE PINNED SHAPE CARRIES NO
 POLICY-DERIVED FIELD.** `gains` was specified first because it was found first; the underlying reason —
 nothing in the verb's §3.1/§3.2 JSON shape depends on a policy, so a `--policy` flag has no field to
 change — is not specific to `gains` at all. Measured 2026-08-28 against every verb this document pins:

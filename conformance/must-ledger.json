@@ -11,7 +11,7 @@
   "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative.",
   "⟨2026-08-25⟩ The ten ⟨0.33⟩ cross-policy statements are classified to PART 69, which drives all four of the design's controls plus the `pure` flattening arm and the `scannedUnder` corruption arm. The ⟨0.32⟩ producer-must-scan-with-the-policy entry was RE-CONFIRMED rather than re-frozen: its row (PART 62) is unchanged and only its trailing sentence moved — it used to say the mismatch was undetectable from the document, which ⟨0.33⟩ makes false.",
   "⟨2026-08-28⟩ The five ⟨0.34⟩ statements (the cause/remedy swap, the version-licenses-a-remedy-never-a-verdict/byte-equality MUST, the numeric-never-lexicographic ladder rule, the absent-or-unparseable-predates-with-whitespace-stripped-first rule, and the exemption from the general present-but-unparseable-is-a-refusal rule) are classified to PART 80, which builds its own single-tree fixture per engine and mutates ONLY the envelope `spec` across five gated copies of the same bytes — the `cur` cell is the over-charge control, and PART 80's `ws` cell PROBES rather than hard-codes which engines have ported whitespace-tolerant parsing (candor-java/candor-ts pass; candor-rust/candor-swift SKIP, reference-led, until they trim before parsing).",
-  "⟨2026-08-28⟩ Two ⟨0.35⟩ items. (1) The `zeroMatch` §3.1 carve-out (BACKLOG.md CURRENT QUEUE item 1, Tom's ruling: option D) — four statements classified to PART 83, which already measured the divergence and now asserts it as SPEC'd behaviour rather than an unruled state; the advisory pairing on `analyzed.count > |functions|` was considered and explicitly REJECTED (noise, not signal — the same arithmetic the ⟨0.24⟩ manifest clause already names), so no new wire key was minted. (2) The `--policy` usage-error rule extended from `gains` alone to the full twelve-verb set with no policy-derived field — two statements classified to PART 84 (`verb_reject`), which falsifies every cell against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`) in throwaway clones."
+  "⟨2026-08-28⟩ Two more ⟨0.34⟩ items, added to the still-open rung above rather than a new ⟨0.35⟩ (there was no 0.34 release to close it against — see the `eaab823` rule: do not open a new rung while the previous one is unreleased). (1) The `zeroMatch` §3.1 carve-out (BACKLOG.md CURRENT QUEUE item 1, Tom's ruling: option D) — four statements classified to PART 83, which already measured the divergence and now asserts it as SPEC'd behaviour rather than an unruled state; the advisory pairing on `analyzed.count > |functions|` was considered and explicitly REJECTED (noise, not signal — the same arithmetic the ⟨0.24⟩ manifest clause already names), so no new wire key was minted. (2) The `--policy` usage-error rule extended from `gains` alone to the full twelve-verb set with no policy-derived field — two statements classified to PART 84 (`verb_reject`), which falsifies every cell against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`) in throwaway clones."
  ],
  "entries": [
   {
@@ -3080,9 +3080,9 @@
    "part": "PART 80"
   },
   {
-   "sha": "c25bb7819cd5a9f5",
+   "sha": "652623acf23df6e6",
    "at": "3.1 Read-only queries (SHOULD)",
-   "excerpt": "⟨0.35⟩ **THE CARVE-OUT: `zeroMatch` OVER A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH ROUTES IS EXEMP",
+   "excerpt": "⟨0.34⟩ **THE CARVE-OUT: `zeroMatch` OVER A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH ROUTES IS EXEMP",
    "part": "PART 83"
   },
   {
@@ -3104,9 +3104,9 @@
    "part": "PART 83"
   },
   {
-   "sha": "f3c49c53f3329f44",
+   "sha": "2dc7b483f2aa6339",
    "at": "3.3.1 The query command-line grammar (REQUIRED f",
-   "excerpt": "⟨0.35⟩ **AND THE RULE IS NOT `gains`'s ALONE — IT NAMES EVERY VERB WHOSE PINNED SHAPE CARRIES NO POLICY-DERIVE",
+   "excerpt": "⟨0.34⟩ **AND THE RULE IS NOT `gains`'s ALONE — IT NAMES EVERY VERB WHOSE PINNED SHAPE CARRIES NO POLICY-DERIVE",
    "part": "PART 84"
   },
   {

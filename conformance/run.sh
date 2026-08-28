@@ -15580,7 +15580,7 @@ printf '%s' "$P83_OUT"
 # ====================================================================================================
 # PART 84 — verb_reject: `--policy` is a USAGE ERROR (exit 2) on every verb whose pinned §3.1/§3.2      [TIER 1]
 #           JSON shape carries no policy-derived field — `gains`'s own rule (PART 5b) generalised to
-#           its twelve siblings (SPEC §3.3.1 ⟨0.35⟩). BACKLOG "`--policy` accept-and-drop is THREE
+#           its twelve siblings (SPEC §3.3.1 ⟨0.34⟩). BACKLOG "`--policy` accept-and-drop is THREE
 #           engines, not one". Fixed today: java `37c9b10` (12 verbs), rust `e4bc419` (10; its own
 #           `diff`/`rewire` already rejected, pre-existing, unrelated to this fix), ts `2c2147e` (11;
 #           no `rewire` verb to fix); swift was ALREADY conformant on its narrower 3-verb surface of
