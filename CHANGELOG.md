@@ -25,6 +25,39 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.34⟩ ITEM 1 gets its SPEC clause and its conformance PART, after shipping four-way with neither.**
+  candor-rust `f10bb82`, candor-ts `9a8a5c7`, candor-swift `fd704b5` and candor-java `fee92bd` all cited
+  "SPEC §2 ⟨0.34⟩" in comments the same day `grep -c '0\.34' SPEC.md` returned 0 — the port ran ahead of the
+  row, inverting the family's own rule that conformance ROWS beat review panels. That gap had ALREADY
+  produced a divergence: candor-rust's `parse_spec_ladder` does not strip surrounding ASCII whitespace
+  before parsing the envelope `spec`; candor-ts's does. SPEC §2 now states, normatively, what all four
+  engines DO for the ⟨0.33⟩ cross-policy refusal's human-channel message when every report contributing to
+  it predates ⟨0.33⟩ — name that cause and remedy ("re-scan with a 0.33+ engine under THE SAME policy")
+  instead of the ⟨0.33⟩ "peeked under a different deny set" sentence, which is false of a report that never
+  had `scannedUnder` to hold ANY deny set in. Message-only: mints no wire key, moves neither the verdict nor
+  the exit code, and `--gate-json`/`whatif --json` MUST be byte-identical between the two sentences — the
+  property most at risk from a later well-meaning edit.
+
+  **THE WHITESPACE RULING.** Surrounding ASCII whitespace around the `spec` value MUST be stripped before
+  the unparseable test — the same rule §3.4 already states for a config version token ("a trailing `\r` is
+  whitespace, not part of the version"). `" 0.33"` is the version 0.33 with incidental padding, not a
+  corrupt value; refusing to strip it manufactures the exact false "predates ⟨0.33⟩" diagnosis this rung
+  exists to retire, on a report that is not, in fact, old — and this key is explicitly outside the general
+  present-but-unparseable-is-a-refusal rule (it is not a verdict input), so a garbled value falls back to
+  "cannot answer ⇒ predates" rather than impeaching the document. **candor-java and candor-ts already
+  conform (measured); candor-rust and candor-swift do not** (`" 0".parse::<u32>()` errs; Swift's
+  `Int(" 0")` is `nil` — neither trims by itself) — filed against each, not fixed here.
+
+  PART 80 (conformance/run.sh): one tree per engine, a genuine ⟨0.33⟩ cross-policy mismatch, and the
+  envelope `spec` mutated to five values (`"0.33"` unmodified — the OVER-CHARGE CONTROL — `absent`, `"0.32"`,
+  the `"0.9"` lexicographic-ladder trap, and `" 0.33"` for the whitespace ruling) across otherwise-identical
+  bytes. Asserts the two sentences, the unchanged verdict/exit code, `--gate-json` byte-equality across all
+  five, and PROBES (never hard-codes) the whitespace cell so a currently-unported engine SKIPs, reference-led,
+  rather than reddening the suite for a divergence this repo does not own the fix for. Falsified against the
+  pre-⟨0.34⟩ commits (candor-rust `3a32fdf`, candor-ts `0a5d493`, candor-swift `ec3e50f`, candor-java
+  `802efe4`, built in throwaway clones): all four read `old` on every mutated `spec` value, confirming the
+  row measures the fix rather than passing vacuously.
+
 - **SOUNDNESS.md's FFI/extern scorecard row had the same "—"-pasted-across-non-rust-cells shape the macro
   row was just corrected for, and it was NOT the same verdict on every cell.** Measured per engine against
   live fixtures and published/HEAD binaries rather than reasoned from the row's prose: rust-scan's direct

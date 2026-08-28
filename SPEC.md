@@ -1200,6 +1200,64 @@ already carry.
   `gate --report` would. It needs no separate deny-rule conjunct for the reason above: a verb carrying no
   policy has an empty rule set, which is a subset of everything.
 
+  ⟨0.34⟩ **THE ⟨0.33⟩ REFUSAL'S CAUSE MUST BE NAMED ACCURATELY WHEN EVERY CONTRIBUTING REPORT PREDATES THE
+  RUNG — A MESSAGE-ONLY REFINEMENT, NOT A NEW EXIT-2 CAUSE.** The clause above is true of a ≥⟨0.33⟩
+  producer that genuinely scanned under a narrower or different deny set: "peeked under a deny set that
+  does not cover N rule(s)" correctly describes a policy the producer chose. It is MISLEADING of a report
+  that predates ⟨0.33⟩ entirely, because such a producer never had `scannedUnder` to hold ANY deny set in —
+  it did not choose a different policy, it could not yet record the one it used. **When EVERY report
+  contributing a rule to the refusal's rule set predates ⟨0.33⟩** (§2.1's `spec`, compared on the ladder
+  below; "contributing" is per-report, following the per-report — never per-union — accounting the ⟨0.33⟩
+  clause above already requires), the human-channel message MUST instead name that cause — that the
+  report(s) were produced before a producing scan recorded the deny set its peek ran under — and MUST NOT
+  describe it as the producer having been peeked under a *different* deny set, which is false of this case.
+  The remedy MUST say **re-scan with a 0.33+ engine under THE SAME policy**, not merely *a* policy, for the
+  identical reason the ⟨0.33⟩ remedy insists on that wording. **A SINGLE ≥⟨0.33⟩ CONTRIBUTING REPORT IS
+  ENOUGH TO KEEP THE ⟨0.33⟩ SENTENCE UNCHANGED** — for that one report the gap is real: it could have
+  recorded covering this run's rules and did not, and "a different deny set" is the true description of its
+  own omission.
+
+  **THE VERSION LICENSES A REMEDY, NEVER A VERDICT.** A pre-⟨0.33⟩ producer's peek was still bounded by
+  SOME policy nobody here can see, so the refusal is correct whichever way the report's age falls —
+  refusing over the report's age ALONE (a version floor on the verdict) was considered and rejected: it
+  would refuse reports the ⟨0.33⟩ refusal currently passes (measured: reports carrying a `peeked: true`
+  class refuse 202/202 under ⟨0.33⟩; reports carrying none pass 63/63, and that 63 is why the cost is
+  bounded rather than total), which is the direction this document calls the cardinal-sin mirror — refusing
+  what the report can actually answer. **THIS RUNG THEREFORE MINTS NO WIRE KEY AND MOVES NEITHER THE
+  VERDICT NOR THE EXIT CODE: every `--gate-json`/`whatif --json` document MUST be byte-identical between
+  the two head-sentence choices, and byte-identical to what a pre-⟨0.34⟩ engine would have written for the
+  same report set** — only which already-true sentence a human channel prints depends on it. §3.1 route
+  equality needs no new anchor for the same reason ⟨0.33⟩'s own refusal does not: the sentence lives on the
+  human channel (stderr, or a query's printed completeness note), never inside either document.
+
+  **THE SPEC LADDER IS COMPARED NUMERICALLY, major.minor, NEVER LEXICOGRAPHICALLY.** `"0.9"` sits BEFORE
+  `"0.33"` on the ladder (9 < 33) and AFTER it under a plain string/byte compare (`"9" > "3"` at the first
+  differing digit) — a report at ⟨0.9⟩, the era this rung exists to name, would misread as NEWER than
+  ⟨0.33⟩ under a string comparison and keep the misleading ⟨0.33⟩ sentence over a report old enough to
+  have never carried the field this clause reads at all. Any comparison of the `spec` ladder MUST parse
+  both sides as `(major, minor)` integer pairs and compare component-wise.
+
+  **AN ABSENT OR UNPARSEABLE `spec` COUNTS AS PREDATING ⟨0.33⟩ — the same "cannot answer ⇒ old" direction
+  §2.1 already states for a report with no `spec` key at all** ("a report without `spec` predates this
+  field and is treated as spec ≤ 0.2"). **SURROUNDING ASCII WHITESPACE MUST BE STRIPPED BEFORE THE PARSE,
+  not treated as part of it** — the same rule §3.4 states for a config version token ("a trailing `\r` is
+  whitespace, not part of the version"): `" 0.33"` names the version `0.33` with incidental padding, not a
+  different or corrupt value, and refusing to strip it manufactures the false "predates" reading on a
+  report that is not, in fact, old — reproducing, via a formatting artifact, the exact misdiagnosis this
+  rung exists to retire. A value that still does not parse as `<digits>.<digits>` after stripping is
+  unparseable and reads as predating, the same as absent.
+
+  **THIS KEY IS EXEMPT FROM THE GENERAL PRESENT-BUT-UNPARSEABLE-IS-A-REFUSAL RULE, because it is not a
+  verdict input.** Every other §2 key a verdict reads (`analyzed`, `unanalyzed`, `functions`, …) MUST
+  refuse loudly on a present-but-unparseable value rather than fall back to a convenience default — the
+  family's standing rule that the language's convenience default is the fail-open direction. `spec`, for
+  this one purpose, moves NEITHER `ok` NOR the exit code (the bullet above), so there is no verdict to
+  protect by refusing: a garbled or wrong-shaped `spec` value MUST fall back to the same "cannot answer ⇒
+  predates" reading an absent key gets, never impeach the document over it. Minting a new exit-2 cause
+  keyed on a field the refusal logic never otherwise consults would be a fail-open-shaped hazard in the
+  opposite direction — an unrelated formatting defect in one envelope field silently taking an
+  otherwise-good report down with it.
+
 **Forward compatibility:** a consumer MUST tolerate (ignore) envelope or entry fields it does not
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
 the fields this document defines are the interchange contract, not a closed schema.

@@ -9,7 +9,8 @@
   "Adding a NEW entry as pre-ledger defeats the gate; a reviewer of this diff should refuse it.",
   "`sha` anchors the whitespace-normalised block text: editing the clause orphans the entry,",
   "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative.",
-  "⟨2026-08-25⟩ The ten ⟨0.33⟩ cross-policy statements are classified to PART 69, which drives all four of the design's controls plus the `pure` flattening arm and the `scannedUnder` corruption arm. The ⟨0.32⟩ producer-must-scan-with-the-policy entry was RE-CONFIRMED rather than re-frozen: its row (PART 62) is unchanged and only its trailing sentence moved — it used to say the mismatch was undetectable from the document, which ⟨0.33⟩ makes false."
+  "⟨2026-08-25⟩ The ten ⟨0.33⟩ cross-policy statements are classified to PART 69, which drives all four of the design's controls plus the `pure` flattening arm and the `scannedUnder` corruption arm. The ⟨0.32⟩ producer-must-scan-with-the-policy entry was RE-CONFIRMED rather than re-frozen: its row (PART 62) is unchanged and only its trailing sentence moved — it used to say the mismatch was undetectable from the document, which ⟨0.33⟩ makes false.",
+  "⟨2026-08-28⟩ The five ⟨0.34⟩ statements (the cause/remedy swap, the version-licenses-a-remedy-never-a-verdict/byte-equality MUST, the numeric-never-lexicographic ladder rule, the absent-or-unparseable-predates-with-whitespace-stripped-first rule, and the exemption from the general present-but-unparseable-is-a-refusal rule) are classified to PART 80, which builds its own single-tree fixture per engine and mutates ONLY the envelope `spec` across five gated copies of the same bytes — the `cur` cell is the over-charge control, and PART 80's `ws` cell PROBES rather than hard-codes which engines have ported whitespace-tolerant parsing (candor-java/candor-ts pass; candor-rust/candor-swift SKIP, reference-led, until they trim before parsing)."
  ],
  "entries": [
   {
@@ -3046,6 +3047,36 @@
    "at": "2. The report",
    "excerpt": "**THE CONDITION IS PER REPORT, NEVER OVER THE UNION OF A REPORT SET.** `scannedUnder` and `peeked` are facts a",
    "unenforced": "PART 69 drives ONE report per gate invocation, so no cell distinguishes a per-report test from a union over a set. The BEHAVIOUR is pinned in candor-java's own suite (`UnreadCodeRouteTest`), and the harm it prevents is already exercised one key over — PART 63 gates a member beside an unrelated sibling and requires the sibling not to answer for it, which is the same hazard on `hash`. Recorded as a debt with a named remedy rather than left as a silence: the row that closes it needs a locator resolving to TWO reports whose producers held DIFFERENT deny sets, and its control must be that the same pair under the SAME deny set still certifies, or the row passes for an engine that refuses every report set."
+  },
+  {
+   "sha": "6a82873459764993",
+   "at": "2. The report",
+   "excerpt": "⟨0.34⟩ **THE ⟨0.33⟩ REFUSAL'S CAUSE MUST BE NAMED ACCURATELY WHEN EVERY CONTRIBUTING REPORT PREDATES THE RUNG ",
+   "part": "PART 80"
+  },
+  {
+   "sha": "ef98a3c5ad0e3e84",
+   "at": "2. The report",
+   "excerpt": "**THE VERSION LICENSES A REMEDY, NEVER A VERDICT.** A pre-⟨0.33⟩ producer's peek was still bounded by SOME pol",
+   "part": "PART 80"
+  },
+  {
+   "sha": "52b1bbb4931cf10b",
+   "at": "2. The report",
+   "excerpt": "**THE SPEC LADDER IS COMPARED NUMERICALLY, major.minor, NEVER LEXICOGRAPHICALLY.** `\"0.9\"` sits BEFORE `\"0.33\"",
+   "part": "PART 80"
+  },
+  {
+   "sha": "a321cc623fc45d80",
+   "at": "2. The report",
+   "excerpt": "**AN ABSENT OR UNPARSEABLE `spec` COUNTS AS PREDATING ⟨0.33⟩ — the same \"cannot answer ⇒ old\" direction §2.1 a",
+   "part": "PART 80"
+  },
+  {
+   "sha": "9dbbba3f745f2699",
+   "at": "2. The report",
+   "excerpt": "**THIS KEY IS EXEMPT FROM THE GENERAL PRESENT-BUT-UNPARSEABLE-IS-A-REFUSAL RULE, because it is not a verdict i",
+   "part": "PART 80"
   }
  ]
 }
