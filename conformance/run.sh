@@ -14610,6 +14610,293 @@ printf '%s' "$P79_OUT"
 [ "$P79_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
 true
 
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 80 — THE ⟨0.33⟩ CROSS-POLICY REFUSAL NAMES ITS ACTUAL CAUSE WHEN THE REPORT PREDATES THE
+#           RUNG — MESSAGE-ONLY (SPEC §2 ⟨0.34⟩) [TIER 2]
+#
+# ⟨0.34⟩ shipped four-way (candor-rust f10bb82, candor-ts 9a8a5c7, candor-swift fd704b5, candor-java
+# fee92bd) citing "SPEC §2 ⟨0.34⟩" in comments while `grep -c '0\.34' SPEC.md` returned 0 — the port ran
+# ahead of the row, and nothing pinned the behaviour cross-engine before this part. It had ALREADY
+# diverged: candor-rust's `parse_spec_ladder` does not trim, candor-ts's does — found by hand, not by a
+# row, which is the whole reason this part exists.
+#
+# THE RULING THIS PART ENCODES (SPEC §2 ⟨0.34⟩): surrounding ASCII whitespace is stripped BEFORE the
+# unparseable test, the same rule §3.4 already states for a config version token ("a trailing `\r` is
+# whitespace, not part of the version"). `" 0.33"` is the version 0.33 with incidental padding, not a
+# different or corrupt value — treating it as unparseable manufactures the exact false "predates ⟨0.33⟩"
+# diagnosis this rung exists to retire, on a report that is not, in fact, old.
+#
+# ONE TREE, FIVE ENVELOPES. A single fixture per engine (an excluded class the peek READS, performing
+# `Exec`, scanned under `deny Net`) produces one genuine cross-policy mismatch under `deny Exec` — the
+# ⟨0.33⟩ PART 69 cause. The envelope's `candor.spec` is then the ONLY thing that varies across five
+# gated copies of the SAME bytes, so a message difference between them can only be caused by the field
+# under test:
+#
+#   cur     "0.33"     (unmodified — AT the floor, not predating)        -> keep the ⟨0.33⟩ sentence
+#   absent  (no `spec` key at all — the pre-⟨0.33⟩-field shape)          -> the new ⟨0.34⟩ sentence
+#   old     "0.32"                                                       -> the new ⟨0.34⟩ sentence
+#   ladder  "0.9"      (the LEXICOGRAPHIC trap: "9">"3" as strings)      -> the new ⟨0.34⟩ sentence
+#   ws      " 0.33"    (F2 — leading ASCII whitespace around the floor)  -> keep the ⟨0.33⟩ sentence
+#
+# `cur` IS THE OVER-CHARGE CONTROL: it is the case a careless "always print the cause" implementation
+# gets wrong, because the report at hand genuinely is ≥⟨0.33⟩ and the ⟨0.33⟩ sentence is the true one for
+# it. A row that cannot fail this cell asserts nothing about the other four.
+#
+# TWO MARKERS, MUTUALLY EXCLUSIVE, CHECKED ON EVERY CELL: "does not cover" (the ⟨0.33⟩ sentence — every
+# engine's independent wording carries it verbatim, measured) and "0.33+ engine" (the ⟨0.34⟩ remedy's
+# distinguishing phrase, likewise verbatim in all four). Neither, or both, is an INSTRUMENT failure, not
+# a divergence: this part does not know what a THIRD sentence would mean.
+#
+# `ws` IS PROBED, NEVER HARD-CODED TO AN ENGINE LIST — the family's own rule for a reference-led SKIP.
+# If a cell's `ws` answer matches its own `cur` answer, the whitespace-tolerant ladder parse is ported
+# and the cell PASSES; if it matches `absent`/`old`/`ladder` instead, the MUST above is not yet
+# implemented on that engine and the cell SKIPs (reference-led — counted, so a later regression off a
+# PASS would raise the ratchet) rather than FAILing the suite for a divergence this repo does not own the
+# fix for. MEASURED at the time this part was written: candor-java and candor-ts already trim (PASS);
+# candor-rust and candor-swift do not (SKIP) — `Int(" 0")` is `nil` in Swift and `" 0".parse::<u32>()`
+# errs in Rust, neither language's numeric parser tolerates surrounding whitespace by itself.
+#
+# THE GATE-JSON BYTE-EQUALITY IS THE MESSAGE-ONLY PROPERTY ITSELF, asserted on every cell regardless of
+# which sentence printed (including a `ws` cell that SKIPped on the message) — `--gate-json` carries no
+# prose, so `absent`/`old`/`ladder`/`ws` MUST each be byte-identical to `cur`'s document. A `ws` cell that
+# fails this one FAILS the part outright: the document moving is a verdict/wire-key regression this rung
+# forbids outright, never a "not yet ported" gap.
+p80_mutate() {   # <cur-report-json> <out-prefix>
+  python3 -c '
+import copy, json, sys
+p, out = sys.argv[1], sys.argv[2]
+d = json.load(open(p))
+def dump(name, spec, delete=False):
+    dd = copy.deepcopy(d)
+    if delete:
+        dd["candor"].pop("spec", None)
+    else:
+        dd["candor"]["spec"] = spec
+    json.dump(dd, open(out + "." + name + ".json", "w"))
+dump("absent", None, delete=True)
+dump("old", "0.32")
+dump("ladder", "0.9")
+dump("ws", " 0.33")
+' "$1" "$2"
+}
+p80_gate() {   # <engine> <variant> <report-json> <frag-out> <cmd...>
+  # Namespaced P80_ vars only — this function must NEVER touch bare `rc`, the suite-wide verdict
+  # variable every part sets at exit; a local-looking `rc=$?` here would silently overwrite it.
+  P80G_ENG="$1"; P80G_VAR="$2"; P80G_REP="$3"; P80G_FRAG="$4"; shift 4
+  P80G_TXT="${P80G_FRAG}.txt"; P80G_GJ="${P80G_FRAG}.gate.json"
+  "$@" gate --report "$P80G_REP" --policy "$P80/exec.candor" --gate-json "$P80G_GJ" > "$P80G_TXT" 2>&1
+  P80G_RC=$?
+  python3 -c '
+import json, sys
+json.dump({"engine": sys.argv[1], "variant": sys.argv[2], "exit": int(sys.argv[3]),
+           "text_file": sys.argv[4], "gate_json": sys.argv[5]}, open(sys.argv[6], "w"))
+' "$P80G_ENG" "$P80G_VAR" "$P80G_RC" "$P80G_TXT" "$P80G_GJ" "${P80G_FRAG}.meta.json"
+}
+P80="$W/p80"; mkdir -p "$P80"
+printf 'deny Net\n'  > "$P80/net.candor"
+printf 'deny Exec\n' > "$P80/exec.candor"
+
+# ── RUST — the excluded class is `build-script` (as PART 69's tree A) ──────────────────────────────
+mkdir -p "$P80/rust/src"
+printf '[package]\nname = "p80"\nversion = "0.1.0"\nedition = "2021"\n' > "$P80/rust/Cargo.toml"
+printf 'pub fn load() -> String { std::fs::read_to_string("/etc/hosts").unwrap_or_default() }\n' > "$P80/rust/src/lib.rs"
+printf 'fn main() { std::process::Command::new("id").status().ok(); }\n' > "$P80/rust/build.rs"
+"$SCAN" "$P80/rust" --out "$P80/r" --policy "$P80/net.candor" >/dev/null 2>&1
+P80R_CUR=""; for f in "$P80"/r.*.scan.json; do case "$f" in *callgraph*) continue;; esac; [ -f "$f" ] && P80R_CUR="$f"; done
+if [ -n "$P80R_CUR" ]; then
+  p80_mutate "$P80R_CUR" "$P80/r_m"
+  p80_gate rust cur    "$P80R_CUR"        "$P80/frag_rust_cur"    "$QUERY"
+  p80_gate rust absent "$P80/r_m.absent.json" "$P80/frag_rust_absent" "$QUERY"
+  p80_gate rust old    "$P80/r_m.old.json"    "$P80/frag_rust_old"    "$QUERY"
+  p80_gate rust ladder "$P80/r_m.ladder.json" "$P80/frag_rust_ladder" "$QUERY"
+  p80_gate rust ws     "$P80/r_m.ws.json"     "$P80/frag_rust_ws"     "$QUERY"
+else
+  echo "  rust   INSTRUMENT — candor-scan produced no report for the PART 80 fixture; rust is a mandatory engine, so this is a FAIL, not a SKIP"
+  rc=1
+fi
+
+# ── JAVA — the excluded class is `source-without-class` (as PART 69's tree A) ───────────────────────
+mkdir -p "$P80/java/src/com/x" "$P80/java/build/classes"
+cat > "$P80/java/src/com/x/Lib.java" <<'JEOF'
+package com.x;
+import java.nio.file.*;
+public class Lib { public String load() throws Exception { return new String(Files.readAllBytes(Paths.get("/etc/hosts"))); } }
+JEOF
+javac -d "$P80/java/build/classes" "$P80/java/src/com/x/Lib.java" >/dev/null 2>&1
+rm -f "$P80/java/src/com/x/Lib.java"
+cat > "$P80/java/src/com/x/Deploy.java" <<'JEOF'
+package com.x;
+public class Deploy { public void go() throws Exception { Runtime.getRuntime().exec("id"); } }
+JEOF
+java -jar "$JAR" "$P80/java" --policy "$P80/net.candor" --json "$P80/j.json" >/dev/null 2>&1
+if [ -s "$P80/j.json" ]; then
+  p80_mutate "$P80/j.json" "$P80/j_m"
+  p80_gate java cur    "$P80/j.json"          "$P80/frag_java_cur"    java -jar "$JAR"
+  p80_gate java absent "$P80/j_m.absent.json" "$P80/frag_java_absent" java -jar "$JAR"
+  p80_gate java old    "$P80/j_m.old.json"    "$P80/frag_java_old"    java -jar "$JAR"
+  p80_gate java ladder "$P80/j_m.ladder.json" "$P80/frag_java_ladder" java -jar "$JAR"
+  p80_gate java ws     "$P80/j_m.ws.json"     "$P80/frag_java_ws"     java -jar "$JAR"
+else
+  echo "  java   INSTRUMENT — candor-java produced no report for the PART 80 fixture; java is a mandatory engine, so this is a FAIL, not a SKIP"
+  rc=1
+fi
+
+# ── TS — the excluded class is the shipped `dist/` CJS module (as PART 69's tree A) ─────────────────
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  mkdir -p "$P80/ts/src" "$P80/ts/dist"
+  printf '{"compilerOptions":{"target":"ES2020"},"include":["src"]}\n' > "$P80/ts/tsconfig.json"
+  printf 'import * as fs from "fs"\nexport function load(): string { return fs.readFileSync("/etc/hosts", "utf8") }\n' > "$P80/ts/src/a.ts"
+  printf 'const cp = require("child_process"); module.exports = function go() { cp.execSync("id") }\n' > "$P80/ts/dist/shipped.js"
+  ( cd "$TS_DIR" && node scan.mjs "$P80/ts" --out "$P80/t" --policy "$P80/net.candor" >/dev/null 2>&1 )
+  if [ -s "$P80/t.json" ]; then
+    p80_mutate "$P80/t.json" "$P80/t_m"
+    p80_gate ts cur    "$P80/t.json"          "$P80/frag_ts_cur"    node "$TS_DIR/query.mjs"
+    p80_gate ts absent "$P80/t_m.absent.json" "$P80/frag_ts_absent" node "$TS_DIR/query.mjs"
+    p80_gate ts old    "$P80/t_m.old.json"    "$P80/frag_ts_old"    node "$TS_DIR/query.mjs"
+    p80_gate ts ladder "$P80/t_m.ladder.json" "$P80/frag_ts_ladder" node "$TS_DIR/query.mjs"
+    p80_gate ts ws     "$P80/t_m.ws.json"     "$P80/frag_ts_ws"     node "$TS_DIR/query.mjs"
+  else
+    echo "  ts     INSTRUMENT — candor-ts is present but produced no report for the PART 80 fixture (present-but-broken is a FAIL, never a SKIP)"
+    rc=1
+  fi
+else
+  echo "  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)"
+fi
+
+# ── SWIFT — the excluded class is `Tests/` (as PART 69's tree A) ────────────────────────────────────
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  mkdir -p "$P80/sw/Sources/S" "$P80/sw/Tests"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$P80/sw/Package.swift"
+  printf 'import Foundation\npublic func load() -> String { (try? String(contentsOfFile: "/etc/hosts")) ?? "" }\n' > "$P80/sw/Sources/S/a.swift"
+  printf 'import Foundation\npublic func helper() { let p = Process(); p.launchPath = "/bin/ls"; try? p.run() }\n' > "$P80/sw/Tests/Helper.swift"
+  ( cd "$P80/sw" && env -u CANDOR_CONFIG "$SW_BIN" . --out o --policy "$P80/net.candor" >/dev/null 2>&1 )
+  P80S_CUR=""; for f in "$P80"/sw/o.*.Swift.json; do case "$f" in *callgraph*|*hierarchy*|*locs*) continue;; esac; [ -f "$f" ] && P80S_CUR="$f"; done
+  if [ -n "$P80S_CUR" ]; then
+    p80_mutate "$P80S_CUR" "$P80/s_m"
+    p80_gate swift cur    "$P80S_CUR"           "$P80/frag_swift_cur"    env -u CANDOR_CONFIG "$SW_BIN"
+    p80_gate swift absent "$P80/s_m.absent.json" "$P80/frag_swift_absent" env -u CANDOR_CONFIG "$SW_BIN"
+    p80_gate swift old    "$P80/s_m.old.json"    "$P80/frag_swift_old"    env -u CANDOR_CONFIG "$SW_BIN"
+    p80_gate swift ladder "$P80/s_m.ladder.json" "$P80/frag_swift_ladder" env -u CANDOR_CONFIG "$SW_BIN"
+    p80_gate swift ws     "$P80/s_m.ws.json"     "$P80/frag_swift_ws"     env -u CANDOR_CONFIG "$SW_BIN"
+  else
+    echo "  swift  INSTRUMENT — candor-swift is present but produced no report for the PART 80 fixture (present-but-broken is a FAIL, never a SKIP)"
+    rc=1
+  fi
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+
+P80_RESULT=$(python3 - "$P80" <<'PY'
+import glob, json, sys
+
+NEW = "0.33+ engine"
+OLD = "does not cover"
+
+def classify(text):
+    has_new, has_old = NEW in text, OLD in text
+    if has_new and has_old:
+        return "both"
+    if has_new:
+        return "new"
+    if has_old:
+        return "old"
+    return "neither"
+
+frags = {}
+for path in sorted(glob.glob(sys.argv[1] + "/frag_*.meta.json")):
+    d = json.load(open(path))
+    frags.setdefault(d["engine"], {})[d["variant"]] = d
+
+bad = False
+lines = []
+for eng in ("rust", "java", "ts", "swift"):
+    if eng not in frags:
+        continue
+    v = frags[eng]
+    missing = [name for name in ("cur", "absent", "old", "ladder", "ws") if name not in v]
+    if missing:
+        lines.append(f"  {eng:5s} INSTRUMENT — variant(s) {missing} never ran; see the SKIP line above")
+        bad = True
+        continue
+    texts = {}
+    for name, d in v.items():
+        texts[name] = open(d["text_file"]).read()
+    cls = {name: classify(t) for name, t in texts.items()}
+    exits = {name: d["exit"] for name, d in v.items()}
+    row_bad = False
+    reasons = []
+    if any(c == "both" or c == "neither" for c in cls.values()):
+        reasons.append("INSTRUMENT: a cell matched neither/both markers " +
+                        json.dumps({k: c for k, c in cls.items() if c in ("both", "neither")}))
+        row_bad = True
+    if any(e != 2 for e in exits.values()):
+        reasons.append("exit code moved off 2: " + json.dumps(exits))
+        row_bad = True
+    if not row_bad:
+        if cls["cur"] != "old":
+            reasons.append(f"OVER-CHARGE CONTROL FAILED — `cur` (spec 0.33, genuinely at the floor) printed "
+                            f"the {cls['cur']!r} sentence, not the ⟨0.33⟩ one it must always print")
+            row_bad = True
+        for name in ("absent", "old", "ladder"):
+            if cls[name] != "new":
+                reasons.append(f"`{name}` printed the {cls[name]!r} sentence, want 'new' — a report that "
+                                f"predates ⟨0.33⟩ must name that cause")
+                row_bad = True
+    # gate-json byte-equality — the message-only property — asserted unconditionally, even where `ws`
+    # SKIPs on the message: the DOCUMENT must never move regardless of which sentence a human channel chose.
+    cur_gj = open(v["cur"]["gate_json"], "rb").read()
+    gj_mismatches = [name for name in ("absent", "old", "ladder", "ws")
+                      if open(v[name]["gate_json"], "rb").read() != cur_gj]
+    if gj_mismatches:
+        reasons.append(f"--gate-json differs from `cur` for {gj_mismatches} — this rung mints no wire key "
+                        f"and must not move the document")
+        row_bad = True
+    ws_note = ""
+    if not row_bad:
+        if cls["ws"] == "old":
+            ws_note = "ws=PASS (whitespace-tolerant spec-ladder parse ported)"
+        elif cls["ws"] == "new":
+            ws_note = "ws=SKIP (reference-led — whitespace-tolerant spec-ladder parse ⟨0.34⟩ not yet ported)"
+        else:
+            reasons.append(f"`ws` classified {cls['ws']!r} — neither ported (old) nor the known pre-port "
+                            f"gap (new)")
+            row_bad = True
+    if row_bad:
+        lines.append(f"  {eng:5s} cur={cls['cur']} absent={cls['absent']} old={cls['old']} "
+                      f"ladder={cls['ladder']} ws={cls['ws']}  FAIL")
+        for r in reasons:
+            lines.append(f"         {r}")
+        bad = True
+    else:
+        lines.append(f"  {eng:5s} cur=old(ctl) absent=new old=new ladder=new gate-json=byte-identical×5  {ws_note}  OK")
+        if ws_note.startswith("ws=SKIP"):
+            # NAMES BOTH ENGINES AND THE FOLLOW-UP, explicitly — a SKIP that only names the ONE engine
+            # printing it reads as "this rung does not apply to candor-{eng}", which is false: it is a
+            # real, measured gap against a MUST this file just wrote, shared identically by TWO engines,
+            # not a per-engine inapplicability. Naming both plus the conforming pair plus the fix removes
+            # every way to misread this as "not applicable here".
+            lines.append(f"  {eng} SKIP — ⟨0.34⟩'s whitespace-tolerant spec-ladder parse (SPEC §2 ⟨0.34⟩: "
+                          f"strip ASCII whitespace before the unparseable test) is MEASURED NOT IMPLEMENTED "
+                          f"on BOTH candor-rust AND candor-swift (candor-java and candor-ts already conform) "
+                          f"— probed via the ws-vs-cur comparison, never declared by engine name. This is a "
+                          f"real divergence from a written MUST, not a rung candor-{eng} is exempt from. "
+                          f"FOLLOW-UP: trim before parsing (\" 0.33\" must read as 0.33), filed against both "
+                          f"candor-rust and candor-swift — candor-spec does not own either repo and cannot "
+                          f"fix this here.")
+
+print("\n".join(lines))
+sys.exit(1 if bad else 0)
+PY
+)
+P80_RC=$?
+printf '%s\n' "$P80_RESULT"
+[ "$P80_RC" = 0 ] || rc=1
+# ENGINES: rust java ts swift
+# CONTROLS: cur cur_gj exits — cur is the OVER-CHARGE CONTROL (a report genuinely at ⟨0.33⟩ must keep the ⟨0.33⟩ sentence, never the new ⟨0.34⟩ one, proving this row cannot pass by always emitting the new cause); cur_gj proves \`--gate-json\` stays byte-identical to it across all five \`spec\` mutations, the message-only property itself; exits proves the verdict/exit code never moves between the two sentences either
+echo "PART 80 — a ≥⟨0.33⟩ report keeps the ⟨0.33⟩ cross-policy sentence, a pre-⟨0.33⟩ report (absent/old/ladder-trapped \`spec\`) gets the ⟨0.34⟩ cause+remedy, the verdict/exit/--gate-json never move between them, and leading ASCII whitespace around a well-formed \`spec\` MUST NOT read as unparseable (SPEC §2 ⟨0.34⟩)"
+[ "$P80_RC" = 0 ] && echo "  -> MATCH — every engine asked keeps the over-charge control (\`cur\`) on the ⟨0.33⟩ sentence, names the ⟨0.34⟩ cause for absent/old/ladder-trapped \`spec\`, never moves \`--gate-json\`, and the whitespace MUST is either ported (PASS) or a probed, counted reference-led gap (SKIP) — never a silent divergence"
+[ "$P80_RC" != 0 ] && echo "  -> DIVERGE — see FAIL lines"
+
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
