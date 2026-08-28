@@ -14447,6 +14447,170 @@ printf '%s' "$P78_OUT"
 true
 
 
+# ====================================================================================================
+# PART 79 — AN FFI BOUNDARY MUST DISCLOSE Unknown/invisible, NEVER "functions": [] (candor-rust,
+#           candor-swift; SPEC §4 "must never report a function as effect-free when it could not
+#           actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE SINS, closed 2026-08-28, from SOUNDNESS.md's R59/R60/R61 — found auditing the FFI scorecard row
+# (2026-08-27), whose rust-deep "🟢¹ verified by construction" and swift "—" (immune by construction)
+# cells were BOTH false and had never been independently measured.
+#
+#   R59, rust-scan: a `libc`/`nix`/`rustix` call the syscall-name table deliberately leaves unclassified
+#   (a generic fd verb — `read`/`write`/`close`/…) silently vanished — no `Unknown`, no `invisible`,
+#   nothing — when no CLASSIFIED sibling call established the effect in the same function.
+#   `CALIBRATED_CRATES` exempted the whole crate from the coverage ledger outright, reading "classify has
+#   rules here" as "an unmatched call was reviewed and found pure". FIXED candor-rust `3cb1906`: a new
+#   `CALIBRATED_BUT_PARTIAL_CRATES` carves libc/nix/rustix out of that blanket exemption.
+#
+#   R60, rust-deep: a fn declared in a LOCAL `extern "C" { .. }` block was silently dropped even though
+#   the engine's own callgraph sidecar proves it visited the call — both of `record_resolved_call`'s
+#   honest routes (classify-by-crate-name, floor-to-invisible) are gated on the callee being non-local,
+#   and a local extern declaration IS local. This made rust-deep — the engine positioned as the sound
+#   backstop for exactly this class of miss — WORSE than rust-scan on the identical mechanism (rust-scan's
+#   `ForeignMod` handling already disclosed `native:extern fn` for this shape, unaffected by either fix).
+#   FIXED the same commit (`3cb1906`): `Unknown`/`native:extern fn` unconditionally on `is_foreign_item()`.
+#
+#   R61, swift: raw C-interop through `import Darwin`/`import Glibc` free functions and `@_silgen_name`/
+#   `@_extern` direct C-symbol linkage read silent-pure — no generic "unresolved call through an
+#   opaque/foreign value" fallback existed in candor-swift's dispatch model at all, while the MODELED
+#   `Process`/Foundation API stayed correctly charged throughout (the over-charge control this row
+#   reuses). FIXED candor-swift `ec3e50f`: both shapes route into `Unknown`/`native:<symbol>`, gated on an
+#   ALLOWLIST of real syscalls (`NATIVE_DISCLOSURE_C_FREE_FNS`) plus a `C_PLATFORM_MODULES` import check —
+#   an unrestricted first cut measured 1519 false hits on swift-nio alone (`#if os(...)`/`canImport(...)`
+#   build-config predicates and stdlib control flow, none of them FFI), which the allowlist eliminates.
+#
+# THE BYTE-PARITY POINT, stated because it is the reason this row asks the SAME fixture of two engines
+# rather than trusting one measurement each: R60's fix was deliberately shaped so rust-deep's disclosure
+# for a local extern block (unconditional `Unknown`/`native:extern fn` on `is_foreign_item()`) MIRRORS
+# rust-scan's pre-existing mechanism, rather than routing through the crate-name-keyed `invisible`
+# machinery rust-scan's OWN coverage ledger needed for R59. `defect-extern`/`ctrl-libc` below assert the
+# SAME two functions produce BYTE-IDENTICAL `inferred`/`unknownWhy`/`invisible` triples on rust-scan and
+# rust-deep — not merely "each engine discloses something", the same disclosure.
+#
+# NOT IN THIS ROW. java and ts (SOUNDNESS.md §4 footnotes ⁹/¹⁰) were independently measured 2026-08-27
+# and are genuinely CLOSED across every mechanism tested (native methods / JNA-style zero-impl dispatch /
+# Panama for java; native addons untyped and `.d.ts`-typed / WASM / `process.binding` for ts) — but
+# through EXISTING disclosure paths (`reflect:` / the body-less-declaration rule / `callback:`), not a
+# dedicated FFI rule, and neither shares this compilation-unit shape with rust/swift's C-interop
+# mechanism, so there is no fixture to share — the same "per-engine by nature, no cross-engine gate"
+# ruling those footnotes already give. agents has no FFI concept: a fleet definition has no
+# foreign-function boundary.
+#
+# rust-deep runs OUTSIDE this suite's normal build. Every other engine here needs only a stable
+# toolchain (or node/swift); rust-deep needs the pinned nightly PLUS `cargo-dylint` (see candor-rust's own
+# `ci.yml`, which installs both separately). Built here, once, best-effort — absent on a runner with
+# neither is a loud, named SKIP for the rust-deep half only, never a silent pass, mirroring how
+# TS_PRESENT/SW_PRESENT already handle an optional engine leg.
+#
+ck79() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = {f.get("fn"): f for f in (d.get("functions") or [])}
+f = fns.get(sys.argv[2])
+if f is None:
+    print("absent")
+else:
+    inf = sorted(f.get("inferred") or [])
+    why = sorted(f.get("unknownWhy") or [])
+    inv = sorted(f.get("invisible") or [])
+    print(json.dumps(inf) + "|" + (json.dumps(why) if why else "-") + "|" + (json.dumps(inv) if inv else "-"))
+' "$1" "$2"; }
+p79() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P79_OUT="$P79_OUT  $1  got=$2  OK
+"
+  else
+    P79_OUT="$P79_OUT  $1  got=$2 want=$3  FAIL
+"
+    P79_BAD=1; rc=1
+  fi
+}
+P79_BAD=0; P79_OUT=""
+P79="$W/p79"
+mkdir -p "$P79/ffi/src" "$P79/rawc" "$P79/silgen" "$P79/ctrl"
+
+# --- shared rust fixture: the SAME crate, read by rust-scan (syntactic, no build) and rust-deep (a real
+#     nightly type-check via cargo-dylint) --------------------------------------------------------------
+printf '[package]\nname = "p79ffi"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\nlibc = "0.2"\n' > "$P79/ffi/Cargo.toml"
+printf 'extern "C" {\n    fn system(cmd: *const std::os::raw::c_char) -> i32;\n}\n\npub fn run_cmd() {\n    let c = std::ffi::CString::new("echo hi").unwrap();\n    unsafe { system(c.as_ptr()); }\n}\n\npub fn drain(fd: i32) -> usize {\n    let mut buf = [0u8; 64];\n    unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 64) as usize }\n}\n' > "$P79/ffi/src/lib.rs"
+
+p79_rs_run_cmd=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin run_cmd)
+p79_rs_drain=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin drain)
+p79 rust-scan-defect-libc  "$p79_rs_drain"   '[]|-|["libc"]'
+p79 rust-scan-ctrl-extern  "$p79_rs_run_cmd" '["Unknown"]|["native:extern fn"]|-'
+
+RD_PRESENT=""
+RD_LIB=""
+if command -v cargo-dylint >/dev/null 2>&1; then
+  ( cd "$CANDOR" && cargo build --workspace -q ) 2>/dev/null
+  RD_LIB=$(ls "$CANDOR"/target/debug/libcandor@*.dylib "$CANDOR"/target/debug/libcandor@*.so 2>/dev/null | head -1)
+  [ -n "$RD_LIB" ] && [ -f "$RD_LIB" ] && RD_PRESENT=1
+fi
+if [ -n "$RD_PRESENT" ]; then
+  ( cd "$P79/ffi" && CANDOR_JSON="$PWD/rd.json" cargo dylint --lib-path "$RD_LIB" >/dev/null 2>&1 )
+  RD_REPORT=$(ls "$P79/ffi"/rd.json.*.Rlib.json 2>/dev/null | head -1)
+  [ -n "$RD_REPORT" ] && [ -s "$RD_REPORT" ] || RD_PRESENT=""
+fi
+if [ -n "$RD_PRESENT" ]; then
+  p79_rd_run_cmd=$(ck79 "$RD_REPORT" run_cmd)
+  p79_rd_drain=$(ck79 "$RD_REPORT" drain)
+  p79 rust-deep-defect-extern "$p79_rd_run_cmd" '["Unknown"]|["native:extern fn"]|-'
+  p79 rust-deep-ctrl-libc     "$p79_rd_drain"   '[]|-|["libc"]'
+  p79 parity-extern-scan-eq-deep "$p79_rs_run_cmd" "$p79_rd_run_cmd"
+  p79 parity-libc-scan-eq-deep   "$p79_rs_drain"   "$p79_rd_drain"
+else
+  P79_OUT="$P79_OUT  rust-deep -> SKIP     (cargo-dylint / pinned nightly not present on this runner — NOT asked)
+"
+fi
+
+# --- swift fixtures: the raw-C-import shape, the @_silgen_name shape, and the modelled-Process control --
+printf 'import Darwin\nfunc doRm() {\n    system("rm -rf /tmp/x")\n}\n' > "$P79/rawc/a.swift"
+printf '@_silgen_name("system")\nfunc c_system(_ cmd: UnsafePointer<CChar>) -> Int32\nfunc doRmViaSilgen() {\n    "rm -rf /tmp/x".withCString { cs in\n        _ = c_system(cs)\n    }\n}\n' > "$P79/silgen/a.swift"
+printf 'import Foundation\nfunc doRmViaProcess() {\n    let p = Process()\n    p.executableURL = URL(fileURLWithPath: "/bin/rm")\n    p.arguments = ["-rf", "/tmp/x"]\n    try? p.run()\n}\n' > "$P79/ctrl/a.swift"
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  ( cd "$P79/rawc"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P79/silgen" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P79/ctrl"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  p79_sw_rawc=$(ck79 "$P79/rawc/out.json" doRm)
+  p79_sw_silgen=$(ck79 "$P79/silgen/out.json" c_system)
+  p79_sw_silgen_caller=$(ck79 "$P79/silgen/out.json" doRmViaSilgen)
+  p79_sw_ctrl=$(ck79 "$P79/ctrl/out.json" doRmViaProcess)
+  p79 swift-defect-rawc          "$p79_sw_rawc"          '["Unknown"]|["native:system"]|-'
+  p79 swift-defect-silgen        "$p79_sw_silgen"        '["Unknown"]|["native:system"]|-'
+  p79 swift-defect-silgen-caller "$p79_sw_silgen_caller" '["Unknown"]|-|-'
+  p79 swift-ctrl-process         "$p79_sw_ctrl"          '["Exec"]|-|-'
+else
+  P79_OUT="$P79_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P79"
+# ENGINES: rust swift; java: independently CLOSED (SOUNDNESS.md footnote ⁹) through its own existing disclosure paths (reflect:/dispatch:), not a dedicated FFI rule, and shares no compilation-unit shape with this row; ts: independently CLOSED (footnote ¹⁰) the same way through callback:/the body-less-declaration rule, also no shared compilation-unit shape (both are per-engine measurements, not a cross-engine cell this row could join)
+# CONTROLS: p79_rs_run_cmd p79_rd_drain p79_sw_ctrl — p79_rs_run_cmd (rust-scan's direct-extern path, already sound before R59/R60) proves the libc fix did not disturb it; p79_rd_drain (rust-deep's libc invisible disclosure, already sound before R60) proves the extern fix did not disturb it; p79_sw_ctrl (the modelled Process/Foundation Exec path) proves the FFI fallback did not regress an already-concrete catch to a vague one
+# FALSIFIED AGAINST THE PRE-FIX BINARIES, both built in throwaway clones so the tracked checkouts were
+# never touched: candor-rust `763e51a` (immediately before `3cb1906`) reads `rust-scan-defect-libc` as
+# `absent` (drain missing from `functions` entirely — no `invisible`, no `Unknown`, nothing) where HEAD
+# reads `[]|-|["libc"]`, and its rust-deep counterpart (`cargo dylint` against the SAME pre-fix commit)
+# reads `rust-deep-defect-extern` as `absent` (run_cmd missing entirely) EVEN THOUGH that binary's own
+# callgraph sidecar carries `"run_cmd":["system"]`, proving the HIR walk visited the call — where HEAD
+# reads `["Unknown"]|["native:extern fn"]|-`. candor-swift `52d24b9` (immediately before `ec3e50f`) reads
+# both `swift-defect-rawc` and `swift-defect-silgen` as `absent` (the function missing from `functions`
+# entirely) where HEAD reads `["Unknown"]|["native:system"]|-` — FOUR red cells across two engines' two
+# independent mechanisms. `rust-scan-ctrl-extern`, `rust-deep-ctrl-libc` and `swift-ctrl-process` were
+# ALREADY at their wanted values on their respective pre-fix binaries, so the controls are not what moved.
+echo "PART 79 — a local extern \"C\" call and an unclassified calibrated-crate call disclose Unknown/invisible byte-identically across rust-scan and rust-deep, and swift's raw-C-interop paths disclose native:, never \"functions\": [] (SPEC §4)"
+printf '%s' "$P79_OUT"
+[ "$P79_BAD" = 0 ] && echo "  -> MATCH — a local extern \"C\" declaration and an unclassified libc/nix/rustix generic-fd-verb call both disclose Unknown/invisible byte-identically on rust-scan and rust-deep (or rust-deep SKIPs loudly if this runner lacks the pinned nightly + cargo-dylint), swift's raw Darwin/Glibc free-function and @_silgen_name paths disclose native:<symbol>, and neither the already-sound direct-extern path, the already-sound libc invisible disclosure, nor the modelled Process control moved"
+[ "$P79_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+true
+
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
