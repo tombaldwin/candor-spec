@@ -25,6 +25,43 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **The `zeroMatch` §3.1 carve-out (Tom's ruling: option D) — BACKLOG "CURRENT QUEUE" item 1, CLOSED.**
+  A policy rule scoped to a REAL function that is pure on both the `scan --policy` and `gate --report`
+  routes counts as bound on the scan route (silent, correctly) and as unbound on the report route
+  (`zeroMatch` fires, incorrectly), because §2.1's report omits pure functions entirely and the report
+  route has nothing else to consult — a FALSE DISCLOSURE, never a hidden effect, and advisory-only per
+  ⟨0.27⟩'s own MUST NOT (it cannot change `ok` or the exit code). SPEC §3.1 ⟨0.35⟩ now states a NARROW
+  carve-out on §3.1's byte-equality MUST, scoped exactly to `zeroMatch` under this one condition, modelled
+  on the ⟨0.24⟩ "manifest does not travel" precedent: the scan route's silence is the trustworthy answer,
+  the report route's `zeroMatch` entry is evidence of the artifact's limitation, not of a typo'd rule. An
+  advisory keyed on `analyzed.count > |functions|` was considered and explicitly REJECTED — that
+  comparison is already-known noise (the same `count − |functions|` arithmetic the ⟨0.24⟩ manifest clause
+  names as the report's pure-function count, positive on nearly every real report), not a signal scoped to
+  the false-`zeroMatch` case. No new wire key. Conformance **PART 83** is rewritten from "records the
+  measured divergence, unruled" to asserting the carve-out as SPEC'd behaviour, keeping its
+  effectful-sibling control (byte-equal on both routes, proving the divergence stays confined to the
+  pure-matched quadrant).
+
+- **The `--policy` usage-error rule, extended from `gains` alone to the full twelve-verb set with no
+  policy-derived field, and its conformance loop.** BACKLOG "`--policy` accept-and-drop is THREE engines,
+  not one" fixed today (java `37c9b10`, rust `e4bc419`, ts `2c2147e`; swift already conformant) had no
+  SPEC clause and no conformance row — the exact gap that let rust and ts drift on ⟨0.34⟩ this morning.
+  SPEC §3.3.1 ⟨0.35⟩ now names the full set — `show`/`where`/`callers`/`map`/`diff`/`containment`/
+  `reachable`/`path`/`impact`/`blindspots`/`tour`/`rewire` — checked individually against each verb's own
+  pinned §3.1/§3.2 JSON shape (not assumed): none carries a policy-derived field, so `--policy` there MUST
+  be a usage error (exit 2) naming `gate --report`/`whatif`/`fix`/`fix-gate`/`unverified` as the
+  policy-relative alternative, exactly as `gains` already required. Verified per-engine exposure rather
+  than copied from BACKLOG's table: candor-java exposes all twelve, candor-rust all twelve (`diff`/`rewire`
+  already rejected `--policy` pre-existing, through their own bespoke parsers, untouched by today's fix),
+  candor-ts eleven (no `rewire` verb), candor-swift three (`path`/`tour`/`gains` — the other nine/ten
+  confirmed structurally absent, not assumed). New conformance **PART 84** (`verb_reject`) mirrors the
+  existing `gains_reject` battery with a differential check (a bare-form run vs. a `--policy` run for the
+  identical command, so no fixture needs to be independently correct for every verb's own query
+  semantics) and was falsified against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`)
+  in throwaway clones: every one of the fixed cells silently accepted and dropped `--policy` there (exit
+  0/1 unchanged, no diagnostic), and the pre-existing controls (rust `diff`/`rewire`; all four engines'
+  `gains`) already correctly rejected it, unmoved.
+
 - **SOUNDNESS.md R64 (ts decorator-argument shapes): two of three closed, verified independently, and the
   third's rejection rationale is now MEASURED rather than folklore.** candor-ts `b4c3a22` mints a
   `<decorator-arg>@<pos>` unit for a raw effect or closure embedded directly in a decorator's own ARGUMENT

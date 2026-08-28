@@ -3443,6 +3443,57 @@ and exit code are UNCHANGED by it, and that a SCOPELESS `deny` is exempt (it bin
 construction, so it can never be this kind of typo). ⟨0.27⟩ The `zeroMatch` verdict key is pinned by
 conformance **PART 36** on all five engines, both routes.
 
+⟨0.35⟩ **THE CARVE-OUT: `zeroMatch` OVER A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH ROUTES IS
+EXEMPT FROM §3.1's BYTE-EQUALITY MUST, AND THE EXEMPTION HAS ONE CAUSE.** §2.1's report omits pure
+functions entirely — a function that performs nothing is not flagged clean, it has NO ENTRY — and that
+same omission is what lets a `--report`-only consumer answer at all: the wire only ever carries the
+functions worth naming. The scan route computes `zeroMatch` from the full analyzed-function set it holds
+in memory, before that emission gate drops the pure entries; `gate --report` has no such set to consult —
+only the persisted `functions` array, which the pure-scoped rule's target was never written into. A rule
+`deny <E> <pure-fn>` therefore counts as bound on the scan route (silent, correctly) and as unbound on
+the report route (`zeroMatch` fires, incorrectly) — identical bytes, identical policy, opposite readings
+of the identical fact, confined to this one key.
+
+This is **the ⟨0.26⟩ key-set-is-the-manifest shape one route over**: there, an absent sidecar entry could
+mean "no supertypes" or "never indexed," and the format could not tell them apart, so the ruling was
+*disclose the ambiguity, never resolve it by guessing*. Here the persisted report cannot tell "pure" from
+"never existed" either, for the identical structural reason — §2.1's purity-by-absence was never designed
+to answer a question about a NAMED absent entry, only about the report as a whole. Both of §3.1's other
+carve-outs already establish the shape this one follows: `forbid`/`allow`/`only`/a class-scoped `deny`
+over an absent optional field are UNANSWERABLE and refuse (exit 2) rather than guess. `zeroMatch` cannot
+take that path — ⟨0.27⟩'s own MUST NOT forbids it (`zeroMatch` "MUST NOT change `ok` or the exit code",
+and refusing a verdict a real deployment depends on over a false positive on an ADVISORY key would trade
+a spurious warning for an outage). So this carve-out is narrower than a refusal: the MUST holds exactly as
+written for every OTHER key a verdict document carries, and is suspended for `zeroMatch` alone, and only
+in the one quadrant where the cause above applies — a rule whose scope names a function that is pure on
+BOTH routes. A rule scoped to an effectful function, or matching no function anywhere, is unaffected and
+stays governed by the ordinary MUST (PART 32/36 already pin the latter; PART 83, below, pins this one).
+
+**Which side to believe, stated because a carve-out that only permits divergence without saying which
+answer is trustworthy is not a full carve-out.** The scan route's silence is the informative answer: it
+consulted the actual analyzed-function set and found the rule bound something. The report route's
+`zeroMatch` entry is not evidence the rule is a typo — it is evidence the reader is looking at a report
+that cannot see pure functions, which is a limitation of the ARTIFACT, not a finding about the POLICY. An
+operator triaging a `zeroMatch` list from `gate --report` should re-run the equivalent `scan --policy`
+where the source is available before treating an entry as a genuine unbound rule, exactly as ⟨0.24⟩'s
+manifest clause above already tells a `gains` consumer that a green verdict does not mean a report's
+purity claim survived the trust boundary — this is the same wall, hit by a different verb.
+
+**Considered and rejected: pairing this with an advisory keyed on `analyzed.count > |functions|` (some
+units were pure and dropped).** That comparison is not new signal — the "⟨0.24⟩ THE MANIFEST DOES NOT
+TRAVEL" clause above already establishes, for `gains`, that `count − |functions|` is arithmetically
+identical to the report's pure-function count, and is *positive on nearly every real report* because
+almost every codebase has at least one pure function. An advisory that fires whenever a report has ANY
+pure function is not scoped to the false-`zeroMatch` case at all — it would fire beside a `zeroMatch` list
+that has nothing wrong with it just as often as beside one that does, which is noise wearing the shape of
+a signal. Closing the gap for real would need the per-unit analyzed NAME SET that same clause names as
+the fix `gains` does not have either — a sidecar-borne list this verb refuses to consult by construction,
+or an envelope-level one. Until one of those lands, this carve-out is the honest state: divergence named
+and explained, not quietly instrumented with a key that cannot tell the two cases apart.
+
+Pinned by conformance **PART 83**, which measures the divergence together with a byte-equal effectful-
+sibling control proving it stays confined to this one quadrant.
+
 ⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
 unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
 unresolved dispatch where the engine could not form an owner type at all. Condition (3) asks whether a
@@ -3724,6 +3775,35 @@ engine exposes, it MUST accept:
   swallow. In particular `gains` has **no `--policy`** — the effect-specific supply-chain gate is a `deny <E>
   gained` policy at scan time (`AS-EFF-005`, §6) — so a `--policy` passed to `gains` is an exit-2 error naming
   that gate, never a silently-dropped flag that lets the run exit 0.
+
+⟨0.35⟩ **AND THE RULE IS NOT `gains`'s ALONE — IT NAMES EVERY VERB WHOSE PINNED SHAPE CARRIES NO
+POLICY-DERIVED FIELD.** `gains` was specified first because it was found first; the underlying reason —
+nothing in the verb's §3.1/§3.2 JSON shape depends on a policy, so a `--policy` flag has no field to
+change — is not specific to `gains` at all. Measured 2026-08-28 against every verb this document pins:
+`show`, `where`, `callers`, `map`, `diff`, `containment`, `reachable`, `path`, `impact`, `blindspots`,
+`tour` (§3.1) and `rewire` (§3.2) checked individually against their own pinned shapes above — not
+assumed from the shape of the rule — and **none of the twelve carries a policy-derived key**, the same
+shape `gains` already has. `blindspots`/`containment` are the two a reader might expect to be scoped by
+policy and are not: both answer from the report's own fields alone. Only `whatif`, `fix`, `fix-gate`,
+`unverified` and `gate --report` (§3.1/§3.2) have a policy-relative verdict to give — those five, and no
+others, legitimately read `--policy`.
+
+So: **an engine exposing any of the twelve MUST reject `--policy` on it with the same exit-2 usage error
+`gains` already gives, naming `gate --report`/`whatif`/`fix`/`fix-gate`/`unverified` as the
+policy-relative alternative.** Found accepting and silently dropping it instead — the flag parsed, never
+read again, byte-identical output with and without it, no diagnostic either way — in three engines at
+once: candor-java on all twelve (`37c9b10`), candor-rust on ten of the twelve (`e4bc419`; its own
+`diff`/`rewire` already rejected `--policy` before this rung, through their own bespoke parsers, unrelated
+to this fix), candor-ts on the eleven it exposes (`2c2147e`; candor-ts has no `rewire` verb, so java's
+twelfth member of the set does not exist there to have the bug). candor-swift was already conformant: of
+the twelve, its §3.1/§3.2 surface exposes only `path` and `tour` (§3.1 queries are SHOULD, and its subset
+is documented at the end of this section) — plus `gains` itself, the sibling case above — and had already
+rejected `--policy` on all three before this rung, as an unrecognised flag. **Non-exposure of a verb is
+not itself a violation of anything** — the
+SHOULD above already covers that — but a verb an engine DOES expose is bound by this MUST the moment it
+answers the canonical grammar at all, which is the distinction the fix commits above and conformance
+**PART 84** both hold onto: a verb's absence and a verb's silent misbehaviour must never read as the same
+outcome.
 
 The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb
 (candor-swift exposes a subset — e.g. `fix`/`fix-gate`/`unverified`/`tour`/`gains` — not the full read-only
