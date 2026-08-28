@@ -3538,6 +3538,26 @@ IMPLEMENT this query — the Rust, JVM and TypeScript query surfaces. The Swift 
 `callers` verb (it is a producer that writes the §2.2 sidecar *for* those consumers); ⟨0.24⟩ binds it only
 through §4 and the §6.2 class projection, which is pinned separately.
 
+*Non-normative rationale, not a rule of its own.* The channel a disclosure lands on matters as much as
+whether it is written at all. `2>/dev/null` on a disclosure whose only home is stderr is not a partial
+disclosure to the consumer on the other end of it — it is silence, indistinguishable from the tool never
+having said anything. This is exactly the reasoning behind two clauses already above: ⟨0.21⟩'s incomplete
+verdict and ⟨0.27⟩'s refusal document both took a statement that used to live on stderr only and moved it
+into the JSON envelope, because the wrapper reading it "cannot see" a disclosure sitting on a channel it
+never reads — the wrapper had a channel it actually parsed (the document), and stderr was not it. Put
+generally: a disclosure earns its keep only by riding the channel its documented consumer actually parses,
+not merely by existing somewhere in the process's output.
+
+This paragraph describes what those two clauses already do inside the JSON envelope; it does not extend
+their obligation to formats outside it. The shape recurs — most recently in `receipt`'s TSV output, whose
+one real consumer is a shell `read -r k v` loop (candor/BACKLOG.md, the R55 ruling) — and is written down
+once here so the next implementer reads it rather than re-deriving it a fourth time. It stays descriptive
+on purpose: a blanket rule over "the channel its documented consumer parses" cannot be tested by a
+conformance row until a second non-JSON consumer surface exists to write that row against, and turning it
+into one now would bind every human-readable summary, SARIF emission, LSP diagnostic and MCP text surface
+across four engines to an audit nobody has costed. The promotion is available the moment a second such
+surface appears, with a row alongside it — not before.
+
 ### 3.2 Pre-edit and structural tools (SHOULD)
 
 Two tools answer what an agent asks *around* an edit — deterministically, where a model would otherwise

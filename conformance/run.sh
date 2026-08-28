@@ -14119,7 +14119,7 @@ true
 # `.class` bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue at all.
 # ts has no compiler-plugin macro system of its own — its closest analogue (an ANONYMOUS decorator
 # expression minting no unit) is a DIFFERENT mechanism, found the same audit sweep, and is tracked as its
-# own open residual (SOUNDNESS.md R57) rather than folded into this row.
+# own row (SOUNDNESS.md R57, fixed `0a5d493`, pinned by PART 81) rather than folded into this one.
 #
 # EIGHT CELLS, MEASURED against candor-swift `70274c3` (immediately before the fix `dc27915`) and at
 # HEAD — ported directly from the fix's own regression suite (CandorCoreTests/MacroDisclosureProcessTests.swift)
@@ -14240,7 +14240,7 @@ else
 "
 fi
 rm -rf "$P77"
-# ENGINES: swift; rust: has its own SEPARATE macro-reach mechanism (macro_rules!/proc-macro expansion, R48, already closed) — a different KIND of macro, not this Swift compiler-plugin shape; java: reads compiled bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue; ts: has no compiler-plugin macro system of its own — its own separate, still-open codegen gap (an anonymous decorator, R57) is a different mechanism and is not this row
+# ENGINES: swift; rust: has its own SEPARATE macro-reach mechanism (macro_rules!/proc-macro expansion, R48, already closed) — a different KIND of macro, not this Swift compiler-plugin shape; java: reads compiled bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue; ts: has no compiler-plugin macro system of its own — its own separate codegen gap (an anonymous decorator, R57, CLOSED and pinned by PART 81) is a different mechanism and is not this row
 # CONTROLS: p77_trailing p77_namealike p77_builtin p77_resultbuilder p77_globalactor — ctrl-trailing-closure proves the fix did not regress an already-concrete catch to a vague one riding beside it; ctrl-namealike proves a name-alike function and a builtin decl-attribute gain nothing; ctrl-builtin-literals proves the compiler-builtin freestanding literal denylist (incl. the fileID/isolation gap MEASURED missing from the first cut) stays silent; ctrl-local-resultbuilder proves an unresolved-macro-candidate attribute does not shadow a real, resolved @resultBuilder; ctrl-local-globalactor proves a locally-declared @globalActor is not treated as an attached macro
 # FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `70274c3` (immediately before `dc27915`, built in a
 # throwaway clone so the tracked checkout was never touched): `defect-freestanding`, `defect-attached-func`
@@ -14896,6 +14896,190 @@ printf '%s\n' "$P80_RESULT"
 echo "PART 80 — a ≥⟨0.33⟩ report keeps the ⟨0.33⟩ cross-policy sentence, a pre-⟨0.33⟩ report (absent/old/ladder-trapped \`spec\`) gets the ⟨0.34⟩ cause+remedy, the verdict/exit/--gate-json never move between them, and leading ASCII whitespace around a well-formed \`spec\` MUST NOT read as unparseable (SPEC §2 ⟨0.34⟩)"
 [ "$P80_RC" = 0 ] && echo "  -> MATCH — every engine asked keeps the over-charge control (\`cur\`) on the ⟨0.33⟩ sentence, names the ⟨0.34⟩ cause for absent/old/ladder-trapped \`spec\`, never moves \`--gate-json\`, and the whitespace MUST is either ported (PASS) or a probed, counted reference-led gap (SKIP) — never a silent divergence"
 [ "$P80_RC" != 0 ] && echo "  -> DIVERGE — see FAIL lines"
+
+
+# ====================================================================================================
+# PART 81 — AN ANONYMOUS DECORATOR EXPRESSION MUST NOT VANISH: ITS EFFECTS ARE CHARGED TO A MINTED UNIT,
+#           NEVER DROPPED SILENT (candor-ts; SPEC §4 "must never report a function as effect-free when
+#           it could not actually determine that") [TIER 2]
+# ====================================================================================================
+#
+# THE SIN (SOUNDNESS.md R57, filed 2026-08-27 auditing the macro/codegen row past its own trigger — the
+# same sweep that found and fixed swift's R56). `enclosing()`'s `if (ts.isDecorator(p)) return null` guard
+# is correct for a NAMED decorator factory (`@Entity("users")` mints `Entity` as its own unit, so stopping
+# the climb at the Decorator node avoids fabricating the factory's effects onto the decorated declaration)
+# — but the guard fires on ANY climb reaching a Decorator ancestor, and an ANONYMOUS decorator value
+# (`@((_t,_k,_d) => {…})`) has no declaration anywhere for `localName()` to mint a unit on before the climb
+# reaches it. Live-reproduced against candor-ts `fbb9ea2` (immediately before the fix, in a throwaway
+# clone): `deny Fs` over a real `fs.readFileSync` sitting directly in an anonymous decorator's body reads
+# `ok:true` at exit 0 — `functions: []`, not even `Unknown`.
+#
+# FIXED in candor-ts `0a5d493`: `localName()` mints a position-keyed `<decorator>@<offset>` unit for an
+# anonymous function/arrow value sitting directly in decorator position (or as the direct callee of a
+# decorator's call expression, its factory-shaped twin) BEFORE the climb ever reaches the guard, leaving
+# the already-sound named-factory path untouched.
+#
+# RE-VERIFIED HERE rather than taken on the fix's commit message or its own test suite: every cell below
+# was run against BOTH candor-ts `fbb9ea2` (immediately before `0a5d493`) and HEAD, built in a throwaway
+# clone so the tracked checkout was never touched.
+#
+#   defect-anon-direct    `@((_t,_k,_d)=>{ fs.readFileSync("/etc/hosts"); }) class Thing {}` alone in its
+#                         own project (isolated from the control fixtures below, so a gate's exit code
+#                         cannot be explained by a DIFFERENT function's violation). PRE-FIX: no function
+#                         in the report carries `Fs` anywhere — the read is completely absent, not even
+#                         `Unknown` — and `deny Fs` exits 0. POST-FIX: a `<decorator>@…`-named unit carries
+#                         `inferred: ["Fs"]` / `paths: ["/etc/hosts"]`, and `deny Fs` exits 1 on AS-EFF-006.
+#   ctrl-named-untouched  `@Entity("users") class Controlled {}` where `Entity` is a NAMED, LOCAL factory
+#                         with its own `fs.readFileSync` — the shape precedent already covers. Asserts the
+#                         SAME expected value pre- and post-fix (`src.ctl.Entity` carries `Fs`, `deny Fs`
+#                         exits 1): already caught before this fix existed, unmoved by it. Measured
+#                         byte-identical (report AND gate-json) between the two binaries, not merely
+#                         value-equal.
+#   ctrl-pure-anon        THE OVER-CHARGE CONTROL: `@((_t,_k,_d)=>{ 1+1; }) class PureThing {}` — an
+#                         anonymous decorator that reads/writes nothing. Unchanged pre- and post-fix:
+#                         `violations: []`, `deny Fs` exits 0, and no function anywhere in the report
+#                         carries `Fs`. Without this cell an engine that flags EVERY anonymous decorator as
+#                         an `Fs` violation regardless of its body would pass `defect-anon-direct` equally
+#                         well; this is the case that must NOT fire.
+#
+# NOT PINNED HERE, live-reproduced during this verification and found STILL SILENT on candor-ts HEAD —
+# filed as SOUNDNESS.md R64 (a finding, not a fix owed by candor-spec) rather than asserted below, because
+# a conformance row pins WANTED behaviour and asserting these stay silent would pin the sin instead: a raw
+# effect evaluated directly as a decorator's ARGUMENT (`@Decorate(fs.readFileSync(...))` — no function
+# value at all exists to mint a unit on), a closure nested in a NAMED factory's argument DATA rather than
+# its call chain (`@Factory({ init: () => { fs.readFileSync(...) } })`), and a call through an EXTERNAL
+# bodyless decorator reference whose own implementation performs the read (`@ExternalDecorator` imported
+# from a package). All three reach the SAME `enclosing()` guard from a shape `0a5d493`'s own commit message
+# documents as evaluated and deliberately left uncovered — a blanket fix was rejected there because it
+# would mint a report entry for nearly every decorated declaration in real Angular/NestJS/TypeORM code,
+# for a shape with no measured real-world payload.
+#
+# NOT A CROSS-ENGINE ROW: a TS/JS decorator is a RUNTIME value — a real function CALLED at class-
+# definition time, evaluated by the language itself — never a compile-time transform. rust's attribute
+# macros (`#[derive(..)]`, proc-macro attributes, R48) and swift's compiler-plugin macros (`@Model`,
+# R56/PART 77) are BOTH compile-time AST rewrites with no function ever called at runtime; java's
+# annotations are pure metadata read via reflection unless an annotation PROCESSOR runs at compile time
+# (R58's separate, unmeasured mechanism). None has a decorator-shaped "function invoked with the
+# declaration as its argument, at definition time" construct for an anonymous value to hide inside —
+# structurally absent, not merely unaudited, the same ruling PART 77's own comment already gives ts
+# against ITS row, applied here in the other direction.
+#
+ck81() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = d.get("functions") or []
+name_contains = sys.argv[2] if len(sys.argv) > 2 else None
+hit = None
+for f in fns:
+    n = f.get("fn") or ""
+    if name_contains is not None:
+        if name_contains in n:
+            hit = f; break
+    else:
+        continue
+if hit is None:
+    print("absent")
+else:
+    inf = sorted(hit.get("inferred") or [])
+    paths = sorted(hit.get("paths") or [])
+    print(json.dumps(inf) + "|" + (json.dumps(paths) if paths else "-"))
+' "$1" "$2"; }
+ck81nofs() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+fns = d.get("functions") or []
+any_fs = any("Fs" in (f.get("inferred") or []) for f in fns)
+print("has-fs" if any_fs else "no-fs")
+' "$1"; }
+ck81gate() { python3 -c '
+import json, sys
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception as exc:
+        sys.exit("     INSTRUMENT: cannot read " + p + " (" + str(exc) + ")")
+d = load(sys.argv[1])
+ok = d.get("ok")
+viol = d.get("violations") or []
+rules = sorted(v.get("rule") for v in viol)
+print(("ok" if ok else "notok") + "|count:" + str(len(viol)) + "|" + (json.dumps(rules) if rules else "-"))
+' "$1"; }
+p81() {   # <cell> <got> <want>
+  if [ "$2" = "$3" ]; then
+    P81_OUT="$P81_OUT  ts     $1  got=$2  OK
+"
+  else
+    P81_OUT="$P81_OUT  ts     $1  got=$2 want=$3  FAIL
+"
+    P81_BAD=1; rc=1
+  fi
+}
+P81_BAD=0; P81_OUT=""
+P81="$W/p81"
+mkdir -p "$P81/defect/src" "$P81/ctrlnamed/src" "$P81/ctrlpure/src"
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf 'deny Fs\n' > "$P81/defect/deny-fs.policy"
+  printf 'import fs from "node:fs";\n@((_t: any, _k: any, _d: any) => { fs.readFileSync("/etc/hosts"); })\nclass Thing {}\nexport function makesThing(): Thing { return new Thing(); }\n' > "$P81/defect/src/e.ts"
+
+  printf 'deny Fs\n' > "$P81/ctrlnamed/deny-fs.policy"
+  printf 'import fs from "node:fs";\nfunction Entity(_name: string) { fs.readFileSync("/etc/hosts"); return function (_t: any) {}; }\n@Entity("users")\nclass Controlled {}\nexport function makesControlled(): Controlled { return new Controlled(); }\n' > "$P81/ctrlnamed/src/ctl.ts"
+
+  printf 'deny Fs\n' > "$P81/ctrlpure/deny-fs.policy"
+  printf '@((_t: any, _k: any, _d: any) => { const x = 1 + 1; return x; })\nclass PureThing {}\nexport function makesPureThing(): PureThing { return new PureThing(); }\n' > "$P81/ctrlpure/src/p.ts"
+
+  node "$TS_DIR/scan.mjs" "$P81/defect"    --json > "$P81/defect.json"    2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P81/ctrlnamed" --json > "$P81/ctrlnamed.json" 2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P81/ctrlpure"  --json > "$P81/ctrlpure.json"  2>/dev/null
+  node "$TS_DIR/scan.mjs" "$P81/defect"    --policy "$P81/defect/deny-fs.policy"    --gate-json "$P81/defect.gate.json"    >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P81/ctrlnamed" --policy "$P81/ctrlnamed/deny-fs.policy" --gate-json "$P81/ctrlnamed.gate.json" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P81/ctrlpure"  --policy "$P81/ctrlpure/deny-fs.policy"  --gate-json "$P81/ctrlpure.gate.json"  >/dev/null 2>&1
+
+  p81_defect=$(ck81 "$P81/defect.json" "<decorator>")
+  p81_defect_gate=$(ck81gate "$P81/defect.gate.json")
+  p81_named=$(ck81 "$P81/ctrlnamed.json" "Entity")
+  p81_named_gate=$(ck81gate "$P81/ctrlnamed.gate.json")
+  p81_pure=$(ck81nofs "$P81/ctrlpure.json")
+  p81_pure_gate=$(ck81gate "$P81/ctrlpure.gate.json")
+
+  p81 defect-anon-direct        "$p81_defect"      '["Fs"]|["/etc/hosts"]'
+  p81 defect-anon-direct-gate   "$p81_defect_gate" 'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-named-untouched      "$p81_named"       '["Fs"]|["/etc/hosts"]'
+  p81 ctrl-named-untouched-gate "$p81_named_gate"  'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-pure-anon            "$p81_pure"        'no-fs'
+  p81 ctrl-pure-anon-gate       "$p81_pure_gate"   'ok|count:0|-'
+else
+  P81_OUT="$P81_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
+"
+fi
+rm -rf "$P81"
+# ENGINES: ts; rust java swift: a TS/JS decorator is a runtime-called function with no compile-time-macro or metadata-only analogue in any of the three (see the row's own comment above) — structurally absent mechanism, not unaudited
+# CONTROLS: p81_named p81_pure — ctrl-named-untouched proves the already-sound named-factory path is not
+# disturbed by the fix that mints a unit for the anonymous shape; ctrl-pure-anon is THE OVER-CHARGE CONTROL,
+# proving the newly-minted anonymous-decorator unit never fabricates an effect it does not perform, so this
+# row cannot pass by an engine that blanket-flags every anonymous decorator as `Fs`
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-ts `fbb9ea2` (immediately before `0a5d493`, built in a
+# throwaway clone so the tracked checkout was never touched): `defect-anon-direct` read `absent` (no
+# function in the report carried `Fs` anywhere — not even `Unknown`) where HEAD reads
+# `["Fs"]|["/etc/hosts"]`, and `defect-anon-direct-gate` read `ok|count:0|-` (exit 0, `violations: []`)
+# where HEAD reads `notok|count:1|["AS-EFF-006"]` — two RED cells, the cardinal sin at both the report and
+# the gate. `ctrl-named-untouched`, `ctrl-named-untouched-gate`, `ctrl-pure-anon` and `ctrl-pure-anon-gate`
+# were ALREADY at their wanted values on that same pre-fix binary (the ctrl-named report and gate-json were
+# measured BYTE-IDENTICAL between the two binaries, not merely value-equal), so the controls are not what
+# moved.
+echo "PART 81 — an anonymous decorator expression is charged to a minted unit, never dropped silent (candor-ts; SPEC §4)"
+printf '%s' "$P81_OUT"
+[ "$P81_BAD" = 0 ] && echo "  -> MATCH — an anonymous decorator's own effect is charged to a position-keyed unit and fails \`deny Fs\`, the named-factory path already covering the same shape is untouched, and a genuinely pure anonymous decorator gains no fabricated effect"
+[ "$P81_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
 
 
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
