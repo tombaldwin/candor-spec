@@ -332,6 +332,40 @@ Run it after any patch-cycle commit that adds a section here.
   are the deliverable: NO policy → both keys ABSENT, and a REFUSED policy → both ABSENT, because
   emitting `[]` there would be a fresh false claim in the opposite direction. Falsified against
   pre-fix worktrees of both engines rather than against already-fixed code.
+- **A checker that cannot fail is the same defect one layer up — closed with a standing lint plus a
+  mutation gate, both proven able to fail.** Measured twice in one day (PART 80 and PART 83's first
+  drafts, both already fixed before landing): a bash single quote has no escape, so a Python dict-key
+  literal (`d.get('ok')`) nested inside a `python3 -c '...'` body (or a `NAME='...'` variable later fed
+  to one) silently truncates the script at that apostrophe, and the damage is invisible on the PASSING
+  path because the corrupted line is usually the message-building/failure branch, which only runs on a
+  real divergence — a checker built this way prints a clean OK forever and cannot report FAIL.
+  `scripts/check_nested_quotes.py` is a standing lint for the class: it implements bash's real
+  single/double-quote and heredoc rules (not an approximation — its own build caught itself on three
+  separate real bugs, including one that hung the lint outright on `conformance/run.sh`'s own
+  `HERE="$(cd "$(dirname …)" …)"` line before the fix), tells the corruption shape apart from the one
+  deliberate, correct use of the same quote-splitting idiom already in this file (`$HERE` spliced into
+  PART 23's `sys.path.insert`), and is cross-checked against `shfmt -tojson` (a real, independent bash
+  parser) rather than trusted on its own say-so. Swept `conformance/run.sh` (the only checker script in
+  this repo using inline interpreters): **zero live instances of the bug** — both known cases had
+  already been fixed same-session, per SOUNDNESS-LOG — and 2 correctly-recognised safe interpolations,
+  matching shfmt's AST exactly. Wired into `conformance/run.sh` itself, ahead of any engine build, so a
+  future regression fails the whole suite before ~8 minutes of engine builds are spent on it.
+  `conformance/mutation-gate.sh` goes one level further: for the release-gating checkers (PART 36
+  verdict-document cells, PART 37 report-sink fail-closed shape, PART 38 zero-rule-policy refusal, PART
+  39 report-consuming-verb re-disclosure, PART 83 byte-equality quadrant — 9 checkers total, pulled LIVE
+  out of `run.sh` rather than a frozen copy), it feeds a poison document each checker MUST reject and
+  requires a clean rejection (a literal `FAIL:` line where that is the checker's own contract, a specific
+  nonzero exit code with no traceback where it is not) — never a crash, never silence, never an accepted
+  poison. `conformance/canary/cannot-fail.sh` carries the REAL bug (not a synthetic stand-in) as the
+  gate's own liveness proof: the gate's outermost check is the single readable assertion that its output
+  contains the line `BROKEN  canary  cannot-fail`, in BOTH directions — missing OR the canary reading
+  PASS are both treated as the gate having gone dark. Falsified before shipping: a real checker
+  (`RS_PY_FAILCLOSED`) was deliberately given the same bug shape and the gate caught it (then the file
+  was restored); the unmodified tree passes with only the canary showing broken; the canary's own crash
+  (a `NameError`, not a `FAIL:` line) is reported as broken, not as a pass. NOT covered, stated rather
+  than assumed: PART 2/3/12 and PART 29/32/34/47/57/59/60/61/62/67/68/69/70/72 — those rows drive real
+  engine binaries over source fixtures rather than taking a JSON document directly, so "feed it a poison
+  document" does not apply the same way; extending the gate to them is future work.
 
 ## [0.33.0] — 2026-08-26
 - **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
