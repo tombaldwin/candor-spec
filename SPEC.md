@@ -4020,8 +4020,11 @@ per-language and **OPTIONAL**: an engine emits `native:` / `reflect:` **only whe
 actually produces that origin** — they are not universal. By design the engines diverge here, legitimately:
 TypeScript folds a native boundary
 into `reflect:` (`eval`/`defineProperty`/dynamic accessor) and emits no bare `native:`; Swift's syntactic
-model produces neither `reflect:` nor `native:`. A consumer therefore MUST NOT assume all four kinds appear
-in every report — only that any kind it *does* see is one of the **five** (and that a `dispatch:` which
+model produces `native:` (`@_silgen_name`/`@_extern` C-symbol-linkage declarations, and an allowlisted set
+of raw C free-function calls — ⟨0.33⟩, candor-swift `ec3e50f`) but no bare `reflect:` — its dynamic-member
+access instead mints its own off-vocabulary `dynamicMemberLookup:` kind, tolerated under the §2
+forward-compatibility rule below, the same way java's `task-handoff:`/`indy:` are. A consumer therefore MUST
+NOT assume all four kinds appear in every report — only that any kind it *does* see is one of the **five** (and that a `dispatch:` which
 formed an owner carries `owner.member`; see the dot-free reserved form above). Finally, an engine **MAY** emit an additional, off-vocabulary kind **during a migration**
 (candor-java has historically emitted `task-handoff:` and `indy:`; reconciling them onto the four is a
 tracked, byte-changing task — MODEL.md): such a kind round-trips and a consumer tolerates it under §2

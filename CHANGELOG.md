@@ -41,6 +41,36 @@ Run it after any patch-cycle commit that adds a section here.
   R59/R60/R61 is fixed here — candor-spec doesn't own candor-rust or candor-swift; filed against each.
   Full prose: SOUNDNESS-LOG.md, 2026-08-27 FFI-row entry.
 
+- **§4.0's own vocabulary section had gone stale one rung after the FFI row above did.** "Swift's
+  syntactic model produces neither `reflect:` nor `native:`" (SPEC.md, the conformance-binding/per-language
+  split) was falsified by the SAME candor-swift fix (`ec3e50f`) that closed R61: swift now emits
+  `native:<symbol>` for `@_silgen_name`/`@_extern` C-symbol-linkage declarations and an allowlisted set of
+  raw C free-function calls. Corrected to state what swift emits instead of what it doesn't, without
+  weakening the surrounding MUST — a consumer still cannot assume all four kinds appear in every report,
+  since ts folding `native:` into `reflect:` and swift still emitting no bare `reflect:` (its dynamic-member
+  access mints its own off-vocabulary `dynamicMemberLookup:` kind instead) both remain true. The must-ledger
+  entry for this block was re-hashed by hand after re-reading it (`sha` `0787bc89cdd78787` ->
+  `27156e1361006c42`; classification unchanged, `pre-ledger`).
+
+- **R59/R60/R61 all closed the day after this file's audit recorded them open** — verified against the
+  fix commits rather than carried over from the prior entry's summary. R59/R60 together in candor-rust
+  `3cb1906` (rust-scan's `CALIBRATED_BUT_PARTIAL_CRATES` carve-out for libc/nix/rustix's generic fd verbs;
+  rust-deep's unconditional `Unknown`/`native:extern fn` on `is_foreign_item()`, deliberately mirroring
+  rust-scan's mechanism rather than the crate-name-keyed `invisible` machinery, so the two engines' answers
+  for this seam are byte-identical, not just equivalent). R61 in candor-swift `ec3e50f` (raw Darwin/Glibc
+  free-function calls and `@_silgen_name`/`@_extern` disclose `native:<symbol>` via a deliberately
+  incomplete allowlist, `dlsym`+`unsafeBitCast` reuses the existing opaque-closure `callback:` path). A
+  same-day follow-on audit of the ~79 other `CALIBRATED_CRATES` R59's own fix had left unaudited
+  (candor-rust `2feb264`) found three further real gaps, none of them FFI (`clap::Arg::env` -> `Env`,
+  `console::Term`'s raw I/O -> `Ipc`, `arboard::file_list`/`Clear::default` -> `Clipboard`) — closed as R62,
+  with one low-severity item filed rather than fixed (`wild::ArgsOs`'s Windows-only `Fs` leak, R63). New
+  conformance PART 79 pins the R59/R60 byte-parity shape across rust-scan and rust-deep (rust-deep's leg
+  SKIPs loudly on a runner without the pinned nightly + `cargo-dylint`, never silently) plus swift's two
+  allowlisted mechanisms, falsified against the pre-fix commits (candor-rust `763e51a`, candor-swift
+  `52d24b9`) before landing. SOUNDNESS.md's FFI scorecard cells move ⚫->🟡 (closed, regression +
+  conformance-gated; not a cross-engine SEAM-matrix cell, matching java/ts's existing convention). None of
+  the three fixes claims general closure — each fix's stated limit is recorded beside it.
+
 ## [0.33.1] — 2026-08-27
 
 - **PART 78 pins candor-ts's dynamic-re-export disclosure fix (`2365827`), the fifth "neither voice
