@@ -62,6 +62,41 @@ trap 'rm -rf "$W"; rm -f "$HERE"/gate/*/.candor/config' EXIT INT TERM
 # Tee stderr so the summary can tell the two apart and say which it was.
 exec 2> >(tee "$W/harness-stderr.log" >&2)
 
+# `rc` is initialised HERE, ahead of the historical `rc=0` further down (kept below, harmlessly
+# re-assigning 0 — see its own comment), because the nested-quote lint immediately below is a fail-fast
+# guard that must be able to set it before any engine is built.
+rc=0
+
+# A CHECKER THAT CANNOT FAIL IS THE SAME DEFECT ONE LAYER UP. Measured twice in one day (2026-08-28,
+# PART 80 and PART 83's first drafts): a bash single quote has no escape, so a Python dict-key literal
+# like `d.get('ok')` nested inside a `python3 -c '...'` (or a `NAME='...'` variable later fed to one)
+# silently truncates the script at that inner apostrophe — and the damage is invisible on the PASSING
+# path, because the corrupted line is usually the message-building/failure branch, which only runs on a
+# real divergence. Both were caught only by a deliberate mutation control, never by the suite's own green.
+# check_nested_quotes.py is the standing lint for the class (see its own --selftest for the proof that it
+# can fire on the bug shape as well as stay silent on clean code and the one deliberate, correct use of
+# split single-quoting in this file — $HERE interpolated into PART 23's `sys.path.insert`). Runs before
+# any engine is built: a broken checker makes the ~8-minute run downstream worthless, so fail before
+# paying for it, not after.
+if [ -f "$HERE/../scripts/check_nested_quotes.py" ]; then
+  python3 "$HERE/../scripts/check_nested_quotes.py" --selftest >/dev/null 2>&1 \
+    || { echo "FAIL: check_nested_quotes.py's own --selftest did not pass — the lint itself is not"
+         echo "      trustworthy right now, so its silence below would prove nothing. Fix the lint first."
+         rc=1; }
+  NQ_OUT="$(python3 "$HERE/../scripts/check_nested_quotes.py" "$HERE/run.sh" 2>&1)"
+  if [ $? -ne 0 ]; then
+    echo "FAIL: nested-single-quote corruption risk in conformance/run.sh — a checker written this way"
+    echo "      can silently stop asserting anything while still printing a clean row. Convert to a"
+    echo "      heredoc (<<'PY' ... PY), this repo's established safe idiom for a script body that needs"
+    echo "      an apostrophe."
+    printf '%s\n' "$NQ_OUT" | sed 's/^/  /'
+    rc=1
+  fi
+else
+  echo "FAIL: scripts/check_nested_quotes.py is missing — the nested-single-quote lint cannot run"
+  rc=1
+fi
+
 # --- locate / build the engines ----------------------------------------------------------------------
 SCAN="${CANDOR_SCAN_BIN:-}"
 QUERY="${CANDOR_QUERY_BIN:-}"
@@ -134,7 +169,11 @@ if command -v swift >/dev/null 2>&1 && [ -f "$SW_DIR/Package.swift" ]; then
   [ -n "$SW_REPORT" ] && [ -s "$SW_REPORT" ] && SW_OK=1
 fi
 
-rc=0
+# `rc` is already initialised near the top of this file (ahead of the nested-quote lint, which must be
+# able to set it before any engine is built). A SECOND `rc=0` here used to silently wipe out a failure
+# recorded by that early guard — an early check whose result gets reset by a later unconditional
+# reassignment is worse than no check, since it fails green. Removed; nothing between the two points
+# ever tests `rc`, so nothing here depended on the reassignment.
 
 # ====================================================================================================
 # PART 1 — effect-set differential (each engine vs the spec, and vs each other)   [TIER 1]
