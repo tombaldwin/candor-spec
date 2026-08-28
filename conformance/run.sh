@@ -15577,6 +15577,151 @@ printf '%s' "$P83_OUT"
 [ "$P83_BAD" = 0 ] && echo "  -> MATCH — every engine's defect cell reads at its current measured value (scan silent, report falsely claims zeroMatch) and every control cell is byte-equal across routes"
 [ "$P83_BAD" != 0 ] && echo "  -> DIVERGE — see the row above (a red defect cell may mean the §3.1 ruling landed a fix; a red control cell is a genuine new divergence)"
 
+# ====================================================================================================
+# PART 84 — verb_reject: `--policy` is a USAGE ERROR (exit 2) on every verb whose pinned §3.1/§3.2      [TIER 1]
+#           JSON shape carries no policy-derived field — `gains`'s own rule (PART 5b) generalised to
+#           its twelve siblings (SPEC §3.3.1 ⟨0.35⟩). BACKLOG "`--policy` accept-and-drop is THREE
+#           engines, not one". Fixed today: java `37c9b10` (12 verbs), rust `e4bc419` (10; its own
+#           `diff`/`rewire` already rejected, pre-existing, unrelated to this fix), ts `2c2147e` (11;
+#           no `rewire` verb to fix); swift was ALREADY conformant on its narrower 3-verb surface of
+#           this set (`path`/`tour`/`gains` — verified below, not assumed, that it genuinely lacks the
+#           other nine/ten rather than merely being untested for them).
+# ====================================================================================================
+echo ""
+echo "[84] --policy is a usage error on every descriptive/comparative verb with no policy-derived field"
+# ENGINES: rust java ts swift
+# CONTROLS: vr_reject vr_not_exposed — each vr_reject cell's own BARE-form run (no --policy) is compared
+# against its "--policy" run for the SAME command — a DIFFERENTIAL, not an absolute assertion, so this cell needs no fixture whose every verb's
+# query semantics (a real path, a reachable effect) is independently correct. It passes only if the
+# --policy run is (a) exit 2 and (b) NAMES policy in its diagnostic, AND the bare run's own diagnostic
+# (if any — several of these verbs fail for unrelated reasons on a hand-fixture, which is fine and
+# expected) does NOT already mention policy. That third leg is the mutation control: an engine that
+# regressed to rejecting EVERYTHING over this fixture, for an unrelated reason, would still pass a
+# naive "exit 2" check — it cannot pass this one, because its bare-form failure and its --policy
+# failure would print the IDENTICAL non-policy complaint, and the row demands the --policy run's own
+# complaint be ABOUT policy specifically. Reused fixtures already built for PART 5b (`$W/gorigin/*`),
+# not fresh ones — rewire's own bare-form load can genuinely fail on a fixture built for `gains` (no
+# per-engine callgraph guarantee), and that is fine and expected under this differential, never
+# fatal to the row.
+VR_BAD=0
+VR_TS_RAN=""
+VR_SW_RAN=""
+vr_reject() {   # <label> <cmd...>   (the BARE form, without --policy — --policy "$GPOL" is appended internally)
+  local label="$1"; shift
+  local base_err base_rc pol_err pol_rc
+  base_err="$("$@" 2>&1 >/dev/null)"; base_rc=$?
+  pol_err="$("$@" --policy "$GPOL" 2>&1 >/dev/null)"; pol_rc=$?
+  if [ "$pol_rc" != 2 ]; then
+    echo "  -> DIVERGE — $label: --policy exit $pol_rc, want 2 (bare form was exit $base_rc: ${base_err:0:70})"
+    VR_BAD=1; rc=1; return
+  fi
+  case "$pol_err" in
+    *[Pp]olicy*) ;;
+    *) echo "  -> DIVERGE — $label: --policy exit 2 but stderr does not name policy (got: ${pol_err:0:90})"; VR_BAD=1; rc=1; return;;
+  esac
+  case "$base_err" in
+    *[Pp]olicy*) echo "  -> DIVERGE — $label: bare form (no --policy) ALREADY complains about policy (${base_err:0:90}) — this fixture cannot isolate the --policy cell"; VR_BAD=1; rc=1; return;;
+  esac
+  echo "  OK $label — bare exit $base_rc (unrelated to policy); --policy exit 2, named"
+}
+# A verb this engine does NOT expose: confirm it structurally (not assumed) — the invocation must show
+# the engine's own GENERIC "not a command"/"not a target" signature, not a per-verb policy rejection.
+# MEASURED while writing this row: ts's "unknown command" usage dump lists EVERY command it DOES have,
+# including several carrying `[--policy <file>]` in their own usage line — so a bare `*policy*` substring
+# check false-positived on candor-ts's own help text for `rewire`, which it does not expose at all. The
+# fix is to key on the engine's OWN confirmed non-exposure phrasing instead of an absence-of-"policy"
+# guess: candor-ts says "unknown command"; candor-swift (which has no subcommand dispatch — an
+# unrecognised verb falls through to being read as a SCAN TARGET) says "no such path:" for a lone
+# positional or "unexpected extra argument" once a second dummy positional is added, both verified live
+# against the current binary before this row was written. Printed as a SKIP (em-dash form, ratcheted by
+# skip_ratchet.py — see skip-baseline.json's entry for why this is counted rather than left invisible).
+vr_not_exposed() {   # <engine-label e.g. candor-ts> <verb> <cmd...>
+  local eng="$1" verb="$2"; shift 2
+  local err err1; err="$("$@" --policy "$GPOL" 2>&1 >/dev/null)"
+  # Collapse embedded real newlines (ts's "unknown command" dump is multi-line) and echo IMMEDIATELY —
+  # never buffer into a shared variable — so each verb's line lands on its own physical line. Measured
+  # while writing this row: buffering into an accumulator string with a trailing `$'\n'` produced a
+  # multi-segment quoted assignment that this file's own `check_nested_quotes.py` correctly flags as the
+  # corruption SHAPE it exists to catch (even though this particular instance was not the interpreter-body
+  # bug the lint was written for) — the fix that removes the false positive also removes the real risk:
+  # print, don't accumulate.
+  err1="$(printf '%s' "$err" | tr '\n' ' ')"
+  case "$err" in
+    *"unknown command"*|*"no such path:"*|*"unexpected extra argument"*)
+      echo "  $eng  $verb  N/A — not exposed, confirmed (${err1:0:70})";;
+    *) echo "  -> DIVERGE — $eng $verb: believed NOT EXPOSED by this engine, but its refusal does not show the expected non-exposure marker (unknown command / no such path / unexpected extra argument) — got: ${err1:0:90} — re-verify exposure, this may be a live verb"; VR_BAD=1; rc=1;;
+  esac
+}
+RG="$W/gorigin/rcur"; RGB="$W/gorigin/rbase"
+JG="$W/gorigin/jcur.jvm.json"; JGB="$W/gorigin/jbase.jvm.json"
+TG="$W/gorigin/tcur"; TGB="$W/gorigin/tbase"
+SG="$W/gorigin/scur"
+# ---- rust — 10 fixed today + 2 pre-existing (diff/rewire), all 12 must reject -----------------------
+vr_reject "rust show"        "$QUERY" show m::f --report "$RG"
+vr_reject "rust where"       "$QUERY" where Net --report "$RG"
+vr_reject "rust callers"     "$QUERY" callers m::f --report "$RG"
+vr_reject "rust map"         "$QUERY" map --report "$RG"
+vr_reject "rust containment" "$QUERY" containment --report "$RG"
+vr_reject "rust reachable"   "$QUERY" reachable --report "$RG"
+vr_reject "rust path"        "$QUERY" path m::f Net --report "$RG"
+vr_reject "rust impact"      "$QUERY" impact m::f --report "$RG"
+vr_reject "rust blindspots"  "$QUERY" blindspots --report "$RG"
+vr_reject "rust tour"        "$QUERY" tour --report "$RG"
+vr_reject "rust diff (pre-existing)"   "$QUERY" diff "$RG" "$RGB"
+vr_reject "rust rewire (pre-existing)" "$QUERY" rewire "$RG" "$RGB"
+# ---- java — 12 fixed today, all must reject ----------------------------------------------------------
+vr_reject "java show"        java -jar "$JAR" show m.f --report "$JG"
+vr_reject "java where"       java -jar "$JAR" where Net --report "$JG"
+vr_reject "java callers"     java -jar "$JAR" callers m.f --report "$JG"
+vr_reject "java map"         java -jar "$JAR" map --report "$JG"
+vr_reject "java containment" java -jar "$JAR" containment --report "$JG"
+vr_reject "java reachable"   java -jar "$JAR" reachable --report "$JG"
+vr_reject "java path"        java -jar "$JAR" path m.f Net --report "$JG"
+vr_reject "java impact"      java -jar "$JAR" impact m.f --report "$JG"
+vr_reject "java blindspots"  java -jar "$JAR" blindspots --report "$JG"
+vr_reject "java tour"        java -jar "$JAR" tour --report "$JG"
+vr_reject "java diff"        java -jar "$JAR" diff "$JG" "$JGB"
+vr_reject "java rewire"      java -jar "$JAR" rewire "$JG" "$JGB"
+# ---- ts — 11 fixed today (no rewire verb); present-but-broken must FAIL, never SKIP -------------------
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/query.mjs" ]; then
+  vr_reject "ts show"        node "$TS_DIR/query.mjs" show m.f --report "$TG"
+  vr_reject "ts where"       node "$TS_DIR/query.mjs" where Net --report "$TG"
+  vr_reject "ts callers"     node "$TS_DIR/query.mjs" callers m.f --report "$TG"
+  vr_reject "ts map"         node "$TS_DIR/query.mjs" map --report "$TG"
+  vr_reject "ts containment" node "$TS_DIR/query.mjs" containment --report "$TG"
+  vr_reject "ts reachable"   node "$TS_DIR/query.mjs" reachable --report "$TG"
+  vr_reject "ts path"        node "$TS_DIR/query.mjs" path m.f Net --report "$TG"
+  vr_reject "ts impact"      node "$TS_DIR/query.mjs" impact m.f --report "$TG"
+  vr_reject "ts blindspots"  node "$TS_DIR/query.mjs" blindspots --report "$TG"
+  vr_reject "ts tour"        node "$TS_DIR/query.mjs" tour --report "$TG"
+  vr_reject "ts diff"        node "$TS_DIR/query.mjs" diff "$TG" "$TGB"
+  vr_not_exposed "candor-ts" "rewire" node "$TS_DIR/query.mjs" rewire "$TG" "$TGB"
+  VR_TS_RAN=1
+else
+  echo "  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)"
+fi
+# ---- swift — already conformant pre-existing on its narrower 3-verb surface (path/tour/gains); the
+# other nine/ten verbs of this set genuinely do not exist on this engine (confirmed structurally below,
+# not assumed) — present-but-broken must FAIL, never SKIP.
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  vr_reject "swift path" "$SW_BIN" path M.f Net --report "$SG"
+  vr_reject "swift tour" "$SW_BIN" tour --report "$SG"
+  for v in show where callers map diff containment reachable impact blindspots rewire; do
+    vr_not_exposed "candor-swift" "$v" "$SW_BIN" "$v" x y
+  done
+  VR_SW_RAN=1
+else
+  echo "  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)"
+fi
+# The two GROUPED, ratcheted skips (see skip-baseline.json's entry): one per engine, not per verb, since
+# the reason is uniform (verb not exposed) even though several verbs share it. Only printed when that
+# engine actually ran the confirmation above — a runner-absent leg must not also claim a not-exposed skip
+# it never checked.
+[ -n "$VR_TS_RAN" ] && echo "  candor-ts (verb-reject-not-exposed) SKIP — rewire: candor-ts has no such verb, confirmed structurally"
+[ -n "$VR_SW_RAN" ] && echo "  candor-swift (verb-reject-not-exposed) SKIP — 9 verbs not exposed on this engine's §3.1/§3.2 surface (show/where/callers/map/diff/containment/reachable/impact/blindspots), confirmed structurally, not assumed"
+[ "$VR_BAD" = 0 ] && echo "  -> MATCH — every exposed verb rejects --policy (exit 2, named); every not-exposed verb is confirmed absent for a reason unrelated to policy"
+[ "$VR_BAD" != 0 ] && echo "  -> DIVERGE — see the rows above"
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
