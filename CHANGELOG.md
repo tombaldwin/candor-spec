@@ -104,7 +104,35 @@ Run it after any patch-cycle commit that adds a section here.
   conformance-gated; not a cross-engine SEAM-matrix cell, matching java/ts's existing convention). None of
   the three fixes claims general closure — each fix's stated limit is recorded beside it.
 
-## [0.33.1] — 2026-08-27
+- **R57 (SOUNDNESS.md) closed and pinned, re-verified independently rather than taken on the fix's own
+  commit message or test suite.** candor-ts `0a5d493` mints a position-keyed `<decorator>@<offset>` unit
+  for an anonymous decorator function/arrow value before `enclosing()`'s `ts.isDecorator` guard stops the
+  climb dead — the guard is correct for a NAMED decorator factory (its effects already land on its own
+  unit) but previously dropped an anonymous one's effects with nothing behind it: `deny Fs` over a real
+  `fs.readFileSync` sitting directly in an anonymous decorator's body read `ok:true` at exit 0. Rebuilt the
+  pre-fix commit (`fbb9ea2`) and HEAD in a throwaway clone and ran the filed repro plus two controls against
+  both: the defect cell flips from silent to a caught `AS-EFF-006` violation; a named-factory control is
+  byte-identical between the two binaries (the already-sound path is untouched); a genuinely pure anonymous
+  decorator stays `ok:true`/`violations: []` on both (the over-charge control — the fix mints a unit without
+  fabricating an effect). Ts-only, structurally: a TS/JS decorator is a function the language runtime calls
+  at class-definition time, which none of rust's attribute macros, swift's compiler-plugin macros (R56), or
+  java's reflection-read annotations have an equivalent of. New conformance PART 81 pins the three cells,
+  falsified against the pre-fix binary (two cells move, four do not). **Residual found live-reproducing this
+  row, filed as R64, not fixed**: the identical guard still drops a raw effect evaluated directly as a
+  decorator argument, a closure nested in a named factory's argument data, and a call through an external
+  bodyless decorator reference — all three deliberately left uncovered by `0a5d493`'s own commit message (a
+  blanket fix would mint an entry for nearly every decorated declaration in real Angular/NestJS/TypeORM
+  code). PART 81 does not assert these stay silent; a conformance row pins wanted behaviour, not a sin.
+
+- **The R55 "ride the documented channel" principle is written down once, non-normatively, at the end of
+  SPEC.md §3.1.** Tom's ruling on R55 (candor/BACKLOG.md, option (a): closed rust-local, no SPEC change, no
+  MUST, no PART, no four-engine port) asked for the reasoning behind ⟨0.21⟩'s and ⟨0.27⟩'s stderr-to-JSON
+  moves to be recorded once as a rationale note, because it had already been re-derived from scratch three
+  times (most recently R55's own `receipt` TSV fix). Added as a plain-prose paragraph — no MUST, no
+  REQUIRED, no bold kernel — so `must_ledger.py` does not pick it up as a new normative statement needing a
+  row (confirmed: 511 statements classified before and after). States what ⟨0.21⟩/⟨0.27⟩ already do inside
+  the JSON envelope as description, not as a new obligation over arbitrary formats, and names the promotion
+  condition the ruling set: a second non-JSON consumer surface, with a row.
 
 - **PART 78 pins candor-ts's dynamic-re-export disclosure fix (`2365827`), the fifth "neither voice
   fired" instance.** `Object.keys(impl).forEach(k => exports[k] = impl[k])` (and its
