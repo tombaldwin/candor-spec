@@ -42,6 +42,28 @@
 # broken — including if someone "fixes" its quoting later and it starts correctly rejecting poison — the
 # gate fails on THAT alone, regardless of what else it found, because that is the one thing that proves
 # this run could have caught something.
+#
+# THREE HARDENING FIXES (2026-08-29, adversarial review of the day this file was written):
+#   A3 — the canary's self-proof was DEFEATABLE: `extract_func` matches only the exact literal `^fn() {`
+#     on one line, so reformatting the canary's opening brace onto its own line made extraction fail —
+#     which was recorded as a BROKEN row with the SAME text the outermost check greps for, making an
+#     extraction failure indistinguishable from catching the real bug. Fixed two ways: (1) `require_extracted`
+#     turns ANY extraction failure, canary or real checker alike, into an immediate hard FAIL distinct from
+#     a BROKEN row; (2) the outermost check now ALSO requires the canary's actual captured output to contain
+#     the specific `NameError`/`zeroMatch` text the real bug produces, not just the word BROKEN in a status
+#     line built independently of it.
+#   A2 — this gate only ever proved a checker REJECTS poison, never that it still ACCEPTS a valid document.
+#     A checker degenerated to unconditional rejection (e.g. RS_PY_FAILCLOSED's body loosened to
+#     `ok = False`) passed every poison leg while being dead — reproduced against the pre-fix version of
+#     this file: all three isolated RS_PY_FAILCLOSED legs read PASS and the gate still printed
+#     `mutation-gate: OK`. Fixed by `run_failline_bashfunc_accept`/`run_exitcode_pyvar_accept`: one
+#     genuinely valid, checker-specific document per checker/mode, required to be ACCEPTED (accept code,
+#     no FAIL line), run under the same "real" KIND so a regression here trips the same outermost check.
+#   A4 — the standing nested-quote lint in run.sh scanned ONLY run.sh itself, so this very file and the
+#     canary were never linted by it (moved to run.sh; see that file's own comment for the fix and why
+#     `*.py` checkers are deliberately NOT included). Also fixed there: scripts/check_nested_quotes.py's
+#     `$'\n'`-splice false positive (an ANSI-C-quoted segment was misread as the SAME corruption shape as a
+#     real bareword split) — see that script's `_is_safe_variable_interpolation` and `--selftest`.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_SH="$HERE/run.sh"
@@ -77,23 +99,72 @@ extract_func() {   # $1 = function name (e.g. ck83_defect) ; $2 = source file ; 
   ' "$2"
 }
 
+# ── extraction failure is a HARD ERROR, never a BROKEN row (A3 hardening, 2026-08-29) ──────────────────
+# THE BUG THIS CLOSES: `extract_func` (below) matches only the exact literal `^fn() {` on ONE line —
+# reformatting the canary's opening brace onto its own line (`cannot_fail_check()\n{`) makes extraction
+# fail. Before this fix, a failed extraction was recorded as a BROKEN row with the SAME literal
+# `BROKEN  canary  cannot-fail` shape the outermost check (bottom of this file) greps for as proof the
+# canary was found broken BY THE INTENDED BUG — so an extraction failure was INDISTINGUISHABLE from
+# catching the real NameError, and the gate printed `mutation-gate: OK` either way. That defeats the
+# entire point of the canary: it is supposed to prove THIS RUN could have caught a broken checker, not
+# merely that something, anything, went wrong. Fix: an extraction failure — for ANY function or variable,
+# canary or real checker alike — aborts the whole gate immediately with its own distinct FAIL, so it can
+# never masquerade as a canary catching its own bug (or as a real checker rejecting its poison). See
+# canary/cannot-fail.sh's own header for why the canary's exact source shape is pinned and must not be
+# reformatted; this hardening means a future reformat now fails LOUDLY and DIFFERENTLY instead of quietly
+# printing OK.
+require_extracted() {   # $1 = extracted text ; $2.. = description for the FAIL line
+  if [ -z "$1" ]; then
+    shift
+    echo "FAIL: mutation-gate: EXTRACTION FAILURE — $*"
+    echo "  This is a hard stop, not a BROKEN row: an extraction failure proves nothing about whether the"
+    echo "  checker (or the canary) can detect poison, and a prior version of this gate recorded it as a"
+    echo "  BROKEN row indistinguishable from the canary's own intended failure (A3 hardening 2026-08-29)."
+    exit 1
+  fi
+}
+
 # ── one runner per checker SHAPE ─────────────────────────────────────────────────────────────────────
 # "fail-line": literal `FAIL: ...` on rejection is the checker's own contract (PART 83's convention).
+# LAST_RAW_OUT is set on every call (canary and real checkers alike) so a caller — specifically the canary
+# call below — can inspect the checker's raw stdout/stderr AFTER record() has filed its PASS/BROKEN row,
+# to require POSITIVE evidence of a SPECIFIC failure rather than trusting the row's status alone.
 run_failline_bashfunc() {   # $1 label ; $2 funcname ; $3 srcfile ; $4.. poison args
   local label="$1" fn="$2" src="$3"; shift 3
   local defn; defn="$(extract_func "$fn" "$src")"
-  if [ -z "$defn" ]; then
-    record BROKEN "$label" "could not extract function \`$fn\` from $src — nothing to test"
-    return
-  fi
+  require_extracted "$defn" "could not extract function \`$fn\` from $src — nothing to test"
   local tmp="$W/$fn.sh"; printf '%s\n' "$defn" > "$tmp"
   local out rc
   out="$( ( source "$tmp"; "$fn" "$@" ) 2>&1 )"; rc=$?
+  LAST_RAW_OUT="$out"
   if [ "$rc" -ne 0 ] && printf '%s\n' "$out" | grep -q '^FAIL:' && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
     record PASS "$label"
   else
     record BROKEN "$label" \
       "poison was NOT rejected with a clean FAIL: line (exit=$rc)" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# accept-known-good counterpart (A2 hardening, 2026-08-29): "rejects poison" is only half of a checker's
+# contract — a checker degenerated to unconditional rejection (e.g. `ok = False` with no other logic)
+# passes every poison leg above while being dead. Reproduced against the pre-fix gate: mutating
+# RS_PY_FAILCLOSED's body to `ok = False` made all three isolated poison legs report PASS, and the overall
+# gate still printed `mutation-gate: OK`. Feed the checker a document it MUST accept and require the
+# accept code / absence of a FAIL line — a checker that fails this on a genuinely valid document is either
+# dead (always-reject) or has drifted from its own documented accept shape, either of which is exactly as
+# untrustworthy as never firing on poison.
+run_failline_bashfunc_accept() {   # $1 label ; $2 funcname ; $3 srcfile ; $4.. KNOWN-GOOD args
+  local label="$1" fn="$2" src="$3"; shift 3
+  local defn; defn="$(extract_func "$fn" "$src")"
+  require_extracted "$defn" "could not extract function \`$fn\` from $src for accept-check \"$label\""
+  local tmp="$W/$fn.accept.sh"; printf '%s\n' "$defn" > "$tmp"
+  local out rc
+  out="$( ( source "$tmp"; "$fn" "$@" ) 2>&1 )"; rc=$?
+  if [ "$rc" -eq 0 ] && ! printf '%s\n' "$out" | grep -q '^FAIL:' && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label (accept-known-good)"
+  else
+    record BROKEN "$label (accept-known-good)" \
+      "a VALID document was REJECTED (exit=$rc) — checker may have degenerated to unconditional-reject" \
       "$(printf '%s\n' "$out" | head -5)"
   fi
 }
@@ -107,10 +178,7 @@ run_exitcode_pyvar() {   # $1 label ; $2 varname ; $3 expected-reject-exit-code 
                          # shared global, so each leg of a multi-condition checker can carry its own poison)
   local label="$1" var="$2" want_rc="$3"; shift 3
   local src; src="$(extract_pyvar "$var")"
-  if [ -z "$src" ]; then
-    record BROKEN "$label" "could not extract \`$var\` from $RUN_SH — nothing to test"
-    return
-  fi
+  require_extracted "$src" "could not extract \`$var\` from $RUN_SH — nothing to test"
   local tmp="$W/$var.py"; printf '%s' "$src" > "$tmp"
   local out rc
   if [ "${1:-}" = "--stdin" ]; then
@@ -125,6 +193,31 @@ run_exitcode_pyvar() {   # $1 label ; $2 varname ; $3 expected-reject-exit-code 
   else
     record BROKEN "$label" \
       "poison was NOT rejected with the expected exit $want_rc (got exit=$rc)" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# accept-known-good counterpart to run_exitcode_pyvar (A2 hardening — see run_failline_bashfunc_accept's
+# comment above for the full reproduction). `want_rc` here is the checker's OWN documented accept code
+# (0 for every exit-code checker in this file), not the reject code passed to the poison runner.
+run_exitcode_pyvar_accept() {   # $1 label ; $2 varname ; $3 accept-exit-code ; $4.. KNOWN-GOOD args
+                                 # (supports --stdin like run_exitcode_pyvar, same calling convention)
+  local label="$1" var="$2" want_rc="$3"; shift 3
+  local src; src="$(extract_pyvar "$var")"
+  require_extracted "$src" "could not extract \`$var\` from $RUN_SH for accept-check \"$label\""
+  local tmp="$W/$var.accept.py"; printf '%s' "$src" > "$tmp"
+  local out rc
+  if [ "${1:-}" = "--stdin" ]; then
+    shift
+    local stdin_file="$1"; shift
+    out="$(python3 "$tmp" "$@" < "$stdin_file" 2>&1)"; rc=$?
+  else
+    out="$(python3 "$tmp" "$@" 2>&1)"; rc=$?
+  fi
+  if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label (accept-known-good)"
+  else
+    record BROKEN "$label (accept-known-good)" \
+      "a VALID document was NOT accepted (want exit $want_rc, got exit=$rc) — checker may have degenerated to unconditional-reject" \
       "$(printf '%s\n' "$out" | head -5)"
   fi
 }
@@ -232,6 +325,27 @@ cp "$W/doc/d83c_rule.scan.json" "$W/doc/d83c_rule.report.json"
 printf '%s' '{"ok": false, "violations": [{"rule": "AS-EFF-006"}], "zeroMatch": ["x"]}' > "$W/doc/d83c_zm.scan.json"
 cp "$W/doc/d83c_zm.scan.json" "$W/doc/d83c_zm.report.json"
 
+# ── accept-known-good documents (A2 hardening, 2026-08-28→2026-08-29) — ONE genuinely valid document per
+# checker/mode, held to the SAME per-condition-isolation discipline as the poison set above: reusing a
+# poison document from the sibling checker's OWN "must-reject" fixture where its content happens to BE the
+# other checker's accept shape (ZR_PY_NO_OK/ZR_PY_HAS_OK below) rather than inventing a redundant copy.
+printf '%s' '{"ok": false}'                                                          > "$W/doc/vd_good_ok0.json"
+printf '%s' '{"ok": true}'                                                           > "$W/doc/vd_good_okt.json"
+printf '%s' '{"refused": true}'                                                      > "$W/doc/vd_good_refused.json"
+printf '%s' '{"violations": []}'                                                     > "$W/doc/vd_good_norefused.json"
+printf '%s' '{"violations": [{"rule": "X"}]}'                                        > "$W/doc/vd_good_viol.json"
+printf '%s' '{"violations": [{"rule": "AS-EFF-005"}]}'                               > "$W/doc/vd_good_v005.json"
+printf '%s' '{"unevaluated": [{"rule": "deny Clock"}, {"rule": "deny Frobnicate"}]}'  > "$W/doc/vd_good_unev.json"
+printf '{"zeroMatch": ["%s"]}' "$D83_SCOPE"                                          > "$W/doc/vd_good_zm.json"
+printf '%s' '{}'                                                                     > "$W/doc/vd_good_nozm.json"
+printf '%s' '{"functions": [], "analyzed": {"count": 0}, "unanalyzed": ["x"]}'       > "$W/doc/rs_good.json"
+printf '%s' '{"judgedNothing": ["x"], "incomplete": true}'                           > "$W/doc/chan_good_caveat.json"
+printf '%s' '{}'                                                                     > "$W/doc/chan_good_none.json"
+printf '%s' "$SGOOD"  > "$W/doc/d83_good.scan.json"
+printf '%s' "$RGOOD"  > "$W/doc/d83_good.report.json"
+printf '%s' '{"ok": false, "violations": [{"rule": "AS-EFF-006"}]}' > "$W/doc/d83c_good.scan.json"
+cp "$W/doc/d83c_good.scan.json" "$W/doc/d83c_good.report.json"
+
 # ── run every real checker in scope, once per condition ─────────────────────────────────────────────────
 run_failline_bashfunc "PART83/ck83_defect(s_ok)"       ck83_defect  "$RUN_SH" "$W/doc/d83_s_ok.scan.json"   "$W/doc/d83_s_ok.report.json"   "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(s_viol)"     ck83_defect  "$RUN_SH" "$W/doc/d83_s_viol.scan.json" "$W/doc/d83_s_viol.report.json" "$D83_SCOPE"
@@ -270,10 +384,33 @@ run_exitcode_pyvar "PART39/CHAN_PY(caveat-incomplete)" CHAN_PY 12 "$W/doc/chan_c
 run_exitcode_pyvar "PART39/CHAN_PY(none-incomplete)"      CHAN_PY 13 "$W/doc/chan_leaks_incomplete.json" none
 run_exitcode_pyvar "PART39/CHAN_PY(none-judgedNothing)"   CHAN_PY 13 "$W/doc/chan_leaks_judgednothing.json" none
 
+# ── accept-known-good: every checker above must ALSO accept a genuinely valid document (A2 hardening) ──
+run_exitcode_pyvar_accept "PART36/VD_PY(ok0)"       VD_PY 0 "$W/doc/vd_good_ok0.json" ok0
+run_exitcode_pyvar_accept "PART36/VD_PY(okt)"       VD_PY 0 "$W/doc/vd_good_okt.json" okt
+run_exitcode_pyvar_accept "PART36/VD_PY(refused)"   VD_PY 0 "$W/doc/vd_good_refused.json" refused
+run_exitcode_pyvar_accept "PART36/VD_PY(norefused)" VD_PY 0 "$W/doc/vd_good_norefused.json" norefused
+run_exitcode_pyvar_accept "PART36/VD_PY(viol)"      VD_PY 0 "$W/doc/vd_good_viol.json" viol
+run_exitcode_pyvar_accept "PART36/VD_PY(v005)"      VD_PY 0 "$W/doc/vd_good_v005.json" v005
+run_exitcode_pyvar_accept "PART36/VD_PY(unev)"      VD_PY 0 "$W/doc/vd_good_unev.json" "unev:deny Clock;deny Frobnicate"
+run_exitcode_pyvar_accept "PART36/VD_PY(zm)"        VD_PY 0 "$W/doc/vd_good_zm.json" "zm:$D83_SCOPE"
+run_exitcode_pyvar_accept "PART36/VD_PY(nozm)"      VD_PY 0 "$W/doc/vd_good_nozm.json" nozm
+run_exitcode_pyvar_accept "PART37/RS_PY_FAILCLOSED(good)"        RS_PY_FAILCLOSED        0 "$W/doc/rs_good.json"
+run_exitcode_pyvar_accept "PART37/RS_PY_STREAM_FAILCLOSED(good)" RS_PY_STREAM_FAILCLOSED 0 --stdin "$W/doc/rs_good.json"
+# ZR_PY_NO_OK's accept shape (dict, no `ok`, carries a marker) is EXACTLY ZR_PY_HAS_OK's own
+# `ok`-absent poison document, and vice versa — reused rather than duplicated, see the fixture comment.
+run_exitcode_pyvar_accept "PART38/ZR_PY_NO_OK(good)"  ZR_PY_NO_OK  0 "$W/doc/zr_missing_ok.json"
+run_exitcode_pyvar_accept "PART38/ZR_PY_HAS_OK(good)" ZR_PY_HAS_OK 0 "$W/doc/zr_carries_ok.json"
+run_exitcode_pyvar_accept "PART39/CHAN_PY(caveat-good)" CHAN_PY 0 "$W/doc/chan_good_caveat.json" caveat
+run_exitcode_pyvar_accept "PART39/CHAN_PY(none-good)"   CHAN_PY 0 "$W/doc/chan_good_none.json" none
+run_failline_bashfunc_accept "PART83/ck83_defect(good)"  ck83_defect  "$RUN_SH" "$W/doc/d83_good.scan.json"  "$W/doc/d83_good.report.json"  "$D83_SCOPE"
+run_failline_bashfunc_accept "PART83/ck83_control(good)" ck83_control "$RUN_SH" "$W/doc/d83c_good.scan.json" "$W/doc/d83c_good.report.json"
+
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"
 KIND="canary"
 run_failline_bashfunc "cannot-fail" cannot_fail_check "$CANARY_SH" "$W/doc/canary.json"
+CANARY_OUT="$LAST_RAW_OUT"   # captured by run_failline_bashfunc — see its comment; used below for POSITIVE
+                             # evidence the intended bug fired, not just that SOME BROKEN row was recorded
 KIND="real"
 
 echo "$RESULTS"
@@ -296,6 +433,24 @@ if ! printf '%s\n' "$RESULTS" | grep -qx "BROKEN  canary  cannot-fail"; then
   echo "  someone corrected its quoting; per this gate's own design that is ALSO an error (a canary that"
   echo "  can pass is no longer a control) — give it a new, deliberately broken body instead of removing"
   echo "  the check."
+  exit 1
+fi
+# A3 hardening (2026-08-29): the check above only proves record() FILED a BROKEN row for "canary" — and a
+# BROKEN row is filed for ANY reason a checker fails to cleanly reject, including an extraction failure
+# that never even ran the canary's body (closed separately by require_extracted, which now aborts the
+# whole gate rather than reaching this point at all — but that guard living elsewhere is exactly why THIS
+# check must not simply trust the row's status: a future change to how BROKEN gets recorded should not be
+# able to quietly reopen the same hole). Require POSITIVE evidence the SPECIFIC, documented bug actually
+# fired: canary/cannot-fail.sh's own header names the failure mode precisely — a raw Python NameError on
+# the undefined bareword `zeroMatch` — so demand both tokens in the checker's actual captured output, not
+# merely the word BROKEN in a status line built independently of it.
+if ! printf '%s\n' "$CANARY_OUT" | grep -q "NameError" || ! printf '%s\n' "$CANARY_OUT" | grep -q "zeroMatch"; then
+  echo "mutation-gate: FAIL — the canary was recorded BROKEN, but its actual output does not contain the"
+  echo "  specific NameError/zeroMatch evidence canary/cannot-fail.sh's header documents as THE bug this"
+  echo "  control proves the gate can catch. A BROKEN row alone is not enough — it could be masking an"
+  echo "  unrelated failure (or, before this hardening, an extract_func failure) that happens to look the"
+  echo "  same on the outside. Captured canary output was:"
+  printf '%s\n' "$CANARY_OUT" | head -10 | sed 's/^/  /'
   exit 1
 fi
 if printf '%s\n' "$RESULTS" | grep '  real  ' | grep -q '^BROKEN'; then
