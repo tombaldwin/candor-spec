@@ -74,23 +74,48 @@ rc=0
 # path, because the corrupted line is usually the message-building/failure branch, which only runs on a
 # real divergence. Both were caught only by a deliberate mutation control, never by the suite's own green.
 # check_nested_quotes.py is the standing lint for the class (see its own --selftest for the proof that it
-# can fire on the bug shape as well as stay silent on clean code and the one deliberate, correct use of
-# split single-quoting in this file — $HERE interpolated into PART 23's `sys.path.insert`). Runs before
-# any engine is built: a broken checker makes the ~8-minute run downstream worthless, so fail before
-# paying for it, not after.
+# can fire on the bug shape as well as stay silent on clean code and the deliberate, correct uses of split
+# quoting in this repo — $HERE interpolated into PART 23's `sys.path.insert`, and the `$'\n'` splice idiom).
+# Runs before any engine is built: a broken checker makes the ~8-minute run downstream worthless, so fail
+# before paying for it, not after.
+#
+# SCOPE, widened 2026-08-29 (A4 hardening — an adversarial review found this originally scanned ONLY
+# run.sh, so mutation-gate.sh, canary/cannot-fail.sh, part.sh, publish-floor-notes.sh, and lean/check.sh —
+# every one a real bash script capable of embedding the identical `python3 -c '...'` shape — were never
+# checked at all): every `*.sh` file in this repo, found fresh each run rather than hand-listed, so a new
+# script doesn't silently fall outside the gate. EXCLUDED: conformance/canary/, whose one file is
+# DELIBERATELY carrying this exact bug as the mutation gate's own liveness control (see that file's own
+# "DO NOT FIX THIS FILE" header) — linting it here would make this fail-fast gate permanently red for a
+# file that must never be corrected. NOT widened to `*.py`: this lint implements BASH quote-removal
+# grammar, not Python's, and a plain `.py` checker (conformance/*.py, scripts/*.py) has no shell-quoting
+# layer for this bug class to live in at all — measured by actually trying it: pointed at the `.py`
+# generators, it misread ordinary Python string literals as bash `NAME='...'` assignments and produced 93
+# findings, zero of them real (spot-checked several: e.g. a Python dict entry
+# `'rust=pub fn entry() {{ ... }}'` looks exactly like a bash assignment word to a parser that doesn't know
+# it's looking at Python), which is precisely the "lint that cries wolf" failure this module's own
+# docstring warns trains people to ignore it. The one way a `.py` file COULD carry this bug is by shelling
+# out to build its own `python3 -c '...'` string — grepped every conformance/*.py and scripts/*.py for that
+# shape and found none outside this lint's own fixtures, so there is currently no real target there.
 if [ -f "$HERE/../scripts/check_nested_quotes.py" ]; then
   python3 "$HERE/../scripts/check_nested_quotes.py" --selftest >/dev/null 2>&1 \
     || { echo "FAIL: check_nested_quotes.py's own --selftest did not pass — the lint itself is not"
          echo "      trustworthy right now, so its silence below would prove nothing. Fix the lint first."
          rc=1; }
-  NQ_OUT="$(python3 "$HERE/../scripts/check_nested_quotes.py" "$HERE/run.sh" 2>&1)"
-  if [ $? -ne 0 ]; then
-    echo "FAIL: nested-single-quote corruption risk in conformance/run.sh — a checker written this way"
-    echo "      can silently stop asserting anything while still printing a clean row. Convert to a"
-    echo "      heredoc (<<'PY' ... PY), this repo's established safe idiom for a script body that needs"
-    echo "      an apostrophe."
-    printf '%s\n' "$NQ_OUT" | sed 's/^/  /'
+  NQ_FILES="$(find "$HERE/.." -name "*.sh" -not -path '*/.git/*' -not -path '*/canary/*' | sort)"
+  if [ -z "$NQ_FILES" ]; then
+    echo "FAIL: nested-single-quote lint found no *.sh files under $HERE/.. to scan — the scan glob is"
+    echo "      broken, which is silent-under-coverage exactly like the un-widened scope this replaced."
     rc=1
+  else
+    NQ_OUT="$(printf '%s\n' "$NQ_FILES" | xargs python3 "$HERE/../scripts/check_nested_quotes.py" 2>&1)"
+    if [ $? -ne 0 ]; then
+      echo "FAIL: nested-single-quote corruption risk found (file(s) named in the finding lines below) —"
+      echo "      a checker written this way can silently stop asserting anything while still printing a"
+      echo "      clean row. Convert to a heredoc (<<'PY' ... PY), this repo's established safe idiom for"
+      echo "      a script body that needs an apostrophe."
+      printf '%s\n' "$NQ_OUT" | sed 's/^/  /'
+      rc=1
+    fi
   fi
 else
   echo "FAIL: scripts/check_nested_quotes.py is missing — the nested-single-quote lint cannot run"

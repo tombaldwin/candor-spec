@@ -62,7 +62,7 @@ class Word:
     __slots__ = ("segments", "line")
 
     def __init__(self, line):
-        self.segments = []  # list of (kind, text) ; kind in {"lit","sq","dq","other"}
+        self.segments = []  # list of (kind, text) ; kind in {"lit","sq","dq","ansic","other"}
         self.line = line
 
     def add(self, kind, text):
@@ -95,13 +95,34 @@ class Word:
 
     @staticmethod
     def _is_safe_variable_interpolation(segments):
-        """True iff every non-single-quoted segment is a bare $VAR / ${VAR}
-        expansion (the one deliberate, correct reason to split a single-quoted
-        script this way) and there is at least one 'sq' segment."""
+        """True iff every non-single-quoted segment is EITHER a bare $VAR /
+        ${VAR} expansion OR an ANSI-C $'...' segment (the two deliberate,
+        correct reasons to split a single-quoted script this way) and there
+        is at least one 'sq' segment.
+
+        The $'...' carve-out (added 2026-08-29, A4 hardening): '...'$'\\n''...'
+        — splicing a literal control character (almost always \\n) between two
+        ordinary single-quoted pieces — is the established idiom for building
+        multi-line embedded-script text without a literal newline sitting in
+        the shell source. Before this carve-out, that idiom was INDISTINGUISHABLE
+        from real corruption to this lint (both produce multiple segments with
+        an 'sq' among them), so a checker author using it correctly would see a
+        FAIL for code that was never at risk — exactly the "lint that cries
+        wolf" failure mode this module's own docstring warns trains people to
+        ignore it. This carve-out does NOT weaken detection of the real bug
+        class: the real bug's extra segment is always a BARE WORD (a Python
+        dict-key literal like `zeroMatch` with no `$` prefix at all — see
+        scan_nested_quotes.py's own canary fixture), which is 'lit' kind, not
+        'ansic' or a $VAR 'dq' — so it still falls through to `return False`
+        below untouched. See --selftest's "ansic-splice" and
+        "ansic-splice-plus-real-bug" cases for the proof: the splice alone is
+        silent, and a genuine corruption in the SAME file is still caught."""
         has_sq = False
         for k, t in segments:
             if k == "sq":
                 has_sq = True
+                continue
+            if k == "ansic":
                 continue
             if k == "dq" and VAR_RE.match(t.strip()):
                 continue
@@ -143,6 +164,37 @@ def scan_double_quoted(text, i, sink):
             continue
         buf.append(c)
         i += 1
+    return "".join(buf), n
+
+
+def scan_ansic_quoted(text, i):
+    """text[i:i+2] == "$'" — an ANSI-C-quoted word ($'...'). Returns (content,
+    end_idx) where end_idx is just past the closing "'". Bash processes
+    backslash escapes (\\n, \\t, \\', \\\\, ...) INSIDE these quotes, so an
+    escaped quote \\' does not end the string — skipped here the same way
+    scan_double_quoted skips \\" — otherwise a legitimate $'it\\'s'  would be
+    misread as ending after `it\\`, splitting the rest into a spurious extra
+    segment and producing exactly the false-positive shape this function
+    exists to avoid (A4 hardening, 2026-08-29: '...'$'\\n''...' — splicing a
+    literal newline between two ordinary single-quoted pieces, the established
+    idiom for building multi-line embedded-script text without a literal
+    newline in the shell source — was flagged as UNSAFE before this function
+    existed, because the lint had no notion of $'...' at all and fell through
+    to treating the '$' as a bare literal character and the following '...'
+    as an ordinary single-quoted segment)."""
+    n = len(text)
+    j = i + 2  # past both '$' and the opening "'"
+    buf = []
+    while j < n:
+        c = text[j]
+        if c == "\\" and j + 1 < n:
+            buf.append(text[j:j + 2])
+            j += 2
+            continue
+        if c == "'":
+            return "".join(buf), j + 1
+        buf.append(c)
+        j += 1
     return "".join(buf), n
 
 
@@ -296,6 +348,13 @@ def scan_words(text, start=0, end=None, sink=None):
             if cur is None:
                 cur = Word(line_of(text, i))
             cur.add("other", text[i:j])
+            i = j
+            continue
+        if text[i:i + 2] == "$'":
+            content, j = scan_ansic_quoted(text, i)
+            if cur is None:
+                cur = Word(line_of(text, i))
+            cur.add("ansic", content)
             i = j
             continue
         if c == "\\":
@@ -497,6 +556,47 @@ d=json.load(open(sys.argv[1]))
 sys.exit(0 if d.get('ok') is True else 1)'
 check() { python3 -c "$FOO_PY" "$1"; }
 """
+    # A4 hardening (2026-08-29): the ANSI-C $'\\n' splice — '...'$'\\n''...' —
+    # is the established idiom for embedding a literal newline between two
+    # ordinary single-quoted script pieces without a literal newline sitting
+    # in the shell source. Before scan_ansic_quoted()/_is_safe_variable_interpolation's
+    # "ansic" carve-out, this produced the SAME multi-segment-with-single-quote
+    # shape as real corruption and was flagged UNSAFE — a lint crying wolf on
+    # correct code, which this module's own docstring says trains people to
+    # ignore it. This fixture must come back CLEAN.
+    ansic_splice = """
+h() {
+  python3 -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+print("line one")'$'\\n''print("line two")
+sys.exit(0)
+' "$1"
+}
+"""
+    # The other half of the A4 control: the $'\\n' splice must stop being
+    # flagged WITHOUT blinding the lint to a real corruption sitting in the
+    # very same file. `bad()` here carries the classic unescaped-apostrophe
+    # bug (s.get('ok') nested in the outer '...') right alongside the clean
+    # splice in `h()` — the splice must stay silent AND `bad()` must still be
+    # caught, or the fix has merely traded a false positive for a false
+    # negative instead of actually distinguishing the two shapes.
+    ansic_splice_plus_bug = """
+h() {
+  python3 -c 'import json,sys
+d=json.load(open(sys.argv[1]))
+print("line one")'$'\\n''print("line two")
+sys.exit(0)
+' "$1"
+}
+bad() {
+  python3 -c '
+import json, sys
+s = json.load(open(sys.argv[1]))
+v = s.get('ok')
+print(v)
+' "$1"
+}
+"""
     import signal
 
     class Hung(Exception):
@@ -513,6 +613,8 @@ check() { python3 -c "$FOO_PY" "$1"; }
         ("clean-assignment", clean_assign, 0, 0),
         ("nested-cmdsub-no-hang", nested_cmdsub, 0, 1),
         ("buggy-assignment", buggy_assign, 1, 0),
+        ("ansic-splice", ansic_splice, 0, 1),
+        ("ansic-splice-plus-real-bug", ansic_splice_plus_bug, 1, 1),
     ):
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as f:
             f.write(src)
