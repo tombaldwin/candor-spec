@@ -25,6 +25,67 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 79 gains a fourth cell: a `dlopen`/`dlsym`-resolved (or `transmute`-of-a-raw-pointer)
+  function pointer, INVOKED, must disclose `Unknown`/`callback:*`, never `"functions": []`.** Closes
+  two BACKLOG.md OWED items with one fixture, because the shapes coincide (both are "a function
+  pointer this engine cannot see the definition of, invoked"): (1) PART 79 pinned `ec3e50f`'s
+  mechanisms 1 (`@_silgen_name` bodyless linkage) and 3 (the raw-syscall allowlist) but had no
+  fixture for its THIRD swift mechanism, `dlsym`/`unsafeBitCast` — added as `swift-defect-bitcast`
+  (`unsafeBitCast(raw, to: (@convention(c) () -> Void).self); fn()` → `Unknown`/`callback:fn`) plus
+  its over-charge control `swift-ctrl-bitcast-uncalled` (the same cast, never invoked, must carry only
+  its own `dlopen`'s `native:dlopen` and nothing more). (2) `grep "callback:fn-pointer" candor-spec`
+  returned nothing — rust-deep's own correct disclosure for a runtime-resolved fn-pointer invocation
+  (`callback:fn-pointer / closure`, verified against candor-rust's own multi-spelling test suite) had
+  no conformance row, sound but unguarded against regression. Added as `rust-deep-ctrl-dlsym`/
+  `rust-deep-ctrl-dlsym-uncalled`, sharing the SAME new rust fixture functions (`dlsym_call`/
+  `dlsym_uncalled`, a `std::mem::transmute::<_, unsafe extern "C" fn(i32) -> i32>` of an opaque
+  pointer — the libc-primitive twin of `libloading::Symbol<T>`) as `rust-scan-defect-dlsym`, which
+  pins candor-rust `defe53d`'s OWN fix: rust-scan silently dropped this exact call shape until today.
+  **Falsified against pre-fix binaries, both built in throwaway clones:** candor-rust `defe53d^` reads
+  `dlsym_call` absent from `functions` entirely (HEAD: `["Unknown"]|["callback:unresolved call"]|-`);
+  candor-swift `ec3e50f^` reads BOTH the bitcast defect and its control absent (HEAD:
+  `["Unknown"]|["callback:fn"]|-` and `["Unknown"]|["native:dlopen"]|-`). rust-deep's cell is
+  **explicitly a PIN of pre-existing correct behaviour, not a regression fixture** — `defe53d` touched
+  only rust-scan's source, and rust-deep already read the correct value on the `defe53d^` binary;
+  stated as such rather than implying a falsification that does not exist.
+
+- **`conformance/mutation-gate.sh` gains two new checker shapes and two new PARTs, from the
+  2026-08-29 EMBEDDED-PARTS SURVEY (see below): `extract_heredoc`/`run_exitcode_heredoc[_accept]` for
+  a `python3 - ARGS <<'DELIM'` differential (PART 46, a caller of a body-less local declaration must
+  not be certified pure), and `extract_oneline_func`/`run_stdout_oneline_func` for a same-line-close
+  `name() { python3 -c '<PY>' ARGS; }` function (PART 72's `eq72`, the byte-equality primitive behind
+  SPEC §3.1 ⟨0.24⟩'s route-equality MUST) — the latter is a genuinely new extraction shape,
+  unreachable by `extract_func`'s existing own-line-`}` assumption. Both new extractors live in
+  `scripts/check_nested_quotes.py` (`--extract-heredoc`, `--extract-oneline-func`) rather than as
+  inline `python3 -c` calls inside `mutation-gate.sh` itself, deliberately avoiding the exact
+  nested-single-quote hazard this whole file exists to police.
+
+- **THE 2026-08-29 EMBEDDED-PARTS SURVEY.** `mutation-gate.sh` covered PARTs 36/37/38/39/83 plus the
+  14 standalone `conformance/*.py` checkers; the other ~66 PARTs whose comparison is written directly
+  into `run.sh` had never been attacked (BACKLOG.md "THE BIGGEST STRUCTURAL FINDING"). Measured: **68
+  of `run.sh`'s 86 `part.sh --list`-addressable PARTs are embedded and outside both gates.** For each,
+  its verdict-controlling comparison was replaced with an unconditional pass and the part re-run via
+  `part.sh <id>` against the CURRENT, otherwise-unmodified fixtures: **15 of 68 were confirmed
+  mechanically defeatable** (the row's own success line survived neutering with zero other row
+  reacting — structurally inevitable, since none of the 68 touches this file's extraction machinery,
+  but reproduced with real exit codes rather than asserted); **46 of 68 are UNRESOLVED** by the
+  mechanical neuter (a different `sys.exit` spelling, a bash `[ ]`/`-eq` chain, or a THIRD,
+  previously-unnamed class this survey also found — external `gen_*.py` property generators, e.g.
+  `gen_chain_idempotence.py`/`gen_trust_monotonicity.py`/`gen_signature_monotonicity.py`/
+  `gen_incomplete_dominance.py`/`gen_fs_kind.py`, driving PARTs 25/26/28/29/31, none of them in
+  BACKLOG's 14-item standalone list and none attacked here either); **7 of 68 read STILL-RED after
+  neutering, but every one was CONFIRMED — by re-running the same part on an unmutated `run.sh` — to
+  fail IDENTICALLY with no mutation applied at all**, so none demonstrates a real backstop: 3
+  (PART 15/12b/12c) hit `part.sh`'s own documented cross-slice isolation limit, and 4 (PART 16/34/4k/
+  4n) reflect an unrelated, pre-existing divergence live in the candor-rust/candor-java checkouts
+  beside this repo at survey time (both repos were under concurrent, unrelated edits during the
+  survey). Two of the 15 confirmed-defeatable are hardened in `mutation-gate.sh` above (PART 46,
+  verdict/soundness; PART 72, route-equality — SPEC §3.1 ⟨0.24⟩'s MUST, whose own header states no row
+  anywhere in this suite had ever asked it before today). **Not hardened, stated explicitly rather
+  than silently:** the other 13 confirmed-defeatable parts (10, 14, 19, 20, 21, 22, 45, 4h, 56, 57,
+  58, 59, 5b, 80 — disclosure/completeness/refusal properties among them), the 46 UNRESOLVED parts,
+  and the 7 INCONCLUSIVE ones. This is a survey boundary, not a claim the rest are safe.
+
 - **`conformance/mutation_poison_gen.py` (new) + `mutation_poison_configs.py` + `retro_test.py` +
   `generator_canary.py`: THE GENERATOR mutation-gate.sh's own header judged owed on a fourth
   same-shape round (see the entry below) is built.** It walks a checker's OWN Python source via

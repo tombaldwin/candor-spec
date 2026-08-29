@@ -453,6 +453,33 @@ def extract_assignment_value(path, name):
     return None
 
 
+def extract_heredoc_body(path, delim):
+    """Return the FIRST `<<'DELIM' ... DELIM` heredoc body in `path`, verbatim. Used by
+    conformance/mutation-gate.sh to pull an embedded run.sh differential's CURRENT source (e.g. the
+    PART 46 `python3 - ... <<'PYBL'` script) live, the same "never a frozen copy" discipline
+    extract_assignment_value already gives VAR='...' checkers. A heredoc body needs no quote-aware
+    parser — unlike a `'...'` argument, a heredoc has no escaping ambiguity: it lexically ends at the
+    first line that IS the delimiter, full stop — so a plain anchored regex is the correct tool here,
+    not a second use of scan_words()."""
+    text = open(path, encoding="utf-8").read()
+    # trailing content after the opening quote (` || VAR=1`) is common and not part of the body.
+    m = re.search(r"<<'" + re.escape(delim) + r"'[^\n]*\n(.*?)\n" + re.escape(delim) + r"\n",
+                  text, re.S)
+    return m.group(1) if m else None
+
+
+def extract_oneline_pyc_func(path, name):
+    """Return the python body of a bash function shaped `name() { python3 -c '<PY>' ARGS; }`, where
+    the closing `'` and the function's closing `}` share ONE line — e.g. PART 72's `eq72`/`ck72`/
+    `mut72` in conformance/run.sh. This is a DIFFERENT shape from mutation-gate.sh's own `extract_func`
+    (used for ck83_defect/ck83_control), which assumes the closing `}` sits alone at column 0; that
+    assumption is false here; a same-line close is uncounted by it (it would run to the file's next
+    column-0 `}`, likely swallowing unrelated code), so this is a dedicated extractor, not a reuse."""
+    text = open(path, encoding="utf-8").read()
+    m = re.search(r"(?m)^" + re.escape(name) + r"\(\) \{ python3 -c '\n(.*?)\n'", text, re.S)
+    return m.group(1) if m else None
+
+
 def main(argv):
     if "--selftest" in argv:
         return selftest()
@@ -466,6 +493,33 @@ def main(argv):
         value = extract_assignment_value(path, name)
         if value is None:
             print(f"check_nested_quotes: no top-level assignment `{name}=` found in {path}",
+                  file=sys.stderr)
+            return 1
+        sys.stdout.write(value)
+        return 0
+    if "--extract-heredoc" in argv:
+        i = argv.index("--extract-heredoc")
+        try:
+            delim, path = argv[i + 1], argv[i + 2]
+        except IndexError:
+            print("usage: check_nested_quotes.py --extract-heredoc DELIM file.sh", file=sys.stderr)
+            return 2
+        value = extract_heredoc_body(path, delim)
+        if value is None:
+            print(f"check_nested_quotes: no <<'{delim}' heredoc found in {path}", file=sys.stderr)
+            return 1
+        sys.stdout.write(value)
+        return 0
+    if "--extract-oneline-func" in argv:
+        i = argv.index("--extract-oneline-func")
+        try:
+            name, path = argv[i + 1], argv[i + 2]
+        except IndexError:
+            print("usage: check_nested_quotes.py --extract-oneline-func NAME file.sh", file=sys.stderr)
+            return 2
+        value = extract_oneline_pyc_func(path, name)
+        if value is None:
+            print(f"check_nested_quotes: no `{name}() {{ python3 -c '...'` found in {path}",
                   file=sys.stderr)
             return 1
         sys.stdout.write(value)

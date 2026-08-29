@@ -23,16 +23,20 @@
 # an engine disagreement" — the same rule, one layer down, for the checker itself).
 #
 # SCOPE (see BOTH task instructions and the report this script's introduction shipped with): the
-# RELEASE-GATING parts — verdict, route/sink-equality, disclosure/refusal — not all ~84 parts in
-# conformance/run.sh. Covered: PART 36 (verdict document cells), PART 37 (report-sink fail-closed shape),
-# PART 38 (zero-rule-policy refusal), PART 39 (report-consuming verb re-discloses the caveat), PART 83
-# (the byte-equality quadrant — today's own PART, whose first draft carried this exact bug). NOT covered,
-# stated explicitly rather than silently: PART 2/3/12 (other verdict differentials), PART 29/32/34/47/57/
-# 59/60/61/62/67/68/69/70/72 (other refusal/disclosure/route-equality rows), and every TIER-2 part. Those
-# rows drive real engine binaries rather than taking a document directly (PART 32's zm_probe, for example,
-# has no "poison JSON" to feed — its input IS a source fixture scanned by four real toolchains), which is
-# a different, larger mutation-testing project; extending this gate to them is future work, not silently
-# assumed done here.
+# RELEASE-GATING parts — verdict, route/sink-equality, disclosure/refusal — not all ~86 addressable parts
+# in conformance/run.sh. Covered: PART 36 (verdict document cells), PART 37 (report-sink fail-closed
+# shape), PART 38 (zero-rule-policy refusal), PART 39 (report-consuming verb re-discloses the caveat),
+# PART 83 (the byte-equality quadrant — today's own PART, whose first draft carried this exact bug), and,
+# from the 2026-08-29 EMBEDDED-PARTS SURVEY (see that section far below for the full 68-part table and its
+# numerator), PART 46 (a caller of a body-less local declaration is not pure) and PART 72 (byte-equality
+# across both gate routes, SPEC §3.1 ⟨0.24⟩'s MUST). NOT covered, stated explicitly rather than silently:
+# PART 2/3/12 (other verdict differentials — these three are not even independently addressable via
+# `part.sh --list`; they ride inside a neighbouring slice), PART 29/32/34/47/57/59/60/61/62/67/68/69/70
+# (other refusal/disclosure/route-equality rows), and every TIER-2 part. Most of those rows drive real
+# engine binaries rather than taking a document directly (PART 32's zm_probe, for example, has no "poison
+# JSON" to feed — its input IS a source fixture scanned by four real toolchains), which is a different,
+# larger mutation-testing project; extending this gate to them is future work, not silently assumed done
+# here.
 #
 # THE CONTROL: the gate proves its OWN liveness every run via conformance/canary/cannot-fail.sh, a checker
 # DELIBERATELY carrying this exact bug (not a synthetic stand-in for it — see that file's own comment).
@@ -272,6 +276,20 @@ extract_func() {   # $1 = function name (e.g. ck83_defect) ; $2 = source file ; 
     printing && /^}/ { exit }
   ' "$2"
 }
+# ── the 2026-08-29 EMBEDDED-PARTS SURVEY added two more shapes (see "EMBEDDED RUN.SH SURVEY" section
+# below): a `python3 - ARGS <<'DELIM'` heredoc (PART 46's PYBL) and a same-line-close `name() { python3 -c
+# '<PY>' ARGS; }` function (PART 72's eq72/ck72/mut72) — the latter is NOT reachable by extract_func above,
+# whose `/^}/` end-marker assumes the closing brace sits ALONE at column 0; eq72 closes with `' "$1" "$2";
+# }` on the SAME line as the final quote, so extract_func would run past it to the file's next column-0
+# `}` and silently extract the wrong, larger span. Both are pulled by check_nested_quotes.py — a heredoc
+# body is lexically unambiguous (it ends at the line that IS the delimiter, no quote-parsing needed), and
+# the oneline-func shape needs its own regex for the same reason extract_func's doesn't apply.
+extract_heredoc() {   # $1 = heredoc delimiter, e.g. PYBL (from `<<'PYBL'`)
+  python3 "$CHECKER_PY" --extract-heredoc "$1" "$RUN_SH"
+}
+extract_oneline_func() {   # $1 = function name, e.g. eq72 (from `eq72() { python3 -c '...' ...; }`)
+  python3 "$CHECKER_PY" --extract-oneline-func "$1" "$RUN_SH"
+}
 
 # ── extraction failure is a HARD ERROR, never a BROKEN row (A3 hardening, 2026-08-29) ──────────────────
 # THE BUG THIS CLOSES: `extract_func` (below) matches only the exact literal `^fn() {` on ONE line —
@@ -392,6 +410,60 @@ run_exitcode_pyvar_accept() {   # $1 label ; $2 varname ; $3 accept-exit-code ; 
   else
     record BROKEN "$label (accept-known-good)" \
       "a VALID document was NOT accepted (want exit $want_rc, got exit=$rc) — checker may have degenerated to unconditional-reject" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# "heredoc": the PART 46 shape (`python3 - ARGS <<'PYBL' || VAR=1`) — same exit-code contract as
+# run_exitcode_pyvar (the calling bash line supplies the human FAIL text, not the extracted script), but
+# extracted via extract_heredoc rather than extract_pyvar since the source lives between two `<<'DELIM'`
+# lines in run.sh, not inside a `NAME='...'` assignment.
+run_exitcode_heredoc() {   # $1 label ; $2 delim ; $3 expected-reject-exit-code ; $4.. poison args
+  local label="$1" delim="$2" want_rc="$3"; shift 3
+  local src; src="$(extract_heredoc "$delim")"
+  require_extracted "$src" "could not extract heredoc <<'$delim' from $RUN_SH — nothing to test"
+  local tmp="$W/$delim.py"; printf '%s' "$src" > "$tmp"
+  local out rc
+  out="$(python3 "$tmp" "$@" 2>&1)"; rc=$?
+  if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label"
+  else
+    record BROKEN "$label" \
+      "poison was NOT rejected with the expected exit $want_rc (got exit=$rc)" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+run_exitcode_heredoc_accept() {   # $1 label ; $2 delim ; $3 accept-exit-code ; $4.. KNOWN-GOOD args
+  local label="$1" delim="$2" want_rc="$3"; shift 3
+  local src; src="$(extract_heredoc "$delim")"
+  require_extracted "$src" "could not extract heredoc <<'$delim' from $RUN_SH for accept-check \"$label\""
+  local tmp="$W/$delim.accept.py"; printf '%s' "$src" > "$tmp"
+  local out rc
+  out="$(python3 "$tmp" "$@" 2>&1)"; rc=$?
+  if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label (accept-known-good)"
+  else
+    record BROKEN "$label (accept-known-good)" \
+      "a VALID document was NOT accepted (want exit $want_rc, got exit=$rc) — checker may have degenerated to unconditional-reject" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# "oneline-func stdout": the PART 72 shape (`eq72() { python3 -c '<PY>' "$1" "$2"; }`) — its contract is
+# neither a FAIL: line (PART 83's convention) nor a distinguishing exit code (it always exits 0 unless the
+# read itself fails) but a specific STDOUT token (`equal` / `diverge:<keys>`) that the CALLER (p72(), via
+# `[ "$2" = 0 ]` on a 0/1 the caller derives from this text) turns into pass/fail — so THIS is the layer
+# that must be proven to still discriminate a real difference from none.
+run_stdout_oneline_func() {   # $1 label ; $2 funcname ; $3 expected-stdout ERE ; $4.. args
+  local label="$1" fn="$2" want="$3"; shift 3
+  local src; src="$(extract_oneline_func "$fn")"
+  require_extracted "$src" "could not extract \`$fn\` from $RUN_SH — nothing to test"
+  local tmp="$W/$fn.py"; printf '%s' "$src" > "$tmp"
+  local out rc
+  out="$(python3 "$tmp" "$@" 2>&1)"; rc=$?
+  if printf '%s\n' "$out" | grep -Eq "$want" && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label"
+  else
+    record BROKEN "$label" \
+      "stdout did not match /$want/ (rc=$rc, got: $(printf '%s' "$out" | head -c 200 | tr '\n' ' '))" \
       "$(printf '%s\n' "$out" | head -5)"
   fi
 }
@@ -888,6 +960,72 @@ OC_GATE_GOOD='gate refused: only model -> util cannot be evaluated from a report
 run_ext_accept "PART49/only_check(good)" "$ONLY_PY" 0 rust 1 "$OC_SHORT_GOOD" 0 "$OC_FULL_GOOD" 0 "$OC_ZERO_GOOD" 2 "$OC_GATE_GOOD"
 OC_SHORT_POISON='[AS-EFF-011] model reaches infra via rule `only model -> util`, also flagged [AS-EFF-009]'
 run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_SHORT_POISON" 0 "$OC_FULL_GOOD" 0 "$OC_ZERO_GOOD" 2 "$OC_GATE_GOOD"
+
+# ── EMBEDDED-PARTS SURVEY (2026-08-29) ──────────────────────────────────────────────────────────────
+# WHY THIS EXISTS. This file's own header scoped itself to "PART 36/37/38/39/83 plus the standalone
+# conformance/*.py checkers" and named the ~66 OTHER parts whose comparison is written directly into
+# run.sh — bash `[ ]`, inline `python3 -c`, a literal `diff` — as never attacked. Measured today: 68 of
+# them are individually addressable via `part.sh --list` once the 5 above and the 13 that map to a
+# standalone checker (`check_honesty`=1c, `clause_check`=24, `probe_check`=30, `must_ledger`=42,
+# `part_declarations`=44, `file_set_check`=48, `only_check`=49, `incomplete_check`=50,
+# `fs_position_check`=51, `peek_completeness_check`=52, `refused_peek_check`=53,
+# `peek_route_equality_check`=54, `exec_capability_check`=66 — `skip_ratchet.py` is a 14th standalone
+# checker with no addressable id of its own, it runs once at the very end of a full run) are subtracted.
+#
+# THE TEST: for each of the 68, its verdict-controlling `sys.exit(N if COND else M)` (or the equivalent
+# bash test) was replaced with an unconditional pass and the part re-run via `part.sh <id>` on the
+# CURRENT, otherwise-unmodified fixtures — the same "replace the body with an unconditional pass, does
+# the suite notice" test BACKLOG.md's standalone-checker survey ran, at PART granularity instead of
+# per-file. RESULT: 15 of 68 were mechanically neutered this way and EVERY ONE still reported the part's
+# own success line with no other row reacting — structurally inevitable, since none of the 68 touches
+# this file's extract_pyvar/extract_func/extract_heredoc/extract_oneline_func, but reproduced with real
+# exit codes here rather than asserted. 46 of 68 use a comparison SHAPE this file's mechanical neuter
+# could not locate (a different `sys.exit` spelling, a bash `[ ]`/`-eq` chain, or one of a THIRD class
+# this survey also found — external `gen_*.py` property generators such as
+# `gen_chain_idempotence.py`/`gen_trust_monotonicity.py`/`gen_signature_monotonicity.py`/
+# `gen_incomplete_dominance.py`/`gen_fs_kind.py`, invoked by PARTs 25/26/28/29/31, NONE of which were in
+# BACKLOG's 14-item standalone-checker list and NONE of which are attacked by this file either — reported
+# here rather than silently dropped) — UNRESOLVED, not "safe", exactly the distinction this file's own
+# canary exists to keep honest. 7 of 68 read STILL-RED after neutering but every one was CONFIRMED, by
+# re-running the SAME part on an unmutated run.sh, to fail IDENTICALLY without any mutation applied at
+# all (PART 15/12b/12c: `part.sh`'s own documented isolation limit — they read state a neighbouring slice
+# builds and cannot be run standalone; PART 16/34/4k/4n: a pre-existing, unrelated divergence live in the
+# candor-rust/candor-java checkouts beside this repo at survey time) — INCONCLUSIVE, not "protected": none
+# of the 7 demonstrated a second, independent check catching the neutered comparison.
+#
+# TWO of the 68 are hardened below, chosen for severity the same way the standalone survey chose its
+# seven: PART 46 (A CALLER OF A BODY-LESS LOCAL DECLARATION IS NOT PURE — verdict/soundness; this is the
+# candor-ts axios cardinal sin's own row) and PART 72 (byte-equality across both gate routes — SPEC §3.1
+# ⟨0.24⟩'s MUST, which PART 72's own header states "has sat pre-ledger... no row anywhere in this suite
+# has ever asked it" until PART 72 was written — the embedded route-equality flagship, same role as
+# PART 54/peek_route_equality_check.py above). Both needed a NEW extraction shape (extract_heredoc,
+# extract_oneline_func — see their definitions above) because neither is a bash `NAME='...'` assignment
+# or an own-line-`}` function, the only two shapes this file could reach before today.
+#
+# NOT hardened here, stated explicitly rather than silently, mirroring the standalone survey's own
+# boundary: the other 13 confirmed-DEFEATED parts (10, 14, 19, 20, 21, 22, 45, 4h, 56, 57, 58, 59, 5b,
+# 80 — disclosure, completeness and refusal properties among them, e.g. 58 "an outOfScope entry names the
+# file its function is in" and 59 "what a refusal owes its reader"), the 46 UNRESOLVED parts (including
+# the five gen_*.py-driven properties), and the 7 INCONCLUSIVE ones. This is a SURVEY BOUNDARY, not a
+# claim the rest are safe — see BACKLOG.md for the full per-part table.
+mkdir -p "$W/p46" "$W/p72"
+# ---- PART 46 (PYBL) — condition (a) the under-report: a body-less declaration's caller with no `Unknown`
+# must be rejected; condition (b) the CONTROL: a locally-bodied caller charged Unknown-only (or nothing)
+# must ALSO be rejected, so the row cannot pass by fabricating Unknown onto everything.
+printf '%s' '{"functions": [{"fn": "A.candorUnanswered", "inferred": []}, {"fn": "A.candorAnswered", "inferred": ["Fs"]}]}' > "$W/p46/poison_a.json"
+printf '%s' '{"functions": [{"fn": "A.candorUnanswered", "inferred": ["Unknown"]}, {"fn": "A.candorAnswered", "inferred": ["Unknown"]}]}' > "$W/p46/poison_b.json"
+printf '%s' '{"functions": [{"fn": "A.candorUnanswered", "inferred": ["Unknown"]}, {"fn": "A.candorAnswered", "inferred": ["Fs"]}]}' > "$W/p46/good.json"
+run_exitcode_heredoc "PART46/PYBL(unanswered-must-carry-Unknown)" PYBL 1 "$W/p46/poison_a.json" /nonexistent /nonexistent /nonexistent
+run_exitcode_heredoc "PART46/PYBL(control-must-not-be-Unknown-only)" PYBL 1 "$W/p46/poison_b.json" /nonexistent /nonexistent /nonexistent
+run_exitcode_heredoc_accept "PART46/PYBL(good)" PYBL 0 "$W/p46/good.json" /nonexistent /nonexistent /nonexistent
+# ---- PART 72 (eq72) — the byte-equality primitive itself: it must diverge on a genuine content
+# difference (here, a superset — guards against a `<=`/subset-style degrade of `a == b`) and read equal
+# on two byte-identical documents.
+printf '%s' '{"ok": true, "outOfScope": ["x"]}' > "$W/p72/a.json"
+printf '%s' '{"ok": true, "outOfScope": ["x", "y"]}' > "$W/p72/b_superset.json"
+printf '%s' '{"ok": true, "outOfScope": ["x"]}' > "$W/p72/a_copy.json"
+run_stdout_oneline_func "PART72/eq72(superset-must-diverge)" eq72 '^diverge:' "$W/p72/a.json" "$W/p72/b_superset.json"
+run_stdout_oneline_func "PART72/eq72(identical-must-be-equal)" eq72 '^equal$' "$W/p72/a.json" "$W/p72/a_copy.json"
 
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"

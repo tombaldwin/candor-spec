@@ -14544,6 +14544,15 @@ true
 #   ALLOWLIST of real syscalls (`NATIVE_DISCLOSURE_C_FREE_FNS`) plus a `C_PLATFORM_MODULES` import check —
 #   an unrestricted first cut measured 1519 false hits on swift-nio alone (`#if os(...)`/`canImport(...)`
 #   build-config predicates and stdlib control flow, none of them FFI), which the allowlist eliminates.
+#   `ec3e50f` fixed a THIRD swift mechanism the same commit — `dlsym`/`unsafeBitCast` resolved-then-
+#   invoked — which this row left unpinned until 2026-08-29 (BACKLOG.md "OWED"); see `swift-defect-
+#   bitcast`/`swift-ctrl-bitcast-uncalled` below. Its rust-scan twin (a raw `transmute`d libc pointer, the
+#   SAME "resolved at runtime, then invoked" property one call form over) was independently found silent
+#   the same day and fixed in candor-rust `defe53d` — folded into ONE fixture pair here (`rust-scan-defect-
+#   dlsym`/`rust-deep-ctrl-dlsym`) rather than two, since the shapes coincide: both are "a function pointer
+#   this engine cannot see the definition of, invoked" and both close out BACKLOG.md's separate item 2
+#   (`grep "callback:fn-pointer" candor-spec` used to return nothing — rust-deep's OWN, already-correct
+#   disclosure for exactly this call shape, unguarded against regression until now).
 #
 # THE BYTE-PARITY POINT, stated because it is the reason this row asks the SAME fixture of two engines
 # rather than trusting one measurement each: R60's fix was deliberately shaped so rust-deep's disclosure
@@ -14598,17 +14607,29 @@ p79() {   # <cell> <got> <want>
 }
 P79_BAD=0; P79_OUT=""
 P79="$W/p79"
-mkdir -p "$P79/ffi/src" "$P79/rawc" "$P79/silgen" "$P79/ctrl"
+mkdir -p "$P79/ffi/src" "$P79/rawc" "$P79/silgen" "$P79/ctrl" "$P79/bitcast"
 
 # --- shared rust fixture: the SAME crate, read by rust-scan (syntactic, no build) and rust-deep (a real
 #     nightly type-check via cargo-dylint) --------------------------------------------------------------
 printf '[package]\nname = "p79ffi"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\nlibc = "0.2"\n' > "$P79/ffi/Cargo.toml"
-printf 'extern "C" {\n    fn system(cmd: *const std::os::raw::c_char) -> i32;\n}\n\npub fn run_cmd() {\n    let c = std::ffi::CString::new("echo hi").unwrap();\n    unsafe { system(c.as_ptr()); }\n}\n\npub fn drain(fd: i32) -> usize {\n    let mut buf = [0u8; 64];\n    unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 64) as usize }\n}\n' > "$P79/ffi/src/lib.rs"
+printf 'extern "C" {\n    fn system(cmd: *const std::os::raw::c_char) -> i32;\n}\n\npub fn run_cmd() {\n    let c = std::ffi::CString::new("echo hi").unwrap();\n    unsafe { system(c.as_ptr()); }\n}\n\npub fn drain(fd: i32) -> usize {\n    let mut buf = [0u8; 64];\n    unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, 64) as usize }\n}\n\npub unsafe fn dlsym_call(sym: *mut std::ffi::c_void) -> i32 {\n    let func = std::mem::transmute::<_, unsafe extern "C" fn(i32) -> i32>(sym);\n    func(5)\n}\n\npub unsafe fn dlsym_uncalled(sym: *mut std::ffi::c_void) {\n    let _func = std::mem::transmute::<_, unsafe extern "C" fn(i32) -> i32>(sym);\n}\n' > "$P79/ffi/src/lib.rs"
 
 p79_rs_run_cmd=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin run_cmd)
 p79_rs_drain=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin drain)
+p79_rs_dlsym=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin dlsym_call)
+p79_rs_dlsym_uncalled=$("$SCAN" "$P79/ffi" --json 2>/dev/null | ck79 /dev/stdin dlsym_uncalled)
 p79 rust-scan-defect-libc  "$p79_rs_drain"   '[]|-|["libc"]'
 p79 rust-scan-ctrl-extern  "$p79_rs_run_cmd" '["Unknown"]|["native:extern fn"]|-'
+# ⟨OWED, BACKLOG.md 2026-08-29⟩ MECHANISM 2 — a pointer resolved via dlopen/dlsym (here: a `transmute` of
+# an opaque `*mut c_void` symbol into a callable type — the libc-primitive twin of `libloading::Symbol<T>`,
+# fixed the same commit) and invoked. This is the SAME comparison item 2 of the same backlog entry asked
+# for (`grep "callback:fn-pointer" candor-spec` returned nothing) — rust-deep's `callback:fn-pointer /
+# closure` fires on exactly this shape, so ONE fixture and ONE pair of rows closes both: rust-scan's
+# dlsym-shaped SILENT-PURE cardinal sin (mechanism 2's OWN row) and rust-deep's already-correct disclosure
+# (item 2's pin). The over-charge control mirrors R61/PART79's existing discipline: a pointer TRANSMUTED
+# to a callable type but never invoked must gain nothing (absent from `functions`, not `Unknown`).
+p79 rust-scan-defect-dlsym    "$p79_rs_dlsym"          '["Unknown"]|["callback:unresolved call"]|-'
+p79 rust-scan-ctrl-dlsym-uncalled "$p79_rs_dlsym_uncalled" absent
 
 RD_PRESENT=""
 RD_LIB=""
@@ -14625,8 +14646,17 @@ fi
 if [ -n "$RD_PRESENT" ]; then
   p79_rd_run_cmd=$(ck79 "$RD_REPORT" run_cmd)
   p79_rd_drain=$(ck79 "$RD_REPORT" drain)
+  p79_rd_dlsym=$(ck79 "$RD_REPORT" dlsym_call)
+  p79_rd_dlsym_uncalled=$(ck79 "$RD_REPORT" dlsym_uncalled)
   p79 rust-deep-defect-extern "$p79_rd_run_cmd" '["Unknown"]|["native:extern fn"]|-'
   p79 rust-deep-ctrl-libc     "$p79_rd_drain"   '[]|-|["libc"]'
+  # item 2's PIN — rust-deep's CORRECT behaviour (never broken, unlike rust-scan's mechanism-2 miss
+  # above): a runtime-resolved function pointer, invoked, discloses Unknown/callback:fn-pointer via
+  # rustc's own type info, whether the resolution route is `libloading::Symbol<T>` (candor-rust's own
+  # test suite, `runtime_resolved_pointer_invocation_is_unresolved`, verified four spellings) or the raw
+  # `transmute`-of-an-opaque-pointer libc primitive fixed alongside it here.
+  p79 rust-deep-ctrl-dlsym    "$p79_rd_dlsym"          '["Unknown"]|["callback:fn-pointer / closure"]|-'
+  p79 rust-deep-ctrl-dlsym-uncalled "$p79_rd_dlsym_uncalled" absent
   p79 parity-extern-scan-eq-deep "$p79_rs_run_cmd" "$p79_rd_run_cmd"
   p79 parity-libc-scan-eq-deep   "$p79_rs_drain"   "$p79_rd_drain"
 else
@@ -14638,26 +14668,41 @@ fi
 printf 'import Darwin\nfunc doRm() {\n    system("rm -rf /tmp/x")\n}\n' > "$P79/rawc/a.swift"
 printf '@_silgen_name("system")\nfunc c_system(_ cmd: UnsafePointer<CChar>) -> Int32\nfunc doRmViaSilgen() {\n    "rm -rf /tmp/x".withCString { cs in\n        _ = c_system(cs)\n    }\n}\n' > "$P79/silgen/a.swift"
 printf 'import Foundation\nfunc doRmViaProcess() {\n    let p = Process()\n    p.executableURL = URL(fileURLWithPath: "/bin/rm")\n    p.arguments = ["-rf", "/tmp/x"]\n    try? p.run()\n}\n' > "$P79/ctrl/a.swift"
+# ⟨OWED, BACKLOG.md 2026-08-29⟩ MECHANISM 2 — a pointer resolved via dlopen/dlsym and invoked through a
+# cast. `ec3e50f` fixed THREE FFI mechanisms; PART 79 pinned mechanisms 1 (`@_silgen_name`, swift-defect-
+# silgen above) and 3 (the raw-syscall allowlist, swift-defect-rawc above) but had no fixture for this
+# one. The defect function below takes the pointer as a PARAMETER — no `dlopen`/`dlsym` call anywhere in
+# it — so it cannot be confused with mechanism 3's allowlist branch (`import Darwin` is present only for
+# the control's own `dlopen`/`RTLD_NOW`, isolating the two completely, same as candor-swift's own
+# OpaqueFFIFallbackProcessTests.swift). The control casts a REAL `dlopen` result but never calls it: the
+# only disclosure it may carry is the dlopen call itself (`native:dlopen`) — the bitcast, absent an
+# invocation, must add nothing on top.
+printf 'import Darwin\nfunc invokeFromRaw(_ raw: UnsafeMutableRawPointer) {\n    let fn = unsafeBitCast(raw, to: (@convention(c) () -> Void).self)\n    fn()\n}\nfunc opensAndCastsButNeverCalls() {\n    guard let h = dlopen("/usr/lib/libSystem.dylib", RTLD_NOW) else { return }\n    let fn = unsafeBitCast(h, to: (@convention(c) () -> Void).self)\n    _ = fn\n}\n' > "$P79/bitcast/a.swift"
 if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
   ( cd "$P79/rawc"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
   ( cd "$P79/silgen" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
   ( cd "$P79/ctrl"   && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
+  ( cd "$P79/bitcast" && env -u CANDOR_CONFIG "$SW_BIN" . --json > out.json 2>/dev/null )
   p79_sw_rawc=$(ck79 "$P79/rawc/out.json" doRm)
   p79_sw_silgen=$(ck79 "$P79/silgen/out.json" c_system)
   p79_sw_silgen_caller=$(ck79 "$P79/silgen/out.json" doRmViaSilgen)
   p79_sw_ctrl=$(ck79 "$P79/ctrl/out.json" doRmViaProcess)
+  p79_sw_bitcast=$(ck79 "$P79/bitcast/out.json" invokeFromRaw)
+  p79_sw_bitcast_uncalled=$(ck79 "$P79/bitcast/out.json" opensAndCastsButNeverCalls)
   p79 swift-defect-rawc          "$p79_sw_rawc"          '["Unknown"]|["native:system"]|-'
   p79 swift-defect-silgen        "$p79_sw_silgen"        '["Unknown"]|["native:system"]|-'
   p79 swift-defect-silgen-caller "$p79_sw_silgen_caller" '["Unknown"]|-|-'
   p79 swift-ctrl-process         "$p79_sw_ctrl"          '["Exec"]|-|-'
+  p79 swift-defect-bitcast       "$p79_sw_bitcast"          '["Unknown"]|["callback:fn"]|-'
+  p79 swift-ctrl-bitcast-uncalled "$p79_sw_bitcast_uncalled" '["Unknown"]|["native:dlopen"]|-'
 else
   P79_OUT="$P79_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
 "
 fi
 rm -rf "$P79"
 # ENGINES: rust swift; java: independently CLOSED (SOUNDNESS.md footnote ⁹) through its own existing disclosure paths (reflect:/dispatch:), not a dedicated FFI rule, and shares no compilation-unit shape with this row; ts: independently CLOSED (footnote ¹⁰) the same way through callback:/the body-less-declaration rule, also no shared compilation-unit shape (both are per-engine measurements, not a cross-engine cell this row could join)
-# CONTROLS: p79_rs_run_cmd p79_rd_drain p79_sw_ctrl — p79_rs_run_cmd (rust-scan's direct-extern path, already sound before R59/R60) proves the libc fix did not disturb it; p79_rd_drain (rust-deep's libc invisible disclosure, already sound before R60) proves the extern fix did not disturb it; p79_sw_ctrl (the modelled Process/Foundation Exec path) proves the FFI fallback did not regress an already-concrete catch to a vague one
-# FALSIFIED AGAINST THE PRE-FIX BINARIES, both built in throwaway clones so the tracked checkouts were
+# CONTROLS: p79_rs_run_cmd p79_rd_drain p79_sw_ctrl p79_sw_bitcast_uncalled p79_rs_dlsym_uncalled p79_rd_dlsym_uncalled — p79_rs_run_cmd (rust-scan's direct-extern path, already sound before R59/R60) proves the libc fix did not disturb it; p79_rd_drain (rust-deep's libc invisible disclosure, already sound before R60) proves the extern fix did not disturb it; p79_sw_ctrl (the modelled Process/Foundation Exec path) proves the FFI fallback did not regress an already-concrete catch to a vague one; the three `*-uncalled`/`*-dlsym-uncalled` rows are the mechanism-2 over-charge controls — a pointer resolved but never invoked must stay pure (rust) or carry only its own dlopen call (swift), proving the fix charges the CALL, not the resolution
+# FALSIFIED AGAINST THE PRE-FIX BINARIES, all built in throwaway clones so the tracked checkouts were
 # never touched: candor-rust `763e51a` (immediately before `3cb1906`) reads `rust-scan-defect-libc` as
 # `absent` (drain missing from `functions` entirely — no `invisible`, no `Unknown`, nothing) where HEAD
 # reads `[]|-|["libc"]`, and its rust-deep counterpart (`cargo dylint` against the SAME pre-fix commit)
@@ -14668,9 +14713,21 @@ rm -rf "$P79"
 # entirely) where HEAD reads `["Unknown"]|["native:system"]|-` — FOUR red cells across two engines' two
 # independent mechanisms. `rust-scan-ctrl-extern`, `rust-deep-ctrl-libc` and `swift-ctrl-process` were
 # ALREADY at their wanted values on their respective pre-fix binaries, so the controls are not what moved.
-echo "PART 79 — a local extern \"C\" call and an unclassified calibrated-crate call disclose Unknown/invisible byte-identically across rust-scan and rust-deep, and swift's raw-C-interop paths disclose native:, never \"functions\": [] (SPEC §4)"
+# MECHANISM 2 (dlsym/unsafeBitCast), added 2026-08-29 closing the BACKLOG.md OWED item: candor-rust
+# `defe53d^` reads `rust-scan-defect-dlsym` as `absent` (`dlsym_call` missing from `functions` entirely)
+# where HEAD reads `["Unknown"]|["callback:unresolved call"]|-` — the SAME `763e51a`-shaped cardinal sin,
+# one call form over, reproduced against the ACTUAL commit that fixed it this time rather than a sibling
+# one. candor-swift `ec3e50f^` reads BOTH `swift-defect-bitcast` and its over-charge control as `absent`
+# (`functions: []` entirely — the tree parses but nothing in it was judged) where HEAD reads
+# `["Unknown"]|["callback:fn"]|-` and `["Unknown"]|["native:dlopen"]|-` respectively. rust-deep's
+# `rust-deep-ctrl-dlsym` is NOT falsified against `defe53d^` — that commit touched only rust-scan's
+# `crates/candor-scan/src/` files, and rust-deep (`src/lib.rs`, rustc-typed) already read
+# `["Unknown"]|["callback:fn-pointer / closure"]|-` on that same pre-fix binary: it is a PIN of correct,
+# pre-existing behaviour (BACKLOG.md item 2), not a regression fixture, and is stated as such rather than
+# implying a falsification that does not exist.
+echo "PART 79 — a local extern \"C\" call, an unclassified calibrated-crate call, and a dlsym/transmute-resolved-then-invoked function pointer disclose Unknown/invisible byte-identically across rust-scan and rust-deep, and swift's raw-C-interop, @_silgen_name and dlsym/unsafeBitCast paths disclose native:/callback:, never \"functions\": [] (SPEC §4)"
 printf '%s' "$P79_OUT"
-[ "$P79_BAD" = 0 ] && echo "  -> MATCH — a local extern \"C\" declaration and an unclassified libc/nix/rustix generic-fd-verb call both disclose Unknown/invisible byte-identically on rust-scan and rust-deep (or rust-deep SKIPs loudly if this runner lacks the pinned nightly + cargo-dylint), swift's raw Darwin/Glibc free-function and @_silgen_name paths disclose native:<symbol>, and neither the already-sound direct-extern path, the already-sound libc invisible disclosure, nor the modelled Process control moved"
+[ "$P79_BAD" = 0 ] && echo "  -> MATCH — a local extern \"C\" declaration, an unclassified libc/nix/rustix generic-fd-verb call, and a dlsym/transmute-resolved function pointer invocation all disclose Unknown/invisible byte-identically on rust-scan and rust-deep (or rust-deep SKIPs loudly if this runner lacks the pinned nightly + cargo-dylint), swift's raw Darwin/Glibc free-function, @_silgen_name and dlsym/unsafeBitCast paths disclose native:<symbol>/callback:fn, and neither the already-sound direct-extern path, the already-sound libc invisible disclosure, the modelled Process control, nor any resolved-but-uncalled pointer moved"
 [ "$P79_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
 true
 
