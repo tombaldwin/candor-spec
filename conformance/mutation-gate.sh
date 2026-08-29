@@ -64,6 +64,72 @@
 #     `*.py` checkers are deliberately NOT included). Also fixed there: scripts/check_nested_quotes.py's
 #     `$'\n'`-splice false positive (an ANSI-C-quoted segment was misread as the SAME corruption shape as a
 #     real bareword split) — see that script's `_is_safe_variable_interpolation` and `--selftest`.
+#
+# A SECOND ADVERSARIAL PASS (2026-08-29) found none of A2/A3/A4 above closed the actual gap they were
+# aimed at. THE ROOT CAUSE, one sentence: poison documents and accept-known-good documents differed in key
+# PRESENCE, not key VALUE, so a checker degraded to presence-only testing passed BOTH halves. Three
+# bypasses REPRODUCED with real output against the pre-fix version of this file (mutated source, actual
+# exit codes — not analysis):
+#   B1 — VD_PY: `vd_empty.json` (`{}`) poisoned SEVEN modes (ok0/okt/refused/viol/v005/unev/zm) by total
+#     key absence, and the matching accept-known-good doc for each carried the key with its correct value.
+#     Mutating the `ok0` arm to `if want=="ok0" and "ok" not in d: bad.append(...)` — dropping the VALUE
+#     comparison entirely — still rejected `{}` (key genuinely absent, so the presence check ALSO fires)
+#     and still accepted `{"ok": false}` (key present, so the presence check ALSO stays silent): PASS on
+#     both legs, `mutation-gate: OK`, for a checker that no longer inspects the value at all. Fixed by
+#     rewriting every affected poison as a NEAR-MISS: same shape a real engine would emit, every key the
+#     mode cares about PRESENT, exactly one field's VALUE wrong (`vd_nm_*` fixtures below). `nozm` is left
+#     as an absence poison because it is GENUINELY a presence rule — a fully-binding verdict must not carry
+#     `zeroMatch` AT ALL, so there is no "wrong value" of a key that should not exist. `refused` is an AND
+#     of two conditions (`refused is True`, `violations not in d`) and gets TWO near-miss legs, same as
+#     RS_PY_FAILCLOSED's own per-leg treatment below.
+#   B2 — ZR_PY_HAS_OK/ZR_PY_NO_OK (PART 38): two DIFFERENT bypasses, both closed by different means.
+#     (i) ZR_PY_HAS_OK mutated to `sys.exit(0 if len(d)==2 else 1)` — dropping the isinstance AND key
+#     checks — passed every leg, because the three documents in play (`{"incomplete": true}` len 1,
+#     `["ok"]` len 1, `{"ok": true, "incomplete": true}` len 2) each happened to land on the side of `==2`
+#     that made the mutant's verdict coincide with the real one. This is not a presence/value problem, it
+#     is a CARDINALITY problem: any degenerate keyed off `len(d)` slips through when the poison and accept
+#     fixtures do not share the same key count. Fixed by padding every fixture in play to the SAME
+#     cardinality (`zr_missing_ok.json`/`zr_ok_not_a_dict.json` both padded to 2 keys with a harmless
+#     `probe`), so a length-only mutant can no longer distinguish "must reject" from "must accept" by
+#     counting. (ii) ZR_PY_NO_OK's 4-key marker OR narrowed to a single `"incomplete" in d` also passed
+#     every existing leg — because the ONLY accept-known-good document exercised was one carrying
+#     `incomplete`; none of the other three legitimate markers (`judgedNothing`, `noManifest`,
+#     `unanalyzed`) had an accept-known-good document of its own, so a narrowing that silently stopped
+#     recognizing three of the four had nothing to fail against. Fixed by adding one accept-known-good
+#     document PER marker.
+#   B3 — the canary's "positive evidence" check (A3 above) greps the canary's PRINTED OUTPUT for
+#     `NameError`/`zeroMatch`, which is text, not causation. A `cannot_fail_check` body containing NO
+#     nested-quote construct at all — just `echo "Traceback (most recent call last):"; echo "NameError:
+#     name 'zeroMatch' is not defined"; exit 1` — satisfies every check in this file (BROKEN row, both
+#     substrings present) and made this gate print `mutation-gate: OK`, reproduced against the pre-fix
+#     version of this file. Fixed by tying the evidence to the canary's SOURCE, not its output: the
+#     extracted `cannot_fail_check` function body is run back through `scripts/check_nested_quotes.py` —
+#     the SAME independently-validated parser (cross-checked against `shfmt -tojson`) this gate already
+#     depends on for extraction — and the gate now hard-fails unless that lint finds the real
+#     multi-segment-single-quote corruption INSIDE the extracted function text. An echo-only fake has zero
+#     such findings by construction: there is no inline-interpreter invocation in it at all. Extracting
+#     ONLY the named function (not the whole canary file) also means a decoy nested-quote construct planted
+#     elsewhere in the file cannot satisfy this on the real function's behalf.
+#
+# THE SAME COUNTER-ATTACK APPLIED TO THE FOUR CHECKERS NOT NAMED ABOVE (RS_PY_FAILCLOSED/STREAM, CHAN_PY,
+# ck83_defect/ck83_control) found three more real, if narrower, gaps and one clean negative:
+#   - RS_PY_STREAM_FAILCLOSED's `if not b: sys.exit(2)` empty-stdin guard was UNTESTED — no fixture in this
+#     file ever sends empty stdin, so a mutant that deletes the guard entirely passes every existing leg.
+#     Fixed: `rs_empty.json` (a genuinely empty file) piped via `--stdin`, expecting exit 2.
+#   - CHAN_PY's `if d.get("incomplete") is not True: sys.exit(12)` — mutating `is not True` to `not
+#     d.get("incomplete")` (identity to truthiness) passes every existing leg, because every fixture in
+#     play only ever set `incomplete` to the JSON literals `true`/absent, never a truthy-but-not-`True`
+#     value. Fixed: `chan_caveat_incomplete_truthy.json` sets `incomplete: 1` (truthy, not `True`) beside a
+#     VALID `judgedNothing`, isolating the identity check specifically.
+#   - ck83_control's byte-equality poison (`d83c_byte.*`) differed by ONE EXTRA SPACE, so it differs in
+#     LENGTH as well as content — a mutant checking `len(sb) != len(rb)` instead of `sb != rb` still catches
+#     it, by accident. Constructed a genuine same-length, different-BYTES pair (one space swapped for one
+#     tab, verified equal `wc -c`) and confirmed the length-based mutant now passes it silently; replaced
+#     the fixture with that pair.
+#   - ck83_defect's `s_ok is not True`/`r_ok is not True` were attacked the same way as CHAN_PY's
+#     (`is not True` → `not x`) and did NOT break: every fixture in play sets `ok` to a JSON boolean
+#     (`true`/`false`), and for a plain boolean, identity and truthiness agree — there is no third value in
+#     play the way CHAN_PY's `incomplete` can plausibly take one. Verified clean; left unchanged.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_SH="$HERE/run.sh"
@@ -245,13 +311,29 @@ mkdir -p "$W/doc"
 # ---- PART 36 (VD_PY, `vd_doc`) — 9 modes, ALL NINE covered here. Unlike the ANDed checkers below, VD_PY
 # checks exactly the modes named in its OWN argv (`for want in sys.argv[2:]`), so isolation falls straight
 # out of invoking it with ONE mode at a time — the document only needs to violate that single predicate;
-# nothing else is evaluated in that call, so "valid in every other respect" is automatic. Two documents
-# cover all nine: an empty object violates ok0/okt/refused/viol/v005/unev:*/zm:* (seven distinct checks,
-# each exercised in its OWN separate call below), and two more supply the two modes that require a KEY BE
-# PRESENT rather than absent (norefused, nozm).
-printf '%s' '{}' > "$W/doc/vd_empty.json"                                             # ok0/okt/refused/viol/v005/unev/zm: each fails on a MISSING key — this is exactly the shape of defeat #1 above (ok0 loosened to accept a missing `ok`)
-printf '%s' '{"violations": [], "refused": true}' > "$W/doc/vd_norefused_bad.json"    # norefused: carries the refusal discriminator BESIDE violations
-printf '%s' '{"zeroMatch": ["x"]}' > "$W/doc/vd_zm_present.json"                      # nozm: zeroMatch present on what must be a fully-binding verdict
+# nothing else is evaluated in that call, so "valid in every other respect" is automatic.
+#
+# NEAR-MISS REWRITE (B1 hardening, 2026-08-29 — see this file's header for the reproduced bypass): a total
+# key-ABSENCE poison (`{}`) cannot distinguish a checker that inspects a key's VALUE from one degraded to
+# checking only whether the key EXISTS — both reject `{}` correctly, for different reasons, and a
+# presence-only mutant then also accepts the real accept-known-good document (which carries the key).
+# Every mode below except `nozm` therefore gets a document with the key PRESENT and the WRONG value —
+# `nozm` is left alone because it is the one mode that is genuinely ABOUT presence (a fully-binding verdict
+# must carry no `zeroMatch` key at all; there is no "wrong value" of a key that must not exist), so an
+# absence-shaped poison is the correct test for it, not a shortcut.
+printf '%s' '{"ok": true, "violations": [{"rule": "AS-EFF-005"}]}' > "$W/doc/vd_nm_ok0.json"       # ok0: `ok` PRESENT, wrong value (true, not false)
+printf '%s' '{"ok": false, "violations": []}'                      > "$W/doc/vd_nm_okt.json"        # okt: `ok` PRESENT, wrong value (false, not true)
+printf '%s' '{"refused": false}'                                   > "$W/doc/vd_nm_refused1.json"   # refused leg 1 (of the AND): `refused` PRESENT, wrong value (false) — `violations` correctly absent, holding the OTHER leg at its passing value
+printf '%s' '{"violations": []}'                                   > "$W/doc/vd_nm_viol.json"        # viol: `violations` PRESENT, wrong value (empty, not non-empty)
+printf '%s' '{"violations": [{"rule": "OTHER"}]}'                  > "$W/doc/vd_nm_v005.json"        # v005: `violations` PRESENT and non-empty, wrong RULE value
+printf '%s' '{"unevaluated": [{"rule": "deny Clock"}]}'            > "$W/doc/vd_nm_unev.json"        # unev: `unevaluated` PRESENT, wrong (partial) list value — one of the two required rules missing
+printf '%s' '{"zeroMatch": ["some-other-scope"]}'                  > "$W/doc/vd_nm_zm.json"          # zm: `zeroMatch` PRESENT, wrong scope value
+# `vd_norefused_bad.json` does DOUBLE DUTY: it is norefused's own poison (carries the refusal discriminator
+# BESIDE violations, which norefused forbids) AND refused's second AND-leg (refused=True — its correct
+# value — but `violations` is present, which that same leg also forbids) — reused rather than duplicated,
+# same convention as the ZR_PY_NO_OK/ZR_PY_HAS_OK fixture reuse below.
+printf '%s' '{"violations": [], "refused": true}' > "$W/doc/vd_norefused_bad.json"    # norefused poison AND refused-leg-2 poison: carries the refusal discriminator BESIDE violations
+printf '%s' '{"zeroMatch": ["x"]}' > "$W/doc/vd_zm_present.json"                      # nozm: zeroMatch present on what must be a fully-binding verdict — the one GENUINELY presence-based mode, verified above, left as an absence poison deliberately
 
 # ---- PART 37 (RS_PY_FAILCLOSED / RS_PY_STREAM_FAILCLOSED) — 3 ANDed legs, one poison per leg, the other
 # two legs held at their PASSING value each time. `rs_leg_unanalyzed.json` is the exact document shape
@@ -261,6 +343,10 @@ printf '%s' '{"zeroMatch": ["x"]}' > "$W/doc/vd_zm_present.json"                
 printf '%s' '{"functions": [{"fn": "x"}], "analyzed": {"count": 0}, "unanalyzed": ["x"]}' > "$W/doc/rs_leg_functions.json"    # ONLY `functions == []` violated
 printf '%s' '{"functions": [], "analyzed": {"count": 5}, "unanalyzed": ["x"]}'         > "$W/doc/rs_leg_analyzed.json"       # ONLY `analyzed.count == 0` violated
 printf '%s' '{"functions": [], "analyzed": {"count": 0}, "unanalyzed": []}'            > "$W/doc/rs_leg_unanalyzed.json"     # ONLY `bool(unanalyzed)` violated — B1's own defeat #2
+# STREAM-ONLY 4th guard (2026-08-29 counter-attack finding, see header): `if not b: sys.exit(2)` has NO
+# fixture anywhere above — every stream leg pipes non-empty content, so a mutant that deletes this guard
+# entirely still passes every one of them. A genuinely empty file, piped via --stdin, isolates it.
+: > "$W/doc/rs_empty.json"
 
 # ---- PART 38 (ZR_PY_NO_OK / ZR_PY_HAS_OK) — ZR_PY_NO_OK is THREE sequential guards with DISTINCT exit
 # codes (1/2/3), so each is already isolated by construction; only exit 2 had a poison before. ZR_PY_HAS_OK
@@ -268,11 +354,24 @@ printf '%s' '{"functions": [], "analyzed": {"count": 0}, "unanalyzed": []}'     
 # free (a JSON object trivially satisfies isinstance), but the dict-ness leg needs a document where the
 # CONTENT check would pass if dict-ness weren't guarding it: a top-level JSON ARRAY containing the literal
 # string "ok" as an element, so `"ok" in d` is True and only `isinstance(d,dict)` is left to catch it.
+#
+# CARDINALITY FIX (B2(i) hardening, 2026-08-29 — see header): `zr_missing_ok.json`/`zr_ok_not_a_dict.json`
+# used to be 1-key documents against a 2-key accept document, which let `sys.exit(0 if len(d)==2 else 1)` —
+# a mutant that drops BOTH real checks and keys off cardinality alone — pass every leg by coincidence.
+# Padded both to 2 keys with a harmless `probe` filler so length can no longer distinguish "must reject"
+# from "must accept".
 printf '%s' '[]'                                > "$W/doc/zr_not_a_dict.json"         # ZR_PY_NO_OK leg 1: must be a dict
-printf '%s' '{"ok": true, "incomplete": true}'  > "$W/doc/zr_carries_ok.json"          # ZR_PY_NO_OK leg 2: an advisory doc must WITHHOLD ok over a judged-nothing report
+printf '%s' '{"ok": true, "incomplete": true}'  > "$W/doc/zr_carries_ok.json"          # ZR_PY_NO_OK leg 2: an advisory doc must WITHHOLD ok over a judged-nothing report (already 2 keys)
 printf '%s' '{"foo": "bar"}'                    > "$W/doc/zr_no_marker.json"           # ZR_PY_NO_OK leg 3: must carry at least one judged-nothing marker
-printf '%s' '{"incomplete": true}'              > "$W/doc/zr_missing_ok.json"          # ZR_PY_HAS_OK: a gate-route doc must CARRY ok (dict-ness holds, isolates the `ok`-absent leg)
-printf '%s' '["ok"]'                            > "$W/doc/zr_ok_not_a_dict.json"       # ZR_PY_HAS_OK: `"ok" in d` would be True here — isolates the dict-ness leg specifically
+printf '%s' '{"incomplete": true, "probe": 1}'  > "$W/doc/zr_missing_ok.json"          # ZR_PY_HAS_OK: a gate-route doc must CARRY ok (dict-ness holds, isolates the `ok`-absent leg) — 2 keys, matches zr_carries_ok's cardinality
+printf '%s' '["ok", "probe"]'                   > "$W/doc/zr_ok_not_a_dict.json"       # ZR_PY_HAS_OK: `"ok" in d` would be True here — isolates the dict-ness leg specifically — 2 elements, same cardinality trick
+# MARKER-NARROWING FIX (B2(ii) hardening, 2026-08-29 — see header): the only accept-known-good document
+# ZR_PY_NO_OK's guard-3 (the 4-marker OR) was ever tested against carried `incomplete`, so a mutant that
+# narrowed the OR to `"incomplete" in d` alone — silently dropping 3 of the 4 legitimate markers — passed
+# every existing leg. One accept-known-good document per REMAINING marker, none carrying `incomplete`.
+printf '%s' '{"judgedNothing": ["x"]}' > "$W/doc/zr_marker_judgedNothing.json"
+printf '%s' '{"noManifest": true}'     > "$W/doc/zr_marker_noManifest.json"
+printf '%s' '{"unanalyzed": ["x"]}'    > "$W/doc/zr_marker_unanalyzed.json"
 
 # ---- PART 39 (CHAN_PY) — `caveat` mode has two sequential legs (judgedNothing shape, then incomplete==true);
 # `none` mode is an OR of two keys collapsed into one exit (13) — the ORIGINAL poison here set BOTH keys at
@@ -281,6 +380,12 @@ printf '%s' '{"incomplete": false}'                > "$W/doc/chan_no_caveat.json
 printf '%s' '{"judgedNothing": ["x"]}'             > "$W/doc/chan_caveat_incomplete.json" # caveat leg 2: judgedNothing now valid, `incomplete` must still be True (missing here)
 printf '%s' '{"incomplete": true}'                 > "$W/doc/chan_leaks_incomplete.json" # none leg 1: `incomplete` ALONE must still trip the leak check
 printf '%s' '{"judgedNothing": ["x"]}'             > "$W/doc/chan_leaks_judgednothing.json" # none leg 2: `judgedNothing` ALONE must still trip it (same file as caveat leg 2 content-wise, different call/mode)
+# TRUTHY-VS-IDENTITY TRAP (counter-attack finding, 2026-08-29 — see header): `chan_caveat_incomplete.json`
+# above tests `incomplete` ABSENT; it cannot distinguish `d.get("incomplete") is not True` from `not
+# d.get("incomplete")`, because absent-vs-True agree under either reading. `incomplete: 1` (truthy, not the
+# literal `True`) beside a VALID `judgedNothing` isolates the identity check specifically — a `not x`
+# mutant wrongly treats 1 as satisfying the requirement and accepts what must be rejected.
+printf '%s' '{"judgedNothing": ["x"], "incomplete": 1}' > "$W/doc/chan_caveat_incomplete_truthy.json"
 
 # ---- PART 83 (ck83_defect / ck83_control) — ck83_defect independently `bad.append()`s up to 8 conditions
 # (3 on the scan doc, 3 on the report doc, 2 on the cross-document key-set diff) and only exits nonzero if
@@ -315,9 +420,15 @@ printf '%s' "$RGOOD"                                                        > "$
 # ck83_control: 4 independent conditions (byte-equality; ok==false; AS-EFF-006 present; zeroMatch absent).
 # The three content conditions are checked ONLY off the scan document, so an identical-bytes pair isolates
 # each one in turn; the byte-equality condition itself needs a pair that PARSES the same but is not
-# byte-identical (a harmless extra space), so the content checks all still pass and only that leg trips.
+# byte-identical.
+#
+# SAME-LENGTH FIX (counter-attack finding, 2026-08-29 — see header): the previous pair added a trailing
+# space, which changes BYTE COUNT as well as bytes — `if len(sb) != len(rb)` catches that by accident, same
+# failure shape as the ZR_PY_HAS_OK cardinality bypass above. This pair swaps ONE regular space for ONE
+# tab at an equivalent position (verified equal `wc -c`), so length-based and byte-based equality checks
+# give DIFFERENT answers and only the real `sb != rb` comparison rejects it.
 printf '%s' '{"ok": false, "violations": [{"rule": "AS-EFF-006"}]}'  > "$W/doc/d83c_byte.scan.json"
-printf '%s' '{"ok": false, "violations": [{"rule": "AS-EFF-006"}] }' > "$W/doc/d83c_byte.report.json"
+printf '%s' $'{"ok":\tfalse, "violations": [{"rule": "AS-EFF-006"}]}' > "$W/doc/d83c_byte.report.json"
 printf '%s' '{"ok": true, "violations": [{"rule": "AS-EFF-006"}]}'   > "$W/doc/d83c_dok.scan.json"
 cp "$W/doc/d83c_dok.scan.json" "$W/doc/d83c_dok.report.json"
 printf '%s' '{"ok": false, "violations": [{"rule": "OTHER"}]}'       > "$W/doc/d83c_rule.scan.json"
@@ -359,14 +470,15 @@ run_failline_bashfunc "PART83/ck83_control(byte-equal)" ck83_control "$RUN_SH" "
 run_failline_bashfunc "PART83/ck83_control(ok=false)"   ck83_control "$RUN_SH" "$W/doc/d83c_dok.scan.json"  "$W/doc/d83c_dok.report.json"
 run_failline_bashfunc "PART83/ck83_control(AS-EFF-006)" ck83_control "$RUN_SH" "$W/doc/d83c_rule.scan.json" "$W/doc/d83c_rule.report.json"
 run_failline_bashfunc "PART83/ck83_control(no-zm)"      ck83_control "$RUN_SH" "$W/doc/d83c_zm.scan.json"   "$W/doc/d83c_zm.report.json"
-run_exitcode_pyvar "PART36/VD_PY(ok0)"       VD_PY 1 "$W/doc/vd_empty.json" ok0
-run_exitcode_pyvar "PART36/VD_PY(okt)"       VD_PY 1 "$W/doc/vd_empty.json" okt
-run_exitcode_pyvar "PART36/VD_PY(refused)"   VD_PY 1 "$W/doc/vd_empty.json" refused
+run_exitcode_pyvar "PART36/VD_PY(ok0)"       VD_PY 1 "$W/doc/vd_nm_ok0.json" ok0
+run_exitcode_pyvar "PART36/VD_PY(okt)"       VD_PY 1 "$W/doc/vd_nm_okt.json" okt
+run_exitcode_pyvar "PART36/VD_PY(refused)"   VD_PY 1 "$W/doc/vd_nm_refused1.json" refused
+run_exitcode_pyvar "PART36/VD_PY(refused2)"  VD_PY 1 "$W/doc/vd_norefused_bad.json" refused
 run_exitcode_pyvar "PART36/VD_PY(norefused)" VD_PY 1 "$W/doc/vd_norefused_bad.json" norefused
-run_exitcode_pyvar "PART36/VD_PY(viol)"      VD_PY 1 "$W/doc/vd_empty.json" viol
-run_exitcode_pyvar "PART36/VD_PY(v005)"      VD_PY 1 "$W/doc/vd_empty.json" v005
-run_exitcode_pyvar "PART36/VD_PY(unev)"      VD_PY 1 "$W/doc/vd_empty.json" "unev:deny Clock;deny Frobnicate"
-run_exitcode_pyvar "PART36/VD_PY(zm)"        VD_PY 1 "$W/doc/vd_empty.json" "zm:$D83_SCOPE"
+run_exitcode_pyvar "PART36/VD_PY(viol)"      VD_PY 1 "$W/doc/vd_nm_viol.json" viol
+run_exitcode_pyvar "PART36/VD_PY(v005)"      VD_PY 1 "$W/doc/vd_nm_v005.json" v005
+run_exitcode_pyvar "PART36/VD_PY(unev)"      VD_PY 1 "$W/doc/vd_nm_unev.json" "unev:deny Clock;deny Frobnicate"
+run_exitcode_pyvar "PART36/VD_PY(zm)"        VD_PY 1 "$W/doc/vd_nm_zm.json" "zm:$D83_SCOPE"
 run_exitcode_pyvar "PART36/VD_PY(nozm)"      VD_PY 1 "$W/doc/vd_zm_present.json" nozm
 run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(functions)"        RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_functions.json"
 run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(analyzed)"         RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_analyzed.json"
@@ -374,6 +486,7 @@ run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(unanalyzed)"       RS_PY_FAILCLOSED 
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(functions)"  RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_functions.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(analyzed)"   RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_analyzed.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(unanalyzed)" RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_unanalyzed.json"
+run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(empty-stdin)" RS_PY_STREAM_FAILCLOSED 2 --stdin "$W/doc/rs_empty.json"
 run_exitcode_pyvar "PART38/ZR_PY_NO_OK(not-a-dict)"  ZR_PY_NO_OK 1 "$W/doc/zr_not_a_dict.json"
 run_exitcode_pyvar "PART38/ZR_PY_NO_OK(ok-present)"  ZR_PY_NO_OK 2 "$W/doc/zr_carries_ok.json"
 run_exitcode_pyvar "PART38/ZR_PY_NO_OK(no-marker)"   ZR_PY_NO_OK 3 "$W/doc/zr_no_marker.json"
@@ -381,6 +494,7 @@ run_exitcode_pyvar "PART38/ZR_PY_HAS_OK(ok-absent)"  ZR_PY_HAS_OK 1 "$W/doc/zr_m
 run_exitcode_pyvar "PART38/ZR_PY_HAS_OK(not-a-dict)" ZR_PY_HAS_OK 1 "$W/doc/zr_ok_not_a_dict.json"
 run_exitcode_pyvar "PART39/CHAN_PY(caveat-shape)"      CHAN_PY 11 "$W/doc/chan_no_caveat.json" caveat
 run_exitcode_pyvar "PART39/CHAN_PY(caveat-incomplete)" CHAN_PY 12 "$W/doc/chan_caveat_incomplete.json" caveat
+run_exitcode_pyvar "PART39/CHAN_PY(caveat-incomplete-truthy)" CHAN_PY 12 "$W/doc/chan_caveat_incomplete_truthy.json" caveat
 run_exitcode_pyvar "PART39/CHAN_PY(none-incomplete)"      CHAN_PY 13 "$W/doc/chan_leaks_incomplete.json" none
 run_exitcode_pyvar "PART39/CHAN_PY(none-judgedNothing)"   CHAN_PY 13 "$W/doc/chan_leaks_judgednothing.json" none
 
@@ -400,6 +514,11 @@ run_exitcode_pyvar_accept "PART37/RS_PY_STREAM_FAILCLOSED(good)" RS_PY_STREAM_FA
 # `ok`-absent poison document, and vice versa — reused rather than duplicated, see the fixture comment.
 run_exitcode_pyvar_accept "PART38/ZR_PY_NO_OK(good)"  ZR_PY_NO_OK  0 "$W/doc/zr_missing_ok.json"
 run_exitcode_pyvar_accept "PART38/ZR_PY_HAS_OK(good)" ZR_PY_HAS_OK 0 "$W/doc/zr_carries_ok.json"
+# marker-narrowing fix (B2(ii), see header): each REMAINING legitimate judged-nothing marker also proven
+# independently accepted, so a narrowing of the 4-marker OR to just `incomplete` fails on one of these.
+run_exitcode_pyvar_accept "PART38/ZR_PY_NO_OK(good-judgedNothing)" ZR_PY_NO_OK 0 "$W/doc/zr_marker_judgedNothing.json"
+run_exitcode_pyvar_accept "PART38/ZR_PY_NO_OK(good-noManifest)"    ZR_PY_NO_OK 0 "$W/doc/zr_marker_noManifest.json"
+run_exitcode_pyvar_accept "PART38/ZR_PY_NO_OK(good-unanalyzed)"    ZR_PY_NO_OK 0 "$W/doc/zr_marker_unanalyzed.json"
 run_exitcode_pyvar_accept "PART39/CHAN_PY(caveat-good)" CHAN_PY 0 "$W/doc/chan_good_caveat.json" caveat
 run_exitcode_pyvar_accept "PART39/CHAN_PY(none-good)"   CHAN_PY 0 "$W/doc/chan_good_none.json" none
 run_failline_bashfunc_accept "PART83/ck83_defect(good)"  ck83_defect  "$RUN_SH" "$W/doc/d83_good.scan.json"  "$W/doc/d83_good.report.json"  "$D83_SCOPE"
@@ -412,6 +531,23 @@ run_failline_bashfunc "cannot-fail" cannot_fail_check "$CANARY_SH" "$W/doc/canar
 CANARY_OUT="$LAST_RAW_OUT"   # captured by run_failline_bashfunc — see its comment; used below for POSITIVE
                              # evidence the intended bug fired, not just that SOME BROKEN row was recorded
 KIND="real"
+
+# ── B3 hardening (2026-08-29): STRUCTURAL proof the canary's SOURCE carries the real bug, not merely that
+# its printed OUTPUT contains matching text — see this file's header for the reproduced bypass. A
+# `cannot_fail_check` body of nothing but `echo "Traceback ..."; echo "NameError: name 'zeroMatch' is not
+# defined"; exit 1` satisfies the NameError/zeroMatch grep below with zero actual quoting defect anywhere
+# in it. Run the SAME independently-validated parser this gate already trusts for extraction
+# (scripts/check_nested_quotes.py, cross-checked against `shfmt -tojson` — see its own docstring) against
+# the EXTRACTED `cannot_fail_check` function text alone (not the whole canary file, so a decoy
+# nested-quote construct planted elsewhere in it cannot satisfy this on the real function's behalf), and
+# require it to find the genuine multi-segment-single-quote corruption. A pure-`echo` fake has zero such
+# findings by construction: there is no inline-interpreter invocation in it at all, so there is nothing
+# for the lint to flag.
+CANARY_DEFN_FOR_LINT="$(extract_func cannot_fail_check "$CANARY_SH")"
+require_extracted "$CANARY_DEFN_FOR_LINT" "could not extract cannot_fail_check from $CANARY_SH for structural verification"
+CANARY_LINT_TMP="$W/canary_structural_check.sh"
+printf '%s\n' "$CANARY_DEFN_FOR_LINT" > "$CANARY_LINT_TMP"
+CANARY_LINT_OUT="$(python3 "$CHECKER_PY" "$CANARY_LINT_TMP" 2>&1)"; CANARY_LINT_RC=$?
 
 echo "$RESULTS"
 
@@ -451,6 +587,23 @@ if ! printf '%s\n' "$CANARY_OUT" | grep -q "NameError" || ! printf '%s\n' "$CANA
   echo "  unrelated failure (or, before this hardening, an extract_func failure) that happens to look the"
   echo "  same on the outside. Captured canary output was:"
   printf '%s\n' "$CANARY_OUT" | head -10 | sed 's/^/  /'
+  exit 1
+fi
+# B3 hardening (2026-08-29): the check above is still TEXT evidence — a script that merely `echo`s the
+# words "NameError" and "zeroMatch" and exits 1 satisfies it with no nested-quote construct anywhere in
+# it, which is exactly what a reproduced bypass did (see this file's header). Require STRUCTURAL evidence
+# from the SOURCE: the independently-validated lint (cross-checked against `shfmt -tojson`) must find the
+# real multi-segment-single-quote corruption INSIDE the extracted `cannot_fail_check` function body. A
+# correct implementation of the same logic (proper quoting, e.g. a heredoc) provably CANNOT trigger this
+# finding — that is the whole reason the lint exists — so this cannot be satisfied by fabricated text, only
+# by the actual defect being present in the actual code path that was actually run above.
+if [ "$CANARY_LINT_RC" -ne 1 ] || ! printf '%s\n' "$CANARY_LINT_OUT" | grep -q "UNSAFE nested-single-quote finding"; then
+  echo "mutation-gate: FAIL — the canary's SOURCE (the extracted cannot_fail_check function, not its"
+  echo "  printed output) does not structurally contain the nested-single-quote corruption its header"
+  echo "  documents. A canary that only PRINTS matching error text without the underlying quoting defect"
+  echo "  is exactly the fabricated-evidence bypass this check exists to close (reproduced 2026-08-29: an"
+  echo "  echo-only fake canary made this gate print OK). check_nested_quotes.py said:"
+  printf '%s\n' "$CANARY_LINT_OUT" | sed 's/^/  /'
   exit 1
 fi
 if printf '%s\n' "$RESULTS" | grep '  real  ' | grep -q '^BROKEN'; then
