@@ -56,7 +56,7 @@ identifies a pre-rung producer precisely, and a report that peeked nothing never
 **The remedy is ⟨0.32⟩'s made exact: RE-SCAN UNDER THE SAME POLICY** — the same one, not *a* policy, which
 is the loose reading that produced this hole, because the operator who hits it did scan with a policy.
 **⟨0.34⟩ IS NOT ADDITIVE EITHER, and what it breaks is a flag that was previously ACCEPTED AND IGNORED.**
-Two of its three parts cost a consumer nothing: the cross-policy refusal's remedy now names the real cause
+Two of its four parts cost a consumer nothing: the cross-policy refusal's remedy now names the real cause
 when the report predates ⟨0.33⟩ (message-only — verdict, exit code and the gate document are byte-identical,
 §3.1), and the `zeroMatch` carve-out RELAXES §3.1's byte-equality rather than tightening it, describing a
 divergence that was already there in all four engines. The third does break: `--policy` on a descriptive
@@ -67,6 +67,13 @@ never depended on the flag; an operator who passed one received a verdict comput
 nothing. It fails CLOSED, and the cost is bounded exactly to invocations that pass the flag — every other
 invocation of those verbs is byte-identical to ⟨0.33⟩. **The remedy names the verb that does the job:**
 `gate --report <locator> --policy <file>`, or `whatif`/`fix`/`fix-gate`/`unverified` for a pre-edit check.
+**The fourth also breaks a verdict, in the fail-closed direction**: the peek scope-match property (§2 above,
+PART 85) widens the `<scope>` test a `deny`/`pure` rule runs against a peek finding to every in-scope caller
+that reaches it, not only the excluded declaration's own name, so a scoped policy that previously answered
+`policy ✓` over a tree where the denied effect was reached ONLY through in-scope dynamic dispatch into
+excluded code can now exit 2 on the same bytes. The remedy is the finding itself: the effect was always
+there, denied, and unreported — there is no upgrade note, because there is no previously-correct behaviour
+to preserve.
 **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
@@ -926,6 +933,60 @@ already carry.
   file, and an engine peeking several classes in one run (candor-swift reads `harness-target` and
   `manifest` together) must not let one unreadable test file delete what it did read. An unread file the
   producer cannot attribute to a class withdraws the claim for ALL of them: fail closed.
+
+- ⟨0.34⟩ **A PEEK FINDING'S SCOPE TEST MUST CONSIDER EVERY IN-SCOPE CALLER THAT REACHES IT, NEVER ONLY THE
+  EXCLUDED DECLARATION'S OWN QUALIFIED NAME.** CARDINAL SIN, found and closed four-way 2026-08-29 (swift
+  `7378f4f`, rust `27f4beb`, java `a034371`, ts `8584572`; PART 85). The `outOfScope` clause above says a
+  finding is ATTRIBUTED to the excluded declaration; the hole was in how §6.2's `<scope>` test was RUN
+  against that attribution — every engine matched `<scope>` only against the excluded declaration's own
+  qualified name, so a `deny <Effect> <scope>` rule scoped to an IN-SCOPE CALLER that reaches the excluded
+  declaration only through dynamic dispatch could never match, and a real, denied effect passed silently at
+  exit 0. Measured identically four ways: an in-scope dispatcher (`Runner`) whose one visible implementer is
+  pure, plus an excluded conformer/override (a test-source file, an uncompiled `.java`, a multi-release
+  class, a `satisfies`-only structural conformer) performing the denied effect and reached ONLY through that
+  dispatcher — `deny Net Runner` answered `policy ✓`, `outOfScope: []`, exit 0, while the identical tree
+  under the unscoped `deny Net` already named the excluded declaration directly. Holding the tree, the
+  binary and the effect constant and varying only the policy's scope string isolated the scope test, not
+  attribution, as the defect.
+
+  **The property, stated so the fix does not re-narrow to the instance that found it:** a peek finding MUST
+  be scope-matched against, or attributed to, any in-scope caller whose own analysis over the union of
+  context and excluded material reaches the effect — not only the excluded declaration's own qualified
+  name. §6.2's `<scope>` test runs against the finding's attributed name AND against every in-scope function
+  the peek's own resolution shows reaching it, however that engine computes reachability: a re-analysis over
+  a unioned file set with an effect-set diff against the primary's own finalized result (swift, java), a
+  syntactic dispatch-site cross-reference against facts the primary scan already computed with no
+  re-analysis at all (rust), or a recorded interface-dispatch correlation at the CHA site itself (ts). Four
+  engines, four different mechanisms, one property — and the mechanism is provably irrelevant to the
+  property: ts's structural and nominal dispatch fail identically, which is the tell that the defect was
+  never in dispatch resolution, only in which entity the scope test was asked about. **Attribution — which
+  declaration a finding NAMES — is unchanged by this clause; only the SCOPE TEST widens.**
+
+  **The `dispatch-widened` conditional fallback.** Where the peek's own union grows an in-scope function's
+  effect set and no single excluded declaration's own analysis explains the growth with confidence, the
+  finding MUST still be disclosed — as an `outOfScope` entry attributed to the in-scope call site, with
+  `class` set to the literal `dispatch-widened` — rather than dropped. A wrong-but-visible attribution is
+  recoverable; a silent drop is not: this is the ⟨0.21⟩/⟨0.24⟩/⟨0.26⟩ three-row discipline (absence licenses
+  a claim only when the report could have said otherwise) applied to ATTRIBUTION CONFIDENCE rather than to
+  presence. `dispatch-widened` is a value of **`outOfScope[].class`**, never of `excluded[].class`: it says
+  why THIS FINDING's attribution is imprecise, not why a file was excluded from the scan, and the two
+  `class` fields stay independent vocabularies. Unlike `excluded[].class` (engine-chosen, not interchange
+  vocabulary — see the clause above), **`dispatch-widened` IS interchange vocabulary**: every engine whose
+  peek can produce this shape at all MUST spell it exactly this way, because a consumer has no per-engine
+  exclusion-class list to fall back on for a field whose whole purpose is comparing a finding across
+  engines.
+
+  **The class is CONDITIONAL on the mechanism, not mandatory four-way.** Only an engine whose peek unions
+  in-scope and excluded material can ever reach the ambiguous case this class exists for. candor-rust's peek
+  never re-analyses in-scope files — it cross-references facts the primary scan already computed (dispatch
+  sites, an excluded type's trait membership) — so its attribution is never ambiguous and it MUST NOT be
+  required to emit `dispatch-widened`: mandating the class four-way would force an engine with no ambiguous
+  case to carry vocabulary it can never use, which is how a report format acquires a dead key (the same
+  hazard `excluded[].class`'s own per-engine tokens exist to avoid, one field over). swift, java and ts DO
+  union and DO need it. Conversely, an engine MUST NOT emit `dispatch-widened` where the responsible
+  declaration COULD be named with confidence — an over-charge control, because disclosing an ambiguity that
+  was never there degrades the class into the blanket "everything is Unknown" hedge ⟨0.19⟩'s reason-scoping
+  exists to prevent, and a peek finding attributable to exactly one excluded declaration MUST name it.
 
 - ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2
   already binds the consumer; this states the consequence for the VERDICT, because the route that

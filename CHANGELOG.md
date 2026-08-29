@@ -566,6 +566,79 @@ Run it after any patch-cycle commit that adds a section here.
   that commit's own message claiming the rewrite had happened. `must_ledger.py`: 517/517 classified, 12
   unenforced. `conformance/run.sh`: OK. `conformance/mutation-gate.sh`: OK.
 
+- **⟨0.34⟩ gains its fourth part, and the OWED row for it: the PEEK SCOPE-MATCH PROPERTY, plus the
+  conditional `dispatch-widened` fallback — SPEC §2/§6.2, conformance PART 85, four-way.** Closes the
+  FOUR-WAY CARDINAL SIN found 2026-08-29 and fixed same-day with four genuinely different mechanisms
+  (swift `7378f4f`, rust `27f4beb`, java `a034371`, ts `8584572`), which had landed in all four engines
+  with no SPEC clause and no conformance row under it — exactly the ⟨0.34⟩ mistake ("ports ahead of
+  rows") CLAUDE.md now names, at three times the scale that cost the first two follow-up fixes.
+
+  **The property**, stated so the fix does not re-narrow to the instance that found it: a peek finding
+  MUST be scope-matched against, or attributed to, any in-scope caller whose own analysis over the union
+  of context and excluded material reaches the effect — not only the excluded declaration's own
+  qualified name. §6.2's `<scope>` test now runs against the finding's attributed name AND against every
+  in-scope function the peek's own resolution shows reaching it. Attribution (which declaration a finding
+  NAMES) is unchanged; only the scope test widens.
+
+  **`dispatch-widened`** is the conditional fallback where the responsible excluded declaration cannot be
+  named with confidence: the finding is disclosed against the in-scope call site, as an `outOfScope[].class`
+  value (never `excluded[].class` — the two `class` fields stay independent vocabularies), rather than
+  dropped. It is CONDITIONAL, not mandatory four-way: only an engine whose peek unions in-scope and
+  excluded material can ever reach the ambiguous case it exists for. candor-rust's peek never re-analyses
+  in-scope files — it cross-references facts the primary scan already computed — so its attribution is
+  never ambiguous and it MUST NOT be required to emit the class; swift, java and ts DO union and DO need
+  it. An engine MUST NOT emit `dispatch-widened` where the declaration COULD be named with confidence
+  (the over-charge direction).
+
+  **PART 85** pins both, four-way, with the fixture shape all four fix commits share (an in-scope
+  dispatcher through a shared interface/protocol/trait, a pure visible implementer, and a SEPARATE excluded
+  conformer performing the denied effect, reached only through that dispatcher): a `deny Net Runner`-shaped
+  scoped rule now catches it (the defect, closed); the unscoped form of the same rule stays a single
+  finding (the pre-existing control, unaffected); a scope matching neither the declaration nor any reaching
+  caller stays silent (the over-charge control). Each engine's cell also asserts `dispatch-widened` does
+  NOT fire in this unambiguous fixture — the BACKLOG's own over-charge requirement — and a separate ts-only
+  arm proves the class genuinely fires when attribution is truly unresolvable (an unattributable
+  `paths`-mapped interface reference, reusing ts's own regression fixture shape). **Falsified against each
+  engine's own pre-fix commit** in throwaway worktrees before being trusted: rust, java and swift all
+  reproduce the exact silent exit-0 shape on `27f4beb^`/`a034371^`/`7378f4f^`; ts required `npm install` in
+  its pre-fix worktree to run at all, then reproduced identically. The java fixture uses a FLAT
+  compiled-output layout rather than a nested one, deliberately: a nested `classes/` subdirectory trips an
+  unrelated, ancillary classpath-resolution bug the same fix commit also happens to close, which would
+  have conflated two different defects in one row.
+
+  MUST ledger: 4 new part-named entries (the property clause, the fallback clause, and the conditional
+  clause, all PART 85) plus a re-hash of the ⟨0.34⟩ versioning-narrative block for its now-FOUR parts;
+  521/521 classified, 12 unenforced (unchanged). `conformance/run.sh`: OK (see the run log). No existing
+  row weakened; the skip-ratchet baseline is untouched.
+
+- **SOUNDNESS.md and SOUNDNESS-LOG.md: seven entries for 2026-08-29's cardinal sins**, each with its
+  commit and its measured evidence — the four-way peek scope-match sin above; rust-deep's `Drop` in
+  move-captured closures and `drop(x)` container walking (`3e9848c`); swift's R33 deinit-glue binder-shape
+  gap (`10dc79e`); java's record `ObjectMethods` contract-method reentry, falsified on 388 real jars
+  (`3a84522`); candor-agents' `deny Unknown` compiling to nothing (`69e9e98`), the first time that repo had
+  been attacked; the consumer-refusal class across `integrations/` (candor `0d483a8`/`ac4a71b`), the most
+  consequential class found this session because it sits downstream of every completeness rung ever
+  shipped; and the 13-of-13 standalone-checker survey (`90cee30`), the third "instrument that cannot fail"
+  found in overlapping investigations the same week.
+
+- **`conformance/gen_differential.py`: the multi-caller callback row, now unblocked** (ts `d5f6c0c`, swift
+  `7a89dbc` both fixed the underlying fabrication first, per the BACKLOG's own ordering — "fix the engines
+  before extending the generator here, or the generator will bless it"). A new compound shape,
+  `callback_multi` (two entry fns sharing ONE HOF: one caller's callback performs the effect, the sibling's
+  is pure), built directly in `build_cells()` since a single name/single accept-set cell cannot express two
+  entry points sharing one declaration. **The acceptance rule is split, deliberately, because reusing the
+  existing single-caller `acc_callback` tolerance here would rubber-stamp the exact fabrication this row
+  exists to catch**: the effectful caller keeps the existing tolerance ({effect} | {Unknown} |
+  {effect,Unknown}), but the pure sibling's accept set EXCLUDES the effect entirely ({} | {Unknown} only) —
+  reporting the sibling's effect, with or without an `Unknown` alongside it, can only mean the engine
+  inherited its neighbour's resolved target rather than resolving its own call site. Verified against the
+  current (fixed) engines: all 4 agree on all 117 cells including the 9 new multi-caller ones, matching the
+  BACKLOG's own measured table (rust hedges `Unknown` on both callers; java resolves per call site
+  precisely; ts/swift now correctly answer pure on the sibling). **Falsified against the pre-fix binaries**
+  in throwaway worktrees (`d5f6c0c^`, `7a89dbc^`): every sibling cell reddens as FABRICATION on both ts and
+  swift, while the effectful-caller cells and the pre-existing single-caller `callback` cells stay in the
+  accepted band — proving the new row would have caught the original bug without touching any existing one.
+
 ## [0.33.0] — 2026-08-26
 - **SOUNDNESS.md closes R54 and R55, and a MUST-ledger sentence that was false is corrected.**
   R54 (`diff`) and R55 (`receipt`) still read `SILENT (open)` while four commits had closed them.

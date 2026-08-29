@@ -14,6 +14,10 @@ extra effect). The KILLER case is `loop_elem` (`for c in xs { c.sink() }`) -- en
 DESIGN -- extend in ONE place:
   * add an EFFECT  -> append to EFFECTS  (per-language sink expr + expected effect)
   * add an INDIRECTION -> append to INDIRECTIONS (a renderer per language + an acceptance rule)
+  * the ONE exception: `callback_multi` is a COMPOUND shape (two entry fns sharing one HOF, one
+    effectful caller and one pure sibling) that a single name/single accept-set cell cannot express, so
+    it is built directly in build_cells() rather than added to INDIRECTIONS -- see r_callback_multi's own
+    comment for why, and why its two accept-sets must differ (BACKLOG "FABRICATION in ts and swift").
 
 USAGE:
     python3 gen_differential.py            # run the full matrix, exit non-zero on any disagreement
@@ -357,6 +361,60 @@ def r_fn_returned_dyn(eff, name, sfx):
     }
 
 
+# ---- MULTI-CALLER CALLBACK (compound: two entry fns sharing ONE HOF, not a normal indirection cell) ---
+# BACKLOG "FABRICATION in ts and swift: a shared HOF's effects are charged to EVERY caller" — the
+# single-caller `callback` cell above cannot see this class of bug at all: with exactly one caller per
+# HOF, a correct per-call-site resolution and a buggy union-everything-onto-the-HOF's-own-node resolution
+# produce IDENTICAL output, which is why the original fabrication (ts `d5f6c0c`, swift `7a89dbc`) survived
+# both engines' own fuzzers AND this generator for as long as neither ever seeded two callers of one HOF.
+#
+# Two callers of the SAME `hof`, passing two DIFFERENT named callbacks: `name_a`'s does the sink, `name_b`'s
+# is pure. The two entry fns are emitted TOGETHER in one code block (attached to the `_a` cell; the `_b`
+# cell's code is empty in every language) so the HOF and both callbacks are declared exactly once — two
+# logical cells, one physical declaration, the same discipline `write_sources` already relies on for every
+# other cell (`code[lang]` is concatenated, not deduplicated, so a second copy of the HOF would be a
+# redeclaration error in rust/java/ts/swift alike).
+#
+# THE ACCEPTANCE SPLIT IS THE WHOLE POINT (this is what the existing `acc_callback` cannot express, and
+# reusing it here would rubber-stamp the exact fabrication this shape exists to catch — see the BACKLOG
+# entry "NOW UNBLOCKED"): `name_a` (the effectful caller) keeps the single-caller tolerance, honestly
+# indeterminate from a generic HOF's standpoint — {effect} | {Unknown} | {effect,Unknown}. `name_b` (the
+# PURE caller) explicitly EXCLUDES the effect: only {} (correctly resolved) or {Unknown} (an honest
+# "cannot resolve this call site" hedge) are legitimate: `name_b` reporting the cell's effect at all — with
+# or without an Unknown alongside it — is FABRICATION, because it can only have arrived by inheriting its
+# SIBLING's resolved target, never its own. Measured against the real bug before it was fixed: rust hedges
+# {Unknown} on BOTH callers (honest, passes both accept sets); java resolves per call site precisely
+# ({effect,Unknown} on name_a, {Unknown} alone on name_b, passes both); ts and swift pooled the union onto
+# both ({effect} on name_a AND name_b) — name_a passes, name_b does not, which is exactly the row catching
+# the fabrication the single-caller cell was structurally blind to.
+def r_callback_multi(eff, name_a, name_b, sfx):
+    sa, sb, hof = f"s_{sfx}_cma", f"s_{sfx}_cmb", f"hof_{sfx}_cm"
+    return {
+        "rust":  f'fn {sa}() {{ {eff["sink"]["rust"]} }}\nfn {sb}() {{ }}\n'
+                 f'fn {hof}(cb: fn()) {{ cb(); }}\n'
+                 f'pub fn {name_a}() {{ {hof}({sa}); }}\npub fn {name_b}() {{ {hof}({sb}); }}',
+        "java":  f'  static void {sa}() {{ {eff["sink"]["java"]} }}\n  static void {sb}() {{ }}\n'
+                 f'  static void {hof}(Runnable cb) {{ cb.run(); }}\n'
+                 f'  public static void {name_a}() throws Exception {{ {hof}(Cases::{sa}); }}\n'
+                 f'  public static void {name_b}() throws Exception {{ {hof}(Cases::{sb}); }}',
+        "ts":    f'function {sa}(): void {{ {eff["sink"]["ts"]} }}\nfunction {sb}(): void {{ }}\n'
+                 f'function {hof}(cb: () => void): void {{ cb(); }}\n'
+                 f'export function {name_a}(): void {{ {hof}({sa}); }}\n'
+                 f'export function {name_b}(): void {{ {hof}({sb}); }}',
+        "swift": f'func {sa}() {{ {eff["sink"]["swift"]} }}\nfunc {sb}() {{ }}\n'
+                 f'func {hof}(_ cb: () -> Void) {{ cb() }}\n'
+                 f'func {name_a}() {{ {hof}({sa}) }}\nfunc {name_b}() {{ {hof}({sb}) }}',
+    }
+
+
+def acc_callback_multi_a(effect):
+    return [frozenset({effect}), frozenset({UNKNOWN}), frozenset({effect, UNKNOWN})]
+
+
+def acc_callback_multi_b(effect):
+    return [frozenset(), frozenset({UNKNOWN})]
+
+
 INDIRECTIONS = [
     dict(id="direct",              render=r_direct,              accept=acc_exact),
     dict(id="local_call",          render=r_local_call,          accept=acc_exact),
@@ -388,6 +446,22 @@ def build_cells():
                 accept=[set(a) for a in ind["accept"](eff["effect"])],
                 code=ind["render"](eff, name, eff["id"]),
             ))
+    # ---- compound: multi-caller callback, one HOF shared by two entry fns (see r_callback_multi) -------
+    empty_code = {lang: "" for lang in ("rust", "java", "ts", "swift")}
+    for eff in EFFECTS:
+        name_a = f"g_{eff['id']}_callback_multi_a"
+        name_b = f"g_{eff['id']}_callback_multi_b"
+        shared_code = r_callback_multi(eff, name_a, name_b, eff["id"])
+        cells.append(dict(
+            name=name_a, effect=eff["effect"], effect_id=eff["id"], indirection="callback_multi_a",
+            accept=[set(a) for a in acc_callback_multi_a(eff["effect"])], code=shared_code,
+        ))
+        cells.append(dict(
+            name=name_b, effect=eff["effect"], effect_id=eff["id"], indirection="callback_multi_b",
+            # the SIBLING's effect must never appear here; the code that declares BOTH `name_a` and
+            # `name_b` travels with the `_a` cell above so the HOF and both callbacks are emitted once.
+            accept=[set(a) for a in acc_callback_multi_b(eff["effect"])], code=empty_code,
+        ))
     return cells
 
 

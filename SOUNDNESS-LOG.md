@@ -3666,3 +3666,52 @@ above. Neither introduces a new SKIP key for `skip_ratchet.py`: both spell an ab
 existing runner-absence form (`-> SKIP     (candor-X: not present on this runner — NOT asked)`, matching
 PART 81's own wording) rather than the reference-led form the ratchet counts, and on this machine (ts and
 swift both present) neither branch fires at all.
+
+### 2026-08-29 — a full-family adversarial day: the peek scope-match cardinal sin (four-way) plus six more
+
+Full detail and per-item evidence lives in SOUNDNESS.md's §8.1 round/batch index table (the seven rows
+dated 2026-08-29); this entry is the index pointer the file's own convention asks for. Summary, in the
+order the table carries them:
+
+1. **The peek scope-match cardinal sin, four-way** (swift `7378f4f`, rust `27f4beb`, java `a034371`,
+   ts `8584572`) — a peek finding's `<scope>` test ran only against the excluded declaration's own
+   qualified name, never against an in-scope caller reaching it via dynamic dispatch, so a scoped `deny`
+   rule silently missed effects an unscoped rule already caught. Closed with four genuinely different
+   mechanisms sharing one property (SPEC §2/§6.2 ⟨0.34⟩), pinned by conformance PART 85 with the
+   `dispatch-widened` fallback CONDITIONAL on rust's peek never unioning (so it never needs the class).
+   PART 85 was falsified against all four engines' own pre-fix commits in throwaway worktrees before being
+   trusted — the java falsification also surfaced an unrelated classpath-layout interaction (a nested
+   `classes/` directory trips the OLD binary's separate, ancillary classpath bug), isolated by using a
+   flat compiled-output layout so the row measures the scope-match fix alone.
+2. **rust-deep**: closure/coroutine captures and `drop(x)` container walking were silently pure
+   (`3e9848c`) — two independent gaps in the implicit-Drop model, fixed by recursing into upvar types and
+   by routing the explicit-`drop` edge through the same walker the scope-exit case already uses.
+3. **swift**: R33 deinit-glue only fired for the unannotated `let`/`var` binder shape (`10dc79e`) — the
+   annotated and wildcard binder forms silently missed an effectful `deinit`, fixed by extracting one
+   shared `applyDeinitGlue` function called from all three binder shapes.
+4. **java records**: a component's effectful `equals`/`hashCode`/`toString` override ran unattributed
+   (`3a84522`) — the JEP 384 `ObjectMethods` bootstrap's per-component contract-method reentry was never
+   wired up. Falsified on 388 real third-party jars, byte-identical except one genuine, honestly-disclosed
+   recovery.
+5. **candor-agents**: `deny Unknown` compiled to nothing, and the compound `deny Net Unknown` silently
+   dropped the `Net` denial too (`69e9e98`) — `guard.py`'s hand-rolled parser never inherited `policy.py`'s
+   `Unknown` special case. First time this repo had been attacked; the rest of it (`drift`/`observe`/
+   `scan`/`policy`) came back a verifiably clean negative.
+6. **The consumer-refusal class** (candor `0d483a8`/`ac4a71b`) — three `integrations/` consumers each
+   converted an engine's fail-closed refusal into a clean pass (the Stop hook, `candor-sarif`, and
+   `fingerprint/`), defeating every scan-side completeness rung at once. The most consequential class found
+   this session precisely because it sits downstream of everything else that was ever hardened.
+7. **The instrument survey**: 13 of 13 standalone conformance checkers survived having their body replaced
+   with `sys.exit(0)` (`90cee30`, partial fix) — `mutation-gate.sh` extracts checker bodies out of `run.sh`
+   and a standalone `conformance/*.py` file is structurally invisible to it, including `check_honesty.py`
+   (the family's one cardinal-sin detector) and `peek_route_equality_check.py`. Seven hardened, six filed,
+   and a generator now owed for the fourth recurrence of the same four comparison-shape bypasses.
+
+**The shared thread.** Every engine fix that succeeded reused an existing authority instead of hand-rolling
+a second one (rust's peek fix reuses primary-scan facts; java's re-runs its own `runScan`; swift diffs
+against its own finalized result; the rust-deep and swift-deinit fixes both collapse two divergent code
+paths into one shared function) — the fixes that would have failed all shared the opposite shape. And three
+separate "instruments that cannot fail" surfaced in overlapping investigations the same week
+(`mutation-gate.sh`'s own blindness to standalone checkers, java's `mutation_probe.sh` going a quarter
+blind silently, and this survey), each with the identical failure shape: the detector worked and the
+aggregator lost it.
