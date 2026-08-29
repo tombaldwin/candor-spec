@@ -233,7 +233,17 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_SH="$HERE/run.sh"
 CHECKER_PY="$HERE/../scripts/check_nested_quotes.py"
 CANARY_SH="$HERE/canary/cannot-fail.sh"
-for f in "$RUN_SH" "$CHECKER_PY" "$CANARY_SH"; do
+# EXTERNAL CHECKER SCRIPTS (2026-08-29 survey — see this file's header, "EXTERNAL CHECKERS" section, for
+# why these are a SEPARATE class from the run.sh-embedded checkers above and how far this covers them).
+HONESTY_PY="$HERE/check_honesty.py"
+FILE_SET_PY="$HERE/file_set_check.py"
+PEEK_COMPLETENESS_PY="$HERE/peek_completeness_check.py"
+REFUSED_PEEK_PY="$HERE/refused_peek_check.py"
+PEEK_ROUTE_EQ_PY="$HERE/peek_route_equality_check.py"
+EXEC_CAP_PY="$HERE/exec_capability_check.py"
+ONLY_PY="$HERE/only_check.py"
+for f in "$RUN_SH" "$CHECKER_PY" "$CANARY_SH" "$HONESTY_PY" "$FILE_SET_PY" "$PEEK_COMPLETENESS_PY" \
+         "$REFUSED_PEEK_PY" "$PEEK_ROUTE_EQ_PY" "$EXEC_CAP_PY" "$ONLY_PY"; do
   [ -f "$f" ] || { echo "FAIL: mutation-gate: required file missing: $f"; exit 1; }
 done
 W="$(mktemp -d)"
@@ -377,6 +387,36 @@ run_exitcode_pyvar_accept() {   # $1 label ; $2 varname ; $3 accept-exit-code ; 
   else
     out="$(python3 "$tmp" "$@" 2>&1)"; rc=$?
   fi
+  if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label (accept-known-good)"
+  else
+    record BROKEN "$label (accept-known-good)" \
+      "a VALID document was NOT accepted (want exit $want_rc, got exit=$rc) — checker may have degenerated to unconditional-reject" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# "ext-script": a checker that already lives as a standalone file (conformance/*.py), never pasted out of
+# run.sh via extract_pyvar/extract_func — see this file's header, "EXTERNAL CHECKERS" section, for why
+# these needed a THIRD runner shape rather than reusing run_exitcode_pyvar: there is no extraction step
+# (require_extracted does not apply — the file itself IS the current source, so a future edit to it is
+# picked up on the next run with no copy to go stale), and every one of these takes its poison as ARGV
+# (paths to hand-written report/verdict JSON, or literal exit-code/output strings) rather than stdin.
+run_ext_reject() {   # $1 label ; $2 script path ; $3 expected-reject-exit-code ; $4.. poison argv
+  local label="$1" script="$2" want_rc="$3"; shift 3
+  local out rc
+  out="$(python3 "$script" "$@" 2>&1)"; rc=$?
+  if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
+    record PASS "$label"
+  else
+    record BROKEN "$label" \
+      "poison was NOT rejected with the expected exit $want_rc (got exit=$rc)" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+run_ext_accept() {   # $1 label ; $2 script path ; $3 accept-exit-code ; $4.. KNOWN-GOOD argv
+  local label="$1" script="$2" want_rc="$3"; shift 3
+  local out rc
+  out="$(python3 "$script" "$@" 2>&1)"; rc=$?
   if [ "$rc" = "$want_rc" ] && ! printf '%s\n' "$out" | grep -q '^Traceback'; then
     record PASS "$label (accept-known-good)"
   else
@@ -698,6 +738,156 @@ run_exitcode_pyvar_accept "PART39/CHAN_PY(caveat-good)" CHAN_PY 0 "$W/doc/chan_g
 run_exitcode_pyvar_accept "PART39/CHAN_PY(none-good)"   CHAN_PY 0 "$W/doc/chan_good_none.json" none
 run_failline_bashfunc_accept "PART83/ck83_defect(good)"  ck83_defect  "$RUN_SH" "$W/doc/d83_good.scan.json"  "$W/doc/d83_good.report.json"  "$D83_SCOPE"
 run_failline_bashfunc_accept "PART83/ck83_control(good)" ck83_control "$RUN_SH" "$W/doc/d83c_good.scan.json" "$W/doc/d83c_good.report.json"
+
+# ── EXTERNAL CHECKERS (2026-08-29 survey) ────────────────────────────────────────────────────────────
+# WHY THESE EXIST, and why only these seven of the ~13 external checkers the survey found defeatable.
+# `conformance/part.sh <id>` with each checker's `main()` body replaced by an unconditional `sys.exit(0)`
+# — the SAME universal test this file's header recommends trying first — left EVERY row the checker feeds
+# GREEN, with zero output difference, for: check_honesty.py (PART 1c), file_set_check.py (PART 48),
+# only_check.py (PART 49), incomplete_check.py (PART 50), fs_position_check.py (PART 51),
+# peek_completeness_check.py (PART 52), refused_peek_check.py (PART 53), peek_route_equality_check.py
+# (PART 54), exec_capability_check.py (PART 66), clause_check.py, probe_check.py, must_ledger.py, and
+# part_declarations.py — thirteen checkers, NONE of them reachable by this file's extract_pyvar/
+# extract_func (they are standalone files run.sh calls by path, not variables or functions pasted out of
+# it), so none had ever been attacked before this survey. check_honesty.py is the starkest: its own
+# CONTROLS comment in run.sh reads "none — every row asserts document CONTENT", so a check_honesty.py that
+# silently degenerated to `sys.exit(0)` would be caught by NOTHING in the ~15,800-line suite.
+#
+# SEVEN of the thirteen are hardened below with real near-miss poison, chosen for severity (the task that
+# produced this survey named "verdict, route-equality, disclosure, refusal, completeness" as the
+# properties whose green reads as a release signal): check_honesty.py (THE honesty-invariant detector —
+# highest priority by a wide margin, zero backstop), file_set_check.py (PART 48, verdict),
+# peek_completeness_check.py (PART 52, completeness), refused_peek_check.py (PART 53, refusal),
+# peek_route_equality_check.py (PART 54, route-equality — the flagship byte-equality check, same historical
+# bug shape as ck83_control's), exec_capability_check.py (PART 66, capability disclosure), and
+# only_check.py (PART 49, the AS-EFF-011/009 collision this checker's OWN header documents as a REAL,
+# SHIPPED bug in candor-rust and candor-java — the single highest-value poison in this block, since it
+# reproduces a defect that already happened rather than a hypothetical one).
+#
+# NOT hardened here, stated explicitly rather than silently: incomplete_check.py (PART 50),
+# fs_position_check.py (PART 51), clause_check.py, probe_check.py, must_ledger.py, part_declarations.py,
+# and skip_ratchet.py (PART 84 — confirmed only INCONCLUSIVE in isolation via `part.sh 84`, since it reads
+# a skip-tally log the full suite accumulates; a standalone unconditional-pass test could not even reach a
+# conclusion, let alone a near-miss battery). The four meta-checkers (clause_check/probe_check/
+# must_ledger/part_declarations) check SPEC.md and run.sh's own TEXT/structure rather than an engine's
+# JSON report, which is a different poison shape than the near-miss discipline below and was left for a
+# separate pass. This is a SURVEY BOUNDARY, not a claim these are safe.
+#
+# EACH POISON BELOW IS ONE PER CONDITION, holding every condition BEFORE it (in the checker's own
+# sequential `if cond: return fail(...)` structure) at its PASSING value — a condition strictly AFTER the
+# one under test never runs, by construction, so it needs no value at all. This is a shallower sweep than
+# the multi-round C-hardening discipline PART 36-39/83 received above (one poison per condition, not the
+# full truthy/falsy/superset/subset/substring family for every one) — stated as a boundary, not hidden.
+mkdir -p "$W/ext"
+
+# ---- check_honesty.py (PART 1c) — the two forms check() enforces: DIRECT (a function flagged `unresolved`
+# must surface Unknown or a disclosure) and PROPAGATION (a certain function must not reach an uncertain
+# callee). Each fixture pairs a report with its sibling `.callgraph.json` (check_honesty.py's own naming
+# convention: report path with `.json` replaced by `.callgraph.json`).
+printf '%s' '{"functions": [{"fn": "g", "inferred": ["Unknown"]}]}' > "$W/ext/ch_prop_poison.json"
+printf '%s' '{"f": ["g"], "g": []}'                                  > "$W/ext/ch_prop_poison.callgraph.json"
+printf '%s' '{"functions": [{"fn": "f", "inferred": ["Unknown"]}, {"fn": "g", "inferred": ["Unknown"]}]}' > "$W/ext/ch_prop_good.json"
+printf '%s' '{"f": ["g"], "g": []}'                                  > "$W/ext/ch_prop_good.callgraph.json"
+printf '%s' '{"functions": [{"fn": "h", "unresolved": true, "inferred": []}]}' > "$W/ext/ch_direct_poison.json"
+printf '%s' '{"h": []}'                                              > "$W/ext/ch_direct_poison.callgraph.json"
+printf '%s' '{"functions": [{"fn": "h", "unresolved": true, "inferred": ["Unknown"]}]}' > "$W/ext/ch_direct_good.json"
+printf '%s' '{"h": []}'                                              > "$W/ext/ch_direct_good.callgraph.json"
+run_ext_reject "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 1 "$W/ext/ch_prop_poison.json"
+run_ext_accept "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 0 "$W/ext/ch_prop_good.json"
+run_ext_reject "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 1 "$W/ext/ch_direct_poison.json"
+run_ext_accept "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 0 "$W/ext/ch_direct_good.json"
+
+# ---- file_set_check.py (PART 48) — two conditions on the FINDING half: the effect-membership filter
+# (`hits`) and the reason-substring check ("did NOT judge"). GOOD is the full 8-condition accept shape;
+# each poison holds every OTHER argument at GOOD and perturbs the one field the condition under test reads.
+printf '%s' '{"outOfScope": [{"fn":"build::main","path":"build.rs","class":"build-script","effects":["Exec"],"reason":"the gate did NOT judge this file: excluded by policy"}], "functions": [], "violations": [], "excluded": [{"class":"build-script","count":1,"peeked":true,"reason":"build scripts run outside the crate scan and are not judged by this policy"}]}' > "$W/ext/fs_exec_good.json"
+printf '%s' '{"outOfScope": []}'  > "$W/ext/fs_net_good.json"
+printf '%s' '{}'                  > "$W/ext/fs_none_good.json"
+printf '%s' '{"excluded": []}'    > "$W/ext/fs_ctl_good.json"
+printf '%s' '{"functions": [{"fn":"build::main","inferred":["Exec"]}]}' > "$W/ext/fs_twin_good.json"
+run_ext_accept "PART48/file_set_check(good)" "$FILE_SET_PY" 0 rust 2 "$W/ext/fs_exec_good.json" 0 "$W/ext/fs_net_good.json" "$W/ext/fs_none_good.json" "$W/ext/fs_ctl_good.json" "$W/ext/fs_twin_good.json" Exec
+printf '%s' '{"outOfScope": [{"fn":"build::main","path":"build.rs","class":"build-script","effects":["Net"],"reason":"the gate did NOT judge this file: excluded by policy"}], "functions": [], "violations": [], "excluded": [{"class":"build-script","count":1,"peeked":true,"reason":"build scripts run outside the crate scan and are not judged by this policy"}]}' > "$W/ext/fs_exec_f1.json"
+run_ext_reject "PART48/file_set_check(effect-membership)" "$FILE_SET_PY" 1 rust 2 "$W/ext/fs_exec_f1.json" 0 "$W/ext/fs_net_good.json" "$W/ext/fs_none_good.json" "$W/ext/fs_ctl_good.json" "$W/ext/fs_twin_good.json" Exec
+printf '%s' '{"outOfScope": [{"fn":"build::main","path":"build.rs","class":"build-script","effects":["Exec"],"reason":"excluded by policy"}], "functions": [], "violations": [], "excluded": [{"class":"build-script","count":1,"peeked":true,"reason":"build scripts run outside the crate scan and are not judged by this policy"}]}' > "$W/ext/fs_exec_f2.json"
+run_ext_reject "PART48/file_set_check(reason-substring)" "$FILE_SET_PY" 1 rust 2 "$W/ext/fs_exec_f2.json" 0 "$W/ext/fs_net_good.json" "$W/ext/fs_none_good.json" "$W/ext/fs_ctl_good.json" "$W/ext/fs_twin_good.json" Exec
+
+# ---- peek_completeness_check.py (PART 52) — the three `is not False`/`is not True` IDENTITY checks
+# (shapes A/B/C), attacked with the SAME truthy/falsy-but-wrong-type near-miss that broke VD_PY/ck83_defect/
+# ck83_control above (falsy-but-not-`False` = `0`; truthy-but-not-`True` = `1`).
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":false}]}' > "$W/ext/pc_a_good.json"
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":true}], "outOfScope": []}' > "$W/ext/pc_b_good.json"
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":true}], "outOfScope": [{"class":"harness-target"}]}' > "$W/ext/pc_c_good.json"
+run_ext_accept "PART52/peek_completeness(good)" "$PEEK_COMPLETENESS_PY" 0 rust "$W/ext/pc_a_good.json" "$W/ext/pc_b_good.json" "$W/ext/pc_c_good.json" harness-target
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":0}]}' > "$W/ext/pc_a_poison.json"
+run_ext_reject "PART52/peek_completeness(A-falsy-not-False)" "$PEEK_COMPLETENESS_PY" 1 rust "$W/ext/pc_a_poison.json" "$W/ext/pc_b_good.json" "$W/ext/pc_c_good.json" harness-target
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":1}], "outOfScope": []}' > "$W/ext/pc_b_poison.json"
+run_ext_reject "PART52/peek_completeness(B-truthy-not-True)" "$PEEK_COMPLETENESS_PY" 1 rust "$W/ext/pc_a_good.json" "$W/ext/pc_b_poison.json" "$W/ext/pc_c_good.json" harness-target
+printf '%s' '{"excluded":[{"class":"harness-target","peeked":1}], "outOfScope": [{"class":"harness-target"}]}' > "$W/ext/pc_c_poison.json"
+run_ext_reject "PART52/peek_completeness(C-truthy-not-True)" "$PEEK_COMPLETENESS_PY" 1 rust "$W/ext/pc_a_good.json" "$W/ext/pc_b_good.json" "$W/ext/pc_c_poison.json" harness-target
+
+# ---- refused_peek_check.py (PART 53) — shape A's DEFECT check is `"outOfScope" in docs["A"]`, a
+# PRESENCE test; a mutant degraded to a truthy VALUE test (`if docs["A"].get("outOfScope")`) would wrongly
+# accept a present-but-empty `outOfScope` (falsy) as if the key were absent. `rp_a_poison` isolates exactly
+# that: the key present, empty.
+printf '%s' '{}'                    > "$W/ext/rp_a_good.json"
+printf '%s' '{"outOfScope":[{"x":1}]}' > "$W/ext/rp_b_good.json"
+printf '%s' '{"outOfScope":[]}'     > "$W/ext/rp_c_good.json"
+run_ext_accept "PART53/refused_peek(good)" "$REFUSED_PEEK_PY" 0 rust 2 "$W/ext/rp_a_good.json" 2 "$W/ext/rp_b_good.json" 0 "$W/ext/rp_c_good.json"
+printf '%s' '{"outOfScope":[]}'     > "$W/ext/rp_a_poison.json"
+run_ext_reject "PART53/refused_peek(A-presence-not-truthy)" "$REFUSED_PEEK_PY" 1 rust 2 "$W/ext/rp_a_poison.json" 2 "$W/ext/rp_b_good.json" 0 "$W/ext/rp_c_good.json"
+
+# ---- peek_route_equality_check.py (PART 54) — the flagship route-equality checker (14 argv positions).
+# Three poisons: (B) byte-equality degraded to a LENGTH check — same shape ck83_control's byte-equality fix
+# above closes, built the same way (one space swapped for one tab, verified equal length, so only a real
+# `a != b` byte comparison catches it); (ok) `is not False` degraded to truthy (`ok: 0`, falsy-but-not-
+# False); (incomplete) `is not True` degraded to truthy (`incomplete: 1`, truthy-but-not-True).
+printf '%s' '{"ok": false, "incomplete": true, "violations": [], "outOfScope": [{"class":"x","effects":["Exec"]}]}' > "$W/ext/pre_v_good.json"
+printf '%s' '{"excluded": []}' > "$W/ext/pre_absent_good.json"
+printf '%s' '{"ok": true}'     > "$W/ext/pre_ctl_good.json"
+run_ext_accept "PART54/peek_route_equality(good)" "$PEEK_ROUTE_EQ_PY" 0 rust \
+  2 "$W/ext/pre_v_good.json" 2 "$W/ext/pre_v_good.json" \
+  0 "$W/ext/pre_absent_good.json" \
+  0 "$W/ext/pre_ctl_good.json" 0 "$W/ext/pre_ctl_good.json" \
+  2 2 2 2
+printf '%s' '{"ok": false, "incomplete": true, "violations": [], "outOfScope": [{"class":"x","effects":["Exec"]}]}' > "$W/ext/pre_scan_v.json"
+printf '%s' $'{"ok": false,\t"incomplete": true, "violations": [], "outOfScope": [{"class":"x","effects":["Exec"]}]}' > "$W/ext/pre_gate_v.json"
+run_ext_reject "PART54/peek_route_equality(byte-not-length-equal)" "$PEEK_ROUTE_EQ_PY" 1 rust \
+  2 "$W/ext/pre_scan_v.json" 2 "$W/ext/pre_gate_v.json" \
+  0 "$W/ext/pre_absent_good.json" \
+  0 "$W/ext/pre_ctl_good.json" 0 "$W/ext/pre_ctl_good.json" \
+  2 2 2 2
+printf '%s' '{"ok": 0, "incomplete": true, "violations": [], "outOfScope": [{"class":"x","effects":["Exec"]}]}' > "$W/ext/pre_ok0.json"
+run_ext_reject "PART54/peek_route_equality(ok-falsy-not-False)" "$PEEK_ROUTE_EQ_PY" 1 rust \
+  2 "$W/ext/pre_ok0.json" 2 "$W/ext/pre_ok0.json" \
+  0 "$W/ext/pre_absent_good.json" \
+  0 "$W/ext/pre_ctl_good.json" 0 "$W/ext/pre_ctl_good.json" \
+  2 2 2 2
+printf '%s' '{"ok": false, "incomplete": 1, "violations": [], "outOfScope": [{"class":"x","effects":["Exec"]}]}' > "$W/ext/pre_inc1.json"
+run_ext_reject "PART54/peek_route_equality(incomplete-truthy-not-True)" "$PEEK_ROUTE_EQ_PY" 1 rust \
+  2 "$W/ext/pre_inc1.json" 2 "$W/ext/pre_inc1.json" \
+  0 "$W/ext/pre_absent_good.json" \
+  0 "$W/ext/pre_ctl_good.json" 0 "$W/ext/pre_ctl_good.json" \
+  2 2 2 2
+
+# ---- exec_capability_check.py (PART 66) — `"Exec" not in got` degraded to `not got` (truthy-degrade:
+# a non-empty-but-wrong effect set would wrongly pass) on BOTH the must-be-Exec and must-NOT-be-Exec arms.
+printf '%s' '{"functions": [{"fn":"armed","inferred":["Exec"]}, {"fn":"noExecFn","inferred":["Clock"]}]}' > "$W/ext/ec_good.json"
+run_ext_accept "PART66/exec_capability(good)" "$EXEC_CAP_PY" 0 rust "$W/ext/ec_good.json" armed=Exec noExecFn=noExec
+printf '%s' '{"functions": [{"fn":"armed","inferred":["Net"]}, {"fn":"noExecFn","inferred":["Clock"]}]}' > "$W/ext/ec_poison1.json"
+run_ext_reject "PART66/exec_capability(Exec-membership)" "$EXEC_CAP_PY" 1 rust "$W/ext/ec_poison1.json" armed=Exec noExecFn=noExec
+printf '%s' '{"functions": [{"fn":"armed","inferred":["Exec"]}, {"fn":"noExecFn","inferred":["Exec"]}]}' > "$W/ext/ec_poison2.json"
+run_ext_reject "PART66/exec_capability(noExec-membership)" "$EXEC_CAP_PY" 1 rust "$W/ext/ec_poison2.json" armed=Exec noExecFn=noExec
+
+# ---- only_check.py (PART 49) — the AS-EFF-011/AS-EFF-009 collision check. NOT a hypothetical: this
+# checker's own header documents candor-rust and candor-java SHIPPING exactly this — a rule disclosed as
+# unanswerable and evaluated anyway, printing BOTH codes. The poison reproduces that shape in `out_short`.
+OC_SHORT_GOOD='[AS-EFF-011] model reaches infra via rule `only model -> util`'
+OC_FULL_GOOD='gate: ok'
+OC_ZERO_GOOD='only nosuch -> util matched NO function under from'
+OC_GATE_GOOD='gate refused: only model -> util cannot be evaluated from a report'
+run_ext_accept "PART49/only_check(good)" "$ONLY_PY" 0 rust 1 "$OC_SHORT_GOOD" 0 "$OC_FULL_GOOD" 0 "$OC_ZERO_GOOD" 2 "$OC_GATE_GOOD"
+OC_SHORT_POISON='[AS-EFF-011] model reaches infra via rule `only model -> util`, also flagged [AS-EFF-009]'
+run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_SHORT_POISON" 0 "$OC_FULL_GOOD" 0 "$OC_ZERO_GOOD" 2 "$OC_GATE_GOOD"
 
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"
