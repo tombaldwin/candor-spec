@@ -130,6 +130,104 @@
 #     (`is not True` → `not x`) and did NOT break: every fixture in play sets `ok` to a JSON boolean
 #     (`true`/`false`), and for a plain boolean, identity and truthiness agree — there is no third value in
 #     play the way CHAN_PY's `incomplete` can plausibly take one. Verified clean; left unchanged.
+#     *** THIS LAST CLAIM WAS WRONG — see the THIRD pass below. Nothing stops a POISON DOCUMENT from using
+#     a non-boolean value; the reasoning above mistook "every fixture we happened to write" for "every
+#     value the checker could ever see." A verified-clean note is a snapshot of the fixtures on hand, not a
+#     proof about the checker (AGENT-CORPUS-BRIEF.md rule 12) — re-attacking it with the missing fixture
+#     broke it immediately. ***
+#
+# A THIRD ADVERSARIAL PASS (2026-08-29) found the B-pass hardening above had the identical shape problem
+# ONE LAYER DOWN — the third time in one day this gate's newest fix closed exactly the mutant it was aimed
+# at and left an adjacent, same-shape mutant standing. THE ROOT CAUSE, one sentence: every near-miss and
+# accept-known-good document B introduced still puts a JSON BOOLEAN behind every `is True`/`is False`
+# check, a genuine SUBSET (never a superset) behind every list/set-equality check, and a wholly-wrong
+# STRING behind every string-equality check — so a checker degraded from IDENTITY to TRUTHINESS, from
+# exact EQUALITY to MEMBERSHIP/SUBSET, or from equality to SUBSTRING, agrees with the real checker on
+# every one of them for accidental reasons, and only diverges on a shape B never tried.
+#
+# FIVE bypasses were handed in, each reproduced with real mutated output against the pre-fix file (the
+# mutant passes every existing leg) and each now fixed with the fixture named:
+#   A1 — VD_PY `ok0`/`okt`: `is not False`/`is not True` degraded to plain truthiness (`d.get("ok")`/`not
+#     d.get("ok")`) passes every B near-miss, because both are JSON booleans and identity/truthiness agree
+#     for a boolean. Fixed with a FALSY-but-not-`False` value (`ok: 0`, `vd_falsy_ok0.json`) for `ok0` and
+#     a TRUTHY-but-not-`True` value (`ok: 1`, `vd_truthy_okt.json`) for `okt`.
+#   A2 — RS_PY_FAILCLOSED/STREAM: `== []`/`== 0` degraded to a falsy check (`not d.get("functions")`/`not
+#     (...).get("count")`) passes every existing leg, because both existing poisons are PRESENT-and-truthy
+#     wrong values — falsy and `!= []`/`!= 0` agree on a truthy wrong value for the same accidental reason.
+#     The divergent case is the key genuinely ABSENT (`None` is falsy but is not `[]` or `0`); fixed with
+#     `rs_leg_functions_absent.json`/`rs_leg_count_absent.json`, applied to both the file and stream variant.
+#   A3 — CHAN_PY `caveat`: the `isinstance(...,list)` guard dropped from the leg-1 check passes every
+#     existing fixture because they are all either a real list or a value that is ALSO falsy (absent). A
+#     TRUTHY non-list value (`judgedNothing: "x"`, `chan_caveat_wrongtype.json`) isolates the type check
+#     specifically — a real engine bug that serializes the field as a bare string rather than a
+#     one-element list is exactly the shape this closes.
+#   A4 — ck83_defect `r_zm`: exact list-equality (`r_zm != [scope]`) degraded to membership (`scope not in
+#     r_zm`) passes the existing wrong-scope poison (scope genuinely absent either way) but wrongly accepts
+#     a SUPERSET — the correct scope present PLUS one extra element. Fixed with `d83_r_zm_extra.json`.
+#   A5 — VD_PY `unev`: exact set-equality (`sorted(got)!=sorted(exp)`) degraded to a subset check
+#     (`not (set(exp)<=set(got))`) passes the existing missing-rule poison — a SUBSET of the required
+#     rules either way — but wrongly accepts a SUPERSET: both required rules present PLUS one extra.
+#     Fixed with `vd_superset_unev.json`.
+#
+# Sweeping every REMAINING mode of all eight checkers — not stopping at the five above, and re-deriving
+# the vocabulary (identity, list/set-equality, string-equality, `isinstance`) rather than trusting any
+# prior pass's list of what was already tried — found SIX more of the same shape, one of them only on a
+# second sweep of this very comment:
+#   S1 — VD_PY's other `is True` leg, `refused` (same shape as A1, unhanded): degraded to plain truthiness
+#     passes every existing fixture; fixed with `refused: 1` (`vd_truthy_refused.json`).
+#   S2 — VD_PY's other exact list-equality leg, `zm` (same shape as A4, unhanded): degraded to membership
+#     passes the existing wrong-scope poison but wrongly accepts a superset; fixed with
+#     `vd_superset_zm.json`.
+#   S3 — ck83_defect `s_ok`/`r_ok`: `is not True` degraded to `not x` passes every existing boolean
+#     fixture but wrongly accepts a TRUTHY-but-not-`True` value (`ok: 1`). **This directly CONTRADICTS
+#     this file's own prior "verified clean" note (the *** annotation above)** — reproduced live, breaking
+#     immediately once the missing fixture was tried. Fixed with `d83_s_ok_truthy.json`/
+#     `d83_r_ok_truthy.json`.
+#   S4 — ck83_defect `s_viol`/`r_viol` (never previously attacked): `!= []` degraded to plain truthiness
+#     passes the existing non-empty-list poison (truthy either way) but wrongly accepts a FALSY-but-not-
+#     `[]` value (`violations: ""`). Fixed with `d83_s_viol_falsy.json`/`d83_r_viol_falsy.json`.
+#   S5 — ck83_control `d_ok is not False` (same shape as A1/S3, never previously attacked): degraded to
+#     `if d_ok:` passes every existing boolean fixture but wrongly accepts a FALSY-but-not-`False` value
+#     (`ok: 0`). Fixed with `d83c_ok_falsy.json`.
+#   S6 — VD_PY `v005`: string EQUALITY (`v.get("rule")=="AS-EFF-005"`) degraded to substring membership
+#     (`"AS-EFF-005" in v.get("rule","")`) passes the existing wrong-rule poison (`"OTHER"` contains no
+#     substring match either way) but wrongly accepts `"AS-EFF-0050"`, which CONTAINS the wanted string
+#     without being equal to it. Fixed with `vd_v005_substr.json`. **Caught only on a SECOND sweep pass**:
+#     the first pass's own draft of this comment claimed `v005` was clean because it has "no boolean/list-
+#     equality shape for this class to hide behind" — true, but incomplete, since the class also covers
+#     STRING equality degraded to substring, which `v005` has. The lesson inside the lesson: "already
+#     swept" is a claim about which shapes were TRIED, not a proof no shape remains.
+# ZR_PY_HAS_OK/ZR_PY_NO_OK's `isinstance(d,dict)` guards were attacked the same way as A3 (drop the guard,
+# feed a non-dict poison) and did NOT break: `zr_ok_not_a_dict.json`/`zr_not_a_dict.json` already exist as
+# poison for exactly this leg and already fail with the WRONG exit code when the guard is dropped
+# (`ZR_PY_HAS_OK` exits 0 instead of the wanted 1; `ZR_PY_NO_OK` exits 3 instead of 1) — reproduced live,
+# genuinely clean. VD_PY's `viol`/`norefused`/`nozm` legs were re-swept and are deliberately
+# presence/truthiness checks with no identity/equality to degrade in the first place.
+#
+# All ELEVEN reproduced bypasses (A1-A5 handed in, S1-S6 found by the sweep) now make `mutation-gate.sh`
+# FAIL against the pre-fix file and pass against the fixed one; the unmodified tree still passes
+# `mutation-gate: OK` (canary aside).
+#
+# THE STRUCTURAL POINT, not just eleven more fixtures: three same-day rounds each closed exactly the
+# mutant an adversarial reviewer thought to try and left the next-shaped one standing, because every
+# fixture in this file so far has been HAND-AUTHORED against a specific reproduced bypass rather than
+# DERIVED from what the checker's own source can distinguish. S6 is evidence for this the hard way: it was
+# missed on the FIRST sweep pass through this very comment, whose own note claimed `v005` clean by
+# name-checking two shapes without re-deriving the full vocabulary — a human-authored "already swept"
+# claim is exactly as easy to under-scope as a human-authored fixture set. A generative alternative — walk
+# each checker's extracted source for its comparison shape (`is True`/`is False`, `== <literal>` over a
+# bool/number/string, exact list/set equality, `isinstance`) and mechanically emit the canonical near-miss
+# family for that shape (truthy-not-True, falsy-not-False, wrong-type, absent-key, superset, subset,
+# substring) — would have produced A1-S6 in one pass, and B1-B3/A2/A3/A4 in one pass each before that,
+# because the four comparison shapes above are the ENTIRE vocabulary every bypass in this file's history
+# has used, and a mechanical walk cannot forget to check one the way a reviewer's memory can. It was not
+# built here: the eight checkers in scope are few enough, and change rarely enough, that hand-authoring
+# stayed cheaper than building and trusting a new code-reading tool — but a FOURTH round finding a same-
+# shape gap should flip that trade, given this is already the third. Until then, the mitigation actually
+# applied is a checklist, not a generator: any FUTURE `is True`/`is False`/`==`/list-or-set-equality/
+# `isinstance` added to one of these eight checkers must be accompanied by the matching near-miss family
+# from the A1-S6 list above, by hand, checked against this comment rather than reinvented — and re-derived
+# from the vocabulary, not from what a prior pass happened to try.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_SH="$HERE/run.sh"
@@ -307,6 +405,9 @@ run_exitcode_pyvar_accept() {   # $1 label ; $2 varname ; $3 accept-exit-code ; 
 # ZR_PY_HAS_OK), isolating a leg means holding the OTHER legs at their PASSING value in that one document —
 # the poison must still look like a real near-miss, not a document that happens to fail everywhere at once.
 mkdir -p "$W/doc"
+D83_SCOPE='deny Fs poison'   # moved up from the PART 83 block below (C hardening, 2026-08-29) — PART 36's
+                             # new `zm` superset poison needs the correct scope literal, and PART 36's
+                             # fixtures are built before PART 83's own further down this file.
 
 # ---- PART 36 (VD_PY, `vd_doc`) — 9 modes, ALL NINE covered here. Unlike the ANDed checkers below, VD_PY
 # checks exactly the modes named in its OWN argv (`for want in sys.argv[2:]`), so isolation falls straight
@@ -335,6 +436,23 @@ printf '%s' '{"zeroMatch": ["some-other-scope"]}'                  > "$W/doc/vd_
 printf '%s' '{"violations": [], "refused": true}' > "$W/doc/vd_norefused_bad.json"    # norefused poison AND refused-leg-2 poison: carries the refusal discriminator BESIDE violations
 printf '%s' '{"zeroMatch": ["x"]}' > "$W/doc/vd_zm_present.json"                      # nozm: zeroMatch present on what must be a fully-binding verdict — the one GENUINELY presence-based mode, verified above, left as an absence poison deliberately
 
+# IDENTITY/EXACTNESS REWRITE (C hardening, 2026-08-29 — see this file's header for all 5 reproduced
+# bypasses plus the sweep's own finds): every near-miss document above still only ever puts a JSON
+# BOOLEAN behind an `is True`/`is False` check, or a document that is a strict SUBSET of (unev) or
+# disjoint from (zm) the correct answer behind a list/set-equality check. A checker degraded from
+# IDENTITY to TRUTHINESS (`is not False` → truthy `d.get("ok")`; `is not True` → falsy `not d.get("ok")`)
+# rejects every boolean poison above for the SAME reason the real checker does, and a checker degraded
+# from exact list/set EQUALITY to membership/subset (`!= [x]` → `x not in`; `sorted(a)!=sorted(b)` →
+# `set(exp)<=set(got)`) rejects every existing near-miss for the same accidental reason too — none of them
+# is a SUPERSET of the correct answer, which is the one shape only the loosened check would wrongly wave
+# through. Five more documents, one per condition, close the gap:
+printf '%s' '{"ok": 0, "violations": [{"rule": "AS-EFF-005"}]}' > "$W/doc/vd_falsy_ok0.json"     # ok0: `ok` FALSY but not the literal `False` (0) — is-not-False vs plain truthiness
+printf '%s' '{"ok": 1, "violations": []}'                        > "$W/doc/vd_truthy_okt.json"    # okt: `ok` TRUTHY but not the literal `True` (1) — is-not-True vs plain truthiness
+printf '%s' '{"refused": 1}'                                     > "$W/doc/vd_truthy_refused.json" # refused leg 1: `refused` TRUTHY but not the literal `True` (1); `violations` correctly absent, holding the other AND-leg passing
+printf '%s' '{"unevaluated": [{"rule": "deny Clock"}, {"rule": "deny Frobnicate"}, {"rule": "deny Extra"}]}' > "$W/doc/vd_superset_unev.json" # unev: both required rules present PLUS one extra — exact set-equality vs `set(exp)<=set(got)` subset check
+printf '%s' "{\"zeroMatch\": [\"$D83_SCOPE\", \"extra-scope\"]}" > "$W/doc/vd_superset_zm.json"  # zm: correct scope present PLUS one extra — exact list-equality vs membership (`scope in got`)
+printf '%s' '{"violations": [{"rule": "AS-EFF-0050"}]}' > "$W/doc/vd_v005_substr.json"           # v005 (sweep find): string EQUALITY (`==`) degraded to substring membership (`in`) — "AS-EFF-0050" contains "AS-EFF-005" as a substring but is not equal to it
+
 # ---- PART 37 (RS_PY_FAILCLOSED / RS_PY_STREAM_FAILCLOSED) — 3 ANDed legs, one poison per leg, the other
 # two legs held at their PASSING value each time. `rs_leg_unanalyzed.json` is the exact document shape
 # defeat #2 above needed and never got: functions==[] and analyzed.count==0 (the OTHER two legs pass) with
@@ -347,6 +465,14 @@ printf '%s' '{"functions": [], "analyzed": {"count": 0}, "unanalyzed": []}'     
 # fixture anywhere above — every stream leg pipes non-empty content, so a mutant that deletes this guard
 # entirely still passes every one of them. A genuinely empty file, piped via --stdin, isolates it.
 : > "$W/doc/rs_empty.json"
+# EXACTNESS REWRITE (C hardening, 2026-08-29): `== []` / `== 0` degraded to a falsy check (`not
+# d.get("functions")` / `not (...).get("count")`) passes every leg above, because every existing poison for
+# these two legs is a PRESENT-and-truthy wrong value ([{"fn":"x"}], 5) — falsy and `!= []`/`!= 0` agree on
+# a truthy wrong value for the same accidental reason. The divergent case is the key genuinely ABSENT
+# (None is falsy but is not `[]` or `0`), which a real fail-closed report should never emit but a falsy
+# mutant would wrongly wave through as "fine". The other two legs held at their passing value each time.
+printf '%s' '{"analyzed": {"count": 0}, "unanalyzed": ["x"]}'          > "$W/doc/rs_leg_functions_absent.json"  # `functions` key entirely absent (None != [])
+printf '%s' '{"functions": [], "analyzed": {}, "unanalyzed": ["x"]}'   > "$W/doc/rs_leg_count_absent.json"      # `analyzed` present but `count` key absent (None != 0)
 
 # ---- PART 38 (ZR_PY_NO_OK / ZR_PY_HAS_OK) — ZR_PY_NO_OK is THREE sequential guards with DISTINCT exit
 # codes (1/2/3), so each is already isolated by construction; only exit 2 had a poison before. ZR_PY_HAS_OK
@@ -386,6 +512,13 @@ printf '%s' '{"judgedNothing": ["x"]}'             > "$W/doc/chan_leaks_judgedno
 # literal `True`) beside a VALID `judgedNothing` isolates the identity check specifically — a `not x`
 # mutant wrongly treats 1 as satisfying the requirement and accepts what must be rejected.
 printf '%s' '{"judgedNothing": ["x"], "incomplete": 1}' > "$W/doc/chan_caveat_incomplete_truthy.json"
+# TYPE-EXACTNESS TRAP (C hardening, 2026-08-29): `not isinstance(d.get("judgedNothing"),list) or not
+# d["judgedNothing"]` dropped to plain `not d.get("judgedNothing")` (the isinstance guard deleted) passes
+# every fixture above, because every one of them is either a real list or a value that is ALSO falsy
+# (missing entirely). A TRUTHY non-list value — a real engine bug that serializes the field as a bare
+# string instead of a one-element list, say — isolates the isinstance check specifically: the mutant sees
+# a truthy value and moves on, the real checker must still reject it for having the wrong TYPE.
+printf '%s' '{"judgedNothing": "x", "incomplete": true}' > "$W/doc/chan_caveat_wrongtype.json"
 
 # ---- PART 83 (ck83_defect / ck83_control) — ck83_defect independently `bad.append()`s up to 8 conditions
 # (3 on the scan doc, 3 on the report doc, 2 on the cross-document key-set diff) and only exits nonzero if
@@ -397,7 +530,6 @@ printf '%s' '{"judgedNothing": ["x"], "incomplete": 1}' > "$W/doc/chan_caveat_in
 # missing-key poison built from just those two can't be told apart from the `r_ok`/`r_viol` conditions it
 # would also trip; `probe` is checked by NO other condition, so its absence on the report side isolates
 # the key-set diff alone.
-D83_SCOPE='deny Fs poison'
 SGOOD='{"ok": true, "violations": []}'
 SGOOD2='{"ok": true, "violations": [], "probe": 1}'
 RGOOD='{"ok": true, "violations": [], "zeroMatch": ["deny Fs poison"]}'
@@ -417,6 +549,27 @@ printf '%s' "$SGOOD"                                                        > "$
 printf '%s' '{"ok": true, "violations": [], "zeroMatch": ["deny Fs poison"], "bogus": 1}' > "$W/doc/d83_extra.report.json"
 printf '%s' "$SGOOD2"                                                       > "$W/doc/d83_missing.scan.json"
 printf '%s' "$RGOOD"                                                        > "$W/doc/d83_missing.report.json"
+# EXACTNESS REWRITE (C hardening, 2026-08-29 — see this file's header): a sweep of the OTHER four
+# ck83_defect conditions found the SAME class the assigned `r_zm` bypass has, in two more places, both
+# reproduced live and both contradicting this file's own earlier "verified clean" note on `s_ok`/`r_ok`
+# (see the header's "did NOT break" paragraph — that verdict held only because every fixture in play
+# happened to be a JSON boolean; nothing stops a poison document from using a non-boolean, and one does):
+#   - `s_ok is not True`/`r_ok is not True` degraded to `not s_ok`/`not r_ok` (identity to truthiness)
+#     passes every existing d83_*_ok fixture (all JSON `false`/`true`) — a TRUTHY-but-not-`True` value
+#     (1) isolates it.
+#   - `s_viol != []`/`r_viol != []` degraded to plain truthiness (`if s_viol:`) passes every existing
+#     d83_*_viol fixture (a genuinely non-empty list, which is truthy for the same reason `!= []` is
+#     true) — a FALSY-but-not-`[]` value ("") isolates it.
+printf '%s' '{"ok": 1, "violations": []}'                                   > "$W/doc/d83_s_ok_truthy.scan.json"
+printf '%s' "$RGOOD"                                                        > "$W/doc/d83_s_ok_truthy.report.json"
+printf '%s' "$SGOOD"                                                        > "$W/doc/d83_r_ok_truthy.scan.json"
+printf '%s' '{"ok": 1, "violations": [], "zeroMatch": ["deny Fs poison"]}'  > "$W/doc/d83_r_ok_truthy.report.json"
+printf '%s' '{"ok": true, "violations": ""}'                                > "$W/doc/d83_s_viol_falsy.scan.json"
+printf '%s' "$RGOOD"                                                        > "$W/doc/d83_s_viol_falsy.report.json"
+printf '%s' "$SGOOD"                                                        > "$W/doc/d83_r_viol_falsy.scan.json"
+printf '%s' '{"ok": true, "violations": "", "zeroMatch": ["deny Fs poison"]}' > "$W/doc/d83_r_viol_falsy.report.json"
+printf '%s' "$SGOOD"                                                        > "$W/doc/d83_r_zm_extra.scan.json"
+printf '%s' '{"ok": true, "violations": [], "zeroMatch": ["deny Fs poison", "extra-scope"]}' > "$W/doc/d83_r_zm_extra.report.json"   # assigned bug #4: exact list-equality vs membership, correct scope present PLUS one extra
 # ck83_control: 4 independent conditions (byte-equality; ok==false; AS-EFF-006 present; zeroMatch absent).
 # The three content conditions are checked ONLY off the scan document, so an identical-bytes pair isolates
 # each one in turn; the byte-equality condition itself needs a pair that PARSES the same but is not
@@ -435,6 +588,11 @@ printf '%s' '{"ok": false, "violations": [{"rule": "OTHER"}]}'       > "$W/doc/d
 cp "$W/doc/d83c_rule.scan.json" "$W/doc/d83c_rule.report.json"
 printf '%s' '{"ok": false, "violations": [{"rule": "AS-EFF-006"}], "zeroMatch": ["x"]}' > "$W/doc/d83c_zm.scan.json"
 cp "$W/doc/d83c_zm.scan.json" "$W/doc/d83c_zm.report.json"
+# EXACTNESS SWEEP FIND (C hardening, 2026-08-29): `d_ok is not False` degraded to plain truthiness
+# (`if d_ok:`) passes every d83c_* fixture above (all JSON booleans) — a FALSY-but-not-`False` value (0)
+# isolates it, same shape as ck83_defect's own `s_ok`/`r_ok` finding just above.
+printf '%s' '{"ok": 0, "violations": [{"rule": "AS-EFF-006"}]}' > "$W/doc/d83c_ok_falsy.scan.json"
+cp "$W/doc/d83c_ok_falsy.scan.json" "$W/doc/d83c_ok_falsy.report.json"
 
 # ── accept-known-good documents (A2 hardening, 2026-08-28→2026-08-29) — ONE genuinely valid document per
 # checker/mode, held to the SAME per-condition-isolation discipline as the poison set above: reusing a
@@ -459,32 +617,48 @@ cp "$W/doc/d83c_good.scan.json" "$W/doc/d83c_good.report.json"
 
 # ── run every real checker in scope, once per condition ─────────────────────────────────────────────────
 run_failline_bashfunc "PART83/ck83_defect(s_ok)"       ck83_defect  "$RUN_SH" "$W/doc/d83_s_ok.scan.json"   "$W/doc/d83_s_ok.report.json"   "$D83_SCOPE"
+run_failline_bashfunc "PART83/ck83_defect(s_ok-truthy)" ck83_defect "$RUN_SH" "$W/doc/d83_s_ok_truthy.scan.json" "$W/doc/d83_s_ok_truthy.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(s_viol)"     ck83_defect  "$RUN_SH" "$W/doc/d83_s_viol.scan.json" "$W/doc/d83_s_viol.report.json" "$D83_SCOPE"
+run_failline_bashfunc "PART83/ck83_defect(s_viol-falsy)" ck83_defect "$RUN_SH" "$W/doc/d83_s_viol_falsy.scan.json" "$W/doc/d83_s_viol_falsy.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(s_has_zm)"   ck83_defect  "$RUN_SH" "$W/doc/d83_s_zm.scan.json"   "$W/doc/d83_s_zm.report.json"   "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(r_ok)"       ck83_defect  "$RUN_SH" "$W/doc/d83_r_ok.scan.json"   "$W/doc/d83_r_ok.report.json"   "$D83_SCOPE"
+run_failline_bashfunc "PART83/ck83_defect(r_ok-truthy)" ck83_defect "$RUN_SH" "$W/doc/d83_r_ok_truthy.scan.json" "$W/doc/d83_r_ok_truthy.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(r_viol)"     ck83_defect  "$RUN_SH" "$W/doc/d83_r_viol.scan.json" "$W/doc/d83_r_viol.report.json" "$D83_SCOPE"
+run_failline_bashfunc "PART83/ck83_defect(r_viol-falsy)" ck83_defect "$RUN_SH" "$W/doc/d83_r_viol_falsy.scan.json" "$W/doc/d83_r_viol_falsy.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(r_zm)"       ck83_defect  "$RUN_SH" "$W/doc/d83_r_zm.scan.json"   "$W/doc/d83_r_zm.report.json"   "$D83_SCOPE"
+run_failline_bashfunc "PART83/ck83_defect(r_zm-extra)" ck83_defect  "$RUN_SH" "$W/doc/d83_r_zm_extra.scan.json" "$W/doc/d83_r_zm_extra.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(extra_keys)" ck83_defect  "$RUN_SH" "$W/doc/d83_extra.scan.json"  "$W/doc/d83_extra.report.json"  "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_defect(missing_keys)" ck83_defect "$RUN_SH" "$W/doc/d83_missing.scan.json" "$W/doc/d83_missing.report.json" "$D83_SCOPE"
 run_failline_bashfunc "PART83/ck83_control(byte-equal)" ck83_control "$RUN_SH" "$W/doc/d83c_byte.scan.json" "$W/doc/d83c_byte.report.json"
 run_failline_bashfunc "PART83/ck83_control(ok=false)"   ck83_control "$RUN_SH" "$W/doc/d83c_dok.scan.json"  "$W/doc/d83c_dok.report.json"
+run_failline_bashfunc "PART83/ck83_control(ok-falsy)"   ck83_control "$RUN_SH" "$W/doc/d83c_ok_falsy.scan.json" "$W/doc/d83c_ok_falsy.report.json"
 run_failline_bashfunc "PART83/ck83_control(AS-EFF-006)" ck83_control "$RUN_SH" "$W/doc/d83c_rule.scan.json" "$W/doc/d83c_rule.report.json"
 run_failline_bashfunc "PART83/ck83_control(no-zm)"      ck83_control "$RUN_SH" "$W/doc/d83c_zm.scan.json"   "$W/doc/d83c_zm.report.json"
 run_exitcode_pyvar "PART36/VD_PY(ok0)"       VD_PY 1 "$W/doc/vd_nm_ok0.json" ok0
+run_exitcode_pyvar "PART36/VD_PY(ok0-falsy)" VD_PY 1 "$W/doc/vd_falsy_ok0.json" ok0
 run_exitcode_pyvar "PART36/VD_PY(okt)"       VD_PY 1 "$W/doc/vd_nm_okt.json" okt
+run_exitcode_pyvar "PART36/VD_PY(okt-truthy)" VD_PY 1 "$W/doc/vd_truthy_okt.json" okt
 run_exitcode_pyvar "PART36/VD_PY(refused)"   VD_PY 1 "$W/doc/vd_nm_refused1.json" refused
 run_exitcode_pyvar "PART36/VD_PY(refused2)"  VD_PY 1 "$W/doc/vd_norefused_bad.json" refused
+run_exitcode_pyvar "PART36/VD_PY(refused-truthy)" VD_PY 1 "$W/doc/vd_truthy_refused.json" refused
 run_exitcode_pyvar "PART36/VD_PY(norefused)" VD_PY 1 "$W/doc/vd_norefused_bad.json" norefused
 run_exitcode_pyvar "PART36/VD_PY(viol)"      VD_PY 1 "$W/doc/vd_nm_viol.json" viol
 run_exitcode_pyvar "PART36/VD_PY(v005)"      VD_PY 1 "$W/doc/vd_nm_v005.json" v005
+run_exitcode_pyvar "PART36/VD_PY(v005-substr)" VD_PY 1 "$W/doc/vd_v005_substr.json" v005
 run_exitcode_pyvar "PART36/VD_PY(unev)"      VD_PY 1 "$W/doc/vd_nm_unev.json" "unev:deny Clock;deny Frobnicate"
+run_exitcode_pyvar "PART36/VD_PY(unev-superset)" VD_PY 1 "$W/doc/vd_superset_unev.json" "unev:deny Clock;deny Frobnicate"
 run_exitcode_pyvar "PART36/VD_PY(zm)"        VD_PY 1 "$W/doc/vd_nm_zm.json" "zm:$D83_SCOPE"
+run_exitcode_pyvar "PART36/VD_PY(zm-superset)" VD_PY 1 "$W/doc/vd_superset_zm.json" "zm:$D83_SCOPE"
 run_exitcode_pyvar "PART36/VD_PY(nozm)"      VD_PY 1 "$W/doc/vd_zm_present.json" nozm
 run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(functions)"        RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_functions.json"
+run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(functions-absent)" RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_functions_absent.json"
 run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(analyzed)"         RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_analyzed.json"
+run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(count-absent)"     RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_count_absent.json"
 run_exitcode_pyvar "PART37/RS_PY_FAILCLOSED(unanalyzed)"       RS_PY_FAILCLOSED        1 "$W/doc/rs_leg_unanalyzed.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(functions)"  RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_functions.json"
+run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(functions-absent)" RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_functions_absent.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(analyzed)"   RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_analyzed.json"
+run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(count-absent)" RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_count_absent.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(unanalyzed)" RS_PY_STREAM_FAILCLOSED 1 --stdin "$W/doc/rs_leg_unanalyzed.json"
 run_exitcode_pyvar "PART37/RS_PY_STREAM_FAILCLOSED(empty-stdin)" RS_PY_STREAM_FAILCLOSED 2 --stdin "$W/doc/rs_empty.json"
 run_exitcode_pyvar "PART38/ZR_PY_NO_OK(not-a-dict)"  ZR_PY_NO_OK 1 "$W/doc/zr_not_a_dict.json"
@@ -493,6 +667,7 @@ run_exitcode_pyvar "PART38/ZR_PY_NO_OK(no-marker)"   ZR_PY_NO_OK 3 "$W/doc/zr_no
 run_exitcode_pyvar "PART38/ZR_PY_HAS_OK(ok-absent)"  ZR_PY_HAS_OK 1 "$W/doc/zr_missing_ok.json"
 run_exitcode_pyvar "PART38/ZR_PY_HAS_OK(not-a-dict)" ZR_PY_HAS_OK 1 "$W/doc/zr_ok_not_a_dict.json"
 run_exitcode_pyvar "PART39/CHAN_PY(caveat-shape)"      CHAN_PY 11 "$W/doc/chan_no_caveat.json" caveat
+run_exitcode_pyvar "PART39/CHAN_PY(caveat-wrongtype)"  CHAN_PY 11 "$W/doc/chan_caveat_wrongtype.json" caveat
 run_exitcode_pyvar "PART39/CHAN_PY(caveat-incomplete)" CHAN_PY 12 "$W/doc/chan_caveat_incomplete.json" caveat
 run_exitcode_pyvar "PART39/CHAN_PY(caveat-incomplete-truthy)" CHAN_PY 12 "$W/doc/chan_caveat_incomplete_truthy.json" caveat
 run_exitcode_pyvar "PART39/CHAN_PY(none-incomplete)"      CHAN_PY 13 "$W/doc/chan_leaks_incomplete.json" none
