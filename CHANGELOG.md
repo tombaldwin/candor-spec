@@ -25,6 +25,115 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`conformance/mutation_poison_gen.py` (new) + `mutation_poison_configs.py` + `retro_test.py` +
+  `generator_canary.py`: THE GENERATOR mutation-gate.sh's own header judged owed on a fourth
+  same-shape round (see the entry below) is built.** It walks a checker's OWN Python source via
+  `ast` — never a maintained list of past bypasses — classifies every comparison into one of the
+  four historical shapes (`is True`/`is False` identity, exact `==`/`!=` including numeric/string,
+  exact list/set equality, an `isinstance` guard, plus bare key/element PRESENCE), resolves each one
+  to a concrete field of a human-supplied accept-known-good baseline document (the one piece of
+  domain knowledge no source-reader can derive — "what does a real report look like" — kept separate
+  from the poison, which is 100% mechanical), and emits the matching near-miss family named in the
+  brief (truthy-not-True, falsy-but-present, genuinely-absent-key, wrong-type, superset, subset,
+  substring) by perturbing ONLY that one field and holding the baseline's other fields constant — the
+  same per-condition-isolation discipline "B1" forced into every hand-authored fixture. **Reaches BOTH
+  checker shapes named in the task**, via extraction paths that stay bug-for-bug with the ones
+  `mutation-gate.sh` already trusts: `--extract-var` for a bash-variable checker (`VD_PY`), a small
+  same-convention brace-matcher for a bash-function-wrapping-`python3 -c` checker (`ck83_defect`/
+  `ck83_control`), and direct file reads for standalone `conformance/*.py` files (never a frozen
+  copy). **An unclassifiable comparison is reported LOUDLY, per file/line/source-text, and is either
+  waived in `mutation_poison_configs.py`'s `WAIVERS` with a stated reason (the same convention
+  `clause_check.py`'s citations and `must_ledger.py`'s `unenforced` already use) or left FAILING the
+  run — never silently dropped.**
+
+  **Retro-test (`retro_test.py`), the calibration control** (`[[candor-oracle-disclosure-recall]]`
+  applied to the generator itself): the eleven historical comparison-shape bypasses (A1-A5, S1-S6)
+  were originally reproduced by degrading `mutation-gate.sh`'s OWN fixtures, never the checkers —
+  confirmed unaffected in `git log -- conformance/run.sh` across those dates. The generative mirror
+  of "a fixture too weak to catch this" is "a CHECKER degraded to this shape would slip past the
+  poison": each bypass's exact textual degradation (e.g. `d.get("ok") is not False` → `d.get("ok")`)
+  is applied to a COPY of the real, correct checker source, and the SAME mechanically-generated
+  poison (derived from the real source, never re-tuned per bypass) is asserted to flip from correctly
+  REJECTED (real checker) to wrongly ACCEPTED (mutant). **15/15 attempted rediscovered** (ten named
+  A/S items plus the CHAN_PY identity-degrade the header names in prose without a letter); A5 (`VD_PY`
+  `unev`, a list-comprehension projection) is a documented, waived generalisation gap, not silently
+  passed over; B1-B3 are a different finding shape (absence-based fixtures, not a checker
+  degradation) and are named as not-attempted rather than force-fit.
+
+  **Its own canary (`generator_canary.py`), both directions, across all three invocation shapes**
+  (embedded/pyvar, embedded/bashfunc, standalone/extfile): an unconditional-accept mutant of a real
+  checker (body replaced with `sys.exit(0)`/`return 0` regardless of input) is FOUND (never silently
+  absent from the report — evaluate_checker always returns rows) and FOUND BROKEN (every poison-
+  rejection row flips to BROKEN; the accept-known-good row correctly stays PASS, since accepting a
+  valid document is not itself wrong for an unconditional-accept checker). A second canary — a
+  checker that raises on every input, including its own accept-known-good document — is BROKEN with
+  explicit crash evidence in every row, never silently read as a correct rejection (mirrors
+  `mutation-gate.sh`'s own "a checker crash must not masquerade as an engine disagreement"). Caught
+  live while building this: the "extfile" invocation path (`run_checker`) executed the checker's REAL
+  path on disk directly rather than routing through `source_fn()`, so every mutation test against a
+  standalone file silently ran the UNMUTATED checker and reported its ordinary, correct behaviour —
+  fixed by writing `source_fn()`'s content to a scratch file (in the checker's own directory, so
+  `HERE`-relative sibling lookups still resolve) and executing that instead; in ordinary,
+  non-mutated operation this is behaviourally identical to running the file in place.
+
+  **Run against the six previously-confirmed-defeatable, unhardened checkers** (`incomplete_check`,
+  `fs_position_check`, `clause_check`, `probe_check`, `must_ledger`, `part_declarations`) — its first
+  real test, not a demo on checkers already known to be clean:
+  - **`incomplete_check.py` and `fs_position_check.py` fit the generator's document-via-argv shape
+    directly and are now FULLY mechanically covered** — every comparison the classifier can resolve
+    (7 of 9, 7 of 8 respectively; the remainder are argc guards and one inline comprehension-loop-
+    variable filter, both waived with reasons) correctly rejects its generated near-miss and accepts
+    the known-good baseline. `fs_position_check.py` needed two real classifier extensions built
+    against it: (1) a "select" key-path step — resolving a helper like `paths(fns["exfil"])` back to
+    "the `functions` entry whose leaf name is `exfil`, then its `paths` field" by COMPILING the
+    checker's own comprehension filter (`str(f.get("fn","")).replace("::",".").split(".")[-1]==leaf`)
+    into a real callable via `ast.unparse`+`compile`, never reimplementing the leaf-matching
+    convention by hand; (2) runtime disambiguation of a bare `"X" in Y"` between dict-key PRESENCE and
+    LIST-ELEMENT membership from the baseline's actual type at that position, since both parse to an
+    identical `ast.Compare` and only the DATA distinguishes them (a checker that tests
+    `"incomplete" not in resolves`, a list, is a different mutation shape from `"ok" in d`, a dict).
+  - **`clause_check.py`, `probe_check.py`, `must_ledger.py`, `part_declarations.py` are OUT OF REACH
+    for this generator's design, and it says so rather than shipping a partial pass over them.**
+    Measured, not assumed: classifying all four found ZERO comparisons resolving to an injectable
+    document (`clause_check`: 1 comparison, a deliberate substring test with no equality to degrade;
+    `probe_check`: 2, plain-scalar/subprocess-exit-code checks with no document at all — this
+    checker's entire JOB is running OTHER scripts under an env var, there is nothing to poison;
+    `part_declarations`: 4, all cardinality/count guards over locally-parsed text; `must_ledger`: 5,
+    all over ledger-entry dicts loaded from a file path bound through a MANUAL `while args: ... pop(0)`
+    flag parser (`--spec`/`--ledger`), a materially different CLI shape from every `sys.argv[N]`
+    checker this generator's argv-tracer already handles, compounded by a real cross-document sha256
+    binding a poison would need to preserve to look like anything other than "unreadable input"). The
+    common cause: these four read SPEC.md/run.sh/part.sh's own OUTPUT directly, hardcoded relative to
+    `HERE`, with no CLI seam a poison document could occupy — the SAME structural boundary this
+    session's own survey already named ("a different, larger mutation-testing project"). Extending
+    reach to them would mean modelling manual argv-flag parsing and, for two of the four, mutating
+    real SPEC.md/run.sh content in a mirrored scratch directory rather than swapping one JSON field —
+    named as the concrete next step, not silently assumed impossible forever.
+  - Two REAL, pre-existing generalisation gaps were found and waived with reasons rather than forced:
+    `VD_PY`'s `unev` mode and `ck83_control`'s AS-EFF-006 membership both feed a list/set-equality or
+    membership check through a per-item PROJECTION (`[u.get("rule") for u in ...]` /
+    `sorted(v.get("rule") for v in ...)`) one level before the comparison — reconstructing the object
+    shape a superset/subset poison would need means inverting the projection, which this generator
+    declines rather than guesses at. Both conditions are independently covered elsewhere (`unev` by
+    mutation-gate.sh's own hand-authored A5 fixture; ck83_control's OWN byte-equality check, a
+    structurally different whole-document comparison with no single key path, is the row that already
+    catches the case AS-EFF-006 membership would otherwise miss on its own).
+
+  **Controls:** the over-charge control — the unmodified tree still passes `mutation_poison_gen.py`
+  cleanly across all ten registered checkers (0 broken, 0 unresolved after every waiver) — was
+  falsified against itself repeatedly while building this: three real generator bugs were caught by
+  its OWN output before being trusted (a presence-shape poison direction that ignored which state the
+  baseline was already in, silently mutating an already-absent key to itself; a "subset of an
+  already-empty expected collection" no-op; a cross-document byte-equality check tripping as a side
+  effect of poisoning only one of two documents that must stay byte-identical for `ck83_control`'s
+  OTHER conditions to be isolated at all). `bash conformance/mutation-gate.sh` and
+  `bash conformance/run.sh` both pass, run serially in the foreground, unaffected by these additions
+  (no existing checker body touched). `must_ledger.py`: unaffected (no SPEC.md clause touched — these
+  are new tooling files, not a spec surface). **Filed, not fixed, in the umbrella `candor` repo's
+  BACKLOG.md** (out of this repo's ownership): the "generator now owed" entry there should be updated
+  to reflect this closure and its stated residual (the four meta-checkers, `must_ledger.py`, and the
+  two waived projection gaps).
+
 - **`conformance/mutation-gate.sh`: a survey of all 85 addressable PARTs found `mutation-gate.sh` had only ever attacked 5 of them (36/37/38/39/83), and found a WHOLE UNCOVERED CLASS — 14 standalone external checker scripts (`conformance/*.py`, invoked by `run.sh` with report paths/exit codes/output strings as plain argv) that `mutation-gate.sh`'s extraction machinery (`extract_pyvar`/`extract_func`) structurally cannot reach, because it only pastes code out of `run.sh` itself and these are separate files.** The universal test this file's own header recommends trying first — replace the checker's body with an unconditional `sys.exit(0)`, see whether any row goes red — was executed (not reasoned about) against all 14 via `conformance/part.sh <id>`; 13 gave a conclusive result (the 14th, `skip_ratchet.py`/PART 84, reads a skip-tally log the full suite accumulates, so `part.sh 84` alone is INCONCLUSIVE by its own unbound-variable guard regardless of the checker — not tested standalone). **All 13 tested SURVIVED it: `check_honesty.py` (PART 1c), `file_set_check.py` (48), `only_check.py` (49), `incomplete_check.py` (50), `fs_position_check.py` (51), `peek_completeness_check.py` (52), `refused_peek_check.py` (53), `peek_route_equality_check.py` (54), `exec_capability_check.py` (66), `clause_check.py`, `probe_check.py`, `must_ledger.py`, `part_declarations.py`.** `check_honesty.py` is the starkest: it is candor's ONE machine-verifiable check for the family's cardinal sin (a silent under-report), and its own CONTROLS comment in `run.sh` reads "none — every row asserts document CONTENT" — a `check_honesty.py` silently degenerated to `sys.exit(0)` would be caught by NOTHING in the ~15,800-line suite. **Seven of the 13 are now hardened** — chosen for severity, matching "verdict, route-equality, disclosure, refusal, completeness": `check_honesty.py` (2 conditions: the DIRECT form and the PROPAGATION form of the honesty invariant), `file_set_check.py` (the effect-membership filter and the reason-substring check), `peek_completeness_check.py` (all three `is not False`/`is not True` identity checks, attacked with the SAME truthy/falsy-but-wrong-type near-miss that broke VD_PY/ck83_defect/ck83_control previously — `peeked: 0`/`peeked: 1` instead of JSON `false`/`true`), `refused_peek_check.py` (the `"outOfScope" in docs["A"]` PRESENCE check, attacked with a present-but-empty value a truthy-degraded mutant would misread as absent), `peek_route_equality_check.py` (the flagship route-equality checker: byte-equality degraded to a LENGTH check — same shape as `ck83_control`'s fix, a same-length space-for-tab swap — plus the `ok`/`incomplete` identity checks), `exec_capability_check.py` (the `"Exec" not in got` effect-membership check on both the must-be-Exec and must-not-be-Exec arms), and `only_check.py` (the AS-EFF-011/AS-EFF-009 collision check — NOT a hypothetical: this checker's own header documents candor-rust and candor-java SHIPPING exactly that defect, a rule disclosed as unanswerable and evaluated anyway). Every poison/accept fixture was individually validated by direct invocation against the live, unmodified checker before being wired into the gate (`run_ext_reject`/`run_ext_accept`, a third runner shape alongside the existing `run_failline_bashfunc`/`run_exitcode_pyvar` — no extraction needed, since these files already ARE their own current source). **Six remain confirmed-defeatable and NOT yet hardened, stated as an open boundary rather than silently assumed safe:** `incomplete_check.py` (PART 50), `fs_position_check.py` (PART 51), `clause_check.py`, `probe_check.py`, `must_ledger.py`, `part_declarations.py`. **The other ~66 of the 85 addressable PARTs decide pass/fail via checker logic embedded DIRECTLY in `run.sh`** (a bash `[ "$a" = "$b" ]`, an inline `python3 -c` snippet, or a literal `diff`) rather than a separately-invokable unit, and were NOT executed against in this survey — spot-reading three of them (PART 33's engine-pin exit-code equalities, PART 59's shared `p59` refusal checker, PART 84's `skip_ratchet` caller) found the same nameable-checker shape recurs, which is evidence the technique likely generalizes, not proof it does; this is INFERRED, not measured, and stated as such. **The four comparison shapes behind every bypass in this file's history — identity-to-truthiness, exact-equality-to-membership/subset, a dropped `isinstance` guard, absent-key blindness — recurred YET AGAIN today, for a fourth independent round, this time across an entirely new class of checker (standalone files, not `run.sh`-embedded ones) that had never been attacked at all.** This file's own header already named the threshold for building a generator that derives poison mechanically from a checker's own comparison shape rather than hand-authoring it ("a FOURTH round finding a same-shape gap should flip that trade, given this is already the third") — today's round clears that threshold, on a new surface, and the generator is now judged worth building rather than continuing to hand-author against a fixed checklist. **Controls:** every new poison fixture reproduced with real output against the live, unmodified checker before being added (rejects the poison, accepts the known-good document); `bash conformance/mutation-gate.sh` and `bash conformance/run.sh` both pass (`mutation-gate: OK`, `conformance: OK`), run serially in the foreground. `must_ledger.py`: unaffected (no SPEC.md clause touched).
 
 - **`conformance/mutation-gate.sh` + `scripts/check_nested_quotes.py`: three more defects in the SAME-DAY mutation gate (`73173de`/B1), all found by an adversarial review and reproduced before touching anything.** (1) **A3, the sharpest — the canary's self-proof was DEFEATABLE.** `extract_func` matches only the exact literal `^fn() {` on one line; reformatting the canary's opening brace onto its own line (`cannot_fail_check()\n{`) makes extraction fail, and a failed extraction was recorded as a BROKEN row with the SAME text (`BROKEN  canary  cannot-fail`) the outermost check greps for as proof the intended NameError fired — so an extraction failure was indistinguishable from catching the real bug, and the gate printed `mutation-gate: OK` either way. Reproduced live: the reformatted-brace canary passed `mutation-gate: OK` on the pre-fix gate. Fixed two ways: `require_extracted` turns ANY extraction failure (canary or real checker) into an immediate hard FAIL distinct from a BROKEN row, and the outermost check now additionally requires the canary's actual captured output to contain the specific `NameError`/`zeroMatch` text its own header documents, not merely the word BROKEN in a status line built independently of it. (2) **A2 — the gate proved rejection, never acceptance.** A checker degenerated to unconditional "always reject" (e.g. RS_PY_FAILCLOSED's body loosened to `ok = False`) passed every poison leg while being dead. Reproduced live: mutating `RS_PY_FAILCLOSED` this way left all three isolated poison legs reading PASS and the gate still printing `mutation-gate: OK`. Fixed with `run_failline_bashfunc_accept`/`run_exitcode_pyvar_accept`: one genuinely valid, checker-specific document per checker/mode (17 new accept-known-good assertions across PART 36/37/38/39/83), required to be ACCEPTED, run under the same `real` KIND so a regression trips the same outermost check. (3) **A4 — the nested-quote lint protected only itself.** `conformance/run.sh`'s standing lint scanned `"$HERE/run.sh"` alone, so `mutation-gate.sh`, `canary/cannot-fail.sh`, `part.sh`, `publish-floor-notes.sh`, and `lean/check.sh` — every one a real bash script capable of the identical `python3 -c '...'` corruption — were never checked. Widened to every `*.sh` file in the repo, discovered fresh each run (`find`, not a hand-list), excluding `conformance/canary/` (its one file deliberately carries this exact bug as the gate's own liveness control and must never be "fixed"). Deliberately NOT widened to `*.py`: tried it first — pointing the lint at the `.py` generators produced 93 findings, none real, because this lint implements BASH quote-removal grammar and a plain `.py` file has no shell-quoting layer for this bug class to live in at all (e.g. a Python dict literal `'rust=pub fn entry() {{ ... }}'` reads exactly like a bash `NAME='...'` assignment to a parser that doesn't know it's looking at Python) — attacking the brief's literal "every shell and python checker" phrasing rather than implementing it as stated, confirmed by grepping every `conformance/*.py`/`scripts/*.py` for a self-shelling `python3 -c '...'` shape and finding none. Also fixed in the same lint: a false positive on the `'...'$'\n''...'` ANSI-C splice idiom (used to embed a literal newline between two ordinary single-quoted script pieces) — the lint had no notion of `$'...'` at all and misread it as the same multi-segment corruption shape as a real bareword split; added `scan_ansic_quoted` and an `ansic` segment kind, proved both directions in `--selftest` (`ansic-splice`: clean; `ansic-splice-plus-real-bug`: the splice stays silent AND a genuine corruption in the SAME file is still caught). **Controls, falsified against the pre-fix files before touching anything and re-confirmed after:** A3 — the reformatted-brace canary now makes the gate FAIL (was `OK`); A2 — the `ok = False` degenerate checker is now caught via its accept-known-good row going BROKEN (was `OK`); A4 — a real corruption planted in a file other than `run.sh` (`conformance/`, non-canary) is now caught by the exact widened-scan command (was invisible to it); over-charge control — the unmodified tree still passes `mutation-gate: OK` (canary aside) and `check_nested_quotes.py --selftest` passes all 8 cases. `must_ledger.py`: unaffected (no SPEC.md clause touched). `conformance/run.sh`: OK. `conformance/mutation-gate.sh`: OK.
