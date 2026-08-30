@@ -509,6 +509,36 @@ def judge(res):
     return True, out
 
 
+# PROBE MODE — see probe_check.py / gen_split_invariance.py: "verified to catch" must be a GATE, not a
+# habit applied once at authoring time. probe_check.py's own header used to list this generator UNCOVERED
+# ("verdict is read from an exit code + a verdict file, so the fault belongs at the gate-invocation layer,
+# not in a judge()") — this is that layer: it corrupts the already-produced `both` verdict document by
+# dropping ONE entry from its `violations` LIST, a VALUE corruption (the document, the key and the list
+# all still exist; only its length changed), which is exactly the DROPPED shape §3.3.1 clause 2 exists to
+# catch — a real violation swallowed on the way to the artifact. Not an absence poison: `judge()` never
+# sees a missing key or a None document, only a violations list one entry short of what the control found.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
+def _maybe_probe_corrupt(res):
+    if not _PROBE_FAULT or _probe_fired:
+        return res
+    rc1, d1 = res.get("violation_only", (None, None))
+    rc3, d3 = res.get("both", (None, None))
+    if rc1 != 1 or not isinstance(d1, dict) or not violations_of(d1):
+        return res
+    if not isinstance(d3, dict) or not violations_of(d3):
+        return res
+    _probe_fired.append(True)
+    print("  PROBE: dropped one violation from the `both` arm's verdict document — this run MUST fail")
+    d3c = dict(d3)
+    d3c["violations"] = violations_of(d3)[:-1]
+    res = dict(res)
+    res["both"] = (rc3, d3c)
+    return res
+
+
 def main():
     args = sys.argv[1:]
     keep = "--keep" in args
@@ -536,6 +566,7 @@ def main():
                                      "could not build the arms (compile/snapshot failed) — this is the "
                                      "harness, and it must never read as a refusal by the engine"))
                     continue
+                res = _maybe_probe_corrupt(res)
                 ok, fs = judge(res)
                 rows.append((eng, gate, "live" if ok else "control-dead", len(fs)))
                 for kind, why in fs:

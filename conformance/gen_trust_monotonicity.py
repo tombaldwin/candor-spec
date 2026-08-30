@@ -162,6 +162,28 @@ KNOWN_VACUOUS = {
     "ts":    {"callback", "fn_returned_dyn", "lazy_init"},
 }
 
+# PROBE MODE — see probe_check.py / gen_split_invariance.py for why "verified to catch" must be a GATE,
+# not a habit applied once at authoring time. Registered in probe_check.py's COVERED dict (closing the
+# gap its own header used to name in UNCOVERED: "judge() takes four arms; the injection has to pick one
+# without colliding with the BESIDE arm's inverted direction"). The injection is a VALUE corruption, not
+# an absence: it does not drop the cell to `None` (gen_chain_idempotence.py already covers that branch of
+# judge()) — it rewrites a REPLACE-class degraded arm's leaf_info in place so it reports full confidence
+# with no hedge at all, the exact CARDINAL shape this property exists to catch (distrust manufacturing
+# confidence). Firing only on a REPLACE cell also sidesteps the BESIDE arm's inverted direction the header
+# above warns about.
+_PROBE_FAULT = os.environ.get("CANDOR_PROBE_FAULT")
+_probe_fired = []
+
+
+def _maybe_probe_corrupt(cls, name, key, ar):
+    if _PROBE_FAULT and not _probe_fired and cls == REPLACE and ar is not None and ar["eff"]:
+        _probe_fired.append(True)
+        print("  PROBE: rewrote one live REPLACE cell's degraded arm (%s/%s) into silent full confidence "
+              "(effects dropped, no hedge) — this run MUST fail" % (name, key))
+        return {"eff": frozenset(), "unknown": False, "invisible": frozenset(), "why": ar["why"]}
+    return ar
+
+
 def judge(cls, tr, un, ar):
     """tr/un/ar: leaf_info entries for the trusted, unchained and degraded arms; None = absent from that
     arm's report. Read the direction notes in the header before changing any branch here."""
@@ -267,9 +289,10 @@ def main():
                     continue
                 for c in by_split[sid]:
                     k = c["name"]
+                    a_leaf = _maybe_probe_corrupt(CLASSOF[name], name, k, a.leaves.get(k))
                     per_cell[(k, name)] = (judge(CLASSOF[name], tr.leaves.get(k), un.leaves.get(k),
-                                                 a.leaves.get(k)),
-                                           tr.leaves.get(k), a.leaves.get(k), un.leaves.get(k))
+                                                 a_leaf),
+                                           tr.leaves.get(k), a_leaf, un.leaves.get(k))
             depinfo.setdefault(eng, {})[sid] = sa.dep_stats(deps[sid])
         if bad_ref:
             broken[eng] = bad_ref
