@@ -59,6 +59,67 @@ Run it after any patch-cycle commit that adds a section here.
   unresolved part is not a passing part, and neither is a merely-confirmed-defeatable one — both buckets
   are now named rather than folded into one count.
 
+- **THE 27 UNRESOLVED EMBEDDED PARTS, ATTACKED: 27 of 27 have no working backstop, 2 now hardened.**
+  The 2026-08-29 survey's mechanical AND-chain neuter — and the follow-on hand-generalised sweep that
+  closed 12 more the same day — could not locate a comparison at all for 27 parts: 4l, 7, 8, 9, 13, 13b,
+  15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 61, 62, 63, 64, 65, 68, 70, 84. Applied the
+  unconditional-pass test to each BY HAND: find the verdict-controlling comparison (almost always one
+  bash function — `p61_row`, `cfg_probe`, `vocab_probe`, `ep_probe`, `dp_probe`, `zm_probe`, `perow`,
+  `peurow`, `p18fail`, `check_agents`, `check_polfail`, `p64_row` — or a small number of inline
+  `if [ COND ]; then OK else BAD=1; rc=1; fi` blocks sharing one aggregator variable, or a delegated
+  `python3 gen_*.py || VAR=1` call for PART 27/43/55), force it to the pass branch in a throwaway
+  mutation of `run.sh`, and confirm via a REAL `part.sh <id>` run that the part still prints its own
+  MATCH/OK line with nothing else reacting. **26 of 27 are CONFIRMED DEFEATABLE this way, each
+  reproduced, not asserted** (13/13b/32/33/35/40/84 needed the unmarked PART 10 slice as a named
+  co-dependency for `$GDIR`; 15b/15c needed `10 14 15`; 18 needed `16` — several of those runs' overall
+  exit code stayed nonzero even after the neuter, confirmed via an UNMUTATED run to be PART 10's own
+  vocab-arm drift and PART 16's java containment discovery form, both pre-existing on this checkout and
+  unrelated to the part under test, the same "live drift in a sibling checkout" class the 2026-08-29
+  survey named for 4k/16/34/4n). **PART 9 is the 27th, and it is not a test failure**: its own header
+  already says "CONTROLS: none — advisory rows print WARN and set nothing", and a grep of its body
+  confirms zero `rc=1`/`_OK=1`/`_BAD=1` anywhere in it — there is no comparison to invert because PART 9
+  never controls the verdict, so it is EQUIVALENT to an unconditional pass by design rather than merely
+  defeatable as one. The honest numerator: 27 of 27.
+
+  **Two of the 26 are hardened in `conformance/mutation-gate.sh`**, chosen for severity the same way
+  earlier waves did — verdict/disclosure and refusal, both with a measured real-engine history. **PART
+  68** (a verdict row must carry the unit it is about, SPEC §2 ⟨0.32⟩ — the exact "two byte-identical
+  rows a reader cannot tell apart" defect measured live on candor-ts/java/swift 2026-08-24) gets THREE
+  independent near-miss poisons for its three distinct failure branches — byte-identical rows (the
+  historical defect itself), same hash with distinct text (isolates hash-UNIQUENESS from whole-row
+  equality), and correct-but-out-of-order hashes (isolates the sort-key clause PART 63 cannot see) —
+  each poison's `rev` arm pinned to the SAME (rule,hash) pairs as its `twin` so the independent REV check
+  cannot mask which branch actually caught it (an earlier draft's poisons tripped on REV by coincidence
+  before this was fixed). Extracted via the EXISTING `extract_heredoc` — PART 68's `check.py` is written
+  to disk via `cat > file <<'PYEOF'` rather than piped via `python3 - <<'DELIM'`, but `extract_heredoc`
+  is delimiter-driven, not preamble-driven, so no new extraction code was needed. **PART 61** (a typo'd
+  effect name must be refused, exit 2, never silently answered, SPEC §3.1 — measured on all four engines)
+  is the exact `extract_func` shape already used for `ck83_defect`/`ck83_control`, but `p61_row` shells
+  out to a real query binary for its three probes rather than reading a JSON document, so it is poisoned
+  via a tiny STUB command keyed on the effect name (never a built engine) rather than a document, with a
+  near-miss per historically-load-bearing exit code: the typo answering 0 instead of 2 (the defect
+  itself) and the known-absent effect ALSO refusing at 2 (indistinguishable from "path always refuses",
+  the exact failure mode PART 61's own header says its control exists to rule out). **Both falsified
+  against a plausible regression** in a scratch copy of the relevant function/script (dropping PART 68's
+  byte-identity-and-hash-uniqueness checks; dropping PART 61's `$absent = 0` clause): the poisons built to
+  isolate each dropped check flip from CAUGHT to WRONGLY-ACCEPTED, and the others are unaffected — proof
+  the near-misses test the branch they claim to, not merely trip a neighbour by coincidence.
+
+  **Not hardened, named rather than left silent**: the other 24 confirmed-defeatable parts, and PART 9's
+  structural gap. The highest-severity of those — **PART 63** (a sibling report cannot answer for another
+  member, SPEC §2.2/§3.3.1 ⟨0.32⟩ — MEASURED as a real false-green on candor-query 0.31.0) and PART
+  62/70 (completeness/refusal) — are not function-shaped: their comparison is a single inline `if` over
+  exit codes from several REAL per-engine invocations computed earlier in the same `run.sh` slice (PART
+  63's AND-chain alone spans five separate un-parameterised call sites, one per engine, not one reusable
+  function called five times), which is real per-part fixture-and-stub engineering rather than a
+  mechanical follow-on from what PART 68/61 needed. Left for the next session rather than rushed, per
+  BACKLOG.md's own per-part table.
+
+  Controls held throughout: `conformance/run.sh` OK, `mutation-gate.sh` OK (the 7 new PASS lines plus the
+  canary's own `BROKEN canary cannot-fail` line), `must_ledger.py` 521/521 classified (12 unenforced,
+  unchanged), `retro_test.py` 15/15, `probe_check.py` 8/8 properties, skip-ratchet baseline unrisen (3
+  skips over 7 keys, 6 fell, none risen).
+
 - **PART 79 gains a fourth cell: a `dlopen`/`dlsym`-resolved (or `transmute`-of-a-raw-pointer)
   function pointer, INVOKED, must disclose `Unknown`/`callback:*`, never `"functions": []`.** Closes
   two BACKLOG.md OWED items with one fixture, because the shapes coincide (both are "a function
