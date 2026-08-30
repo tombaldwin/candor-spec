@@ -1002,13 +1002,29 @@ run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_S
 # extract_oneline_func — see their definitions above) because neither is a bash `NAME='...'` assignment
 # or an own-line-`}` function, the only two shapes this file could reach before today.
 #
+# FIVE MORE hardened below (2026-08-30, TASK 2 of the same survey's follow-on): PART 19 and PART 20, the
+# two SOUNDNESS-VEIN verdict rows (the initializer edge and implicit-stringification-across-the-boundary
+# cardinal sins, each with real production history — SOUNDNESS-VEIN-initializer-edge.md /
+# SOUNDNESS-VEIN-crossing-the-scan-boundary.md); PART 21, the disclosure row (could-not-form-a-key must
+# not read pure); PART 22, the completeness row (a chained dep join carries the whole surface, not just
+# the effect — the row whose own header names four independent production defects, one per engine); and
+# PART 56, the refusal+completeness row found by CORPUS-TESTING THE PUBLISHED 0.30.0 (a peek that must
+# survive a fail-closed refusal, AND the mirror `refuse-before-envelope` rule that a refusal with nothing
+# to disclose must leave no report at all). The first four are `python3 - ARGS <<'DELIM'` heredocs, the
+# same PART 46 shape, extracted the same way; PART 56 is the same shape reading real DIRECTORY trees
+# rather than bare file args, so its poison plants files under a synthetic `.candor/` rather than passing
+# a path directly.
+#
 # NOT hardened here, stated explicitly rather than silently, mirroring the standalone survey's own
-# boundary: the other 13 confirmed-DEFEATED parts (10, 14, 19, 20, 21, 22, 45, 4h, 56, 57, 58, 59, 5b,
-# 80 — disclosure, completeness and refusal properties among them, e.g. 58 "an outOfScope entry names the
-# file its function is in" and 59 "what a refusal owes its reader"), the 46 UNRESOLVED parts (including
-# the five gen_*.py-driven properties), and the 7 INCONCLUSIVE ones. This is a SURVEY BOUNDARY, not a
-# claim the rest are safe — see BACKLOG.md for the full per-part table.
-mkdir -p "$W/p46" "$W/p72"
+# boundary: the remaining 9 confirmed-DEFEATED parts (10, 14, 45, 4h, 57, 58, 59, 5b, 80 — disclosure,
+# refusal and verdict properties among them, e.g. 58 "an outOfScope entry names the file its function is
+# in" and 59 "what a refusal owes its reader"), the 46 UNRESOLVED parts (including the five gen_*.py-driven
+# properties), and the 7 INCONCLUSIVE ones. This is a SURVEY BOUNDARY, not a claim the rest are safe — see
+# BACKLOG.md for the full per-part table.
+mkdir -p "$W/p46" "$W/p72" "$W/p19" "$W/p20" "$W/p21" "$W/p22" \
+  "$W/p56a/rs_dirty/.candor" "$W/p56a/rs_clean/.candor" \
+  "$W/p56b/rs_dirty/.candor" "$W/p56b/rs_clean/.candor" \
+  "$W/p56g/rs_dirty/.candor" "$W/p56g/rs_clean/.candor"
 # ---- PART 46 (PYBL) — condition (a) the under-report: a body-less declaration's caller with no `Unknown`
 # must be rejected; condition (b) the CONTROL: a locally-bodied caller charged Unknown-only (or nothing)
 # must ALSO be rejected, so the row cannot pass by fabricating Unknown onto everything.
@@ -1026,6 +1042,71 @@ printf '%s' '{"ok": true, "outOfScope": ["x", "y"]}' > "$W/p72/b_superset.json"
 printf '%s' '{"ok": true, "outOfScope": ["x"]}' > "$W/p72/a_copy.json"
 run_stdout_oneline_func "PART72/eq72(superset-must-diverge)" eq72 '^diverge:' "$W/p72/a.json" "$W/p72/b_superset.json"
 run_stdout_oneline_func "PART72/eq72(identical-must-be-equal)" eq72 '^equal$' "$W/p72/a.json" "$W/p72/a_copy.json"
+
+# ---- PART 19 (PYIE) — the initializer-edge soundness vein: a consumer that reaches a chained dependency's
+# effectful initializer must not read pure. The heredoc's own `engines` list always includes `java` at
+# argv[1] regardless of which other engines are built, so a java-only poison/good pair exercises the real
+# comparison without needing rust/ts/swift fixtures. Poison A is the exact defect this row exists to catch
+# (the consumer reads pure); poison B is the near-miss one field over — `Unknown`-only, still no CONCRETE
+# effect — proving the row does not accept a bare hedge as the initializer's effect reaching the consumer.
+printf '%s' '{"functions": [{"fn": "app.A", "inferred": []}]}' > "$W/p19/poison_pure.json"
+printf '%s' '{"functions": [{"fn": "app.A", "inferred": ["Unknown"]}]}' > "$W/p19/poison_unknown_only.json"
+printf '%s' '{"functions": [{"fn": "app.A", "inferred": ["Fs"]}]}' > "$W/p19/good.json"
+run_exitcode_heredoc "PART19/PYIE(consumer-reads-pure)"      PYIE 1 "$W/p19/poison_pure.json" /nonexistent /nonexistent /nonexistent
+run_exitcode_heredoc "PART19/PYIE(unknown-only-not-enough)"  PYIE 1 "$W/p19/poison_unknown_only.json" /nonexistent /nonexistent /nonexistent
+run_exitcode_heredoc_accept "PART19/PYIE(good)"              PYIE 0 "$W/p19/good.json" /nonexistent /nonexistent /nonexistent
+
+# ---- PART 20 (PYSB) — the implicit-stringification soundness vein, same shape and same java-only-arm
+# strategy as PART 19 above (a different heredoc, an identical `effectful()` comparison).
+printf '%s' '{"functions": [{"fn": "app.S.show", "inferred": []}]}' > "$W/p20/poison.json"
+printf '%s' '{"functions": [{"fn": "app.S.show", "inferred": ["Clock"]}]}' > "$W/p20/good.json"
+run_exitcode_heredoc "PART20/PYSB(consumer-reads-pure)" PYSB 1 "$W/p20/poison.json" /nonexistent /nonexistent /nonexistent
+run_exitcode_heredoc_accept "PART20/PYSB(good)"         PYSB 0 "$W/p20/good.json" /nonexistent /nonexistent /nonexistent
+
+# ---- PART 21 (PYUK) — could-not-form-a-key must disclose, not read pure. `engines` always includes java
+# at argv[1] keyed on fn "app.Go.run" (the other args select the java-only arm: rust/ts/swift paths set to
+# a nonexistent file, their "present" flags set to "0" so they are legitimately skipped rather than scored
+# as a missing arm). Poison holds the function PRESENT with no Unknown and no concrete effect (`verdict()`'s
+# "present but reads pure" branch — a value corruption, not the ABSENT-from-report branch this row also
+# tests, which is a different, already-covered defect shape); good discloses via `Unknown` with a reason.
+printf '%s' '{"functions": [{"fn": "app.Go.run", "inferred": []}]}' > "$W/p21/poison.json"
+printf '%s' '{"functions": [{"fn": "app.Go.run", "inferred": ["Unknown"], "unknownWhy": "dispatch:lib.Store#save"}]}' > "$W/p21/good.json"
+run_exitcode_heredoc "PART21/PYUK(present-but-reads-pure)" PYUK 1 "$W/p21/poison.json" /nonexistent /nonexistent 0 0 /nonexistent 0
+run_exitcode_heredoc_accept "PART21/PYUK(good)"            PYUK 0 "$W/p21/good.json" /nonexistent /nonexistent 0 0 /nonexistent 0
+
+# ---- PART 22 (PYDS) — a chained dep join carries the whole surface, not just the effect. Uses the rust
+# triple (argv 1-3: dep, app, present) with java/ts/swift all marked absent. TWO independent poisons, since
+# `check()` has two distinct failure branches this row must tell apart: an EFFECT dropped by the join
+# (`Exec` present in the dep, absent from the consumer) and a LITERAL SURFACE dropped while the effect
+# itself still travels (`paths` emptied while `cmds` and both effects survive) — the second is the sharper
+# near-miss, since a comparison that only checked effect-set equality would pass it.
+printf '%s' '{"functions": [{"fn": "work", "inferred": ["Fs","Exec"], "paths": ["/surface/path"], "cmds": ["surfacecmd"]}]}' > "$W/p22/dep.json"
+printf '%s' '{"functions": [{"fn": "go", "inferred": ["Fs","Exec"], "paths": [], "cmds": ["surfacecmd"]}]}' > "$W/p22/app_poison_paths.json"
+printf '%s' '{"functions": [{"fn": "go", "inferred": ["Fs"], "paths": ["/surface/path"], "cmds": ["surfacecmd"]}]}' > "$W/p22/app_poison_effect.json"
+printf '%s' '{"functions": [{"fn": "go", "inferred": ["Fs","Exec"], "paths": ["/surface/path"], "cmds": ["surfacecmd"]}]}' > "$W/p22/app_good.json"
+run_exitcode_heredoc "PART22/PYDS(surface-dropped-paths)" PYDS 1 "$W/p22/dep.json" "$W/p22/app_poison_paths.json" 1 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0
+run_exitcode_heredoc "PART22/PYDS(effect-dropped)"        PYDS 1 "$W/p22/dep.json" "$W/p22/app_poison_effect.json" 1 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0
+run_exitcode_heredoc_accept "PART22/PYDS(good)"           PYDS 0 "$W/p22/dep.json" "$W/p22/app_good.json" 1 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0 /nonexistent /nonexistent 0
+
+# ---- PART 56 (PY56) — a target with no analyzable source still reads what it excluded, found by
+# corpus-testing the PUBLISHED 0.30.0. Reads a real DIRECTORY tree (`<base>/<eng>_<arm>/.candor/
+# report*.json`), not a bare file argument, so the poison plants files rather than passing paths. Only the
+# rust arm is populated (ts/sw marked absent via argv[8]/argv[9] = "0"), matching PART 19-22's
+# one-engine-is-enough strategy. TWO independent poisons for the two failure branches this row's own
+# comment calls out as separately load-bearing: (a) the corpus-found defect itself — a DIRTY refusal
+# (exit 2) whose report exists but whose `outOfScope` is empty, so the peek that justified the whole rung
+# never reaches the reader — and (b) its mirror, a CLEAN refusal that nonetheless LEFT A REPORT, which
+# `run.sh`'s own comment calls the `refuse-before-envelope` rule (§3.1 is quantified over "any report a
+# scan produced"). Good holds the real shape: dirty exit 2 WITH a populated report, clean exit 2 with NO
+# report at all — the asymmetry is deliberate, not an oversight, so the accept-known-good leg is the only
+# thing standing between "hardened" and "encoded my own misreading of the asymmetry as ground truth".
+printf '%s' '{"outOfScope": [{"fn":"build::main","path":"build.rs","effects":["Exec"]}]}' > "$W/p56g/rs_dirty/.candor/report.rs.scan.json"
+printf '%s' '{"outOfScope": []}' > "$W/p56a/rs_dirty/.candor/report.rs.scan.json"
+printf '%s' '{"outOfScope": [{"fn":"build::main","path":"build.rs","effects":["Exec"]}]}' > "$W/p56b/rs_dirty/.candor/report.rs.scan.json"
+printf '%s' '{"outOfScope": []}' > "$W/p56b/rs_clean/.candor/report.rs.scan.json"
+run_exitcode_heredoc "PART56/PY56(dirty-peek-empty)"      PY56 1 "$W/p56a" 2 2 x x x x 0 0
+run_exitcode_heredoc "PART56/PY56(clean-left-a-report)"   PY56 1 "$W/p56b" 2 2 x x x x 0 0
+run_exitcode_heredoc_accept "PART56/PY56(good)"           PY56 0 "$W/p56g" 2 2 x x x x 0 0
 
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"

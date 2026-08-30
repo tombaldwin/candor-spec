@@ -4781,7 +4781,9 @@ echo
 
 echo "PART 26 — trust monotonicity: a distrusted dep report may only ADD hedges (SCAN-BOUNDARY-WORK-QUEUE.md §3, P3)"
 # ENGINES: rust java ts swift
-# CONTROLS: none — delegated: gen_trust_monotonicity.py; content differential with its own baseline
+# CONTROLS: none — delegated: gen_trust_monotonicity.py; PART 30's probe_check proves its judge() can still fail, via a
+#   value-corrupted REPLACE-arm cell (2026-08-30 hardening — closing an UNCOVERED gap probe_check.py's
+#   own header used to name); content differential with its own baseline otherwise
 if [ "$P26_OK" = 0 ]; then
   echo "  -> MATCH — every degraded dep report stayed between the unchained and trusted arms, outside the ratchet"
 else
@@ -4908,7 +4910,10 @@ echo
 
 echo "PART 29 — incomplete-vs-violation dominance: a real violation survives an incomplete scan (SPEC §3.3.1, P5)"
 # ENGINES: rust java ts swift
-# CONTROLS: none — delegated: gen_incomplete_dominance.py; content differential with its own baseline
+# CONTROLS: none — delegated: gen_incomplete_dominance.py; PART 30's probe_check proves its verdict can still fail, via a
+#   dropped-violation corruption of the `both` arm's verdict document (2026-08-30 hardening — closing an
+#   UNCOVERED gap probe_check.py's own header used to name); content differential with its own baseline
+#   otherwise
 if [ "$P29_OK" = 0 ]; then
   echo "  -> MATCH — every gate failed closed over unreadable code AND still reported the violation it found, outside the ratchet"
 else

@@ -44,7 +44,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 COVERED = {
     "gen_split_invariance.py":        ["--only", "local_call"],
     "gen_chain_idempotence.py":       ["--only", "local_call"],
+    "gen_trust_monotonicity.py":      ["--only", "local_call"],
     "gen_signature_monotonicity.py":  [],
+    "gen_incomplete_dominance.py":    ["--only", "rust"],
     "gen_sidecar_manifest.py":        [],
     "gen_fs_kind.py":                 [],
     # One engine is enough to reach a live cell; the fault fires on the first out-of-scope exit 2.
@@ -53,10 +55,6 @@ COVERED = {
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
-    "gen_trust_monotonicity.py":   "judge() takes four arms; the injection has to pick one without "
-                                   "colliding with the BESIDE arm's inverted direction — needs care",
-    "gen_incomplete_dominance.py": "verdict is read from an exit code + a verdict file, so the fault "
-                                   "belongs at the gate-invocation layer, not in a judge()",
     "gen_rung024.py":              "27 heterogeneous rows; each needs its own fault to be meaningful",
     "gen_differential.py":         "expected-value table — a wrong answer IS the failing case, so the "
                                    "fault must corrupt an ENGINE's answer rather than a comparison",
