@@ -122,6 +122,153 @@ else
   rc=1
 fi
 
+# A VERDICT THAT PRINTS `DIVERGE` MUST MOVE THE EXIT CODE, ON THE SAME STATEMENT.
+#
+# THE SHAPE, and the measurement that put this lint here. A part's verdict tail is written
+#     [ "$P61_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
+# and the exit code is set somewhere ELSE — inside the row function, beside `P61_BAD=1`. Two bindings of
+# one fact, and nothing tying them together: delete `rc=1` from `p61_row` (2026-08-30, a review panel) and
+# PART 61 printed DIVERGE while the suite exited 0, with all three of its mutation-gate legs still green,
+# because those legs read the part's own flag and never `rc`. That is precisely the fail-open
+# `run_bashfunc_flag` was built to close for PART 63/70 — left standing one section over, in the
+# neighbour, which is the audit-boundary rule (AGENT-CORPUS-BRIEF §9) failing in its most literal form.
+#
+# THE FIX IS STRUCTURAL RATHER THAN REMEMBERED: `rc=1` now lives on the verdict line itself, so the
+# printed divergence and the exit code are ONE statement and cannot drift apart. This lint is what keeps
+# it that way for the next part written — a rule an author must remember to apply is weaker than one that
+# fails the build. SWEPT 2026-08-30: all 23 lines of this shape in this file, every one now bound.
+#
+# TWO ARMS, BECAUSE THE ONE-ARM VERSION HAD THE DEFECT IT WAS CLOSING. Shipped on 2026-08-30 reading the
+# `[ "$FLAG" op N ] && echo "… DIVERGE …"` tail and nothing else, with a comment asserting that the other
+# divergence shape — `if … else echo "-> DIVERGE …"; rc=1; fi`, and the row helpers that set a part flag
+# deep inside a function — "is already bound on its own line by construction". That sentence was an
+# INFERENCE about ~78 lines nobody had counted, written into a fail-open lint, in a file whose subject is
+# claims that read as coverage. SWEPT 2026-08-31, every count below EXECUTED against this file: 109 PART
+# ids, 66 of them with a printed summary tail (66/66 bound), 94 further `-> DIVERGE` prints outside the
+# tail shape, and 21 verdict-carrying FLAGS (21/21 bound). Every one is in fact bound today — the
+# inference was TRUE — but nothing was ENFORCING it, so `rc=1` could be deleted from PART 37's `else` or
+# from `vr_reject` and ARM A stayed green. Being right about an unenforced claim is how PART 61 got in.
+#
+# FALSIFIED, not asserted: 23/23 single-tail mutants and 19/19 single-flag mutants (the two flags with no
+# `rc=1` of their own, GL_OK and AG_OKROW, chain into RS_OK/VD_OK, whose mutants ARE caught) each flip
+# this lint red, and both floors fire when their pattern is refactored out from under them.
+#
+#   ARM A — the tail shape: `[ "$F" op N ] && echo "… DIVERGE …"` must carry `rc=1` in the SAME statement.
+#   ARM B — the flag shape: any variable assigned NONZERO on a line that announces DIVERGE/FAIL/BROKEN is
+#           a verdict flag, and some statement testing it must reach `rc=1` or `exit 1|2`. This is what
+#           covers the helper functions, the `if/else` tails, and the `[ "$F" = 0 ] && echo … || OTHER=1`
+#           chain into a second flag — the whole population ARM A's comment used to wave through.
+#
+# BOTH ARMS CARRY A FLOOR, for the reason arm B exists: "zero unbound verdicts" and "the pattern stopped
+# matching" print the same output otherwise (attack H — zero failures is not zero gates). Both are `-lt`
+# rather than exact because these populations grow with every part added and a part author must not be
+# made to edit this line; the ratchet that must be EXACT is a coverage table (see probe_check.py), not a
+# floor under a naturally-growing count.
+# The heredoc is redirected to a FILE rather than wrapped in `$( … )`: bash re-scans a command
+# substitution for its closing paren, and a python line whose quoting confuses that scan turns the
+# rest of the block into shell. Measured while writing this arm — `bash -n conformance/run.sh` failed
+# at a line inside the heredoc, i.e. the whole suite would not parse. Caught by `bash -n`, which is
+# now part of the lint's own falsification.
+VB_TMP="$(mktemp)"
+python3 - "$HERE/run.sh" > "$VB_TMP" 2>&1 <<'VBPY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read().split("\n")
+code = ["" if l.strip().startswith("#") else l for l in src]   # a comment is not a verdict
+# THE EVIDENCE MUST BE CODE, NOT PROSE. Measured while falsifying this lint: deleting `rc=1` from PART
+# 36's `else` left ARM B green, because that part's MATCH message one line up contains the words "on
+# exit 2" and the binding pattern matched inside a STRING LITERAL. The differential is on record — the
+# same mutant is MISSED by the pre-fix matcher and CAUGHT once quoted spans are blanked. A gate that reads its own output text is the exact
+# defect being hunted, one level up. Quoted spans are blanked before anything is matched — so a flag is
+# bound only by an assignment or an `exit` the shell would actually execute.
+STRINGS = re.compile(r'"(?:[^"\\]|\\.)*"' + r"|'[^']*'")
+def bare(line):
+    return STRINGS.sub('""', line)
+BIND = re.compile(r'(?<![A-Za-z_])rc=1|(?:^|[;&|(]|\bthen\b|\belse\b|\bdo\b)\s*exit\s+[12]\b')
+
+# ── ARM A: the verdict TAIL. ───────────────────────────────────────────────────────────────────────
+tail = re.compile(r'^\[\s*"\$\w+"\s*!?=\s*\S+\s*\]\s*&&\s*(?:\{\s*)?echo\s')
+a_seen = a_unbound = 0
+for i, line in enumerate(code, 1):
+    if not tail.match(line) or not re.search(r"DIVERGE|BROKEN|VIOLAT", line):
+        continue          # a MATCH/SKIP tail moves no exit code and must not
+    a_seen += 1
+    if "rc=1" not in bare(line):
+        a_unbound += 1
+        print(f"  [A] line {i}: {line.strip()[:118]}")
+
+# ── ARM B: the verdict FLAG. ───────────────────────────────────────────────────────────────────────
+ASSIGN = re.compile(r'(?:^|[;&|{( \t])([A-Z][A-Za-z0-9_]*)=(\d+)\b')
+flags = {}
+for i, line in enumerate(code, 1):
+    if not re.search(r'DIVERGE|FAIL|BROKEN', line):
+        continue
+    for m in ASSIGN.finditer(line):
+        if m.group(2) != "0":
+            flags.setdefault(m.group(1), i)
+seen_cache = {}
+def bound(v, depth=0):
+    """Does ANY test of $v reach rc=1 / exit 1|2? Chains one hop through `… || OTHER=1` (GL_OK -> RS_OK,
+    AG_OKROW -> VD_OK are the two real instances), with a depth cap so a cycle cannot say yes."""
+    if v in seen_cache:
+        return seen_cache[v]
+    seen_cache[v] = False                      # in-progress: a cycle must not vouch for itself
+    use = re.compile(r'\$\{?' + v + r'\b')
+    ifhead = re.compile(r'^\s*(if|elif)\b.*\$\{?' + v + r'\b')
+    chain = re.compile(r'\|\|\s*([A-Z][A-Za-z0-9_]*)=[1-9]')
+    for i, line in enumerate(code):
+        if not use.search(line):
+            continue
+        if BIND.search(bare(line)):
+            seen_cache[v] = True; break
+        if ifhead.search(line):                # an if/else BLOCK that reaches the binding
+            for j in range(i, min(i + 40, len(code))):
+                if BIND.search(bare(code[j])):
+                    seen_cache[v] = True; break
+                if j > i and re.match(r'^\s*fi\b', code[j]):
+                    break
+            if seen_cache[v]:
+                break
+        m = chain.search(bare(line))           # `[ "$V" = 0 ] && echo … || OTHER=1`
+        if m and depth < 3 and bound(m.group(1), depth + 1):
+            seen_cache[v] = True; break
+    return seen_cache[v]
+b_unbound = 0
+for v in sorted(flags):
+    if not bound(v):
+        b_unbound += 1
+        print(f"  [B] {v} (first set on a failure line at {flags[v]}): no test of it reaches rc=1/exit")
+print(f"SEEN_A={a_seen} UNBOUND_A={a_unbound} SEEN_B={len(flags)} UNBOUND_B={b_unbound}")
+# The checker carries its own exit code as well as its counts. The shell below reads the COUNTS (so a
+# lint that died before printing them is a FAIL rather than a silent pass), and the exit code is what
+# lets mutation-gate.sh run this heredoc against a poisoned copy of run.sh and assert it still rejects.
+# A checker only its own caller can interpret is a checker nothing else can prove still works.
+sys.exit(1 if (a_unbound or b_unbound) else 0)
+VBPY
+VB_OUT="$(cat "$VB_TMP")"; rm -f "$VB_TMP"
+VB_LINE="$(printf '%s\n' "$VB_OUT" | grep '^SEEN_A=')"
+VB_SA="$(printf '%s\n' "$VB_LINE" | sed -n 's/^SEEN_A=\([0-9]*\) .*$/\1/p')"
+VB_UA="$(printf '%s\n' "$VB_LINE" | sed -n 's/^.* UNBOUND_A=\([0-9]*\) .*$/\1/p')"
+VB_SB="$(printf '%s\n' "$VB_LINE" | sed -n 's/^.* SEEN_B=\([0-9]*\) .*$/\1/p')"
+VB_UB="$(printf '%s\n' "$VB_LINE" | sed -n 's/^.* UNBOUND_B=\([0-9]*\)$/\1/p')"
+if [ -z "$VB_SA" ] || [ -z "$VB_UA" ] || [ -z "$VB_SB" ] || [ -z "$VB_UB" ]; then
+  echo "FAIL: the verdict/exit-binding lint produced no verdict of its own — it did not run, and a lint"
+  echo "      that did not run is not a green. Its output was:"
+  printf '%s\n' "$VB_OUT" | sed 's/^/  /'
+  rc=1
+elif [ "$VB_SA" -lt 23 ] || [ "$VB_SB" -lt 21 ]; then
+  echo "FAIL: the verdict/exit-binding lint matched too little to be evidence: ARM A saw $VB_SA verdict"
+  echo "      tail(s) (floor 23) and ARM B saw $VB_SB verdict flag(s) (floor 21); those were the counts on"
+  echo "      2026-08-30. A PATTERN that stopped matching prints the same clean green as a file with"
+  echo "      nothing wrong. Re-point the arm at the spelling the parts actually use — do NOT lower this."
+  rc=1
+elif [ "$VB_UA" != 0 ] || [ "$VB_UB" != 0 ]; then
+  echo "FAIL: $VB_UA verdict tail(s) and $VB_UB verdict flag(s) print a divergence that never moves the"
+  echo "      exit code. The part reports it and the suite exits 0 — the fail-open measured on PART 61."
+  echo "      Bind it in place: [ \"\$X_BAD\" != 0 ] && { echo \"…\"; rc=1; }, or give the flag a tail."
+  printf '%s\n' "$VB_OUT" | grep -v '^SEEN_A=' | sed 's/^/  /'
+  rc=1
+fi
+
 # --- locate / build the engines ----------------------------------------------------------------------
 SCAN="${CANDOR_SCAN_BIN:-}"
 QUERY="${CANDOR_QUERY_BIN:-}"
@@ -10581,7 +10728,7 @@ rm -rf "$P61"
 echo "PART 61 — a typo'd effect name is refused, not answered (SPEC §3.1)"
 printf '%s' "$P61_OUT"
 [ "$P61_BAD" = 0 ] && echo "  -> MATCH — a typo'd effect is refused everywhere, and a known-absent one still answers"
-[ "$P61_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
+[ "$P61_BAD" = 1 ] && { echo "  -> DIVERGE — see the rows above"; rc=1; }
 [ "$P61_BAD" = 2 ] && echo "  -> SKIP — no fixture report"
 true
 
@@ -11086,7 +11233,7 @@ P62_OUT="$P62_OUT$P62J_OUT"
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
 [ "$P62_BAD" = 0 ] && echo "  -> MATCH — unread code refuses, built output still answers, both routes agree"
-[ "$P62_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P62_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 [ "$P62_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 [ "$P62J_BAD" = 3 ] && echo "  -> SKIP (java unpeekable row) — no javac to build the fixture"
 [ "$P62R_BAD" = 3 ] && echo "  -> SKIP (rust row) — running as a user chmod 000 does not stop, so the unread case cannot be staged"
@@ -11262,7 +11409,7 @@ rm -rf "$P63"
 echo "PART 63 — a sibling report cannot answer for another member (SPEC §2.2 ⟨0.32⟩)"
 printf '%b' "$P63_OUT"
 [ "$P63_BAD" = 0 ] && echo "  -> MATCH — adding a sibling report cannot turn a refusal into a pass"
-[ "$P63_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P63_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 # PART 64 — A TRAILING SEPARATOR ANCHORS A SCOPE TO AN EXACT SEGMENT (SPEC §6.2) [TIER 1]
@@ -11319,7 +11466,7 @@ rm -rf "$P64"
 echo "PART 64 — a trailing separator anchors a scope to an exact segment (SPEC §6.2)"
 printf '%b' "$P64_OUT"
 [ "$P64_BAD" = 0 ] && echo "  -> MATCH — prefix still matches, and a trailing separator anchors without disabling the scope"
-[ "$P64_BAD" = 1 ] && echo "  -> DIVERGE — see the rows above"
+[ "$P64_BAD" = 1 ] && { echo "  -> DIVERGE — see the rows above"; rc=1; }
 true
 
 # PART 65 — A DERIVED FILE SET MAY CERTIFY, AND MUST NOT CERTIFY PAST A FAILED DERIVATION (SPEC §2 ⟨0.32⟩) [TIER 1]
@@ -11447,7 +11594,7 @@ rm -rf "$P65"
 echo "PART 65 — a derived file set may certify, and must not certify past a failed derivation (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P65_OUT"
 [ "$P65_BAD" = 0 ] && echo "  -> MATCH — an unbuilt tree is answered, and a failed derivation still refuses"
-[ "$P65_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P65_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 [ "$P65_BAD" = 3 ] && echo "  -> SKIP — no javac to build the fixture"
 true
 
@@ -11927,7 +12074,7 @@ fi
 echo "PART 67 — the advisory verbs refuse wherever the gate does (SPEC §3.1 ⟨0.24⟩)"
 printf '%s' "$P67_OUT"
 [ "$P67_BAD" = 0 ] && echo "  -> MATCH — over a report whose producer never opened an excluded class, \`gate --report\`, \`fix-gate --strict\` and \`unverified --strict\` all refuse; over the same tree scanned WITH the policy, all three answer"
-[ "$P67_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P67_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 [ "$P67J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 [ "$P67T_RAN" = 0 ] && echo "  -> SKIP (ts row) — candor-ts: not present on this runner"
 [ "$P67S_RAN" = 0 ] && echo "  -> SKIP (swift row) — candor-swift: not present on this runner"
@@ -12010,6 +12157,13 @@ try:
     t, r, o, n = rows(twin), rows(rev), rows(one), rows(nohash)
 except Exception as e:                                     # a missing/again-refused document is a FAIL,
     bad(f"could not read a verdict document: {e}")         # never a silent pass
+# THE NEXT TWO CLAUSES ARE DIAGNOSTIC REFINEMENTS, NOT INDEPENDENT ASSERTIONS, and saying so here is the
+# point: mutation-gate.sh's 2026-08-30 branch sweep found that neither can be the SOLE cause of a
+# rejection, so a poison leg named after either would pass whether the clause were present or deleted —
+# exactly the "reads as coverage" row this suite refuses everywhere else. `len(t) != 2` is implied by the
+# `fn` clause below (a list of any other length cannot equal ["go", "go"]), and `t[0] == t[1]` is implied
+# by the hash clauses (equal rows carry equal hashes). They stay because they NAME the historical defect
+# precisely instead of reporting it as a hash collision; the verdict they move is already moved.
 if len(t) != 2:
     bad(f"the twin set must yield 2 rows, got {len(t)}: {t}")
 if t[0] == t[1]:
@@ -12104,7 +12258,7 @@ rm -rf "$P68"
 echo "PART 68 — a verdict row carries the unit it is about (SPEC §2 ⟨0.32⟩)"
 printf '%b' "$P68_OUT"
 [ "$P68_BAD" = 0 ] && echo "  -> MATCH — two units sharing a name produce two rows a consumer can tell apart, in identity order, on every engine"
-[ "$P68_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P68_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 # PART 69 — A GATE MUST NOT ANSWER FROM A PEEK THAT WAS PUT A DIFFERENT QUESTION (SPEC §2 ⟨0.33⟩) [TIER 1]
@@ -12557,7 +12711,7 @@ rm -rf "$P69"
 echo "PART 69 — a gate must not answer from a peek that was put a DIFFERENT question (SPEC §2 ⟨0.33⟩)"
 printf '%s' "$P69_OUT"
 [ "$P69_BAD" = 0 ] && echo "  -> MATCH — a report answers only for the deny set its producer held, and still certifies for every rule that set covers"
-[ "$P69_BAD" = 1 ] && echo "  -> DIVERGE — see the row above"
+[ "$P69_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 [ "$P69J_BAD" = 3 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 true
 
@@ -13000,7 +13154,7 @@ rm -rf "$P70"
 echo "PART 70 — \`whatif\` withdraws \`ok\` for every cause the gate refuses on (SPEC §3.1 ⟨0.24⟩)"
 printf '%s' "$P70_OUT"
 [ "$P70_BAD" = 0 ] && echo "  -> MATCH — over a report the gate refuses, \`whatif\` omits \`ok\` and still ships \`affected\` and \`violations\`; over a complete one it answers ordinarily, in both polarities"
-[ "$P70_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P70_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 [ "$P70J_SKIP" = 1 ] && echo "  -> SKIP (java row) — no javac to build the fixture"
 true
 
@@ -13317,7 +13471,7 @@ rm -rf "$P71"
 echo "PART 71 — outOfScope/scannedUnder are present iff a policy was configured and honoured (SPEC §2 ⟨0.29⟩/⟨0.33⟩)"
 printf '%s' "$P71_OUT"
 [ "$P71_BAD" = 0 ] && echo "  -> MATCH — both keys are PRESENT (and correct) over an honoured policy, and BOTH ABSENT with no policy configured or over one this engine could not read — the two states never collapse"
-[ "$P71_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P71_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -13630,7 +13784,7 @@ rm -rf "$P72"
 echo "PART 72 — a violation that dominates an incompleteness cause stays byte-equal across both gate routes (SPEC §3.1 ⟨0.24⟩)"
 printf '%s' "$P72_OUT"
 [ "$P72_BAD" = 0 ] && echo "  -> MATCH — \`gate --report\` over a report produced with the SAME policy the gate applies reproduces \`scan --policy\`'s verdict document byte-for-byte, whether the tree is clean or a real violation dominates a peeked completeness cause, and two independent mutants prove the check would catch it if it did not"
-[ "$P72_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P72_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -13742,7 +13896,7 @@ rm -rf "$P73"
 echo "PART 73 — a conditionally-compiled declaration must not permanently shadow the free-function heuristic (candor-swift; SPEC §4)"
 printf '%s' "$P73_OUT"
 [ "$P73_BAD" = 0 ] && echo "  -> MATCH — an inactive \`#if\` branch's declaration unions with the heuristic instead of permanently shadowing it, a real unconditional declaration still shadows exactly as before, and an unrelated call is unaffected"
-[ "$P73_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P73_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -13883,7 +14037,7 @@ rm -rf "$P74"
 echo "PART 74 — a third-party lazy iterator is charged at construction when its iteration verb is receiver-typing-blocked (candor-rust; SPEC §4)"
 printf '%s' "$P74_OUT"
 [ "$P74_BAD" = 0 ] && echo "  -> MATCH — every idiomatic WalkDir traversal form charges Fs at construction, the narrower typed-receiver shape still fires independently, and neither the sibling ignore-crate charge nor the std-Vec iterator blocklist moved"
-[ "$P74_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P74_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -14005,7 +14159,7 @@ rm -rf "$P75"
 echo "PART 75 — an overloaded protocol-extension provided member resolves or unions through a concrete receiver, never vanishes (candor-swift; SPEC §4)"
 printf '%s' "$P75_OUT"
 [ "$P75_BAD" = 0 ] && echo "  -> MATCH — a concrete receiver reaching an overloaded protocol-extension default resolves precisely when arity discriminates and unions when genuinely ambiguous, a local override still wins, and the non-overloaded case is unmoved"
-[ "$P75_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P75_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -14147,7 +14301,7 @@ rm -rf "$P76"
 echo "PART 76 — a cross-file call shadowed by the package's own co-located .d.ts resolves onto the real sibling or discloses Unknown, never vanishes (candor-ts; SPEC §4)"
 printf '%s' "$P76_OUT"
 [ "$P76_BAD" = 0 ] && echo "  -> MATCH — an unambiguous cross-file call shadowed by the package's own .d.ts resolves onto the real sibling implementation, a genuinely unminted match discloses Unknown rather than dropping, and neither the no-sibling nor the same-file case moved"
-[ "$P76_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P76_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -14322,7 +14476,7 @@ rm -rf "$P77"
 echo "PART 77 — a Swift compiler-plugin macro discloses Unknown, never vanishes (candor-swift; SPEC §4)"
 printf '%s' "$P77_OUT"
 [ "$P77_BAD" = 0 ] && echo "  -> MATCH — a freestanding macro with no trailing closure and an attached macro attribute (func or type) both disclose Unknown naming the macro, a trailing-closure macro stays concrete, and a name-alike function, a builtin decl-attribute, the compiler-builtin freestanding literals, and a local @resultBuilder/@globalActor all gain nothing"
-[ "$P77_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P77_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -14512,7 +14666,7 @@ rm -rf "$P78"
 echo "PART 78 — a dynamic re-export loop discloses Unknown, never lets the join miss silently (candor-ts; SPEC §2 rule 3 / §4)"
 printf '%s' "$P78_OUT"
 [ "$P78_BAD" = 0 ] && echo "  -> MATCH — a dynamic re-export loop (bracket-write or descriptor form) is named in the producer's own report and marks every consumer call into it Unknown, a genuinely pure forwarded call gains the same disclosure and never a fabricated concrete effect, and neither an ordinary export, a well-known-symbol stamp, nor ordinary (non-dynamic) dep-chaining moved"
-[ "$P78_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P78_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 
@@ -14733,7 +14887,7 @@ rm -rf "$P79"
 echo "PART 79 — a local extern \"C\" call, an unclassified calibrated-crate call, and a dlsym/transmute-resolved-then-invoked function pointer disclose Unknown/invisible byte-identically across rust-scan and rust-deep, and swift's raw-C-interop, @_silgen_name and dlsym/unsafeBitCast paths disclose native:/callback:, never \"functions\": [] (SPEC §4)"
 printf '%s' "$P79_OUT"
 [ "$P79_BAD" = 0 ] && echo "  -> MATCH — a local extern \"C\" declaration, an unclassified libc/nix/rustix generic-fd-verb call, and a dlsym/transmute-resolved function pointer invocation all disclose Unknown/invisible byte-identically on rust-scan and rust-deep (or rust-deep SKIPs loudly if this runner lacks the pinned nightly + cargo-dylint), swift's raw Darwin/Glibc free-function, @_silgen_name and dlsym/unsafeBitCast paths disclose native:<symbol>/callback:fn, and neither the already-sound direct-extern path, the already-sound libc invisible disclosure, the modelled Process control, nor any resolved-but-uncalled pointer moved"
-[ "$P79_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P79_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -15021,7 +15175,7 @@ printf '%s\n' "$P80_RESULT"
 # CONTROLS: cur cur_gj exits — cur is the OVER-CHARGE CONTROL (a report genuinely at ⟨0.33⟩ must keep the ⟨0.33⟩ sentence, never the new ⟨0.34⟩ one, proving this row cannot pass by always emitting the new cause); cur_gj proves \`--gate-json\` stays byte-identical to it across all five \`spec\` mutations, the message-only property itself; exits proves the verdict/exit code never moves between the two sentences either
 echo "PART 80 — a ≥⟨0.33⟩ report keeps the ⟨0.33⟩ cross-policy sentence, a pre-⟨0.33⟩ report (absent/old/ladder-trapped \`spec\`) gets the ⟨0.34⟩ cause+remedy, the verdict/exit/--gate-json never move between them, and leading ASCII whitespace around a well-formed \`spec\` MUST NOT read as unparseable (SPEC §2 ⟨0.34⟩)"
 [ "$P80_RC" = 0 ] && echo "  -> MATCH — every engine asked keeps the over-charge control (\`cur\`) on the ⟨0.33⟩ sentence, names the ⟨0.34⟩ cause for absent/old/ladder-trapped \`spec\`, never moves \`--gate-json\`, and the whitespace MUST is either ported (PASS) or a probed, counted reference-led gap (SKIP) — never a silent divergence"
-[ "$P80_RC" != 0 ] && echo "  -> DIVERGE — see FAIL lines"
+[ "$P80_RC" != 0 ] && { echo "  -> DIVERGE — see FAIL lines"; rc=1; }
 
 
 # ====================================================================================================
@@ -15205,7 +15359,7 @@ rm -rf "$P81"
 echo "PART 81 — an anonymous decorator expression is charged to a minted unit, never dropped silent (candor-ts; SPEC §4)"
 printf '%s' "$P81_OUT"
 [ "$P81_BAD" = 0 ] && echo "  -> MATCH — an anonymous decorator's own effect is charged to a position-keyed unit and fails \`deny Fs\`, the named-factory path already covering the same shape is untouched, and a genuinely pure anonymous decorator gains no fabricated effect"
-[ "$P81_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P81_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 # ====================================================================================================
 # PART 82 — A RAW EFFECT OR CLOSURE EMBEDDED DIRECTLY IN A DECORATOR'S OWN ARGUMENT DATA MUST NOT
 #           VANISH; A CALL THROUGH AN EXTERNAL BODY-LESS DECORATOR REFERENCE STAYS DOCUMENTED-OPEN
@@ -15439,7 +15593,7 @@ rm -rf "$P82"
 echo "PART 82 — a raw effect or closure in a decorator's own argument data is charged to a minted unit; an external body-less decorator reference stays documented-open (candor-ts; SPEC §4)"
 printf '%s' "$P82_OUT"
 [ "$P82_BAD" = 0 ] && echo "  -> MATCH — both fixed argument shapes are charged and fail \`deny Fs\`, neither over-charge control gains a fabricated effect, and the external-reference shape reads at its current documented-open value"
-[ "$P82_BAD" != 0 ] && echo "  -> DIVERGE — see the row above"
+[ "$P82_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 
 # ====================================================================================================
 # PART 83 — THE MISSING BYTE-EQUALITY QUADRANT: A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH
@@ -15667,7 +15821,7 @@ rm -rf "$P83"
 echo "PART 83 — a policy rule scoped to a real, pure-on-both-routes function: the report route's false zeroMatch disclosure, SPEC'd as a ⟨0.34⟩ §3.1 carve-out (Tom's ruling D) and pinned four-way (SPEC §3.1/§4)"
 printf '%s' "$P83_OUT"
 [ "$P83_BAD" = 0 ] && echo "  -> MATCH — every engine's defect cell reads at its current measured value (scan silent, report falsely claims zeroMatch) and every control cell is byte-equal across routes"
-[ "$P83_BAD" != 0 ] && echo "  -> DIVERGE — see the row above (a red defect cell may mean an engine changed behaviour beyond the ⟨0.34⟩ carve-out; a red control cell is a genuine new divergence)"
+[ "$P83_BAD" != 0 ] && { echo "  -> DIVERGE — see the row above (a red defect cell may mean an engine changed behaviour beyond the ⟨0.34⟩ carve-out; a red control cell is a genuine new divergence)"; rc=1; }
 
 # ====================================================================================================
 # PART 84 — verb_reject: `--policy` is a USAGE ERROR (exit 2) on every verb whose pinned §3.1/§3.2      [TIER 1]
@@ -15812,7 +15966,7 @@ fi
 [ -n "$VR_TS_RAN" ] && echo "  candor-ts (verb-reject-not-exposed) SKIP — rewire: candor-ts has no such verb, confirmed structurally"
 [ -n "$VR_SW_RAN" ] && echo "  candor-swift (verb-reject-not-exposed) SKIP — 9 verbs not exposed on this engine's §3.1/§3.2 surface (show/where/callers/map/diff/containment/reachable/impact/blindspots), confirmed structurally, not assumed"
 [ "$VR_BAD" = 0 ] && echo "  -> MATCH — every exposed verb rejects --policy (exit 2, named); every not-exposed verb is confirmed absent for a reason unrelated to policy"
-[ "$VR_BAD" != 0 ] && echo "  -> DIVERGE — see the rows above"
+[ "$VR_BAD" != 0 ] && { echo "  -> DIVERGE — see the rows above"; rc=1; }
 
 # ====================================================================================================
 # PART 85 — THE PEEK SCOPE-MATCH PROPERTY + THE CONDITIONAL `dispatch-widened` FALLBACK               [TIER 1]

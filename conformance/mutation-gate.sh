@@ -259,6 +259,23 @@ done
 W="$(mktemp -d)"
 trap 'rm -rf "$W"' EXIT INT TERM
 
+# THE LEG-COUNT RATCHET. A gate that counts what it is handed cannot notice a coordinated shrink.
+#
+# MEASURED 2026-08-30 by a review panel: delete a conjunct from a verdict-controlling `if` chain in
+# run.sh AND its expectation from the `run_ifblock` call line here, together, and this gate printed
+# `mutation-gate: OK` over 240 rows where it had printed 241. The ARITY RATCHET a few hundred lines below
+# did not fire and could not — it compares the number of `[ "$…" ` tests in the extracted header against
+# the number of expectations supplied, and a coordinated edit moves BOTH sides by one, which is exactly
+# the equality it checks. It is a consistency check between two things one commit can change together;
+# it was never a floor, and its own comment ("this gate hard-stops rather than quietly covering N-1 of N")
+# reads as though it were. Attack K: a claim of correctness suppresses the measurement that falsifies it.
+#
+# A floor has to live OUTSIDE the arithmetic it guards, so this is a hand-written constant compared for
+# EXACT equality against the number of rows the run actually filed. Exact, not `>=`: a `>=` floor lets the
+# real count drift upward while the floor stays put, and a gate that has grown to 300 legs with a floor of
+# 241 can lose 59 of them silently — the same defect one level out. Every change to what this gate covers,
+# in either direction, must edit this line, and the diff then SAYS what happened to coverage.
+MG_ROW_FLOOR=249
 RESULTS=""
 KIND="real"   # overridden to "canary" for the one canary call below — read by record(), not passed
               # positionally, so the two runner functions don't need a canary-vs-real branch of their own
@@ -1402,25 +1419,54 @@ run_exitcode_heredoc_accept "PART56/PY56(good)"           PY56 0 "$W/p56g" 2 2 x
 # PART 46/72/19-22/56 above, check.py is not a `python3 - ARGS <<'DELIM'` pipe but a script WRITTEN to
 # disk via `cat > "$P68/check.py" <<'PYEOF'` and invoked by path — extract_heredoc pulls it unchanged,
 # since a heredoc body is lexically unambiguous regardless of what precedes the `<<'DELIM'`.
-# THREE independent near-miss poisons, one per distinct branch check.py can fail on, each isolated from
-# the others by giving `rev` the SAME (rule,hash) pairs as the poisoned `twin` so the REV comparison
-# (a different, already-independently-tested branch) cannot fire first and mask which check caught it:
-#   (a) THE HISTORICAL DEFECT ITSELF — twin's two rows are BYTE-IDENTICAL, same hash included.
-#   (b) near-miss ONE FIELD OVER — the two rows are textually distinct (different `detail`) but share the
-#       SAME hash: proves the hash-UNIQUENESS check is live independently of the whole-row-equality one,
-#       which (a) alone cannot show (a dict-equality-only regression would still catch (a) but not (b)).
-#   (c) near-miss on ORDER — two rows with correct, DISTINCT hashes but out of identity order: proves the
-#       sort-key clause (the OTHER half of §2 ⟨0.32⟩'s MUST, the one PART 63 cannot see) is asked at all.
-# `one`/`nohash` stay at their real accept-known-good shape in every poison call, since neither branch
-# under test here touches them — changing an unrelated arg would not be a near-miss, it would be noise.
-# FALSIFIED against a plausible regression (deleting the byte-identity AND hash-uniqueness checks from a
-# scratch copy of check.py): poisons (a) and (b) both flip from CAUGHT to WRONGLY-ACCEPTED, and (c) is
-# unaffected — proof the three poisons discriminate the branches they claim to, not merely trip on the
-# REV check by coincidence (an earlier draft's poisons did exactly that before `rev` was pinned to match).
+# EVERY BRANCH, ENUMERATED — AND THE TWO THAT CANNOT BE ONE. This section shipped on 2026-08-30 with
+# three poisons and a claim of "one per distinct branch check.py can fail on". A review panel the same day
+# EXECUTED the obvious control the claim invites — delete each `if … bad(…)` from a scratch copy of
+# check.py in turn and re-run all four legs — and got: **SEVEN of the nine branches deletable with all
+# four legs green.** Only `len(set(h)) != 2` and `h != sorted(h)` were actually pinned. Worse, the leg
+# NAMED "(a) THE HISTORICAL DEFECT ITSELF" was one of the seven: with `t[0] == t[1]` deleted, its poison
+# is still rejected — by hash-uniqueness, one branch down. The leg passed for a reason unrelated to its
+# name, which is the "reads as coverage" failure this whole file exists to remove, committed inside the
+# file that removes it.
+#
+# The re-measured branch table (each row EXECUTED against the live check.py, never reasoned about):
+#   B1  len(t) != 2                    SUBSUMED — see below
+#   B2  t[0] == t[1]                   SUBSUMED — see below   ← the historical defect
+#   B3  hash not a non-empty str       leg (d)  poison: one row's `hash` is PRESENT BUT EMPTY
+#   B4  len(set(h)) != 2               leg (b)  poison: distinct rows, SAME hash
+#   B5  h != sorted(h)                 leg (c)  poison: distinct hashes, wrong ORDER
+#   B6  [fn] != ["go","go"]            leg (e)  poison: `fn` SUBSTITUTED by the identity
+#   B7  rev pairs != twin pairs        leg (f)  poison: rev follows the DISCOVERY WALK
+#   B8  one's key set                  leg (g)  poison: the single-unit row GREW a field
+#   B9  nohash's key set               leg (h)  poison: a producer with no id SYNTHESISED one
+# plus the `except` around `rows()`, which converts an unreadable document into a named FAIL rather than a
+# traceback: deleting it leaves the exit code at 1 either way, so it refines the MESSAGE and moves no
+# verdict. Not a coverage gap; there is nothing there to falsify.
+#
+# WHY B1 AND B2 ARE UNREACHABLE AS SOLE CAUSES, and why that is stated instead of covered. Both are
+# strictly implied by branches below them, over every possible input:
+#   · B2 fires only when two rows are EQUAL, which makes their two `hash` values equal, which fires B4
+#     (if the value is a non-empty string) or B3 (if it is not). So no document reaches B2 alone.
+#   · B1 fires only when `len(t) != 2`, and then `[x.get("fn") for x in t]` has a length other than 2, so
+#     B6 fires — unless len(t) < 2, where B2's `t[1]` raises IndexError and the run exits non-zero anyway.
+# Both are diagnostic REFINEMENTS: they name the historical defect precisely instead of reporting it as a
+# hash collision, which is worth keeping and is not worth a leg that would pass no matter what. Verified
+# by search, not by argument alone — the candidate documents that fire B1/B2 were generated and run, and
+# every one was still rejected with the branch deleted.
+#
+# Each poison below is isolated the way the original three were: `rev` is given the SAME (rule,hash) pairs
+# as the poisoned `twin` so the REV comparison cannot fire first and mask which check caught it, and every
+# arg not under test stays at its accept-known-good shape (changing an unrelated one is noise, not a
+# near-miss). FALSIFIED, each individually, against a scratch copy of check.py with each of the nine
+# branches deleted in turn: every poison below is accepted when — and ONLY when — its own branch is gone.
 mkdir -p "$W/p68"
-p68row() {   # $1 hash-or-empty ; $2 detail
-  if [ -n "$1" ]; then printf '{"rule":"AS-EFF-006","fn":"go","effects":["Exec"],"detail":"%s","hash":"%s"}' "$2" "$1"
-  else printf '{"rule":"AS-EFF-006","fn":"go","effects":["Exec"],"detail":"%s"}' "$2"; fi
+p68row() {   # $1 hash ("" omits the field, "<empty>" emits `"hash":""`) ; $2 detail ; $3 fn (default go) ; $4 extra key JSON, leading comma
+  local h="$1" d="$2" fn="${3:-go}" x="${4:-}"
+  case "$h" in
+    "")        printf '{"rule":"AS-EFF-006","fn":"%s","effects":["Exec"],"detail":"%s"%s}' "$fn" "$d" "$x" ;;
+    "<empty>") printf '{"rule":"AS-EFF-006","fn":"%s","effects":["Exec"],"detail":"%s","hash":""%s}' "$fn" "$d" "$x" ;;
+    *)         printf '{"rule":"AS-EFF-006","fn":"%s","effects":["Exec"],"detail":"%s","hash":"%s"%s}' "$fn" "$d" "$h" "$x" ;;
+  esac
 }
 printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row b#go D)"       > "$W/p68/good_twin.json"
 printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row b#go D)"       > "$W/p68/good_rev.json"
@@ -1432,9 +1478,33 @@ printf '{"violations":[%s,%s]}' "$(p68row a#go first)" "$(p68row a#go second)" >
 printf '{"violations":[%s,%s]}' "$(p68row a#go first)" "$(p68row a#go second)" > "$W/p68/poison_samehash_rev.json"
 printf '{"violations":[%s,%s]}' "$(p68row b#go first)" "$(p68row a#go second)" > "$W/p68/poison_order_twin.json"
 printf '{"violations":[%s,%s]}' "$(p68row b#go first)" "$(p68row a#go second)" > "$W/p68/poison_order_rev.json"
-run_exitcode_heredoc "PART68/PYEOF(byte-identical-defect)" PYEOF 1 L "$W/p68/poison_identical_twin.json" "$W/p68/poison_identical_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+# (d) B3 — the identity field is PRESENT but empty. The near-miss the presence-vs-value discipline
+# demands: `"hash": ""` satisfies every by-name check and every "did the producer emit the key" check,
+# and is not an identity. Ordered so the empty string sorts FIRST, or B5 fires on the order instead.
+printf '{"violations":[%s,%s]}' "$(p68row "<empty>" D)" "$(p68row a#go D)"  > "$W/p68/poison_emptyhash_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row "<empty>" D)" "$(p68row a#go D)"  > "$W/p68/poison_emptyhash_rev.json"
+# (e) B6 — `fn` SUBSTITUTED by the identity rather than joined by it. §2 ⟨0.32⟩ adds `hash`; it does not
+# replace the name, and an engine that renamed the unit would still satisfy every hash-shaped row above.
+printf '{"violations":[%s,%s]}' "$(p68row a#go D a#go)" "$(p68row b#go D)"  > "$W/p68/poison_fnsub_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go D a#go)" "$(p68row b#go D)"  > "$W/p68/poison_fnsub_rev.json"
+# (f) B7 — the ONE poison that must NOT hold rev equal to twin, because rev IS the branch under test: the
+# same two units laid down under swapped stems come back in discovery-walk order. `twin` stays good, so
+# nothing upstream can fire and take the credit.
+printf '{"violations":[%s,%s]}' "$(p68row b#go D)" "$(p68row a#go D)"       > "$W/p68/poison_revwalk_rev.json"
+# (g) B8 — the single-unit row GREW a sixth field. The key set is pinned EXACTLY for the reason §3.3.1
+# gives; a by-name assertion would pass this.
+printf '{"violations":[%s]}'    "$(p68row a#go D go ',"note":"x"')"         > "$W/p68/poison_onegrew.json"
+# (h) B9 — a producer with NO identity to give SYNTHESISED one. That is ⟨0.26⟩'s *cannot answer* rendered
+# as an answer, and it is the §2.2 name-join wearing the new key's clothes. The poison IS good_one.json
+# supplied in the `nohash` position — deliberately, since the corruption is which document arrives there.
+run_exitcode_heredoc "PART68/PYEOF(historical-defect-doc-rejected)" PYEOF 1 L "$W/p68/poison_identical_twin.json" "$W/p68/poison_identical_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
 run_exitcode_heredoc "PART68/PYEOF(same-hash-distinct-text)" PYEOF 1 L "$W/p68/poison_samehash_twin.json" "$W/p68/poison_samehash_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
 run_exitcode_heredoc "PART68/PYEOF(rows-out-of-identity-order)" PYEOF 1 L "$W/p68/poison_order_twin.json" "$W/p68/poison_order_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(hash-present-but-empty)" PYEOF 1 L "$W/p68/poison_emptyhash_twin.json" "$W/p68/poison_emptyhash_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(fn-substituted-by-identity)" PYEOF 1 L "$W/p68/poison_fnsub_twin.json" "$W/p68/poison_fnsub_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(rev-follows-discovery-walk)" PYEOF 1 L "$W/p68/good_twin.json" "$W/p68/poison_revwalk_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(single-unit-row-grew-a-field)" PYEOF 1 L "$W/p68/good_twin.json" "$W/p68/good_rev.json" "$W/p68/poison_onegrew.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(hashless-producer-synthesised-an-id)" PYEOF 1 L "$W/p68/good_twin.json" "$W/p68/good_rev.json" "$W/p68/good_one.json" "$W/p68/good_one.json"
 run_exitcode_heredoc_accept "PART68/PYEOF(good)" PYEOF 0 L "$W/p68/good_twin.json" "$W/p68/good_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
 
 # ---- PART 61 (p61_row) — 2026-08-30 EMBEDDED-PARTS SURVEY: a typo'd effect name must be REFUSED (exit 2),
@@ -1471,24 +1541,76 @@ esac
 exit 9
 STUBEOF
 chmod +x "$W/p61/stub.sh"
+# BOTH `P61_BAD` AND `rc` ARE ASSERTED, and that is the whole point of this runner's 2026-08-30 revision.
+# It read the FLAG alone, so `rc=1` could be deleted from `p61_row` and all three legs below stayed green
+# — a review panel did exactly that: PART 61 printed DIVERGE and conformance/run.sh exited 0. This is
+# `run_bashfunc_flag`'s stated contract ("a block that sets the flag and forgets `rc=1` prints DIVERGE
+# while the suite exits 0 — a genuine fail-open, and one a flag-only assertion cannot see") applied to the
+# neighbour it had been written for and then not extended to. p61_row cannot go through
+# `run_bashfunc_flag` itself because its poison is delivered as ENVIRONMENT to a stub argv rather than as
+# function arguments, so it gets the same two-value contract in its own shape rather than a second
+# runner's semantics restated by hand.
 cat > "$W/p61/runner.sh" <<'RUNEOF'
 #!/bin/bash
 source "$1/p61_row.sh"
 P61_OUT=""; P61_BAD=0; rc=0
 p61_row eng /dev/null "$1/stub.sh"
-echo "P61_BAD=$P61_BAD"
+echo "P61_BAD=$P61_BAD P61_RC=$rc"
 RUNEOF
 chmod +x "$W/p61/runner.sh"
-run_p61() {   # $1 label ; $2 want P61_BAD(0=accept/1=reject) ; $3 STUB_REAL ; $4 STUB_TYPO ; $5 STUB_ABSENT
+run_p61() {   # $1 label ; $2 want P61_BAD *and* rc (0=accept/1=reject) ; $3 STUB_REAL ; $4 STUB_TYPO ; $5 STUB_ABSENT
   local label="$1" want="$2"
   local out; out="$(STUB_REAL="$3" STUB_TYPO="$4" STUB_ABSENT="$5" bash "$W/p61/runner.sh" "$W/p61" 2>&1)"
-  local got; got="$(printf '%s\n' "$out" | grep -o 'P61_BAD=[01]' | tail -1 | cut -d= -f2)"
-  if [ "$got" = "$want" ]; then record PASS "$label"
-  else record BROKEN "$label" "expected P61_BAD=$want; runner said: $out"; fi
+  local got; got="$(printf '%s\n' "$out" | grep -o 'P61_BAD=[01] P61_RC=[01]' | tail -1)"
+  if [ "$got" = "P61_BAD=$want P61_RC=$want" ]; then record PASS "$label"
+  else record BROKEN "$label" "expected P61_BAD=$want P61_RC=$want; runner said: $out"; fi
 }
 run_p61 "PART61/p61_row(typo-not-refused)"    1 0 0 0
 run_p61 "PART61/p61_row(known-absent-broken)" 1 0 2 2
 run_p61 "PART61/p61_row(good)"                0 0 2 0
+
+# ---- THE PREAMBLE LINT (VBPY) — the checker that says every part's DIVERGE moves the exit code -------
+# It is a checker in run.sh like any other, so it is pinned here like any other. Its poison document is a
+# COPY OF run.sh with one `rc=1` removed, which is the exact edit the review panel made to PART 61; if
+# the lint ever stops matching the spelling the parts use, or its string-blanking regresses so a binding
+# can be satisfied by prose, one of the two poisons below is accepted and this row goes BROKEN.
+#
+# TWO poisons, because the lint has two independent arms and a single poison would let either rot:
+#   (a) the TAIL arm — `rc=1` deleted from a `[ "$P61_BAD" = 1 ] && { echo "… DIVERGE …"; rc=1; }` line.
+#   (b) the FLAG arm — `rc=1` deleted from PART 36's `else` branch, whose flag VD_OK then reaches no
+#       binding at all. This is also the PROSE control: the MATCH line one row up contains the words
+#       "on exit 2", so a matcher that reads string literals scores this poison as bound and accepts it
+#       (MEASURED — the pre-blanking matcher did exactly that).
+# The accept-known-good leg is the real run.sh: an unconditional-reject regression would pass both
+# poisons and prove nothing.
+mkdir -p "$W/vbpy"
+python3 - "$RUN_SH" "$W/vbpy" <<'MKVBPY'
+import re, sys
+src, out = open(sys.argv[1], encoding="utf-8").read().split("\n"), sys.argv[2]
+tail = re.compile(r'^\[\s*"\$\w+"\s*!?=\s*\S+\s*\]\s*&&\s*\{\s*echo\s.*DIVERGE')
+a = list(src)
+for i, l in enumerate(a):
+    if tail.match(l):
+        a[i] = re.sub(r';\s*rc=1;?\s*\}', ' }', l); break
+else:
+    sys.exit("MKVBPY: no `[ \"$F\" = N ] && { echo … DIVERGE …; rc=1; }` tail found to poison")
+open(f"{out}/no_tail_rc.sh", "w", encoding="utf-8").write("\n".join(a))
+b = list(src)
+for i, l in enumerate(b):
+    if re.match(r'^if \[ "\$VD_OK" = 0 \]; then', l):
+        for j in range(i, i + 8):
+            if re.search(r'(?<![A-Za-z_])rc=1', b[j]):
+                b[j] = re.sub(r';?\s*(?<![A-Za-z_])rc=1', '', b[j]); break
+        else:
+            sys.exit("MKVBPY: PART 36's else has no rc=1 to remove — the anchor moved")
+        break
+else:
+    sys.exit("MKVBPY: no `if [ \"$VD_OK\" = 0 ]` block found — the anchor moved")
+open(f"{out}/no_flag_rc.sh", "w", encoding="utf-8").write("\n".join(b))
+MKVBPY
+run_exitcode_heredoc "PREAMBLE/VBPY(tail-prints-DIVERGE-without-rc)" VBPY 1 "$W/vbpy/no_tail_rc.sh"
+run_exitcode_heredoc "PREAMBLE/VBPY(flag-unbound-behind-prose-exit-2)" VBPY 1 "$W/vbpy/no_flag_rc.sh"
+run_exitcode_heredoc_accept "PREAMBLE/VBPY(good)" VBPY 0 "$RUN_SH"
 
 # ══ THE 2026-08-30 THIRD WAVE: PART 63, PART 62, PART 70, PART 65 ═══════════════════════════════════════════
 #
@@ -1816,6 +1938,26 @@ if [ "$CANARY_LINT_RC" -ne 1 ] || ! printf '%s\n' "$CANARY_LINT_OUT" | grep -q "
   echo "  is exactly the fabricated-evidence bypass this check exists to close (reproduced 2026-08-29: an"
   echo "  echo-only fake canary made this gate print OK). check_nested_quotes.py said:"
   printf '%s\n' "$CANARY_LINT_OUT" | sed 's/^/  /'
+  exit 1
+fi
+# THE LEG-COUNT RATCHET (see MG_ROW_FLOOR's own comment at the top for the measurement behind it).
+# Counted into a variable and then tested — never `$?` after a pipe, which this family has already paid
+# for once. A count that cannot be read at all is treated as a shrink, not waved through.
+MG_ROWS="$(printf '%s\n' "$RESULTS" | grep -c '^\(PASS\|BROKEN\)  ' | tr -d ' ')"
+case "$MG_ROWS" in
+  ''|*[!0-9]*) MG_ROWS=0 ;;
+esac
+if [ "$MG_ROWS" != "$MG_ROW_FLOOR" ]; then
+  echo "mutation-gate: FAIL — this run filed $MG_ROWS leg(s); MG_ROW_FLOOR says $MG_ROW_FLOOR."
+  if [ "$MG_ROWS" -lt "$MG_ROW_FLOOR" ]; then
+    echo "  COVERAGE SHRANK. A leg vanished — most likely a conjunct was deleted from a verdict chain in"
+    echo "  run.sh AND its expectation from the call line here, together, which the arity ratchet cannot"
+    echo "  see because a coordinated edit moves both sides of its equality. If the removal is genuinely"
+    echo "  right, lower MG_ROW_FLOOR in the SAME commit, so the diff says coverage went down."
+  else
+    echo "  COVERAGE GREW. Raise MG_ROW_FLOOR to $MG_ROWS in the same commit — a floor left behind the real"
+    echo "  count is a floor the next shrink falls straight through."
+  fi
   exit 1
 fi
 if printf '%s\n' "$RESULTS" | grep '  real  ' | grep -q '^BROKEN'; then
