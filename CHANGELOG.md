@@ -25,6 +25,67 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 63, PART 62, PART 70 and PART 65 hardened in `conformance/mutation-gate.sh` — the three
+  highest-severity parts the 2026-08-30 embedded-parts survey left with no backstop, a fourth that came
+  along free behind them, a new attack shape, and a correction to the survey's own reasoning.** The survey's residue named 24 confirmed-defeatable parts and
+  singled out these three, deferring them because *"their comparison is a single inline `if` over exit
+  codes from several REAL per-engine invocations … not one reusable function called five times."* Checked
+  rather than inherited (AGENT-CORPUS-BRIEF.md rule 12), that is right for 63 and 62 and **WRONG for 70**:
+  PART 70's verdict runs through `w70` (the per-cell checker — the same `name() { python3 -c '` shape
+  `extract_oneline_func` was built for at PART 72) and `p70` (the aggregator), both already extractable,
+  and `w70` takes JSON documents and exit-code strings as argv so it needs no engine at all. Three parts
+  were deferred on a property that had been measured on two of them.
+  - **The new shape: `run_ifblock_sweep`.** Where a part's verdict IS an inline
+    `if [ "$a" = X ] && [ "$b" = Y ]; then <OK row> else <FAIL row>; FLAG=1; rc=1; fi` written out once per
+    engine, the block is extracted from `run.sh` live (same "never a frozen copy" discipline as every other
+    runner) and re-executed in a scratch shell with the per-engine exit-code variables bound to poison
+    values. **The near-miss legs are GENERATED, not listed**: one per conjunct, each holding every other
+    conjunct at its passing value, plus the accept-known-good — which is this file's own stated mitigation
+    for four rounds of hand-authored poison closing exactly the mutant its author imagined. An **arity
+    ratchet** hard-stops the gate if a future rung adds a conjunct without its leg, so "already swept"
+    becomes structural instead of remembered. Both new hard stops were probed rather than assumed: adding
+    a fourth conjunct to a swept chain printed `ARITY DRIFT … holds 3 test(s) but 2 expectation(s)`, and
+    giving a conjunct a passing value the near-miss table does not know printed `NO NEAR-MISS DEFINED`,
+    each exit 1 without reaching a PASS/BROKEN row.
+  - **Both the part's flag AND `rc` must move.** `rc` is the suite's exit code; the part's own `_BAD` flag
+    only picks MATCH vs DIVERGE. Deleting `rc=1` from PART 63's ambiguous-callee arm while leaving
+    `P63_BAD=1` makes the part print DIVERGE while `conformance/run.sh` **exits 0** — reproduced, and
+    caught only because both are asserted.
+  - **Coverage: 12 if-blocks (76 conjuncts) across PART 63, PART 62 and PART 65, 21 `w70` legs and 8
+    `p70` aggregator legs for PART 70** — 117 new rows (88 if-block: 76 near-miss + 12 accept-known-good;
+    21 `w70`; 8 `p70`), every one falsified. **PART 65 is the evidence that a SHAPE beats a fixture**: once
+    `run_ifblock_sweep` existed it cost two call lines and ten legs with no new harness — ⟨0.32⟩'s other
+    side (a derived file set may certify, and must not certify past a FAILED derivation), whose own header
+    warns that *"the certify row is the one that can go silent: it asserts exit 0, so an engine that
+    quietly stopped peeking would still pass it."* PART 63 is the MEASURED candor-query
+    0.31.0 false green (gate a member beside an unrelated sibling and a refusal becomes `policy ✓`); PART
+    62's conjuncts each name a distinct measured mechanism, including candor-java's Gson `getAsBoolean`
+    reading `"peeked": "true"` as true and carving an unread class out silently; PART 70's
+    `ctl-violating(ok-absent)` leg is the over-charge control that stops an engine passing all three cause
+    cells by withdrawing `ok` unconditionally, i.e. by deleting the verb.
+  - **Falsified exhaustively, not spot-checked.** A harness that SOURCES the shipped runner functions out
+    of `mutation-gate.sh` (never a reimplementation) and re-issues the shipped call lines against a
+    scratch-degraded `run.sh`: **76/76 conjuncts** neutered in turn (`[ "$v" = X ]` -> `[ "$v" = "$v" ]`, and
+    `-ge` likewise, which keeps arity so the ratchet does not short-circuit it) each flipped **exactly**
+    its own leg;
+    **17/17 `w70` branches** degraded across the full comparison vocabulary (identity->truthiness,
+    `isinstance` dropped, emptiness dropped, each presence/exit-code branch neutered) each flipped exactly
+    the intended leg(s); **3/3 `p70` aggregator mutations** likewise. Two findings came out of the sweep
+    itself: the anchors now name a VARIABLE and never its expected value, because with the value in the
+    anchor one conjunct per block was covered by the anchor guard rather than by a leg of its own; and a
+    whole-file substitution meant to degrade `w70` silently hit `CHAN_PY`'s identically spelled line ~5,000
+    lines earlier, producing a "no change" that reads exactly like "the leg does not discriminate".
+  - **Extraction is now memoised per run.** `--extract-var` parses all ~16,000 lines of `run.sh` through
+    `check_nested_quotes.py`'s quote-aware scanner, once per leg — measured at **29 seconds for a single
+    extraction** on a loaded machine, with the gate unfinished after seven minutes. The cache lives in the
+    run's own `$W` (fresh per invocation, deleted on exit), so the source is still read live from `run.sh`,
+    just once per name per run; a failed extraction still caches empty and still hard-stops.
+  - **NOT reached, named rather than left silent:** the other 20 confirmed-defeatable embedded parts (4l,
+    7, 8, 13, 13b, 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 64, 84) and PART 9's structural
+    gap. PART 64 and the `cfg_probe`/`check_polfail`/`check_agents`/`p64_row` family among them are the
+    same two shapes this wave built, so they are where the next session starts. Also not attacked here: PART 70's `ck70` instrument check, and PART 62's `mut62`/
+    `mut62p` mutation helpers with their own vacuity guards.
+
 - **THE 2026-08-30 REVERT-TEST DAY: candor-spec's own conformance/mutation machinery, revert-tested for
   the first time.** Every other family repo has run the "revert the fix, does a test go red" attack
   (engines 24/24 protected, the umbrella 3/9 gaps now closed) — the repo where the machinery itself lives
