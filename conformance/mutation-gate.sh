@@ -27,16 +27,22 @@
 # in conformance/run.sh. Covered: PART 36 (verdict document cells), PART 37 (report-sink fail-closed
 # shape), PART 38 (zero-rule-policy refusal), PART 39 (report-consuming verb re-discloses the caveat),
 # PART 83 (the byte-equality quadrant — today's own PART, whose first draft carried this exact bug), and,
-# from the 2026-08-29 EMBEDDED-PARTS SURVEY (see that section far below for the full 68-part table and its
-# numerator), PART 46 (a caller of a body-less local declaration is not pure) and PART 72 (byte-equality
-# across both gate routes, SPEC §3.1 ⟨0.24⟩'s MUST). NOT covered, stated explicitly rather than silently:
-# PART 2/3/12 (other verdict differentials — these three are not even independently addressable via
-# `part.sh --list`; they ride inside a neighbouring slice), PART 29/32/34/47/57/59/60/61/62/67/68/69/70
-# (other refusal/disclosure/route-equality rows), and every TIER-2 part. Most of those rows drive real
-# engine binaries rather than taking a document directly (PART 32's zm_probe, for example, has no "poison
-# JSON" to feed — its input IS a source fixture scanned by four real toolchains), which is a different,
-# larger mutation-testing project; extending this gate to them is future work, not silently assumed done
-# here.
+# from the EMBEDDED-PARTS SURVEY (see that section far below for the full table and its numerator), PARTs
+# 46, 72, 19, 20, 21, 22, 56, 68, 61 and — added 2026-08-30 — 63 (a sibling report cannot answer for
+# another member), 62 (unread code makes the verdict INCOMPLETE), 70 (`whatif` withdraws `ok` wherever the
+# gate refuses) and 65 (a derived file set must not certify past a failed derivation). NOT covered, stated explicitly rather than silently: PART 2/3/12 (other verdict
+# differentials — these three are not even independently addressable via `part.sh --list`; they ride
+# inside a neighbouring slice), PART 29/32/34/47/57/59/60/64/67/69 (other refusal/disclosure/
+# route-equality rows), and every TIER-2 part. Most of those rows drive real engine binaries rather than
+# taking a document directly (PART 32's zm_probe, for example, has no "poison JSON" to feed — its input
+# IS a source fixture scanned by four real toolchains), which is a different, larger mutation-testing
+# project; extending this gate to them is future work, not silently assumed done here.
+#   THAT LAST SENTENCE IS NOW HALF FALSE, and it is worth saying so rather than quietly deleting it: PART
+#   62/63/65/70 DO drive real engine binaries, and were covered anyway. The comparison a part's verdict turns
+#   on is not the engine invocation — it is the `if` chain or the cell checker DOWNSTREAM of it, whose
+#   entire input is a handful of exit codes and JSON documents. Poisoning THAT needs no engine. "It drives
+#   real binaries" is a reason a part is expensive to RUN, not a reason its comparison cannot be attacked,
+#   and reading it as the second cost this file two waves.
 #
 # THE CONTROL: the gate proves its OWN liveness every run via conformance/canary/cannot-fail.sh, a checker
 # DELIBERATELY carrying this exact bug (not a synthetic stand-in for it — see that file's own comment).
@@ -266,15 +272,38 @@ record() {   # $1 status(PASS|BROKEN) ; $2 name ; $3.. diagnostic lines
 }
 
 # ── extraction: pull each checker's CURRENT source straight out of run.sh ───────────────────────────
-extract_pyvar() {   # $1 = variable name (e.g. RS_PY_FAILCLOSED)
-  python3 "$CHECKER_PY" --extract-var "$1" "$RUN_SH"
+#
+# MEMOISED PER RUN, and the cache is not an optimisation for its own sake. `--extract-var` runs
+# check_nested_quotes.py's full quote-aware `scan_words()` over all ~16,000 lines of run.sh, and every
+# poison leg re-extracts independently — with ~40 `run_exitcode_pyvar` legs that is 40 whole-file parses
+# of a 500 KB script. MEASURED 2026-08-30 while this wave's legs were being written: ONE such extraction
+# took 29 SECONDS on a loaded machine and the gate had not finished after seven minutes, which is how the
+# cost surfaced at all. The cache is keyed by name inside this run's own $W — created fresh per
+# invocation, deleted on exit — so the "never a frozen copy, always what actually ships" property is
+# untouched: the source is still read live out of run.sh, just once per name per run rather than once per
+# leg. An extraction that FAILS caches its empty result and reaches require_extracted exactly as before;
+# a failure must stay a hard stop, not turn into a silent retry.
+XC="$W/xcache"; mkdir -p "$XC"
+xcache() {   # $1 = cache key ; $2.. = the command that produces the text on stdout
+  local key="$XC/$1"; shift
+  # stderr is deliberately NOT swallowed: an extractor's own diagnostic ("no top-level assignment `X`
+  # found in …") reached the terminal before this cache existed and must keep doing so, or a hard stop
+  # loses the one line saying WHICH name could not be pulled.
+  [ -f "$key" ] || "$@" > "$key"
+  cat "$key"
 }
-extract_func() {   # $1 = function name (e.g. ck83_defect) ; $2 = source file ; prints the def to stdout
+extract_pyvar() {   # $1 = variable name (e.g. RS_PY_FAILCLOSED)
+  xcache "var.$1" python3 "$CHECKER_PY" --extract-var "$1" "$RUN_SH"
+}
+extract_func_raw() {   # the uncached body of extract_func — see xcache above
   awk -v fn="$1" '
     $0 ~ "^" fn "\\(\\) \\{" { printing=1 }
     printing { print }
     printing && /^}/ { exit }
   ' "$2"
+}
+extract_func() {   # $1 = function name (e.g. ck83_defect) ; $2 = source file ; prints the def to stdout
+  xcache "fn.$1.$(basename "$2")" extract_func_raw "$1" "$2"
 }
 # ── the 2026-08-29 EMBEDDED-PARTS SURVEY added two more shapes (see "EMBEDDED RUN.SH SURVEY" section
 # below): a `python3 - ARGS <<'DELIM'` heredoc (PART 46's PYBL) and a same-line-close `name() { python3 -c
@@ -285,10 +314,10 @@ extract_func() {   # $1 = function name (e.g. ck83_defect) ; $2 = source file ; 
 # body is lexically unambiguous (it ends at the line that IS the delimiter, no quote-parsing needed), and
 # the oneline-func shape needs its own regex for the same reason extract_func's doesn't apply.
 extract_heredoc() {   # $1 = heredoc delimiter, e.g. PYBL (from `<<'PYBL'`)
-  python3 "$CHECKER_PY" --extract-heredoc "$1" "$RUN_SH"
+  xcache "hd.$1" python3 "$CHECKER_PY" --extract-heredoc "$1" "$RUN_SH"
 }
 extract_oneline_func() {   # $1 = function name, e.g. eq72 (from `eq72() { python3 -c '...' ...; }`)
-  python3 "$CHECKER_PY" --extract-oneline-func "$1" "$RUN_SH"
+  xcache "olf.$1" python3 "$CHECKER_PY" --extract-oneline-func "$1" "$RUN_SH"
 }
 
 # ── extraction failure is a HARD ERROR, never a BROKEN row (A3 hardening, 2026-08-29) ──────────────────
@@ -466,6 +495,174 @@ run_stdout_oneline_func() {   # $1 label ; $2 funcname ; $3 expected-stdout ERE 
       "stdout did not match /$want/ (rc=$rc, got: $(printf '%s' "$out" | head -c 200 | tr '\n' ' '))" \
       "$(printf '%s\n' "$out" | head -5)"
   fi
+}
+# "bashfunc flag": a bash function whose contract is NEITHER a `FAIL:` line NOR an exit code, but a
+# SIDE EFFECT on the part's own aggregator variables — `p70` is the shape (it takes five already-computed
+# cell tokens and sets `P70_BAD=1; rc=1` if any is not OK/SKIP). That layer is where AGGREGATION lives, and
+# aggregation is where instruments fail: AGENT-CORPUS-BRIEF.md §H, "three instruments failed green in one
+# day, and in all three the detector worked and the aggregator discarded the detection." So the flag is
+# asserted here separately from the cell checker that feeds it.
+# BOTH `flag` AND `rc` ARE REQUIRED TO MOVE, and that is not belt-and-braces. `rc` is the suite's exit
+# code; the part's own `_BAD` flag only decides whether it prints MATCH or DIVERGE. A block that sets the
+# flag and forgets `rc=1` prints DIVERGE while `conformance/run.sh` exits 0 — a genuine fail-open, and one
+# a flag-only assertion cannot see. REPRODUCED against a scratch copy of run.sh with `rc=1` deleted from
+# PART 63's ambiguous-callee arm: both amb legs read `MG_FLAG=1 MG_RC=0` and were correctly caught.
+run_bashfunc_flag() {   # $1 label ; $2 funcname ; $3 srcfile ; $4 flagvar ; $5 want(0|1) ; $6.. func args
+  local label="$1" fn="$2" src="$3" flag="$4" want="$5"; shift 5
+  local defn; defn="$(extract_func "$fn" "$src")"
+  require_extracted "$defn" "could not extract function \`$fn\` from $src — nothing to test"
+  local drv="$W/flag.$fn.sh"
+  { echo '#!/bin/bash'
+    # `set +u` deliberately: the extracted body appends to the part's own `_OUT` accumulator, which the
+    # surrounding slice initialises and this driver does not need to reproduce — an empty expansion is
+    # exactly right, and re-declaring every such name here would be a second copy to drift.
+    echo 'set +u'
+    printf '%s\n' "$defn"
+    printf '%s=0\nrc=0\n' "$flag"
+    printf '%s' "$fn"; printf ' %q' "$@"; printf '\n'
+    printf 'echo "MG_FLAG=$%s MG_RC=$rc"\n' "$flag"
+  } > "$drv"
+  local out got
+  out="$(bash "$drv" 2>&1)"
+  got="$(printf '%s\n' "$out" | grep -o 'MG_FLAG=[01] MG_RC=[01]' | tail -1)"
+  if [ "$got" = "MG_FLAG=$want MG_RC=$want" ]; then
+    record PASS "$label"
+  else
+    record BROKEN "$label" \
+      "expected MG_FLAG=$want MG_RC=$want from \`$fn\`, got \"$got\"" \
+      "$(printf '%s\n' "$out" | head -5)"
+  fi
+}
+# "if-block": the shape the 2026-08-30 survey named as the reason PART 62/63 were left unhardened — a
+# part whose verdict-controlling comparison is not a function at all but an INLINE `if [ "$a" = X ] && [
+# "$b" = Y ]; then <OK row> else <FAIL row>; FLAG=1; rc=1; fi`, written out once PER ENGINE with a fresh
+# set of variable names each time (PART 63 has five such blocks, PART 62 five, PART 65 two — twelve
+# independent chains, and a conjunct can go vacuous in any one without the other eleven noticing). There
+# is nothing to call,
+# so the block itself is extracted from run.sh live — same "never a frozen copy" discipline as every
+# other runner here — and re-executed in a scratch shell with the per-engine exit-code variables BOUND TO
+# POISON VALUES. That makes the real comparison, byte-for-byte as it ships, the thing under test.
+extract_if_block() {   # $1 = unique substring of the `if` line ; $2 = source file
+  # Indentation-matched: the block ends at the first line that is exactly `fi` at the SAME column as its
+  # `if`. extract_func's `/^}/` assumption (closing marker alone at column 0) is false here — PART 62's ts
+  # and swift blocks are nested two levels deep inside runner-presence guards, and PART 63's ts/swift
+  # blocks one level — so keying off the opener's own indentation is the only correct end-marker.
+  awk -v anchor="$1" '
+    !printing && /^[[:space:]]*if / && index($0, anchor) {
+      match($0, /^[[:space:]]*/); ind = RLENGTH; printing = 1
+    }
+    printing { print }
+    printing && substr($0, ind + 1) == "fi" && substr($0, 1, ind) ~ /^ *$/ { exit }
+  ' "$2"
+}
+# THE CONJUNCT SWEEP, and why the poison legs are GENERATED rather than listed. This file's own header
+# records three consecutive rounds in which a hand-authored poison set closed exactly the mutant its
+# author imagined and left the next-shaped one standing, and its stated mitigation is to DERIVE the
+# near-miss family from what the code under test can distinguish. An `if` chain's vocabulary is smaller
+# than a Python checker's — it is a conjunction of literal equalities — so the derivation is exact: ONE
+# near-miss per conjunct, each holding every OTHER conjunct at its passing value, plus the
+# accept-known-good with all of them right. A conjunct silently dropped from the chain can then only be
+# caught by its own leg, never by a neighbour's, which is the property the B1 discipline demands and the
+# thing a hand-written list cannot guarantee it has.
+# THE ARITY RATCHET is the other half: the number of `[ "$…" ` tests in the extracted `if` header must
+# equal the number of expectations supplied. If a future rung ADDS a conjunct to one of these chains and
+# nobody adds its expectation here, this gate hard-stops rather than quietly covering N-1 of N — the
+# "already swept" failure (S6 in this file's header) made structural instead of remembered.
+p_invert() {   # the near-miss VALUE for a passing one. Not arbitrary: each flip is the real defect the
+               # conjunct exists to catch, or the real failure mode of the control it is.
+  case "$1" in
+    2) echo 0 ;;              # a REFUSAL became an answer — the cardinal-sin direction for every one of
+                              # these rows (an unread class, a borrowed sibling, a typo'd effect: all "the
+                              # engine refused" cells, and 0 is "it certified instead")
+    0) echo 2 ;;              # …and its control: a cell that must ANSWER started refusing, which is how a
+                              # row passes for an engine that simply refuses everything
+    1) echo 0 ;;              # a VIOLATION became a pass (the `deny` gate's own exit code)
+    same) echo DIFFER ;;      # PART 62's two-route byte-equality cell
+    none-certified) echo "str-true=0" ;;   # PART 62's peeked-corruption cell: the shape that certified is
+                                           # named, and `str-true` is the exact Gson `Boolean.parseBoolean`
+                                           # value measured on candor-java 2026-08-24
+    # NO SILENT FALLBACK. A value this table does not know would still produce a leg that "passes" — any
+    # wrong string fails an equality — while no longer being the near-miss it claims to be, which is the
+    # quiet weakening this whole file exists to stop. Caller hard-stops on this sentinel.
+    *) echo "MG-NO-INVERSION-FOR:$1" ;;
+  esac
+}
+run_ifblock_sweep() {   # $1 label prefix ; $2 anchor ; $3 flagvar ; $4.. `VAR=passing-value` (in any order)
+  local prefix="$1" anchor="$2" flag="$3"; shift 3
+  local n; n="$(grep -cF "$anchor" "$RUN_SH")"
+  if [ "$n" != 1 ]; then
+    echo "FAIL: mutation-gate: ANCHOR NOT UNIQUE — \`$anchor\` matches $n line(s) in $RUN_SH (want exactly 1)."
+    echo "  This is a hard stop for the same reason require_extracted is: an ambiguous or vanished anchor"
+    echo "  means the block actually tested is not the one named, and a poison that silently tests nothing"
+    echo "  reads identically to one that passes. If the comparison was rewritten, re-point the anchor."
+    exit 1
+  fi
+  local blk; blk="$(extract_if_block "$anchor" "$RUN_SH")"
+  require_extracted "$blk" "could not extract the \`if\` block anchored at \`$anchor\` from $RUN_SH"
+  # RUNAWAY GUARD: extract_if_block prints to end-of-file if it never meets its indentation-matched `fi`,
+  # which would silently swallow unrelated code and still "run". The last line must BE that `fi`.
+  if ! printf '%s\n' "$blk" | tail -1 | grep -q '^[[:space:]]*fi$'; then
+    echo "FAIL: mutation-gate: RUNAWAY EXTRACTION — the block at \`$anchor\` does not end at an"
+    echo "  indentation-matched \`fi\`; what was extracted is not a self-contained comparison."
+    exit 1
+  fi
+  # …and it must be the block that actually moves the part's verdict, not a neighbouring `if` that happens
+  # to mention the same variable.
+  if ! printf '%s\n' "$blk" | grep -q "$flag=1"; then
+    echo "FAIL: mutation-gate: the block at \`$anchor\` never assigns \`$flag=1\` — it is not the"
+    echo "  verdict-controlling comparison this sweep claims to be testing."
+    exit 1
+  fi
+  local hdr; hdr="${blk%%; then*}"
+  local want_arity; want_arity="$(printf '%s' "$hdr" | grep -o '\[ "\$' | wc -l | tr -d ' ')"
+  if [ "$want_arity" != "$#" ]; then
+    echo "FAIL: mutation-gate: ARITY DRIFT at \`$anchor\` — the \`if\` header holds $want_arity"
+    echo "  \`[ \"\$…\" \` test(s) but $# expectation(s) were supplied here. A conjunct was added to (or"
+    echo "  removed from) conformance/run.sh without its near-miss leg. Add the missing \`VAR=value\` so"
+    echo "  the sweep covers every conjunct, rather than N-1 of N with nothing saying so."
+    exit 1
+  fi
+  local -a good=("$@")
+  local kv0 inv0
+  for kv0 in "$@"; do
+    inv0="$(p_invert "${kv0#*=}")"
+    case "$inv0" in
+      MG-NO-INVERSION-FOR:*)
+        echo "FAIL: mutation-gate: NO NEAR-MISS DEFINED for the passing value \`${kv0#*=}\` (\`${kv0%%=*}\`)"
+        echo "  at \`$anchor\`. p_invert's table is the near-miss VOCABULARY for these chains; a value it"
+        echo "  does not know would still produce a leg that superficially passes while no longer being a"
+        echo "  near-miss. Add the flip — and say, in its comment, which real defect that flip IS."
+        exit 1 ;;
+    esac
+  done
+  local i j drv out got kv
+  # accept-known-good: every conjunct at its passing value must leave the flag DOWN. Without this leg a
+  # block degenerated to unconditional-reject passes every poison above while asserting nothing.
+  for ((i = -1; i < ${#good[@]}; i++)); do
+    drv="$W/ifblk.$flag.$i.sh"
+    { echo '#!/bin/bash'; echo 'set +u'
+      for ((j = 0; j < ${#good[@]}; j++)); do
+        kv="${good[$j]}"
+        if [ "$i" = "$j" ]; then printf '%s=%s\n' "${kv%%=*}" "$(p_invert "${kv#*=}")"
+        else printf '%s\n' "$kv"; fi
+      done
+      printf '%s=0\nrc=0\n' "$flag"
+      printf '%s\n' "$blk"
+      printf 'echo "MG_FLAG=$%s MG_RC=$rc"\n' "$flag"
+    } > "$drv"
+    out="$(bash "$drv" 2>&1)"
+    got="$(printf '%s\n' "$out" | grep -o 'MG_FLAG=[01] MG_RC=[01]' | tail -1)"
+    local label want
+    if [ "$i" = -1 ]; then label="$prefix(accept-known-good)"; want=0
+    else kv="${good[$i]}"; label="$prefix(${kv%%=*}→$(p_invert "${kv#*=}"))"; want=1; fi
+    if [ "$got" = "MG_FLAG=$want MG_RC=$want" ]; then
+      record PASS "$label"
+    else
+      record BROKEN "$label" \
+        "expected MG_FLAG=$want MG_RC=$want from the \`if\` block at \`$anchor\`, got \"$got\"" \
+        "$(printf '%s\n' "$out" | head -5)"
+    fi
+  done
 }
 # "ext-script": a checker that already lives as a standalone file (conformance/*.py), never pasted out of
 # run.sh via extract_pyvar/extract_func — see this file's header, "EXTERNAL CHECKERS" section, for why
@@ -1093,16 +1290,25 @@ run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_S
 # probes rather than reading a JSON document — poisoned here via a tiny STUB command keyed on the effect
 # name, not a built engine, the same "no engine needed" discipline PART 19-22/56 use above.
 #
-# NOT hardened here, named rather than left silent: the other 24 confirmed-defeatable (4l, 7, 8, 13, 13b,
-# 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 62, 63, 64, 65, 70, 84) and PART 9's structural gap.
-# Several of the highest-severity remaining ones — PART 63 (a sibling report cannot answer for another
-# member, MEASURED as a real false-green on candor-query 0.31.0) and PART 62/70 (completeness/refusal) —
-# are NOT function-shaped: their comparison is a single inline `if` over exit codes from several REAL
-# per-engine invocations computed earlier in the same run.sh slice, which is a real per-part fixture-and-
-# stub engineering job (as PART 63's own AND-chain spans five separate un-parameterised call sites, one
-# per engine, not one reusable function called five times) rather than a mechanical follow-on from what
-# PART 68/61 needed — left for the next session rather than rushed, exactly as the previous survey left its
-# own residue rather than silently assuming it safe.
+# NOT hardened in THAT wave, named rather than left silent: the other 24 confirmed-defeatable (4l, 7, 8,
+# 13, 13b, 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 62, 63, 64, 65, 70, 84) and PART 9's
+# structural gap. Several of the highest-severity remaining ones — PART 63 (a sibling report cannot answer
+# for another member, MEASURED as a real false-green on candor-query 0.31.0) and PART 62/70
+# (completeness/refusal) — are NOT function-shaped: their comparison is a single inline `if` over exit
+# codes from several REAL per-engine invocations computed earlier in the same run.sh slice, which is a real
+# per-part fixture-and-stub engineering job (as PART 63's own AND-chain spans five separate
+# un-parameterised call sites, one per engine, not one reusable function called five times) rather than a
+# mechanical follow-on from what PART 68/61 needed — left for the next session rather than rushed, exactly
+# as the previous survey left its own residue rather than silently assuming it safe.
+#   THE NEXT SESSION DID THEM, AND PART 65 BESIDE THEM (2026-08-30, "THE THIRD WAVE" far below), which
+#   leaves 20 of the 24: 4l, 7, 8, 13, 13b, 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 64, 84,
+#   plus PART 9's structural gap.
+#   AND THE PARAGRAPH ABOVE IS HALF WRONG WHERE IT IS MOST CONFIDENT, which is why it is corrected in
+#   place rather than rewritten: PART 63 and PART 62 are exactly as described, but PART 70's verdict runs
+#   through `w70` and `p70` — two reusable functions, both already reachable by extraction shapes this
+#   file had built for PART 72 and PART 83 respectively, and `w70` needs no engine at all. Three parts
+#   were deferred on a property measured on two of them. (AGENT-CORPUS-BRIEF.md rule 12: a snapshot in a
+#   comment is not a fact, including one written eight hours earlier by the same hand.)
 mkdir -p "$W/p46" "$W/p72" "$W/p19" "$W/p20" "$W/p21" "$W/p22" \
   "$W/p56a/rs_dirty/.candor" "$W/p56a/rs_clean/.candor" \
   "$W/p56b/rs_dirty/.candor" "$W/p56b/rs_clean/.candor" \
@@ -1283,6 +1489,252 @@ run_p61() {   # $1 label ; $2 want P61_BAD(0=accept/1=reject) ; $3 STUB_REAL ; $
 run_p61 "PART61/p61_row(typo-not-refused)"    1 0 0 0
 run_p61 "PART61/p61_row(known-absent-broken)" 1 0 2 2
 run_p61 "PART61/p61_row(good)"                0 0 2 0
+
+# ══ THE 2026-08-30 THIRD WAVE: PART 63, PART 62, PART 70, PART 65 ═══════════════════════════════════════════
+#
+# WHY THESE THREE, AND WHAT THE PREVIOUS WAVE GOT WRONG ABOUT THEM. The survey immediately above named
+# 24 confirmed-defeatable parts and singled out 63, 62 and 70 as the highest-severity residue, with the
+# reason they were deferred: *"their comparison is a single inline `if` over exit codes from several REAL
+# per-engine invocations … not one reusable function called five times."* That is EXACTLY RIGHT for
+# PART 63 and PART 62 — and WRONG for PART 70, checked rather than inherited. PART 70's verdict runs
+# through TWO reusable, already-extractable functions: `w70`, the per-cell checker (a
+# `name() { python3 -c '` … `' "$@"; }` — the same shape `extract_oneline_func` was built for at PART 72),
+# and `p70`, the aggregator that turns five cell tokens into `P70_BAD`/`rc`. Neither needed new
+# extraction machinery, and `w70` takes JSON documents and exit-code STRINGS as argv, so it needs no
+# engine at all. The deferral was reasoning about all three from the shape of two.
+#
+# WHAT THE OTHER TWO ACTUALLY NEEDED is `run_ifblock_sweep` above: extract the live inline `if` chain out
+# of run.sh, bind its per-engine exit-code variables to poison values, and assert the flag AND `rc`. That
+# closes them WITHOUT a built engine too — the poison is the exit code the engine would have returned,
+# which is the entire input the comparison has.
+#
+# AND PART 65 CAME ALONG BEHIND THEM, which is the point of building a SHAPE rather than a fixture: once
+# `run_ifblock_sweep` existed, PART 65 (a derived file set may certify, and must not certify past a FAILED
+# derivation — ⟨0.32⟩'s other side, the case PART 62 opens the door for) cost two call lines and ten legs,
+# every one falsified by the same sweep with no new harness. PART 64 and the
+# `cfg_probe`/`check_polfail`/`check_agents`/`p64_row` family the survey above names are the same two
+# shapes again, and are where the next session should start.
+#
+# EVERY LEG IS FALSIFIED, EXHAUSTIVELY AND MECHANICALLY, not asserted and not spot-checked. A leg that
+# "looks like" it isolates a clause is a reading of the source, and this file's own history is four
+# rounds of such readings being wrong. So the falsification is a sweep, driven by a harness that SOURCES
+# the runner functions straight out of THIS file (never a reimplementation of them, which would prove
+# something about the copy) and re-issues the shipped call lines with `RUN_SH` pointed at a
+# scratch-degraded conformance/run.sh:
+#
+#   76/76 IF-BLOCK CONJUNCTS. For each of the twelve blocks, EVERY conjunct was NEUTERED in turn —
+#   `[ "$v" = X ]` rewritten to `[ "$v" = "$v" ]` (and `-ge` likewise), which is vacuously true — and the
+#   sweep re-run. In all 76 cases exactly ONE leg flipped from CAUGHT to WRONGLY-ACCEPTED, and it was the leg built for that
+#   conjunct; every other leg and every accept-known-good was unmoved.
+#     NEUTERED, NOT DELETED, on purpose. Deleting a conjunct trips the ARITY RATCHET, which hard-stops the
+#     gate before any leg runs — a louder answer, but one that proves nothing about whether the legs
+#     discriminate. A conjunct that is still THERE and no longer asserting is also the exact failure this
+#     whole file exists for, so it is the truer model as well as the more demanding test.
+#     AND THE ANCHORS NAME A VARIABLE, NEVER ITS EXPECTED VALUE (`'if [ "$p63_a"'`, not
+#     `'if [ "$p63_a" = 2 ]'`) BECAUSE OF THIS SWEEP. With the value in the anchor, neutering the FIRST
+#     conjunct of each chain destroyed the anchor and the run hard-stopped — correct behaviour, but it
+#     meant one conjunct per block was covered by the anchor guard rather than by a poison leg of its
+#     own. Shortening the anchors (each verified still to match exactly one line) moved every one of them
+#     under its own leg, and the sweep then read 76/76 with no hard stops at all. The guard still fires for
+#     the coarser mutations that remove the variable entirely.
+#   THE TWO NEW HARD STOPS WERE PROBED THEMSELVES, because a guard nobody has watched fire is assumed and
+#   not tested (brief §C/§L). Adding a fourth conjunct to PART 63's ambiguous-callee chain in a scratch
+#   run.sh printed `ARITY DRIFT … the if header holds 3 test(s) but 2 expectation(s) were supplied`, exit
+#   1. Changing one of that sweep's passing values to a literal p_invert does not know printed
+#   `NO NEAR-MISS DEFINED for the passing value \`SEVEN\``, exit 1. Neither reached a PASS/BROKEN row.
+#   17/17 `w70` BRANCHES. Every condition in the PART 70 cell checker was degraded in turn — identity to
+#   truthiness (`is not True` -> `not …`, and `is not want` -> `bool(…) != want`), `isinstance` dropped,
+#   emptiness dropped, and each presence/exit-code branch neutered to `if False:` — and in all 17 exactly
+#   the intended leg(s) flipped and nothing else. Two are worth naming: neutering the cause-mode
+#   `if "ok" in d:` flips ONLY cause(ok-present), the HALF-PORTED FAIL-OPEN shape (`incomplete: true`
+#   added and `ok` left standing); making `if "ok" not in d:` absent-blind flips ONLY
+#   ctl-violating(ok-absent), THE OVER-CHARGE CONTROL — the leg that stops an engine passing all three
+#   cause cells by withdrawing `ok` unconditionally, i.e. by deleting the verb.
+#   3/3 `p70` AGGREGATOR MUTATIONS. Dropping `"$5"` from the `for` loop flipped ONLY
+#   p70(ctl-violating-FAIL). Widening `OK|SKIP)` to `OK|SKIP|FAIL*)` flipped all five FAIL legs and left
+#   both accept legs standing. Deleting `rc=1` from the `*)` arm flipped those five PLUS
+#   p70(NOVERB-is-not-a-pass) — that is the aggregator-discards-the-detection failure (brief §H) caught at
+#   its own layer, and the reason the runner asserts `rc` and not only the part's own flag.
+#   AND THE `rc` HALF EARNS ITS PLACE INDEPENDENTLY: deleting `rc=1` from PART 63's ambiguous-callee arm
+#   while leaving `P63_BAD=1` made both amb legs read `MG_FLAG=1 MG_RC=0` and be caught. That mutation
+#   makes the part print DIVERGE while conformance/run.sh EXITS 0.
+# ONE TRAP MET AND WORTH RECORDING, because it would have made a falsification LIE: the first attempt at
+# the `incomplete is not True` degrade used a whole-file substitution that matched CHAN_PY's identically
+# spelled line ~5,000 lines EARLIER in run.sh and never touched `w70` at all. The sweep then correctly
+# reported no change, which reads exactly like "the leg does not discriminate". The harness now scopes
+# every edit to the extracted function's own span. Confirm a degrade landed where you meant it before
+# reading its result — a broken instrument's negative is indistinguishable from a real one (MEMORY:
+# prove-the-fixture-reaches-the-code).
+
+# ---- PART 63 — A SIBLING REPORT CANNOT ANSWER FOR ANOTHER MEMBER (SPEC §2.2/§3.3.1 ⟨0.32⟩).
+# The severity is not theoretical: this is a MEASURED false green on candor-query 0.31.0, produced by
+# ADDING a report — `gate --report` over member `a` refused at 2, and gating that same member beside an
+# unrelated sibling exited 0 with `policy ✓`. Union is safe for EFFECTS and unsafe for REASONS: adding an
+# effect can only add violations, adding a reason turns "I cannot say" into "I checked, it's fine".
+# FOUR SEPARATE BLOCKS ARE SWEPT, one per engine (rust carries two — the sibling arm and the ambiguous-
+# callee arm added when the first fix caused a second flip), because they are four independent
+# un-parameterised chains and a conjunct can be dropped from any one of them without the other three
+# noticing. That is AGENT-CORPUS-BRIEF.md §A.2 applied here: write the fixture for the sibling you were
+# not handed.
+run_ifblock_sweep "PART63/rust-sibling"  'if [ "$p63_a"'        P63_BAD \
+  p63_a=2 p63_b_alone=0 p63_ab=2
+run_ifblock_sweep "PART63/rust-ambiguous" 'if [ "$p63_amb_ctrl"' P63_BAD \
+  p63_amb_ctrl=1 p63_amb_both=1
+run_ifblock_sweep "PART63/java"  'if [ "$p63_j_a"' P63_BAD \
+  p63_j_a=2 p63_j_b_alone=0 p63_j_ab=2 p63_j_ac=1 p63_j_ab2=1
+run_ifblock_sweep "PART63/ts"    'if [ "$p63_t_a"' P63_BAD \
+  p63_t_a=2 p63_t_b_alone=0 p63_t_ab=2 p63_t_ac=1 p63_t_ab2=1
+run_ifblock_sweep "PART63/swift" 'if [ "$p63_s_a"' P63_BAD \
+  p63_s_a=2 p63_s_b_alone=0 p63_s_ab=2 p63_s_ac=1 p63_s_ab2=1
+
+# ---- PART 62 — CODE THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE (SPEC §2 ⟨0.32⟩).
+# The completeness rung, and the part whose own header records the failure it exists to prevent: "a MUST
+# that exists in the spec and in exactly one engine". FIVE blocks, and the conjuncts are not
+# interchangeable — each names a distinct measured mechanism, which is why the sweep drives every one:
+#   · `scan`/`root`   the false green itself — `deny Exec` answered `policy ✓` over a tree holding
+#                     `Runtime.exec("curl … | sh")` in a file the engine never read.
+#   · `built`/`ctl`   the readable control: the same policy over the compiled output alone must still
+#                     answer 0, or the row passes for an engine that refuses every scan.
+#   · `gate`          SPEC §3.1's second route — the same verdict must come from the DOCUMENT.
+#   · `noask`         the never-asked control, and a REAL gap: java answered 2 over a forbid-only policy
+#                     where rust answers 0, on the same tree, and conformance stayed GREEN because no java
+#                     row asked. `peeked: false` under a policy with no deny rule means nothing was asked.
+#   · `nop`           the ⟨0.32⟩ no-policy producer: candor-java's `scanWasAsked = envObj.has("outOfScope")`
+#                     conditioned the whole rule on the PRODUCER's history rather than the policy in force.
+#   · `pure`          `pure` IS a deny rule with an empty effect list, so an engine deriving "does this
+#                     policy deny anything" by flattening rules to effect NAMES lets the STRICTEST policy
+#                     disarm the rung.
+#   · `eq`            PART 62's two-route byte-equality cell (rust only).
+#   · `je`/`jeb`      the producer's `judgedElsewhere` carve-out: honoured when genuinely `true`, and a
+#                     NON-BOOLEAN must not be read as "yes, judged".
+#   · `pk`/`pkt`/`pkf` the `peeked` corruption cell — candor-java read it via Gson `getAsBoolean`, which on
+#                     a JSON string is `Boolean.parseBoolean`, so `"peeked": "true"` carved the class out:
+#                     exit 2 → exit 0, `ok:true`, nothing on stderr (fixed in candor-java `0d9e7fc`). Its
+#                     two bool controls are the other half — a genuine `true` must still certify and a
+#                     genuine `false` must still refuse, which is what proves the key reaches the verdict.
+run_ifblock_sweep "PART62/java" 'if [ "$p62_root"' P62_BAD \
+  p62_root=2 p62_built=0 p62_gate=2 p62_noask=0 p62_nop=2 p62_pure=2
+run_ifblock_sweep "PART62/java-unpeekable" 'if [ "$p62j_scan"' P62J_BAD \
+  p62j_scan=2 p62j_gate=2 p62j_je=0 p62j_jeb=2 p62j_pk=none-certified p62j_pkt=0 p62j_pkf=2
+run_ifblock_sweep "PART62/rust" 'if [ "$p62r_scan"' P62R_BAD \
+  p62r_scan=2 p62r_gate=2 p62r_ctl=0 p62r_eq=same p62r_noask=0 p62r_nop=2 p62r_pure=2 \
+  p62r_je=0 p62r_jeb=2 p62r_pk=none-certified p62r_pkt=0 p62r_pkf=2
+run_ifblock_sweep "PART62/ts" 'if [ "$p62t_scan"' P62T_BAD \
+  p62t_scan=2 p62t_gate=2 p62t_ctl=0 p62t_noask=0 p62t_pure=2 \
+  p62t_je=0 p62t_jeb=2 p62t_pk=none-certified p62t_pkt=0 p62t_pkf=2
+run_ifblock_sweep "PART62/swift" 'if [ "$p62s_scan"' P62S_BAD \
+  p62s_scan=2 p62s_gate=2 p62s_ctl=0 p62s_noask=0 p62s_nop=2 p62s_pure=2 \
+  p62s_je=0 p62s_jeb=2 p62s_pk=none-certified p62s_pkt=0 p62s_pkf=2
+
+# ---- PART 65 — A DERIVED FILE SET MAY CERTIFY, AND MUST NOT CERTIFY PAST A FAILED DERIVATION (SPEC §2
+# ⟨0.32⟩). PART 62's other side: ⟨0.32⟩ lets a peek MAKE the file set it reads (candor-java compiles a
+# source it has no class for, then analyses the result through the ordinary path), so an unbuilt tree can
+# now be ANSWERED rather than only refused — and that introduces exactly one new way to be wrong, which is
+# to certify on a derivation that did not fully succeed. Swept here because the machinery PART 62/63
+# needed makes it mechanical, and because run.sh's own header names the hazard precisely: *"THE CERTIFY
+# ROW IS THE ONE THAT CAN GO SILENT: it asserts exit 0, so an engine that quietly stopped peeking would
+# still pass it"* — `p65_certify=0` and `p65d_flag=0` are the two legs that hold that door, and the
+# refusal conjuncts beside them (a syntax error, a missing dependency, a real violation, the
+# no-flag/processor controls) are what stop the row passing for an engine that refuses everything.
+# `p65_named`/`p65d_named` are COUNTS compared with `-ge 1`, not exit codes — the violation must be NAMED,
+# not merely counted — and their near-miss (1→0) is the finding going unnamed while the exit code stays
+# right, which no other conjunct here can see.
+run_ifblock_sweep "PART65/java-derive" 'if [ "$p65_certify"' P65_BAD \
+  p65_certify=0 p65_viol=2 p65_named=1 p65_broken=2 p65_dep=2
+run_ifblock_sweep "PART65/java-dep-outside-root" 'if [ "$p65d_noflag"' P65_BAD \
+  p65d_noflag=2 p65d_flag=0 p65d_proc=2 p65d_viol=2 p65d_named=1
+
+# ---- PART 70 — `whatif` WITHDRAWS `ok` FOR EVERY CAUSE THE GATE REFUSES ON (SPEC §3.1 ⟨0.24⟩).
+# The refusal law: an advisory verb may be LESS certain than the gate, never MORE. `w70` is the cell
+# checker all four engine rows are scored by — one implementation, four callers — and it is a PURE
+# function of (mode, document, whatif-exit, gate-exit), so every leg below is a real near-miss document
+# and two exit-code strings, no engine involved.
+# THE THREE MODES ARE SWEPT SEPARATELY because they enforce opposite things: `cause` requires `ok` to be
+# OMITTED, and the two `ctl-*` modes require it PRESENT with a specific polarity. A checker that collapsed
+# them would pass one and delete the other, which is precisely the fabrication-fix direction.
+mkdir -p "$W/p70"
+w70doc() { printf '%s' "$2" > "$W/p70/$1.json"; }
+# — cause mode. The gate is REFUSING over these bytes (gexit=2), so `whatif` must answer partially:
+#   `incomplete: true`, `ok` absent, and the partial answer (`affected`, `violations`) still shipped.
+w70doc cause_good      '{"affected":["app.a","app.b"],"incomplete":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_ok        '{"affected":["app.a","app.b"],"incomplete":true,"ok":false,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_inc1      '{"affected":["app.a","app.b"],"incomplete":1,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_refused   '{"affected":["app.a","app.b"],"incomplete":true,"refused":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_aff_empty '{"affected":[],"incomplete":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_aff_obj   '{"affected":{"app.a":1},"incomplete":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc cause_viol_empty '{"affected":["app.a","app.b"],"incomplete":true,"violations":[]}'
+w70doc cause_viol_str  '{"affected":["app.a","app.b"],"incomplete":true,"violations":"AS-EFF-006"}'
+w70doc cause_noinc     '{"affected":["app.a","app.b"],"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc noverb          '{"error":"unknown verb"}'
+# — control modes. The gate ANSWERS over these bytes (gexit=0) because the report left nothing unread, so
+#   `whatif` owes an ordinary answer WITH `ok`. `ctl-violating` wants `ok: false` + violations;
+#   `ctl-clean` wants `ok: true` + none.
+w70doc ctlv_good  '{"affected":["app.a","app.b"],"ok":false,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc ctlv_nook  '{"affected":["app.a","app.b"],"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc ctlv_ok0   '{"affected":["app.a","app.b"],"ok":0,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc ctlv_inc   '{"affected":["app.a","app.b"],"ok":false,"incomplete":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+w70doc ctlv_noviol '{"affected":["app.a","app.b"],"ok":false,"violations":[]}'
+w70doc ctlc_good  '{"affected":["app.a","app.b"],"ok":true,"violations":[]}'
+w70doc ctlc_ok1   '{"affected":["app.a","app.b"],"ok":1,"violations":[]}'
+w70doc ctlc_viol  '{"affected":["app.a","app.b"],"ok":true,"violations":[{"rule":"AS-EFF-006","fn":"app.a"}]}'
+# THE EXPECTED-STDOUT PATTERNS ARE SPECIFIC ON PURPOSE. `^FAIL` alone would let a poison pass by tripping
+# a DIFFERENT branch than the one it isolates — the same masking `rev` was pinned against in PART 68 —
+# so each leg matches the text of its own clause. (Backticks in `w70`'s messages are matched by `.`
+# rather than quoted, to keep these patterns free of shell-quoting hazards this repo has been bitten by.)
+run_stdout_oneline_func "PART70/w70(cause-good)" w70 '^OK$' \
+  cause "$W/p70/cause_good.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-ok-present)" w70 '^FAIL .ok. is PRESENT' \
+  cause "$W/p70/cause_ok.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-incomplete-truthy)" w70 '^FAIL .incomplete. is 1, not true' \
+  cause "$W/p70/cause_inc1.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-refused-shape)" w70 '^FAIL .*refused: true' \
+  cause "$W/p70/cause_refused.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-whatif-refused)" w70 '^FAIL .*exit 2 . a refusal' \
+  cause "$W/p70/cause_good.json" 2 2
+run_stdout_oneline_func "PART70/w70(cause-affected-empty)" w70 '^FAIL .affected. is missing or empty' \
+  cause "$W/p70/cause_aff_empty.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-affected-wrong-type)" w70 '^FAIL .affected. is missing or empty' \
+  cause "$W/p70/cause_aff_obj.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-violations-empty)" w70 '^FAIL .violations. is missing or empty' \
+  cause "$W/p70/cause_viol_empty.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-violations-wrong-type)" w70 '^FAIL .violations. is missing or empty' \
+  cause "$W/p70/cause_viol_str.json" 0 2
+run_stdout_oneline_func "PART70/w70(cause-gate-reference-moved)" w70 '^FAIL .gate --report. answered 0' \
+  cause "$W/p70/cause_good.json" 0 0
+run_stdout_oneline_func "PART70/w70(cause-unported-parks)" w70 '^SKIP$' \
+  cause "$W/p70/cause_noinc.json" 0 2
+run_stdout_oneline_func "PART70/w70(verb-probe-noverb)" w70 '^NOVERB$' \
+  cause "$W/p70/noverb.json" 0 2
+run_stdout_oneline_func "PART70/w70(ctl-violating-good)" w70 '^OK$' \
+  ctl-violating "$W/p70/ctlv_good.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-violating-ok-absent)" w70 '^FAIL .ok. is ABSENT' \
+  ctl-violating "$W/p70/ctlv_nook.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-violating-ok-falsy)" w70 '^FAIL .ok. is 0, want false' \
+  ctl-violating "$W/p70/ctlv_ok0.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-violating-incomplete-present)" w70 '^FAIL .incomplete. is present' \
+  ctl-violating "$W/p70/ctlv_inc.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-violating-violations-empty)" w70 '^FAIL .violations. is empty' \
+  ctl-violating "$W/p70/ctlv_noviol.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-gate-reference-moved)" w70 '^FAIL .gate --report. answered 2' \
+  ctl-violating "$W/p70/ctlv_good.json" 0 2
+run_stdout_oneline_func "PART70/w70(ctl-clean-good)" w70 '^OK$' \
+  ctl-clean "$W/p70/ctlc_good.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-clean-ok-truthy)" w70 '^FAIL .ok. is 1, want true' \
+  ctl-clean "$W/p70/ctlc_ok1.json" 0 0
+run_stdout_oneline_func "PART70/w70(ctl-clean-violations-present)" w70 '^FAIL .violations. is non-empty' \
+  ctl-clean "$W/p70/ctlc_viol.json" 0 0
+# — and the AGGREGATOR one layer out. `w70` producing the right token is worth nothing if `p70` drops it
+#   on the floor (AGENT-CORPUS-BRIEF.md §H: "detection is rarely the failure, aggregation is"). One leg
+#   per cell POSITION, because the `for` loop enumerates five of them by hand and a dropped `"$5"` is
+#   invisible to every other leg — reproduced.
+run_bashfunc_flag "PART70/p70(all-OK)"              p70 "$RUN_SH" P70_BAD 0 eng OK OK OK OK OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(all-SKIP-parks)"      p70 "$RUN_SH" P70_BAD 0 eng SKIP SKIP SKIP OK OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(outOfScope-FAIL)"     p70 "$RUN_SH" P70_BAD 1 eng "FAIL x" OK OK OK OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(unread-class-FAIL)"   p70 "$RUN_SH" P70_BAD 1 eng OK "FAIL x" OK OK OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(cross-policy-FAIL)"   p70 "$RUN_SH" P70_BAD 1 eng OK OK "FAIL x" OK OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(ctl-violating-FAIL)"  p70 "$RUN_SH" P70_BAD 1 eng OK OK OK "FAIL x" OK 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(ctl-clean-FAIL)"      p70 "$RUN_SH" P70_BAD 1 eng OK OK OK OK "FAIL x" 0/0/0/0 0/0/0/0/0
+run_bashfunc_flag "PART70/p70(NOVERB-is-not-a-pass)" p70 "$RUN_SH" P70_BAD 1 eng NOVERB OK OK OK OK 0/0/0/0 0/0/0/0/0
 
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"
