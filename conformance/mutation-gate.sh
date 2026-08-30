@@ -1056,6 +1056,53 @@ run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_S
 # above all follow) is real per-part fixture engineering, not a mechanical follow-on — left for the next
 # session rather than rushed. An unresolved part is NOT a passing part; a confirmed-defeatable one is not
 # either — both are named here so neither reads as safe by omission.
+#
+# THE FOLLOW-ON SESSION (2026-08-30, later the same day): the 27 UNRESOLVED above were the ones the
+# mechanical AND-chain neuter (this file's own, plus the hand-generalised bash-equality-chain sweep that
+# closed 12 more the same day) could not locate a comparison for at all — a genuinely different shape from
+# both. Applied the unconditional-pass test BY HAND to all 27, one at a time, via `part.sh <id>` against a
+# throwaway mutation of run.sh (reverted after each): find the verdict-controlling comparison — almost
+# always a bash function (`p61_row`, `cfg_probe`, `vocab_probe`, `ep_probe`, `dp_probe`, `zm_probe`,
+# `perow`, `peurow`, `p18fail`, `check_agents`, `check_polfail`, `p64_row`) or a small number of inline
+# `if [ COND ]; then OK else BAD=1; rc=1; fi` blocks sharing one aggregator variable — force it to the pass
+# branch, and confirm via a REAL `part.sh` run that the part still prints its own MATCH/OK line with zero
+# other row reacting. RESULT: 26 of the 27 are CONFIRMED DEFEATABLE this way, each reproduced with a real
+# part.sh run, not asserted: 4l, 7, 8, 13, 13b, 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 61,
+# 62, 63, 64, 65, 68, 70, 84. (Several needed a named co-dependency `part.sh` cannot see on its own — PART
+# 13/13b/32/33/35/40/84 all read `$GDIR`, built by the unmarked PART 10 slice, so were run as `part.sh 10
+# <id>`; 15b/15c similarly needed `10 14 15`; 18 needed `16`. Several of THOSE runs' overall exit code
+# stayed 1 even after the neuter, but for a confirmed UNRELATED reason present identically on an unmutated
+# run — PART 10's own `candor-rust` vocab arm and PART 16's java containment discovery form both fail on
+# this checkout independent of anything here, matching the "live drift in a sibling checkout" class the
+# 2026-08-29 survey already named for 4k/16/34/4n — never the part under test.) PART 9 is the exception,
+# and not because the test failed to find its comparison: PART 9's own header says so directly — "CONTROLS:
+# none — advisory rows print WARN and set nothing" — and a grep of its body confirms zero `rc=1`/`_OK=1`/
+# `_BAD=1` anywhere in it. There is no verdict-controlling comparison to invert because PART 9 never
+# controls the verdict; it is EQUIVALENT to an unconditional pass by design, not merely defeatable as one.
+# So the honest numerator for this batch is 27 of 27: 26 with a comparison proven bypassable and 1 with no
+# comparison at all.
+#
+# TWO OF THE 26 ARE HARDENED BELOW (PART 68, PART 61), chosen for severity against the same yardstick the
+# earlier waves used — verdict/disclosure and refusal, both with a measured real-engine history (PART 68
+# is the exact "two byte-identical rows" defect measured live on ts/java/swift 2026-08-24; PART 61 is the
+# "typo'd effect scored as a confident negative" defect measured on all four engines). PART 68's check.py
+# is a NEW extractable shape (a script written to disk via `cat > file <<'PYEOF'` rather than piped via
+# `python3 - <<'DELIM'`) but needs no new extraction code: extract_heredoc is delimiter-driven, not
+# preamble-driven, so it pulls check.py's body unchanged. PART 61's p61_row is the exact extract_func shape
+# already used for ck83_defect/ck83_control, but it shells out to a REAL query binary for its three
+# probes rather than reading a JSON document — poisoned here via a tiny STUB command keyed on the effect
+# name, not a built engine, the same "no engine needed" discipline PART 19-22/56 use above.
+#
+# NOT hardened here, named rather than left silent: the other 24 confirmed-defeatable (4l, 7, 8, 13, 13b,
+# 15b, 15c, 18, 23, 27, 32, 33, 35, 40, 43, 47, 55, 60, 62, 63, 64, 65, 70, 84) and PART 9's structural gap.
+# Several of the highest-severity remaining ones — PART 63 (a sibling report cannot answer for another
+# member, MEASURED as a real false-green on candor-query 0.31.0) and PART 62/70 (completeness/refusal) —
+# are NOT function-shaped: their comparison is a single inline `if` over exit codes from several REAL
+# per-engine invocations computed earlier in the same run.sh slice, which is a real per-part fixture-and-
+# stub engineering job (as PART 63's own AND-chain spans five separate un-parameterised call sites, one
+# per engine, not one reusable function called five times) rather than a mechanical follow-on from what
+# PART 68/61 needed — left for the next session rather than rushed, exactly as the previous survey left its
+# own residue rather than silently assuming it safe.
 mkdir -p "$W/p46" "$W/p72" "$W/p19" "$W/p20" "$W/p21" "$W/p22" \
   "$W/p56a/rs_dirty/.candor" "$W/p56a/rs_clean/.candor" \
   "$W/p56b/rs_dirty/.candor" "$W/p56b/rs_clean/.candor" \
@@ -1142,6 +1189,100 @@ printf '%s' '{"outOfScope": []}' > "$W/p56b/rs_clean/.candor/report.rs.scan.json
 run_exitcode_heredoc "PART56/PY56(dirty-peek-empty)"      PY56 1 "$W/p56a" 2 2 x x x x 0 0
 run_exitcode_heredoc "PART56/PY56(clean-left-a-report)"   PY56 1 "$W/p56b" 2 2 x x x x 0 0
 run_exitcode_heredoc_accept "PART56/PY56(good)"           PY56 0 "$W/p56g" 2 2 x x x x 0 0
+
+# ---- PART 68 (PYEOF/check.py) — 2026-08-30 EMBEDDED-PARTS SURVEY, second wave: a verdict row must carry
+# the unit it is about (SPEC §2 ⟨0.32⟩) — the MEASURED 2026-08-24 defect on ts/java/swift, two BYTE-
+# IDENTICAL violation rows for two distinct members sharing a name, a reader cannot tell apart. Unlike
+# PART 46/72/19-22/56 above, check.py is not a `python3 - ARGS <<'DELIM'` pipe but a script WRITTEN to
+# disk via `cat > "$P68/check.py" <<'PYEOF'` and invoked by path — extract_heredoc pulls it unchanged,
+# since a heredoc body is lexically unambiguous regardless of what precedes the `<<'DELIM'`.
+# THREE independent near-miss poisons, one per distinct branch check.py can fail on, each isolated from
+# the others by giving `rev` the SAME (rule,hash) pairs as the poisoned `twin` so the REV comparison
+# (a different, already-independently-tested branch) cannot fire first and mask which check caught it:
+#   (a) THE HISTORICAL DEFECT ITSELF — twin's two rows are BYTE-IDENTICAL, same hash included.
+#   (b) near-miss ONE FIELD OVER — the two rows are textually distinct (different `detail`) but share the
+#       SAME hash: proves the hash-UNIQUENESS check is live independently of the whole-row-equality one,
+#       which (a) alone cannot show (a dict-equality-only regression would still catch (a) but not (b)).
+#   (c) near-miss on ORDER — two rows with correct, DISTINCT hashes but out of identity order: proves the
+#       sort-key clause (the OTHER half of §2 ⟨0.32⟩'s MUST, the one PART 63 cannot see) is asked at all.
+# `one`/`nohash` stay at their real accept-known-good shape in every poison call, since neither branch
+# under test here touches them — changing an unrelated arg would not be a near-miss, it would be noise.
+# FALSIFIED against a plausible regression (deleting the byte-identity AND hash-uniqueness checks from a
+# scratch copy of check.py): poisons (a) and (b) both flip from CAUGHT to WRONGLY-ACCEPTED, and (c) is
+# unaffected — proof the three poisons discriminate the branches they claim to, not merely trip on the
+# REV check by coincidence (an earlier draft's poisons did exactly that before `rev` was pinned to match).
+mkdir -p "$W/p68"
+p68row() {   # $1 hash-or-empty ; $2 detail
+  if [ -n "$1" ]; then printf '{"rule":"AS-EFF-006","fn":"go","effects":["Exec"],"detail":"%s","hash":"%s"}' "$2" "$1"
+  else printf '{"rule":"AS-EFF-006","fn":"go","effects":["Exec"],"detail":"%s"}' "$2"; fi
+}
+printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row b#go D)"       > "$W/p68/good_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row b#go D)"       > "$W/p68/good_rev.json"
+printf '{"violations":[%s]}'    "$(p68row a#go D)"                          > "$W/p68/good_one.json"
+printf '{"violations":[%s]}'    "$(p68row "" D)"                            > "$W/p68/good_nohash.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row a#go D)"       > "$W/p68/poison_identical_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go D)" "$(p68row a#go D)"       > "$W/p68/poison_identical_rev.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go first)" "$(p68row a#go second)" > "$W/p68/poison_samehash_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row a#go first)" "$(p68row a#go second)" > "$W/p68/poison_samehash_rev.json"
+printf '{"violations":[%s,%s]}' "$(p68row b#go first)" "$(p68row a#go second)" > "$W/p68/poison_order_twin.json"
+printf '{"violations":[%s,%s]}' "$(p68row b#go first)" "$(p68row a#go second)" > "$W/p68/poison_order_rev.json"
+run_exitcode_heredoc "PART68/PYEOF(byte-identical-defect)" PYEOF 1 L "$W/p68/poison_identical_twin.json" "$W/p68/poison_identical_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(same-hash-distinct-text)" PYEOF 1 L "$W/p68/poison_samehash_twin.json" "$W/p68/poison_samehash_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc "PART68/PYEOF(rows-out-of-identity-order)" PYEOF 1 L "$W/p68/poison_order_twin.json" "$W/p68/poison_order_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+run_exitcode_heredoc_accept "PART68/PYEOF(good)" PYEOF 0 L "$W/p68/good_twin.json" "$W/p68/good_rev.json" "$W/p68/good_one.json" "$W/p68/good_nohash.json"
+
+# ---- PART 61 (p61_row) — 2026-08-30 EMBEDDED-PARTS SURVEY: a typo'd effect name must be REFUSED (exit 2),
+# never silently answered (SPEC §3.1) — the same "unanswerable must be disclosed" shape as ⟨0.24⟩'s §3.1
+# ruling, applied to `path`'s vocabulary guard. p61_row is a bash FUNCTION (extract_func's exact shape, a
+# `name() {` opener with the closing `}` alone at column 0) that shells out to a REAL query binary three
+# times ("$@" caller Fs/Fsz/Net --report …) and reduces each call to an exit code — there is no JSON
+# document to poison here, only three exit codes, so the "poison" is a tiny STUB standing in for "$@" that
+# returns a controlled code per effect name (keyed on argv[2], the effect), never a built engine. NEAR-MISS
+# in the same sense as the JSON checkers above: exactly ONE of the three expected codes (0/2/0) is wrong.
+#   (a) THE DEFECT ITSELF — the typo'd effect (`Fsz`) answers 0 instead of refusing at 2: a typo silently
+#       scored as a confident negative, the exact live-engine bug PART 61 exists to catch.
+#   (b) the CONTROL's own failure mode — the KNOWN-ABSENT effect (`Net`) also refuses at 2: indistinguishable
+#       from "path always refuses", the failure PART 61's own header says the known-absent row exists to rule
+#       out. Isolated from (a): only ONE field changes per call, the real effect stays 0 in both.
+# FALSIFIED against a plausible regression (dropping the `$absent = 0` clause from a scratch copy of
+# p61_row, keeping `$real`/`$typo`): poison (b) flips from CAUGHT (P61_BAD=1) to WRONGLY-ACCEPTED
+# (P61_BAD=0); poison (a) and the accept-known-good leg are unaffected, proving (b) tests the clause (a)
+# cannot see.
+mkdir -p "$W/p61"
+P61_SRC="$(extract_func p61_row "$RUN_SH")"
+require_extracted "$P61_SRC" "could not extract p61_row from $RUN_SH — nothing to test"
+printf '%s\n' "$P61_SRC" > "$W/p61/p61_row.sh"
+cat > "$W/p61/stub.sh" <<'STUBEOF'
+#!/bin/sh
+# args: caller <Effect> --report <path> — exit code keyed on $2 (the effect name) via env vars, standing
+# in for a real query binary so this row needs no built engine.
+eff="$2"
+case "$eff" in
+  Fs)  exit "${STUB_REAL:-0}" ;;
+  Fsz) exit "${STUB_TYPO:-2}" ;;
+  Net) exit "${STUB_ABSENT:-0}" ;;
+esac
+exit 9
+STUBEOF
+chmod +x "$W/p61/stub.sh"
+cat > "$W/p61/runner.sh" <<'RUNEOF'
+#!/bin/bash
+source "$1/p61_row.sh"
+P61_OUT=""; P61_BAD=0; rc=0
+p61_row eng /dev/null "$1/stub.sh"
+echo "P61_BAD=$P61_BAD"
+RUNEOF
+chmod +x "$W/p61/runner.sh"
+run_p61() {   # $1 label ; $2 want P61_BAD(0=accept/1=reject) ; $3 STUB_REAL ; $4 STUB_TYPO ; $5 STUB_ABSENT
+  local label="$1" want="$2"
+  local out; out="$(STUB_REAL="$3" STUB_TYPO="$4" STUB_ABSENT="$5" bash "$W/p61/runner.sh" "$W/p61" 2>&1)"
+  local got; got="$(printf '%s\n' "$out" | grep -o 'P61_BAD=[01]' | tail -1 | cut -d= -f2)"
+  if [ "$got" = "$want" ]; then record PASS "$label"
+  else record BROKEN "$label" "expected P61_BAD=$want; runner said: $out"; fi
+}
+run_p61 "PART61/p61_row(typo-not-refused)"    1 0 0 0
+run_p61 "PART61/p61_row(known-absent-broken)" 1 0 2 2
+run_p61 "PART61/p61_row(good)"                0 0 2 0
 
 # ── run the canary, exactly like a real checker, through the SAME fail-line runner ──────────────────
 printf '%s' '{"ok": true}' > "$W/doc/canary.json"
