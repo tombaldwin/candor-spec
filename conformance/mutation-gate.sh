@@ -1018,9 +1018,44 @@ run_ext_reject "PART49/only_check(011-009-collision)" "$ONLY_PY" 1 rust 1 "$OC_S
 # NOT hardened here, stated explicitly rather than silently, mirroring the standalone survey's own
 # boundary: the remaining 9 confirmed-DEFEATED parts (10, 14, 45, 4h, 57, 58, 59, 5b, 80 — disclosure,
 # refusal and verdict properties among them, e.g. 58 "an outOfScope entry names the file its function is
-# in" and 59 "what a refusal owes its reader"), the 46 UNRESOLVED parts (including the five gen_*.py-driven
-# properties), and the 7 INCONCLUSIVE ones. This is a SURVEY BOUNDARY, not a claim the rest are safe — see
-# BACKLOG.md for the full per-part table.
+# in" and 59 "what a refusal owes its reader"), and the 7 INCONCLUSIVE ones. This is a SURVEY BOUNDARY, not
+# a claim the rest are safe — see BACKLOG.md for the full per-part table.
+#
+# 2026-08-30 (revert-test day, candor-spec's own first): the 46 UNRESOLVED bucket above was never actually
+# 46 live unknowns — it was 46 parts the MECHANICAL neuter's exact-text pattern (`sys.exit(N if COND else
+# N)`) could not locate, three different reasons bundled under one count. Resolved apart:
+#   (a) the FIVE gen_*.py-driven properties (PART 25/26/28/29/31, driving gen_chain_idempotence.py/
+#       gen_trust_monotonicity.py/gen_signature_monotonicity.py/gen_incomplete_dominance.py/
+#       gen_fs_kind.py) are ALL FIVE now in probe_check.py's own COVERED dict as of 90cee30/7cddc1b —
+#       confirmed live here (`python3 probe_check.py`: all 8 properties, these 5 among them, correctly
+#       fail under `CANDOR_PROBE_FAULT`), not merely re-asserted. RESOLVED — genuinely backstopped.
+#   (b) TWELVE more (67, 69, 71, 73, 74, 75, 76, 77, 78, 79, 81, 82) turned out to share ONE shape the
+#       exact-text neuter missed only because of formatting, never a different mechanism: a bash function
+#       `pNN() { if [ "$2" = "$3" ]; then <OK-line> else <FAIL-line>; fi; }` (73/74/75/76/77/78/79/81/82 —
+#       a straight two-value equality) or a short `[ ]`/`&&` chain of the same shape (67, 69, 71). Hand-
+#       generalising the neuter to this shape (`if [ ... ]; then` -> `if true; then`, in a throwaway
+#       worktree, restored after each) and re-running `part.sh <id>` reproduced the SAME defeat the
+#       original 15/16 showed: every one of the 12 still printed its own MATCH/OK line with zero other
+#       row reacting. CONFIRMED DEFEATABLE, joining the 9 already-named-and-unhardened ones above — 21
+#       total now known-and-named, not 9.
+#   (c) PART 85 (357ace7's peek scope-match property) was checked a DIFFERENT way, not the mechanical
+#       neuter: candor-rust was built at `27f4beb^` (the commit immediately before the fix this row pins)
+#       in a throwaway worktree and substituted in via CANDOR_SCAN_BIN/CANDOR_QUERY_BIN for a full
+#       `conformance/run.sh` run, java/ts/swift left at HEAD. Result: rust's row read DIVERGE (exit 0
+#       under the scoped rule — the cardinal sin this row exists to catch), java/ts/swift stayed MATCH,
+#       and the suite correctly printed `conformance: FAILED`. This is STRONGER evidence than a neuter
+#       survives — it is the row catching the actual historical regression, not merely a synthetic
+#       unconditional pass going unnoticed — so PART 85 is RESOLVED, not merely reclassified.
+# NET: of the 40 parts this file's own count left in the 46-minus-5-gen bucket (recomputed here as 40, not
+# 41, against the two IDs the original 15/16-vs-"15" count already disagreed on by one — see (b) above),
+# 12 are now CONFIRMED DEFEATABLE and 1 (PART 85) is RESOLVED. 27 remain genuinely UNRESOLVED — never
+# attacked by any mechanism, mechanical or manual: 4l, 7, 8, 9, 13, 13b, 15b, 15c, 18, 23, 27, 32, 33, 35,
+# 40, 43, 47, 55, 60, 61, 62, 63, 64, 65, 68, 70, 84. None of the 12 newly-confirmed-defeatable are hardened
+# with real poison here either, for the same reason the original 9 are not: this is a SURVEY, and hardening
+# 21 more bash-comparison parts with per-condition poison (the B1 discipline PART 36-39/83/46/72/19-22/56
+# above all follow) is real per-part fixture engineering, not a mechanical follow-on — left for the next
+# session rather than rushed. An unresolved part is NOT a passing part; a confirmed-defeatable one is not
+# either — both are named here so neither reads as safe by omission.
 mkdir -p "$W/p46" "$W/p72" "$W/p19" "$W/p20" "$W/p21" "$W/p22" \
   "$W/p56a/rs_dirty/.candor" "$W/p56a/rs_clean/.candor" \
   "$W/p56b/rs_dirty/.candor" "$W/p56b/rs_clean/.candor" \

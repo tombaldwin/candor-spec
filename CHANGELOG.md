@@ -25,6 +25,40 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **THE 2026-08-30 REVERT-TEST DAY: candor-spec's own conformance/mutation machinery, revert-tested for
+  the first time.** Every other family repo has run the "revert the fix, does a test go red" attack
+  (engines 24/24 protected, the umbrella 3/9 gaps now closed) — the repo where the machinery itself lives
+  never had. Thirteen same-day fixes to `conformance/run.sh`/`conformance/mutation-gate.sh` (7cddc1b,
+  e1ce567, 357ace7, 746a42c, 90cee30, d268537, 6b38130, d3ca815, 9c1b6fb, 01c7fd5, 292d8f9, 0b015d3,
+  d202f42) were revert-tested. Method note first: most of these fixes are hardenings to the GATE's OWN
+  poison generation, not to a checker under test — reverting a poison-hardening commit and re-running
+  `mutation-gate.sh` against the CURRENT (already-correct) checkers is GUARANTEED green regardless, since
+  a correct checker rejects weak and strong poison alike. The real test (matching what each commit's own
+  message already claimed) is: degrade a COPY of the real checker exactly as the commit describes, and
+  confirm the OLD poison set wrongly accepted it while the NEW one catches it — done directly (seconds
+  each, via `extract_pyvar`/`extract_func` against the live `run.sh`) rather than through the full 8-minute
+  scripts for every one of the ~20 individual bypasses this surfaced. RESULT: every fix checked came back
+  GREEN — genuinely defended, not decorative — with two additionally checked against real pre-fix engine
+  binaries in throwaway clones: candor-rust `27f4beb^` (PART 85, peek scope-match) read DIVERGE against
+  the fixed java/ts/swift's MATCH, and candor-spec's own `probe_check.py` genuinely fails naming a stubbed
+  `gen_trust_monotonicity.py` (7cddc1b's own claimed repro, reproduced independently). Full detail —
+  including the retro_test.py 15/15 calibration run and the direct A1-A5/S1-S6/B1-B3 bypass reproductions
+  — is in the session record; nothing required a code fix, because nothing was found undefended.
+  Standing controls reconfirmed on a clean tree throughout: `conformance/run.sh` OK, `mutation-gate.sh` OK,
+  `must_ledger.py` 521/521 classified, `retro_test.py` 15/15, skip-ratchet unrisen.
+
+- **THE 46-UNRESOLVED EMBEDDED-PARTS BUCKET, corrected.** e1ce567's 2026-08-29 survey left 46 of
+  `run.sh`'s 68 embedded parts UNRESOLVED by its mechanical neuter (a different `sys.exit` spelling or a
+  bash `[ ]`/`-eq` chain). That bucket was never 46 uniform unknowns: 5 (the gen_*.py-driven PARTs
+  25/26/28/29/31) are now genuinely backstopped by `probe_check.py`'s COVERED wiring (90cee30/7cddc1b);
+  12 more (PART 67/69/71/73/74/75/76/77/78/79/81/82) share one bash-equality/AND-chain shape the neuter
+  missed only on formatting, and hand-generalising it to them reproduced the SAME defeat the original
+  15/16 showed — CONFIRMED DEFEATABLE, not hardened; and PART 85 was independently RESOLVED via the
+  pre-fix-binary method above. 18 of 46 resolved this session (numbers and per-part detail in
+  `conformance/mutation-gate.sh`'s EMBEDDED-PARTS SURVEY comment); 27 remain genuinely unattacked. An
+  unresolved part is not a passing part, and neither is a merely-confirmed-defeatable one — both buckets
+  are now named rather than folded into one count.
+
 - **PART 79 gains a fourth cell: a `dlopen`/`dlsym`-resolved (or `transmute`-of-a-raw-pointer)
   function pointer, INVOKED, must disclose `Unknown`/`callback:*`, never `"functions": []`.** Closes
   two BACKLOG.md OWED items with one fixture, because the shapes coincide (both are "a function
