@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.34.0] — 2026-08-31
+
 - **UPGRADING FROM 0.33.1 — re-baselining is not review.** ⟨0.34⟩ is NON-ADDITIVE and this wave
   corrects the classifier in BOTH directions. After regenerating a baseline, **diff it against the
   old one**: effects this release REMOVES will never trip any gate, because `gains` and the baseline
@@ -37,6 +39,13 @@ Run it after any patch-cycle commit that adds a section here.
   reference 0.33 FOREVER by design — so [2] could never go green by fixing anything. Those sites now
   carry a `⟨0.33⟩` marker saying the literal is the RUNG this code names, not a version that bumps.
   Comment-only; no behaviour change.
+  **SPEC.md itself was deliberately NOT marked.** Adding the marker there edited the body of a
+  normative statement, which moved its ledger SHA and correctly failed the MUST LEDGER — and the
+  flag turned out to be a FALSE POSITIVE: `[2b]` applied its `spec` word test to grep's
+  `path:line:content` output, so `candor-spec/SPEC.md` matched on the FILENAME and every line in
+  this file carrying the prior floor was flagged whatever it said. Marker reverted, gate fixed in
+  the umbrella. SPEC.md is byte-unchanged by this cut's era-marker work, and the ledger reports
+  521 statements classified.
 
 
 - **PART 63, PART 62, PART 70 and PART 65 hardened in `conformance/mutation-gate.sh` — the three
