@@ -25,6 +25,43 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Five findings from the 2026-08-30 four-agent review panel on ⟨0.34⟩, closed in conformance/run.sh,
+  SPEC.md and SOUNDNESS.md — no spec-version change, all conformance/documentation hardening.**
+  - **PART 84's remedy leg had no teeth.** Its `--policy`-names-a-remedy check was `*[Pp]olicy*` — a bare
+    substring test that passes on the FLAG'S OWN NAME being echoed back (`unknown flag \`--policy\``
+    contains "policy"), so an engine that never wrote a remedy sentence at all could still pass. Now
+    strips the literal `--policy` token first and requires "polic" to still appear in what remains — a
+    message that only ever said the word as part of the flag has nothing left to match. Falsified against
+    a real pre-fix state on both sides: candor-swift `73a2417^` (`path`/`tour` printed the bare
+    "unknown flag" shape) reddens, `73a2417` (already committed locally) greens; candor-rust's `diff`/
+    `rewire` — unfixed as of this writing — currently redden live, which is the row doing its job, not a
+    false alarm.
+  - **`conformance/part.sh 85` could not run PART 85** — `P85: unbound variable`. PART 84 prints only an
+    opening `[84]` header with no closing `PART 84 —` verdict, so `part.sh`'s "a header-only part owns
+    everything up to the next marker" rule swallowed PART 85's own fixture setup (which precedes PART
+    85's `[85]` header) into PART 84's slice. Gave PART 84 the closing marker every other TIER-1 part
+    already has; `part.sh 85` now runs standalone and `part.sh --check` still resolves all slices to
+    exactly one part.
+  - **PART 80's header comment was stale in the good direction.** It said candor-rust and candor-swift had
+    not yet ported the whitespace-tolerant `spec`-ladder parse; both now have (candor-rust `7401af9`,
+    candor-swift's ⟨0.34⟩ CHANGELOG entry) and the row itself already reads `ws=PASS` on all four engines
+    — it is probed live, never hard-coded, so the row was never wrong, only the prose above it. Corrected
+    to record both the original measurement and the close, dated.
+  - **`peek-classpath` had no SPEC clause.** candor-java's declared peek classpath (`--peek-classpath`,
+    its `.candor/config` key, `CANDOR_PEEK_CLASSPATH`) is a §3.3.1 INPUT the moment it is declared — a
+    sink writing over it once destroyed a real dependency jar at exit 0 (fixed `9a17c4c`) — and nothing
+    pinned that cross-engine. Written as an addition to §3.3.1(3)'s open input list, explicitly NOT a
+    four-way MUST: rust/ts/swift derive their peek's file set from the project's own manifest and have no
+    externally-declared classpath to protect, so a row demanding the same behaviour of all four would be
+    vacuous for three of them. New conformance PART 86 pins it candor-java-scoped, the same shape PART 81
+    already uses for a mechanism only one engine has; falsified against candor-java `dc1f934` (immediately
+    pre-fix): the flag spelling wrote a 576-byte report over a 909-byte dependency jar (MD5 moved) at exit
+    0, where HEAD refuses at exit 2 with the jar byte-identical.
+  - **SOUNDNESS.md's R21 row had 8 columns where every other row has 6** — an unprotected literal pipe
+    inside a code span (`` `\|\| true` ``; a code span does not apply backslash escapes, so the raw `|`
+    characters split the table row). Reworded to describe the shell idiom without a literal pipe, pointing
+    at SOUNDNESS-LOG.md's 2026-07-09 entry for the exact `|| true` spelling.
+
 ## [0.34.0] — 2026-08-31
 
 - **UPGRADING FROM 0.33.1 — re-baselining is not review.** ⟨0.34⟩ is NON-ADDITIVE and this wave
