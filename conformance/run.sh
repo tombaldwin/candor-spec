@@ -14932,9 +14932,16 @@ true
 # and the cell PASSES; if it matches `absent`/`old`/`ladder` instead, the MUST above is not yet
 # implemented on that engine and the cell SKIPs (reference-led — counted, so a later regression off a
 # PASS would raise the ratchet) rather than FAILing the suite for a divergence this repo does not own the
-# fix for. MEASURED at the time this part was written: candor-java and candor-ts already trim (PASS);
-# candor-rust and candor-swift do not (SKIP) — `Int(" 0")` is `nil` in Swift and `" 0".parse::<u32>()`
-# errs in Rust, neither language's numeric parser tolerates surrounding whitespace by itself.
+# fix for. MEASURED WHEN THIS PART WAS WRITTEN (2026-08-30): candor-java and candor-ts already trimmed
+# (PASS); candor-rust and candor-swift did not (SKIP) — `Int(" 0")` is `nil` in Swift and
+# `" 0".parse::<u32>()` errs in Rust, neither language's numeric parser tolerates surrounding whitespace
+# by itself. CLOSED ON BOTH the next day, 2026-08-31 (candor-rust `7401af9`: `parse_spec_ladder` now
+# calls `spec.trim_ascii()`, crates/candor-report/src/lib.rs:1712; candor-swift's `parseSpecLadder`/
+# `specPredates` trim the same ASCII whitespace class its policy-line tokenizer already uses — see its
+# CHANGELOG's ⟨0.34⟩ entry) — re-measured against this row, not inferred from either changelog: all four
+# engines now read `ws=PASS` and the `ws=SKIP` branch below is dead code on today's binaries. Left in
+# place deliberately — it is what turns a FUTURE regression back into a counted, reference-led SKIP
+# instead of a silent divergence — but do not read its presence as current non-conformance; probe live.
 #
 # THE GATE-JSON BYTE-EQUALITY IS THE MESSAGE-ONLY PROPERTY ITSELF, asserted on every cell regardless of
 # which sentence printed (including a `ws` cell that SKIPped on the message) — `--gate-json` carries no
@@ -15854,16 +15861,27 @@ VR_TS_RAN=""
 VR_SW_RAN=""
 vr_reject() {   # <label> <cmd...>   (the BARE form, without --policy — --policy "$GPOL" is appended internally)
   local label="$1"; shift
-  local base_err base_rc pol_err pol_rc
+  local base_err base_rc pol_err pol_rc pol_err_stripped
   base_err="$("$@" 2>&1 >/dev/null)"; base_rc=$?
   pol_err="$("$@" --policy "$GPOL" 2>&1 >/dev/null)"; pol_rc=$?
   if [ "$pol_rc" != 2 ]; then
     echo "  -> DIVERGE — $label: --policy exit $pol_rc, want 2 (bare form was exit $base_rc: ${base_err:0:70})"
     VR_BAD=1; rc=1; return
   fi
-  case "$pol_err" in
-    *[Pp]olicy*) ;;
-    *) echo "  -> DIVERGE — $label: --policy exit 2 but stderr does not name policy (got: ${pol_err:0:90})"; VR_BAD=1; rc=1; return;;
+  # THE TEETH (2026-08-31, replacing a check that could not fail): a bare `*[Pp]olicy*` substring test
+  # passes on the FLAG'S OWN NAME being echoed back — "unknown flag `--policy` / known flags: --json"
+  # contains "policy" and would pass, without the diagnostic ever naming a remedy. Measured live against
+  # candor-rust's current `diff`/`rewire` (pre-existing, unrelated to today's 10-verb fix) and, before its
+  # own fix landed locally, candor-swift's `path`/`tour`: both printed exactly that generic shape. Strip
+  # the literal flag spelling FIRST, then require "polic" to still appear in what remains — a message that
+  # only ever said "policy" as part of `--policy` has nothing left to match; a real remedy ("apply a policy
+  # with `gate --report ... --policy <file>`", "`deny <E> gained`" for swift's `gains`) still does, because
+  # it says the word again on its own. Deliberately does NOT require a specific verb name (gate/whatif/fix)
+  # — swift has no `whatif`, and different verbs remedy differently; only that the concept is named.
+  pol_err_stripped="${pol_err//--policy/}"
+  case "$pol_err_stripped" in
+    *[Pp]olic*) ;;
+    *) echo "  -> DIVERGE — $label: --policy exit 2, but its diagnostic only echoes the flag's own name back rather than naming a policy-relative remedy (got: ${pol_err:0:120})"; VR_BAD=1; rc=1; return;;
   esac
   case "$base_err" in
     *[Pp]olicy*) echo "  -> DIVERGE — $label: bare form (no --policy) ALREADY complains about policy (${base_err:0:90}) — this fixture cannot isolate the --policy cell"; VR_BAD=1; rc=1; return;;
@@ -15965,6 +15983,14 @@ fi
 # it never checked.
 [ -n "$VR_TS_RAN" ] && echo "  candor-ts (verb-reject-not-exposed) SKIP — rewire: candor-ts has no such verb, confirmed structurally"
 [ -n "$VR_SW_RAN" ] && echo "  candor-swift (verb-reject-not-exposed) SKIP — 9 verbs not exposed on this engine's §3.1/§3.2 surface (show/where/callers/map/diff/containment/reachable/impact/blindspots), confirmed structurally, not assumed"
+# A closing marker, matching every other TIER-1 part's shape (`[N]` opens, `PART N —` closes) — added
+# because its absence is not cosmetic: conformance/part.sh finds a part's boundary from these two PRINTED
+# markers alone (see its own header), and a header-only part greedily claims everything up to the NEXT
+# part's first marker. PART 85's own fixture setup sits BEFORE its "[85]" header (mkdir/printf, ~60
+# lines), so without this line that setup was being swallowed into PART 84's slice and `part.sh 85`
+# died on `P85: unbound variable` — the newest TIER-1 part was the one the 6-second iteration tool
+# could not run. Falsified: reverting this line reproduces the exact failure again.
+echo "PART 84 — --policy is a usage error on every descriptive/comparative verb whose pinned §3.1/§3.2 JSON shape carries no policy-derived field (SPEC §3.3.1 ⟨0.34⟩)"
 [ "$VR_BAD" = 0 ] && echo "  -> MATCH — every exposed verb rejects --policy (exit 2, named); every not-exposed verb is confirmed absent for a reason unrelated to policy"
 [ "$VR_BAD" != 0 ] && { echo "  -> DIVERGE — see the rows above"; rc=1; }
 
@@ -16109,6 +16135,100 @@ if [ "$P85_OK" = 0 ]; then
   echo "  -> MATCH — every engine's scoped rule now catches the effect reached via dispatch into excluded"
   echo "     code, names the excluded declaration (never the caller, never a spurious dispatch-widened),"
   echo "     the unscoped control stays a single finding, and a non-matching scope stays silent"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
+# ====================================================================================================
+# PART 86 — A DECLARED PEEK CLASSPATH IS AN INPUT: NO SINK MAY WRITE OVER IT (candor-java; SPEC §3.3.1  [TIER 1]
+#           ⟨0.34⟩). NOT A CROSS-ENGINE ROW — see the SPEC clause's own note: rust/ts/swift derive their
+#           peek's file set from the project's own manifest and have no externally-declared classpath to
+#           protect, the same "structurally absent, not merely unaudited" ruling PART 81 already gives
+#           ts's decorator row, in the other direction.
+#
+# THE SIN: `--peek-classpath` / the `.candor/config` `peek-classpath` key / `CANDOR_PEEK_CLASSPATH` name a
+# jar or directory the ⟨0.32⟩ compile-peek READS to resolve dispatch — exactly what §3.3.1(3) means by an
+# input — and that path had never been added to the input list the three existing spellings (`--policy`,
+# the scan target, a chained dep report) already protect. MEASURED against candor-java `dc1f934`
+# (immediately before the fix, built in a throwaway worktree so the tracked checkout was never touched):
+# `--peek-classpath libs/dep.jar --json libs/dep.jar` wrote a 576-byte report OVER the 909-byte dependency
+# jar (MD5 changed) at EXIT 0 — the operator's own dependency, destroyed, reported as success. FIXED
+# candor-java `9a17c4c`: all three spellings now register the declared classpath as an input; a sink
+# naming it is refused, exit 2, nothing written.
+# ====================================================================================================
+echo
+P86_OK=0
+P86="$W/peek86"; mkdir -p "$P86/src/com/x" "$P86/libs"
+printf 'package com.x;\npublic class Main { public static void main(String[] a) { System.out.println("hi"); } }\n' > "$P86/src/com/x/Main.java"
+javac -d "$P86/build" "$P86/src/com/x/Main.java" >/dev/null 2>&1
+( cd "$P86/libs" && jar cf dep.jar -C "$P86/build" . >/dev/null 2>&1 )
+echo "[86] A DECLARED PEEK CLASSPATH IS AN INPUT — a report/verdict sink naming it is refused, never written over (SPEC §3.3.1 ⟨0.34⟩, candor-java only)"
+if [ -f "$JAR" ]; then
+  # (a) --peek-classpath <jar> --json <same jar>: the flag spelling.
+  before=$(cksum < "$P86/libs/dep.jar")
+  java -jar "$JAR" "$P86/build" --peek-classpath "$P86/libs/dep.jar" --json "$P86/libs/dep.jar" >/dev/null 2>&1; p86rc=$?
+  after=$(cksum < "$P86/libs/dep.jar")
+  if [ "$p86rc" != 2 ]; then echo "  -> DIVERGE — --peek-classpath --json <same>: exit $p86rc, want 2"; P86_OK=1
+  elif [ "$before" != "$after" ]; then echo "  -> DIVERGE — --peek-classpath --json <same>: exit 2 but the dependency jar was OVERWRITTEN (cksum moved)"; P86_OK=1
+  else echo "  OK  --peek-classpath --json <same jar>: exit 2, jar byte-identical"; fi
+
+  # (a2) the --gate-json sibling — §3.3.1 names both sinks, never only one.
+  before=$(cksum < "$P86/libs/dep.jar")
+  java -jar "$JAR" "$P86/build" --peek-classpath "$P86/libs/dep.jar" --gate-json "$P86/libs/dep.jar" >/dev/null 2>&1; p86rc=$?
+  after=$(cksum < "$P86/libs/dep.jar")
+  if [ "$p86rc" != 2 ]; then echo "  -> DIVERGE — --peek-classpath --gate-json <same>: exit $p86rc, want 2"; P86_OK=1
+  elif [ "$before" != "$after" ]; then echo "  -> DIVERGE — --peek-classpath --gate-json <same>: exit 2 but the dependency jar was OVERWRITTEN"; P86_OK=1
+  else echo "  OK  --peek-classpath --gate-json <same jar>: exit 2, jar byte-identical"; fi
+
+  # (b) the config-key spelling — declared in the TARGET's own .candor/config, discovered, no flag at
+  # all. Proves the guard is keyed on the DECLARATION, not the flag — the same lesson §3.3.1's own
+  # `.candor/config`-declared-policy row already paid for, one input earlier.
+  mkdir -p "$P86/build/.candor"; printf 'peek-classpath %s\n' "$P86/libs/dep.jar" > "$P86/build/.candor/config"
+  before=$(cksum < "$P86/libs/dep.jar")
+  java -jar "$JAR" "$P86/build" --json "$P86/libs/dep.jar" >/dev/null 2>&1; p86rc=$?
+  after=$(cksum < "$P86/libs/dep.jar")
+  rm -f "$P86/build/.candor/config"
+  if [ "$p86rc" != 2 ]; then echo "  -> DIVERGE — config \`peek-classpath\` --json <same>: exit $p86rc, want 2 — the guard keyed on the FLAG, not the declaration"; P86_OK=1
+  elif [ "$before" != "$after" ]; then echo "  -> DIVERGE — config \`peek-classpath\` --json <same>: exit 2 but the dependency jar was OVERWRITTEN"; P86_OK=1
+  else echo "  OK  config \`peek-classpath\` --json <same jar>: exit 2, jar byte-identical"; fi
+
+  # (c) the env-var spelling.
+  before=$(cksum < "$P86/libs/dep.jar")
+  CANDOR_PEEK_CLASSPATH="$P86/libs/dep.jar" java -jar "$JAR" "$P86/build" --json "$P86/libs/dep.jar" >/dev/null 2>&1; p86rc=$?
+  after=$(cksum < "$P86/libs/dep.jar")
+  if [ "$p86rc" != 2 ]; then echo "  -> DIVERGE — CANDOR_PEEK_CLASSPATH --json <same>: exit $p86rc, want 2"; P86_OK=1
+  elif [ "$before" != "$after" ]; then echo "  -> DIVERGE — CANDOR_PEEK_CLASSPATH --json <same>: exit 2 but the dependency jar was OVERWRITTEN"; P86_OK=1
+  else echo "  OK  CANDOR_PEEK_CLASSPATH --json <same jar>: exit 2, jar byte-identical"; fi
+
+  # (d) THE OVER-CHARGE CONTROL — a declared peek classpath must not make the engine refuse every sink;
+  # only a sink naming that exact artifact is refused. Without this cell a build that always exits 2 once
+  # --peek-classpath is present would pass every row above.
+  java -jar "$JAR" "$P86/build" --peek-classpath "$P86/libs/dep.jar" --json "$P86/out.json" >/dev/null 2>&1; p86rc=$?
+  if [ "$p86rc" != 0 ] || [ ! -s "$P86/out.json" ]; then
+    echo "  -> DIVERGE — OVER-CHARGE CONTROL: --peek-classpath present, --json a DIFFERENT path: exit $p86rc — want exit 0, a real report"
+    P86_OK=1
+  else
+    echo "  OK  OVER-CHARGE CONTROL — --peek-classpath present, --json elsewhere: exit 0, report written normally"
+  fi
+else
+  echo "  java   -> SKIP     (no candor-java jar — this engine was NOT asked)"
+fi
+echo "  rust   -> N/A       (no externally-declared peek classpath — the peek derives its file set from Cargo.toml; structurally absent, not merely unaudited)"
+echo "  ts     -> N/A       (no externally-declared peek classpath — the peek derives its file set from tsconfig.json/package.json; structurally absent)"
+echo "  swift  -> N/A       (no externally-declared peek classpath — the peek derives its file set from Package.swift; structurally absent)"
+echo "PART 86 — a declared peek classpath (flag, config key, or env var) is an INPUT the moment it is declared: a report or verdict sink naming it is refused, exit 2, nothing written (SPEC §3.3.1 ⟨0.34⟩, candor-java only — see the SPEC clause for why this is not a four-way row)"
+# ENGINES: java (rust/ts/swift structurally lack the mechanism — see above, not a SKIP against a MUST they owe)
+# CONTROLS: the --gate-json sibling proves the property on both sinks named in §3.3.1, not only --json; the
+# config-key and env-var cells prove the guard is keyed on the DECLARATION, not the flag; the OVER-CHARGE
+# CONTROL proves the guard refuses the exact artifact, never every sink a peek-classpath scan happens to use.
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-java `dc1f934` (immediately before `9a17c4c`, built in a
+# throwaway worktree so the tracked checkout was never touched): the flag-spelling cell wrote a 576-byte
+# report over the 909-byte dependency jar (MD5 changed) at exit 0 — HEAD reads exit 2, jar byte-identical.
+# The over-charge control was already at its wanted value on that same pre-fix binary (a --peek-classpath
+# scan writing to an unrelated path always worked), so it is not what moved.
+if [ "$P86_OK" = 0 ]; then
+  echo "  -> MATCH — a declared peek classpath, in all three spellings, is refused as a sink and never"
+  echo "     overwritten; a sink elsewhere still writes normally"
 else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi

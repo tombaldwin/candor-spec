@@ -2722,6 +2722,27 @@ default:
   target kinds is not an implementation of this rule — a single-file target route (a jar, a `.ts` file, a
   module) is exactly where it stops holding, which is where both reproductions above came from.
 
+⟨0.34⟩ **AND A DECLARED PEEK CLASSPATH IS THE SAME LIST'S NEXT MEMBER.** Wherever an engine exposes a way
+for the operator to name an external classpath the peek reads at scan time — every spelling of that
+setting (a CLI flag, its config-file key, its env-var override) — that path is an INPUT under this same
+rule the moment it is declared, exactly as the policy file and the scan target already are: a `--json`/
+`--gate-json` sink naming it is refused, exit 2, nothing written. Filed here rather than left to each
+engine's own judgment because it broke unpinned: candor-java's peek reads jars/directories the operator
+names with `--peek-classpath` (or the `.candor/config` `peek-classpath` key, or `CANDOR_PEEK_CLASSPATH`)
+to resolve dispatch during its ⟨0.32⟩ compile-peek, and that path had never been added to the input list
+— `--peek-classpath libs/dep.jar --json libs/dep.jar` destroyed the dependency jar at exit 0 (measured;
+fixed candor-java `9a17c4c`).
+
+**Not written as a four-way MUST.** Of the four engines, only candor-java currently exposes an
+externally-declared peek classpath at all — rust, ts and swift each derive their peek's file set from the
+project's own manifest (`Cargo.toml`, `tsconfig.json`/`package.json`, `Package.swift`), never from a
+separately-declared classpath the operator hands over, so the other three have no analogous input to
+protect. A row asserting this identically across all four would either be vacuous for three of them or
+imply a feature they do not have; conformance pins it as a candor-java-scoped row instead (PART 86),
+the same shape PART 81's decorator row already uses for a mechanism only one engine has. If a future
+engine grows an equivalent declared-classpath setting, this clause already covers it — it is stated over
+"a declared peek classpath", not over candor-java by name.
+
 **(4) `--json` ON STDOUT IS THE STREAM FORM.** Arming does not apply (no previous document to go stale);
 the document-on-every-exit rule applies IN FULL. On any exit-2 the fail-closed report is written to stdout,
 exactly once, as the stream's only content. Measured across all four engines on the same unknown-flag
