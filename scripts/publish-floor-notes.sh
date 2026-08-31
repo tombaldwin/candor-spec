@@ -33,7 +33,7 @@
 # The contract release becomes what its own tag already implies: the one page describing everything
 # that happened while 0.33 was the floor, not a snapshot frozen at the day it was cut. That is a better
 # fit than the two alternatives considered:
-#   - a decoupled build tag on candor-spec (`v0.33+build.1`) would put a patch-shaped axis on the one tag
+#   - a decoupled build tag on candor-spec (`v0.33+build.1`) would put a patch-shaped axis on the one tag  ⟨0.33⟩
 #     this repo deliberately has none of, and would need release.sh/release-verify.sh (both
 #     umbrella-owned) to learn a second tag scheme for one repo out of seven;
 #   - rolling the notes forward into the next contract rung's release would publish them dated and
