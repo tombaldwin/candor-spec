@@ -16259,6 +16259,93 @@ else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
 
+# PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
+# ENGINES: java ts; rust: MEASURED exempt by construction (SOUNDNESS R72) — `collector.rs:1771-1786` resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence; and `impl Fn` is impossible on stable, so the defining toggle cannot be built. Three executed attempts, all negative. NOT an unported MUST; swift: measured exempt, see the SPEC clause
+# CONTROLS: the ZERO-implementor arm is the control for the ONE-implementor arm — the only variable between them is one pure unrelated class, so a green pair proves the engine did not simply start disclosing everything; the PURE-closure over-charge control proves the fix does not fabricate effects for a closure that has none
+# FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
+# one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
+# zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
+# RED on the reference engine today, which is what distinguishes it from SOUNDNESS R68(5)'s unhostable
+# shape — there java passed 44/44 BY CONSTRUCTION; here java is the worst offender.
+# ABSENCE IS THE FAILURE'S SIGNATURE and `cha_completeness_check.py` treats it as FAIL, never as a skip:
+# every engine omits pure functions, so a checker that skips-if-missing is green on a broken engine
+# forever. That helper carries its own --selftest (5 cases: both passing shapes, and all three failing
+# shapes including ABSENCE) because a row whose checker cannot fail is worse than no row.
+echo
+echo "[87] a dispatch whose implementor set includes a synthesised/structural implementor: effects OR Unknown, never a silent resolve"
+P87_OK=0
+P87="$W/p87"; mkdir -p "$P87"
+[ -f "$HERE/cha_completeness_check.py" ] || { echo "  -> DIVERGE — cha_completeness_check.py is MISSING; the row cannot judge"; P87_OK=1; rc=1; }
+if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
+  # Two arms. ONLY variable: whether a pure, unrelated class declares `implements Runnable`.
+  for arm in zero one; do
+    d="$P87/java-$arm"; mkdir -p "$d/src/app" "$d/classes"
+    cat > "$d/src/app/Store.java" <<'JEOF'
+package app;
+import java.io.*; import java.nio.file.*;
+public class Store { public void write() { try { Files.write(Paths.get("/tmp/p87.txt"), "x".getBytes()); } catch (IOException e) {} } }
+JEOF
+    cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  private Runnable task;
+  public void install(Store s) { this.task = () -> s.write(); }
+  public void fire() { if (task != null) task.run(); }
+}
+JEOF
+    if [ "$arm" = one ]; then
+      cat > "$d/src/app/Repaint.java" <<'JEOF'
+package app;
+public class Repaint implements Runnable { public static int n; @Override public void run() { n++; } }
+JEOF
+    fi
+    javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
+    java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
+    out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" 'Widget.fire' Fs 2>&1)"
+    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($arm implementor(s)): $(printf '%s' "$out" | cut -c5-120)"
+    else echo "  -> DIVERGE — java ($arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+  done
+  # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect. Without this a
+  # fix that charges every lambda-bearing caller would pass both arms above.
+  d="$P87/java-pure"; mkdir -p "$d/src/app" "$d/classes"
+  cat > "$d/src/app/Quiet.java" <<'JEOF'
+package app;
+public class Quiet { public static int n; public void bump() { n++; } }
+JEOF
+  cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  private Runnable task;
+  public void install(Quiet q) { this.task = () -> q.bump(); }
+  public void fire() { if (task != null) task.run(); }
+}
+JEOF
+  cat > "$d/src/app/Repaint.java" <<'JEOF'
+package app;
+public class Repaint implements Runnable { public static int n; @Override public void run() { n++; } }
+JEOF
+  javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
+  java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
+  if python3 -c "
+import json,sys
+d=json.load(open('$d/rep.json'))
+f=[x for x in (d.get('functions') or []) if 'Widget.fire' in (x.get('fn') or '')]
+inf=(f[0].get('inferred') if f else []) or []
+sys.exit(0 if 'Fs' not in inf else 1)" 2>/dev/null; then
+    echo "  OK  OVER-CHARGE CONTROL — a PURE lambda through the same shape gains no Fs"
+  else
+    echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was charged Fs — the fix fabricates"; P87_OK=1
+  fi
+else
+  echo "  java   -> SKIP     (no candor-java jar — this engine was NOT asked)"
+fi
+if [ "$P87_OK" = 0 ]; then
+  echo "  -> MATCH — a synthesised implementor either contributes its effects or is disclosed as Unknown;"
+  echo "     adding one unrelated conformer never converts a disclosure into silence"
+else
+  echo "  -> DIVERGE — see the rows above"; rc=1
+fi
+
 # ⟨0.28⟩ THE SKIP RATCHET — last, because it reads the log of everything above it. See
 # `skip_ratchet.py`'s header: a reference-led SKIP means "this engine has not shipped the rung", so a
 # rung that UN-SHIPS looks identical to one that never shipped. Measured: removing candor-rust's Rung A

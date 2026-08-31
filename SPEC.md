@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.34** — all code engines declare `0.34`; the floor is conformance-pinned. How versions
+**Version 0.35** — all code engines declare `0.35`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung through ⟨0.29⟩ is additive over the last,
@@ -329,7 +329,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.34" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.35" },
   "resolves":  ["fs", "incomplete"],                             // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
@@ -1664,7 +1664,7 @@ implementation MAY fall back to that sidecar for provenance.
 `extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
 
 ```json
-{ "candor": { "version": "…", "toolchain": "…", "spec": "0.34" },
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.35" },
   "resolves": ["fs", "incomplete"],
   "functions": [ … ] }
 ```
@@ -2597,7 +2597,7 @@ a different sink.
 **(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer
 already reads as *nothing was judged, no purity licence*:
 
-    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.34" },
+    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.35" },
       "functions":  [],
       "analyzed":   { "count": 0 },
       "unanalyzed": [ { "path": "<what the run could not analyze>", "reason": "<why>" } ] }
@@ -4263,6 +4263,51 @@ property**, sitting in the section an auditor of the vocabulary would read to co
 It was corrected in §3.1 first, and this copy survived that correction — which is the transferable part: a
 falsified assertion has as many homes as it has restatements, and fixing the one you found is not fixing
 it.*
+
+⟨0.35⟩ **A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE.** At a dispatch site whose visible
+implementor set includes a **compiler-synthesised or structural implementor** — a lambda or closure
+coerced to an interface/protocol, a method reference, an object literal that satisfies a shape
+structurally — the CALLING function's `inferred` MUST either **(a)** include that implementor's own
+effects, or **(b)** contain `Unknown`, with `unresolved: true` and an `unknownWhy` whose kind is
+`callback:` (an owner-less function value) or `dispatch:` (a resolvable owner whose target is not).
+
+**The disjunction is deliberate and load-bearing.** An engine may COMPLETE the candidate set —
+registering the synthesised implementor so its effects flow to the caller, needing no `Unknown` — or
+DISCLOSE the incompleteness. Both are sound; they differ only in precision. Mandating (b) alone would
+OUTLAW (a), which is the better answer wherever the engine can already see the synthesised body: the
+JVM engine parses the metafactory (it names the target interface in its own `callback:` detail) and
+already analyses the lambda body as its own unit, so completion there is plumbing, not new analysis.
+A clause that forbids the better fix is one we would have to weaken later.
+
+**What this names, measured on the published 0.34.0 artifacts.** With ZERO declared implementors of a
+functional interface, candor-java and candor-ts both answer honestly — `Unknown`, `unresolved: true`,
+`callback:java.lang.Runnable.run` / `dispatch:app.Task.go`. Add ONE pure, unrelated implementor of
+that same interface, changing nothing else, and the calling function **vanishes from `functions[]`
+entirely**: no effects, no `Unknown`, no disclosure, and `deny Unknown` flips exit 1 to exit 0. The
+engine treated a non-empty candidate set as a complete one. It reproduces through three separate
+spellings — a stored lambda, a method reference, and (in a structurally-typed engine) a
+method-bearing object literal — so a fix shaped only for lambdas closes one of three.
+
+**ABSENCE IS THIS FAILURE'S SIGNATURE, and any row asserting this clause MUST treat a missing entry
+as a FAILURE, never as a skip.** Every engine omits pure functions from `functions[]`, so the broken
+arm produces no row at all and a checker that looks the caller up and skips-if-absent is green on a
+broken engine forever. This is the ⟨0.21⟩/⟨0.24⟩/⟨0.26⟩ three-row discipline — absence licenses a
+claim only where the report could have said otherwise — applied to the one place absence is
+guaranteed.
+
+**Bound to the EFFECT SET, not to a flag.** The obligation is discharged by effects or by `Unknown`
+in `inferred`; `unresolved: true` accompanies (b) but does not satisfy the clause alone. `--gate-json`
+carries only `{spec, ok, analyzed, violations}` and `deny` never consults per-function markers, so an
+engine could set `unresolved: true`, add nothing to `inferred`, keep every gate route green, and
+satisfy a flag-bound row while the sin survives on the exact machine channel a CI consumer reads.
+
+**Where it does and does not apply.** The clause binds only where a synthesised or structural
+implementor is VISIBLE to the engine's own resolution — it is not a general demand that every
+interface dispatch be resolved, which would flood any real codebase. An engine whose language cannot
+express the shape owes nothing: Rust cannot `impl Fn` on stable, so the one-unrelated-implementor
+toggle cannot be instantiated there at all, and its effect lands at the construction site instead.
+That is an exemption by CONSTRUCTION, not a port that has not happened, and a row must record it as
+such rather than as a SKIP against a MUST that engine owes.
 
 ⟨0.7⟩ **What is conformance-binding, and what is per-language.** Precisely: the **`kind` SET**
 (`reflect`/`native`/`dispatch`/`callback`/`ambiguous` ⟨0.24⟩) is the closed vocabulary every code engine's
