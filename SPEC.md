@@ -1304,7 +1304,7 @@ already carry.
   human channel (stderr, or a query's printed completeness note), never inside either document.
 
   **THE SPEC LADDER IS COMPARED NUMERICALLY, major.minor, NEVER LEXICOGRAPHICALLY.** `"0.9"` sits BEFORE
-  `"0.33"` ⟨0.33⟩ on the ladder (9 < 33) and AFTER it under a plain string/byte compare (`"9" > "3"` at the first
+  `"0.33"` on the ladder (9 < 33) and AFTER it under a plain string/byte compare (`"9" > "3"` at the first
   differing digit) — a report at ⟨0.9⟩, the era this rung exists to name, would misread as NEWER than
   ⟨0.33⟩ under a string comparison and keep the misleading ⟨0.33⟩ sentence over a report old enough to
   have never carried the field this clause reads at all. Any comparison of the `spec` ladder MUST parse
