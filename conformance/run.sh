@@ -39,6 +39,32 @@ exec > >(tee "$SKIPLOG") 2>&1
 # so the suite checks ITSELF: snapshot the porcelain now, compare at exit, fail on anything NEW. A tree
 # that was already dirty when you started stays your business.
 REPO_BEFORE="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
+
+# THIS SUITE READS ENGINES FROM THEIR WORKING TREES, NOT THEIR COMMITS — so a dirty engine tree means
+# the result describes somebody's work-in-progress and is attributable to no commit at all. Measured
+# TWICE on 2026-08-31: a candor-swift agent ran the four-way suite while candor-rust carried an
+# uncommitted fix, and later a candor-spec agent had to REFUSE to run at all because candor-rust's
+# file count grew 4->5 while it watched. `bin/probe.sh` already warns when a run is IN FLIGHT; nothing
+# warned about the trees the run was about to READ.
+#
+# DISCLOSED, NOT REFUSED, and the distinction is deliberate: an engine author iterating against their
+# own uncommitted work is a legitimate and common use of this suite, and refusing would teach people
+# to bypass the check. What must not happen is a green from such a run being quoted as a statement
+# about released code — so this is repeated in the VERDICT, where it cannot be scrolled past. The same
+# shape the engines themselves owe: answer, but say what the answer is ABOUT.
+DIRTY_ENGINES=""
+for _e in candor-rust candor-java candor-ts candor-swift; do
+  _d="$HERE/../../$_e"
+  git -C "$_d" rev-parse --git-dir >/dev/null 2>&1 || continue
+  [ -n "$(git -C "$_d" status --porcelain 2>/dev/null)" ] && DIRTY_ENGINES="$DIRTY_ENGINES $_e"
+done
+if [ -n "$DIRTY_ENGINES" ]; then
+  printf '\nconformance: NOTE — these engine trees are DIRTY:%s\n' "$DIRTY_ENGINES"
+  echo   "  This suite reads engines from their WORKING TREES. A result over a dirty tree describes"
+  echo   "  uncommitted work and is attributable to no commit — fine while iterating, NOT a statement"
+  echo   "  about what any engine ships. Commit them, or read this run as provisional."
+  printf '\n'
+fi
 # ENGINES: rust java ts swift
 # CONTROLS: none — shared setup: builds every engine and produces the reports the parts consume; present-but-broken must FAIL in the parts, never read as skipped
 # The scratch tree AND anything a part writes into the TRACKED fixtures. PART 34 row (f) has to put a
@@ -16246,6 +16272,15 @@ echo
 [ "$rc" -eq 0 ] \
   && echo "conformance: OK (effect sets + policy verdict + rewire + policy-DSL grammar + policy-matching + net destination-class + completeness-manifest + tables extraction + coverage ledger + surface-best-find + surface tour + tour robustness + corrupt-report loudness + test-exclusion + salience floor + query shapes + gains origin + Llm host-literal + Llm model-SDK surface + top-level initializer units + const-indirected hosts + literal-head hosts + coverage envelope + --agents + generative differential + gate-masking differential + unknownWhy vocabulary + dispatch frontier + containment + gate-verdict + fix-gate remedy + .candor/config + chaining + stale-baseline + callgraph-aware guard (pure→effectful + Unknown-advisory) + deny-Unknown/forbid applied + query grammar + cross-package interface dispatch + initializer edge across the scan boundary + implicit stringification across the scan boundary + could-not-form-a-key discloses + chained dep-join surface completeness agree across the engines + the model's own Lemma 2 holds over the full lattice + each engine agrees with ITSELF across the scan-boundary split + chaining a dep report twice answers as chaining it once + a dep report an engine will not trust only ADDS hedges + adding a call to a function only ever ADDS to what its report says + a real violation survives an incomplete scan on EVERY gate + the ⟨0.24⟩ rung's behaviour: CONTRIBUTES, the viaDispatchOn literal, the dot-free frontier arm, the sidecar triple, --class dynamic, gate --report and locale-independence + degrading a sidecar may only WIDEN a disclosure, and every type an engine WALKED carries a key + the fs read/write refinement answers the same way in every engine + a rule that binds nothing is disclosed rather than scored as satisfied + the engine pin is enforced identically everywhere + the gate sink is armed before every exit and never armed over an input + a configured dep that cannot be read is unevaluable + the composed verdict carries the refusal as unevaluated (never \`refused\`), the stream sink is written on every exit-2 cause, and a zero-match rule reaches the verdict document as zeroMatch + the report sink is armed on exit-2 the same way the verdict sink is: a fail-closed manifest-carrying empty replaces the previous run's report — reference-led until every engine ships ⟨0.28⟩ + the gate verb's input guard compares the --report locator's EXPANSION (reports AND their §2.2 sidecars, on the prefix and discovery spellings alike) while <report-stem>.gate.json stays a permitted sink + \`layerPrefix\` is emitted when and only when a prefix was collapsed + a caller of a body-less local declaration is not certified pure, while the same shape with a local body still resolves + a report declares what the scan chose not to OPEN, and an effect in a file the gate did not judge is reported as its own kind and makes the verdict INCOMPLETE on BOTH routes with byte-equal documents ⟨0.30⟩ — bounded by the policy, absent when none was configured + an \`Fs\` path literal is read from the PATH POSITION, so a literal in the content position names no destination and a half-literal two-path op is incomplete + a class is \`peeked\` only if every file of it was read, so an excluded file that failed to parse inside the peek withdraws the claim for its class + the peek withholds its key over a policy the engine refuses, exactly as the gate withholds \`ok\` + a peek may DERIVE the file set it reads and certify from it, and must not certify past a derivation that failed)" \
   || echo "conformance: FAILED"
+
+# THE DISCLOSURE RIDES THE VERDICT. A note printed 16,000 lines earlier is a note nobody quotes; the
+# verdict line is what gets pasted into a report, a commit message, or a release checklist. So if the
+# engines were read from dirty trees, say so HERE, attached to the answer it qualifies. The exit code
+# is deliberately unchanged — this is a statement about what the result is ABOUT, not a failure.
+if [ -n "$DIRTY_ENGINES" ]; then
+  echo "  ...but PROVISIONAL: read from DIRTY working trees:$DIRTY_ENGINES — this describes uncommitted"
+  echo "  work, not what any engine ships. Do not quote it as a release gate."
+fi
 
 # If we failed, say WHICH KIND of failure it was. A checker that crashed leaves a Python traceback on
 # stderr; a genuine divergence does not. Without this the two are indistinguishable in the summary, and an
