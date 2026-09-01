@@ -52,9 +52,26 @@ REPO_BEFORE="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
 # to bypass the check. What must not happen is a green from such a run being quoted as a statement
 # about released code — so this is repeated in the VERDICT, where it cannot be scrolled past. The same
 # shape the engines themselves owe: answer, but say what the answer is ABOUT.
+#
+# CHECK THE TREE THIS RUN ACTUALLY READS, NOT THE SIBLING DEFAULT. The header above documents
+# CANDOR_TS=…/CANDOR_SWIFT=… as supported overrides (CANDOR/CANDOR_JAVA are already resolved above),
+# and an isolated worktree or a CI matrix job is exactly when they get used. A loop hardcoded to
+# `$HERE/../../$_e` checks the SIBLING CHECKOUT even when an override points somewhere else — MEASURED:
+# with CANDOR_JAVA pointed at a deliberately dirty scratch tree and the real sibling candor-java left
+# clean, the hardcoded loop reported DIRTY_ENGINES empty while the tree actually about to be built into
+# the jar every part uses carried an uncommitted change with zero disclosure. TS_DIR/SW_DIR are resolved
+# here (moved up from their build sections below, which have no side effects before this point) so the
+# check and the read share one source of truth instead of two copies of the same fallback that can drift.
+TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
+SW_DIR="${CANDOR_SWIFT:-$HERE/../../candor-swift}"
 DIRTY_ENGINES=""
 for _e in candor-rust candor-java candor-ts candor-swift; do
-  _d="$HERE/../../$_e"
+  case "$_e" in
+    candor-rust)  _d="$CANDOR" ;;
+    candor-java)  _d="$CANDOR_JAVA" ;;
+    candor-ts)    _d="$TS_DIR" ;;
+    candor-swift) _d="$SW_DIR" ;;
+  esac
   git -C "$_d" rev-parse --git-dir >/dev/null 2>&1 || continue
   [ -n "$(git -C "$_d" status --porcelain 2>/dev/null)" ] && DIRTY_ENGINES="$DIRTY_ENGINES $_e"
 done
@@ -16269,8 +16286,11 @@ fi
 # shape — there java passed 44/44 BY CONSTRUCTION; here java is the worst offender.
 # ABSENCE IS THE FAILURE'S SIGNATURE and `cha_completeness_check.py` treats it as FAIL, never as a skip:
 # every engine omits pure functions, so a checker that skips-if-missing is green on a broken engine
-# forever. That helper carries its own --selftest (5 cases: both passing shapes, and all three failing
-# shapes including ABSENCE) because a row whose checker cannot fail is worse than no row.
+# forever. That helper carries its own --selftest (10 cases: both passing shapes, ABSENCE, an
+# unresolved:true bare Unknown, three unknownWhy-shaped gaps — missing/empty/off-vocabulary, since the
+# clause names unknownWhy as a THIRD conjunct and the checker used to only verify two — and a
+# same-simple-name suffix-collision pair, plus the exact-match control that must still pass beside it)
+# because a row whose checker cannot fail is worse than no row.
 echo
 echo "[87] a dispatch whose implementor set includes a synthesised/structural implementor: effects OR Unknown, never a silent resolve"
 P87_OK=0
@@ -16305,8 +16325,16 @@ JEOF
     if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($arm implementor(s)): $(printf '%s' "$out" | cut -c5-120)"
     else echo "  -> DIVERGE — java ($arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
   done
-  # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect. Without this a
-  # fix that charges every lambda-bearing caller would pass both arms above.
+  # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect, AND must not
+  # be blanket-hedged into Unknown+unresolved:true either. Without the first check, a fix that charges
+  # every lambda-bearing caller would pass both arms above; without the SECOND, a fix that instead
+  # tags every lambda-bearing caller Unknown+unresolved:true — never resolving anything, just hedging
+  # everywhere — ALSO passes both arms above (their own disjunction accepts route (b) unconditionally)
+  # and would have passed this control too, because the original check only asked "did it fabricate
+  # Fs", never "did it stay genuinely pure". MEASURED: the ORIGINAL one-line check (`'Fs' not in inf`)
+  # returns exit 0 — "clean" — on a synthetic report where this exact caller carries
+  # `inferred:["Unknown"], unresolved:true` instead of resolving purely; that is the R68(5) shape this
+  # family already has a name for — a row that cannot distinguish a good engine from a useless one.
   d="$P87/java-pure"; mkdir -p "$d/src/app" "$d/classes"
   cat > "$d/src/app/Quiet.java" <<'JEOF'
 package app;
@@ -16326,16 +16354,21 @@ public class Repaint implements Runnable { public static int n; @Override public
 JEOF
   javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
   java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
-  if python3 -c "
+  p87pure_rc="$(python3 -c "
 import json,sys
 d=json.load(open('$d/rep.json'))
 f=[x for x in (d.get('functions') or []) if 'Widget.fire' in (x.get('fn') or '')]
 inf=(f[0].get('inferred') if f else []) or []
-sys.exit(0 if 'Fs' not in inf else 1)" 2>/dev/null; then
-    echo "  OK  OVER-CHARGE CONTROL — a PURE lambda through the same shape gains no Fs"
-  else
-    echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was charged Fs — the fix fabricates"; P87_OK=1
-  fi
+unresolved=(f[0].get('unresolved') if f else False)
+if 'Fs' in inf: sys.exit(1)
+if 'Unknown' in inf and unresolved is True: sys.exit(2)
+sys.exit(0)" 2>/dev/null; echo $?)"
+  case "$p87pure_rc" in
+    0) echo "  OK  OVER-CHARGE CONTROL — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
+    1) echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was charged Fs — the fix fabricates"; P87_OK=1 ;;
+    2) echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
+    *) echo "  -> DIVERGE — OVER-CHARGE CONTROL: could not judge the pure-lambda report (rc=$p87pure_rc)"; P87_OK=1 ;;
+  esac
 else
   echo "  java   -> SKIP     (no candor-java jar — this engine was NOT asked)"
 fi
