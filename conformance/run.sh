@@ -16260,8 +16260,8 @@ else
 fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
-# ENGINES: java ts; rust: MEASURED exempt by construction (SOUNDNESS R72) — `collector.rs:1771-1786` resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence; and `impl Fn` is impossible on stable, so the defining toggle cannot be built. Three executed attempts, all negative. NOT an unported MUST; swift: measured exempt, see the SPEC clause
-# CONTROLS: the ZERO-implementor arm is the control for the ONE-implementor arm — the only variable between them is one pure unrelated class, so a green pair proves the engine did not simply start disclosing everything; the PURE-closure over-charge control proves the fix does not fabricate effects for a closure that has none
+# ENGINES: java ts; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and impl Fn is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST; swift: measured exempt from THIS toggle (SOUNDNESS R73 records the different and broader defect found instead)
+# CONTROLS: zero java-pure — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the `java-pure` cell is the over-charge control, proving a PURE lambda through the identical shape gains no Fs
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -16338,6 +16338,34 @@ sys.exit(0 if 'Fs' not in inf else 1)" 2>/dev/null; then
   fi
 else
   echo "  java   -> SKIP     (no candor-java jar — this engine was NOT asked)"
+fi
+# ts — the SAME property, but its implementor is a METHOD-BEARING OBJECT LITERAL, not a nominal class.
+# Measured: a bound written in java's vocabulary ("an interface with a call-signature shape") MISSES the
+# ts route entirely, because structural typing makes an object literal a conformer without declaring it.
+if [ -n "$TS_PRESENT" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
+  for arm in zero one; do
+    d="$P87/ts-$arm"; mkdir -p "$d"
+    cat > "$d/app.ts" <<'TEOF'
+import * as fs from "fs";
+export interface Task { go(): void; }
+export class Store { write(): void { fs.writeFileSync("/tmp/p87ts.txt", "x"); } }
+let held: Task | null = null;
+export function install(s: Store): void { held = { go: () => s.write() }; }
+export function invoke(): void { if (held) held.go(); }
+TEOF
+    if [ "$arm" = one ]; then
+      cat > "$d/other.ts" <<'TEOF'
+import { Task } from "./app";
+export class Repaint implements Task { static n = 0; go(): void { Repaint.n++; } }
+TEOF
+    fi
+    ( cd "$TS_DIR" && node scan.mjs "$d" --json ) > "$d/rep.json" 2>/dev/null
+    out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" 'invoke' Fs 2>&1)"
+    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  ts ($arm implementor(s)): $(printf '%s' "$out" | cut -c5-120)"
+    else echo "  -> DIVERGE — ts ($arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+  done
+else
+  echo "  ts     -> SKIP     (candor-ts not present — this engine was NOT asked)"
 fi
 if [ "$P87_OK" = 0 ]; then
   echo "  -> MATCH — a synthesised implementor either contributes its effects or is disclosed as Unknown;"
