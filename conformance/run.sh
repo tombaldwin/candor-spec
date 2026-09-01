@@ -16298,14 +16298,36 @@ P87="$W/p87"; mkdir -p "$P87"
 [ -f "$HERE/cha_completeness_check.py" ] || { echo "  -> DIVERGE — cha_completeness_check.py is MISSING; the row cannot judge"; P87_OK=1; rc=1; }
 if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
   # Two arms. ONLY variable: whether a pure, unrelated class declares `implements Runnable`.
+  #
+  # THREE SHAPES, and the reason there are three is this row's own worst failure. As first written it
+  # built ONE fixture — a lambda in a same-class INSTANCE field — and an adversarial review then found
+  # two more instances of the very property this clause asserts, both live at HEAD and both shipped in
+  # 0.34.0, while this row sat green through them:
+  #   static     GETSTATIC reads were never tagged with fieldOrigin (only GETFIELD triggered wrapField)
+  #   inherited  javac emits the PUTFIELD in Base owned by `Base` and the GETFIELD in Sub owned by
+  #              `Sub`, so a write keyed "Base#task" never matches a read keyed "Sub#task"
+  # Both are ordinary Java — a static callback slot, and a protected field with a template method. The
+  # boundary of this row had been drawn around its own trigger, which is the failure this family
+  # repeats most, and it is worse in a CONFORMANCE ROW than anywhere else: a green row is what everyone
+  # downstream reads instead of re-deriving the question. A row that pins one spelling of a property
+  # states that the property holds. So the shapes are enumerated over the ways a field-held callable can
+  # be WRITTEN and READ, not over the one that happened to prompt the clause.
+  # STILL NOT EXHAUSTIVE, and saying so is the point: a field written through a setter, an interface
+  # constant (implicitly static final), an inner/outer class field, a write in a constructor or static
+  # initializer, and a `super.`-qualified read are NOT built here. They are named so the next reader
+  # extends the list rather than reading three green rows as "fields are covered".
+  for shape in instance static inherited; do
   for arm in zero one; do
-    d="$P87/java-$arm"; mkdir -p "$d/src/app" "$d/classes"
+    d="$P87/java-$shape-$arm"; mkdir -p "$d/src/app" "$d/classes"
     cat > "$d/src/app/Store.java" <<'JEOF'
 package app;
 import java.io.*; import java.nio.file.*;
 public class Store { public void write() { try { Files.write(Paths.get("/tmp/p87.txt"), "x".getBytes()); } catch (IOException e) {} } }
 JEOF
-    cat > "$d/src/app/Widget.java" <<'JEOF'
+    case "$shape" in
+      instance)
+        caller='Widget.fire'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
 package app;
 public class Widget {
   private Runnable task;
@@ -16313,6 +16335,35 @@ public class Widget {
   public void fire() { if (task != null) task.run(); }
 }
 JEOF
+        ;;
+      static)
+        caller='Widget.fire'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  private static Runnable task;
+  public static void install(Store s) { task = () -> s.write(); }
+  public static void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+      inherited)
+        caller='Sub.fire'
+        cat > "$d/src/app/Base.java" <<'JEOF'
+package app;
+public class Base {
+  protected Runnable task;
+  public void install(Store s) { this.task = () -> s.write(); }
+}
+JEOF
+        cat > "$d/src/app/Sub.java" <<'JEOF'
+package app;
+public class Sub extends Base {
+  public void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+    esac
     if [ "$arm" = one ]; then
       cat > "$d/src/app/Repaint.java" <<'JEOF'
 package app;
@@ -16321,9 +16372,10 @@ JEOF
     fi
     javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
     java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
-    out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" 'Widget.fire' Fs 2>&1)"
-    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($arm implementor(s)): $(printf '%s' "$out" | cut -c5-120)"
-    else echo "  -> DIVERGE — java ($arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+    out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" "$caller" Fs 2>&1)"
+    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($shape field, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
+    else echo "  -> DIVERGE — java ($shape field, $arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+  done
   done
   # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect, AND must not
   # be blanket-hedged into Unknown+unresolved:true either. Without the first check, a fix that charges
@@ -16335,12 +16387,24 @@ JEOF
   # returns exit 0 — "clean" — on a synthetic report where this exact caller carries
   # `inferred:["Unknown"], unresolved:true` instead of resolving purely; that is the R68(5) shape this
   # family already has a name for — a row that cannot distinguish a good engine from a useless one.
-  d="$P87/java-pure"; mkdir -p "$d/src/app" "$d/classes"
-  cat > "$d/src/app/Quiet.java" <<'JEOF'
+  # ONE CONTROL PER SHAPE, for the same reason there is one sin fixture per shape. This family's measured
+  # rate is 4 defects in 5 fabrication-fixes, two of them cardinal sins — killing an over-charge is
+  # precisely where silent under-reports get introduced — so a shape whose sin arm has teeth and whose
+  # control does not is a shape where the next fix can trade one direction for the other unobserved.
+  # The static shape has a second reason to be here: a reported pre-existing over-charge sends a
+  # static-field dispatch down the old CHA path, where one unrelated effectful implementor is attributed
+  # to a caller that can never reach it. That is a false positive on a genuinely pure lambda, and this
+  # is the arm that will say so.
+  for shape in instance static inherited; do
+    d="$P87/java-pure-$shape"; mkdir -p "$d/src/app" "$d/classes"
+    cat > "$d/src/app/Quiet.java" <<'JEOF'
 package app;
 public class Quiet { public static int n; public void bump() { n++; } }
 JEOF
-  cat > "$d/src/app/Widget.java" <<'JEOF'
+    case "$shape" in
+      instance)
+        pcaller='Widget.fire'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
 package app;
 public class Widget {
   private Runnable task;
@@ -16348,27 +16412,57 @@ public class Widget {
   public void fire() { if (task != null) task.run(); }
 }
 JEOF
-  cat > "$d/src/app/Repaint.java" <<'JEOF'
+        ;;
+      static)
+        pcaller='Widget.fire'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  private static Runnable task;
+  public static void install(Quiet q) { task = () -> q.bump(); }
+  public static void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+      inherited)
+        pcaller='Sub.fire'
+        cat > "$d/src/app/Base.java" <<'JEOF'
+package app;
+public class Base {
+  protected Runnable task;
+  public void install(Quiet q) { this.task = () -> q.bump(); }
+}
+JEOF
+        cat > "$d/src/app/Sub.java" <<'JEOF'
+package app;
+public class Sub extends Base {
+  public void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+    esac
+    cat > "$d/src/app/Repaint.java" <<'JEOF'
 package app;
 public class Repaint implements Runnable { public static int n; @Override public void run() { n++; } }
 JEOF
-  javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
-  java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
-  p87pure_rc="$(python3 -c "
+    javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
+    java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
+    p87pure_rc="$(python3 -c "
 import json,sys
 d=json.load(open('$d/rep.json'))
-f=[x for x in (d.get('functions') or []) if 'Widget.fire' in (x.get('fn') or '')]
+f=[x for x in (d.get('functions') or []) if '$pcaller' in (x.get('fn') or '')]
 inf=(f[0].get('inferred') if f else []) or []
 unresolved=(f[0].get('unresolved') if f else False)
 if 'Fs' in inf: sys.exit(1)
 if 'Unknown' in inf and unresolved is True: sys.exit(2)
 sys.exit(0)" 2>/dev/null; echo $?)"
-  case "$p87pure_rc" in
-    0) echo "  OK  OVER-CHARGE CONTROL — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
-    1) echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was charged Fs — the fix fabricates"; P87_OK=1 ;;
-    2) echo "  -> DIVERGE — OVER-CHARGE CONTROL: a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
-    *) echo "  -> DIVERGE — OVER-CHARGE CONTROL: could not judge the pure-lambda report (rc=$p87pure_rc)"; P87_OK=1 ;;
-  esac
+    case "$p87pure_rc" in
+      0) echo "  OK  OVER-CHARGE CONTROL ($shape field) — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
+      1) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was charged Fs — the fix fabricates"; P87_OK=1 ;;
+      2) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
+      *) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): could not judge the pure-lambda report (rc=$p87pure_rc)"; P87_OK=1 ;;
+    esac
+  done
 else
   echo "  java   -> SKIP     (no candor-java jar — this engine was NOT asked)"
 fi
