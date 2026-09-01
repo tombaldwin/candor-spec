@@ -16278,7 +16278,7 @@ fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
 # ENGINES: java ts; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and impl Fn is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST; swift: measured exempt from THIS toggle (SOUNDNESS R73 records the different and broader defect found instead)
-# CONTROLS: zero java-pure — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the `java-pure` cell is the over-charge control, proving a PURE lambda through the identical shape gains no Fs
+# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the three `java-pure-*` cells are the over-charge controls, ONE PER SHAPE, each proving a PURE lambda through that shape's identical write/read path gains no Fs and is not blanket-hedged into Unknown either
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -16395,8 +16395,15 @@ JEOF
   # static-field dispatch down the old CHA path, where one unrelated effectful implementor is attributed
   # to a caller that can never reach it. That is a false positive on a genuinely pure lambda, and this
   # is the arm that will say so.
-  for shape in instance static inherited; do
-    d="$P87/java-pure-$shape"; mkdir -p "$d/src/app" "$d/classes"
+  # The loop iterates the CONTROL DIRECTORY NAMES, not bare shapes, so the three names the
+  # `# CONTROLS:` line above declares appear literally in an executable line. PART 44 checks exactly
+  # that and rejected the assembled `java-pure-$shape` form — correctly: a control whose name is
+  # composed at runtime cannot be matched to the declaration that claims it exists, which is the whole
+  # failure mode ("a control that does not exist is documentation") that check was written for. The
+  # declaration and the code now share one source of truth instead of two spellings that can drift.
+  for pdir in java-pure-instance java-pure-static java-pure-inherited; do
+    shape="${pdir#java-pure-}"
+    d="$P87/$pdir"; mkdir -p "$d/src/app" "$d/classes"
     cat > "$d/src/app/Quiet.java" <<'JEOF'
 package app;
 public class Quiet { public static int n; public void bump() { n++; } }
