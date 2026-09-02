@@ -16452,22 +16452,49 @@ JEOF
 package app;
 public class Repaint implements Runnable { public static int n; @Override public void run() { n++; } }
 JEOF
-    javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
+    # LIVENESS FIRST — this control is ABSENCE-SHAPED, and absence is exactly what a broken fixture
+    # produces. Measured 2026-09-02 by an adversarial review of this very row: with `q.NOSUCH()` in the
+    # source, javac emitted ZERO class files and the reader below printed OK. The row discarded javac's
+    # exit status (`2>/dev/null`, status never read) and the reader returns 0 for `{"functions":[]}` and
+    # for a report with no `functions` key at all. So all three over-charge controls certified a fix over
+    # a fixture that never compiled. That is brief §E3 — a control asserting an absence must compile and
+    # RUN first — committed in the same push wave as this row, and broken here.
+    # The SIN arms are unaffected: `cha_completeness_check.py` treats ABSENCE as FAIL, so they fail
+    # closed on the identical broken fixture. Only the controls were vacuous.
+    javac -d "$d/classes" "$d"/src/app/*.java 2>"$d/javac.err"
+    p87jrc=$?
+    p87ncls=$(ls "$d/classes/app"/*.class 2>/dev/null | grep -c .)
     java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
+    if [ "$p87jrc" -ne 0 ] || [ "$p87ncls" -eq 0 ]; then
+      echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): THE FIXTURE DID NOT COMPILE (javac rc=$p87jrc, $p87ncls class files) — this control adjudicated nothing. $(head -1 "$d/javac.err" 2>/dev/null)"
+      P87_OK=1; continue
+    fi
+    if [ ! -s "$d/rep.json" ]; then
+      echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): NO REPORT WRITTEN — the engine did not run, which is an instrument failure, not a verdict about the fix"
+      P87_OK=1; continue
+    fi
     p87pure_rc="$(python3 -c "
 import json,sys
 d=json.load(open('$d/rep.json'))
-f=[x for x in (d.get('functions') or []) if '$pcaller' in (x.get('fn') or '')]
+fns=d.get('functions')
+if fns is None: sys.exit(3)
+# The engine legitimately OMITS pure functions, so the caller's absence cannot be read as a pass unless
+# the scan is known to have SEEN this fixture. Repaint.run is present in every arm and is never omitted
+# (it writes a static), so its absence means the report is not about this fixture at all.
+if not any('Repaint' in (x.get('fn') or '') for x in fns): sys.exit(4)
+f=[x for x in fns if x.get('fn','').endswith('$pcaller')]
 inf=(f[0].get('inferred') if f else []) or []
 unresolved=(f[0].get('unresolved') if f else False)
 if 'Fs' in inf: sys.exit(1)
 if 'Unknown' in inf and unresolved is True: sys.exit(2)
-sys.exit(0)" 2>/dev/null; echo $?)"
+sys.exit(0)" 2>"$d/reader.err"; echo $?)"
     case "$p87pure_rc" in
       0) echo "  OK  OVER-CHARGE CONTROL ($shape field) — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
       1) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was charged Fs — the fix fabricates"; P87_OK=1 ;;
       2) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
-      *) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): could not judge the pure-lambda report (rc=$p87pure_rc)"; P87_OK=1 ;;
+      3) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): the report has NO \`functions\` key — malformed, not pure"; P87_OK=1 ;;
+      4) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): the report does not mention Repaint, so it is not about this fixture — the control adjudicated nothing"; P87_OK=1 ;;
+      *) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): could not judge the pure-lambda report (rc=$p87pure_rc) $(head -1 "$d/reader.err" 2>/dev/null) — an unreadable report is an INSTRUMENT failure, not a fabrication finding"; P87_OK=1 ;;
     esac
   done
 else
