@@ -46,7 +46,8 @@ prefix.
 - `direct` — effects in this function's own body only.
 - `unresolved` / `Unknown` — some call could not be resolved; the set may be incomplete (see the
   trust rule below). `unknownWhy` says why, per source.
-- Effects: `Net`, `Fs`, `Db`, `Exec` (subprocess), `Env`, `Clock`, `Ipc`, `Log`, `Rand`, `Clipboard`.
+- Effects: `Net`, `Llm` (a call to a model provider — refines `Net`), `Fs`, `Db`, `Exec` (subprocess),
+  `Env`, `Clock`, `Ipc`, `Log`, `Rand`, `Clipboard`.
 - Optional per-entry refinements you may see: `fs` (read/write kinds), `hosts`/`cmds`/`paths`/`tables`
   (the literal surfaces an `allow` gate certifies), `entryPoint` (a runtime reachability root),
   `unitKind` (a non-function unit: `initializer`/`accessor`/`export`, or `agent`/`session`/`hooks` in
