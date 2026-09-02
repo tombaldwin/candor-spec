@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.35.0] — 2026-09-03
+
 - **Five findings from the 2026-08-30 four-agent review panel on ⟨0.34⟩, closed in conformance/run.sh,
   SPEC.md and SOUNDNESS.md — no spec-version change, all conformance/documentation hardening.**
   - **PART 84's remedy leg had no teeth.** Its `--policy`-names-a-remedy check was `*[Pp]olicy*` — a bare
