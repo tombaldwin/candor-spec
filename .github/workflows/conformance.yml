@@ -51,6 +51,11 @@ jobs:
       - uses: actions/checkout@v6
       - name: AGENTS.md drift gate (spec floor + envelope shape)
         run: python3 scripts/check_agents_drift.py
+      # Every SOUNDNESS row must be INSIDE a table. Five broken tables shipped before this gate
+      # existed, and the fix for one of them counted pipes — the wrong property — and reported
+      # success while 26 rows still rendered as raw text. Contiguity is the property.
+      - name: SOUNDNESS rows must render as table rows (GFM contiguity, not pipe counts)
+        run: python3 scripts/check_soundness_tables.py
 
   cross-impl-differential:
     if: github.event_name != 'schedule'
