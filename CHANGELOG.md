@@ -62,6 +62,37 @@ Run it after any patch-cycle commit that adds a section here.
     characters split the table row). Reworded to describe the shell idiom without a literal pipe, pointing
     at SOUNDNESS-LOG.md's 2026-07-09 entry for the exact `|| true` spelling.
 
+- **⟨0.35⟩ — the rung this release cuts. SPEC §4 gains *"A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE"*:**
+  at a dispatch site whose visible implementor set may be incomplete — a synthesised or structural
+  implementor, a conformer the scan did not open — an engine must either carry the candidates' effects or
+  disclose `Unknown`; it must never resolve silently to the candidates it happened to see. **PART 87**
+  (tier 1) pins it four-way: instance, static and inherited field bindings, zero and one implementor each,
+  with an over-charge control per shape proving a PURE lambda through the same site gains nothing and is
+  not blanket-hedged. Opened in `047363a`; the ts arm and the declared-coverage ledger classification landed
+  in `da04869`.
+- **PART 87 was then hardened four times before it was trusted, and each time the defect was in the
+  instrument, not an engine.** `08e557c`: the part and its checker (`cha_completeness_check.py`) could not
+  FAIL on a hedging engine — a mutation gate now proves the checker still reddens (replace `verdict()` with
+  `return True` → exactly 7 rows red). `56b019a`: it pinned one spelling of the property it asserts.
+  `4c89751`: its declared controls named a directory nothing built. `4ebffa5`: its three over-charge
+  controls passed over a fixture that never compiled — a liveness guard now diverges loudly when `javac`
+  produces no classes or the engine writes no report, rather than judging an absent output as clean.
+- **`scripts/check_soundness_tables.py` is a CI gate: every SOUNDNESS row must render as a table row.**
+  Measured with a GFM lexer, **32 rows** — the entire R108–R133 register plus six older ones — were
+  rendering as raw paragraphs, split from their tables by a prose block and three stray blank lines. A
+  prior fix had counted PIPES, which were never the failure, and reported success while 26 rows stayed
+  orphaned. The gate tests CONTIGUITY, and is proven in both directions: rc 0 on the fixed file, rc 1
+  naming all 35 orphans on the pre-fix one (`30d0799`).
+- **`conformance/run.sh` now reads the swift build's exit status (SOUNDNESS R149).** It ran
+  `swift build` in a subshell, discarded the status, and proceeded on the mere existence of
+  `.build/debug/candor-swift` — so a failed build silently measured whatever binary the previous run had
+  left. A present-but-unbuildable swift is now a hard FAIL, exit 2, never a skip and never a pass; the
+  guard is proven to fire against a non-existent tree (`4b84f2b`).
+- **SOUNDNESS.md rows R117–R157 record this round.** Five regressions the wave's own fixes introduced (all
+  closed before push), published cardinal sins found and closed in all four engines while fixing them
+  (rust R122/R123/R128/R130/R139, swift R125/R130/R135, java R130, ts R130/R137/R138), and the open rows
+  that remain. Each row marks what was MEASURED and what was taken on report.
+
 ## [0.34.0] — 2026-08-31
 
 - **UPGRADING FROM 0.33.1 — re-baselining is not review.** ⟨0.34⟩ is NON-ADDITIVE and this wave
