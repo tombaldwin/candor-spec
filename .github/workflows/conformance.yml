@@ -42,20 +42,70 @@ jobs:
   # AGENTS.md rotted once — it taught the legacy v0.1 bare-array report years into the envelope
   # era, because nothing machine-checked it. This leg pins the doc to reality: its envelope
   # example must parse as the SPEC §2 shape and its spec string must equal SPEC.md's floor
-  # declaration. Cheap (no engine checkouts), so it runs on every push/PR.
+  # declaration. Source-checkout only (no toolchain/build), so it stays fast even though it now
+  # also checks out every sibling repo (below) to read their AGENTS.md/README.md.
   agents-doc-drift:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout candor-spec
+        uses: actions/checkout@v6
+        with:
+          path: candor-spec
       - name: AGENTS.md drift gate (spec floor + envelope shape)
+        working-directory: candor-spec
         run: python3 scripts/check_agents_drift.py
       # Every SOUNDNESS row must be INSIDE a table. Five broken tables shipped before this gate
       # existed, and the fix for one of them counted pipes — the wrong property — and reported
       # success while 26 rows still rendered as raw text. Contiguity is the property.
       - name: SOUNDNESS rows must render as table rows (GFM contiguity, not pipe counts)
+        working-directory: candor-spec
         run: python3 scripts/check_soundness_tables.py
+
+      # R155: `Llm` was in SPEC §1 and enforced by every engine's classifier while every
+      # agent-facing vocabulary copy omitted it — and the two doc-vs-doc gates above cannot see it,
+      # because a vocabulary omission that is CONSISTENT across copies (every copy silently drifted
+      # the same way, together) never shows up as disagreement between them. check_agents_vocabulary.py
+      # reads SPEC.md's own §1 table (never hand-lists the vocabulary) and checks it against every
+      # sibling repo's AGENTS.md/README.md — which is why those repos are checked out here too, source
+      # only, no build. It ALSO runs each engine's live `--agents` when a binary happens to be present;
+      # none is built in this job, so those rows report UNRUN, never a false green — the built-engine
+      # half gets real teeth from the four-engine-differential leg below, which already asks the built
+      # engines a related question via check_agents_vs_engine.py.
+      - name: Checkout candor (umbrella AGENTS.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor
+          path: candor
+      - name: Checkout candor-rust (Rust engine AGENTS.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-rust
+          path: candor-rust
+      - name: Checkout candor-java (JVM engine AGENTS.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-java
+          path: candor-java
+      - name: Checkout candor-ts (TS engine AGENTS.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-ts
+          path: candor-ts
+      - name: Checkout candor-agents (fleet engine AGENTS.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-agents
+          path: candor-agents
+      - name: Checkout candor-swift (Swift engine AGENTS.md/README.md)
+        uses: actions/checkout@v6
+        with:
+          repository: tombaldwin/candor-swift
+          path: candor-swift
+      - name: Agent-facing vocabulary gate (SPEC §1 effects vs every AGENTS.md/README.md)
+        working-directory: candor-spec
+        run: python3 scripts/check_agents_vocabulary.py
 
   cross-impl-differential:
     if: github.event_name != 'schedule'
