@@ -375,8 +375,32 @@ SW_OK=""
 SW_BIN=""
 if command -v swift >/dev/null 2>&1 && [ -f "$SW_DIR/Package.swift" ]; then
   SW_PRESENT=1
+  # R149 — THE BUILD'S STATUS IS READ. It used to be discarded: `( cd … && swift build >/dev/null 2>&1 )`
+  # in a subshell, then `[ -x "$SW_BIN" ]`, which asks whether A binary exists and not whether THIS tree
+  # built one. A failed build fell through to whatever the previous run left in `.build/debug`, and the
+  # suite reported a four-way result for a swift that was not the tree — silently, because a stale binary
+  # and a fresh one are the same bytes to `-x`.
+  #
+  # This is the same ruling R104 made for the syscall oracle, which printed `build failed — SKIP`,
+  # summarised `0 NEW failure(s)` and exited 0. The suite that catches that class in four engines had it
+  # in itself, and it is the instrument the coordinator ran four times on 2026-09-02 and reported OK from.
+  # (Verified behaviourally that it did not bite that day — the debug binary carried both R130 fixes — but
+  # that was the builds happening to succeed, not the check working.)
+  #
+  # A present-but-unbuildable swift is a HARD FAIL, never a skip and never a pass: `swift` is on PATH and
+  # `Package.swift` exists, so the engine is DECLARED here, and "declared but broken" is the case a green
+  # tick must never cover. Status captured on its own line — never after a pipe or a same-line command
+  # substitution, which is how this project has produced false matrices twice.
   ( cd "$SW_DIR" && swift build >/dev/null 2>&1 )
+  SW_BUILD_RC=$?
   SW_BIN="$SW_DIR/.build/debug/candor-swift"
+  if [ "$SW_BUILD_RC" -ne 0 ]; then
+    echo "conformance: FAIL — candor-swift is present ($SW_DIR) but 'swift build' exited $SW_BUILD_RC." >&2
+    echo "  Refusing to measure: a stale .build/debug/candor-swift from an earlier run is indistinguishable" >&2
+    echo "  from a fresh one, so proceeding would report a four-way result for a tree that did not build." >&2
+    echo "  Fix the build, or unset the swift engine deliberately, but do not read this as three-way green." >&2
+    exit 2
+  fi
   if [ -x "$SW_BIN" ]; then
     "$SW_BIN" "$SW_DIR/conformance/Cases.swift" --out "$W/sw" >/dev/null 2>&1
   fi
