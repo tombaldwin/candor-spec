@@ -1403,7 +1403,14 @@ Each entry:
                                          // is the consumer's join over `calls`. An engine MAY
                                          // instead mark such a fn `Unknown` (a STRONGER posture —
                                          // it participates in gating); an engine MUST do at least
-                                         // one, never silently pure.
+                                         // one, never silently pure. `invisible` itself arms NO
+                                         // policy form — BY DESIGN, not by omission: it is a
+                                         // disclosure about COVERAGE, and the ⟨0.21⟩ `unanalyzed`
+                                         // manifest is where an uncovered scan reaches a verdict.
+                                         // An engine that wants such a call to gate must take the
+                                         // `Unknown` posture above. Ruled 2026-09-03 after
+                                         // SOUNDNESS R133 measured the non-arming and asked
+                                         // whether it was a defect; it is not.
   "unitKind":     "accessor",            // OPTIONAL ⟨0.5⟩: what KIND of unit this entry is, when it
                                          // is not an ordinary function/method. Absent = "function".
                                          // Recommended values: "initializer" (static/class init —

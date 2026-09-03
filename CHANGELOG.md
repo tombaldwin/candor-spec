@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §2 `invisible`: say that it arms no policy form BY DESIGN.** The field was already
+  documented as "not a purity claim", and the same clause already offers the stronger `Unknown`
+  posture for an engine that wants such a call to gate — but nothing said the non-arming was
+  deliberate, so SOUNDNESS R133 measured it and asked whether it was a defect. It is not: `invisible`
+  is a COVERAGE disclosure, and the ⟨0.21⟩ `unanalyzed` manifest is where an uncovered scan reaches a
+  verdict. Documentation only — no requirement added, MUST ledger unchanged at 529 statements.
+
 ## [0.35.0] — 2026-09-03
 
 - **`scripts/check_agents_vocabulary.py` — a CI gate that derives the effect vocabulary from SPEC §1 and
