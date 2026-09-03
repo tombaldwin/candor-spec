@@ -69,13 +69,28 @@ Run it after any patch-cycle commit that adds a section here.
     at SOUNDNESS-LOG.md's 2026-07-09 entry for the exact `|| true` spelling.
 
 - **⟨0.35⟩ — the rung this release cuts. SPEC §4 gains *"A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE"*:**
-  at a dispatch site whose visible implementor set may be incomplete — a synthesised or structural
-  implementor, a conformer the scan did not open — an engine must either carry the candidates' effects or
-  disclose `Unknown`; it must never resolve silently to the candidates it happened to see. **PART 87**
-  (tier 1) pins it four-way: instance, static and inherited field bindings, zero and one implementor each,
-  with an over-charge control per shape proving a PURE lambda through the same site gains nothing and is
-  not blanket-hedged. Opened in `047363a`; the ts arm and the declared-coverage ledger classification landed
-  in `da04869`.
+  at a dispatch site whose visible implementor set includes a **compiler-synthesised or structural
+  implementor** — a lambda or closure coerced to an interface/protocol, a method reference, an object
+  literal that satisfies a shape structurally — the CALLING function must either carry that implementor's
+  own effects or disclose `Unknown` with `unresolved: true` and an `unknownWhy` of kind
+  `callback:`/`dispatch:`; it must never resolve silently to the candidates it happened to see. The clause
+  binds implementors that ARE visible to resolution and are treated as the whole set; it does NOT reach
+  code the scan never opened, which is §2's file-set and `excluded`/`peeked` machinery and answers a
+  different question. **PART 87** (tier 1) is where it is pinned, and here is what that is worth TODAY,
+  stated per engine rather than as a headline: **candor-java** — instance, static, inherited and
+  method-reference field bindings, zero and one implementor each, all GREEN, with an over-charge control
+  per shape; the fifth arm, a method reference passed as an ARGUMENT to a JDK higher-order function
+  (`ifPresent(Runnable::run)`), is RED, a published cardinal sin in the reference engine
+  (SOUNDNESS **R179**). **candor-ts** — the structural object-literal route, both arms GREEN, with its own
+  over-charge control. **candor-swift** — RED on ⟨0.35⟩(b)'s third conjunct: it discloses `Unknown` +
+  `unresolved: true` over a protocol-typed field with a closure-carrying conformer and emits no
+  `unknownWhy` (SOUNDNESS **R180** — disclosed, not silent, but a MUST an engine fails at cut time).
+  **candor-rust** — exempt BY CONSTRUCTION, not unported: it resolves local-trait dispatch as a UNION over
+  every visible impl, so an added implementor cannot flip a disclosure into silence, and `impl Fn` is
+  impossible on stable, so the defining toggle cannot be built (SOUNDNESS **R72**, three executed attempts,
+  all negative). So: the clause is pinned on three engines and passing on two, and the part's rows say
+  which is which. Opened in `047363a`; the ts arm and the declared-coverage ledger classification landed
+  in `da04869`; the method-reference arm, the swift arm and the ts over-charge control in this release.
 - **PART 87 was then hardened four times before it was trusted, and each time the defect was in the
   instrument, not an engine.** `08e557c`: the part and its checker (`cha_completeness_check.py`) could not
   FAIL on a hedging engine — a mutation gate now proves the checker still reddens (replace `verdict()` with
