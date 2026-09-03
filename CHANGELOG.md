@@ -83,6 +83,44 @@ Run it after any patch-cycle commit that adds a section here.
   `4c89751`: its declared controls named a directory nothing built. `4ebffa5`: its three over-charge
   controls passed over a fixture that never compiled — a liveness guard now diverges loudly when `javac`
   produces no classes or the engine writes no report, rather than judging an absent output as clean.
+- **PART 87 pinned two of the three spellings the clause names, on two of four engines, with no
+  over-charge control on one of them — a FIFTH hardening round, from the 0.35.0 release panel's spec
+  lens.** Three changes, and two of the new arms are committed RED on purpose.
+  - **A METHOD-REFERENCE arm, in two forms.** §4 ⟨0.35⟩ says the property reproduces through "a stored
+    lambda, a method reference, and … a method-bearing object literal"; the java arms were lambda-only
+    and the ts arm carries the object literal, so the one spelling with no arm at all was the method
+    reference. `mrefstore` (`this.task = s::write; task.run()`) is the clause's own toggle in
+    method-reference form and is GREEN: candor-java HEAD charges `Fs` at both implementor counts, while
+    the PUBLISHED 0.34.0 jar discloses at zero and reports the caller **ABSENT** at one — falsified
+    against a frozen artifact. `mrefhof` (`Optional.ofNullable(task).ifPresent(Runnable::run)`) is RED:
+    `Widget.fireRef` is absent from `functions[]` on HEAD **and** on 0.34.0, at both counts, while
+    `ifPresent(r -> r.run())` one line over is disclosed. That is **SOUNDNESS R179**, a published
+    cardinal sin in the reference engine. It runs RED rather than being skipped, because a skipped row
+    is unfalsifiable in the direction that matters — this suite's own PART 39 / PART 37(e) lesson — and
+    a FIXABLE silent under-report gets gated, never accepted as a residual.
+  - **A swift arm that RUNS, replacing an `exempt` label drawn around the trigger.** The old declaration
+    said swift was "measured exempt from THIS toggle", which is true and was the wrong question: swift
+    is exempt from the toggle (`sw-proto-zero` and `sw-proto-one` both answer `Unknown` +
+    `unresolved: true`, so the pure conformer flips nothing) and fails a DIFFERENT conjunct the
+    exemption made unaskable. The part's header now states WHICH: ⟨0.35⟩(b)'s THIRD — `Unknown`, AND
+    `unresolved: true`, AND an `unknownWhy` of kind `callback:`/`dispatch:`. Over a protocol-typed
+    optional field holding a closure-carrying conformer, `Widget.fire` and `Widget.fireIfLet` carry
+    `["Unknown"]` with `unresolved: true` and **no `unknownWhy` at all** — disclosed THAT, never WHY.
+    **SOUNDNESS R180**: a MUST one engine fails at cut time, disclosed rather than silent. RED for the
+    same reason as `mrefhof`. `cha_completeness_check.py` was hardened to gate on exactly this and the
+    engine was then not added to the row, which is how the gap survived four earlier hardening rounds.
+  - **A ts OVER-CHARGE control (`ts-pure`), mirroring java's three.** Without it, a candor-ts fix that
+    hedged every object-literal dispatch into `Unknown` + `unresolved: true` passes both ts arms (their
+    disjunction accepts route (b) unconditionally) and nothing in the part says so — on the engine whose
+    structural typing makes blanket hedging the cheapest wrong fix available. Its liveness anchor is a
+    plain `fs.writeFileSync` beacon, NOT java's `Repaint`: MEASURED, candor-ts does not charge a
+    static-field write, so `Repaint.go` is pure and absent, and copying java's anchor would have made
+    the control vacuous on the day it was written.
+  - `# ENGINES:` now reads `java ts swift` with rust's exemption-by-construction (SOUNDNESS R72) stated
+    in full; `# CONTROLS:` gains `ts-pure`. `part_declarations.py` and `part.sh --check` pass.
+    Measured with `conformance/part.sh 87` (PROVISIONAL — candor-java and candor-swift trees were dirty
+    under parallel fixes): java 8 OK / 2 RED (`mrefhof`), 3 java controls OK, ts 2 OK + control OK,
+    swift 4 RED (R180).
 - **`scripts/check_soundness_tables.py` is a CI gate: every SOUNDNESS row must render as a table row.**
   Measured with a GFM lexer, **32 rows** — the entire R108–R133 register plus six older ones — were
   rendering as raw paragraphs, split from their tables by a prose block and three stray blank lines. A

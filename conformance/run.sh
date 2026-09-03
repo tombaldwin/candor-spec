@@ -16301,8 +16301,8 @@ else
 fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
-# ENGINES: java ts; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and impl Fn is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST; swift: measured exempt from THIS toggle (SOUNDNESS R73 records the different and broader defect found instead)
-# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the three `java-pure-*` cells are the over-charge controls, ONE PER SHAPE, each proving a PURE lambda through that shape's identical write/read path gains no Fs and is not blanket-hedged into Unknown either
+# ENGINES: java ts swift; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and `impl Fn` is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST
+# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited ts-pure — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the three `java-pure-*` cells and `ts-pure` are the over-charge controls, ONE PER SHAPE PER ENGINE, each proving a PURE lambda (java) or a PURE object literal (ts) through that shape's identical write/read path gains no Fs and is not blanket-hedged into Unknown either
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -16315,6 +16315,49 @@ fi
 # clause names unknownWhy as a THIRD conjunct and the checker used to only verify two — and a
 # same-simple-name suffix-collision pair, plus the exact-match control that must still pass beside it)
 # because a row whose checker cannot fail is worse than no row.
+#
+# THE CLAUSE NAMES THREE SPELLINGS AND THIS ROW USED TO PIN TWO — added 2026-09-03, on the 0.35.0
+# release panel's spec lens. §4 ⟨0.35⟩ says the property "reproduces through three separate spellings —
+# a stored lambda, A METHOD REFERENCE, and (in a structurally-typed engine) a method-bearing object
+# literal — so a fix shaped only for lambdas closes one of three". The java arms were LAMBDA-ONLY and
+# the ts arm carries the object literal, so the METHOD REFERENCE — the one spelling the clause names
+# that no arm drove — was unpinned while the CHANGELOG said the part pinned the clause four-way. Two
+# method-reference arms now run, and they answer differently, which is the reason both are here:
+#   mrefstore   `this.task = s::write; task.run()` — the clause's own toggle in method-reference form.
+#               MEASURED 2026-09-03: HEAD charges Fs in BOTH arms (green); the PUBLISHED 0.34.0 jar
+#               discloses Unknown at zero implementors and reports the caller ABSENT at one — the sin,
+#               exactly. So this arm is falsified against a frozen artifact and pins a real close.
+#   mrefhof     `Optional.ofNullable(task).ifPresent(Runnable::run)` — the method reference passed as an
+#               ARGUMENT to a JDK higher-order function. MEASURED: `Widget.fireRef` is ABSENT from
+#               functions[] on HEAD **and** on published 0.34.0, at BOTH implementor counts, while the
+#               lambda spelling `ifPresent(r -> r.run())` is disclosed. `pure app.Widget.fireRef`,
+#               `deny Fs …` and `deny Unknown …` all exit 0; ground truth executed (the file is
+#               written). That is SOUNDNESS **R179**, a PUBLISHED cardinal sin in the reference engine.
+# THE mrefhof ARM IS COMMITTED RED, NOT SKIPPED, and that is deliberate. A skip-with-a-row would make
+# the row unfalsifiable in the direction that matters (this suite's own PART 39/PART 37(e) lesson: a
+# row that never runs its question scores PASS), and this family's rule is that a fixable silent
+# under-report gets fixed and GATED, never accepted as a residual. It goes green when R179 does.
+# NOTE THE ARM'S OWN LIMIT: at ZERO implementors it is red too, so for THIS arm the zero/one pair is not
+# a toggle — it is two independent assertions of the disjunction. The toggle framing holds for the other
+# four shapes.
+#
+# SWIFT NOW RUNS INSTEAD OF CARRYING AN `exempt` LABEL, and the label was drawn around the trigger.
+# Until 2026-09-03 the ENGINES line read `swift: measured exempt from THIS toggle`, which is TRUE and
+# was the wrong question: swift is exempt from the toggle (`sw-proto-zero` and `sw-proto-one` both
+# answer Unknown + unresolved:true, so the pure conformer flips nothing), and it fails a DIFFERENT
+# CONJUNCT that the exemption made unaskable. WHICH CONJUNCT: ⟨0.35⟩(b)'s THIRD — `Unknown`, AND
+# `unresolved: true`, AND an `unknownWhy` whose kind is `callback:` or `dispatch:`. MEASURED on
+# candor-swift HEAD over the protocol-typed-field + closure-carrying-conformer shape: `Widget.fire`
+# carries `["Unknown"]` with `unresolved: true` and NO `unknownWhy` at all — the engine has disclosed
+# THAT it does not know and never WHY, which is precisely what `cha_completeness_check.py` was hardened
+# to catch (its own docstring records this exact report as the measurement that added the third
+# conjunct, and swift was then not added to the row). That is SOUNDNESS **R180** — disclosed, not a
+# cardinal sin, but a MUST one engine fails. Committed RED for the same reason as mrefhof.
+# The swift fixture is the ts shape in swift's vocabulary, not java's: a protocol-typed optional field
+# (`var held: Task?`) assigned a struct conformer that CARRIES A CLOSURE (`ClosureTask(f: { s.write() })`),
+# which is how a synthesised implementor reaches a protocol dispatch in a language with no lambda-to-
+# protocol coercion. Both read spellings are driven — `held?.go()` and `if let h = held { h.go() }` —
+# because the ⟨0.35⟩-adjacent R71 arc is entirely about which unwrap binder an engine follows.
 echo
 echo "[87] a dispatch whose implementor set includes a synthesised/structural implementor: effects OR Unknown, never a silent resolve"
 P87_OK=0
@@ -16340,8 +16383,9 @@ if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
   # constant (implicitly static final), an inner/outer class field, a write in a constructor or static
   # initializer, and a `super.`-qualified read are NOT built here. They are named so the next reader
   # extends the list rather than reading three green rows as "fields are covered".
-  for shape in instance static inherited; do
+  for shape in instance static inherited mrefstore mrefhof; do
   for arm in zero one; do
+    slabel="$shape field"
     d="$P87/java-$shape-$arm"; mkdir -p "$d/src/app" "$d/classes"
     cat > "$d/src/app/Store.java" <<'JEOF'
 package app;
@@ -16387,6 +16431,46 @@ public class Sub extends Base {
 }
 JEOF
         ;;
+      mrefstore)
+        # THE CLAUSE'S OWN TOGGLE IN METHOD-REFERENCE FORM. `s::write` is a compiler-SYNTHESISED
+        # Runnable exactly as `() -> s.write()` is, and javac emits it through the same
+        # LambdaMetafactory bootstrap — so an engine that resolves the lambda and not the method
+        # reference has closed one of the three spellings §4 ⟨0.35⟩ names. HEAD charges Fs at both
+        # implementor counts; the published 0.34.0 jar discloses at zero and reports the caller
+        # ABSENT at one. Falsified against a frozen artifact, green on HEAD.
+        slabel='method-ref stored in a field'
+        caller='Widget.fire'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  private Runnable task;
+  public void install(Store s) { this.task = s::write; }
+  public void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+      mrefhof)
+        # SOUNDNESS R179 — COMMITTED RED. The method reference is not stored and read back; it is
+        # passed as an ARGUMENT to a JDK higher-order function, which invokes it. `Widget.fireRef` is
+        # ABSENT from functions[] on HEAD and on published 0.34.0, at BOTH implementor counts, while
+        # `ifPresent(r -> r.run())` one line over is disclosed. Ground truth executed: the file is
+        # written. `pure app.Widget.fireRef` / `deny Fs …` / `deny Unknown …` all exit 0.
+        # Both arms red means the zero/one pair is NOT a toggle here — it is the disjunction asserted
+        # twice, independently. Stated because reading these two rows as a toggle would misattribute
+        # the defect to the candidate-set count, which is not where it is.
+        slabel='method-ref passed to a JDK HOF (R179, expected RED until candor-java fixes it)'
+        caller='Widget.fireRef'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+import java.util.Optional;
+public class Widget {
+  private Runnable task;
+  public void install(Store s) { this.task = () -> s.write(); }
+  public void fireRef() { Optional.ofNullable(task).ifPresent(Runnable::run); }
+  public void fireLambda() { Optional.ofNullable(task).ifPresent(r -> r.run()); }
+}
+JEOF
+        ;;
     esac
     if [ "$arm" = one ]; then
       cat > "$d/src/app/Repaint.java" <<'JEOF'
@@ -16397,8 +16481,8 @@ JEOF
     javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
     java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
     out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" "$caller" Fs 2>&1)"
-    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($shape field, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
-    else echo "  -> DIVERGE — java ($shape field, $arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
+    else echo "  -> DIVERGE — java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
   done
   done
   # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect, AND must not
@@ -16549,12 +16633,120 @@ TEOF
     if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  ts ($arm implementor(s)): $(printf '%s' "$out" | cut -c5-120)"
     else echo "  -> DIVERGE — ts ($arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
   done
+  # OVER-CHARGE CONTROL, ts — MIRRORS java's three, and it was missing until 2026-09-03. The java
+  # shapes each have one; the ts arm had none, so a candor-ts fix that hedged EVERY object-literal
+  # dispatch into Unknown+unresolved:true would have passed both ts arms above (their disjunction
+  # accepts route (b) unconditionally) and nothing in this part would have said so. That is the exact
+  # asymmetry the java control exists to close, left open on the engine whose route — structural
+  # typing — makes blanket hedging the CHEAPEST wrong fix available: every object literal is a
+  # potential conformer, so "hedge on any object literal reaching a call" is a two-line change that
+  # reddens nothing here and destroys the report's precision everywhere.
+  #
+  # LIVENESS FIRST, for the same reason as java's (brief §E3, and the measured 2026-09-02 failure where
+  # three java controls certified a fixture that never compiled): this control is ABSENCE-SHAPED and a
+  # broken fixture produces absence. The anchor is `app.beacon`, a plain `fs.writeFileSync` that no
+  # engine omits. It is NOT `Repaint` — MEASURED: candor-ts does not charge a static-field write, so
+  # `Repaint.go` is pure and therefore ABSENT from the report, and using it as java's arm does would
+  # have made this control vacuous the moment it was written. The java control's anchor works precisely
+  # because candor-java DOES report `Repaint.run`; the anchor has to be chosen per engine, not copied.
+  d="$P87/ts-pure"; mkdir -p "$d"
+  cat > "$d/app.ts" <<'TEOF'
+import * as fs from "fs";
+export interface Task { go(): void; }
+export class Quiet { static n = 0; bump(): void { Quiet.n++; } }
+let held: Task | null = null;
+export function install(q: Quiet): void { held = { go: () => q.bump() }; }
+export function invoke(): void { if (held) held.go(); }
+export function beacon(): void { fs.writeFileSync("/tmp/p87tsbeacon.txt", "x"); }
+TEOF
+  cat > "$d/other.ts" <<'TEOF'
+import { Task } from "./app";
+export class Repaint implements Task { static n = 0; go(): void { Repaint.n++; } }
+TEOF
+  ( cd "$TS_DIR" && node scan.mjs "$d" --json ) > "$d/rep.json" 2>"$d/scan.err"
+  if [ ! -s "$d/rep.json" ]; then
+    echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): NO REPORT WRITTEN — the engine did not run, which is an instrument failure, not a verdict about the fix. $(head -1 "$d/scan.err" 2>/dev/null)"
+    P87_OK=1
+  else
+    p87ts_rc="$(python3 -c "
+import json,sys
+d=json.load(open('$d/rep.json'))
+fns=d.get('functions')
+if fns is None: sys.exit(3)
+# LIVENESS: beacon performs Fs and is never omitted. Its absence means this report is not about this
+# fixture, so the control adjudicated nothing.
+if not any((x.get('fn') or '').endswith('beacon') for x in fns): sys.exit(4)
+f=[x for x in fns if (x.get('fn') or '').endswith('invoke')]
+inf=(f[0].get('inferred') if f else []) or []
+unresolved=(f[0].get('unresolved') if f else False)
+if 'Fs' in inf: sys.exit(1)
+if 'Unknown' in inf and unresolved is True: sys.exit(2)
+sys.exit(0)" 2>"$d/reader.err"; echo $?)"
+    case "$p87ts_rc" in
+      0) echo "  OK  OVER-CHARGE CONTROL (ts object literal) — a PURE object literal through the same structural dispatch gains no Fs, and is not blanket-hedged into Unknown either" ;;
+      1) echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): a pure object literal was charged Fs — the fix fabricates"; P87_OK=1 ;;
+      2) echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): a pure object literal was tagged Unknown+unresolved:true — the fix hedges on every object literal instead of resolving; it never fabricates Fs, but it destroys the precision the disjunction that lets it pass the arms above was never meant to excuse"; P87_OK=1 ;;
+      3) echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): the report has NO \`functions\` key — malformed, not pure"; P87_OK=1 ;;
+      4) echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): the report does not mention \`beacon\`, so it is not about this fixture — the control adjudicated nothing"; P87_OK=1 ;;
+      *) echo "  -> DIVERGE — OVER-CHARGE CONTROL (ts object literal): could not judge the pure report (rc=$p87ts_rc) $(head -1 "$d/reader.err" 2>/dev/null) — an unreadable report is an INSTRUMENT failure, not a fabrication finding"; P87_OK=1 ;;
+    esac
+  fi
 else
   echo "  ts     -> SKIP     (candor-ts not present — this engine was NOT asked)"
 fi
+# swift — THE ARM THAT REPLACED AN `exempt` LABEL. See the header block: swift IS exempt from the
+# toggle and is NOT exempt from the clause, and only one of those two facts can be learned from a row
+# that does not run. WHICH CONJUNCT THIS ARM CHECKS: ⟨0.35⟩(b)'s THIRD — `Unknown` AND
+# `unresolved: true` AND an `unknownWhy` of kind `callback:`/`dispatch:`. Route (a) is not available
+# here (swift does not carry the closure's Fs to the caller) and (b)'s first two conjuncts are already
+# satisfied, so the third is the whole question, and `cha_completeness_check.py` is the thing that asks
+# it — the checker was hardened to gate on `unknownWhy` after MEASURING this very report, and the
+# engine was then never added to the row. SOUNDNESS R180. Expected RED until candor-swift emits a
+# `dispatch:<Type>.<member>` here (or ⟨0.35⟩(b)'s third conjunct is deliberately softened to a SHOULD —
+# a decision, not a default).
+#
+# THE FIXTURE IS SWIFT'S ROUTE, NOT JAVA'S TRANSLATED. Swift has no lambda-to-protocol coercion, so the
+# synthesised implementor arrives as a CONCRETE conformer that CARRIES a closure (`ClosureTask`), and
+# the protocol-typed optional field is what the caller dispatches through. Both unwrap spellings run —
+# `held?.go()` and `if let h = held { h.go() }` — because which binder an engine follows is the whole
+# subject of the R71/R161 arc beside this one, and a row that drives only the optional-chain spelling
+# would have said nothing about the `if let` one.
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
+  for arm in zero one; do
+    d="$P87/sw-$arm"; mkdir -p "$d"
+    cat > "$d/main.swift" <<'SWEOF'
+import Foundation
+protocol Task { func go() }
+struct Store { func write() { try? "x".write(toFile: "/tmp/p87sw.txt", atomically: true, encoding: .utf8) } }
+struct ClosureTask: Task { let f: () -> Void; func go() { f() } }
+final class Widget {
+  var held: Task? = nil
+  func install(_ s: Store) { held = ClosureTask(f: { s.write() }) }
+  func fire() { held?.go() }
+  func fireIfLet() { if let h = held { h.go() } }
+}
+SWEOF
+    if [ "$arm" = one ]; then
+      cat > "$d/other.swift" <<'SWEOF'
+final class Repaint: Task { static var n = 0; func go() { Repaint.n += 1 } }
+SWEOF
+    fi
+    "$SW_BIN" "$d" --json > "$d/rep.json" 2>/dev/null
+    for swcaller in Widget.fire Widget.fireIfLet; do
+      out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" "$swcaller" Fs 2>&1)"
+      if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  swift ($swcaller, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
+      else echo "  -> DIVERGE — swift ($swcaller, $arm implementor(s)) [(b)'s THIRD conjunct; R180, expected RED]: $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+    done
+  done
+else
+  echo "  swift  -> SKIP     (candor-swift not present/built on this runner — this engine was NOT asked)"
+fi
 if [ "$P87_OK" = 0 ]; then
-  echo "  -> MATCH — a synthesised implementor either contributes its effects or is disclosed as Unknown;"
-  echo "     adding one unrelated conformer never converts a disclosure into silence"
+  echo "  -> MATCH — across all three spellings the clause names (stored lambda, method reference,"
+  echo "     structural object literal) a synthesised implementor either contributes its effects or is"
+  echo "     disclosed as Unknown + unresolved:true + an unknownWhy of the licensed kind; adding one"
+  echo "     unrelated conformer never converts a disclosure into silence, and a PURE implementor through"
+  echo "     the same site is neither charged nor blanket-hedged"
 else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
