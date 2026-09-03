@@ -27,6 +27,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.35.0] — 2026-09-03
 
+- **`scripts/check_agents_vocabulary.py` — a CI gate that derives the effect vocabulary from SPEC §1 and
+  checks every sibling's `AGENTS.md`/`README.md` copy and every embedded `--agents` contract against it
+  (SOUNDNESS R155: `Llm` was missing from every agent-facing copy, and the old drift gate pinned the
+  copies to EACH OTHER, so they drifted together). Wired into `conformance.yml` with sibling checkouts.
 - **Five findings from the 2026-08-30 four-agent review panel on ⟨0.34⟩, closed in conformance/run.sh,
   SPEC.md and SOUNDNESS.md — no spec-version change, all conformance/documentation hardening.**
   - **PART 84's remedy leg had no teeth.** Its `--policy`-names-a-remedy check was `*[Pp]olicy*` — a bare
