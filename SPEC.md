@@ -2751,6 +2751,15 @@ to resolve dispatch during its ⟨0.32⟩ compile-peek, and that path had never 
 — `--peek-classpath libs/dep.jar --json libs/dep.jar` destroyed the dependency jar at exit 0 (measured;
 fixed candor-java `9a17c4c`).
 
+*⟨0.34⟩ tags the rung whose INPUT LIST this extends, not the release it shipped in, and the two differ
+here. This clause was written after the `v0.34` spec tag: candor-spec `1969559`, 2026-08-31 21:21, where
+`v0.34` is `2d004b6` at 19:34 the same evening — `git merge-base --is-ancestor 1969559 v0.34` says NO. It
+first ships in the 0.35.0 build, alongside PART 86. It is deliberately NOT retagged ⟨0.35⟩: it moves no
+floor and adds no four-way MUST (see the paragraph below), and its MUST-ledger entry classifies it under
+PART 86, not under the ⟨0.35⟩ rung. Recorded because a reader dating a behaviour from its marker would
+otherwise conclude the published 0.34.0 engines implement it, and they do not — the candor-java fix
+`9a17c4c` is in this release, not the last one. §8's 0.34 entry carries the same note.*
+
 **Not written as a four-way MUST.** Of the four engines, only candor-java currently exposes an
 externally-declared peek classpath at all — rust, ts and swift each derive their peek's file set from the
 project's own manifest (`Cargo.toml`, `tsconfig.json`/`package.json`, `Package.swift`), never from a

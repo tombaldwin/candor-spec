@@ -161,6 +161,16 @@ Run it after any patch-cycle commit that adds a section here.
   0.35, one entry each, naming the conformance parts that pin each rung. Backfill rather than a
   "see the narrative paragraphs" pointer at §8's head, because only the backfill makes "§8 is
   authoritative" (CHANGELOG.md's own claim, and SPEC.md's) TRUE.
+- **The §3.3.1 declared-peek-classpath clause is tagged ⟨0.34⟩ but was written AFTER the `v0.34` spec
+  tag — now dated in place.** candor-spec `1969559` (2026-08-31 21:21) is not an ancestor of `v0.34`
+  (`2d004b6`, 19:34 the same evening), so the clause and PART 86 first ship here. NOT retagged ⟨0.35⟩,
+  and that was checked rather than assumed: its MUST-ledger entry classifies it under **PART 86**, not
+  under the ⟨0.35⟩ rung, and it moves no floor and adds no four-way MUST. A dating aside now says so at
+  the clause, in the house single-star-italic form for a historical note — which leaves the normative
+  text byte-identical, so the MUST ledger neither moved nor needed silencing (529/529, unchanged). The
+  reason it matters: a reader dating the behaviour from its marker would conclude the PUBLISHED 0.34.0
+  engines implement it, and they do not — candor-java `9a17c4c` ships in this release. §8's new 0.34
+  entry carries the same note.
 - **The MUST ledger's classification for the versioning block was RE-CONFIRMED, not re-hashed.** The whole
   narrative is one block (`must_ledger.py` extracts at paragraph granularity), so adding the ⟨0.35⟩
   paragraph moved its sha `df8fa25c43ee6913` → `6f4cf68741907c21` and failed the gate, which is the gate
