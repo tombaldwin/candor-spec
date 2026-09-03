@@ -91,8 +91,9 @@ Run it after any patch-cycle commit that adds a section here.
   **candor-rust** — exempt BY CONSTRUCTION, not unported: it resolves local-trait dispatch as a UNION over
   every visible impl, so an added implementor cannot flip a disclosure into silence, and `impl Fn` is
   impossible on stable, so the defining toggle cannot be built (SOUNDNESS **R72**, three executed attempts,
-  all negative). So: the clause is pinned on three engines and passing on two, and the part's rows say
-  which is which. Opened in `047363a`; the ts arm and the declared-coverage ledger classification landed
+  all negative). So: the clause is pinned on three engines and, as of `c97e1e4` (java) and `39ad496`
+  (swift), GREEN on all three — 24 rows, `-> MATCH`, measured with every engine tree clean. It was not
+  green when this entry was first written, and the part's rows, not this sentence, are what say so. Opened in `047363a`; the ts arm and the declared-coverage ledger classification landed
   in `da04869`; the method-reference arm, the swift arm and the ts over-charge control in this release.
 - **PART 87 was then hardened four times before it was trusted, and each time the defect was in the
   instrument, not an engine.** `08e557c`: the part and its checker (`cha_completeness_check.py`) could not
