@@ -98,6 +98,24 @@ Run it after any patch-cycle commit that adds a section here.
   closed before push), published cardinal sins found and closed in all four engines while fixing them
   (rust R122/R123/R128/R130/R139, swift R125/R130/R135, java R130, ts R130/R137/R138), and the open rows
   that remain. Each row marks what was MEASURED and what was taken on report.
+- **SPEC.md's versioning narrative had no ⟨0.35⟩ paragraph, and §8 stopped at 0.30 — so the document's
+  own claim that "the changelog lists every rung's contents" was FALSE for five rungs.** Found by the
+  0.35.0 release panel's spec lens. Two fixes, both in SPEC.md: the [Versioning policy](SPEC.md#versioning-policy)
+  narrative gains its ⟨0.35⟩ paragraph in the same form as ⟨0.30⟩–⟨0.34⟩ — NON-ADDITIVE, fail-closed, and
+  the first whose flip comes not from a field but from a caller APPEARING in `functions[]` where it was
+  absent, so `deny Unknown` / `deny <Effect> <fn>` / `pure <fn>` can go exit 0 → 1 on identical bytes with
+  no upgrade note, because the finding is the remedy; and §8 is BACKFILLED with 0.31, 0.32, 0.33, 0.34 and
+  0.35, one entry each, naming the conformance parts that pin each rung. Backfill rather than a
+  "see the narrative paragraphs" pointer at §8's head, because only the backfill makes "§8 is
+  authoritative" (CHANGELOG.md's own claim, and SPEC.md's) TRUE.
+- **The MUST ledger's classification for the versioning block was RE-CONFIRMED, not re-hashed.** The whole
+  narrative is one block (`must_ledger.py` extracts at paragraph granularity), so adding the ⟨0.35⟩
+  paragraph moved its sha `df8fa25c43ee6913` → `6f4cf68741907c21` and failed the gate, which is the gate
+  working as designed. It stays `unenforced`, and the reason now records WHY no row is possible rather than
+  only that none exists: each paragraph asserts what an UPGRADE does — a verdict that moves BETWEEN two
+  engine versions on identical bytes — and every conformance row measures one build. The remedy is named
+  (the "released floor" conformance job already holds a published binary beside HEAD's), so the debt is
+  recorded rather than left as a silence. Ledger still 529/529 classified, 12 unenforced.
 
 ## [0.34.0] — 2026-08-31
 

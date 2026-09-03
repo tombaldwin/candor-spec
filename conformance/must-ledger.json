@@ -3146,9 +3146,10 @@
       "part": "PART 86"
     },
     {
-      "sha": "df8fa25c43ee6913",
+      "sha": "6f4cf68741907c21",
       "at": "Contents",
-      "unenforced": "the Contents version banner — exercised by release-preflight [12] (no rung above the declared version) and scripts/check_agents_drift.py, neither of which is a conformance PART. A row asserting it would restate the bump, not test an engine."
+      "excerpt": "**Version 0.35** — all code engines declare `0.35`; the floor is conformance-pinned. How versions move (the la",
+      "unenforced": "SPLIT CLASSIFICATION, re-confirmed 2026-09-03 when the \u27e80.35\u27e9 paragraph was added to it (the sha moved from df8fa25c43ee6913; the classification did not, and this reason is why). The block is TWO things. (1) The Contents VERSION BANNER — exercised by release-preflight [12] (no rung above the declared version) and scripts/check_agents_drift.py, neither of which is a conformance PART; a row asserting it would restate the bump, not test an engine. (2) The per-rung ADDITIVITY NARRATIVE, now \u27e80.30\u27e9\u2013\u27e80.35\u27e9. Each paragraph DESCRIBES a rung whose behaviour is pinned by that rung's own part (named in the \u00a78 entry and in the clause itself \u2014 \u27e80.35\u27e9's is PART 87), but what the paragraph itself asserts is what an UPGRADE does: a verdict that moves BETWEEN two engine versions on identical bytes. No conformance row can hold that, because every row measures one build; the two-version comparison lives in the release ladder (release-preflight, the per-engine A/B against the published artifacts) instead. Recorded as a debt with a named remedy rather than a silence: the row that would close it needs the suite to hold a PREVIOUS floor's engine binary beside HEAD's and gate the same fixture under both \u2014 which is the arm the 'released floor' conformance job already builds (it downloads the published jar and cargo-installs the released scanner), so the cheapest close is a part that runs ONLY there and asserts the exit-code direction each paragraph claims. Until that exists, do not read a green suite as evidence that any of these paragraphs is true."
     },
     {
       "sha": "858a485e3fefca38",
