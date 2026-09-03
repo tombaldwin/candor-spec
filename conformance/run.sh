@@ -16302,7 +16302,7 @@ fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
 # ENGINES: java ts swift; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and `impl Fn` is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST
-# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited ts-pure — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; the three `java-pure-*` cells and `ts-pure` are the over-charge controls, ONE PER SHAPE PER ENGINE, each proving a PURE lambda (java) or a PURE object literal (ts) through that shape's identical write/read path gains no Fs and is not blanket-hedged into Unknown either
+# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited ts-pure sw-pure sw-calib sw-proto-zero sw-proto-one — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; `java-pure-*`, `ts-pure` and `sw-pure` are the OVER-CHARGE controls, one per shape per engine, each proving a PURE implementor through that shape's identical path gains no Fs and is not blanket-hedged into Unknown either; `sw-calib` is the CALIBRATION that proves branch (b) fires at all on candor-swift, without which its branch-(a) arms are evidence about nothing; `sw-proto-zero`/`sw-proto-one` are the §2 control that fails if an inherited Unknown ever gains an `unknownWhy` (SPEC.md:1381) or if the reason disappears from the source that owes it
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -16328,36 +16328,88 @@ fi
 #               discloses Unknown at zero implementors and reports the caller ABSENT at one — the sin,
 #               exactly. So this arm is falsified against a frozen artifact and pins a real close.
 #   mrefhof     `Optional.ofNullable(task).ifPresent(Runnable::run)` — the method reference passed as an
-#               ARGUMENT to a JDK higher-order function. MEASURED: `Widget.fireRef` is ABSENT from
-#               functions[] on HEAD **and** on published 0.34.0, at BOTH implementor counts, while the
-#               lambda spelling `ifPresent(r -> r.run())` is disclosed. `pure app.Widget.fireRef`,
-#               `deny Fs …` and `deny Unknown …` all exit 0; ground truth executed (the file is
-#               written). That is SOUNDNESS **R179**, a PUBLISHED cardinal sin in the reference engine.
-# THE mrefhof ARM IS COMMITTED RED, NOT SKIPPED, and that is deliberate. A skip-with-a-row would make
-# the row unfalsifiable in the direction that matters (this suite's own PART 39/PART 37(e) lesson: a
-# row that never runs its question scores PASS), and this family's rule is that a fixable silent
-# under-report gets fixed and GATED, never accepted as a residual. It goes green when R179 does.
-# NOTE THE ARM'S OWN LIMIT: at ZERO implementors it is red too, so for THIS arm the zero/one pair is not
-# a toggle — it is two independent assertions of the disjunction. The toggle framing holds for the other
-# four shapes.
+#               ARGUMENT to a JDK higher-order function. MEASURED 2026-09-03 when this arm was written:
+#               `Widget.fireRef` ABSENT from functions[] on candor-java HEAD **and** on published
+#               0.34.0, at BOTH implementor counts, while the lambda spelling `ifPresent(r -> r.run())`
+#               was disclosed; `pure app.Widget.fireRef` / `deny Fs …` / `deny Unknown …` all exit 0,
+#               ground truth executed. That is SOUNDNESS **R179**, a published cardinal sin in the
+#               reference engine, and the arm was committed RED — not skipped, because a row that never
+#               runs its question scores PASS (this suite's own PART 39 / PART 37(e) lesson) and a
+#               FIXABLE silent under-report gets gated, never booked as a residual.
+#               CLOSED THE SAME DAY, candor-java `c97e1e4`: `Widget.fireRef` now carries
+#               `Unknown` + `unresolved: true` + `callback:java.lang.Runnable.run` with
+#               `direct: ['Unknown']` — branch (b), and a DIRECT source, so the reason is earned (see
+#               the §2 discussion below). `deny Unknown app.Widget.fireRef` goes 0 → 1. The arm is
+#               PROBED LIVE and was never hard-coded to RED, so it was never wrong — only this prose
+#               would have been, which is why both the original measurement and the close are recorded
+#               rather than the row being quietly relabelled. Its published-0.34.0 half is unchanged
+#               and still falsifies against a frozen artifact.
+# NOTE THE mrefhof ARM'S OWN LIMIT: it was red at ZERO implementors too, so for THIS arm the zero/one
+# pair was never a toggle — it is two independent assertions of the disjunction. The toggle framing
+# holds for the other four java shapes.
 #
-# SWIFT NOW RUNS INSTEAD OF CARRYING AN `exempt` LABEL, and the label was drawn around the trigger.
-# Until 2026-09-03 the ENGINES line read `swift: measured exempt from THIS toggle`, which is TRUE and
-# was the wrong question: swift is exempt from the toggle (`sw-proto-zero` and `sw-proto-one` both
-# answer Unknown + unresolved:true, so the pure conformer flips nothing), and it fails a DIFFERENT
-# CONJUNCT that the exemption made unaskable. WHICH CONJUNCT: ⟨0.35⟩(b)'s THIRD — `Unknown`, AND
-# `unresolved: true`, AND an `unknownWhy` whose kind is `callback:` or `dispatch:`. MEASURED on
-# candor-swift HEAD over the protocol-typed-field + closure-carrying-conformer shape: `Widget.fire`
-# carries `["Unknown"]` with `unresolved: true` and NO `unknownWhy` at all — the engine has disclosed
-# THAT it does not know and never WHY, which is precisely what `cha_completeness_check.py` was hardened
-# to catch (its own docstring records this exact report as the measurement that added the third
-# conjunct, and swift was then not added to the row). That is SOUNDNESS **R180** — disclosed, not a
-# cardinal sin, but a MUST one engine fails. Committed RED for the same reason as mrefhof.
-# The swift fixture is the ts shape in swift's vocabulary, not java's: a protocol-typed optional field
-# (`var held: Task?`) assigned a struct conformer that CARRIES A CLOSURE (`ClosureTask(f: { s.write() })`),
-# which is how a synthesised implementor reaches a protocol dispatch in a language with no lambda-to-
-# protocol coercion. Both read spellings are driven — `held?.go()` and `if let h = held { h.go() }` —
-# because the ⟨0.35⟩-adjacent R71 arc is entirely about which unwrap binder an engine follows.
+# SWIFT NOW RUNS INSTEAD OF CARRYING AN `exempt` LABEL — and the FIRST arm written for it was WRONG,
+# withdrawn the same day, and the retraction is kept here because the mistake is instructive.
+# Until 2026-09-03 the ENGINES line read `swift: measured exempt from THIS toggle`. That is TRUE and it
+# was the wrong question, so the arm was made to run. But the arm it was made to run asked for a SPEC
+# VIOLATION. It read ⟨0.35⟩(b)'s third conjunct — an `unknownWhy` of kind `callback:`/`dispatch:` — off
+# `Widget.fire` over the closure-carrying-conformer fixture, and MEASURED on candor-swift `39ad496`
+# that caller has `direct: []` and `calls: [ClosureTask.go, Repaint.go]`: it RESOLVED the dispatch, to
+# BOTH conformers. Its `Unknown` is purely INHERITED from `ClosureTask.go`, which is the real source and
+# does carry `dispatch:ClosureTask.f`. SPEC §2 (SPEC.md:1381, the `"unknownWhy"` field: *"REQUIRED when
+# this fn introduces `Unknown` DIRECTLY (a source); absent if purely inherited"*, restated SPEC.md:4855
+# and in §3.1's `blindspots` definition) therefore FORBIDS the field there. The arm could only have gone
+# green on an engine that violated §2, and `blindspots` — whose whole job is separating the few real
+# sources from the smear downstream of them — is what would have been broken by "fixing" it.
+# THE TRANSFERABLE PART: the row read `Unknown + unresolved:true + no unknownWhy` as an incomplete
+# disclosure without asking whether the caller was the SOURCE. `unresolved: true` says the entry has an
+# unresolved hole somewhere in its reach; `direct` says whether it is THIS unit's hole. Reading the
+# second off the first is how a conformance row demands a field the report format forbids.
+#
+# WHAT THE SWIFT ARMS ASSERT NOW, and which branch each one is:
+#   sw-vis-{zero,one}  BRANCH (a), the clause's OWN toggle: one conformer whose effect is a VISIBLE
+#                      concrete one (`Writer.go` → Fs), then one unrelated PURE conformer added and
+#                      nothing else changed. MEASURED: `Widget.fire` and `Widget.fireIfLet` carry
+#                      `['Fs']` in BOTH arms (`calls` grows from [Writer.go] to [Repaint.go, Writer.go]
+#                      — a UNION, not a pick, structurally the same reason candor-rust is exempt).
+#                      ABSENCE IS FAIL, so the java/ts vanishing would be caught here if it happened.
+#   sw-calib           THE CALIBRATION, and without it the toggle above proves nothing about
+#                      DISCLOSURE — an engine that answered `Fs` to everything would pass it. A protocol
+#                      requirement satisfied by an INHERITED superclass method leaves no conformer unit
+#                      to resolve, so the candidate set is genuinely incomplete and the engine must take
+#                      (b). MEASURED: `['Unknown']`, `unresolved: true`, `unknownWhy: [dispatch:Task.go]`
+#                      AND `direct: ['Unknown']` — a real source, which is what licenses the reason. This
+#                      is the row that proves swift's (b) machinery exists at all, and it is checked in
+#                      BOTH directions: the reason must be there, and `direct` must show it is earned.
+#   sw-proto-{zero,one} THE §2 CONTROL, built from the fixture the withdrawn arm got wrong. It FAILS if
+#                      the caller ever gains an `unknownWhy` for an inherited `Unknown` — i.e. it fails
+#                      the "fix" this row asked for yesterday — and it fails if the reason goes MISSING
+#                      from the source one hop down, so the disclosure cannot quietly evaporate either.
+#   sw-pure            THE OVER-CHARGE CONTROL, one per engine, same rule as java's three and `ts-pure`:
+#                      a PURE conformer through the identical site must gain no Fs and must not be
+#                      blanket-hedged into Unknown. Liveness anchor is a `beacon` writing a file —
+#                      MEASURED, with only a pure conformer the caller is legitimately ABSENT, so
+#                      without the anchor this control adjudicates nothing.
+# ONE THING DELIBERATELY NOT CHANGED, so the next reader does not rediscover it as a defect:
+# `cha_completeness_check.py:74` encodes branch (a) as *the named concrete effect appears in `inferred`*.
+# For a candidate set that WAS completed but whose implementor's own effect is itself `Unknown` — the
+# `sw-proto-*` shape — that reading fails (a), falls through to (b), and then demands the `unknownWhy`
+# §2 forbids. The two branches are jointly unsatisfiable for that shape. It is NOT fixed by loosening (a)
+# to "the implementor's own effects, whatever they are": that would accept a caller carrying the WRONG
+# effect name, and accept an inherited Unknown with no reason anywhere in the chain, which is route (b)
+# with its disclosure removed — the direction this family calls the cardinal sin, in the checker that
+# exists to catch it. It is not fixed at all here because no arm needs it: the branch-(a) arms use a
+# conformer with a CONCRETE effect, and the inherited-Unknown shape is judged by the §2 control's own
+# reader, which asks the question the shared checker cannot. The residual is that the shared checker is
+# OVER-STRICT on that shape — it fails toward telling you, which is the safe direction, and it is
+# recorded in CHANGELOG.md [0.35.0] with this line number rather than left as a comment nobody measures.
+# NOTE THE ANTECEDENT, stated rather than glossed: §4 ⟨0.35⟩ names "a compiler-synthesised or structural
+# implementor", and Swift cannot coerce a closure or a function to a protocol AT ALL — every conformer
+# is a hand-written nominal type, which is why both fixtures need a wrapper. So swift's position is
+# closer to candor-rust's exemption-by-construction than to java's, and what these arms pin is the
+# clause's PURPOSE (an added conformer never converts a disclosure into silence; an incomplete set is
+# disclosed with a reason at its source) rather than its literal antecedent. That is worth having and it
+# is not the same claim, so it is not written as the same claim.
 echo
 echo "[87] a dispatch whose implementor set includes a synthesised/structural implementor: effects OR Unknown, never a silent resolve"
 P87_OK=0
@@ -16458,7 +16510,7 @@ JEOF
         # Both arms red means the zero/one pair is NOT a toggle here — it is the disjunction asserted
         # twice, independently. Stated because reading these two rows as a toggle would misattribute
         # the defect to the candidate-set count, which is not where it is.
-        slabel='method-ref passed to a JDK HOF (R179, expected RED until candor-java fixes it)'
+        slabel='method-ref passed to a JDK HOF'
         caller='Widget.fireRef'
         cat > "$d/src/app/Widget.java" <<'JEOF'
 package app;
@@ -16694,34 +16746,21 @@ sys.exit(0)" 2>"$d/reader.err"; echo $?)"
 else
   echo "  ts     -> SKIP     (candor-ts not present — this engine was NOT asked)"
 fi
-# swift — THE ARM THAT REPLACED AN `exempt` LABEL. See the header block: swift IS exempt from the
-# toggle and is NOT exempt from the clause, and only one of those two facts can be learned from a row
-# that does not run. WHICH CONJUNCT THIS ARM CHECKS: ⟨0.35⟩(b)'s THIRD — `Unknown` AND
-# `unresolved: true` AND an `unknownWhy` of kind `callback:`/`dispatch:`. Route (a) is not available
-# here (swift does not carry the closure's Fs to the caller) and (b)'s first two conjuncts are already
-# satisfied, so the third is the whole question, and `cha_completeness_check.py` is the thing that asks
-# it — the checker was hardened to gate on `unknownWhy` after MEASURING this very report, and the
-# engine was then never added to the row. SOUNDNESS R180. Expected RED until candor-swift emits a
-# `dispatch:<Type>.<member>` here (or ⟨0.35⟩(b)'s third conjunct is deliberately softened to a SHOULD —
-# a decision, not a default).
-#
-# THE FIXTURE IS SWIFT'S ROUTE, NOT JAVA'S TRANSLATED. Swift has no lambda-to-protocol coercion, so the
-# synthesised implementor arrives as a CONCRETE conformer that CARRIES a closure (`ClosureTask`), and
-# the protocol-typed optional field is what the caller dispatches through. Both unwrap spellings run —
-# `held?.go()` and `if let h = held { h.go() }` — because which binder an engine follows is the whole
-# subject of the R71/R161 arc beside this one, and a row that drives only the optional-chain spelling
-# would have said nothing about the `if let` one.
+# swift — see the header block for what each arm asserts, which BRANCH it is, and why the arm first
+# written here was withdrawn. Four fixture families: the clause's own toggle on a visible-effect
+# conformer (branch (a)), the calibration that proves branch (b) fires at all, the §2 control over the
+# inherited-Unknown shape, and the over-charge control.
 if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
+  # (a) THE CLAUSE'S OWN TOGGLE. Only variable between the arms: one pure unrelated conformer.
   for arm in zero one; do
-    d="$P87/sw-$arm"; mkdir -p "$d"
+    d="$P87/sw-vis-$arm"; mkdir -p "$d"
     cat > "$d/main.swift" <<'SWEOF'
 import Foundation
 protocol Task { func go() }
-struct Store { func write() { try? "x".write(toFile: "/tmp/p87sw.txt", atomically: true, encoding: .utf8) } }
-struct ClosureTask: Task { let f: () -> Void; func go() { f() } }
+struct Writer: Task { func go() { try? "x".write(toFile: "/tmp/p87sw.txt", atomically: true, encoding: .utf8) } }
 final class Widget {
   var held: Task? = nil
-  func install(_ s: Store) { held = ClosureTask(f: { s.write() }) }
+  func install() { held = Writer() }
   func fire() { held?.go() }
   func fireIfLet() { if let h = held { h.go() } }
 }
@@ -16732,21 +16771,148 @@ final class Repaint: Task { static var n = 0; func go() { Repaint.n += 1 } }
 SWEOF
     fi
     "$SW_BIN" "$d" --json > "$d/rep.json" 2>/dev/null
+    # BOTH unwrap spellings: `held?.go()` and `if let h = held { h.go() }`. Which binder an engine
+    # follows is the whole subject of the R71/R161/R178 arc beside this clause, and a row driving only
+    # the optional-chain spelling would say nothing about the `if let` one.
     for swcaller in Widget.fire Widget.fireIfLet; do
       out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" "$swcaller" Fs 2>&1)"
-      if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  swift ($swcaller, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
-      else echo "  -> DIVERGE — swift ($swcaller, $arm implementor(s)) [(b)'s THIRD conjunct; R180, expected RED]: $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+      if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  swift ($swcaller, $arm unrelated conformer(s)): $(printf '%s' "$out" | cut -c5-110)"
+      else echo "  -> DIVERGE — swift ($swcaller, $arm unrelated conformer(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
     done
   done
+  # (b) THE CALIBRATION — prove the disclosure branch can fire. A protocol requirement satisfied by an
+  # INHERITED superclass method leaves no conformer unit to resolve. Checked TWICE: through the shared
+  # checker (which accepts (b) only with a licensed unknownWhy), and directly on `direct`, because a
+  # reason without a direct Unknown would be the §2 violation the control below forbids.
+  d="$P87/sw-calib"; mkdir -p "$d"
+  cat > "$d/main.swift" <<'SWEOF'
+import Foundation
+protocol Task { func go() }
+class Base { func go() { try? "x".write(toFile: "/tmp/p87swc.txt", atomically: true, encoding: .utf8) } }
+final class Sub: Base, Task {}
+final class Widget { var held: Task? = nil
+  func install() { held = Sub() }
+  func fire() { held?.go() } }
+SWEOF
+  "$SW_BIN" "$d" --json > "$d/rep.json" 2>/dev/null
+  out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" Widget.fire Fs 2>&1)"
+  swcal_rc="$(python3 -c "
+import json,sys
+d=json.load(open('$d/rep.json'))
+f=[x for x in (d.get('functions') or []) if (x.get('fn') or '').endswith('Widget.fire')]
+if not f: sys.exit(3)
+sys.exit(0 if 'Unknown' in (f[0].get('direct') or []) else 1)" 2>/dev/null; echo $?)"
+  if printf '%s' "$out" | grep -q '^OK' && [ "$swcal_rc" = 0 ]; then
+    echo "  OK  swift CALIBRATION (genuinely incomplete candidate set) — branch (b) fires: Unknown + unresolved:true + a licensed unknownWhy, and \`direct\` shows the caller EARNED the reason"
+  elif [ "$swcal_rc" != 0 ]; then
+    echo "  -> DIVERGE — swift CALIBRATION: \`Widget.fire\` does not carry Unknown in \`direct\` (rc=$swcal_rc), so either it is absent or a reason is being emitted without a direct source. Branch (b) is unproven here, which makes the toggle arms above evidence about nothing"; P87_OK=1
+  else
+    echo "  -> DIVERGE — swift CALIBRATION: $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1
+  fi
+  # THE §2 CONTROL — built from the fixture the WITHDRAWN arm got wrong, so the mistake cannot recur.
+  # SPEC.md:1381 (`"unknownWhy"`: REQUIRED when this fn introduces Unknown DIRECTLY — a source; ABSENT
+  # if purely inherited), restated SPEC.md:4855 and in §3.1's `blindspots` definition. Here the caller
+  # RESOLVES the dispatch to both conformers and inherits Unknown from `ClosureTask.go`, which cannot
+  # see through its own stored closure field. So the caller MUST NOT carry a reason and the conformer
+  # MUST. This control fails in BOTH directions: a reason appearing on the caller (the "fix" this row
+  # asked for on 2026-09-03 and withdrew), and the reason disappearing from the source.
+  # The loop iterates the CONTROL DIRECTORY NAMES literally, not `sw-proto-$arm`, for the same reason
+  # the java over-charge loop does: PART 44 matches a declared control name on a word boundary that
+  # excludes `-`, so a name composed at runtime cannot be tied back to the declaration claiming it
+  # exists. It rejected the assembled form here too, correctly.
+  for pdir in sw-proto-zero sw-proto-one; do
+    arm="${pdir#sw-proto-}"
+    d="$P87/$pdir"; mkdir -p "$d"
+    cat > "$d/main.swift" <<'SWEOF'
+import Foundation
+protocol Task { func go() }
+struct Store { func write() { try? "x".write(toFile: "/tmp/p87swp.txt", atomically: true, encoding: .utf8) } }
+struct ClosureTask: Task { let f: () -> Void; func go() { f() } }
+final class Widget {
+  var held: Task? = nil
+  func install(_ s: Store) { held = ClosureTask(f: { s.write() }) }
+  func fire() { held?.go() }
+}
+SWEOF
+    if [ "$arm" = one ]; then
+      cat > "$d/other.swift" <<'SWEOF'
+final class Repaint: Task { static var n = 0; func go() { Repaint.n += 1 } }
+SWEOF
+    fi
+    "$SW_BIN" "$d" --json > "$d/rep.json" 2>/dev/null
+    swp_rc="$(python3 -c "
+import json,sys
+d=json.load(open('$d/rep.json'))
+fns=d.get('functions')
+if fns is None: sys.exit(6)
+g=lambda n:[x for x in fns if (x.get('fn') or '').endswith(n)]
+c=g('Widget.fire')
+if not c: sys.exit(1)                                   # ABSENCE is still the sin, control or not
+c=c[0]
+if 'Unknown' not in (c.get('inferred') or []): sys.exit(2)
+if c.get('direct'): sys.exit(3)                         # it must have RESOLVED the dispatch
+if c.get('unknownWhy'): sys.exit(4)                     # SPEC.md:1381 — forbidden on an inherited Unknown
+s=g('ClosureTask.go')
+if not s or 'Unknown' not in (s[0].get('direct') or []): sys.exit(5)
+kinds={str(w).split(':',1)[0] for w in (s[0].get('unknownWhy') or []) if ':' in str(w)}
+sys.exit(0 if kinds & {'callback','dispatch'} else 5)   # …and the SOURCE must pay the reason
+" 2>/dev/null; echo $?)"
+    case "$swp_rc" in
+      0) echo "  OK  swift §2 CONTROL ($arm unrelated conformer(s)) — the caller resolved the dispatch, inherits Unknown, and carries NO unknownWhy; the conformer that cannot see through its stored closure carries it" ;;
+      1) echo "  -> DIVERGE — swift §2 CONTROL ($arm): \`Widget.fire\` is ABSENT — that is the ⟨0.35⟩ sin's signature, not a §2 question"; P87_OK=1 ;;
+      2) echo "  -> DIVERGE — swift §2 CONTROL ($arm): \`Widget.fire\` does not carry Unknown at all — the closure frontier stopped being disclosed"; P87_OK=1 ;;
+      3) echo "  -> DIVERGE — swift §2 CONTROL ($arm): \`Widget.fire\` has a non-empty \`direct\` — it stopped resolving the dispatch, so this is no longer the inherited-Unknown shape"; P87_OK=1 ;;
+      4) echo "  -> DIVERGE — swift §2 CONTROL ($arm): \`Widget.fire\` carries an \`unknownWhy\` for an INHERITED Unknown. SPEC.md:1381 forbids it (REQUIRED on a direct source, absent if purely inherited) and \`blindspots\` would then rank a smear entry as a root cause. This is exactly the change PART 87 asked candor-swift for on 2026-09-03 and withdrew"; P87_OK=1 ;;
+      5) echo "  -> DIVERGE — swift §2 CONTROL ($arm): the SOURCE \`ClosureTask.go\` no longer carries a direct Unknown with a licensed unknownWhy — the reason has evaporated rather than moved, which is the opposite failure and just as bad"; P87_OK=1 ;;
+      *) echo "  -> DIVERGE — swift §2 CONTROL ($arm): could not judge the report (rc=$swp_rc) — an instrument failure, not a verdict"; P87_OK=1 ;;
+    esac
+  done
+  # OVER-CHARGE CONTROL, swift. LIVENESS FIRST: with only a pure conformer the caller is legitimately
+  # ABSENT, so this control is absence-shaped and a broken fixture is indistinguishable from a pass
+  # without an anchor. `beacon` writes a file and is never omitted.
+  d="$P87/sw-pure"; mkdir -p "$d"
+  cat > "$d/main.swift" <<'SWEOF'
+import Foundation
+protocol Task { func go() }
+final class Quiet: Task { static var n = 0; func go() { Quiet.n += 1 } }
+final class Widget {
+  var held: Task? = nil
+  func install() { held = Quiet() }
+  func fire() { held?.go() }
+  func fireIfLet() { if let h = held { h.go() } }
+}
+func beacon() { try? "x".write(toFile: "/tmp/p87swbeacon.txt", atomically: true, encoding: .utf8) }
+SWEOF
+  "$SW_BIN" "$d" --json > "$d/rep.json" 2>/dev/null
+  swpure_rc="$(python3 -c "
+import json,sys
+d=json.load(open('$d/rep.json'))
+fns=d.get('functions')
+if fns is None: sys.exit(3)
+if not any((x.get('fn') or '').endswith('beacon') for x in fns): sys.exit(4)
+f=[x for x in fns if (x.get('fn') or '').endswith('Widget.fire')]
+inf=(f[0].get('inferred') if f else []) or []
+unresolved=(f[0].get('unresolved') if f else False)
+if 'Fs' in inf: sys.exit(1)
+if 'Unknown' in inf and unresolved is True: sys.exit(2)
+sys.exit(0)" 2>/dev/null; echo $?)"
+  case "$swpure_rc" in
+    0) echo "  OK  OVER-CHARGE CONTROL (swift protocol field) — a PURE conformer through the same site gains no Fs, and is not blanket-hedged into Unknown either" ;;
+    1) echo "  -> DIVERGE — OVER-CHARGE CONTROL (swift): a pure conformer's caller was charged Fs — the fix fabricates"; P87_OK=1 ;;
+    2) echo "  -> DIVERGE — OVER-CHARGE CONTROL (swift): a pure conformer's caller was tagged Unknown+unresolved:true — the fix hedges on every protocol dispatch instead of resolving"; P87_OK=1 ;;
+    3) echo "  -> DIVERGE — OVER-CHARGE CONTROL (swift): the report has NO \`functions\` key — malformed, not pure"; P87_OK=1 ;;
+    4) echo "  -> DIVERGE — OVER-CHARGE CONTROL (swift): the report does not mention \`beacon\`, so it is not about this fixture — the control adjudicated nothing"; P87_OK=1 ;;
+    *) echo "  -> DIVERGE — OVER-CHARGE CONTROL (swift): could not judge the report (rc=$swpure_rc) — an INSTRUMENT failure, not a fabrication finding"; P87_OK=1 ;;
+  esac
 else
   echo "  swift  -> SKIP     (candor-swift not present/built on this runner — this engine was NOT asked)"
 fi
 if [ "$P87_OK" = 0 ]; then
   echo "  -> MATCH — across all three spellings the clause names (stored lambda, method reference,"
-  echo "     structural object literal) a synthesised implementor either contributes its effects or is"
-  echo "     disclosed as Unknown + unresolved:true + an unknownWhy of the licensed kind; adding one"
-  echo "     unrelated conformer never converts a disclosure into silence, and a PURE implementor through"
-  echo "     the same site is neither charged nor blanket-hedged"
+  echo "     structural object literal) an implementor either contributes its effects or is disclosed as"
+  echo "     Unknown + unresolved:true, with the unknownWhy on the unit that INTRODUCES the Unknown and"
+  echo "     nowhere else (SPEC.md:1381); adding one unrelated conformer never converts a disclosure into"
+  echo "     silence, and a PURE implementor through the same site is neither charged nor blanket-hedged"
 else
   echo "  -> DIVERGE — see the rows above"; rc=1
 fi
