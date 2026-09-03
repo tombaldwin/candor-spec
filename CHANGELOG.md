@@ -80,11 +80,14 @@ Run it after any patch-cycle commit that adds a section here.
   stated per engine rather than as a headline: **candor-java** — instance, static, inherited and
   method-reference field bindings, zero and one implementor each, all GREEN, with an over-charge control
   per shape; the fifth arm, a method reference passed as an ARGUMENT to a JDK higher-order function
-  (`ifPresent(Runnable::run)`), is RED, a published cardinal sin in the reference engine
-  (SOUNDNESS **R179**). **candor-ts** — the structural object-literal route, both arms GREEN, with its own
-  over-charge control. **candor-swift** — RED on ⟨0.35⟩(b)'s third conjunct: it discloses `Unknown` +
-  `unresolved: true` over a protocol-typed field with a closure-carrying conformer and emits no
-  `unknownWhy` (SOUNDNESS **R180** — disclosed, not silent, but a MUST an engine fails at cut time).
+  (`ifPresent(Runnable::run)`), was RED when it was written — a published cardinal sin in the reference
+  engine (SOUNDNESS **R179**) — and went GREEN the same day on candor-java `c97e1e4`, which discloses it
+  as branch (b) with `direct: ['Unknown']`. **candor-ts** — the structural object-literal route, both arms GREEN, with its own
+  over-charge control. **candor-swift** — GREEN on all four fixture families: the clause's own toggle on a
+  visible-effect conformer takes branch (a) in both arms, a calibration proves branch (b) fires on a
+  genuinely incomplete candidate set, a §2 control pins that an INHERITED `Unknown` carries no
+  `unknownWhy` while its source does, and an over-charge control holds the other direction. (R180's
+  premise was withdrawn — see the PART 87 entry below.)
   **candor-rust** — exempt BY CONSTRUCTION, not unported: it resolves local-trait dispatch as a UNION over
   every visible impl, so an added implementor cannot flip a disclosure into silence, and `impl Fn` is
   impossible on stable, so the defining toggle cannot be built (SOUNDNESS **R72**, three executed attempts,
@@ -107,23 +110,64 @@ Run it after any patch-cycle commit that adds a section here.
     reference. `mrefstore` (`this.task = s::write; task.run()`) is the clause's own toggle in
     method-reference form and is GREEN: candor-java HEAD charges `Fs` at both implementor counts, while
     the PUBLISHED 0.34.0 jar discloses at zero and reports the caller **ABSENT** at one — falsified
-    against a frozen artifact. `mrefhof` (`Optional.ofNullable(task).ifPresent(Runnable::run)`) is RED:
-    `Widget.fireRef` is absent from `functions[]` on HEAD **and** on 0.34.0, at both counts, while
-    `ifPresent(r -> r.run())` one line over is disclosed. That is **SOUNDNESS R179**, a published
-    cardinal sin in the reference engine. It runs RED rather than being skipped, because a skipped row
-    is unfalsifiable in the direction that matters — this suite's own PART 39 / PART 37(e) lesson — and
-    a FIXABLE silent under-report gets gated, never accepted as a residual.
-  - **A swift arm that RUNS, replacing an `exempt` label drawn around the trigger.** The old declaration
-    said swift was "measured exempt from THIS toggle", which is true and was the wrong question: swift
-    is exempt from the toggle (`sw-proto-zero` and `sw-proto-one` both answer `Unknown` +
-    `unresolved: true`, so the pure conformer flips nothing) and fails a DIFFERENT conjunct the
-    exemption made unaskable. The part's header now states WHICH: ⟨0.35⟩(b)'s THIRD — `Unknown`, AND
-    `unresolved: true`, AND an `unknownWhy` of kind `callback:`/`dispatch:`. Over a protocol-typed
-    optional field holding a closure-carrying conformer, `Widget.fire` and `Widget.fireIfLet` carry
-    `["Unknown"]` with `unresolved: true` and **no `unknownWhy` at all** — disclosed THAT, never WHY.
-    **SOUNDNESS R180**: a MUST one engine fails at cut time, disclosed rather than silent. RED for the
-    same reason as `mrefhof`. `cha_completeness_check.py` was hardened to gate on exactly this and the
-    engine was then not added to the row, which is how the gap survived four earlier hardening rounds.
+    against a frozen artifact. `mrefhof` (`Optional.ofNullable(task).ifPresent(Runnable::run)`) was committed
+    RED: `Widget.fireRef` absent from `functions[]` on candor-java HEAD **and** on published 0.34.0, at
+    both counts, while `ifPresent(r -> r.run())` one line over was disclosed — **SOUNDNESS R179**, a
+    published cardinal sin in the reference engine. It ran RED rather than being skipped, because a
+    skipped row is unfalsifiable in the direction that matters (PART 39 / PART 37(e)) and a FIXABLE
+    silent under-report gets gated, never booked as a residual. **CLOSED the same day, candor-java
+    `c97e1e4`**: `Widget.fireRef` now carries `Unknown` + `unresolved: true` +
+    `callback:java.lang.Runnable.run` with `direct: ['Unknown']` — branch (b), a genuine source, so
+    `deny Unknown app.Widget.fireRef` goes 0 → 1. The arm is probed live and was never hard-coded to
+    RED, so the row was never wrong; only prose could have gone stale, so both the original measurement
+    and the close are recorded (the PART 80 precedent in this same section).
+  - **A swift arm that RUNS, replacing an `exempt` label drawn around the trigger — and the FIRST arm
+    written for it was WRONG, withdrawn the same day.** The old declaration said swift was "measured
+    exempt from THIS toggle", which is true and was the wrong question. The replacement asked for a SPEC
+    VIOLATION: it read ⟨0.35⟩(b)'s third conjunct (an `unknownWhy` of kind `callback:`/`dispatch:`) off
+    `Widget.fire` over a closure-carrying-conformer fixture. MEASURED on candor-swift `39ad496`, that
+    caller has `direct: []` and `calls: [ClosureTask.go, Repaint.go]` — it RESOLVED the dispatch, to both
+    conformers, and its `Unknown` is purely INHERITED from `ClosureTask.go`, which is the real source and
+    does carry `dispatch:ClosureTask.f`. **SPEC.md:1381** (`unknownWhy` is *"REQUIRED when this fn
+    introduces `Unknown` DIRECTLY (a source); absent if purely inherited"*, restated SPEC.md:4855 and in
+    §3.1's `blindspots` definition) forbids the field there, so the arm could only have gone green on an
+    engine that broke §2 — and `blindspots`, whose job is separating the few real sources from the smear,
+    is what "fixing" it would have broken. The transferable error: the row read `unresolved: true` +
+    no `unknownWhy` as an incomplete disclosure without asking whether the caller was the SOURCE.
+    `unresolved: true` says there is a hole in the entry's reach; `direct` says whether it is this unit's
+    hole. **SOUNDNESS R180's premise is therefore withdrawn** — candor-swift's own
+    `ChaCompletenessDisclosureProcessTests` (`33e0343`) pins the correct behaviour so a future "fix" reds
+    a test. Four swift fixture families now run, all GREEN, each naming its branch: `sw-vis-{zero,one}` —
+    the clause's OWN toggle on a conformer with a VISIBLE concrete effect, branch **(a)**, `Widget.fire`
+    and `Widget.fireIfLet` carrying `['Fs']` in both arms with `calls` growing as a UNION, ABSENCE=FAIL;
+    `sw-calib` — the CALIBRATION, a protocol requirement satisfied by an inherited superclass method, so
+    the candidate set is genuinely incomplete and the engine must take branch **(b)**: `['Unknown']`,
+    `unresolved: true`, `unknownWhy: [dispatch:Task.go]` **and** `direct: ['Unknown']`, which is what
+    licenses the reason (without this row the branch-(a) arms are evidence about nothing — an engine that
+    answered `Fs` to everything would pass them); `sw-proto-{zero,one}` — the **§2 CONTROL** built from
+    the fixture the withdrawn arm got wrong, failing in BOTH directions (a reason appearing on the
+    inheriting caller, or the reason vanishing from the source that owes it); `sw-pure` — the
+    over-charge control, with a `beacon` liveness anchor because with only a pure conformer the caller is
+    legitimately absent.
+  - **The java and ts arms were audited for the same misapplication and are clean.** Stated per arm,
+    because "we checked" is not a measurement: on HEAD every java arm and both ts arms read branch
+    **(a)** — `app.Widget.fire` / `Sub.fire` / `invoke` carry `Fs`, with `direct: []` (effects inherited
+    from the lambda or `<structural>` unit, which §2's rule does not restrict — it restricts
+    `unknownWhy`, not effects). The only cells that read (b)'s conjunct at all are the PUBLISHED-0.34.0
+    falsification cells, where `app.Widget.fire` has `direct: ['Unknown']` and
+    `unknownWhy: ['callback:java.lang.Runnable.run']` — a genuine source, §2-compliant. The
+    misapplication was swift-only.
+  - **`cha_completeness_check.py:74` is left as it is, deliberately, and the reasoning is recorded rather
+    than left to be rediscovered.** It encodes branch (a) as *the named concrete effect appears*, so a
+    candidate set that WAS completed but whose implementor's own effect is itself `Unknown` fails (a),
+    falls to (b), and demands the field §2 forbids — the two branches are jointly unsatisfiable for that
+    shape. It is NOT fixed by loosening (a) to "the implementor's own effects, whatever they are": that
+    accepts a caller carrying the WRONG effect name, and accepts an inherited `Unknown` with no reason
+    anywhere in the chain — route (b) with its disclosure deleted, which is the cardinal-sin direction,
+    inside the checker built to catch it. It is not fixed at all because no arm needs it: the branch-(a)
+    arms use a conformer with a concrete effect, and the inherited-Unknown shape is judged by the §2
+    control's own reader. The residual is an OVER-STRICT shared checker on one shape — it fails toward
+    telling you, which is the safe direction.
   - **A ts OVER-CHARGE control (`ts-pure`), mirroring java's three.** Without it, a candor-ts fix that
     hedged every object-literal dispatch into `Unknown` + `unresolved: true` passes both ts arms (their
     disjunction accepts route (b) unconditionally) and nothing in the part says so — on the engine whose
@@ -133,9 +177,15 @@ Run it after any patch-cycle commit that adds a section here.
     the control vacuous on the day it was written.
   - `# ENGINES:` now reads `java ts swift` with rust's exemption-by-construction (SOUNDNESS R72) stated
     in full; `# CONTROLS:` gains `ts-pure`. `part_declarations.py` and `part.sh --check` pass.
-    Measured with `conformance/part.sh 87` (PROVISIONAL — candor-java and candor-swift trees were dirty
-    under parallel fixes): java 8 OK / 2 RED (`mrefhof`), 3 java controls OK, ts 2 OK + control OK,
-    swift 4 RED (R180).
+    Measured with `conformance/part.sh 87` with **all four engine trees clean and committed**
+    (candor-rust `7ac50f2`, candor-java `5dae0ca`, candor-ts `12b939a`, candor-swift `39ad496`) — so the
+    suite printed no PROVISIONAL qualifier and the result is about what those engines ship: **24 rows,
+    all OK, `-> MATCH`**. java 10 (five shapes × two arms) + 3 over-charge controls; ts 2 + 1 control;
+    swift 4 toggle + calibration + 2 §2 controls + 1 over-charge control. The four
+    `skip-ratchet: baseline tally key(s) missing` lines a filtered part-87 run prints are PRE-EXISTING
+    and filter-induced — A/B'd against an unmodified `run.sh` with the same filter and the same engine
+    trees, byte-identical — because the skip-ratchet block sits inside PART 87's slice and PART 40's
+    tallies are never in a filtered log.
 - **`scripts/check_soundness_tables.py` is a CI gate: every SOUNDNESS row must render as a table row.**
   Measured with a GFM lexer, **32 rows** — the entire R108–R133 register plus six older ones — were
   rendering as raw paragraphs, split from their tables by a prose block and three stray blank lines. A
