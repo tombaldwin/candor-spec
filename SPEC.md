@@ -74,6 +74,24 @@ that reaches it, not only the excluded declaration's own name, so a scoped polic
 excluded code can now exit 2 on the same bytes. The remedy is the finding itself: the effect was always
 there, denied, and unreported — there is no upgrade note, because there is no previously-correct behaviour
 to preserve.
+**⟨0.35⟩ IS NOT ADDITIVE EITHER, and its flip does not come from a field at all — it comes from a
+function APPEARING in `functions[]` that was absent before.** It adds no key and removes none. §4's
+*A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE* binds the `inferred` set every engine already emits:
+at a dispatch site whose visible implementor set includes a compiler-synthesised or structural
+implementor — a lambda or closure coerced to an interface/protocol, a method reference, a method-bearing
+object literal — the CALLING function must carry that implementor's effects or `Unknown` with
+`unresolved: true`, and may no longer resolve silently to the candidates it happened to see. Every engine
+OMITS pure functions from the report, so the pre-rung answer was not a wrong row but NO ROW: a
+wrongly-resolved caller and a genuinely pure one are the same bytes. Under ⟨0.35⟩ that caller appears. So
+`deny Unknown`, `deny <Effect> <fn>` and `pure <fn>` over the same tree, the same policy and the same
+invocation can go exit 0 → exit 1 on IDENTICAL BYTES. It fails CLOSED, and the cost is bounded to callers
+that actually reach such a site — every other entry is byte-identical to ⟨0.34⟩'s, and a tree with no
+synthesised implementor never fires at all. **There is no upgrade note, because the finding IS the
+remedy:** the effect was always performed, the policy always denied it, and the green came from an
+answer the engine could not support — there is no previously-correct behaviour to preserve, only a wave
+of newly-reported callers to read at the upgrade. Pinned by conformance **PART 87**, whose header records
+per engine which route it answers by — (a) completing the candidate set or (b) disclosing — and states
+the construction that makes candor-rust exempt rather than unported.
 **0.23 is a tier-1 additive
 rung — cross-package interface dispatch** (§2, `WORKSPACE-CHAINING-DESIGN.md`): the optional `interfaceUnion`
 report entry — a synthetic `pkg#Iface.method` union over a package's local implementers, emitted (gated behind
@@ -5227,6 +5245,68 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.35 (all code engines declare `0.35`; conformance-pinned by PART 87)** — a **NON-ADDITIVE** rung that
+  adds no field and removes none. §4 gains *A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE*: at a dispatch
+  site whose visible implementor set includes a compiler-synthesised or structural implementor (a lambda or
+  closure coerced to an interface/protocol, a method reference, a method-bearing object literal), the
+  CALLING function's `inferred` MUST carry that implementor's effects or `Unknown` with `unresolved: true`
+  and an `unknownWhy` of kind `callback:`/`dispatch:` — never a silent resolve to the candidates it happened
+  to see. The verdict flip is a caller APPEARING in `functions[]` where it was absent (every engine omits
+  pure functions, so the pre-rung answer was no row at all), so `deny Unknown`, `deny <Effect> <fn>` and
+  `pure <fn>` can go exit 0 → exit 1 on identical bytes. It fails CLOSED and there is no upgrade note — the
+  finding is the remedy. PART 87's header records each engine's route ((a) completion or (b) disclosure),
+  the construction that makes candor-rust exempt rather than unported (SOUNDNESS R72), and any arm that is
+  currently RED. See [Versioning policy](#versioning-policy) for the upgrade's shape.
+
+- **0.34 (all code engines declare `0.34`; conformance-pinned four-way, PARTs 80, 83, 84, 85)** — a
+  **NON-ADDITIVE** rung in four parts, two of which cost a consumer nothing. (1) The ⟨0.33⟩ cross-policy
+  refusal's remedy now names the real cause when the report predates ⟨0.33⟩ — message-only, verdict, exit
+  code and gate document byte-identical (§3.1, PART 80). (2) The `zeroMatch` carve-out RELAXES §3.1's
+  byte-equality between the gate's two routes rather than tightening it, describing a divergence all four
+  engines already had (PART 83). (3) `--policy` on a descriptive verb — `show`, `where`, `callers`, `map`,
+  `diff`, `containment`, `reachable`, `path`, `impact`, `blindspots`, `tour`, and `rewire` where exposed —
+  is an exit-2 USAGE ERROR where it was previously accepted and silently dropped (§3.3, PART 84); the cost
+  is bounded to invocations that pass the flag. (4) The peek scope-match property widens the `<scope>` test
+  a `deny`/`pure` rule runs against a peek finding to every in-scope caller that reaches it, so a scoped
+  policy that answered `policy ✓` over an effect reached only through in-scope dynamic dispatch into
+  excluded code can now exit 2 on the same bytes (§2, PART 85) — fail-closed, no upgrade note. *The §3.3.1
+  declared-peek-classpath clause and PART 86 carry a ⟨0.34⟩ marker but were written AFTER the `v0.34` spec
+  tag (candor-spec `1969559`) and first ship in the 0.35.0 build: they extend this rung's input list
+  without moving the floor, and are candor-java-scoped rather than a four-way MUST.*
+
+- **0.33 (all code engines declare `0.33`; conformance-pinned four-way, PART 69 + PART 80)** — a
+  **NON-ADDITIVE** rung, and the report it flips is one that ALREADY scanned with a policy. `scannedUnder`
+  (§2) is a new optional key, but the clause beside it reads that key's ABSENCE as the EMPTY deny set, so a
+  report from any pre-⟨0.33⟩ producer — including one scanned under the very policy the gate now holds —
+  carries no record of the question its peek was put, and a gate meeting it over a class marked
+  `peeked: true` (without `judgedElsewhere: true`) answers `ok: false`, `incomplete: true`, exit 2. It fails
+  CLOSED; the hole it closes was a definite answer to a question nobody asked, on the `gate --report`
+  supply-chain route, past every ⟨0.32⟩ control because the class really was read. Bounded: under ⟨0.29⟩'s
+  rule a class reaches `peeked: true` only when the PRODUCING scan held a deny rule, so `peeked: true`
+  beside no `scannedUnder` identifies a pre-rung producer precisely, and a report that peeked nothing never
+  fires. **The remedy is RE-SCAN UNDER THE SAME POLICY** — the same one, not *a* policy.
+
+- **0.32 (all code engines declare `0.32`; conformance-pinned four-way, PARTs 60, 62, 63, 65, 66, 68)** — a
+  **NON-ADDITIVE** rung whose non-additivity reaches further than ⟨0.30⟩'s. `judgedElsewhere` (§2) is a new
+  optional field, but the clause beside it changes what a gate DOES with `excluded`, MANDATORY since ⟨0.29⟩:
+  an entry with `peeked: false` and no `judgedElsewhere: true` now suppresses `ok` and exits 2 under any
+  policy holding a deny rule. A ⟨0.29⟩-era report written with NO policy over a tree that has exclusions — a
+  build script, a tests directory, a jar under the root — was a clean pass and is a refusal now, on the
+  `gate --report` route in particular. **The upgrade note is the remedy: SCAN WITH THE POLICY** — re-gating
+  the old report cannot work, because the peek is a producer-side act no consumer can re-derive from a
+  document. Also in this rung: the refusal record beside the reports it would have written (PART 60), the
+  derived-file-set certification rule (PART 65), `Exec` reaching the subprocess capability rather than only
+  the launch (§1, PART 66), and the verdict row carrying the unit it is about (PART 68).
+
+- **0.31 (all code engines declare `0.31`; conformance-pinned four-way, PART 56 + PART 57)** — **additive in
+  one half and not in the other, and the halves are independent.** ADDITIVE: `netPartners`
+  (§2, §3.1) is a new optional key, absent unless an ambient `net-partner` declaration actually moved a
+  classification, so a consumer that ignores it is unaffected — the ambient config that moved a verdict is
+  named in it (PART 57). NOT ADDITIVE: the fourth exit-2 cause (§3.3, an UNEVALUABLE TARGET — the walk
+  admitted no file this engine can read) is not additive for the same reason ⟨0.30⟩ is not, because a target
+  that exists and holds no readable file was a clean pass on one engine and is a refusal on every engine now,
+  so a green that came from a typo'd path becomes an exit 2 (PART 56). That is the direction the change
+  exists to fix, and it is still a verdict that moves.
 - **0.30 (conformance-pinned four-way, PART 48 amended + PART 54)** — the **first NON-ADDITIVE rung**: the
   first whose verdict change lands on TRUSTED, UNCHANGED inputs with no precondition. (0.24 below is the
   first rung that could turn a green gate red at all, and says so; it needed a stale or unreadable input to
