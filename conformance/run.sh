@@ -2595,33 +2595,84 @@ echo
 # the kinds its language model produces (Rust: no `dispatch:`), so per-engine kind sets may differ — only
 # the vocabulary + the dispatch shape are pinned, not which kinds appear.
 echo
+echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
+# ENGINES: rust java ts swift
+# CONTROLS: vocab armsunion armsswap — the per-engine crates are EACH OTHER'S control. `vocab` holds two DISTINCT definitions of one bare name and must still come back `ambiguous:`, so an engine that resolved everything (or stopped emitting the kind) fails it. `armsunion` holds ONE definition written as two `#[cfg]` arms carrying DIFFERENT effects and must come back with BOTH, so an engine that hedges everything to `Unknown` fails it — neither row can be passed by a one-sided regression, and no engine can pass both by refusing or by resolving indiscriminately. `armsswap` is `armsunion` with the arms in the opposite SOURCE ORDER: a union is order-independent by definition, and R208 is what an order-dependent answer looks like. The cross-engine vocabulary/containment/gate-verdict rows compare document content across engines, and the gate rows require the violation entries, not an exit alone
+#
+# EVERY FIXTURE THIS PART BUILDS LIVES BELOW ITS `[10]` HEADER, AND THAT IS LOAD-BEARING, NOT TIDINESS.
+# `part.sh` slices run.sh at the PRINTED `[id]` markers, so setup written ABOVE a part's own header is
+# annexed by the PREVIOUS part's slice and never runs when the part is run alone. Measured 2026-09-05
+# with the `vocab` setup in its old position, one line above this echo: `part.sh 10` built no
+# `vocab.json`, the "purpose-built fixture produced NO `ambiguous:` reason" DIVERGE below fired against a
+# HEALTHY engine, and that false red is indistinguishable from an engine defect — on the instrument this
+# family reaches for precisely so it need not spend 476s on the full suite. `part.sh 7 10` was green on
+# the same tree, which is how the two were told apart. `part.sh --check` cannot see this: it checks that
+# a slice parses and names exactly one part, never that a slice can still ANSWER. PART 4n has the same
+# shape and is filed as a finding rather than fixed here.
+#
 # THE SHARED FIXTURE CANNOT PRODUCE EVERY KIND AN ENGINE EMITS, AND THIS ROW WAS VACUOUS FOR ONE OF THEM.
 # candor-scan's dominant `unknownWhy` kind on real code is `ambiguous:` (8710 of 19607 entries over a
 # 1062-report census — more than `callback:`), and PART 10 never saw a single one, because the differential
 # fixture has no bare call naming two same-name local defs. A vocabulary check that only reads the shared
-# fixture pins the vocabulary of the shared fixture. So PART 10 also scans a tiny per-engine crate BUILT TO
+# fixture pins the vocabulary of the shared fixture. So PART 10 also scans tiny per-engine crates BUILT TO
 # PRODUCE the kind, and asserts it actually appeared — a row that could not fail is not a check (item 8c).
+#
+# THE AMBIGUITY FIXTURE WAS RE-POINTED 2026-09-05, AND THE OLD ONE IS WHY THE CLAUSE HAD TO BE WRITTEN.
+# It used to be a `#[cfg]` twin — one function, two arms — and the comment above it called that shape
+# "genuinely ambiguous". SPEC §4 says otherwise, and always did: the kind is defined by an owner that
+# could not be formed AT ALL, and two arms of one function have exactly one owner. The cfg binding existed
+# nowhere in SPEC.md; it lived HERE, in a fixture and its comment, which is the whole reason SOUNDNESS
+# R222/R129 could measure candor-rust hedging 8,710 answers it already had. The fixture below is two
+# SEPARATELY WRITTEN definitions of `helper` in two modules, both glob-imported — distinct definitions,
+# no owner formable, the kind genuinely owed — and it is what `ambiguous:` is now pinned on.
 mkdir -p "$W/vocab/src"
 cat > "$W/vocab/Cargo.toml" <<'TOML'
 [package]
 name = "vocab"
 version = "0.1.0"
 TOML
-# The real-world shape, reduced: cfg-gated alternative definitions of one free function. Rust's own name
-# resolution picks by cfg; a syntactic scan cannot evaluate cfg, so the callee is genuinely ambiguous and
-# the engine discloses rather than picking (which would fabricate one arm's effects onto the other).
 cat > "$W/vocab/src/lib.rs" <<'RS'
-#[cfg(unix)]
-pub fn helper() { std::fs::read("/etc/a").ok(); }
-#[cfg(windows)]
-pub fn helper() { println!("pure"); }
+pub mod a { pub fn helper() { std::fs::read("/etc/a").ok(); } }
+pub mod b { pub fn helper() { std::process::Command::new("x").status().ok(); } }
+use a::*; use b::*;
 pub fn go() { helper(); }
 RS
 "$SCAN" "$W/vocab" --json > "$W/vocab.json" 2>/dev/null || true
-echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
-# ENGINES: rust java ts swift
-# CONTROLS: none — vocabulary/containment/gate-verdict rows compare document content across engines; the gate rows require the violation entries, not an exit alone
-python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" <<'PY' || rc=1
+# THE UNION FIXTURES — the discriminator nothing else in this suite has. One definition, two `#[cfg]`
+# arms, and the arms carry DIFFERENT effects (Fs vs Exec), so the three failure shapes are separable in
+# the caller's own row: the UNION is `['Exec','Fs']`, a PICK is a single concrete effect (one
+# configuration's effects charged to another — the fabrication this part's `ambiguous:` note warns
+# about), and a HEDGE is `['Unknown']`. Same-effect arms cannot tell those apart, which is why every
+# fixture that existed before this one was blind to the distinction. `armsswap` is the identical crate
+# with the arms written in the opposite order, because a union is order-independent and picking one is
+# not — R208 is the live example of an answer that depends on which file the scanner reached first.
+# The CALLER is the assertion site, not `helper`: both `helper` rows already report the union today,
+# because a report entry is keyed on the qual and merges its units (SOUNDNESS R129).
+for _uv in armsunion armsswap; do
+  mkdir -p "$W/$_uv/src"
+  cat > "$W/$_uv/Cargo.toml" <<TOML
+[package]
+name = "$_uv"
+version = "0.1.0"
+TOML
+done
+cat > "$W/armsunion/src/lib.rs" <<'RS'
+#[cfg(unix)]
+pub fn helper() { std::fs::read("/etc/a").ok(); }
+#[cfg(windows)]
+pub fn helper() { std::process::Command::new("x").status().ok(); }
+pub fn go() { helper(); }
+RS
+cat > "$W/armsswap/src/lib.rs" <<'RS'
+#[cfg(windows)]
+pub fn helper() { std::process::Command::new("x").status().ok(); }
+#[cfg(unix)]
+pub fn helper() { std::fs::read("/etc/a").ok(); }
+pub fn go() { helper(); }
+RS
+"$SCAN" "$W/armsunion" --json > "$W/armsunion.json" 2>/dev/null || true
+"$SCAN" "$W/armsswap"  --json > "$W/armsswap.json"  2>/dev/null || true
+python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" "$W/armsunion.json" "$W/armsswap.json" <<'PY' || rc=1
 import json, os, sys
 # ⟨0.24⟩ FIVE canonical kinds. `ambiguous` was promoted from TOLERATED: §6.2 had always classed it
 # `dispatch`, so consumers were right while producers emitting it were non-conforming, and reclassifying it
@@ -2634,8 +2685,10 @@ CANON = {"reflect", "native", "dispatch", "callback", "ambiguous"}
 #
 # `ambiguous:` IS IN THE SAME TOLERATED BUCKET, BUT FOR THE OPPOSITE REASON, AND THE DIFFERENCE IS WORTH
 # WRITING DOWN. java's two are remnants awaiting reconciliation onto the canonical four. rust's names a
-# state NONE of the four can express: a BARE FREE call whose leaf has two-or-more local definitions (the
-# cfg-gated-alternatives shape above). It is not `dispatch:` — there is no owner type, so the NORMATIVE
+# state NONE of the four can express: a BARE FREE call whose leaf has two or more DISTINCT local
+# definitions (the two-modules-one-`helper` shape above). It is NOT a `#[cfg]` arm set — SPEC §4 rules
+# that several bodies under one qualified name are ONE definition that resolves to the union of its arms,
+# and the `armsunion` rows below are where that is pinned. It is not `dispatch:` — there is no owner type, so the NORMATIVE
 # `owner.member` detail cannot be formed, and nothing virtual happens (exactly one function runs; it is the
 # ANALYSER's name resolution that failed, not the program's). It is not `callback:` either — that kind is an
 # unresolved HIGHER-ORDER invocation over a function VALUE, and it is not the residual bucket (the residual
@@ -2729,6 +2782,65 @@ else:
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
           "this row's coverage of the off-vocabulary kind is vacuous, not passing"); fails += 1
+else:
+    # ON THE CALLER, not merely somewhere in the report. The fixture defines `a::helper` and `b::helper`
+    # too, and a future engine that attached the reason to one of THOSE would satisfy a bare kind-set
+    # check while saying nothing about the call site the kind exists for.
+    _vg = [f for f in (json.load(open(sys.argv[5])).get("functions") or [])
+           if f.get("fn") == "go" and any(w.startswith("ambiguous:") for w in (f.get("unknownWhy") or []))]
+    if not _vg:
+        print("  DIVERGE [rust(vocab)] the `ambiguous:` reason is in the report but NOT on `go`, the bare "
+              "call that names two distinct definitions — the row would pass on a reason attached "
+              "anywhere at all"); fails += 1
+
+# ───────────────────────────────────────────────────────────────────────────────────────────────────
+# THE UNION ROWS (SPEC §4, "several bodies under ONE qualified name are one definition"). Written
+# BEFORE the port, deliberately: the family's own rule is that a behaviour does not go four-way until
+# its clause and its part exist, and the last time that was skipped two engines drifted inside the gap.
+#
+# THESE ARE RED AGAINST candor-rust cc05b8c AND THAT IS THE POINT. Shipped candor-rust answers
+# `['Unknown']` here — SOUNDNESS R222's `by_leaf` half is measured, built and WITHHELD — so this row
+# fails until that lands. It goes green on the dedup and on nothing else. Do NOT weaken it to make the
+# suite green, and do NOT read the DIVERGE as an instrument defect: the message says which it is.
+UNION_EXPECT = {"Exec", "Fs"}
+_orders = {}
+for _lab, _p in (("rust(arms)", sys.argv[6]), ("rust(arms,swapped)", sys.argv[7])):
+    try:
+        _d = json.load(open(_p))
+    except Exception:
+        print(f"  DIVERGE [{_lab}] the union fixture produced no readable report — the row cannot "
+              f"answer, which is not the same as passing"); fails += 1; continue
+    _rows = [f for f in (_d.get("functions") or []) if f.get("fn") == "go"]
+    if not _rows:
+        print(f"  DIVERGE [{_lab}] the caller `go` is ABSENT from `functions[]` — under ⟨0.21⟩ that is a "
+              f"positive claim of PURITY over a call that reaches Fs on one arm and Exec on the other")
+        fails += 1; continue
+    _got = set(_rows[0].get("inferred") or [])
+    _orders[_lab] = tuple(sorted(_got))
+    _conc = _got - {"Unknown"}
+    if _conc == UNION_EXPECT:
+        # BOTH effects present is the assertion. A hedge ALONGSIDE them is not a failure — §4 allows
+        # over-disclosure — but it is noted, because this fixture has no source of a real `Unknown`.
+        _note = "" if "Unknown" not in _got else "  (plus a hedge this fixture has no source for)"
+        print(f"  {_lab}: go = {sorted(_got)} — the arms are UNIONED (SPEC §4){_note}")
+    elif _got == {"Unknown"}:
+        print(f"  DIVERGE [{_lab}] go = ['Unknown'] — the engine HEDGES a call whose arms it has already "
+              f"analysed. EXPECTED against candor-rust cc05b8c and RED ON PURPOSE: the clause landed "
+              f"first (SPEC §4, 2026-09-05), the port is SOUNDNESS R222's withheld `by_leaf` dedup. "
+              f"This is the row waiting for the engine, not an engine defect and not a broken fixture.")
+        fails += 1
+    elif len(_conc) == 1:
+        print(f"  DIVERGE [{_lab}] go = {sorted(_got)} — the engine PICKED ONE ARM. That is the "
+              f"fabrication this part's own `ambiguous:` note warns about: one configuration's effects "
+              f"charged to another, and it is WORSE than the hedge it replaces"); fails += 1
+    else:
+        print(f"  DIVERGE [{_lab}] go = {sorted(_got)} — neither the union {sorted(UNION_EXPECT)} nor any "
+              f"recognised failure shape"); fails += 1
+if len(_orders) == 2 and len(set(_orders.values())) != 1:
+    print(f"  DIVERGE [rust(arms)] the SAME arm set answers differently in the two source orders: "
+          f"{_orders} — a union is order-independent by construction, so this is R208's shape: the "
+          f"answer depends on which definition the scanner reached first"); fails += 1
+# ───────────────────────────────────────────────────────────────────────────────────────────────────
 suffix = "OK" if fails == 0 else f"{fails} violation(s)"
 if warns: suffix += f", {warns} tolerated off-vocabulary warning(s)"
 print(f"  {total} unknownWhy entr{'y' if total==1 else 'ies'} checked — " + suffix)
