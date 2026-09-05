@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §4: several bodies under ONE qualified name are one definition, and resolve to the UNION of
+  their effects — `ambiguous:` is reserved for two DISTINCT definitions.** §4's kind was defined by an
+  unformable owner since ⟨0.24⟩ and said nothing about which source shapes meet that condition, so the
+  binding of `ambiguous:` to conditional-compilation arms lived only in conformance PART 10's fixture
+  and the comment above it. SOUNDNESS R222/R129 measured candor-rust hedging there — `['Unknown']` on a
+  call whose arms it had already analysed, 8,710 of 19,607 `unknownWhy` entries in a 1,062-report
+  census. A clarification, not a new requirement: the union, the ban on picking an arm and the ban on
+  dropping the name are ⟨0.25⟩'s and ⟨0.21⟩'s already. The MUST ledger moves 529 → 530 because the rule
+  kernel is a new normative STATEMENT, classified `PART 10` — not because an obligation was added.
+
 - **SPEC §2 `invisible`: say that it arms no policy form BY DESIGN.** The field was already
   documented as "not a purity claim", and the same clause already offers the stronger `Unknown`
   posture for an engine that wants such a call to gate — but nothing said the non-arming was
