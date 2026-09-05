@@ -1386,8 +1386,10 @@ Each entry:
                                          // function-typed value — a closure/fn-pointer parameter or
                                          // field whose target isn't statically known), or ⟨0.24⟩
                                          // `ambiguous:<what>` (the analyser's own NAME RESOLUTION was
-                                         // ambiguous — two same-named local definitions, so no owner
-                                         // could be formed at all). Lets a consumer
+                                         // ambiguous — two DISTINCT definitions of one name, so no
+                                         // owner could be formed at all; several bodies under ONE
+                                         // qualified name — cfg arms — are one definition and resolve
+                                         // to the union of their effects, see §4). Lets a consumer
                                          // tell irreducible opacity (reflection, native) from the
                                          // IMPROVABLE kind (`dispatch:`/`callback:` — a missing impl or
                                          // an unresolved higher-order target, often resolved by widening
@@ -4282,6 +4284,32 @@ reason's §6.2 class from `dispatch` to `indirect`, silently **narrowing** every
 gate in the field. Refusing to emit anything is the cardinal sin outright. The kind is the part gates read,
 so the kind is the part that must stay true; the detail is where the engine says how much it knows, and
 "nothing" is a thing it must be able to say.
+
+**"Two same-named local definitions" means two DISTINCT definitions. Several bodies under ONE qualified
+name are one definition, and resolve to the UNION of their effects.** Conditional compilation puts
+alternative bodies behind a single qualified name — Rust's `#[cfg]` arms, and the equivalent in any
+language with a preprocessor or a build-configuration directive. Exactly one of them is built, all of
+them are in the source the engine was pointed at, and the *name* resolves: there is one owner, so the
+"no owner could be formed at all" condition this kind is defined by is not met. The definition's effects
+are the union of the arms' — the same answer ⟨0.25⟩ already gives a colliding join key, for the same two
+reasons. Picking an arm charges one configuration's effects to another, which is fabrication; dropping
+the name is a purity claim under ⟨0.21⟩. And the union is order-independent, which is the property to
+test: an arm set whose arms carry DIFFERENT effects must come back carrying all of them, and must come
+back the same way whichever order the arms are written in. `ambiguous:` stays reserved for what its row
+says — two or more separately-written definitions competing for one bare name (two modules each
+exporting a `helper`; an inherent method beside a free function of the same name), where the engine
+genuinely cannot say which one a call names. An engine that cannot compute the union may still answer
+`Unknown`, since over-disclosure is always allowed, but what it discloses there is a limit of its own
+resolution rather than an ambiguity in the program.
+
+*Stated 2026-09-05, and it is a clarification rather than a new requirement: the union, the ban on
+picking and the ban on dropping are ⟨0.25⟩'s and ⟨0.21⟩'s already, and this kind's own definition has
+required an unformable owner since ⟨0.24⟩. What was missing was any statement of which shapes meet that
+condition, so the binding of `ambiguous:` to conditional-compilation arms lived only in a conformance
+fixture and the comment above it — where SOUNDNESS R222/R129 found candor-rust hedging a call it could
+answer, on 8,710 of 19,607 `unknownWhy` entries in a 1,062-report census. Pinned by PART 10, whose two
+per-engine fixtures are each other's control: the arm set must come back with both effects, and two
+same-named definitions in different modules must still come back `ambiguous:`.*
 
 The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists:
 `dispatch:` is reserved for unresolved member dispatch where the engine knows the owner type and member
