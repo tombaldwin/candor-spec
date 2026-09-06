@@ -880,6 +880,19 @@ PYLLM
 # effects in swift; the cross-engine guarantee it needs is that the rest of the family keeps reading its
 # reports. Synthetic report (no engine has to implement privacy/1 to prove tolerance).
 # ====================================================================================================
+echo ""
+echo "[4n] SPEC-EXTENSION tolerance  (a privacy/1 report + extensions field is read by every OTHER engine)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — rows demand answers with named content (map answers, the known co-effect surfaces, effect sets equal); no refusal is credited
+# (recorded: [4n]'s own `tolerant` rows probe rust/java/ts only, under a MATCH line that says "every engine". Swift is not a silent omission — it ships neither `map` nor `where`, the two verbs the probe is built on (its ALL ACTIONS are path/tour/gains/fix/fix-gate/unverified/privacy-manifest/gate) — but the claim text overstates the coverage, and the riders in this slice drive all four, so the slice-level line above cannot see it. This note is where it stays visible.)
+# THE FIXTURES LIVE BELOW THE `[4n]` HEADER, AND MUST STAY THERE — SOUNDNESS R226.
+# `part.sh` slices run.sh at the printed `[id]` markers, so anything built ABOVE this part's own
+# header belongs to the PREVIOUS slice. These three reports were built up there, so `part.sh 4n`
+# alone created no `$W/ext` at all and this part's rows fired three FAILs and a DIVERGE against
+# HEALTHY engines — a false red in the direction that reads as an engine defect, visible only to
+# the person iterating on one part, which is exactly who trusts it. PART 10 had the identical
+# shape and was moved for the identical reason in `939a8c0`. `part.sh --check` cannot catch this
+# class: it verifies a slice PARSES and names one part, never that it can still ANSWER.
 mkdir -p "$W/ext"
 cat > "$W/ext/report.demo.scan.json" <<'EOF'
 { "meta": { "version": "t", "toolchain": "stable", "spec": "0.23" },
@@ -903,11 +916,6 @@ cat > "$W/ext/report.jvm.json" <<'EOF'
     { "fn": "app.Loc.here", "inferred": ["Location", "Net"], "direct": ["Location"] },
     { "fn": "app.caller", "inferred": ["Location", "Net"], "calls": ["app.Loc.here"] } ] }
 EOF
-echo ""
-echo "[4n] SPEC-EXTENSION tolerance  (a privacy/1 report + extensions field is read by every OTHER engine)"
-# ENGINES: rust java ts swift
-# CONTROLS: none — rows demand answers with named content (map answers, the known co-effect surfaces, effect sets equal); no refusal is credited
-# (recorded: [4n]'s own `tolerant` rows probe rust/java/ts only, under a MATCH line that says "every engine". Swift is not a silent omission — it ships neither `map` nor `where`, the two verbs the probe is built on (its ALL ACTIONS are path/tour/gains/fix/fix-gate/unverified/privacy-manifest/gate) — but the claim text overstates the coverage, and the riders in this slice drive all four, so the slice-level line above cannot see it. This note is where it stays visible.)
 P4N_OK=0
 p4n() { echo "     FAIL $1"; P4N_OK=1; }
 # The §2 forward-compat guarantee is TOLERATION: an engine that does not know the extension effect must
