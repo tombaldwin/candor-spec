@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **conformance PART 4n: the fixtures move below the header — SOUNDNESS R226 closed.** `part.sh` slices
+  `run.sh` at the printed `[id]` markers, so anything a part builds ABOVE its own header belongs to the
+  PREVIOUS slice. PART 4n built its three extension reports up there, so `part.sh 4n` alone created no
+  `$W/ext` and the part's own rows fired three FAILs and a DIVERGE against healthy engines — a false red
+  in the direction that reads as an engine defect, which is the expensive direction to be wrong in.
+
 - **Conformance PART 10: the ambiguity fixture is re-pointed to a genuine ambiguity, and the part gains
   the UNION discriminator no row in this suite had.** The old `vocab` fixture was a `#[cfg]` twin, and
   the comment above it called that shape "genuinely ambiguous" — the only place in the family where the
