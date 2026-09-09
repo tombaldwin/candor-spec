@@ -19,3 +19,13 @@ understood; a tuple-yielding adapter reaching a CLOSURE parameter is not.
 `H.ctl_reduce` is the over-charge control — the same `reduce` shape over a `[Calm]` whose `run()` is
 pure. It is uninformative today (everything is absent) and becomes the load-bearing assertion the
 moment anything here is fixed. Write it into the test before the fix, not after.
+
+## The rust arm — `../r349-fold-element-rust/`
+
+Same class, worse. `candor-scan . --json`, control `H::base` charges `Fs`. ABSENT: `x_fold`,
+`x_try_fold`, `x_scan`, `x_enumEach`, `x_zip`, **and `x_enum`** — the plain
+`for (_, g) in v.iter().enumerate()`, which is the one spelling swift resolves correctly. The two
+engines are silent on overlapping-but-different sets, so neither fix ports to the other.
+
+ts and java were measured on the same shapes and are CLEAN with their pure controls absent —
+see the row. Do not "fix" them.
