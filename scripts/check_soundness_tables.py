@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every SOUNDNESS row must actually render as a table row.
+"""Every SOUNDNESS row must render as a table row, AND carry its table's number of cells.
 
 WHY THIS EXISTS, and it is not the reason you would guess. This project has shipped a broken
 SOUNDNESS table FIVE times. Four were caught late by a reviewer. The fifth was caught only after a
@@ -18,6 +18,23 @@ So the property to check is CONTIGUITY, not shape, and a validator that measures
 is worse than none: it reports green over exactly the defect it was written for. That is this
 project's own cardinal-sin shape pointed at its own instrument, which is why this is a script and
 not a habit.
+
+SECOND PROPERTY, ADDED 2026-09-09 (SOUNDNESS R343) — CELL COUNT, and it is a different failure from
+the one above rather than the pipe-counting mistake this docstring warns about. The warning is that
+counting pipes cannot tell you whether a row RENDERS; that is still true, and contiguity is still
+checked first. But a row that renders correctly can still be read wrong: the register is consumed BY
+COLUMN — the status audit reads column 3 to decide whether a row is open — and an UNESCAPED PIPE
+inside a cell (`|h|`, `matches!(a | b)`, `|| path.ends_with(..)`) splits it and shifts every column
+after it one to the right. Nothing errors and the table still draws.
+
+Measured the day this was added: 22 of 275 rows were malformed. Five had an EXTRA remedy cell,
+appended over time as a new COLUMN rather than as more text in the existing one. One had no trailing
+pipe at all and had been counting as four columns in a five-column table since 2026-09-04. Two were
+written that same session by the agent that then found them.
+
+The file has MORE THAN ONE TABLE, with different widths, so each row is checked against the header of
+the table it is actually in — never against a global constant. The first audit run that day assumed
+one table and produced 44 false positives.
 
     python3 scripts/check_soundness_tables.py [<file>]      # default: SOUNDNESS.md beside this repo
 
@@ -73,8 +90,34 @@ def main() -> int:
         print('  NOTE: pipe counts are irrelevant here and checking them is how this was missed five times.')
         return 1
 
+    # SECOND PROPERTY (R343): every row carries its OWN table's cell count. Checked only after the
+    # contiguity check passes — a row that does not render as a row has no cells to count.
+    shape = []
+    for sep, rows in found:
+        width = lines[sep].count('|') - 1
+        for i in rows:
+            if not ROW_RE.match(lines[i]):
+                continue
+            # UNESCAPED pipes only: `\\|` inside a cell is content, and is the correct spelling.
+            got = len(re.split(r'(?<!\\)\|', lines[i])) - 2
+            if got != width:
+                rid = re.match(r'\| ~{0,2}(R\d+)', lines[i])
+                shape.append((rid.group(1) if rid else '?', i + 1, got, width))
+
+    if shape:
+        print(f'check_soundness_tables: FAILED — {len(shape)} row(s) do not carry their table\'s cell count.')
+        print('  The register is read BY COLUMN. An unescaped pipe inside a cell shifts every column')
+        print('  after it one to the right, and nothing errors — the table still draws.')
+        for rid, n, got, width in shape:
+            print(f'    {rid:<6} line {n}: has {got} cell(s), its header declares {width}')
+        print('  Escape pipes inside the cell as \\| — backtick spans are NOT exempt. A row with one')
+        print('  cell too many is almost always a remedy note appended as a new COLUMN instead of as')
+        print('  more text in the existing one: merge it, do not widen the table.')
+        return 1
+
     total = sum(len(r) for _s, r in found)
-    print(f'check_soundness_tables: OK — {len(found)} table(s), {total} row(s), every row inside one.')
+    print(f'check_soundness_tables: OK — {len(found)} table(s), {total} row(s), every row inside one '
+          f'and carrying its own table\'s cell count.')
     return 0
 
 
