@@ -25,6 +25,23 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`check_soundness_tables.py` now also checks CELL COUNT — SOUNDNESS R343.** `SOUNDNESS.md` is
+  consumed BY COLUMN, and a row containing an unescaped pipe inside a cell (`|h|`, `matches!(a | b)`,
+  `|| path.ends_with(..)`) splits it and shifts every column after it one to the right. Nothing errors
+  and the table still draws, so it is invisible from the rendered page and fatal to anything indexing
+  by position — including the stale-status audit that reads column 3. **22 of 275 rows were malformed**:
+  sixteen plain code-span pipes, five with an EXTRA remedy cell appended over time as a new COLUMN
+  rather than as more text, and one with no trailing pipe at all, counting as four columns in a
+  five-column table since 2026-09-04.
+
+  The check went into the EXISTING script rather than a new one — two tools answering "is the register
+  well-formed" is the shape this register keeps recording. The contiguity check that was already there
+  is untouched and still runs first: its docstring's warning that "pipe counts were never the failure"
+  is about RENDERING and remains true; cell count is a second, independent property about READING, and
+  a row that does not render has no cells to count. Each row is checked against the header of the table
+  it is IN — the file has five tables with different widths, and an audit that assumed one produced 44
+  false positives.
+
 - **conformance PART 4n: the fixtures move below the header — SOUNDNESS R226 closed.** `part.sh` slices
   `run.sh` at the printed `[id]` markers, so anything a part builds ABOVE its own header belongs to the
   PREVIOUS slice. PART 4n built its three extension reports up there, so `part.sh 4n` alone created no
