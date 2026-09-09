@@ -4302,9 +4302,19 @@ genuinely cannot say which one a call names. An engine that cannot compute the u
 `Unknown`, since over-disclosure is always allowed, but what it discloses there is a limit of its own
 resolution rather than an ambiguity in the program.
 
-*Stated 2026-09-05, and it is a clarification rather than a new requirement: the union, the ban on
-picking and the ban on dropping are ⟨0.25⟩'s and ⟨0.21⟩'s already, and this kind's own definition has
-required an unformable owner since ⟨0.24⟩. What was missing was any statement of which shapes meet that
+*Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a
+release review overturned that on 2026-09-09 — the sentence is corrected rather than deleted, because
+the reasoning that produced it is the part worth keeping.** Two of its three legs hold: the ban on
+picking and the ban on dropping really are ⟨0.21⟩'s and §4's already. The third does not — ⟨0.25⟩'s
+union clause governs the CONSUMER's join across dep reports, not a producer's own name resolution
+inside one scan, so it is an analogy rather than a derivation. And the normative words themselves
+moved: "two same-named local definitions" became "two DISTINCT definitions of one name", which a cfg
+twin satisfies under the first reading and not the second. **The operative test is not how the clause
+reads but what it did: a conformant engine became non-conformant on a [TIER 1] part through a
+text-only change.** candor-rust 0.35.0 emits `ambiguous:` for a cfg twin on 8,710 of 19,607
+`unknownWhy` entries; PART 10 required exactly that at v0.35 and forbids it here. Under §1's own rule
+— "a refinement that narrows an upper bound, or an obligation tightening" — that is a MINOR, and this
+clause ships as ⟨0.36⟩. What was missing was any statement of which shapes meet the unformable-owner
 condition, so the binding of `ambiguous:` to conditional-compilation arms lived only in a conformance
 fixture and the comment above it — where SOUNDNESS R222/R129 found candor-rust hedging a call it could
 answer, on 8,710 of 19,607 `unknownWhy` entries in a 1,062-report census. Pinned by PART 10, whose two

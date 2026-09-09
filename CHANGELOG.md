@@ -55,9 +55,12 @@ Run it after any patch-cycle commit that adds a section here.
   modules, which still owes `ambiguous:` under the clarified §4 and is asserted on the CALLER rather than
   anywhere in the report. Beside it, `armsunion`/`armsswap`: one definition, two `#[cfg]` arms carrying
   DIFFERENT effects (Fs vs Exec), in both source orders. Same-effect arms cannot separate a UNION from a
-  PICK, which is why nothing caught this before. **These two rows are RED against candor-rust `cc05b8c`
-  on purpose** — the clause landed before the port, and they go green on SOUNDNESS R222's withheld
-  `by_leaf` dedup (verified against a build of it). The DIVERGE text says so, so a red PART 10 is not
+  PICK, which is why nothing caught this before. **These two rows WERE red against candor-rust `cc05b8c` when this
+  entry was written, deliberately** — the clause landed before the port. **They are GREEN as of
+  candor-rust `7dfe710`, which carries SOUNDNESS R222's `by_leaf` dedup; the dedup is no longer
+  withheld.** That engine commit is on `main` and ships in this release, and a reader of the sentence
+  as first written would have believed the suite was knowingly red and the fix held back. The DIVERGE
+  text says so, so a red PART 10 is not
   read as an engine defect. Also fixed: PART 10 built its fixtures ABOVE its own `[10]` header, so
   `part.sh 10` never created them and reported a FALSE RED against a healthy engine.
 
