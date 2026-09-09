@@ -25,6 +25,11 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.36⟩ floor declared across all seven engines** (`bin/spec-bump.sh 0.36`), in its own commit per
+  repo so the contract axis stays revertible on its own. candor-java carries no engine change in this
+  release — its `SPEC_VERSION` constant IS the change, and as the reference engine SPEC §1 requires it
+  to declare a new rung first.
+
 - **⟨0.36⟩: the cfg-arm union clause becomes a RUNG, its escape hatch is corrected, and its scope is
   stated.** The clause landed 2026-09-05 described as a clarification; a release review established it is
   a MINOR — a conformant engine became non-conformant on a [TIER 1] part through a text-only change — so
