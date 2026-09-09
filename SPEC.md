@@ -98,7 +98,9 @@ The cost is bounded to code that actually compiles alternative bodies under one 
 conditional compilation never fires at all. Pinned by conformance **PART 10**, whose two per-engine
 fixtures are each other's control: the arm set must come back carrying BOTH arms' effects in either
 written order, and two same-named definitions in different modules must still come back `ambiguous:`.
-**A known gap, recorded rather than left to be discovered:** PART 10 drives the Rust scanner only, so
+**PART 10 pins DEFINITIONS only** — a cfg-gated alias naming two different definitions is SOUNDNESS
+R287, ruled at this cut and deferred to its own rung. **A known gap, recorded rather than left to be
+discovered:** PART 10 drives the Rust scanner only, so
 the clause's family-wide wording ("any language with a preprocessor or a build-configuration directive")
 is pinned in one engine. candor-swift was measured conforming on `#if os(...)` twins in both orders
 during the ⟨0.36⟩ review, but by a probe rather than by a row — write the row before relying on it.
@@ -4327,9 +4329,31 @@ test: an arm set whose arms carry DIFFERENT effects must come back carrying all 
 back the same way whichever order the arms are written in. `ambiguous:` stays reserved for what its row
 says — two or more separately-written definitions competing for one bare name (two modules each
 exporting a `helper`; an inherent method beside a free function of the same name), where the engine
-genuinely cannot say which one a call names. An engine that cannot compute the union may still answer
-`Unknown`, since over-disclosure is always allowed, but what it discloses there is a limit of its own
-resolution rather than an ambiguity in the program.
+genuinely cannot say which one a call names. An engine that cannot resolve one of the arms discloses that arm as
+`Unknown` **beside** the arms it did resolve — `{Fs, Unknown}` is the union with a gap in it, and is
+conformant. **`{Unknown}` ALONE is not.** This sentence read "an engine that cannot compute the union
+may still answer `Unknown`, since over-disclosure is always allowed", and that was wrong on its own
+terms: under §4.0 `{Unknown}` is **not** `⊤` — `(E, ∅)` and `(∅, {r})` are incomparable — so replacing
+a determined effect with a hedge does not add disclosure, it WITHDRAWS `Fs` from the effect set, and
+`deny Fs` stops firing on a call that reaches `Fs` in one configuration. That is the noisy-direction
+unsoundness the inherited-member rule below already names, not over-disclosure; the phrase
+"over-disclosure is always allowed" appeared nowhere else in this document, and §2 row 2 and ⟨0.25⟩
+both say the opposite ("the union is not a hedge"). Whatever reason such a hedge carries names a limit
+of the engine's own resolution — `native:`, `callback:`, a dot-free `dispatch:` — never `ambiguous:`,
+which stays reserved for two distinct definitions. PART 10 already pins both halves and always did:
+the caller must carry both arms' effects in either written order, and a hedge ALONGSIDE them is noted
+rather than failed.
+
+**Scope, stated so it is not inferred.** This clause binds DEFINITIONS — several bodies behind one
+qualified name. It does not bind a BINDING: a `use … as X`, `import` or `typealias` that names two
+DIFFERENT existing definitions under one local name in mutually-exclusive configuration arms. The same
+three legs hold there — exactly one arm is built, every target is in the source, the engine holds the
+complete target set, so resolving by source order is fabrication and dropping is a ⟨0.21⟩ purity claim
+— and the answer is the same union; but no conformance row pins it, so it is not an obligation of
+⟨0.36⟩. It is owed its own clause and PART (SOUNDNESS R287; fixture = R140's platform-gated `use` pair
+in both orders, plus an alias pair with one LOCAL arm) and ships as a later rung. Until then a hedge to
+`Unknown` on that shape is over-disclosure and permitted; resolution by SOURCE ORDER was and remains
+the cardinal sin under ⟨0.21⟩, independent of this clause.
 
 *Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a
 release review overturned that on 2026-09-09 — the sentence is corrected rather than deleted, because
@@ -5337,7 +5361,9 @@ declare it via the envelope's `spec`.
   `deny Unknown[dispatch]` can go exit 1 → exit 0 as the hedge it was catching goes away. Saved
   baselines differ; a policy written against the hedge stops firing. Not a loss of soundness: the
   hedge disclosed an ambiguity that does not exist and the effects it stood in for are now named.
-  The clause also reserves `invisible` as arming NO policy form, by design — a coverage disclosure,
+  PART 10 pins DEFINITIONS only; a cfg-gated ALIAS naming two different definitions under one local
+  name is SOUNDNESS R287, ruled at this cut (the union is the right answer) and deferred to its own
+  rung, because no row pins it. The clause also reserves `invisible` as arming NO policy form, by design — a coverage disclosure,
   with the ⟨0.21⟩ `unanalyzed` manifest as the route by which an uncovered scan reaches a verdict.
 
 - **0.35 (all code engines declare `0.35`; conformance-pinned by PART 87)** — a **NON-ADDITIVE** rung that
