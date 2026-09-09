@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.36.0] — 2026-09-09
+
 - **⟨0.36⟩ floor declared across all seven engines** (`bin/spec-bump.sh 0.36`), in its own commit per
   repo so the contract axis stays revertible on its own. candor-java carries no engine change in this
   release — its `SPEC_VERSION` constant IS the change, and as the reference engine SPEC §1 requires it
