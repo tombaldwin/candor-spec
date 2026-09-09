@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.36⟩: the cfg-arm union clause becomes a RUNG, its escape hatch is corrected, and its scope is
+  stated.** The clause landed 2026-09-05 described as a clarification; a release review established it is
+  a MINOR — a conformant engine became non-conformant on a [TIER 1] part through a text-only change — so
+  §8 and the Contents additivity narrative now carry ⟨0.36⟩. **It is the first rung that flips BOTH ways:**
+  `deny <Effect> <fn>` can go exit 0 → 1 as the arms' effects appear, and `deny Unknown[dispatch]` can go
+  exit 1 → 0 as the hedge it was catching goes away. A gate going GREEN across an upgrade is new.
+  Two corrections came with it. The clause ended "an engine that cannot compute the union may still answer
+  `Unknown`, since over-disclosure is always allowed" — which contradicts §4.0 written above it, where
+  `{Unknown}` is **not** ⊤: answering it in place of determined effects WITHDRAWS them from the set, so
+  `deny Fs` stops firing on a call that reaches `Fs`. PART 10 always had this right (it accepts a hedge
+  ALONGSIDE the union and fails `{Unknown}` alone); the sentence now says the same. And the clause is
+  scoped to DEFINITIONS: a cfg-gated `use … as X` naming two different definitions is SOUNDNESS R287,
+  ruled at this cut (the union is the right answer) but deferred to its own rung, because no row pins it.
+
 - **`check_soundness_tables.py` now also checks CELL COUNT — SOUNDNESS R343.** `SOUNDNESS.md` is
   consumed BY COLUMN, and a row containing an unescaped pipe inside a cell (`|h|`, `matches!(a | b)`,
   `|| path.ends_with(..)`) splits it and shifts every column after it one to the right. Nothing errors
