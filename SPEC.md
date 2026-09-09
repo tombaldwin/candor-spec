@@ -74,6 +74,35 @@ that reaches it, not only the excluded declaration's own name, so a scoped polic
 excluded code can now exit 2 on the same bytes. The remedy is the finding itself: the effect was always
 there, denied, and unreported — there is no upgrade note, because there is no previously-correct behaviour
 to preserve.
+**⟨0.36⟩ IS NOT ADDITIVE EITHER, AND UNLIKE EVERY RUNG BEFORE IT, IT FLIPS BOTH WAYS.** It adds no
+field and removes none; what moves is which `unknownWhy` detail §4 permits for one source shape. §4
+gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT DEFINITIONS*: several bodies published under
+ONE qualified name — conditional-compilation arms, `#[cfg]` in Rust and the equivalent wherever a
+preprocessor or build-configuration directive exists — are ONE definition and resolve to the UNION of
+their arms' effects. `ambiguous:` stays reserved for what its row says: two separately-written
+definitions competing for one bare name, where no owner can be formed at all.
+
+**Both directions of the flip are real, and this is the first rung where that is true.** A caller of a
+cfg twin that was hedged `Unknown` now carries the arms' concrete effects, so `deny Fs <fn>` and
+`deny Exec <fn>` can go exit 0 → exit 1 on identical bytes — the fail-closed direction every prior rung
+had. But the same caller stops carrying `Unknown`, so a `deny Unknown` or `deny Unknown[dispatch]` that
+was RED on the hedge can go exit 1 → exit 0. **That second direction is a gate going GREEN across an
+upgrade, which no rung before ⟨0.36⟩ could do, and it is the reason this needs reading rather than
+merely installing.** It is not a loss of soundness — the hedge was disclosing an ambiguity that does not
+exist, and the effects it stood in for are now named — but a policy written to catch that hedge will
+stop firing, and a baseline saved under ⟨0.35⟩ will differ. Measured on candor-rust: 8,710 of 19,607
+`unknownWhy` entries across a 1,062-report census carried `ambiguous:same-name local defs`, and the
+union fixture's caller moves `deny Fs go` from exit 0 to exit 1 while the arms' own `Unknown` goes away.
+
+The cost is bounded to code that actually compiles alternative bodies under one name; a tree with no
+conditional compilation never fires at all. Pinned by conformance **PART 10**, whose two per-engine
+fixtures are each other's control: the arm set must come back carrying BOTH arms' effects in either
+written order, and two same-named definitions in different modules must still come back `ambiguous:`.
+**A known gap, recorded rather than left to be discovered:** PART 10 drives the Rust scanner only, so
+the clause's family-wide wording ("any language with a preprocessor or a build-configuration directive")
+is pinned in one engine. candor-swift was measured conforming on `#if os(...)` twins in both orders
+during the ⟨0.36⟩ review, but by a probe rather than by a row — write the row before relying on it.
+
 **⟨0.35⟩ IS NOT ADDITIVE EITHER, and its flip does not come from a field at all — it comes from a
 function APPEARING in `functions[]` that was absent before.** It adds no key and removes none. §4's
 *A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE* binds the `inferred` set every engine already emits:
@@ -5298,6 +5327,18 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.36 (all code engines declare `0.36`; conformance-pinned by PART 10)** — a **NON-ADDITIVE** rung
+  that adds no field and removes none. §4 gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT
+  DEFINITIONS*: several bodies under one qualified name (conditional-compilation arms) are ONE
+  definition and resolve to the UNION of their effects; `ambiguous:` is reserved for two
+  separately-written definitions competing for one bare name. **This rung flips BOTH ways and is the
+  first that can** — `deny <Effect> <fn>` can go exit 0 → exit 1 as the arms' effects appear, and
+  `deny Unknown[dispatch]` can go exit 1 → exit 0 as the hedge it was catching goes away. Saved
+  baselines differ; a policy written against the hedge stops firing. Not a loss of soundness: the
+  hedge disclosed an ambiguity that does not exist and the effects it stood in for are now named.
+  The clause also reserves `invisible` as arming NO policy form, by design — a coverage disclosure,
+  with the ⟨0.21⟩ `unanalyzed` manifest as the route by which an uncovered scan reaches a verdict.
 
 - **0.35 (all code engines declare `0.35`; conformance-pinned by PART 87)** — a **NON-ADDITIVE** rung that
   adds no field and removes none. §4 gains *A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE*: at a dispatch
