@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`lean/check.sh` exits 3, not 2, when the lean toolchain is absent — SOUNDNESS R389.** An unrunnable
+  gate was reading as a FAILING one, which is the third spelling of a class `gate-run.sh` already handles
+  twice (an unexpandable `${{ }}` expression; a missing interpreter). Exit 3 is the self-skip convention
+  that file states and candor-rust's strace gates adopted on 2026-08-31, so the verdict becomes
+  INCOMPLETE — never green over an unrun gate, and never red for a toolchain this box does not have.
+
+
 ## [0.36.1] — 2026-09-11
 
 - **The SPEC did not move; the REGISTER did.** `SPEC.md` is byte-identical to v0.36 — that is why this

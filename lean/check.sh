@@ -9,7 +9,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 export PATH="$HOME/.elan/bin:$PATH"
-command -v lake >/dev/null || { echo "check: no lean toolchain (elan) — install with elan-init.sh"; exit 2; }
+command -v lake >/dev/null || { echo "check: no lean toolchain (elan) — install with elan-init.sh"; exit 3; }
 
 lake build >/tmp/lean-build.txt 2>&1 || { echo "✘ lake build FAILED"; tail -20 /tmp/lean-build.txt; exit 1; }
 echo "✔ lake build"
