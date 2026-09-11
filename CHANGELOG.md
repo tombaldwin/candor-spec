@@ -25,6 +25,28 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.36.1] — 2026-09-11
+
+- **The SPEC did not move; the REGISTER did.** `SPEC.md` is byte-identical to v0.36 — that is why this
+  is a patch — but `SOUNDNESS.md` gained nineteen rows this cycle (R370–R388), of which the load-bearing
+  ones are five closed GATE BYPASSES: an `allow Net <host>`, `allow Fs <path>` or `allow Db <table>` rule
+  that was returning **exit 0** over a destination decided at runtime now fails closed. See the
+  candor-rust and candor-swift changelogs for the engine behaviour; this repo carries the evidence.
+
+- **Two rows in the register were corrected against measurement rather than edited away.** R369 claimed
+  the type route "loses both arms"; it reports the last-written one, and the total loss it described was
+  a different defect (R213) its control could not separate. R383 recorded the sqlite3 masking gap as
+  "real but not live", measured on an isolated function — the vein's actual shape is a benign *sibling*
+  literal, and it was live (R386). Both original sentences are preserved struck-through, because a row
+  that hides its own mistake is worth less than one that shows it.
+
+- **Still open and stated here so the register is not read as complete:** R372 (a cfg-duplicated alias
+  used as a TYPE still resolves by source order — a first fix measured *worse* than the defect and was
+  reverted), R387 (swift `FileManager.url(for:…, create: true)`, the fourth site of the masking class,
+  whose fix needs its over-mask priced first), and the PICK/HEDGE/UNION ruling owed on ⟨0.36⟩'s two
+  contradictory sentences.
+
+
 ## [0.36.0] — 2026-09-09
 
 - **⟨0.36⟩ floor declared across all seven engines** (`bin/spec-bump.sh 0.36`), in its own commit per
