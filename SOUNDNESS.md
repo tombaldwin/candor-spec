@@ -912,6 +912,54 @@ good and they cannot both be the rule.
 3. **Does it change what a bare `deny <E>` does?** — the original question above, unchanged, and the
    union answers it YES by construction where the hedge answers NO.
 
+### RECOMMENDATION ON THE TABLE (2026-09-11) — reviewed adversarially, two of three reasons withdrawn
+
+**Rule UNION for an UNDECIDABLE `#[cfg]`-duplicated binding: "decide what is decidable, union what is
+not."** This CONFIRMS OR AMENDS RELEASED TEXT rather than deciding a fresh question — ⟨0.36⟩'s scoping
+paragraph (`SPEC.md:4345-4353`, in tag `v0.36`) already says of bindings *"the answer is the same
+union; but no conformance row pins it"*.
+
+**THE ARGUMENT I FIRST GAVE WAS WRONG AND IS WITHDRAWN.** I claimed conformance PART 10 pins the
+in-body `#[cfg]` arm-set union and therefore binds this ruling. It does not: PART 10's fixtures are
+cfg-gated **definitions** (`run.sh:2668-2677`), the only `cfg(` in the whole runner, and there is none
+in `conformance/rust/`. **Ruling HEDGE would turn no part red and contradict no conformance
+obligation.** The correct argument is the opposite shape: a HEDGE ruling REVERSES released spec text
+and R287's recorded ruling, while UNION confirms both.
+
+**Union is not fabrication under SPEC's own definition** — §4 defines it as *"asserting something the
+engine did not read from the code"*, and both arms were read. The clause that decides it is §4.0
+(`SPEC.md:4333-4342`): `{Unknown}` alone is not `⊤`, so replacing a determined effect with a hedge
+**WITHDRAWS** it and `deny Fs` stops firing on a call that reaches `Fs` in one configuration — *"the
+noisy-direction unsoundness, not over-disclosure."*
+
+**TWO AMENDMENTS to the question as originally put:**
+1. **Scope to UNDECIDABLE predicates.** A declared-but-inactive `feature = "x"` arm is DECIDABLE and is
+   already dropped (`use_item_applies`, R140's decidable half) — charging it WOULD be fabrication,
+   because the engine read enough to know it binds nothing. Unscoped, the ruling covers a case where
+   union is wrong.
+2. **"Captures a surface" should read "carries the CALL SITE's own literal onto every arm edge."** The
+   pushed edge currently carries `str_arg: None, argc: 0`, which says "no literal here" when the call
+   site has one — that is R375's residual, and fixing it is part of the ruling rather than after it.
+
+**COST, measured against what is tagged vs on `main`:** UNION reverts nothing. HEDGE un-commits
+`aa280d1`/`3b3d4c9`/`95c4144` (unreleased, so un-commit not un-release), amends released `v0.36` text,
+reverses R287, and permanently diverges the `use` shape from the definition shape on identical
+undecidability.
+
+**⟨0.36⟩ CONTAINS TWO SENTENCES THAT CANNOT BOTH STAND** and the ruling must strike one either way: the
+scoping paragraph's *"a hedge to `Unknown` on that shape is over-disclosure and permitted"* against the
+§4.0 paragraph's *"`{Unknown}` ALONE is not"* conformant.
+
+**STILL OWED, AND LABELLED AS REASONING NOT MEASUREMENT:** whether a union surface can ever CERTIFY
+where a hedge would have failed closed. For `Exec` the publish and mask predicates coincide
+(`is_cmd_naming_method`) so it cannot; for `Fs` they do NOT coincide — publish is any Fs leaf, mask is
+`is_fs_path_arg`. The argument that it still cannot leak is that the pushed edge shares the WRITTEN
+call's argument expression, so any literal published from one arm is the same literal handed to the
+other. **Two fixtures were built to measure this and NEITHER reached the shape:** the first landed on
+R372's type route (the caller vanished entirely), the second produced no caller unit for a bare
+associated-fn call. The engine's union is live (the R140 fixture still charges). **The fixture is owed;
+until it exists this sub-question is an argument, not a result.**
+
 **This is now blocking the ⟨0.37⟩ conformance PART**, which cannot pin an answer the family gives two
 ways. Conditional compilation is unpinned cross-engine today: there is no `cfg(` anywhere in
 `conformance/rust/src/lib.rs` and no `#if` in `candor-swift`'s `Cases.swift`. **And the PART can only
