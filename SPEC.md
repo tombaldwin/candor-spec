@@ -1649,6 +1649,41 @@ locator positions — a copy, a rename, a link — the surface is complete only 
 literal**; one literal beside one runtime path is an unseen destination, and the unit MUST carry
 `incomplete` for that effect (§2) rather than publish the half it can see as though it were the whole.
 
+⟨0.37⟩ **A call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER, and both are the call's own.**
+⟨0.29⟩ above says the surface is read from the position that names the locator; it does not say where that
+position may be, and every engine read it as "an argument". **A path-stat invoked on its path —
+`p.exists()`, `p.metadata()`, `f.exists()`, `url.checkResourceIsReachable()` — names its destination just
+as `fs::metadata(p)` does, and a stat IS an `Fs` reach**: three of the four engines already classify it so
+(rust's `is_fs_path_arg` carries `metadata`/`canonicalize`, java's `fsKind` calls `exists` a READ), which
+is why this clause states the family's practice rather than inventing a rule.
+
+**Measured before it was written, on the shipped ⟨0.36⟩ engines, one variable — a benign allowed literal
+beside a runtime destination.** Every engine that can express the receiver form was SILENT on it (rust,
+java, swift; TypeScript has no path object and is a declared exclusion), while the argument form was
+marked by all but java. A silent receiver-form stat is the masked-literal evasion by another spelling:
+`allow Fs /tmp/lit` exits 0 over a caller-controlled path and the run prints *"nothing hidden"*.
+
+**THIS RUNG IS NON-ADDITIVE, like ⟨0.30⟩.** A tree that passed `allow Fs …` under ⟨0.36⟩ can exit 1 under
+⟨0.37⟩ with no code change on either side of the gate, because the stat that was invisible is now a
+surface the allowlist must cover. Upgrading is a decision, not a drop-in.
+
+**AND ITS COUNTERPART, which an implementer MUST read as part of the same rung — a call on an ALREADY-OPENED
+HANDLE has NO locator of its own and MUST NOT be marked.** `f.read_to_string(…)`, `in.read()`,
+`h.availableData` inherit a destination fixed at `open`, which this analysis has already seen. Marking them
+would fail every program that opens a file by a literal name. All four engines are already correct here;
+the clause exists so a fix to the sentence above cannot quietly break it.
+
+**"DETERMINED" IS A PROPERTY OF THE VALUE, NOT OF THE SYNTAX.** A locator whose value is statically
+determined is determined however it reaches the call — inline, through a local binding, through a
+constructor (`Path::new("/lit")`, `Paths.get("/lit")`), or through a constant. An engine MAY
+under-approximate and mark a determined locator incomplete: that fails CLOSED and stays conformant. But it
+is a PRECISION defect with a cost this family has measured — at the time this rung was drafted rust lost a
+literal through `Path::new(…)` while crediting a plain local and a `const`, and TypeScript lost even the
+plain local, so in exactly those two engines an ordinary determined write was uncertifiable. **An
+implementation tightening the sentences above MUST NOT widen that gap**, and this rung's conformance part
+carries the determined-locator arm as an over-charge control rather than as an afterthought — which is how
+those two defects were found, on the part's FIRST execution.
+
 Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
 extraction is pinned token-for-token; the cross-impl vector battery
 (`conformance/tables/vectors.json`) is its executable form:
