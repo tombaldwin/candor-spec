@@ -118,13 +118,26 @@ COVERED = {
         "holds":  r"policy matrix: \d+ cell\(s\) over \d+ engine\(s\), 0 disagreement\(s\)",
         "breaks": r"policy matrix: \d+ cell\(s\) over \d+ engine\(s\), [1-9]\d* disagreement\(s\)",
     },
+    # PART 88. The fault is at the FIXTURE, not at the comparison, which is why this differential is
+    # COVERED where the other four-way ones are not: `--fault` writes the a3handle body (a use-verb on an
+    # already-opened handle, which every engine correctly declines to mark) into the a2recv cell, so the
+    # arm that MUST fail now cannot. Inverting an expected value would only prove the comparison can
+    # subtract; corrupting the input proves the cell is actually READING the fixture it names. Measured:
+    # the faulted arm reds rust, java and swift independently — three cells, one per engine that can
+    # express the receiver form.
+    # `[1-9]\d*` deliberately: a `breaks` matching `0 cell(s)` would be satisfied by the passing arm.
+    "gen_stat_locator.py": {
+        "args":   [],
+        "holds":  r"STAT-LOCATOR: OK — every engine reads the locator from wherever it arrives",
+        "breaks": r"STAT-LOCATOR: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 8
+COVERED_FLOOR = 9
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
