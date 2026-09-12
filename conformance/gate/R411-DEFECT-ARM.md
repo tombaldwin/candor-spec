@@ -67,3 +67,43 @@ EXPECT = (False, [("AS-EFF-006", "masked", ("Fs",)),
 ```
 
 The list is sorted by `(rule, leaf, effects)` in `norm()`, so `masked` precedes `save` within each rule.
+
+---
+
+## THE SECOND BLIND INSTRUMENT — `gen_masking.py`, found 2026-09-12 by running the suite
+
+PART 12 is not the only gate for this class. `conformance/run.sh` also drives a **CROSS-ENGINE
+GATE-MASKING differential — masked-literal allowlist evasion (AS-EFF-008 opaque)** over 16
+(effect × engine) cells, built for exactly this evasion. Its **Fs × java** cell reports `m→1 c→0 [ok]`,
+green, while java Fs is live-broken (R409).
+
+Both are true because `gen_masking.py` renders the java masked program as:
+
+```java
+Files.write(java.nio.file.Path.of("/var/app/ok"), …);   // benign, allowed
+Files.write(java.nio.file.Path.of(p), …);               // "masked"
+```
+
+`Path.of(p)` **enters java's construction branch** (`Candor.java:5209-5221`) and is correctly marked
+incomplete, so the cell passes. R409's spelling — `Files.write(p, b)` where `p` is already a `Path` —
+never reaches that branch at all. **PART 12's fixture makes the identical choice** (`Paths.get(p)`).
+
+So two instruments, written independently for the same evasion, both CONSTRUCT THE PATH INLINE — the one
+shape the engine handles — and neither can ever see a path that arrived as a parameter.
+
+### What `gen_masking.py` needs, alongside the PART 12 arm above
+
+A second java variant whose path is a **parameter**, not an inline construction:
+
+```java
+static void masked(java.nio.file.Path p, byte[] b) throws Exception {
+    Files.write(java.nio.file.Path.of("/var/app/ok"), b);   // benign, allowed
+    Files.write(p, b);                                       // caller-controlled, invisible
+}
+```
+
+The other three engines already fail closed on their equivalent (measured), so this widens the
+differential from 16 cells to 20 and turns exactly one of them red until R409 lands.
+
+**Both arms are owed by the same fix, and should land in the same change.**
+
