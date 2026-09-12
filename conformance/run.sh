@@ -2525,6 +2525,40 @@ echo
 ) || { echo "gate-masking differential: FAILED"; rc=1; }
 
 # ====================================================================================================
+# PART 88 — THE STAT-LOCATOR differential (FOUR-WAY, SPEC §2 ⟨0.37⟩) — the rung's own part. Asserts that a
+# call's LOCATOR is read from the position that NAMES it, whether that position is an ARGUMENT or the
+# RECEIVER, and that the two things ⟨0.37⟩ explicitly does NOT change stay unchanged.
+#
+# Every engine that can express the receiver form was measured SILENT on it before the clause was written
+# (rust R414, java R409, swift R414). A silent receiver-form stat is AS-EFF-008's masked-literal evasion by
+# another spelling: `allow Fs /tmp/lit` exits 0 over a caller-chosen path while the run prints
+# "nothing hidden".
+#
+# THE TWO CONTROL ARMS ARE WHY THIS PART CAN BE TRUSTED IN THE WIDENING DIRECTION, and they were written
+# WITH the defect arms rather than after them. a3handle pins that a use-verb on an ALREADY-OPENED handle
+# has no locator of its own (marking it would fail every program that opens a file by a literal name);
+# a4local pins that a DETERMINED locator stays determined through a local binding, a constructor and a
+# const. a4local caught SOUNDNESS R416 on this part's FIRST EXECUTION — rust and ts were REFUSING
+# `allow Fs /tmp/x` over a fully determined write — which is the whole argument for shipping an
+# over-charge control beside a defect arm instead of trusting the defect arm alone.
+#
+# Reuses gen_masking.py's engine harness + the binaries this run resolved.
+[ -f "$HERE/gen_stat_locator.py" ] || { echo "FAIL: gen_stat_locator.py is missing"; exit 2; }
+echo
+echo "[88] a call's locator is read from the position that names it — argument or receiver — and neither a handle use-verb nor a determined locator is marked"
+P88_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_stat_locator.py"
+) || { P88_OK=1; rc=1; }
+[ "$P88_OK" = 0 ] || echo "  -> DIVERGE — see the arm table above: a ✘ on a1arg/a2recv is a CERTIFIED locator the engine never captured; a ✘ on a3handle/a4local is an OVER-MASK, which fails closed but makes ordinary code uncertifiable"
+echo "PART 88 — a call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER and both are the call's own; a use-verb on an already-opened handle has none and MUST NOT be marked; a DETERMINED locator stays determined however it reaches the call (SPEC §2 ⟨0.37⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: a3handle — a use-verb on an already-opened handle has no locator of its own and MUST NOT be marked, so a widening fix cannot pass by marking everything\; a4local — a DETERMINED locator (inline, local binding, constructor, const) stays determined and MUST NOT be marked, so a widening fix cannot pass by over-masking. Both are required to move ZERO while the defect arms flip.
+
+# ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
 # and asserts the verdict equals the rule's expected verdict — for a `host:port` allow (the port rule),

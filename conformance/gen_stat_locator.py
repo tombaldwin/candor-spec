@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-THE STAT-LOCATOR DIFFERENTIAL — ⟨0.37⟩'s four arms, cross-engine.
+PART 88 — THE STAT-LOCATOR DIFFERENTIAL — ⟨0.37⟩'s four arms, cross-engine.
 
 A call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER, and both are the call's own. A path-stat
 invoked on its path — `p.exists()`, `f.exists()`, `url.checkResourceIsReachable()` — names its destination
