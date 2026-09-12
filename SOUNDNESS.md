@@ -989,7 +989,11 @@ ways. Conditional compilation is unpinned cross-engine today: there is no `cfg(`
 `conformance/rust/src/lib.rs` and no `#if` in `candor-swift`'s `Cases.swift`. **And the PART can only
 cover TWO engines** — Rust `#[cfg]` and Swift `#if` have conditional imports; Java and TypeScript have
 no such construct, so they are exclusions with a stated reason under `part_declarations.py`, not a gap.
-**Tom's call, and the engines should not be changed further until it is made.**
+~~**Tom's call, and the engines should not be changed further until it is made.**~~
+
+**RULED 2026-09-12 — UNION. Tom's call, and he noted the principle was already settled:** the `by_leaf` half of R222 took UNION on 2026-09-05 after a Fable review, on the ground that a genuinely differing `#[cfg]` twin does not go quiet but goes to the union of both arms — *a hedge replaced by a COMPLETE answer, not a withdrawal*. What stood open here was applying that same answer to the SIBLING route (the `use`-alias shape rather than the definition shape), and this section's own cost analysis argued for it: HEDGE would *"permanently diverge the `use` shape from the definition shape on identical undecidability"*. **UNION reverts nothing — the engines already do it — so this ruling CONFIRMS `main` rather than changing it, and the ⟨0.37⟩ conformance PART is unblocked.**
+
+**TWO THINGS THE RULING DOES NOT DO, stated so neither is assumed.** (1) The owed FIXTURE stays owed: whether a union surface can ever CERTIFY where a hedge would have failed closed is still an argument, not a result — two attempts never reached the shape. It does not block, because UNION is what ships today either way, but the ⟨0.37⟩ PART should not claim that property until a fixture demonstrates it. (2) **The SPEC amendment is DEFERRED PAST 0.36.2 on purpose.** ⟨0.36⟩'s two contradictory sentences live in SPEC.md, and the versioning ladder decides a patch mechanically by `git diff v<prev>..HEAD -- SPEC.md` being empty. Striking one before the cut would make 0.36.2 not-a-patch and change what the release means. The cut ships the gate-bypass fixes; the amendment follows it.
 
 ## THE REUSABLE QUESTION FROM THE R109–R115 VEIN (2026-09-02)
 
