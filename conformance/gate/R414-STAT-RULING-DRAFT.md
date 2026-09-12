@@ -23,6 +23,33 @@ family-wide, not rust-only. Arm 4 went red on its first run and is R416 — rust
 `Path::new(...)`, ts loses even a plain string local, and that matters for sequencing because a fix keyed
 on "the locator was not captured" would compound the over-mask in exactly those two engines.
 
+## The PART is WRITTEN and RUNS — `conformance/gen_stat_locator.py`
+
+Not wired into `run.sh`, for R411's reason: the suite has no xfail, so wiring a part that is expected red
+would red `main` on defects nobody has fixed. Run it by hand:
+
+```bash
+CANDOR_SCAN_BIN=… CANDOR_JAVA_JAR=… CANDOR_TS=… CANDOR_SWIFT=… python3 conformance/gen_stat_locator.py
+```
+
+It reproduces the hand measurement above exactly, which is its calibration — the numbers were taken
+independently before the file existed:
+
+```
+arm        rust        java        ts          swift
+a1arg      ok          ✘           ok          ok        ← java = R409
+a2recv     ✘           ✘           n/a         ✘         ← R414, family-wide
+a3handle   ok          ok          ok          ok        ← the control holds everywhere
+a4local    ✘           ok          ✘           ok        ← rust, ts = R416
+STAT-LOCATOR: 6 cell(s) wrong
+```
+
+It **reuses `gen_masking.ENGINES`** rather than copying the four `Engine` classes — five generators already
+carry their own copies with zero imports between them (R288's shape inside the conformance suite), and
+this file does not become the sixth. Wiring it into `run.sh` is the last step, after the six cells go
+green, and at that point it replaces nothing: PART 12 and `gen_masking` stay, because they pin the
+argument-form spelling this one does not.
+
 ## What still has to land WITH the clause
 1. A conformance PART with all four arms above — arm 2 declared inexpressible for ts under
    `part_declarations.py`, arms 3 and 4 as over-charge controls, not afterthoughts.
