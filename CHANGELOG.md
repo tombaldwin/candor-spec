@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.36.2] — 2026-09-12
+
 - **`lean/check.sh` exits 3, not 2, when the lean toolchain is absent — SOUNDNESS R389.** An unrunnable
   gate was reading as a FAILING one, which is the third spelling of a class `gate-run.sh` already handles
   twice (an unexpandable `${{ }}` expression; a missing interpreter). Exit 3 is the self-skip convention
