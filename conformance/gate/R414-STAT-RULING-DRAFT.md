@@ -88,10 +88,20 @@ the clause exists so a fix to the sentence above cannot quietly break it.
 determined is determined however it reaches the call — inline, through a local binding, through a
 constructor (`Path::new("/lit")`, `Paths.get("/lit")`), or through a constant. An engine MAY
 under-approximate and mark a determined locator incomplete: that fails CLOSED and stays conformant. But it
-is a PRECISION defect and it has a cost the family has measured — rust loses a literal through
-`Path::new(…)` while crediting a plain local and a `const`, and TypeScript loses even the plain local, so
-in exactly those two engines an ordinary determined write is already uncertifiable. **An implementation
-tightening the sentences above MUST NOT widen that gap**, and a conformance PART for this rung carries the
+is a PRECISION defect and it had a measured cost in this family — rust lost a literal through
+`Path::new(…)` while crediting a plain local and a `const`, and TypeScript lost even the plain local, so in
+exactly those two engines an ordinary determined write was uncertifiable. **An implementation tightening the
+sentences above MUST NOT widen that gap**, and a conformance PART for this rung carries the
 determined-locator arm as an over-charge control, not as an afterthought.
+
+> **STATUS OF THAT GAP — past tense as of 2026-09-12, and stated in the past tense deliberately.** Both
+> halves were closed after this draft was written: rust by SOUNDNESS R416 (`resolve_str_expr` now peels
+> `Path::new`/`PathBuf::from`, and only those two — `join`/`with_extension`/`canonicalize` transform the
+> value and must keep returning nothing), candor-rust `1b981d3`; TypeScript's half in the same wave. The
+> PART's `a4local` arm reads `ok` for rust and ts as a result. **The paragraph above was TRUE WHEN WRITTEN
+> and would have shipped as a false claim about the engines a few hours later** — which is the whole
+> failure mode of a limitation recorded as prose: it reads as considered, so nobody re-measures it. The
+> normative sentence is unchanged and still binding; only the evidence sentence moved. Re-check this note
+> against the PART's actual output at landing time rather than trusting it.
 
 ```
