@@ -996,10 +996,26 @@ every form — each is silent under a different one (`deny Unknown` fires on the
 and **`--strict` returns 2 for BOTH**, so a strict gate is blind to the difference. The asymmetry bites
 only the BARE, ordinary forms — `deny Fs`, `allow Fs <lit>` — which is what most policies are.
 
+**THIS DECIDES NOTHING — IT DISCHARGES A DEBT AGAINST A RULING ALREADY MADE.** Tom RULED UNION on
+2026-09-12 (below). That ruling named two things it did NOT do, and the first was: *"the owed FIXTURE
+stays owed … the ⟨0.37⟩ PART should not claim that property until a fixture demonstrates it."* This is
+that fixture. The property is demonstrated, so the PART may now claim it. **Nothing here reopens the
+ruling and nothing here needs a second decision** — writing "Tom's call" over a settled question is the
+stale-snapshot failure this register exists to prevent, and the first draft of this section did exactly
+that.
+
+**BUT ONE PREMISE OF THE RULING IS FALSE AS MEASURED, which is the part worth acting on.** The ruling
+reads *"UNION reverts nothing — the engines already do it — so this ruling CONFIRMS `main` rather than
+changing it."* **`main` only unions on the SAME-FILE route.** The cross-module re-export route still
+HEDGES, and the table above shows the hedge is the posture under which `deny Fs`, `deny Env` and
+`allow Fs <lit>` are all silent. So implementing UNION on the alias route is real work, not a no-op — and
+until it is done the two routes answer one program two ways, which is the R347 shape the family already
+treats as a defect rather than a choice.
+
 **WHAT IS STILL NOT MEASURED, so the boundary is not left to be found:** this is rust only. java/ts/swift
-have not been put on the same fixture, and the section above already says this is a cross-engine SPEC
-question. That remains true and remains Tom's call — but it is now a call about a measured table rather
-than about two good arguments.
+have not been put on the same fixture. Per the ruling's own scoping note that is at most a TWO-engine
+question — Rust `#[cfg]` and Swift `#if` have conditional imports; java and ts have no such construct and
+are excluded with a stated reason.
 
 ### RECOMMENDATION ON THE TABLE (2026-09-11) — reviewed adversarially, two of three reasons withdrawn
 
