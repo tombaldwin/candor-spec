@@ -88,8 +88,58 @@ def main(argv):
         print("  A statement that moved for some other reason needs a human to say what exercises it.")
         return 1
 
+    # ---- AND THE ORPHAN MUST BE THE BANNER TOO --------------------------------------------------
+    # The marker check above identifies the NEW statement. Checking only that end is not enough, and the
+    # gap is exploitable: delete any part-classified statement and add any new one carrying the marker,
+    # and this tool moves the deleted statement's `part:` onto the new one. CONSTRUCTED AND MEASURED —
+    # `PART 60`'s classification laundered onto an unrelated claim, after which `must_ledger` reports OK.
+    # That is precisely what this file's own docstring says it refuses to do, and `spec-bump.sh` invokes
+    # it automatically with no `--dry-run`, so nobody would have seen it happen.
+    #
+    # The orphan's text is by definition GONE from the current SPEC, so it is read from the PREVIOUS
+    # revision. If that cannot be read — not a git checkout, a brand-new file, a detached state — REFUSE.
+    # A tool that guesses here launders a classification silently, which is strictly worse than stopping.
+    prev = None
+    try:
+        import subprocess
+        r = subprocess.run(["git", "-C", os.path.dirname(os.path.abspath(spec)) or ".",
+                            "show", "HEAD:./" + os.path.basename(spec)],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            prev = r.stdout
+    except Exception:
+        prev = None
+    if prev is None:
+        print("reanchor_banner: REFUSING — cannot read the previous revision of "
+              f"{os.path.basename(spec)}, so the ORPHANED entry cannot be identified as the banner.")
+        print("  Re-anchoring on the new statement alone would move whatever classification the orphan "
+              "carried onto it; that is a laundered classification, not a re-anchor.")
+        return 1
+    prev_stmts = ml.extract_text(prev) if hasattr(ml, "extract_text") else None
+    if prev_stmts is None:
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as fh:
+            fh.write(prev); tmp_path = fh.name
+        try:
+            prev_stmts = ml.extract(tmp_path)
+        finally:
+            os.unlink(tmp_path)
+    was = prev_stmts.get(old["sha"])
+    if was is None:
+        print(f"reanchor_banner: REFUSING — the orphaned entry {old['sha']} does not correspond to any "
+              "statement in the previous revision either, so it did not simply MOVE. That is a "
+              "classification question.")
+        return 1
+    was_body = was[-1] if isinstance(was, (tuple, list)) else was
+    if BANNER_MARK not in " ".join(str(was_body).split()):
+        print(f"reanchor_banner: REFUSING — the orphaned entry {old['sha']} was NOT the version banner "
+              f"(no {BANNER_MARK!r} in its previous text):")
+        print(f"    {' '.join(str(was_body).split())[:160]}")
+        print("  Moving its classification onto the new statement would LAUNDER it. Classify by hand.")
+        return 1
+
     if dry:
-        print(f"reanchor_banner: WOULD move {old['sha']} -> {new_sha}")
+        print(f"reanchor_banner: WOULD move {old['sha']} -> {new_sha}  (both ends verified as the banner)")
         return 0
 
     old_sha = old["sha"]
