@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.37.0] — 2026-09-13
+
 ### ⟨0.37⟩ — THE STAT-LOCATOR RUNG (NON-ADDITIVE)
 
 **A call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER, and both are the call's own.** §2 gains
