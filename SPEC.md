@@ -4400,11 +4400,45 @@ qualified name. It does not bind a BINDING: a `use … as X`, `import` or `typea
 DIFFERENT existing definitions under one local name in mutually-exclusive configuration arms. The same
 three legs hold there — exactly one arm is built, every target is in the source, the engine holds the
 complete target set, so resolving by source order is fabrication and dropping is a ⟨0.21⟩ purity claim
-— and the answer is the same union; but no conformance row pins it, so it is not an obligation of
-⟨0.36⟩. It is owed its own clause and PART (SOUNDNESS R287; fixture = R140's platform-gated `use` pair
-in both orders, plus an alias pair with one LOCAL arm) and ships as a later rung. Until then a hedge to
-`Unknown` on that shape is over-disclosure and permitted; resolution by SOURCE ORDER was and remains
-the cardinal sin under ⟨0.21⟩, independent of this clause.
+— and the answer is the same union.
+
+⟨0.38⟩ **A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS, exactly as a conditional definition
+does.** ⟨0.36⟩ left this unbound, saying only that the answer "is the same union; but no conformance row
+pins it", and permitted a hedge to `Unknown` in the meantime as over-disclosure. **That permission is
+WITHDRAWN, and it contradicted the clause it was written under.** Three paragraphs above, this same
+section establishes that `{Unknown}` alone is **not** conformant for an arm set and that the phrase
+"over-disclosure is always allowed" was wrong on its own terms — under §4.0 `{Unknown}` is not `⊤`, so
+a hedge does not add disclosure, it WITHDRAWS a determined effect and stops `deny <E>` firing on a call
+that reaches `<E>` in one configuration. A binding is not a different question from a definition; it is
+the same undecidability one resolution step earlier, and ⟨0.36⟩'s own three legs were already stated to
+hold for it.
+
+So, for a `use … as X`, `import … as X` or `typealias X = …` declared more than once under
+mutually-exclusive configuration arms: an implementation MUST answer with the union of the arms'
+effects, MUST NOT resolve by source order, and MUST NOT withdraw the answer to `{Unknown}`. Resolution
+by SOURCE ORDER was and remains the cardinal sin under ⟨0.21⟩.
+
+**The union's SURFACE is the union of the arms' surfaces, and an implementation MUST NOT certify a
+destination on the strength of one arm when another names a different one.** Where it cannot attribute a
+literal to the arm that carries it, it MUST mark the surface incomplete (§2) rather than publish one
+arm's — the same answer ⟨0.29⟩ gives any effect whose destination was not captured. Publishing one arm's
+literal as the call's destination is the pick-by-position this clause forbids, arriving by another route.
+
+*This paragraph is WEAKER than its first draft, and the weakening is a correction rather than a
+concession.* It first read "the union does not carry a surface … MUST mark the effect's surface
+incomplete", and PART 89 went red against it on its first run — for a fixture whose two arms reach the
+SAME literal, where one engine certified and was right to: in every configuration the reach is exactly
+that literal, so there is nothing for a union to hide and failing closed is a refusal of determined
+code. The hazard is arms whose destinations DIFFER, which is what the part now asserts.
+
+**Scope.** This binds only languages with mutually-exclusive configuration arms — Rust's `#[cfg]` and
+Swift's `#if`. Java and TypeScript have no such construct, and are excluded with that reason rather than
+counted as gaps. **This clause was RULED on 2026-09-12 and the ruling's own premise — that the engines
+already did this, so it confirmed `main` — was measured FALSE:** rust unioned on the definition route
+and HEDGED on the alias route (one program answered two ways depending on whether its alias crossed a
+module boundary), and swift PICKED an arm by source order on the `typealias` route, a silent
+under-report a scoped `deny` exposed (SOUNDNESS R429). Both are fixed; the clause is what stops them
+diverging again.
 
 *Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a
 release review overturned that on 2026-09-09 — the sentence is corrected rather than deleted, because
@@ -5403,6 +5437,21 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.38 (rust + swift; java/ts are declared exclusions)** — a **NON-ADDITIVE** rung that adds no field
+  and removes none. §4 gains *A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS, EXACTLY AS A
+  CONDITIONAL DEFINITION DOES*, and **withdraws ⟨0.36⟩'s permission to hedge that shape to `{Unknown}`**
+  — a permission that contradicted the clause it was written under, three paragraphs above it, where
+  this document already establishes that `{Unknown}` alone is not conformant for an arm set because
+  §4.0 makes it not `⊤`. RULED 2026-09-12. **The ruling's own premise, that the engines already did
+  this, was measured FALSE:** rust unioned on the definition route and HEDGED on the `use`-alias route,
+  so one program answered two ways depending on whether its alias crossed a module boundary
+  (`deny Fs`, `deny Env` and `allow Fs <lit>` were ALL silent on one route and all fired on the other);
+  and swift PICKED an arm by SOURCE ORDER on the `typealias` route, dropping the losing arm's effects
+  entirely — a scoped `deny Fs` passed over a real file write depending on where `#else` sat
+  (SOUNDNESS R429, the ⟨0.21⟩ cardinal sin). **UPGRADING RAISES REFUSALS:** a binding whose arms differ
+  now charges both and marks the surface incomplete, so a tree that certified under ⟨0.37⟩ can exit 1
+  with no code change. The surface is deliberately NOT captured — publishing one arm's literal is the
+  pick-by-position the clause forbids, arriving by another route.
 - **0.37 (all code engines declare `0.37`; conformance-pinned by PART 88)** — a **NON-ADDITIVE** rung
   that adds no field and removes none. §2 gains *A CALL'S LOCATOR MAY ARRIVE AS AN ARGUMENT OR AS THE
   RECEIVER, AND BOTH ARE THE CALL'S OWN*: a path-stat invoked on its path — `p.exists()`, `f.exists()`,

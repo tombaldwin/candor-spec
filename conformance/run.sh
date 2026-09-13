@@ -2558,6 +2558,43 @@ echo "PART 88 — a call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER 
 # ENGINES: rust java ts swift
 # CONTROLS: a3handle — a use-verb on an already-opened handle has no locator of its own and MUST NOT be marked, so a widening fix cannot pass by marking everything\; a4local — a DETERMINED locator (inline, local binding, constructor, const) stays determined and MUST NOT be marked, so a widening fix cannot pass by over-masking. Both are required to move ZERO while the defect arms flip.
 
+# PART 89 — THE CONDITIONAL-BINDING UNION differential (rust + swift, SPEC §4 ⟨0.38⟩) — the rung's own
+# part. A `use … as X` / `typealias X = …` declared twice under mutually-exclusive configuration arms
+# resolves to the UNION of the arms' effects, in either written order, without withdrawing to {Unknown}
+# and without certifying off one arm's literal.
+#
+# RULED 2026-09-12 by Tom, and the ruling's own premise — that the engines already did this, so it
+# confirmed `main` — was measured FALSE on BOTH engines it scopes to. rust unioned on the DEFINITION
+# route and HEDGED on the alias route, so one program answered two ways depending on whether its alias
+# crossed a module boundary. swift PICKED by SOURCE ORDER on the `typealias` route and dropped the losing
+# arm outright — a scoped `deny Fs` passed over a real file write depending on where `#else` sat
+# (SOUNDNESS R429, the ⟨0.21⟩ cardinal sin). This part is what stops them diverging again.
+#
+# `deny Env` IS THE DISCRIMINATOR, not `deny Fs`: every arm reaches Fs by some route, so an Fs-shaped
+# question cannot separate PICK from HEDGE from UNION. Env is carried by ONE arm, so a pick that lost it
+# is silent, a hedge that renamed it Unknown is silent, and only the union fires. The rules are SCOPED to
+# `probe` because the swift fixture's helper enums carry Env as units of their own.
+#
+# THE PART CORRECTED THE CLAUSE ON ITS FIRST RUN. b4surface's first form had both arms reaching the SAME
+# literal, and swift certified it — rightly, since the reach is that literal in every configuration. The
+# clause said the surface MUST be incomplete; it was too strong and was weakened to the real hazard,
+# arms whose destinations DIFFER. That is an over-charge control doing the job PART 88's a4local did.
+#
+# Reuses gen_masking.py's engine harness + the binaries this run resolved.
+[ -f "$HERE/gen_binding_union.py" ] || { echo "FAIL: gen_binding_union.py is missing"; exit 2; }
+echo
+echo "[89] a conditional BINDING resolves to the union of its arms, in either order, with no withdrawal to Unknown and no certify off one arm"
+P89_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_binding_union.py"
+) || { P89_OK=1; rc=1; }
+[ "$P89_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on b1union/b2order is an arm the engine dropped or withdrew; a ✘ on b3nohedge/b5agree/b6single is the union over-reporting; a ✘ on b4surface is one arm's literal certifying for both"
+echo "PART 89 — a conditional BINDING unions its arms exactly as a conditional DEFINITION does (SPEC §4 ⟨0.38⟩)"
+# ENGINES: rust swift; java: the language has no mutually-exclusive configuration construct — there is no `#if`/`#[cfg]` that binds one name to two different definitions, so the shape cannot be written and a row would be asserting nothing; ts: same, and its conditional imports are runtime `await import()` expressions rather than build-configuration arms, so both targets exist in one build
+# CONTROLS: b3nohedge — the answer is a complete one, never a withdrawal to {Unknown}; b5agree — arms that classify ALIKE manufacture nothing (the 6.6%-prevalent portability-shim shape); b6single — an ORDINARY binding still resolves AND still certifies off its literal, so a widening cannot pass by refusing determined code
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

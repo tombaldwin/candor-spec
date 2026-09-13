@@ -131,13 +131,29 @@ COVERED = {
         "holds":  r"STAT-LOCATOR: OK — every engine reads the locator from wherever it arrives",
         "breaks": r"STAT-LOCATOR: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 89 — the fault writes b5agree's body (arms that classify ALIKE, so no Env anywhere) into
+    # b1union's cell, so the arm that MUST fire `deny Env probe` cannot. At the FIXTURE, not the
+    # comparison, for the same reason as gen_stat_locator above: inverting an expected value proves only
+    # that the comparison can subtract, while corrupting the input proves the cell is READING the fixture
+    # it names.
+    #
+    # **THE FIRST FAULT WRITTEN HERE WAS VACUOUS, and the replacement is the point.** It substituted
+    # b1union's body into b2order's cell — but those two ARE the same program with the arms swapped, both
+    # expected rc=1, so the substitution moved no verdict and the fault run came back OK. A fault that
+    # cannot redden the thing it corrupts is the exact failure this whole file exists to catch, one level
+    # up. Caught by RUNNING it rather than by reading it.
+    "gen_binding_union.py": {
+        "args":   [],
+        "holds":  r"BINDING-UNION: OK — every engine answers a conditional binding with the union",
+        "breaks": r"BINDING-UNION: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 9
+COVERED_FLOOR = 10
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
