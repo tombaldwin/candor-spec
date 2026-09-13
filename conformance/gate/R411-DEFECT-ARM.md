@@ -1,4 +1,12 @@
-# The masking DEFECT arm — written, measured four-way, and HELD until SOUNDNESS R409 is fixed
+# The masking DEFECT arm — LANDED 2026-09-13 (kept as the row's evidence, not as pending work)
+
+> **STATUS: BOTH ARMS ARE IN THE SUITE.** R409 landed (candor-java `3e8e794`) and the hold this file
+> describes is lifted. Kept because it records the MEASUREMENT that justified the arms and the reasoning
+> that found the blindness — delete the file and the next person meets the same inline-construction trap
+> with nothing to warn them. The table below is from the SHIPPED 0.36.1 engines and is now HISTORY: on
+> HEAD all four engines flag the masked destination, and both arms were re-falsified against that same
+> 0.36.1 jar to prove they discriminate. See SOUNDNESS R411.
+
 
 `conformance/gate` currently pins only the **control** arm of the AS-EFF-008 masking class. Every
 language's fixture is one method whose path is a parameter and which contains **no other literal**, so

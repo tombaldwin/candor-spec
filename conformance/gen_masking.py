@@ -141,6 +141,46 @@ EFFECTS = [
             compliant='func entry() {{ _ = posix_spawn(nil, "/bin/ls", nil, nil, nil, nil) }}',
         ),
     ),
+    # SOUNDNESS R411 — THE PARAMETER SPELLING, and the reason this differential could not see R409.
+    #
+    # Every `masked` case above DERIVES its path from the parameter (`"/etc/" + m`), so the write's
+    # argument is an expression the engine builds inline — and inline construction is exactly the shape
+    # every engine's path-construction branch already marks incomplete. So all 16 cells passed while
+    # java's Fs surface was live-broken. PART 12 made the identical choice (`Paths.get(p)`). TWO
+    # instruments, written independently for the same evasion, both blind to the same spelling.
+    #
+    # Here the masked path IS the parameter, handed to the write untouched. Nothing constructs it, so
+    # nothing triggers a construction-branch mark, and only an engine that reasons about the LOCATOR
+    # rather than the syntax around it fails closed. java takes a `Path` and swift a `URL`, so the value
+    # arrives already built; ts has no path type, and a bare `string` parameter is its equivalent.
+    dict(
+        id="fs_param", effect="Fs", benign="/var/app", allow="allow Fs /var/app",
+        rust=dict(
+            masked='pub fn entry(m: &std::path::Path) {{ '
+                   'let _ = std::fs::write("/var/app/ok", b"x"); '
+                   'let _ = std::fs::write(m, b"x"); }}',
+            compliant='pub fn entry() {{ let _ = std::fs::write("/var/app/ok", b"x"); }}',
+        ),
+        java=dict(
+            masked='  public static void entry(java.nio.file.Path m) throws Exception {{ '
+                   'java.nio.file.Files.write(java.nio.file.Path.of("/var/app/ok"), new byte[0]); '
+                   'java.nio.file.Files.write(m, new byte[0]); }}',
+            compliant='  public static void entry() throws Exception {{ '
+                      'java.nio.file.Files.write(java.nio.file.Path.of("/var/app/ok"), new byte[0]); }}',
+        ),
+        ts=dict(
+            masked='export function entry(m: string): void {{ '
+                   'fsm.writeFileSync("/var/app/ok", "x"); '
+                   'fsm.writeFileSync(m, "x"); }}',
+            compliant='export function entry(): void {{ fsm.writeFileSync("/var/app/ok", "x"); }}',
+        ),
+        swift=dict(
+            masked='func entry(_ m: URL) {{ '
+                   '_ = FileManager.default.createFile(atPath: "/var/app/ok", contents: nil); '
+                   'try? Data().write(to: m) }}',
+            compliant='func entry() {{ _ = FileManager.default.createFile(atPath: "/var/app/ok", contents: nil) }}',
+        ),
+    ),
     dict(
         id="fs", effect="Fs", benign="/var/app", allow="allow Fs /var/app",
         rust=dict(
@@ -439,7 +479,7 @@ def main():
     # ---- the coverage / verdict table ---------------------------------------------------------------
     names = [e.name for e in available]
     print("\nCOVERAGE  (per cell: masked→<rc> compliant→<rc>; want masked≠0, compliant=0)")
-    head = f"{'effect':10s} " + " ".join(f"{n:22s}" for n in names)
+    head = f"{'case':10s} " + " ".join(f"{n:22s}" for n in names)
     print(head)
     print("-" * len(head))
     evasions = []         # (effect, engine) -- masked PASSED the gate (the cardinal sin)
@@ -447,11 +487,15 @@ def main():
     cell_errs = []        # (effect, engine, msg)
     covered = 0
     for eff in EFFECTS:
-        row = f"{eff['effect']:10s} "
+        # LABEL BY CASE ID, not by effect. Two cases now share the effect `Fs` — `fs` (the path is
+        # DERIVED from the parameter) and `fs_param` (the path IS the parameter, SOUNDNESS R411) — and
+        # printing both as "Fs" makes them read as a duplicated row, which is how one of them gets
+        # deleted by a future tidy-up. The id is what distinguishes the spellings.
+        row = f"{eff['id']:10s} "
         for eng in available:
             v = cover[(eff["id"], eng.name)]
             if v[0] == "ERR":
-                cell_errs.append((eff["effect"], eng.name, v[1]))
+                cell_errs.append((eff["id"], eng.name, v[1]))
                 row += f"{'ERR':22s} "
                 continue
             m_rc, c_rc = v
@@ -459,9 +503,9 @@ def main():
             m_ok = m_rc != 0           # masked must FAIL-closed
             c_ok = c_rc == 0           # compliant must PASS
             if not m_ok:
-                evasions.append((eff["effect"], eng.name, m_rc, c_rc))
+                evasions.append((eff["id"], eng.name, m_rc, c_rc))
             if not c_ok:
-                false_pos.append((eff["effect"], eng.name, m_rc, c_rc))
+                false_pos.append((eff["id"], eng.name, m_rc, c_rc))
             mark = "ok" if (m_ok and c_ok) else ("EVASION" if not m_ok else "FALSE-POS")
             row += f"{f'm→{m_rc} c→{c_rc} [{mark}]':22s} "
         print(row)
