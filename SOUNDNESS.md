@@ -951,6 +951,55 @@ good and they cannot both be the rule.
 3. **Does it change what a bare `deny <E>` does?** — the original question above, unchanged, and the
    union answers it YES by construction where the hedge answers NO.
 
+### ⇢ THE OWED FIXTURE, BUILT AND MEASURED 2026-09-13 (candor-rust `0d8b58b`) — ARGUMENT IS NOW RESULT
+
+The question above has been blocked on one thing: *"whether a union surface can CERTIFY where a hedge
+failed closed"* is **argument, not result, and two attempts never reached the shape.** It is built now.
+No engine or spec text was changed to do it.
+
+**TWO THINGS IN THE RECORD ABOVE ARE STALE, AND SOMEONE REPRODUCING WOULD BE MISLED BY BOTH.**
+
+1. **The route discriminator is a CROSS-MODULE RE-EXPORT, not `pub use`.** The 2026-09-10 update says
+   two programs differing only in `pub use` vs `use` take different routes. On the current binary they do
+   not — a same-file `pub use` UNIONS, identically to `use`. The hedge needs the alias to be re-exported
+   from ANOTHER module and consumed across it (`mod shim; use crate::shim::act;`). Anyone re-testing with
+   the documented `pub use` fixture measures no divergence and concludes the hedge is gone. It is not.
+2. **`deny Fs` on the union route is now 1, not 0.** The 2026-09-02 table's headline row — the question's
+   original subject — no longer reproduces.
+
+**THE MATRIX.** One program, two routes, all four policy forms. Both controls included, and every column
+is proven able to answer 0 so no cell is a stuck red:
+
+| fixture | `allow Fs /tmp/benign` | `deny Fs` | `deny Env` | `deny Unknown` | `--strict` |
+|---|---|---|---|---|---|
+| CONTROL: no effects at all | 0 | 0 | 0 | 0 | — |
+| CONTROL: arms AGREE (`fs::write` both) | **0** | 1 | 0 | 0 | — |
+| arms DISAGREE, same file → **UNION** | **1** | **1** | **1** | 0 | 2 |
+| arms DISAGREE, cross-module → **HEDGE** | **0** | **0** | **0** | 1 | 2 |
+
+**ANSWER TO QUESTION 2, AND IT INVERTS THE CONCERN THAT MOTIVATED IT.** `scan.rs:2006` withholds the
+hedge's surface *"so an empty surface cannot read as a complete one and let `allow <E> <lit>` certify a
+claim the engine never made"*. Measured: **the UNION does not certify — it exits 1** (and the agreeing
+control exits 0, so that 1 is a real fail-closed, not an always-red fixture). The union charges
+`['Env','Fs']`, withholds `paths`, and sets `incomplete:['Fs']`. **It is the HEDGE that exits 0 under
+`allow Fs`** — not by capturing a surface, but by renaming the effect to `Unknown`, which a bare
+`allow Fs` does not constrain. The posture defended on the grounds of not letting a policy certify is the
+one that lets this policy certify.
+
+**So the live union posture is a FOURTH option none of the three rows above names:** union the EFFECTS,
+WITHHOLD the surface, DISCLOSE `incomplete`. It has the union's `deny` behaviour and the hedge's surface
+caution, and it is already shipped on the same-file route.
+
+**IN FAIRNESS TO THE HEDGE, STATED BECAUSE IT WEAKENS THE CASE ABOVE:** neither posture is silent under
+every form — each is silent under a different one (`deny Unknown` fires on the hedge and not the union),
+and **`--strict` returns 2 for BOTH**, so a strict gate is blind to the difference. The asymmetry bites
+only the BARE, ordinary forms — `deny Fs`, `allow Fs <lit>` — which is what most policies are.
+
+**WHAT IS STILL NOT MEASURED, so the boundary is not left to be found:** this is rust only. java/ts/swift
+have not been put on the same fixture, and the section above already says this is a cross-engine SPEC
+question. That remains true and remains Tom's call — but it is now a call about a measured table rather
+than about two good arguments.
+
 ### RECOMMENDATION ON THE TABLE (2026-09-11) — reviewed adversarially, two of three reasons withdrawn
 
 **Rule UNION for an UNDECIDABLE `#[cfg]`-duplicated binding: "decide what is decidable, union what is
