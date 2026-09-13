@@ -2992,8 +2992,16 @@ def norm(path):
                for x in d["violations"] if x["rule"] != "AS-EFF-007")
     return d.get("spec"), bool(d["ok"]), v
 print("[12] GATE-VERDICT differential  (SPEC §3.3 ⟨0.8⟩ — verdict AND exit code agree across every declaring engine)")
-EXPECT = (False, [("AS-EFF-006", "save", ("Fs",)),    # deny Fs — the denied intersection
-                  ("AS-EFF-008", "save", ("Fs",))])   # allow Fs, param path → uncertifiable (fail-closed); pure `add` absent
+# SOUNDNESS R411 — `save` alone was TWO CONTROLS, not a control and a defect arm. Its path is built
+# inline (`Paths.get(p)` / `URL(fileURLWithPath: p)`), the one shape every engine's construction branch
+# already marks incomplete, so all four passed and the row discriminated nothing. It could not see R409
+# (java) or R410 (ts) and never could. `masked` is the arm that distinguishes: the SAME runtime write
+# with a benign ALLOWED literal beside it, and in java a path that arrives already constructed.
+# Sorted by (rule, leaf, effects) in norm(), so `masked` precedes `save` within each rule.
+EXPECT = (False, [("AS-EFF-006", "masked", ("Fs",)),
+                  ("AS-EFF-006", "save",   ("Fs",)),   # deny Fs — the denied intersection
+                  ("AS-EFF-008", "masked", ("Fs",)),   # the DEFECT arm (R411)
+                  ("AS-EFF-008", "save",   ("Fs",))])  # allow Fs, param path → uncertifiable; pure `add` absent
 fails = []
 for n, stem, required in engines:
     if not required:
