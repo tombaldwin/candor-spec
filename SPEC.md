@@ -74,6 +74,15 @@ that reaches it, not only the excluded declaration's own name, so a scoped polic
 excluded code can now exit 2 on the same bytes. The remedy is the finding itself: the effect was always
 there, denied, and unreported — there is no upgrade note, because there is no previously-correct behaviour
 to preserve.
+**⟨0.37⟩ IS NOT ADDITIVE EITHER, AND IT RAISES REFUSALS IN ONE DIRECTION ONLY.** It adds no field and
+removes none; what moves is WHERE a call's locator may be read from. §2 gains *a call's LOCATOR may
+arrive as an ARGUMENT or as the RECEIVER, and both are the call's own* — so a path-stat invoked on its
+path (`p.exists()`, `url.checkResourceIsReachable()`) now names a destination the gate must cover. A tree
+that passed `allow Fs …` under ⟨0.36⟩ can exit 1 under ⟨0.37⟩ with no code change on either side: the
+stat was always there and was always unreported, which is why the remedy is the finding itself. Unlike
+⟨0.36⟩ this flips ONE way — a verdict can go 0 → 1, never 1 → 0 — so an upgrade can cost you a green
+gate and can never quietly hand you one.
+
 **⟨0.36⟩ IS NOT ADDITIVE EITHER, AND UNLIKE EVERY RUNG BEFORE IT, IT FLIPS BOTH WAYS.** It adds no
 field and removes none; what moves is which `unknownWhy` detail §4 permits for one source shape. §4
 gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT DEFINITIONS*: several bodies published under
@@ -1681,7 +1690,14 @@ is a PRECISION defect with a cost this family has measured — at the time this 
 literal through `Path::new(…)` while crediting a plain local and a `const`, and TypeScript lost even the
 plain local, so in exactly those two engines an ordinary determined write was uncertifiable. **An
 implementation tightening the sentences above MUST NOT widen that gap**, and this rung's conformance part
-carries the determined-locator arm as an over-charge control rather than as an afterthought — which is how
+carries the determined-locator arm as an over-charge control rather than as an afterthought. **THE
+PERMISSION AND THE PART ARE NOT IN TENSION, AND HERE IS THE LINE BETWEEN THEM:** the four engines this
+rung PINS are held to PART 88's `a4local`, which is the executable form of the MUST above — for them,
+marking a determined locator incomplete is a regression the suite refuses. The permission is for an
+implementation OUTSIDE that pin (a second backend, an experimental engine, a downstream re-implementation)
+which may under-approximate and still claim conformance, because failing closed is never unsound. Without
+this sentence the paragraph reads as licensing exactly what the part fails, which is the
+clause-says-more-than-the-row shape the MUST-ledger exists to catch — which is how
 those two defects were found, on the part's FIRST execution.
 
 Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
@@ -5386,6 +5402,21 @@ to "item 14" stay valid):
 The spec version is the contract version (§2.1) — bumped on additive changes (a minor: a new optional
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
+
+- **0.37 (all code engines declare `0.37`; conformance-pinned by PART 88)** — a **NON-ADDITIVE** rung
+  that adds no field and removes none. §2 gains *A CALL'S LOCATOR MAY ARRIVE AS AN ARGUMENT OR AS THE
+  RECEIVER, AND BOTH ARE THE CALL'S OWN*: a path-stat invoked on its path — `p.exists()`, `f.exists()`,
+  `url.checkResourceIsReachable()` — names its destination exactly as `fs::metadata(p)` does, and a stat
+  IS an `Fs` reach. **Every engine that can express the receiver form was measured SILENT on it before
+  the clause was written** (rust R414, java R409, swift R414; TypeScript has no path object and is a
+  declared exclusion), so a benign sibling literal certified a caller-controlled path and the run printed
+  *"nothing hidden"*. **UPGRADING RAISES REFUSALS:** a tree that passed `allow Fs …` under ⟨0.36⟩ can
+  exit 1 under ⟨0.37⟩ with no code change on either side of the gate, because the stat that was invisible
+  is now a surface the allowlist must cover. Two counterparts ship with it and an implementer must read
+  all three together: a call on an ALREADY-OPENED HANDLE has no locator of its own and MUST NOT be
+  marked, and *DETERMINED* is a property of the VALUE rather than of the syntax. PART 88 carries the two
+  counterparts as over-charge controls rather than as afterthoughts, and the determined-locator control
+  caught SOUNDNESS R416 on its first execution.
 
 - **0.36 (all code engines declare `0.36`; conformance-pinned by PART 10)** — a **NON-ADDITIVE** rung
   that adds no field and removes none. §4 gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT

@@ -25,6 +25,44 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+### ⟨0.37⟩ — THE STAT-LOCATOR RUNG (NON-ADDITIVE)
+
+**A call's LOCATOR may arrive as an ARGUMENT or as the RECEIVER, and both are the call's own.** §2 gains
+the clause; PART 88 (`conformance/gen_stat_locator.py`) pins it four-way. ⟨0.29⟩ said the surface is read
+from the position that NAMES the locator and never said where that position may be — all four engines
+read it as "an argument", so a path-stat invoked on its path was SILENT and a benign sibling literal
+certified a caller-controlled path while the run printed *"nothing hidden"*.
+
+**UPGRADING RAISES REFUSALS, in one direction only.** A tree that passed `allow Fs …` under ⟨0.36⟩ can
+exit 1 under ⟨0.37⟩ with no code change on either side of the gate. A verdict can go 0 → 1 and never
+1 → 0, so an upgrade can cost you a green gate and can never quietly hand you one. The effect was always
+there and always unreported; the remedy is the finding itself.
+
+Two counterparts ship with it and must be read together: a call on an ALREADY-OPENED HANDLE has no
+locator of its own and MUST NOT be marked, and *DETERMINED* is a property of the VALUE, not of the syntax.
+PART 88 carries both as over-charge controls rather than afterthoughts — and the determined-locator
+control caught SOUNDNESS R416 on its FIRST execution, in two engines.
+
+### Also
+- **PART 88 is probe-covered**, with its fault at the FIXTURE rather than the comparison (`COVERED_FLOOR`
+  8 → 9). Registering it is what the suite demanded: a property nobody has seen fail is untested.
+- **R411 — the masking differentials pinned the arm that WORKS.** PART 12 and `gen_masking.py` both built
+  their masked path INLINE, the one shape every engine's construction branch already marks, so both were
+  green while java's Fs surface was live-broken. New arms hand the write the PARAMETER itself; proven to
+  discriminate against the real pre-R409 jar (`fs_param java m→0 c→0 [EVASION]` while the old cell reads
+  `[ok]`, same jar, same run).
+- **One owner for the fixture-tree writers** — nine near-copies across three generators down to three
+  shared writers in `gen_differential.py`, proven byte-identical over 484 generated files.
+- **`reanchor_banner.py`** moves the Contents banner's ledger sha after a floor bump and refuses anything
+  ambiguous. A review showed the first cut could LAUNDER a conformance classification onto an unrelated
+  statement; it now verifies BOTH ends against the previous revision.
+- **Two register rows corrected from overstated closures.** R414 said "CLOSED four-way" while swift's
+  `Files` receiver shape is silent on 11 of 12 verbs (R418); R409's fix commit was titled "the last
+  masking bypass in the reference engine" while the String-operand tail is open (R421). In both cases the
+  closure was written from the arms that PASSED and inherited the fixture's boundary rather than the
+  class's. **A CLOSED row must name the spellings its pin does not express.**
+
+
 ## [0.36.2] — 2026-09-12
 
 - **`lean/check.sh` exits 3, not 2, when the lean toolchain is absent — SOUNDNESS R389.** An unrunnable
