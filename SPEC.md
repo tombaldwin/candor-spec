@@ -74,6 +74,26 @@ that reaches it, not only the excluded declaration's own name, so a scoped polic
 excluded code can now exit 2 on the same bytes. The remedy is the finding itself: the effect was always
 there, denied, and unreported — there is no upgrade note, because there is no previously-correct behaviour
 to preserve.
+
+**⟨0.38⟩ IS NOT ADDITIVE EITHER, AND IT FLIPS BOTH WAYS — the second rung that does, and for the same
+reason ⟨0.36⟩ did.** It adds no field and removes none; what moves is the answer a BINDING gives when it
+is declared more than once under mutually-exclusive configuration arms. §4 gains *A CONDITIONAL BINDING
+RESOLVES TO THE UNION OF ITS ARMS, EXACTLY AS A CONDITIONAL DEFINITION DOES*, and **withdraws ⟨0.36⟩'s
+permission to hedge that shape to `{Unknown}`** — a permission that contradicted the clause it was
+written under, since §4.0 makes `{Unknown}` not `⊤`, so the hedge does not add disclosure, it WITHDRAWS
+a determined effect. Upward: a `deny <Effect> <fn>` or `allow <Effect> <lit>` can go 0 → 1 as the arm
+that was picked-past or hedged away is charged and the surface goes incomplete. Downward: a
+`deny Unknown` written against the hedge can go 1 → 0, because the hedge it was catching is what the
+clause removes. That direction is not a loss of soundness — the hedge stood in for effects that are now
+named — but a saved baseline will differ, and a policy that was watching the hedge stops firing.
+**Scope is two engines and the exclusions are not symmetric:** Rust's `#[cfg]` and Swift's `#if` are in;
+Java has neither an import alias nor configuration arms, so the shape cannot be written; TypeScript has
+the alias and lacks only the arms. Pinned by PART 89, whose NINE arms are green on both engines. Its
+mixed-arm rows were DECLARED XFAILS when written — an arm set mixing a project type with a framework one
+still resolved by pick in both engines — and both were fixed before this rung shipped (SOUNDNESS R438
+rust, R429 swift, and R287 with them). The xfails were retired because the PART reported them as passing,
+which is the only reason they did not quietly become false claims about the engines.
+
 **⟨0.37⟩ IS NOT ADDITIVE EITHER, AND IT RAISES REFUSALS IN ONE DIRECTION ONLY.** It adds no field and
 removes none; what moves is WHERE a call's locator may be read from. §2 gains *a call's LOCATOR may
 arrive as an ARGUMENT or as the RECEIVER, and both are the call's own* — so a path-stat invoked on its
@@ -108,7 +128,11 @@ conditional compilation never fires at all. Pinned by conformance **PART 10**, w
 fixtures are each other's control: the arm set must come back carrying BOTH arms' effects in either
 written order, and two same-named definitions in different modules must still come back `ambiguous:`.
 **PART 10 pins DEFINITIONS only** — a cfg-gated alias naming two different definitions is SOUNDNESS
-R287, ruled at this cut and deferred to its own rung. **A known gap, recorded rather than left to be
+R287, ruled at this cut and deferred to its own rung — **which arrived as ⟨0.38⟩ below and CLOSED it,
+both halves.** The all-project-declared half closed with the clause; the MIXED set — one project type
+beside a framework or `std` one — was carried as a declared PART 89 xfail and then fixed in both engines
+before the rung shipped (R438 rust, R429 swift). The two turned out to have DIFFERENT causes, which is
+why splitting them was worth the bookkeeping. **A further known gap, recorded rather than left to be
 discovered:** PART 10 drives the Rust scanner only, so
 the clause's family-wide wording ("any language with a preprocessor or a build-configuration directive")
 is pinned in one engine. candor-swift was measured conforming on `#if os(...)` twins in both orders
@@ -4402,6 +4426,25 @@ three legs hold there — exactly one arm is built, every target is in the sourc
 complete target set, so resolving by source order is fabrication and dropping is a ⟨0.21⟩ purity claim
 — and the answer is the same union.
 
+*Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a
+release review overturned that on 2026-09-09 — the sentence is corrected rather than deleted, because
+the reasoning that produced it is the part worth keeping.** Two of its three legs hold: the ban on
+picking and the ban on dropping really are ⟨0.21⟩'s and §4's already. The third does not — ⟨0.25⟩'s
+union clause governs the CONSUMER's join across dep reports, not a producer's own name resolution
+inside one scan, so it is an analogy rather than a derivation. And the normative words themselves
+moved: "two same-named local definitions" became "two DISTINCT definitions of one name", which a cfg
+twin satisfies under the first reading and not the second. **The operative test is not how the clause
+reads but what it did: a conformant engine became non-conformant on a [TIER 1] part through a
+text-only change.** candor-rust 0.35.0 emits `ambiguous:` for a cfg twin on 8,710 of 19,607
+`unknownWhy` entries; PART 10 required exactly that at v0.35 and forbids it here. Under §1's own rule
+— "a refinement that narrows an upper bound, or an obligation tightening" — that is a MINOR, and this
+clause ships as ⟨0.36⟩. What was missing was any statement of which shapes meet the unformable-owner
+condition, so the binding of `ambiguous:` to conditional-compilation arms lived only in a conformance
+fixture and the comment above it — where SOUNDNESS R222/R129 found candor-rust hedging a call it could
+answer, on 8,710 of 19,607 `unknownWhy` entries in a 1,062-report census. Pinned by PART 10, whose two
+per-engine fixtures are each other's control: the arm set must come back with both effects, and two
+same-named definitions in different modules must still come back `ambiguous:`.*
+
 ⟨0.38⟩ **A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS, exactly as a conditional definition
 does.** ⟨0.36⟩ left this unbound, saying only that the answer "is the same union; but no conformance row
 pins it", and permitted a hedge to `Unknown` in the meantime as over-disclosure. **That permission is
@@ -4431,38 +4474,44 @@ SAME literal, where one engine certified and was right to: in every configuratio
 that literal, so there is nothing for a union to hide and failing closed is a refusal of determined
 code. The hazard is arms whose destinations DIFFER, which is what the part now asserts.
 
-**Scope.** This binds only languages with mutually-exclusive configuration arms — Rust's `#[cfg]` and
-Swift's `#if`. Java and TypeScript have no such construct, and are excluded with that reason rather than
-counted as gaps. **This clause was RULED on 2026-09-12 and the ruling's own premise — that the engines
-already did this, so it confirmed `main` — was measured FALSE:** rust unioned on the definition route
-and HEDGED on the alias route (one program answered two ways depending on whether its alias crossed a
-module boundary), and swift PICKED an arm by source order on the `typealias` route, a silent
-under-report a scoped `deny` exposed (SOUNDNESS R429). **NEITHER IS FULLY FIXED, and this sentence
-said they were.** Both fixes closed the case where every arm names a PROJECT-DECLARED target and left
-the MIXED arm set — one project type beside a framework or `std` one — answering as before: swift still
-resolves by source order there, and rust PICKS the external arm and publishes its literal, so
-`allow Fs <lit>` certifies a program that does something else in its other configuration. The mixed set
-is the ordinary portability shim, not a corner. The clause is what stops them
-diverging again.
+**Scope.** This binds any language with mutually-exclusive configuration arms; PART 89 drives Rust's
+`#[cfg]` and Swift's `#if`. **Java and TypeScript are excluded from the PART, and their two reasons are
+NOT the same — an earlier draft of this paragraph gave both of them the same one, "no such construct",
+and a pre-release review measured that reason FALSE for TypeScript.** It is recorded here in the
+corrected form because the ledger entry beside this clause was corrected on 2026-09-09 and the clause
+itself was not, which is the failure mode §4 records elsewhere: a falsified assertion has as many homes
+as it has restatements, and fixing the one you found is not fixing it.
 
-*Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a
-release review overturned that on 2026-09-09 — the sentence is corrected rather than deleted, because
-the reasoning that produced it is the part worth keeping.** Two of its three legs hold: the ban on
-picking and the ban on dropping really are ⟨0.21⟩'s and §4's already. The third does not — ⟨0.25⟩'s
-union clause governs the CONSUMER's join across dep reports, not a producer's own name resolution
-inside one scan, so it is an analogy rather than a derivation. And the normative words themselves
-moved: "two same-named local definitions" became "two DISTINCT definitions of one name", which a cfg
-twin satisfies under the first reading and not the second. **The operative test is not how the clause
-reads but what it did: a conformant engine became non-conformant on a [TIER 1] part through a
-text-only change.** candor-rust 0.35.0 emits `ambiguous:` for a cfg twin on 8,710 of 19,607
-`unknownWhy` entries; PART 10 required exactly that at v0.35 and forbids it here. Under §1's own rule
-— "a refinement that narrows an upper bound, or an obligation tightening" — that is a MINOR, and this
-clause ships as ⟨0.36⟩. What was missing was any statement of which shapes meet the unformable-owner
-condition, so the binding of `ambiguous:` to conditional-compilation arms lived only in a conformance
-fixture and the comment above it — where SOUNDNESS R222/R129 found candor-rust hedging a call it could
-answer, on 8,710 of 19,607 `unknownWhy` entries in a 1,062-report census. Pinned by PART 10, whose two
-per-engine fixtures are each other's control: the arm set must come back with both effects, and two
-same-named definitions in different modules must still come back `ambiguous:`.*
+- **Java: the conclusion holds, but not for the reason first given.** Kotlin has `import … as` and
+  `expect`/`actual`, so the SHAPE can be written on this engine's platform. What excludes it is that
+  candor-java analyses **bytecode** — it only ever sees the arm that was actually built, so there is no
+  arm set in front of it to union. That reason is robust to the language gaining a construct; "no such
+  construct" was not.
+- **TypeScript: the reason was false and the gap is real.** `package.json` `imports`/`exports`
+  **condition maps** are a mutually-exclusive configuration construct, candor-ts reads them, and it
+  resolves ONE condition and drops the other with no disclosure. Re-measured 2026-09-14 as a
+  differential: two trees identical but for which condition NAME carries which file answer the same
+  scoped `deny Fs` with exit 1 and exit 0, over a real write, with `unanalyzed` and `incompleteSurfaces`
+  both absent. It is excluded from PART 89 because that part's fixtures are source-level arms, **not
+  because the shape is absent or harmless** — and an exclusion that reads as the latter is the thing
+  this bullet exists to stop. **It is a ⟨0.21⟩ non-conformance, not a ⟨0.38⟩ one**, and it is tracked
+  as SOUNDNESS **R439** rather than as a line in a scope paragraph. One thing there is sharper than in
+  the two engines this clause binds: the arm is chosen by the SCANNER's resolution mode, not by
+  anything written in the tree, so a reader of the source cannot see which arm won.
+
+**This clause was RULED on 2026-09-12 and the ruling's own premise — that the engines already did this,
+so it confirmed `main` — was measured FALSE:** rust unioned on the definition route and HEDGED on the
+alias route (one program answered two ways depending on whether its alias crossed a module boundary),
+and swift PICKED an arm by source order on the `typealias` route, a silent under-report a scoped `deny`
+exposed (SOUNDNESS R429). **AND THE FIRST PAIR OF FIXES WAS NOT THE END OF IT, which is the part worth
+carrying forward.** Both closed the case where every arm names a PROJECT-DECLARED target and left the
+MIXED arm set — one project type beside a framework or `std` one, which is the ordinary portability
+shim rather than a corner — answering exactly as before. **In each engine the closing fixture was
+itself the boundary of the next defect:** rust's arms were both external, swift's were both
+project-declared, so neither fixture could see the mixed case, and PART 89 carried it as a declared
+xfail until R438 and R429 were fixed in turn. All nine arms are now green on both engines and the xfail
+list is empty; R287 closed with them. The clause is what stops them diverging again, and the xfail is
+what stopped the gap being forgotten while it was open.
 
 The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists:
 `dispatch:` is reserved for unresolved member dispatch where the engine knows the owner type and member
@@ -5453,10 +5502,17 @@ declare it via the envelope's `spec`.
   (`deny Fs`, `deny Env` and `allow Fs <lit>` were ALL silent on one route and all fired on the other);
   and swift PICKED an arm by SOURCE ORDER on the `typealias` route, dropping the losing arm's effects
   entirely — a scoped `deny Fs` passed over a real file write depending on where `#else` sat
-  (SOUNDNESS R429, the ⟨0.21⟩ cardinal sin). **UPGRADING RAISES REFUSALS:** a binding whose arms differ
-  now charges both and marks the surface incomplete, so a tree that certified under ⟨0.37⟩ can exit 1
-  with no code change. The surface is deliberately NOT captured — publishing one arm's literal is the
-  pick-by-position the clause forbids, arriving by another route.
+  (SOUNDNESS R429, the ⟨0.21⟩ cardinal sin). **THIS RUNG FLIPS BOTH WAYS, like the ⟨0.36⟩ one it
+  completes.** `deny <Effect> <fn>` and `allow <Effect> <lit>` can go exit 0 → exit 1 as the dropped or
+  hedged arm's effects appear and the surface goes incomplete, so a tree that certified under ⟨0.37⟩
+  can exit 1 with no code change. And `deny Unknown` can go exit 1 → exit 0 on the rust route, because
+  the hedge that policy was catching is exactly what the clause WITHDRAWS: the `{Unknown}` +
+  `ambiguous:cfg-duplicated alias` entry is replaced by the arms' named effects. Saved baselines differ
+  in both directions; a policy written against the hedge stops firing. **The surface is not captured
+  where the arms name DIFFERENT destinations** — publishing one arm's literal there is the
+  pick-by-position the clause forbids, arriving by another route. Where every arm reaches the SAME
+  literal there is nothing for a union to hide, and an engine may still certify off it; PART 89's
+  `b4surface` went red against the first, stronger draft of this sentence and corrected it.
 - **0.37 (all code engines declare `0.37`; conformance-pinned by PART 88)** — a **NON-ADDITIVE** rung
   that adds no field and removes none. §2 gains *A CALL'S LOCATOR MAY ARRIVE AS AN ARGUMENT OR AS THE
   RECEIVER, AND BOTH ARE THE CALL'S OWN*: a path-stat invoked on its path — `p.exists()`, `f.exists()`,
@@ -5483,7 +5539,8 @@ declare it via the envelope's `spec`.
   hedge disclosed an ambiguity that does not exist and the effects it stood in for are now named.
   PART 10 pins DEFINITIONS only; a cfg-gated ALIAS naming two different definitions under one local
   name is SOUNDNESS R287, ruled at this cut (the union is the right answer) and deferred to its own
-  rung, because no row pins it. The clause also reserves `invisible` as arming NO policy form, by design — a coverage disclosure,
+  rung, because no row pinned it. **That rung is ⟨0.38⟩ and PART 89 is the row**, for every arm set
+  including the MIXED one — R438 and R429 were fixed before ⟨0.38⟩ shipped and R287 closed with them. The clause also reserves `invisible` as arming NO policy form, by design — a coverage disclosure,
   with the ⟨0.21⟩ `unanalyzed` manifest as the route by which an uncovered scan reaches a verdict.
 
 - **0.35 (all code engines declare `0.35`; conformance-pinned by PART 87)** — a **NON-ADDITIVE** rung that
