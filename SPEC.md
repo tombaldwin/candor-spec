@@ -4437,7 +4437,12 @@ counted as gaps. **This clause was RULED on 2026-09-12 and the ruling's own prem
 already did this, so it confirmed `main` — was measured FALSE:** rust unioned on the definition route
 and HEDGED on the alias route (one program answered two ways depending on whether its alias crossed a
 module boundary), and swift PICKED an arm by source order on the `typealias` route, a silent
-under-report a scoped `deny` exposed (SOUNDNESS R429). Both are fixed; the clause is what stops them
+under-report a scoped `deny` exposed (SOUNDNESS R429). **NEITHER IS FULLY FIXED, and this sentence
+said they were.** Both fixes closed the case where every arm names a PROJECT-DECLARED target and left
+the MIXED arm set — one project type beside a framework or `std` one — answering as before: swift still
+resolves by source order there, and rust PICKS the external arm and publishes its literal, so
+`allow Fs <lit>` certifies a program that does something else in its other configuration. The mixed set
+is the ordinary portability shim, not a corner. The clause is what stops them
 diverging again.
 
 *Stated 2026-09-05. **It was written here as "a clarification rather than a new requirement", and a

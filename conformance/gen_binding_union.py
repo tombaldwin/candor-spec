@@ -39,7 +39,12 @@ MEASURED BEFORE THIS FILE EXISTED, on the shipped 0.37.0 engines:
     arm        rust                         swift
     b1union    HEDGE ({Unknown}, silent)    PICK (source order, arm dropped)
     b2order    HEDGE                        PICK — and answers the two orders DIFFERENTLY
-Both are fixed (candor-rust e56fbca, candor-swift cae604a); this part is what stops them diverging again.
+NEITHER IS FULLY FIXED, and this docstring claimed they were. Both fixes closed the case where every
+arm names a PROJECT-DECLARED target; a MIXED arm set (one project type beside a framework or `std` one)
+still picks. **THIS PART CANNOT SEE THAT, and the reason is worth reading before trusting its green:**
+all six swift arms below are project-declared enums, so the part sits entirely inside the narrowing that
+hides the defect. A green here is evidence about the narrowed case only. The mixed-arm arms are owed
+(b7mixed / b8mixedallow) and are expected RED on both engines when they land.
 
 java/ts have no mutually-exclusive configuration construct. Declared exclusions with that reason — not
 gaps, and not silently absent rows.
