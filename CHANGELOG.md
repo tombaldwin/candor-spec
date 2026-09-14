@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+### Added
+
+- **⟨0.38⟩ — A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS**, exactly as a conditional
+  definition does, with **PART 89** pinning it on the two engines that have such a construct (rust
+  `#[cfg]`, swift `#if`; java and ts are declared exclusions). It WITHDRAWS ⟨0.36⟩'s permission to hedge
+  that shape to `{Unknown}` — a permission that contradicted the clause it was written under, three
+  paragraphs above it, where this document already establishes that `{Unknown}` alone is not conformant
+  for an arm set. Ruled 2026-09-12. The ruling's premise, that the engines already did this, was
+  measured FALSE on both of them.
+- **PART 89 corrected the clause on its first run**, which is the argument for writing controls with the
+  defect arms: the clause said the union carries NO surface and MUST be incomplete, and an engine
+  certified a fixture whose two arms reach the SAME literal — rightly, since the reach is that literal
+  in every configuration. The clause is now scoped to the real hazard, arms whose destinations DIFFER.
+
 ## [0.37.0] — 2026-09-13
 
 ### ⟨0.37⟩ — THE STAT-LOCATOR RUNG (NON-ADDITIVE)
