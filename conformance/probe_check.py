@@ -144,7 +144,7 @@ COVERED = {
     # up. Caught by RUNNING it rather than by reading it.
     "gen_binding_union.py": {
         "args":   [],
-        "holds":  r"BINDING-UNION: OK — every engine answers a conditional binding with the union",
+        "holds":  r"BINDING-UNION: OK",
         "breaks": r"BINDING-UNION: [1-9]\d* cell\(s\) wrong",
     },
 }

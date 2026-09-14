@@ -71,6 +71,16 @@ ARMS = [
     ("b4surface", "allowfs",  1, "no arm's literal may certify — the surface is withheld",                SKIP),
     ("b5agree",   "denyenv",  0, "CONTROL: arms that classify ALIKE manufacture nothing",                 SKIP),
     ("b6single",  "allowfs",  0, "CONTROL: an ordinary binding still resolves and still certifies",       SKIP),
+    # THE MIXED ARM SET — one PROJECT-DECLARED target beside a framework/std one. Both engines closed
+    # only the all-project-declared case, and both parts of that narrowing are invisible to the six arms
+    # above because every one of them declares all its arms locally. This is the ordinary portability
+    # shim (`Color = NSColor | UIColor`; `#[cfg(unix)] std::fs::write` beside a crate-local fallback),
+    # measured at 1,173 of 3,052 registry files carrying two cfg-gated `use` items.
+    # EXPECTED RED until R429 (swift) and R438 (rust) land — written first, deliberately, because a part
+    # that arrives after the fix cannot falsify it.
+    ("b7mixed",     "denyenv",  1, "a MIXED arm set charges BOTH arms — not just the one the engine can type", SKIP),
+    ("b8mixedrev",  "denyenv",  1, "…and the same answer with the mixed arms written the other way round",     SKIP),
+    ("b9mixedallow","allowfs",  1, "a MIXED set must not CERTIFY off the arm it happened to resolve",          SKIP),
 ]
 
 _RUST_CALL = "use crate::sys::put;\npub fn probe() { let _ = put(\"%s\", \"x\"); }\n" % ALLOWED
@@ -86,6 +96,15 @@ def _rust(first, second):
                 % (first, second, _RUST_CALL))
 
 FS, ENV = "std::fs::write", "std::env::set_var"
+
+# The MIXED shape: one arm names a target the classifier can type (`std::fs::write`), the other a
+# PROJECT-LOCAL one. rust classifies a local target to `None` and drops it, so the set resolves to the
+# std arm alone AND publishes its literal.
+_RUST_MIXED = (
+    "pub mod loc { pub fn put(_p: &str, _v: &str) { std::env::set_var(\"K\", \"1\"); } }\n"
+    "pub mod sys {\n  #[cfg(unix)] pub use %s as put;\n  #[cfg(not(unix))] pub use %s as put;\n}\n"
+    "use crate::sys::put;\npub fn probe() { let _ = put(\"" + ALLOWED + "\", \"x\"); }\n"
+)
 
 # b4surface needs arms that name DIFFERENT destinations, and that is the whole point of the arm. The
 # other arms bind to two std functions called at ONE call site, so both arms share the site's literal and
@@ -108,6 +127,10 @@ BODIES = {
         "b4surface": _dbl(_RUST_TWO_LIT),
         "b5agree":   _rust(FS, FS),
         "b6single":  _dbl("pub mod sys {\n  pub use %s as put;\n}\n%s" % (FS, _RUST_CALL)),
+        # A LOCAL arm beside a std one. `crate::loc::put` sets an env var; the std arm writes a file.
+        "b7mixed":     _dbl(_RUST_MIXED % (FS, "crate::loc::put")),
+        "b8mixedrev":  _dbl(_RUST_MIXED % ("crate::loc::put", FS)),
+        "b9mixedallow":_dbl(_RUST_MIXED % (FS, "crate::loc::put")),
     },
 }
 
@@ -116,6 +139,14 @@ _SW_HELPERS = (
     'enum FsImpl { static func act() { try? "x".write(toFile: "%s", atomically: true, encoding: .utf8) } }\n'
     'enum EnvImpl { static func act() { setenv("CANDOR_PART89", "1", 1) } }\n' % ALLOWED
 )
+def _swift_mixed(first, second):
+    """One arm a FRAMEWORK type, the other a project-declared enum — the shape both engines' narrowings
+    exclude, and the shape real code writes (`Color = NSColor | UIColor`)."""
+    return (_SW_HELPERS
+            + "#if os(macOS)\ntypealias Impl = %s\n#else\ntypealias Impl = %s\n#endif\n" % (first, second)
+            + "public func probe() { Impl.act() }\n")
+
+
 def _swift(first, second=None):
     if second is None:
         alias = "typealias Impl = %s\n" % first
@@ -136,6 +167,11 @@ BODIES["swift"] = {
     ),
     "b5agree":   _swift("FsImpl", "FsImpl"),
     "b6single":  _swift("FsImpl"),
+    # A PROJECT-DECLARED enum beside a FRAMEWORK type. swift's `declaredTypes` filter makes only the
+    # project arm eligible, so the set falls back to last-writer-wins and the framework arm decides.
+    "b7mixed":      _swift_mixed("FileManager", "EnvImpl"),
+    "b8mixedrev":   _swift_mixed("EnvImpl", "FileManager"),
+    "b9mixedallow": _swift_mixed("FileManager", "FsImpl"),
 }
 
 POLICIES = {
@@ -145,7 +181,12 @@ POLICIES = {
     # is a PREFIX match and a silent prefix collision manufactures a pass-looking gate.
     "denyenv": "deny Env probe\n",
     "denyunk": "deny Unknown probe\n",
-    "allowfs": "allow Fs %s\n" % ALLOWED,
+    # SCOPED to `probe`. Unscoped, `b4surface`'s OWN second arm (`pub mod b { … write("/tmp/other") }`)
+    # is a unit in the scan and violates on its own, so the cell scored "ok" on a tree containing NO
+    # conditional binding at all — measured by replacing the binding with an unconditional `use` and
+    # watching it still pass. The arm could not fail for the reason it names; `run.sh`'s own DIVERGE text
+    # ("a ✘ on b4surface is one arm's literal certifying for both") described an unreachable outcome.
+    "allowfs": "allow Fs in probe %s\n" % ALLOWED,
 }
 
 
@@ -167,6 +208,28 @@ def _swift_tree(d, body):
 # cannot redden the thing it corrupts proves nothing, which is the exact failure this hook exists to
 # catch, one level up. Caught by running it, not by reading it.
 FAULT = bool(os.environ.get("CANDOR_PROBE_FAULT"))
+
+# ── THE MIXED ARMS ARE EXPECTED RED, AND NAMED TO THEIR ROWS ────────────────────────────────────────
+# They are committed BEFORE the engine fixes on purpose: a part that arrives after a fix cannot falsify
+# it, and these three are the falsification arm for R429 and R438. But a suite that simply goes red
+# blocks every other repo, and `main` red for days teaches people to ignore it — PART 88 was held out of
+# `run.sh` for exactly that reason.
+#
+# So they run, they print, and they do not fail the suite WHILE their row is open. The asymmetry that
+# keeps this from rotting into permanent tolerance: **an xfail arm that starts PASSING is a FAILURE.**
+# The row is then fixed and the xfail is a stale claim about the engine — which is the same defect class
+# as a stale comment, and the suite says so rather than quietly going green.
+# KEYED BY (arm, ENGINE), not by arm. The first cut keyed on the arm alone and the mechanism caught it
+# on its first run: swift PASSES `b7mixed` — it resolves that arm order correctly — so a per-arm
+# expectation was a false claim about swift while being true of rust. An xfail is an assertion about a
+# specific engine's specific defect; anything coarser tolerates a passing engine.
+XFAIL = {
+    ("b7mixed",      "rust"):  "R438 — rust picks the external arm and publishes its literal",
+    ("b8mixedrev",   "rust"):  "R438 — rust picks in BOTH orders",
+    ("b8mixedrev",   "swift"): "R429 — swift is ORDER-DEPENDENT on a mixed arm set",
+    ("b9mixedallow", "rust"):  "R438 — the picked arm's literal CERTIFIES",
+    ("b9mixedallow", "swift"): "R429 — the picked arm's literal CERTIFIES",
+}
 
 
 def render(ws):
@@ -216,7 +279,7 @@ def main():
         print("BINDING-UNION: no engine available")
         return 2
 
-    fails = []
+    fails, xfails, fixed = [], [], []
     print(f"\n{'arm':11s}{'policy':11s} " + " ".join(f"{e.name:14s}" for e in available))
     print("-" * 78)
     for arm, polkey, want, why, _skip in ARMS:
@@ -224,9 +287,17 @@ def main():
         for eng in available:
             rc = eng.gate(ws, EFF, arm, pols[polkey])
             ok = (rc != 0) if want else (rc == 0)
-            row += f"{('rc=' + str(rc) + (' ok' if ok else ' ✘')):14s} "
-            if not ok:
-                fails.append((arm, eng.name, rc, why))
+            xf = XFAIL.get((arm, eng.name))
+            if xf and not ok:
+                row += f"{'rc=' + str(rc) + ' xfail':14s} "
+                xfails.append((arm, eng.name, xf))
+            elif xf and ok:
+                row += f"{'rc=' + str(rc) + ' FIXED!':14s} "
+                fixed.append((arm, eng.name, xf))
+            else:
+                row += f"{('rc=' + str(rc) + (' ok' if ok else ' ✘')):14s} "
+                if not ok:
+                    fails.append((arm, eng.name, rc, why))
         print(row)
 
     print()
@@ -236,12 +307,29 @@ def main():
         print(f"  ✘ {eng}/{arm}: {verb} (rc={rc}) — {why}")
     for eng in SKIP:
         print(f"  •   {eng}: no mutually-exclusive configuration construct — DECLARED exclusion, not a gap")
+    for arm, eng, xf in xfails:
+        print(f"  ·   {eng}/{arm}: EXPECTED RED — {xf}")
+    for arm, eng, xf in fixed:
+        print(f"  ✘ {eng}/{arm}: XFAIL ARM PASSED. The row is fixed and this expectation is now a STALE "
+              f"CLAIM ABOUT THE ENGINE — retire it here and close {xf}")
+    if fixed:
+        print(f"\nBINDING-UNION: {len(fixed)} expected-red cell(s) now PASS — retire the xfail")
+        return 1
     if fails:
         print(f"\nBINDING-UNION: {len(fails)} cell(s) wrong — see SOUNDNESS R287/R429 and the "
               f"2026-09-12 ruling")
         return 1
-    print("\nBINDING-UNION: OK — every engine answers a conditional binding with the union of its arms, "
-          "in either written order, without withdrawing to Unknown and without certifying off one arm")
+    if xfails:
+        # NOT "OK — every engine answers with the union". Five cells are red by expectation, and a
+        # summary that claims the property while its own table shows otherwise is the false-green this
+        # suite exists to prevent — one level up, in the sentence rather than the cell.
+        print(f"\nBINDING-UNION: OK for the ALL-PROJECT-DECLARED case, with {len(xfails)} cell(s) "
+              f"EXPECTED RED on the MIXED arm set (R429 swift, R438 rust — named above). The union "
+              f"property is NOT established for a mixed set on either engine.")
+    else:
+        print("\nBINDING-UNION: OK — every engine answers a conditional binding with the union of its "
+              "arms, in either written order, without withdrawing to Unknown and without certifying off "
+              "one arm")
     return 0
 
 
