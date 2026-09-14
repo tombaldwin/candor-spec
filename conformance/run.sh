@@ -64,17 +64,46 @@ REPO_BEFORE="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
 # check and the read share one source of truth instead of two copies of the same fallback that can drift.
 TS_DIR="${CANDOR_TS:-$HERE/../../candor-ts}"
 SW_DIR="${CANDOR_SWIFT:-$HERE/../../candor-swift}"
-DIRTY_ENGINES=""
-for _e in candor-rust candor-java candor-ts candor-swift; do
-  case "$_e" in
-    candor-rust)  _d="$CANDOR" ;;
-    candor-java)  _d="$CANDOR_JAVA" ;;
-    candor-ts)    _d="$TS_DIR" ;;
-    candor-swift) _d="$SW_DIR" ;;
-  esac
-  git -C "$_d" rev-parse --git-dir >/dev/null 2>&1 || continue
-  [ -n "$(git -C "$_d" status --porcelain 2>/dev/null)" ] && DIRTY_ENGINES="$DIRTY_ENGINES $_e"
-done
+
+# ONE TRAVERSAL, TWO QUESTIONS, AND THE SECOND ONE IS THE ONE THIS SUITE WAS BLIND TO. `engine_state`
+# prints `<engine> <HEAD> <porcelain>` per engine; the DIRTY check below reads it, and the VERDICT reads
+# it AGAIN and diffs. Why the second read is not redundant: the start-only check answers "were these
+# trees clean when we began", and the failure it cannot see is a tree that was clean at the start and
+# CHANGED while the suite ran — an agent committing, rebasing, or editing an engine forty minutes into a
+# 476-second-per-engine build. Then EARLY parts measured one tree and LATE parts measured another, the
+# run is internally inconsistent, and every line of it is attributable to no commit. CLAUDE.md records
+# the four-way case this actually happened in: a candor-swift agent ran this suite while candor-rust
+# carried an uncommitted fix, and the coordinator measuring candor-rust at the same moment contaminated
+# it back — two owners, different repos, one shared instrument that reads TREES, not commits.
+#
+# This is the MID-RUN CROSSING, and it is the same shape `disk-guard` was rebuilt for: a run that begins
+# with room and fills halfway puts rows from both sides of the line in one table and does not say which
+# is which, so a startup-only check is blind to precisely the case that bites. Recording the HEAD SHA as
+# well as the porcelain matters for the same reason — a `git commit` mid-run leaves the tree CLEAN, so a
+# porcelain-only comparison reads the most disruptive version of this as no change at all.
+engine_state() {
+  _st=""
+  for _e in candor-rust candor-java candor-ts candor-swift; do
+    case "$_e" in
+      candor-rust)  _d="$CANDOR" ;;
+      candor-java)  _d="$CANDOR_JAVA" ;;
+      candor-ts)    _d="$TS_DIR" ;;
+      candor-swift) _d="$SW_DIR" ;;
+    esac
+    git -C "$_d" rev-parse --git-dir >/dev/null 2>&1 || continue
+    # No digest. `... | shasum` would be shorter and would go SILENTLY VACUOUS wherever shasum is
+    # absent — empty before, empty after, never a difference, a guard that cannot fail. The porcelain
+    # is small; carry it verbatim with newlines folded so one engine stays one line.
+    _st="$_st$(printf '%s %s %s\n' "$_e" \
+      "$(git -C "$_d" rev-parse HEAD 2>/dev/null)" \
+      "$(git -C "$_d" status --porcelain 2>/dev/null | tr '\n' ';')")
+"
+  done
+  printf '%s' "$_st"
+}
+ENGINE_STATE_BEFORE="$(engine_state)"
+# A trailing empty porcelain field leaves NF==2; anything uncommitted pushes it past that.
+DIRTY_ENGINES="$(printf '%s' "$ENGINE_STATE_BEFORE" | awk 'NF>2{printf " %s", $1}')"
 if [ -n "$DIRTY_ENGINES" ]; then
   printf '\nconformance: NOTE — these engine trees are DIRTY:%s\n' "$DIRTY_ENGINES"
   echo   "  This suite reads engines from their WORKING TREES. A result over a dirty tree describes"
@@ -17157,6 +17186,33 @@ if [ "$rc" -ne 0 ]; then
       | head -1 | sed 's/^/    /'
   fi
 fi
+# ── did an ENGINE TREE MOVE WHILE WE RAN? (see engine_state / ENGINE_STATE_BEFORE) ──────────────
+# The dirty-at-start check above is a NOTE and deliberately does not touch the exit code: reading a
+# dirty tree is fine while iterating, it just means the result is about uncommitted work. THIS check is
+# a FAILURE, and the difference is worth stating because the two look similar. A tree that was dirty
+# throughout is at least ONE tree — every part read the same bytes, and the run describes them. A tree
+# that MOVED mid-run is not one tree: the early parts and the late parts measured different code, so the
+# run is internally inconsistent and its green says nothing about any commit. There is no honest way to
+# label that provisional, because there is no single thing for it to be provisional ABOUT.
+#
+# Ordering: this runs BEFORE the leftover-files check so that a mid-run engine edit is named as itself
+# rather than as whatever downstream weirdness it caused — the same reason `disk-guard`'s verdict
+# deliberately outranks NOT GREEN. A FAIL produced by the instrument is indistinguishable from a real
+# one until something says which it was.
+ENGINE_STATE_AFTER="$(engine_state)"
+if [ "$ENGINE_STATE_BEFORE" != "$ENGINE_STATE_AFTER" ]; then
+  echo
+  echo "conformance: AN ENGINE TREE MOVED WHILE THIS SUITE RAN — the result is NOT a measurement."
+  echo "  This suite reads engines from their WORKING TREES over tens of minutes. A tree that changed"
+  echo "  mid-run means early parts and late parts read different code, so neither the OK nor the"
+  echo "  FAILED above is attributable to any commit. Do not quote it, and do not re-run until the"
+  echo "  other owner is done — re-running into the same edit reproduces the contamination."
+  echo "  Engines whose HEAD or working tree differs between the start of this run and now:"
+  diff <(printf '%s' "$ENGINE_STATE_BEFORE") <(printf '%s' "$ENGINE_STATE_AFTER") \
+    | grep -E '^[<>]' | sed 's/^/    /'
+  rc=1
+fi
+
 # ── did this run leave anything behind? (see REPO_BEFORE) ───────────────────────────────────────
 REPO_AFTER="$(git -C "$HERE/.." status --porcelain 2>/dev/null || true)"
 if [ "$REPO_BEFORE" != "$REPO_AFTER" ]; then

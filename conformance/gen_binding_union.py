@@ -43,11 +43,31 @@ NEITHER IS FULLY FIXED, and this docstring claimed they were. Both fixes closed 
 arm names a PROJECT-DECLARED target; a MIXED arm set (one project type beside a framework or `std` one)
 still picks. **THIS PART CANNOT SEE THAT, and the reason is worth reading before trusting its green:**
 all six swift arms below are project-declared enums, so the part sits entirely inside the narrowing that
-hides the defect. A green here is evidence about the narrowed case only. The mixed-arm arms are owed
-(b7mixed / b8mixedallow) and are expected RED on both engines when they land.
+hides the defect. A green from those six is evidence about the narrowed case only.
 
-java/ts have no mutually-exclusive configuration construct. Declared exclusions with that reason — not
-gaps, and not silently absent rows.
+THE MIXED ARMS HAVE LANDED — b7mixed / b8mixedrev / b9mixedallow — and as of 2026-09-14 ALL NINE ARMS
+PASS ON BOTH ENGINES, so `XFAIL` is empty. It was not empty when they landed: rust held three (R438) and
+swift two (R429), and each was retired by THIS PART reporting `XFAIL ARM PASSED` on the first run after
+the engine change. That check is the reason the expectations did not quietly rot into claims nobody had
+re-read — nothing else in the suite notices an expectation that has become true. Keep the mechanism even
+now that the dict is empty: the next mixed-arm defect will land the same way.
+
+AND NOTE WHAT THE ARM SET ITSELF CAUGHT, since it argues for writing the reversed arm every time: swift
+passed b7mixed and failed b8mixedrev — the SAME program with its arms the other way round. A part
+written with one arm order would have reported that engine green. Read `XFAIL` below for which engine fails which, because it is NOT uniform
+and the asymmetry was the finding: swift PASSES b7mixed and fails b8mixedrev, i.e. it resolves one arm
+ORDER correctly and the other not, which is the order-dependence signature R429 was filed for and is
+invisible to any expectation written per-arm instead of per-(arm, engine). An xfail that PASSES is a
+FAILURE here: the row is fixed and the claim about the engine has gone stale.
+
+java and ts are DECLARED EXCLUSIONS, and their reasons DIFFER — an earlier draft gave both the same one
+("no such construct") and a pre-release review measured it FALSE for ts. java: it analyses BYTECODE, so
+it only ever sees the arm that was built and there is no arm set in front of it — a reason robust to the
+language gaining a construct, where "no such construct" was not (Kotlin has `import … as` and
+`expect`/`actual`). ts: `package.json` `imports`/`exports` CONDITION MAPS are exactly this construct,
+candor-ts reads them, and it resolves one condition and drops the other SILENTLY — SOUNDNESS R439, a
+⟨0.21⟩ non-conformance rather than a ⟨0.38⟩ one, since this part's fixtures are source-level arms. It is
+excluded because the FIXTURES do not fit, not because the shape is absent or harmless.
 
 REUSES gen_masking.ENGINES rather than copying the Engine classes (R288's fifteen-`ab.py` shape, inside
 the suite). This file does not become the sixth copy.
@@ -223,12 +243,19 @@ FAULT = bool(os.environ.get("CANDOR_PROBE_FAULT"))
 # on its first run: swift PASSES `b7mixed` — it resolves that arm order correctly — so a per-arm
 # expectation was a false claim about swift while being true of rust. An xfail is an assertion about a
 # specific engine's specific defect; anything coarser tolerates a passing engine.
+SKIP_WHY = {
+    "java": "analyses BYTECODE — it only ever sees the arm that was built, so no arm set reaches it. "
+            "NOT 'no such construct': Kotlin has `import … as` and `expect`/`actual`",
+    "ts":   "`package.json` condition maps ARE this construct and candor-ts drops an arm silently "
+            "(SOUNDNESS R439, a ⟨0.21⟩ break). Excluded because these FIXTURES are source-level arms",
+}
+
 XFAIL = {
-    ("b7mixed",      "rust"):  "R438 — rust picks the external arm and publishes its literal",
-    ("b8mixedrev",   "rust"):  "R438 — rust picks in BOTH orders",
-    ("b8mixedrev",   "swift"): "R429 — swift is ORDER-DEPENDENT on a mixed arm set",
-    ("b9mixedallow", "rust"):  "R438 — the picked arm's literal CERTIFIES",
-    ("b9mixedallow", "swift"): "R429 — the picked arm's literal CERTIFIES",
+    # RUST'S THREE RETIRED 2026-09-14, by this part telling me they had: R438 is fixed (the local arm of
+    # a mixed set is recorded into the alias map so R105's adjudication fires, and each unclassifiable
+    # arm becomes a call EDGE). The xfail-passed check is what reported it — an expectation about an
+    # engine goes stale silently otherwise, which is the whole reason a passing xfail is a FAILURE here.
+    # SWIFT'S TWO RETIRED 2026-09-14 with R429's second fix, and again this part is what reported it.
 }
 
 
@@ -305,8 +332,13 @@ def main():
         want = dict((a, w) for a, _p, w, _y, _s in ARMS)[arm]
         verb = "did NOT answer with the union" if want else "over-reported on a shape that must stay quiet"
         print(f"  ✘ {eng}/{arm}: {verb} (rc={rc}) — {why}")
+    # THE TWO EXCLUSION REASONS ARE NOT THE SAME REASON, and printing one string for both is how they
+    # both stayed wrong through every green run. `part_declarations.py` checks only that an excluded
+    # engine's MARKER is absent from the slice — nothing tests the REASON — so a static string here is a
+    # guard that cannot fail, and a pre-release review measured the shared one ("no such construct")
+    # FALSE for TypeScript while this line kept printing it. See SPEC §4's Scope bullets.
     for eng in SKIP:
-        print(f"  •   {eng}: no mutually-exclusive configuration construct — DECLARED exclusion, not a gap")
+        print(f"  •   {eng}: {SKIP_WHY[eng]}")
     for arm, eng, xf in xfails:
         print(f"  ·   {eng}/{arm}: EXPECTED RED — {xf}")
     for arm, eng, xf in fixed:
@@ -323,9 +355,10 @@ def main():
         # NOT "OK — every engine answers with the union". Five cells are red by expectation, and a
         # summary that claims the property while its own table shows otherwise is the false-green this
         # suite exists to prevent — one level up, in the sentence rather than the cell.
+        engs = sorted({e for _a, e, _x in xfails})
         print(f"\nBINDING-UNION: OK for the ALL-PROJECT-DECLARED case, with {len(xfails)} cell(s) "
-              f"EXPECTED RED on the MIXED arm set (R429 swift, R438 rust — named above). The union "
-              f"property is NOT established for a mixed set on either engine.")
+              f"EXPECTED RED on the MIXED arm set ({', '.join(engs)} — named above). The union "
+              f"property is NOT established for a mixed set on {'/'.join(engs)}.")
     else:
         print("\nBINDING-UNION: OK — every engine answers a conditional binding with the union of its "
               "arms, in either written order, without withdrawing to Unknown and without certifying off "
