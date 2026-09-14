@@ -101,9 +101,8 @@ engine_state() {
   done
   printf '%s' "$_st"
 }
-ENGINE_STATE_BEFORE="$(engine_state)"
 # A trailing empty porcelain field leaves NF==2; anything uncommitted pushes it past that.
-DIRTY_ENGINES="$(printf '%s' "$ENGINE_STATE_BEFORE" | awk 'NF>2{printf " %s", $1}')"
+DIRTY_ENGINES="$(engine_state | awk 'NF>2{printf " %s", $1}')"
 if [ -n "$DIRTY_ENGINES" ]; then
   printf '\nconformance: NOTE — these engine trees are DIRTY:%s\n' "$DIRTY_ENGINES"
   echo   "  This suite reads engines from their WORKING TREES. A result over a dirty tree describes"
@@ -436,6 +435,31 @@ if command -v swift >/dev/null 2>&1 && [ -f "$SW_DIR/Package.swift" ]; then
   SW_REPORT=$(ls "$W"/sw.*.Swift.json 2>/dev/null | grep -v callgraph | head -1)
   [ -n "$SW_REPORT" ] && [ -s "$SW_REPORT" ] && SW_OK=1
 fi
+
+# THE MID-RUN BASELINE IS TAKEN HERE, AFTER THE BUILDS — NOT AT THE TOP OF THE FILE.
+#
+# It was taken at the top, and that made `main` RED on a run whose own 421 cells all passed. The cause:
+# THIS SUITE DIRTIES AN ENGINE TREE ITSELF. Its setup runs `npm install` in candor-ts when `node_modules`
+# is absent — which is every CI run — and npm rewrites `package-lock.json`. The guard compared a
+# pre-build snapshot against a post-run one, saw `M package-lock.json`, and correctly reported that a
+# tree had moved. It was right about the bytes and wrong about the meaning: the suite had moved it.
+#
+# The question this guard exists to answer is "did SOMEONE ELSE edit an engine while we ran", and the
+# window for that is the PARTS phase, not the build phase — the parts are what take tens of minutes and
+# read the trees repeatedly. Baselining after the builds removes the whole class of self-inflicted noise
+# at its cause, rather than by excluding the one filename that happened to bite. That distinction is the
+# reason this is not an exclusion list: an exclusion would have to grow every time the suite learns to
+# touch another file, and each entry would be a guess about which changes are ours.
+#
+# The DIRTY check above deliberately still runs BEFORE the builds: it answers a different question —
+# "were these trees carrying uncommitted work when we started" — and that one must not be told about the
+# builds, or a tree that was already dirty would be laundered by our own setup.
+#
+# NOTE FOR THE NEXT PERSON WHO BREAKS THIS: a false RED here costs more than the silence it replaces,
+# because it lands on a run that otherwise passed and invites the reader to disbelieve the guard rather
+# than the tree. Calibrate any change against a REAL CI run, not only locally — this fired only in CI,
+# where `node_modules` is always absent, and six local calibration cases all passed.
+ENGINE_STATE_BEFORE="$(engine_state)"
 
 # `rc` is already initialised near the top of this file (ahead of the nested-quote lint, which must be
 # able to set it before any engine is built). A SECOND `rc=0` here used to silently wipe out a failure
