@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.38.0] — 2026-09-14
+
 ### Added
 
 - **⟨0.38⟩ — A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS**, exactly as a conditional
