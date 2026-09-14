@@ -171,12 +171,25 @@ jobs:
             ~/.gradle/wrapper
           key: ${{ runner.os }}-conformance-gradle-${{ hashFiles('candor-java/**/*.gradle.kts', 'candor-java/gradle/wrapper/gradle-wrapper.properties') }}
 
+      # SOUNDNESS R406 — the env vars moved to `env:` so `run:` is ONE LINE. `bin/gates.sh` extracts a
+      # repo's runnable gates from its own workflows and can only offer a single-line `run:`; a
+      # block scalar is listed as a `~` line a human must read and type. That meant the most expensive
+      # gate in the family — the four-way differential — was absent from the printed gate list for the
+      # repo that owns it, which is the same hole candor-java's `ci/self-gate.sh` had (fixed there
+      # first). Same command, same environment, one line.
+      #
+      # RELATIVE, not `$GITHUB_WORKSPACE/...`: that variable exists only in CI, so a gate list built
+      # from this file would print a command that cannot run on a developer box — and `gate-run.sh`
+      # would report it as a FAILING gate rather than a missing one. Measured: the first cut of this
+      # change did exactly that, turning an invisible gate into a false RED, which is a worse answer
+      # than the one it replaced. `cd candor-spec && …` is the form the other gates in this file
+      # already use and the form `gate-run.sh` knows how to strip.
       - name: Cross-impl conformance differential
-        run: |
-          CANDOR="$GITHUB_WORKSPACE/candor" \
-          CANDOR_JAVA="$GITHUB_WORKSPACE/candor-java" \
-          CANDOR_TS="$GITHUB_WORKSPACE/candor-ts" \
-            bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
+        env:
+          CANDOR: ${{ github.workspace }}/candor
+          CANDOR_JAVA: ${{ github.workspace }}/candor-java
+          CANDOR_TS: ${{ github.workspace }}/candor-ts
+        run: cd candor-spec && bash conformance/run.sh
 
   # The strict four-engine leg: macos has the swift toolchain (SwiftSyntax resolves prebuilt), so
   # this is where the spec's "all four engines, conformance-pinned" claim is actually machine-checked.
@@ -246,14 +259,15 @@ jobs:
           path: candor-swift/.build
           key: ${{ runner.os }}-conformance-swiftpm-${{ hashFiles('candor-swift/Package.resolved') }}
 
+      # R406 — one-line `run:` so `bin/gates.sh` can list it; see the three-engine leg above.
       - name: Four-engine conformance differential (strict)
-        run: |
-          CONFORMANCE_REQUIRE_ALL=1 \
-          CANDOR="$GITHUB_WORKSPACE/candor" \
-          CANDOR_JAVA="$GITHUB_WORKSPACE/candor-java" \
-          CANDOR_TS="$GITHUB_WORKSPACE/candor-ts" \
-          CANDOR_SWIFT="$GITHUB_WORKSPACE/candor-swift" \
-            bash "$GITHUB_WORKSPACE/candor-spec/conformance/run.sh"
+        env:
+          CONFORMANCE_REQUIRE_ALL: "1"
+          CANDOR: ${{ github.workspace }}/candor
+          CANDOR_JAVA: ${{ github.workspace }}/candor-java
+          CANDOR_TS: ${{ github.workspace }}/candor-ts
+          CANDOR_SWIFT: ${{ github.workspace }}/candor-swift
+        run: cd candor-spec && bash conformance/run.sh
 
       # THE OTHER DRIFT DIRECTION. `agents-doc-drift` (above) pins each AGENTS.md against SPEC.md --
       # document vs document -- and cannot see a doc that contradicts the ENGINE. candor-swift's
@@ -307,6 +321,11 @@ jobs:
           ls -la "$GITHUB_WORKSPACE/released"
       - name: Install the released candor-scan/candor-query from crates.io
         run: cargo install candor-scan candor-query --locked
+      # R406 — this one STAYS a block scalar, and the reason is not laziness: `CANDOR_JAVA_JAR` is
+      # computed by a shell substitution over a downloaded artifact, and a step's `env:` cannot run a
+      # command. It is also not a gate a developer can run locally without first fetching the published
+      # jar, so listing it as runnable would be a lie of a different kind. The two legs above moved;
+      # this one is annotated so its `~` is a decision rather than an omission.
       - name: Conformance against the released artifacts
         run: |
           CANDOR_JAVA_JAR="$(ls "$GITHUB_WORKSPACE"/released/*-all.jar | head -1)" \
