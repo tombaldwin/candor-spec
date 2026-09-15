@@ -147,13 +147,24 @@ COVERED = {
         "holds":  r"BINDING-UNION: OK",
         "breaks": r"BINDING-UNION: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 90. The fault writes f1short's cell with f5pure's body — a PURE element, so the arm that MUST
+    # fire under `deny Exec` cannot, and all four engines go red. Chosen over swapping two must-fail arms
+    # precisely because of the vacuity recorded above for gen_binding_union: f1short and f2named are also
+    # the same program in two spellings, so substituting one into the other would move NO verdict and the
+    # fault run would come back green. The pure-element body is the only substitution here that changes
+    # an expected rc.
+    "gen_fold_element.py": {
+        "args":   [],
+        "holds":  r"-> MATCH — every engine charges the element",
+        "breaks": r"FOLD-ELEMENT: [1-9]\d* arm\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 10
+COVERED_FLOOR = 11
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

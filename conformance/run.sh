@@ -2648,6 +2648,36 @@ echo "PART 89 — a conditional BINDING unions its arms exactly as a conditional
 # ENGINES: rust swift; java: the language has no mutually-exclusive configuration construct — there is no `#if`/`#[cfg]` that binds one name to two different definitions, so the shape cannot be written and a row would be asserting nothing; ts: same, and its conditional imports are runtime `await import()` expressions rather than build-configuration arms, so both targets exist in one build
 # CONTROLS: b3nohedge — the answer is a complete one, never a withdrawal to {Unknown}; b5agree — arms that classify ALIKE manufacture nothing (the 6.6%-prevalent portability-shim shape); b6single — an ORDINARY binding still resolves AND still certifies off its literal, so a widening cannot pass by refusing determined code
 
+# PART 90 — THE FOLD-ELEMENT DIFFERENTIAL, ⟨0.21⟩, FOUR-WAY.
+#
+# A closure parameter that IS the element of a collection carries that element's effects into the caller.
+# No new SPEC clause: ⟨0.21⟩ already makes absence a purity claim, and a fold over effectful elements
+# reaches those effects. It needs a PART because SOUNDNESS R349 was live in TWO engines at once, and
+# NEITHER engine's fix was the one its own row prescribed — swift's "the LAST parameter is the element"
+# is unimplementable (shorthand closures give $0/$1/$2 regardless of arity, so "last" is $2 and
+# `{ $0 + $1.run() }` never binds), and rust's row named six spellings where there were thirty-six.
+#
+# THE f1short/f2named PAIR IS THE POINT AND IS NOT A STYLISTIC DUPLICATE: they are the same program in
+# two spellings, and R349's filed remedy would have passed f2 while leaving f1 a live cardinal sin. If
+# you add an arm here, add its other spelling too.
+[ -f "$HERE/gen_fold_element.py" ] || { echo "FAIL: gen_fold_element.py is missing"; exit 2; }
+echo
+echo "[90] a fold over an effectful element charges it — in BOTH the shorthand and named spellings, in either parameter position"
+P90_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_fold_element.py"
+) || { P90_OK=1; rc=1; }
+[ "$P90_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on f1short/f2named/f3order/f4enum is an element the engine never typed (the ⟨0.21⟩ cardinal sin); a ✘ on f5pure/f6outer is the widening manufacturing an effect it was never given"
+echo "PART 90 — a fold's element parameter carries its effects (SPEC §2 ⟨0.21⟩; SOUNDNESS R349)"
+# ENGINES: rust java ts swift
+# NOTE: all four. java and ts were reported clean BY INSPECTION before this part existed — this is what
+# turned that inference into a measurement, and both passed on the first run (24/24 four-way).
+# CONTROLS: f5pure — a PURE element through the SAME fold manufactures nothing, which is the arm that fails if an engine charges the CLOSURE rather than the element; f6outer — a sibling folding the same type without calling the effectful member stays pure, so the effect is attributed to the CALL and not to anything touching the type
+# CALIBRATED: CANDOR_PROBE_FAULT=1 writes f1short's cell with f5pure's body; the run goes red on all four engines. A part whose failure has never been observed is not evidence.
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
