@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- No SPEC text change — the spec version stays **0.38** and this is a patch cut.
+- `SOUNDNESS.md`: **R439 CLOSED** (candor-ts condition-map imports resolved one arm silently). The row
+  records that the remedy originally filed with it was wrong — it planned to disclose via `unanalyzed`,
+  but both arm files ARE analyzed, so the defect was a missing call edge — and that the sibling
+  value-read route was measured with a control rather than assumed.
+
 ## [0.38.0] — 2026-09-14
 
 ### Added
