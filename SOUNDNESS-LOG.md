@@ -1356,7 +1356,7 @@ cut fired only for the rare base-typed local `Writer w = new LoudWriter()`). ree
 override; a std FileWriter/StringWriter or a coincidental non-io `write()` resolves to no local override →
 nothing. GATES: full suite 412 green + `directProvidedIoMethodReachesReceiverOverride` (every receiver form
 carries; pure-impl + coincidental-write + std-sink stay pure); ZERO over-fire A/B across ~12k real functions
-(the field case 10619, tomlib, spring-demo, candor-java-self — 0 changed) with a GENUINE recovery on jsoup —
+(field case 10619, tomlib, spring-demo, candor-java-self — 0 changed) with a GENUINE recovery on jsoup —
 `DataUtil.crossStreams` + `HttpConnection$Response.writePost` gained a real, previously-SILENT `Clock`
 (they drive `ControllableInputStream.read`, whose timeout tracking is Clock — reachable but dropped at the
 abstract `in.read()`); four-way conformance OK. So R32 is closed in the rust AND jvm engines. Cross-engine

@@ -397,7 +397,7 @@ the essay-sized ones lives in [SOUNDNESS-LOG.md](SOUNDNESS-LOG.md).
      narrative: SOUNDNESS-LOG.md, the seam-class-era entry.*
    - *κ-coverage and porcelain eras (2026-06-21 → 2026-07-09; full prose per entry in SOUNDNESS-LOG.md;
      register entries R18–R21): real-app dogfooding found the inherited-into-project silent-pure vein and
-     closed the CLASS (batches 25–27, R18); the the field case legacy round mined batches 28–31 to a zero ledger and
+     closed the CLASS (batches 25–27, R18); the field-case legacy round mined batches 28–31 to a zero ledger and
      found one live silent-Net member gap (Jackson, batch 30b); the breadth invited six shipped classifier
      regressions (0.8.4 review patch, R19 — caught by review, now moving under scheduled CI); the same
      covered-module shape then surfaced in swift (UserDefaults/Keychain/Bundle, R20); and the 2026-07-09

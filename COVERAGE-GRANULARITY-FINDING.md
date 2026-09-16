@@ -370,7 +370,7 @@ worktrees, each verified to reproduce its own arm before use) rather than an ins
 | corpus | new hedges | of analyzed |
 |---|---|---|
 | spring-petclinic | 0 | 0.0% (118) |
-| the field case / warroot | 1516 | **8.1%** (18692) |
+| field case / warroot | 1516 | **8.1%** (18692) |
 
 `org.hibernate` 1455, `com.google.maps` 251, `org.hibernate.query` 122. Effect-set changes **0**, entry
 losses **0**. Strictly disclose-more, as predicted. *(warroot and the field case produced byte-identical reports —
