@@ -25,6 +25,17 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 90 — the FOLD-ELEMENT differential, four-way.** A closure parameter that IS the element of a
+  collection carries that element's effects. No new SPEC clause — ⟨0.21⟩ already supplies the contract —
+  but the defect (R349) was live in TWO engines at once and neither engine's fix was the one its own row
+  prescribed. Its `f1short`/`f2named` pair is the point: R349's filed remedy would have passed the named
+  spelling and left the shorthand one a live cardinal sin. java and ts were reported clean BY INSPECTION;
+  this part measured them (24/24 four-way, first run). Calibrated — `CANDOR_PROBE_FAULT=1` reddens all four.
+- `SOUNDNESS.md`: **R390, R415, R432, R439, R441–R454** filed and/or closed. Highlights: R451 (a method
+  chain attributed to the base type — `tokio_postgres::Client::cancel_query` opened a TCP connection and
+  read pure), R452 (a typed call resolving to no unit, dropped with no `Unknown` at all), R390 (a Bonjour
+  app told by `privacy-manifest --verify` that it needed no `NSLocalNetworkUsageDescription`).
+
 ## [0.38.2] — 2026-09-15
 
 - No SPEC text change — the spec version stays **0.38** and this is a patch cut.
