@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.38.3] — 2026-09-16
+
 - **PART 90 — the FOLD-ELEMENT differential, four-way.** A closure parameter that IS the element of a
   collection carries that element's effects. No new SPEC clause — ⟨0.21⟩ already supplies the contract —
   but the defect (R349) was live in TWO engines at once and neither engine's fix was the one its own row
