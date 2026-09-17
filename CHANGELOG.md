@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.39⟩ THE CHAINED-DISPATCH UNION.** A chained consumer's inherited signature MUST carry the effects
+  of every implementor visible to it — its own and any chained report's. Closes a toggle that ran the
+  wrong way: a library whose public abstraction had ZERO implementors gave a consumer a disclosed
+  `Unknown`, and adding ONE PURE implementor silently certified the consumer pure, so adding a pure
+  implementation REMOVED a disclosure from everyone downstream. Measured live on `ratatui`, where
+  `deny Ipc` and `pure` both exit 0 over a function that performs `Ipc`. Three inseparable obligations:
+  producers name the dispatched member (`dispatchesOn`) transitively and **even on otherwise-pure rows**
+  (a deliberate exception to §2 rule 3's "reports omit pure functions"); a package implementing a
+  FOREIGN abstraction emits its `interfaceUnion` entry under the abstraction's OWNING package; the
+  consumer join unions per key. **`interfaceUnion` is no longer gated** — this is the floor rung the
+  ⟨0.23⟩ paragraph was waiting for. Priced over 1,608 crates before the clause was written: producer
+  side is wire bytes and no verdict change; consumer verdicts move for at most 13 crates (0.8%) and only
+  by ADDING a real effect. SOUNDNESS R475.
+
 ## [0.38.3] — 2026-09-16
 
 - **PART 90 — the FOLD-ELEMENT differential, four-way.** A closure parameter that IS the element of a

@@ -440,7 +440,7 @@ A call on a value typed as an interface/protocol *imported from a chained packag
 method signature, which has no body — so the chain join can miss it. An engine MAY expose the
 implementation-union as a synthetic `interfaceUnion: true` report entry (`hash: pkg#Iface.method`, effects =
 the union over local implementers), so the consumer's existing chain lookup resolves; and MAY auto-discover
-workspace deps with `--workspace`/`--deps`. Gated/opt-in until a floor rung pins it. NB the *silent-pure*
+workspace deps with `--workspace`/`--deps`. **No longer gated: ⟨0.39⟩ (§4) is the floor rung that pins it, and both the foreign-abstraction entry and the consumer-side union are now REQUIRED.** (Until ⟨0.39⟩ this read *"Gated/opt-in until a floor rung pins it"* — recorded because the gate is exactly what let the silent-purity toggle survive in default scans.) NB the *silent-pure*
 form of this miss was candor-ts-specific; the other engines already fall to a disclosed `Unknown` here. When the field is absent, coverage is derivable from the entries' `hash`
 prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
@@ -4320,6 +4320,59 @@ the target) and an under-approximation across the open world (a downstream imple
 invisible); both are the accepted trade everywhere else in this contract. Dispatch through an
 EXTERNAL abstraction an engine does not model (a stdlib iterator protocol, a serialization trait)
 MAY remain unflagged, but then MUST be documented as a named miss (item 7, §7).
+
+⟨0.39⟩ **A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE
+TO THE CONSUMER — its own and any chained report's — so supplying an effectful implementor to a
+dependency is never silent.** The paragraph above calls the invisible downstream implementor "the
+accepted trade everywhere else in this contract". Across a CHAIN that trade stops being acceptable,
+because the implementor is no longer downstream: the consumer supplies it, and the engine can see it.
+
+The defect this closes is a TOGGLE, and it runs in the wrong direction. A library whose public
+abstraction has ZERO local implementors gives a chained consumer a disclosed `Unknown`. Add ONE PURE
+implementor to that library and the consumer is SILENTLY CERTIFIED PURE — **adding a pure
+implementation to a library REMOVES a disclosure from every consumer of it**, which is the cardinal sin
+of ⟨0.21⟩ reached by a route no single scan can see. Measured live: `ratatui-core`'s `Terminal::size`
+dispatches `Backend::size` over its sole local implementor `TestBackend` (pure), while
+`ratatui-crossterm`'s `CrosstermBackend::size` performs `Ipc`; an application chained onto both reports
+that function ABSENT, and `deny Ipc` and `pure` over it BOTH exit 0. Note what chaining does here: it
+does not flip a gate, it **deletes the `invisible` disclosure** that ⟨0.30⟩'s non-gating ruling depends
+on being present. A mechanism that makes reports better must not make silence cheaper.
+
+Three obligations, and no two of them are separable — the effectful implementor in the measured case
+lives in a THIRD package, neither the dispatching dependency nor the consumer, so any subset misses it:
+
+1. **The producer MUST name the dispatched member on the row** (`dispatchesOn: ["Iface.method"]`),
+   transitively, **and even when the row is otherwise pure.** This is a deliberate exception to §2
+   rule 3's "reports omit pure functions": a pure function that DISPATCHES is no longer a function
+   about which there is nothing to say. Absence keeps its meaning — it still claims purity — but a
+   dispatching row is no longer absent, so the claim is one the producer is entitled to make.
+2. **A package implementing a FOREIGN abstraction MUST emit an `interfaceUnion` entry keyed under the
+   abstraction's OWNING package** (`ratatui_core#Backend::size`), not under its own. Both engines'
+   producers cover LOCAL abstractions only; without this leg the measured instance is missed entirely.
+3. **The consumer's join MUST union, per key, its own visible implementors with every chained entry
+   carrying that key.** ⟨0.25⟩'s ambiguous-key union rule already specifies how multiple contributors
+   combine; this adds no new resolution rule, only a new contributor.
+
+**`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in "until a floor rung
+pins it". This is that rung: it is REQUIRED, and its absence is a non-conformance.
+
+*What this clause deliberately does NOT do.* It does not charge a consumer for a value it merely passes.
+An "escaping value" rule — charge a supplied implementor's effects wherever it is handed over — was
+considered and REFUSED, because it is not the existing precedent: engines charge a closure by SYNTACTIC
+CONTAINMENT, so `keep(|| net)` yields `Net` even where `keep` never calls it, and charge a passed
+abstraction implementor nothing. Extending containment to a body in another package would mint an edge,
+which §4 lists as fabrication. The union above charges the consumer only where the dependency's own row
+says a dispatch OCCURS.
+
+*Cost, measured over 1,608 crates and 694,497 functions before this clause was written.* Producer side
+is wire bytes and no verdict change: 7,908 functions (1.14%) carry the key directly, 18,034 (2.60%)
+transitively, of which 3,885 are pure today and become newly-emitted rows (+1.3%). Consumer side is
+confined to the at most 13 crates (0.8%) that implement a dependency's abstraction effectfully, and
+changes their verdicts only by ADDING a real effect — no implementation hedges, and nothing moves from
+disclosed to silent. The alternative this contract has repeatedly re-priced — hedging `Unknown` on the
+in-crate dispatch — costs 2.60% of functions across 435 libraries (70% of `x11rb`, 20% of `rustls`) and
+bills every consumer including those that supply no implementor. **The `pub`-scoped variant of that
+hedge had never been priced; it has now, and it still loses.**
 
 **Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the
 child does is beyond the caller's static scope (the *capability cliff*, the subprocess analog of an
