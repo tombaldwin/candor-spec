@@ -4347,8 +4347,17 @@ lives in a THIRD package, neither the dispatching dependency nor the consumer, s
    about which there is nothing to say. Absence keeps its meaning — it still claims purity — but a
    dispatching row is no longer absent, so the claim is one the producer is entitled to make.
 2. **A package implementing a FOREIGN abstraction MUST emit an `interfaceUnion` entry keyed under the
-   abstraction's OWNING package** (`ratatui_core#Backend::size`), not under its own. Both engines'
-   producers cover LOCAL abstractions only; without this leg the measured instance is missed entirely.
+   abstraction's OWNING package**, not under its own. Both engines' producers cover LOCAL abstractions
+   only; without this leg the measured instance is missed entirely. **The key takes no new spelling
+   rule: it is the one ⟨0.23⟩ already fixes for `typeSurface` — fully qualified in the OWNING package's
+   namespace, the same namespace that package's entry hashes use, so the consumer's ORDINARY chained
+   lookup resolves it with no special case.** In the measured instance that is `ratatui_core#Backend::size`,
+   which is the rust spelling of `<pkg>#<type qual>::<method>` and not a separate convention. This
+   sentence exists because the first draft of this clause gave only that rust example: a wire key shown
+   in one engine's spelling and in no other's is how ⟨0.34⟩'s drift happened, where four engines shipped
+   prose citing a clause that did not exist and two of them diverged inside the gap. An engine MUST NOT
+   invent a second spelling for this key; if its existing hash namespace cannot express the owning
+   package's abstraction, that is a report against this clause, not a licence to choose.
 3. **The consumer's join MUST union, per key, its own visible implementors with every chained entry
    carrying that key.** ⟨0.25⟩'s ambiguous-key union rule already specifies how multiple contributors
    combine; this adds no new resolution rule, only a new contributor.
