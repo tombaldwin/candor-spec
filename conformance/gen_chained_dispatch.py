@@ -145,7 +145,12 @@ ARMS = [
 # not stay uniform: the moment one engine ports ⟨0.39⟩ its line comes out and the others' stay, which is
 # precisely the state an arm-keyed table cannot represent. A PASSING xfail is a FAILURE (see main()).
 XFAIL = {
-    ("c1_foreign_effectful", "rust"):  "R475 — candor-scan 0.38.4: consumer ABSENT, `deny Net` exits 0",
+    # RETIRED 2026-09-17, candor-rust `df4cf3f` — the FIRST engine to port ⟨0.39⟩, which is what this
+    # table was built to notice. rust's three legs are live: the producer emits `dispatchesOn` on a row
+    # that is otherwise PURE, a crate implementing a FOREIGN abstraction publishes its `interfaceUnion`
+    # entry keyed under the OWNING crate, and the consumer unions per key. The other three engines' lines
+    # stay exactly as they were — an arm-keyed table could not have expressed this state, which is the
+    # reason this one is keyed by (arm, engine).
     ("c1_foreign_effectful", "java"):  "R475 — candor-java 0.38.3: consumer ABSENT, identical to rust",
     ("c1_foreign_effectful", "ts"):    "R475 class — candor-ts 0.38.3: consumer ABSENT, same shape",
     ("c1_foreign_effectful", "swift"): "R475 class — candor-swift 0.38.3: consumer ABSENT, same shape",
