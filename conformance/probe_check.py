@@ -153,6 +153,15 @@ COVERED = {
     # the same program in two spellings, so substituting one into the other would move NO verdict and the
     # fault run would come back green. The pure-element body is the only substitution here that changes
     # an expected rc.
+    # PART 91. The fault writes e2recv's cell with e3determined's body — a fully determined spawn every
+    # engine certifies — so the arm that MUST fire cannot. Chosen because it changes an expected rc:
+    # substituting e1arg (also expected rc=1) would move no verdict, which is the vacuity recorded above
+    # for gen_binding_union. java is already xfailed on e2recv, so it cannot mask the fault either.
+    "gen_exec_locator.py": {
+        "args":   [],
+        "holds":  r"EXEC-LOCATOR: OK — every engine reads a spawn",
+        "breaks": r"EXEC-LOCATOR: [1-9]\d* cell\(s\) wrong",
+    },
     "gen_fold_element.py": {
         "args":   [],
         "holds":  r"-> MATCH — every engine charges the element",
@@ -164,7 +173,7 @@ COVERED = {
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 11
+COVERED_FLOOR = 12
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

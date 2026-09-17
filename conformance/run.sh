@@ -2678,6 +2678,36 @@ echo "PART 90 — a fold's element parameter carries its effects (SPEC §2 ⟨0.
 # CONTROLS: f5pure — a PURE element through the SAME fold manufactures nothing, which is the arm that fails if an engine charges the CLOSURE rather than the element; f6outer — a sibling folding the same type without calling the effectful member stays pure, so the effect is attributed to the CALL and not to anything touching the type
 # CALIBRATED: CANDOR_PROBE_FAULT=1 writes f1short's cell with f5pure's body; the run goes red on all four engines. A part whose failure has never been observed is not evidence.
 
+# PART 91 — THE EXEC-LOCATOR differential, FOUR-WAY, SPEC §2 ⟨0.37⟩.
+#
+# PART 88 pins this property for `Fs`. NOTHING PINNED IT FOR `Exec`, and that is why two engines shipped
+# the identical hole independently in one overnight wave: SOUNDNESS R464 (java — a benign
+# `new ProcessBuilder("git")` literal certified `System.load(argv[0])`) and R460 (rust — a spawn whose
+# `Command` arrives as a RECEIVER has no `Command::new` for the guard to fire on). Different agents,
+# neither aware of the other. A cross-engine row is what turns "we fixed it twice" into "the other two
+# cannot ship it".
+#
+# THE PART EARNED ITS KEEP ON ITS FIRST EXECUTION, exactly as PART 88's a4local did: it found that
+# candor-java closed the ARGUMENT form and left the RECEIVER form OPEN — `allow Exec git` still exits 0
+# over `f(ProcessBuilder b) { new ProcessBuilder("git").start(); b.start(); }`. That is R477, declared as
+# an XFAIL keyed on (arm, engine) rather than hidden, and a PASSING xfail is a FAILURE here.
+[ -f "$HERE/gen_exec_locator.py" ] || { echo "FAIL: gen_exec_locator.py is missing"; exit 2; }
+echo
+echo "[91] a spawn's PROGRAM is its locator however it arrives — a benign sibling literal must not certify a caller-chosen spawn"
+P91_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_exec_locator.py"
+) || { P91_OK=1; rc=1; }
+[ "$P91_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on e1arg/e2recv is a masked-literal evasion (AS-EFF-008) by the Exec spelling; a ✘ on e3determined/e4nonexec is the guard over-marking, which makes ordinary spawns uncertifiable"
+echo "PART 91 — a spawn's program is its locator, argument-form or receiver-form (SPEC §2 ⟨0.37⟩; SOUNDNESS R460, R464, R477)"
+# ENGINES: rust java ts swift
+# NOTE: ts is declared INEXPRESSIBLE on e2recv and says so per-cell — `child_process.spawn(cmd,args)` takes the program as an argument and has no receiver form. Declared, not silently skipped.
+# CONTROLS: e3determined — a spawn whose program IS a determined literal must STILL certify, the R416 shape PART 88's a4local caught on first run; e4nonexec — a benign Exec literal beside a function that spawns NOTHING must not be marked, which fails if an engine marks on "mentions Exec" rather than on "this call's locator was not captured"
+# CALIBRATED: CANDOR_PROBE_FAULT=1 writes e2recv's cell with e3determined's body (a fully determined spawn); rust and swift both go red. java cannot mask the fault because it is already xfailed.
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
