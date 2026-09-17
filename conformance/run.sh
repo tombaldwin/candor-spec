@@ -2708,6 +2708,46 @@ echo "PART 91 — a spawn's program is its locator, argument-form or receiver-fo
 # CONTROLS: e3determined — a spawn whose program IS a determined literal must STILL certify, the R416 shape PART 88's a4local caught on first run; e4nonexec — a benign Exec literal beside a function that spawns NOTHING must not be marked, which fails if an engine marks on "mentions Exec" rather than on "this call's locator was not captured"
 # CALIBRATED: CANDOR_PROBE_FAULT=1 writes e2recv's cell with e3determined's body (a fully determined spawn); rust and swift both go red. java cannot mask the fault because it is already xfailed.
 
+# PART 92 — THE CHAINED-DISPATCH UNION differential, FOUR-WAY, SPEC §4 ⟨0.39⟩.
+#
+# THE DEFECT IS A TOGGLE THAT RUNS THE WRONG WAY. A library whose public abstraction has ZERO local
+# implementors gives a chained consumer a disclosed `Unknown`; add ONE PURE implementor to that library
+# and the consumer is SILENTLY CERTIFIED PURE. **Adding a pure implementation to a library REMOVES a
+# disclosure from every consumer of it** — the ⟨0.21⟩ cardinal sin by a route no single scan can see,
+# because nothing is wrong with either package on its own and the loss exists only in the join.
+#
+# SOUNDNESS R475, measured LIVE: `ratatui-core`'s `Terminal::size` dispatches `Backend::size` over its
+# sole local implementor `TestBackend` (pure), while `ratatui-crossterm`'s `CrosstermBackend::size`
+# performs `Ipc`. An app chained onto BOTH reports that function ABSENT, and `deny Ipc` and `pure` over
+# it BOTH exit 0. The effectful implementor lives in a THIRD package — neither the dispatching dependency
+# nor the consumer — which is why no two-package arm can express this and why `split_arms.py` grew a
+# `Scanner` layer rather than acquiring a second copy of the engine plumbing (R288).
+#
+# WHAT MAKES THE CROSS SOUND, and it is asserted by the generator rather than trusted: the consumer's
+# function under test is BYTE-IDENTICAL source in c1, c2, c3 and c5. Between c2 and c3 the only thing
+# that moves in the whole experiment is the implementor set inside the dependency.
+#
+# ALL FOUR ENGINES FAIL c1 TODAY, declared as (arm, engine) XFAILs rather than hidden — and A PASSING
+# XFAIL IS A FAILURE HERE, so the first engine to port ⟨0.39⟩ reddens this part and retires its own line
+# in the same commit as its fix. That mechanism is what made PART 91 catch R477 on its first execution.
+[ -f "$HERE/gen_chained_dispatch.py" ] || { echo "FAIL: gen_chained_dispatch.py is missing"; exit 2; }
+echo
+echo "[92] a chained consumer carries every implementor it can SEE — adding a pure impl to a library must not delete a disclosure"
+P92_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_chained_dispatch.py"
+) || { P92_OK=1; rc=1; }
+[ "$P92_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on c1_foreign_effectful is the silent-purity toggle itself; a ✘ on c2_zero_impl means a fix traded one silence for another; a ✘ on c3_pure_only or c4_sealed is the union FABRICATING an effect nobody implements; a ✘ on c5_unchained means the unchained reference stopped disclosing, and the toggle can no longer be read"
+echo "PART 92 — a chained consumer's inherited signature carries every visible implementor (SPEC §4 ⟨0.39⟩; SOUNDNESS R475)"
+# ENGINES: rust java ts swift
+# NOTE: all four, and all four FAIL the defect arm identically — measured against released artifacts at spec 0.38 (candor-scan 0.38.4, candor-java 0.38.3, candor-ts 0.38.3, candor-swift 0.38.3), never a working tree. The producer-side diagnostics the part prints show why: `dispatchesOn` is absent and `interfaceUnion` null in every producer report, so obligations 1 and 2 of ⟨0.39⟩ are unimplemented everywhere.
+# CONTROLS: c2_zero_impl c3_pure_only c4_sealed c5_unchained — c2_zero_impl is the toggle's other side and MUST stay a disclosed Unknown, so a fix cannot trade one silence for another; c3_pure_only is the FABRICATION guard, a consumer whose library has only a pure implementor anywhere is legitimately pure and must stay pure; c4_sealed pins that a sealed abstraction's union stays EXACT and gains no new hedge; c5_unchained is the unchained reference that makes "chaining DELETES the `invisible` disclosure" a measurement rather than a claim
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders c2_zero_impl's DEPENDENCY with the one-pure-implementor variant, so the arm that must stay a disclosed Unknown cannot be; all four engines go red (4 cells, exit 1). It corrupts the CHAINED INPUT rather than a comparison, which is the only thing that proves the dependency's content reached the consumer's scan. The xfail mechanism is calibrated separately by declaring an already-true expectation and observing exit 1.
+
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

@@ -167,13 +167,26 @@ COVERED = {
         "holds":  r"-> MATCH — every engine charges the element",
         "breaks": r"FOLD-ELEMENT: [1-9]\d* arm\(s\) wrong",
     },
+    # PART 92. The fault renders c2_zero_impl's DEPENDENCY with the one-pure-implementor variant, so the
+    # arm that MUST stay a disclosed `Unknown` cannot be, and all four engines go red. It corrupts the
+    # CHAINED INPUT rather than the consumer's own source, which is the only substitution that proves the
+    # dependency's CONTENT reached the consumer's scan — the one thing this part measures that no
+    # single-package part does. Substituting into c1 instead would have been vacuous in the
+    # gen_binding_union sense twice over: c1 is expected to fail AND is xfailed on every engine, so no
+    # verdict would move. The xfail machinery is calibrated separately (declare an already-true
+    # expectation, observe exit 1) because a fault at the fixture cannot exercise it.
+    "gen_chained_dispatch.py": {
+        "args":   [],
+        "holds":  r"CHAINED-DISPATCH: OK — every engine's consumer carries the effects",
+        "breaks": r"CHAINED-DISPATCH: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 12
+COVERED_FLOOR = 13
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

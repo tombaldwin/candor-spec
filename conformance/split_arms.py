@@ -418,3 +418,181 @@ def dep_stats(path):
         return (0, 0)
     fns = d["functions"] if isinstance(d, dict) else d
     return (len(fns), sum(1 for e in fns if set(e.get("inferred", [])) - {UNKNOWN}))
+
+
+# =====================================================================================================
+# N-PACKAGE CHAINS — the SCANNER layer.
+#
+# Everything above this line assumes the TWO-package split P1 renders: one dependency, one consumer, and
+# `arm_env` varying what the consumer is handed. SPEC §4 ⟨0.39⟩ cannot be expressed in two packages —
+# the effectful implementor of the dispatched abstraction lives in a THIRD package, neither the
+# dispatching dependency nor the consumer — so PART 92 needs to scan an arbitrary set of package
+# directories and chain an arbitrary subset of their reports into the next scan.
+#
+# What is factored out here is exactly the part that was ALREADY duplicated four ways inside `_rust` /
+# `_java` / `_ts` / `_swift` above: resolve the engine once, scan ONE prepared directory, find the report
+# it produced. It is NOT a second copy of those runners — they keep their P1 cell-writing contract and
+# are untouched. A generator that needs a different package topology now extends a topology, not a
+# scanner. (R288 is the standing reason: fifteen copies of one instrument have no owner, so a defect
+# found in one is not fixed in the other fourteen.)
+#
+# TWO PROPERTIES THE CALLERS DEPEND ON, both structural rather than remembered:
+#   * a stale report can never be read as this scan's answer — every `scan()` DELETES the output it is
+#     about to produce before invoking the engine, so "the engine wrote nothing" and "the engine wrote
+#     this" are distinguishable (standing bar item 7);
+#   * `deps=()` means CANDOR_DEPS is UNSET, not empty — same reasoning as `arm_env`'s `mk -> None`: an
+#     engine is entitled to reject a blank setting, and then the arm measures its tolerance for blank
+#     env vars rather than its unchained behaviour.
+# =====================================================================================================
+class ScanResult:
+    __slots__ = ("report", "rc", "note")
+
+    def __init__(self, report, rc, note=""):
+        self.report, self.rc, self.note = report, rc, note
+
+    @property
+    def produced(self):
+        return self.report is not None
+
+
+class Scanner:
+    """One engine, resolved ONCE; scans PREPARED package directories.
+
+    `available` False + `err` set  -> the toolchain is absent; the caller SKIPs loudly.
+    `scan(pkgdir, deps=())`        -> ScanResult. `deps` is a sequence of report PATHS, joined with
+                                      spaces onto CANDOR_DEPS (SPEC §3.4 is whitespace-separated, which
+                                      is what makes a three-package chain expressible at all).
+    """
+    name = "?"
+
+    def __init__(self):
+        self.available, self.err = False, None
+        self.prepare()
+
+    def prepare(self):
+        raise NotImplementedError
+
+    def _argv(self, pkgdir, out):
+        raise NotImplementedError
+
+    def _cwd(self, pkgdir):
+        return None
+
+    def _clear(self, pkgdir, out):
+        d = os.path.join(pkgdir, ".candor")
+        if os.path.isdir(d):
+            shutil.rmtree(d)
+
+    def _find(self, pkgdir, out):
+        raise NotImplementedError
+
+    def scan(self, pkgdir, deps=(), out=None):
+        self._clear(pkgdir, out)
+        env = dict(os.environ)
+        if deps:
+            env["CANDOR_DEPS"] = " ".join(deps)
+        else:
+            env.pop("CANDOR_DEPS", None)
+        r = gd.run(self._argv(pkgdir, out), cwd=self._cwd(pkgdir), env=env)
+        return ScanResult(self._find(pkgdir, out), r.returncode,
+                          r.stderr.decode()[:200].replace("\n", " | "))
+
+
+class RustScanner(Scanner):
+    name = "rust"
+
+    def prepare(self):
+        self.bin = os.environ.get("CANDOR_SCAN_BIN") or os.path.join(gd.CANDOR, "target", "debug", "candor-scan")
+        if not os.path.exists(self.bin):
+            self.err = "no candor-scan at %s (set CANDOR or CANDOR_SCAN_BIN)" % self.bin
+            return
+        self.available = True
+
+    def _argv(self, pkgdir, out):
+        return [self.bin, "."]
+
+    def _cwd(self, pkgdir):
+        return pkgdir
+
+    def _find(self, pkgdir, out):
+        return _pick(os.path.join(pkgdir, ".candor"), suffix=".scan.json")
+
+
+class JavaScanner(Scanner):
+    """`pkgdir` is a CLASSES directory, and the report goes to an explicit `--json` path — so the
+    report is NOT inside the scanned tree and `_clear` has to remove that file instead."""
+    name = "java"
+
+    def prepare(self):
+        self.jar = os.environ.get("CANDOR_JAVA_JAR")
+        if not self.jar:
+            cands = gd._glob(os.path.join(gd.CANDOR_JAVA, "build", "libs"), "-all.jar")
+            self.jar = max(cands, key=os.path.getmtime) if cands else None
+        if not self.jar or not os.path.exists(self.jar):
+            self.err = "no candor-java jar (set CANDOR_JAVA or CANDOR_JAVA_JAR)"
+            return
+        if not shutil.which("javac"):
+            self.err = "no javac on PATH"
+            return
+        self.available = True
+
+    def _out(self, pkgdir, out):
+        return out or (pkgdir.rstrip(os.sep) + ".report.json")
+
+    def _argv(self, pkgdir, out):
+        return ["java", "-jar", self.jar, pkgdir, "--json", self._out(pkgdir, out)]
+
+    def _clear(self, pkgdir, out):
+        p = self._out(pkgdir, out)
+        if os.path.exists(p):
+            os.remove(p)
+
+    def _find(self, pkgdir, out):
+        p = self._out(pkgdir, out)
+        return p if os.path.exists(p) else None
+
+
+class TsScanner(Scanner):
+    name = "ts"
+
+    def prepare(self):
+        self.scan_mjs = os.path.join(gd.CANDOR_TS, "scan.mjs")
+        if not shutil.which("node") or not os.path.exists(self.scan_mjs):
+            self.err = "no node / scan.mjs (set CANDOR_TS)"
+            return
+        if not os.path.isdir(os.path.join(gd.CANDOR_TS, "node_modules")):
+            gd.run(["npm", "install", "--no-fund", "--no-audit"], cwd=gd.CANDOR_TS)
+        self.available = True
+
+    def _argv(self, pkgdir, out):
+        return ["node", self.scan_mjs, pkgdir]
+
+    def _find(self, pkgdir, out):
+        p = os.path.join(pkgdir, ".candor", "report.json")
+        return p if os.path.exists(p) else None
+
+
+class SwiftScanner(Scanner):
+    name = "swift"
+
+    def prepare(self):
+        if not shutil.which("swift"):
+            self.err = "no swift toolchain"
+            return
+        self.bin = os.environ.get("CANDOR_SWIFT_BIN") or os.path.join(gd.CANDOR_SWIFT, ".build", "debug", "candor-swift")
+        if not os.path.exists(self.bin):
+            self.err = "no candor-swift binary at %s (set CANDOR_SWIFT or CANDOR_SWIFT_BIN)" % self.bin
+            return
+        self.available = True
+
+    def _argv(self, pkgdir, out):
+        return [self.bin, "."]
+
+    def _cwd(self, pkgdir):
+        return pkgdir
+
+    def _find(self, pkgdir, out):
+        return _pick(os.path.join(pkgdir, ".candor"), exclude=("callgraph", "hierarchy"), suffix=".Swift.json")
+
+
+SCANNERS = {"rust": RustScanner, "java": JavaScanner, "ts": TsScanner, "swift": SwiftScanner}

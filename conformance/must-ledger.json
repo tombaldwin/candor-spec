@@ -3294,6 +3294,54 @@
    "at": "4.0 The disclosure model, formally — a signature",
    "excerpt": "**This clause was RULED on 2026-09-12 and the ruling's own premise — that the engines al",
    "unenforced": "A MEASUREMENT RECORD AND A DRAFTING HISTORY, not an obligation a build can meet or fail — the same classification as the ⟨0.37⟩ measurement record one section over, and for the same reason: what it asserts is what PREVIOUS BINARIES did, and every conformance row measures ONE build. It is kept rather than trimmed because it now records the family's most expensive recurring shape twice over: the RULING's premise was measured false, and then EACH ENGINE'S FIRST FIX was bounded by its own closing fixture (rust's arms were both external, swift's both project-declared), so neither could see the MIXED set and both needed a second round. The enforceable half IS pinned — PART 89, all nine arms, both engines — and the xfail mechanism that held the gap open in the meantime is described in that part's own header."
+  },
+  {
+   "sha": "b0e24764186dcacd",
+   "at": "2. The report",
+   "excerpt": "**Cross-package interface dispatch** (design: `WORKSPACE-CHAINING-DESIGN.md`, prototype in candor-ts 0.22). A ",
+   "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — the §2 gate this rung removes is exactly what let the silent-purity toggle survive in default scans; c1/c3 are the chained arms that read it"
+  },
+  {
+   "sha": "d4a6fec0b569a7ee",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "⟨0.39⟩ **A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO THE C",
+   "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — arm c1_foreign_effectful, xfailed on all four engines (SOUNDNESS R475)"
+  },
+  {
+   "sha": "fee7c81bc5363b89",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "The defect this closes is a TOGGLE, and it runs in the wrong direction. A library whose public abstraction has",
+   "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — arms c2_zero_impl and c3_pure_only ARE the toggle, measured with the consumer's source byte-identical between them"
+  },
+  {
+   "sha": "43db8e63f0caee10",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "1. **The producer MUST name the dispatched member on the row** (`dispatchesOn: [\"Iface.method\"]`), transitivel",
+   "unenforced": "UNENFORCED, as a DEBT with a named remedy, not a silence. PART 92 exercises the JOINT effect of ⟨0.39⟩'s three obligations — what the CONSUMER's row says — and prints this producer-side leg as a per-arm diagnostic (measured 2026-09-17 on released artifacts at spec 0.38: `dispatchesOn` absent and `interfaceUnion` null in all four engines' producer reports, which is why its c1 arm is xfailed four-way). What is NOT exercised is the WIRE SHAPE this sentence requires, and the reason is that the contract does not yet fix the KEY SPELLING cross-engine — §4 gives `ratatui_core#Backend::size` as a rust example and nothing for the JVM/TS/Swift forms, so a four-way row written today would be inventing the contract rather than pinning it. Price of the hole, stated: until that row exists, two engines can satisfy PART 92 with incompatible keys and a chained report from one will not join against the other. The remedy lands with the FIRST engine to port ⟨0.39⟩ — it fixes the spelling, the clause records it, and the row keys on it; PART 92's diagnostics are already the evidence channel, so the row is an assertion over output it collects today."
+  },
+  {
+   "sha": "779c60f09c58052d",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "2. **A package implementing a FOREIGN abstraction MUST emit an `interfaceUnion` entry keyed under the abstract",
+   "unenforced": "UNENFORCED, as a DEBT with a named remedy, not a silence. PART 92 exercises the JOINT effect of ⟨0.39⟩'s three obligations — what the CONSUMER's row says — and prints this producer-side leg as a per-arm diagnostic (measured 2026-09-17 on released artifacts at spec 0.38: `dispatchesOn` absent and `interfaceUnion` null in all four engines' producer reports, which is why its c1 arm is xfailed four-way). What is NOT exercised is the WIRE SHAPE this sentence requires, and the reason is that the contract does not yet fix the KEY SPELLING cross-engine — §4 gives `ratatui_core#Backend::size` as a rust example and nothing for the JVM/TS/Swift forms, so a four-way row written today would be inventing the contract rather than pinning it. Price of the hole, stated: until that row exists, two engines can satisfy PART 92 with incompatible keys and a chained report from one will not join against the other. The remedy lands with the FIRST engine to port ⟨0.39⟩ — it fixes the spelling, the clause records it, and the row keys on it; PART 92's diagnostics are already the evidence channel, so the row is an assertion over output it collects today."
+  },
+  {
+   "sha": "196ca862620a1a80",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "3. **The consumer's join MUST union, per key, its own visible implementors with every chained entry carrying t",
+   "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — arm c1_foreign_effectful asserts the consumer's join, with c3_pure_only and c4_sealed as the fabrication and exactness controls"
+  },
+  {
+   "sha": "6b80565bb8736a75",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "**`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in \"until a floor rung pins it",
+   "unenforced": "UNENFORCED, as a DEBT with a named remedy, not a silence. PART 92 exercises the JOINT effect of ⟨0.39⟩'s three obligations — what the CONSUMER's row says — and prints this producer-side leg as a per-arm diagnostic (measured 2026-09-17 on released artifacts at spec 0.38: `dispatchesOn` absent and `interfaceUnion` null in all four engines' producer reports, which is why its c1 arm is xfailed four-way). What is NOT exercised is the WIRE SHAPE this sentence requires, and the reason is that the contract does not yet fix the KEY SPELLING cross-engine — §4 gives `ratatui_core#Backend::size` as a rust example and nothing for the JVM/TS/Swift forms, so a four-way row written today would be inventing the contract rather than pinning it. Price of the hole, stated: until that row exists, two engines can satisfy PART 92 with incompatible keys and a chained report from one will not join against the other. The remedy lands with the FIRST engine to port ⟨0.39⟩ — it fixes the spelling, the clause records it, and the row keys on it; PART 92's diagnostics are already the evidence channel, so the row is an assertion over output it collects today."
+  },
+  {
+   "sha": "1ca8380275303517",
+   "at": "4.0 The disclosure model, formally — a signature",
+   "excerpt": "*Cost, measured over 1,608 crates and 694,497 functions before this clause was written.* Producer side is wire",
+   "unenforced": "A MEASUREMENT paragraph, not an obligation an engine can fail — it prices the rung (producer side wire-bytes-only, consumer side confined to the ≤13 crates that implement a dependency's abstraction effectfully) and prices the rejected alternative. Same classification as the other rationale blocks this extractor's measured ~84% precision predicts; it costs one line here, once."
   }
  ]
 }
