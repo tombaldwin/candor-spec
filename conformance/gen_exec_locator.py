@@ -64,13 +64,13 @@ ARMS = [
 # An expectation keyed by (arm, engine) — NEVER by arm alone, because the whole finding is that one
 # engine closed the ARGUMENT form and not the RECEIVER form. A PASSING xfail is a FAILURE here: it is the
 # only thing in the suite that notices an expectation which has quietly become true.
-XFAIL = {
-    ("e2recv", "java"): "SOUNDNESS R477 — R464 closed the ARGUMENT form and left the RECEIVER form open. "
-                        "Measured 2026-09-17 on candor-java fd4199c: `f(ProcessBuilder b)` with a benign "
-                        "`new ProcessBuilder(\"git\")` sibling reports cmds:['git'], incomplete NONE, and "
-                        "`allow Exec git` exits 0 over `b.start()`. Retire this entry in the same commit "
-                        "as the fix.",
-}
+# EMPTY, and it was not empty when this part landed. `("e2recv","java")` was declared here for
+# SOUNDNESS R477 — R464 closed the ARGUMENT form and left the RECEIVER form open — and PART 91 found
+# that on its FIRST EXECUTION. Retired 2026-09-17 in the same commit as candor-java `5440749`, which
+# is the discipline: a PASSING xfail is a FAILURE here, so an expectation that has become true is
+# reported rather than quietly carried. Keep the mechanism now the dict is empty — the next
+# engine-specific gap in this family will land exactly the same way.
+XFAIL = {}
 
 BODIES = {
     "rust": {
