@@ -151,7 +151,14 @@ XFAIL = {
     # entry keyed under the OWNING crate, and the consumer unions per key. The other three engines' lines
     # stay exactly as they were — an arm-keyed table could not have expressed this state, which is the
     # reason this one is keyed by (arm, engine).
-    ("c1_foreign_effectful", "java"):  "R475 — candor-java 0.38.3: consumer ABSENT, identical to rust",
+    #
+    # RETIRED 2026-09-18, candor-java — the SECOND engine, and the family's reference one, so this port is
+    # the shape ts and swift copy. Its legs are the same three and its arithmetic is simpler: a JVM entry
+    # hash is already fully qualified in the owning package's namespace, so obligation 2's key needs no
+    # prefixing rule at all (`iface/backend/Backend.size()I`) and the consumer resolves `dispatchesOn`
+    # through the ordinary `crossDeps` index. Un-gating ⟨0.23⟩ was part of the port here too: this engine's
+    # union entries rode behind CANDOR_WORKSPACE_CHAIN, and that gate is why the toggle survived default
+    # scans. swift's and ts's lines are untouched.
     ("c1_foreign_effectful", "ts"):    "R475 class — candor-ts 0.38.3: consumer ABSENT, same shape",
     ("c1_foreign_effectful", "swift"): "R475 class — candor-swift 0.38.3: consumer ABSENT, same shape",
 }
