@@ -4341,11 +4341,28 @@ on being present. A mechanism that makes reports better must not make silence ch
 Three obligations, and no two of them are separable — the effectful implementor in the measured case
 lives in a THIRD package, neither the dispatching dependency nor the consumer, so any subset misses it:
 
-1. **The producer MUST name the dispatched member on the row** (`dispatchesOn: ["Iface.method"]`),
-   transitively, **and even when the row is otherwise pure.** This is a deliberate exception to §2
-   rule 3's "reports omit pure functions": a pure function that DISPATCHES is no longer a function
-   about which there is nothing to say. Absence keeps its meaning — it still claims purity — but a
-   dispatching row is no longer absent, so the claim is one the producer is entitled to make.
+1. **The producer MUST name the dispatched member on the row** (`dispatchesOn`), **and even when the
+   row is otherwise pure.** This is a deliberate exception to §2 rule 3's "reports omit pure
+   functions": a pure function that DISPATCHES is no longer a function about which there is nothing
+   to say. Absence keeps its meaning — it still claims purity — but a dispatching row is no longer
+   absent, so the claim is one the producer is entitled to make.
+
+   **The obligation is that the member must REACH the caller transitively — NOT that the wire carries
+   the transitive closure.** A producer MAY publish DIRECT members only and let the consumer take the
+   closure over that dependency's own published §2 `calls` graph; both spellings satisfy this clause,
+   and `calls` MUST then include a callee that merely REACHES a dispatch, since a pure intermediary
+   omitted breaks the walk one hop short.
+
+   *This paragraph was rewritten 2026-09-18 and the first draft was WRONG — it required the closure on
+   the wire, and that is UNIMPLEMENTABLE for the reference engine.* Measured on the JVM, where
+   interfaces are how the platform dispatches: `avro-1.11.3` went 852 member strings to **157,562**
+   and 1.2 MB to **13.0 MB**; `spring-core` 3.2 MB to 18.4 MB; and **`jooq-3.19.10` could not be
+   serialised at all** — dead with 8 GB of heap after four minutes, against 5.6 s unrung — with 5 more
+   of 372 corpus jars timing out past 600 s. Under the corrected reading jooq is 6.3 s and 34 MB. The
+   trade is the one this family already made for `unknownWhy` (`depTransitiveWhy`), and it is recorded
+   rather than quietly relaxed because **a rung that cannot be serialised by the reference engine is
+   not a conservative rung, it is a broken one** — and no amount of care in the clause's other
+   paragraphs would have found that. Only a port did.
 2. **A package implementing a FOREIGN abstraction MUST emit an `interfaceUnion` entry keyed under the
    abstraction's OWNING package**, not under its own. Both engines' producers cover LOCAL abstractions
    only; without this leg the measured instance is missed entirely. **The key takes no new spelling
@@ -4362,6 +4379,14 @@ lives in a THIRD package, neither the dispatching dependency nor the consumer, s
    prose citing a clause that did not exist and two of them diverged inside the gap. An engine MUST NOT
    invent a second spelling for this key; if its existing hash namespace cannot express the owning
    package's abstraction, that is a report against this clause, not a licence to choose.
+**`dispatchesOn`'s VALUE takes the same spelling rule as obligation 2's key** — fully qualified in the
+owning package's namespace, the namespace that package's entry hashes use. **This sentence exists because
+the first two ports produced two different wire values for one field**: candor-scan publishes the trait
+leaf (`Backend::size`) and candor-java the full entry hash. Each is locally consistent and neither invented
+a second spelling *within* its engine, which is exactly how the ⟨0.34⟩ drift happened — every engine
+correct by its own lights and the field meaningless across them. A consumer MUST be able to join a
+`dispatchesOn` value against the producing package's entry keys without a per-engine rule.
+
 3. **The consumer's join MUST union, per key, its own visible implementors with every chained entry
    carrying that key.** ⟨0.25⟩'s ambiguous-key union rule already specifies how multiple contributors
    combine; this adds no new resolution rule, only a new contributor.
