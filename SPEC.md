@@ -5157,7 +5157,7 @@ without reading any engine's raw reason strings:
 | `dispatch` | unresolved virtual/dynamic dispatch, invokedynamic, same-name ambiguity (`dispatch:*`, `indy*`, `ambiguous:*`) |
 | `indirect` | callback / closure / function-value / async-continuation indirection (`callback:*`, `closure*`, `task-handoff*`) |
 | `native` | FFI / native boundary (`native:*`) |
-| `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |
+| `unresolved` | generic unresolvable call/import, ⟨0.40⟩ `macro:*` (an unexpanded compile-time macro), **and the catch-all for any unrecognized raw reason** |
 | `setup` | the analysis is not wired up — fixable, not a real hole (`missing-config`, `no-tsconfig`, no-`node_modules`) |
 
 The projection is **conservative**: a raw reason matching no listed prefix maps to `unresolved`, and a
@@ -5317,6 +5317,34 @@ of the verb on that engine. `ambiguous:` also names something the other four kin
 unresolved DISPATCH (no owner type was ever formed) and not a `callback:` (no function value is involved) —
 the analyser's own name resolution was ambiguous. A vocabulary that cannot say that forces an engine to
 either lie or fall silent.
+
+⟨0.40⟩ **`macro:` is a SIXTH §4 kind, and the asymmetry that hid it is the INVERSE of `ambiguous:`'s.**
+Where `ambiguous:*` was named EXPLICITLY by the table above while §4 omitted it, `macro:*` is absorbed by
+the table's **catch-all**. So a consumer classifies it correctly — `unresolved`, which is the right
+answer — but **by accident rather than by decision**, and the catch-all exists for reasons that are
+*unrecognized*. A kind emitted on **9,290 entries across 330 of 1,608 crates (20.5%)** — candor-rust's
+fifth-largest, after `callback` 81,119, `ambiguous` 35,317, `dispatch` 28,311 and `native` 23,034 — is not
+unrecognized. It is a kind this document had simply never been told about, and relying on the residual to
+absorb it means the vocabulary no longer describes what an engine emits, which is the drift ⟨0.24⟩'s own
+paragraph exists to stop.
+
+**It names something the other five genuinely cannot.** Not `native:` — a body EXISTS and is in-language;
+it has not been expanded. Not `reflect:` — nothing is metaprogrammed at RUN time; the program is static and
+the opacity is the analyser's. Not `dispatch:` — no owner type, nothing virtual, exactly one body will run.
+Not `callback:` — no function value is involved. Not `ambiguous:` — name resolution did not FAIL; the
+analyser never saw the item to resolve. What `macro:` says is that **the source is not readable as written
+without running a compile-time expander** — a fourth position on the axis §4 already draws between
+irreducible opacity (`reflect:`, `native:`) and the improvable kinds (`dispatch:`, `callback:`): improvable
+in principle, by an expander the analyser declines to run, which is a cost decision rather than a
+limitation.
+
+**Its §6.2 class is `unresolved`, which is exactly where the catch-all already put it — so this rung
+changes NO verdict, by construction.** That is deliberate. The alternative, a `macro` filter class letting
+a user write `deny E Unknown[macro]`, would WITHDRAW these rows from `unresolved` and break every gate
+already written with the broad filter; R270 priced that direction at 30 crates that pass today while
+holding the hole. **A finer filter is not worth a silent verdict change, and this rung declines to make
+one.** If `Unknown[macro]` is ever wanted it is its own rung, with that cost stated and ruled on.
+
 
 ⟨0.24⟩ **`CONTRIBUTES`, not "is treated as" — and the difference is a proved property.** This clause used to
 read *"a function whose `Unknown` carries no recorded reason is **treated as** `unresolved`"*, i.e. the class

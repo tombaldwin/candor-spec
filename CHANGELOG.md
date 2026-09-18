@@ -25,6 +25,18 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ `macro:` IS A SIXTH §4 REASON KIND.** It was absorbed by §6.2's catch-all, so consumers
+  classified it `unresolved` — the right answer, reached **by accident** — while any producer emitting it
+  was non-conforming. A kind carried on **9,290 entries across 330 of 1,608 crates (20.5%)**, candor-rust's
+  fifth-largest, is not "unrecognized", and leaning on the residual to absorb it means the vocabulary no
+  longer describes what engines emit. It names what the other five cannot: a body that EXISTS, is
+  in-language, and is unreadable without running a compile-time expander — improvable in principle, by an
+  expander the analyser declines to run. **Its class stays `unresolved`, so this rung moves NO verdict by
+  construction**; a `macro` filter class was considered and REFUSED, because it would withdraw these rows
+  from `unresolved` and break every gate written with the broad filter (R270: 30 crates). Pinned by PART
+  10's CANON plus a purpose-built `macrohidden` fixture that must carry the kind ON THE CALLER, calibrated
+  by removing the macro and confirming the part goes red. SOUNDNESS R489.
+
 - **⟨0.39⟩ THE CHAINED-DISPATCH UNION.** A chained consumer's inherited signature MUST carry the effects
   of every implementor visible to it — its own and any chained report's. Closes a toggle that ran the
   wrong way: a library whose public abstraction had ZERO implementors gave a consumer a disclosed

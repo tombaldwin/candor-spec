@@ -2829,7 +2829,7 @@ echo
 echo
 echo "[10] unknownWhy VOCABULARY (canonical kinds + dispatch:owner.member, SPEC §4 ⟨0.7⟩):"
 # ENGINES: rust java ts swift
-# CONTROLS: vocab armsunion armsswap — the per-engine crates are EACH OTHER'S control. `vocab` holds two DISTINCT definitions of one bare name and must still come back `ambiguous:`, so an engine that resolved everything (or stopped emitting the kind) fails it. `armsunion` holds ONE definition written as two `#[cfg]` arms carrying DIFFERENT effects and must come back with BOTH, so an engine that hedges everything to `Unknown` fails it — neither row can be passed by a one-sided regression, and no engine can pass both by refusing or by resolving indiscriminately. `armsswap` is `armsunion` with the arms in the opposite SOURCE ORDER: a union is order-independent by definition, and R208 is what an order-dependent answer looks like. The cross-engine vocabulary/containment/gate-verdict rows compare document content across engines, and the gate rows require the violation entries, not an exit alone
+# CONTROLS: vocab armsunion armsswap macrohidden — the per-engine crates are EACH OTHER'S control. `vocab` holds two DISTINCT definitions of one bare name and must still come back `ambiguous:`, so an engine that resolved everything (or stopped emitting the kind) fails it. `armsunion` holds ONE definition written as two `#[cfg]` arms carrying DIFFERENT effects and must come back with BOTH, so an engine that hedges everything to `Unknown` fails it — neither row can be passed by a one-sided regression, and no engine can pass both by refusing or by resolving indiscriminately. `armsswap` is `armsunion` with the arms in the opposite SOURCE ORDER: a union is order-independent by definition, and R208 is what an order-dependent answer looks like. `macrohidden` holds a body behind an unexpanded `macro_rules!` and must come back `macro:` ON THE CALLER, so an engine that starts expanding (or stops emitting the kind) fails it rather than silently widening CANON. The cross-engine vocabulary/containment/gate-verdict rows compare document content across engines, and the gate rows require the violation entries, not an exit alone
 #
 # EVERY FIXTURE THIS PART BUILDS LIVES BELOW ITS `[10]` HEADER, AND THAT IS LOAD-BEARING, NOT TIDINESS.
 # `part.sh` slices run.sh at the PRINTED `[id]` markers, so setup written ABOVE a part's own header is
@@ -2870,6 +2870,28 @@ use a::*; use b::*;
 pub fn go() { helper(); }
 RS
 "$SCAN" "$W/vocab" --json > "$W/vocab.json" 2>/dev/null || true
+# ⟨0.40⟩ THE MACRO-HIDDEN FIXTURE — `macro:` is a SIXTH §4 kind and this is what pins it. Same argument
+# `ambiguous:` needed and for a reason none of the other five can state: a body EXISTS and is in-language,
+# and the analyser declines to run the expander that would reveal it. Measured at 9,290 entries across 330
+# of 1,608 crates before the rung — candor-rust's fifth-largest kind — absorbed until now by §6.2's
+# catch-all, i.e. classified correctly BY ACCIDENT, which is what this fixture converts into a decision.
+mkdir -p "$W/macrohidden/src"
+cat > "$W/macrohidden/Cargo.toml" <<'TOML'
+[package]
+name = "macrohidden"
+version = "0.1.0"
+TOML
+cat > "$W/macrohidden/src/lib.rs" <<'RS'
+mod hidden {
+    macro_rules! m {
+        () => { pub fn spawn(p: &str) -> bool { std::process::Command::new(p).status().is_ok() } };
+    }
+    m!();
+}
+use crate::hidden::spawn;
+pub fn go(p: &str) -> bool { spawn(p) }
+RS
+"$SCAN" "$W/macrohidden" --json > "$W/macrohidden.json" 2>/dev/null || true
 # THE UNION FIXTURES — the discriminator nothing else in this suite has. One definition, two `#[cfg]`
 # arms, and the arms carry DIFFERENT effects (Fs vs Exec), so the three failure shapes are separable in
 # the caller's own row: the UNION is `['Exec','Fs']`, a PICK is a single concrete effect (one
@@ -2904,12 +2926,18 @@ pub fn go() { helper(); }
 RS
 "$SCAN" "$W/armsunion" --json > "$W/armsunion.json" 2>/dev/null || true
 "$SCAN" "$W/armsswap"  --json > "$W/armsswap.json"  2>/dev/null || true
-python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" "$W/armsunion.json" "$W/armsswap.json" <<'PY' || rc=1
+python3 - "$RUST_REPORT" "$W/java.json" "${TS_OK:+$W/ts.json}" "${SW_REPORT:-}" "$W/vocab.json" "$W/armsunion.json" "$W/armsswap.json" "$W/macrohidden.json" <<'PY' || rc=1
 import json, os, sys
 # ⟨0.24⟩ FIVE canonical kinds. `ambiguous` was promoted from TOLERATED: §6.2 had always classed it
 # `dispatch`, so consumers were right while producers emitting it were non-conforming, and reclassifying it
 # to `indirect` was measured to take `deny E Unknown[dispatch]` from 58 of 200 crates to 0 of 200.
-CANON = {"reflect", "native", "dispatch", "callback", "ambiguous"}
+# ⟨0.40⟩ SIX canonical kinds. `macro` was promoted from the §6.2 CATCH-ALL — the inverse of
+# `ambiguous:`'s asymmetry, which §6.2 named explicitly while §4 omitted it. `macro:*` was absorbed by
+# the residual rule instead, so consumers classified it `unresolved` (the right answer) BY ACCIDENT,
+# while the producer emitting it stayed non-conforming. Its class is unchanged, so the promotion moves
+# no verdict — deliberately: a `macro` FILTER class would withdraw these rows from `unresolved` and
+# break every gate already written with the broad filter (R270 priced that at 30 crates).
+CANON = {"reflect", "native", "dispatch", "callback", "ambiguous", "macro"}
 # Known migration kinds (SPEC §4 ⟨0.7⟩): an engine MAY still emit these while it reconciles its reasons
 # onto the canonical four (MODEL.md tracks candor-java's task-handoff/indy). They WARN — visible, not
 # silently allowed — but do NOT fail the suite, so a not-yet-reconciled engine is surfaced without being
@@ -3011,6 +3039,26 @@ elif _good != "ok":
 else:
     print("  self-check: `banana:` DIVERGEs and `reflect:` does not, through the same classifier the "
           "engine entries run through — the vocabulary check discriminates")
+# ⟨0.40⟩ THE MACRO FIXTURE MUST HAVE PRODUCED THE KIND IT EXISTS FOR, and ON THE CALLER. Same discipline
+# as the `ambiguous:` row below: a kind-set check that only asks "did the word appear anywhere" degrades
+# silently the moment the fixture stops triggering, and `macro:` reaching a report while `go` resolves
+# cleanly would say nothing about the call site the kind is for.
+_mp = sys.argv[8] if len(sys.argv) > 8 else ""
+if not _mp or not os.path.exists(_mp):
+    print("  DIVERGE [rust(macro)] the macro-hidden fixture produced NO REPORT — the ⟨0.40⟩ row cannot "
+          "pass vacuously"); fails += 1
+else:
+    _mf = [f for f in (json.load(open(_mp)).get("functions") or [])
+           if (f.get("fn") or "").endswith("::go") or (f.get("fn") or "") == "go"]
+    _mw = [w for f in _mf for w in (f.get("unknownWhy") or [])]
+    if not any(w.startswith("macro:") for w in _mw):
+        print(f"  DIVERGE [rust(macro)] the macro-hidden fixture's CALLER `go` carries no `macro:` reason "
+              f"(saw {_mw!r}) — ⟨0.40⟩'s kind is unpinned, so admitting it to CANON is a widening with "
+              "nothing behind it"); fails += 1
+    else:
+        print(f"  rust(macro): `go` carries {[w for w in _mw if w.startswith('macro:')]!r} — ⟨0.40⟩'s "
+              "sixth kind is produced by a purpose-built input, not merely permitted")
+
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
           "this row's coverage of the off-vocabulary kind is vacuous, not passing"); fails += 1

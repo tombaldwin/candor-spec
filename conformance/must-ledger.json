@@ -2133,10 +2133,10 @@
       "status": "pre-ledger"
     },
     {
-      "sha": "fa37f9e400ce00a5",
+      "sha": "8e910dbf968502f8",
       "at": "6.2 The policy DSL (normative)",
-      "excerpt": "| `unresolved` | generic unresolvable call/import **and the catch-all for any unrecognized raw reason** |",
-      "status": "pre-ledger"
+      "excerpt": "| `unresolved` | generic unresolvable call/import, ⟨0.40⟩ `macro:*` (an unexpanded compile-t",
+      "unenforced": "THE §6.2 CLASS PROJECTION ROW, re-anchored at ⟨0.40⟩ when `macro:*` was named in it explicitly. **The projection itself IS exercised** — PART 10 pins §4's kind set (CANON now six, with a purpose-built `macrohidden` fixture that must produce `macro:` ON THE CALLER or the row DIVERGEs), and the reason-class rows pin what a consumer does with a class. What no row pins is the CATCH-ALL sentence at the end of this row, and that is deliberate rather than an oversight: a row asserting *\"an unrecognized reason maps to `unresolved`\"* would have to invent a reason no engine emits, and the moment such a fixture existed the kind would be recognized — the assertion destroys its own subject. The protection is structural instead: the projection is conservative by construction, so an unclassified reason widens rather than narrows."
     },
     {
       "sha": "6a70dd48061b9247",
@@ -3354,6 +3354,24 @@
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "*This paragraph was rewritten 2026-09-18 and the first draft was WRONG — it required the clos",
       "unenforced": "A DRAFTING-HISTORY AND COST RECORD, the same classification the ⟨0.37⟩/⟨0.38⟩ measurement paragraphs carry: what it asserts is what PREVIOUS DRAFTS and specific JAR SIZES did, and every conformance row measures one build of one fixture. Kept rather than trimmed because it is the clearest evidence this project has that **a clause reviewed carefully and shipped unported can still be impossible**: the wire-closure reading survived Fable's review, my own writing, a conformance part, and one full engine port before the reference engine hit a jar it could not serialise. The generalisable rule is in the sentence itself — write the row and the clause first, but do not believe the clause until an engine has carried it."
+    },
+    {
+      "sha": "541646312fbe301f",
+      "at": "6.2 The policy DSL (normative)",
+      "excerpt": "⟨0.40⟩ **`macro:` is a SIXTH §4 kind, and the asymmetry that hid it is the INVERSE of `ambiguous",
+      "unenforced": "EXERCISED, and named here rather than left to the part: **PART 10, whose CANON set is now the six kinds and which scans a purpose-built `macrohidden` crate that must carry `macro:` ON THE CALLER `go` or the row DIVERGEs.** Calibrated at the rung rather than assumed — removing the macro from that fixture turns PART 10 red (exit 1) and restoring it returns exit 0, so the assertion is known able to fail. The census behind the promotion (9,290 entries across 330 of 1,608 crates) is a measurement and no row can hold it; what a row CAN hold is that the kind is produced by a deliberate input rather than merely permitted by a widened set, which is exactly the vacuity the `ambiguous:` row was written to avoid."
+    },
+    {
+      "sha": "32c4500e801ea857",
+      "at": "6.2 The policy DSL (normative)",
+      "excerpt": "**It names something the other five genuinely cannot.** Not `native:` — a body EXISTS and is in-l",
+      "unenforced": "A TAXONOMY ARGUMENT binding this document's authors, not any engine — the same classification the ⟨0.24⟩ paragraph carries for `ambiguous:`, and for the same reason: it justifies why a sixth kind is owed rather than stating behaviour a build can meet or fail. No engine can fail to not-be-a-`callback:`. Its enforceable consequence — that an engine emitting `macro:` is conformant and one emitting an unlisted kind is not — IS pinned, by PART 10's classifier and its `banana:` negative control, which run through the same decision path the engine entries do."
+    },
+    {
+      "sha": "d1d86e9746187dae",
+      "at": "6.2 The policy DSL (normative)",
+      "excerpt": "**Its §6.2 class is `unresolved`, which is exactly where the catch-all already put it — so this ru",
+      "unenforced": "A DECISION RECORD AND A COST STATEMENT. The enforceable half — that the class IS `unresolved` — is the table row above and is exercised by the reason-class rows. **The half no row can hold is the claim that this rung moves NO verdict**, which is a statement about two builds of two engines over a corpus, and every conformance row measures one build. It is kept because it records a REFUSAL with its price: a `macro` FILTER class would withdraw these rows from `unresolved` and break every gate written with the broad filter, priced by R270 at 30 crates that pass today while holding the hole. A finer filter bought with a silent verdict change is the trade this contract declines by default, and the paragraph says so at the point where a future reader would otherwise think the finer filter was simply forgotten."
     }
   ]
 }
