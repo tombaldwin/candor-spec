@@ -466,7 +466,12 @@ def producer_note(path):
         return "unreadable"
     fns = d["functions"] if isinstance(d, dict) else d
     disp = sum(1 for e in fns if e.get("dispatchesOn"))
-    iu = d.get("interfaceUnion") if isinstance(d, dict) else None
+    # SPEC §2 (:441, :3565) defines `interfaceUnion` as a PER-ENTRY field — the union is a synthetic
+    # entry APPENDED TO `functions`, not a top-level key. Reading it at the top level made this
+    # diagnostic print `absent` even for a conforming producer, which is how it read for rust right up
+    # until the rung shipped. Diagnostic-only, but a wrong diagnostic misleads the NEXT engine, which
+    # is the whole audience of this part.
+    iu = any(f.get("interfaceUnion") for f in fns) if isinstance(d, dict) else None
     return "rows=%d dispatchesOn=%d interfaceUnion=%s" % (len(fns), disp, "present" if iu else "absent")
 
 

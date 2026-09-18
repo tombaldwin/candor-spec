@@ -4351,8 +4351,12 @@ lives in a THIRD package, neither the dispatching dependency nor the consumer, s
    only; without this leg the measured instance is missed entirely. **The key takes no new spelling
    rule: it is the one ⟨0.23⟩ already fixes for `typeSurface` — fully qualified in the OWNING package's
    namespace, the same namespace that package's entry hashes use, so the consumer's ORDINARY chained
-   lookup resolves it with no special case.** In the measured instance that is `ratatui_core#Backend::size`,
-   which is the rust spelling of `<pkg>#<type qual>::<method>` and not a separate convention. This
+   lookup resolves it with no special case.** In the measured instance that is **`ratatui_core#backend::Backend::size`** — the abstraction is
+   `ratatui_core::backend::Backend`, so the ⟨0.23⟩ rule yields the FULL path, not the leaf. **An earlier
+   draft of this clause abbreviated it to `ratatui_core#Backend::size`, which is under-qualified and is
+   exactly the second spelling this paragraph forbids — an engine copying the example literally would
+   have invented one.** Corrected 2026-09-18 by the first engine to port the rung; recorded rather than
+   silently amended, because a worked example carries more weight than the rule beside it. This
    sentence exists because the first draft of this clause gave only that rust example: a wire key shown
    in one engine's spelling and in no other's is how ⟨0.34⟩'s drift happened, where four engines shipped
    prose citing a clause that did not exist and two of them diverged inside the gap. An engine MUST NOT
@@ -4373,15 +4377,7 @@ abstraction implementor nothing. Extending containment to a body in another pack
 which §4 lists as fabrication. The union above charges the consumer only where the dependency's own row
 says a dispatch OCCURS.
 
-*Cost, measured over 1,608 crates and 694,497 functions before this clause was written.* Producer side
-is wire bytes and no verdict change: 7,908 functions (1.14%) carry the key directly, 18,034 (2.60%)
-transitively, of which 3,885 are pure today and become newly-emitted rows (+1.3%). Consumer side is
-confined to the at most 13 crates (0.8%) that implement a dependency's abstraction effectfully, and
-changes their verdicts only by ADDING a real effect — no implementation hedges, and nothing moves from
-disclosed to silent. The alternative this contract has repeatedly re-priced — hedging `Unknown` on the
-in-crate dispatch — costs 2.60% of functions across 435 libraries (70% of `x11rb`, 20% of `rustls`) and
-bills every consumer including those that supply no implementor. **The `pub`-scoped variant of that
-hedge had never been priced; it has now, and it still loses.**
+*Cost — PREDICTED before the clause was written, then MEASURED by the first port. The prediction was right in direction and wrong in magnitude, and both numbers are kept here because the correction is the useful part.* **Producer side: predicted wire bytes with no verdict change — HOLDS EXACTLY** (over 1,608 crates, `inferred` ADDED 9,636 / REMOVED 0 / **CHANGED 0**: not one existing row's effect set moved; all 34,211 changed keys are `dispatchesOn`-only). Row growth was predicted at +1.3% and measured at +3.1% — 4,916 newly-emitted pure dispatching rows plus 4,378 union entries the prediction did not count at all. **Consumer side: predicted at most 13 crates (0.8%); MEASURED 46 crates (2.86%), 310 rows — a 3.5× understatement.** The direction held precisely (310 rows gained an effect, **0 lost one**, and no implementation hedged). **Why the prediction was wrong, stated because it indicts the method and not the estimate: the pricing census EXCLUDED ~70 trait leaf names — `Stream`, `AsyncRead`, `AsyncWrite`, `Future`, `Write` — and §4 permits excluding only formatting, equality, hashing and cloning, while EXPLICITLY FORBIDDING the extension to iterators, callbacks and I/O traits.** The excluded population is `tower#Service::call`, `futures_core#Stream::poll_next`, `http_body#Body::poll_frame`, `rand_core#RngCore::fill_bytes` — which is to say, precisely the abstractions an effect hides behind. A census that prices a rung must not quietly narrow the population the rung is about. The comparison to the in-crate hedge is unchanged and still decisive: that alternative costs 2.60% of FUNCTIONS across 435 libraries (70% of `x11rb`, 20% of `rustls`) and bills every consumer including those that supply no implementor, against this design's 2.86% of CRATES which pay only by gaining an effect they really reach. **The `pub`-scoped variant of that hedge had never been priced; it has now, and it still loses.**
 
 **Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the
 child does is beyond the caller's static scope (the *capability cliff*, the subprocess analog of an
