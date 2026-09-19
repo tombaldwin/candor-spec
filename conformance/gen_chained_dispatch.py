@@ -18,9 +18,9 @@ on its own, and the loss only exists in the join.
       `ratatui-crossterm`'s `CrosstermBackend::size` performs `Ipc`. An application chained onto BOTH
       reports that function ABSENT, and `deny Ipc` and `pure` over it BOTH exit 0.
 
-WHY THE FIXTURE MUST BE THREE PACKAGES. The effectful implementor lives in a THIRD package — neither the
-dispatching dependency nor the consumer. No two-package arm can express the finding, and §4 ⟨0.39⟩ says
-so in the clause itself: *"no two of them are separable — the effectful implementor in the measured case
+WHY THE FIXTURE MUST BE THREE PACKAGES — AND, FOR ONE ARM, FOUR. The effectful implementor lives in a
+THIRD package — neither the dispatching dependency nor the consumer. No two-package arm can express the
+finding, and §4 ⟨0.39⟩ says so in the clause itself: *"no two of them are separable — the effectful implementor in the measured case
 lives in a THIRD package"*. `split_arms.py` was built for P1's two-package split; the `Scanner` layer it
 now carries is the extension that made an N-package chain expressible without a second copy of the
 engine plumbing (R288: fifteen copies of one instrument have no owner).
@@ -52,6 +52,9 @@ to silent and no implementation may start hedging:
                 union and gains NO hedge. §4 is explicit that this case stays exact; an engine that
                 starts hedging on "this call dispatched" rather than on "an implementor is invisible"
                 fails here.
+  c6_middle_package  a FOURTH package, and the arm c1 cannot reach: the package that DISPATCHES owns
+                neither the abstraction nor any implementor of it. See the note beside `ARMS` for why
+                three packages cannot express this and why c6 is not in `CROSS_ARMS`. SOUNDNESS R504.
   c5_unchained  the same fixture as c1 with CANDOR_DEPS UNSET. Not a defect arm — a REFERENCE, and the
                 one that makes the clause's central observation concrete: unchained, the consumer says
                 `[]` + `invisible: [iface, effimpl]`; chained, it says nothing at all. **Chaining does
@@ -139,7 +142,31 @@ ARMS = [
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
+    dict(id="c6_middle_package", iface="impl", third=True, chained=True, entry="dispatch", middle=True,
+         want=dict(has={EFFECT}),
+         why="DEFECT: the DISPATCHER owns nothing — a MIDDLE package must name its dependency's member"),
 ]
+
+# THE FOURTH PACKAGE, and why three cannot express what it does (SOUNDNESS R504).
+#
+# In c1–c5 the package that DISPATCHES is also the package that OWNS the abstraction, so an engine that
+# scopes obligation 1 to abstractions it DECLARES answers correctly and the hole never opens. `middle`
+# owns neither the trait nor any implementor of it: it depends on `iface` and dispatches over `iface`'s
+# abstraction, which is the ordinary shape of a library layered on another library. If it names nothing,
+# the consumer never learns the member to union on and the chain breaks ONE HOP SHORT — the app's row is
+# ABSENT, which under ⟨0.21⟩ is a positive claim of purity.
+#
+# Found by candor-java's port reading candor-rust's source (`dispatch_sites` recorded local-trait dispatch
+# only), measured silent on a four-package chain, and closed in java first — which is why this arm's XFAIL
+# table is NOT uniform and why the `(arm, engine)` keying is load-bearing rather than defensive.
+#
+# c6 IS DELIBERATELY NOT IN `CROSS_ARMS`. Its consumer calls `middle` where c1's calls `iface`, so its
+# source text CANNOT be byte-identical to the others' — the dispatcher has to live somewhere. The cross it
+# supports is a different one, stated so it is not mistaken for the c1/c2/c3/c5 cross: c6 differs from c1
+# in exactly ONE structural fact, which package holds the dispatching function. Every other input — the
+# abstraction, its pure local implementor, the foreign effectful implementor, the chained report set — is
+# rendered from the same sources. So an engine that passes c1 and fails c6 has told you precisely that its
+# obligation-1 pass is scoped to abstractions it owns.
 
 # An expectation keyed by (arm, engine) — NEVER by arm alone. Today it happens to be uniform, and it will
 # not stay uniform: the moment one engine ports ⟨0.39⟩ its line comes out and the others' stay, which is
@@ -161,6 +188,15 @@ XFAIL = {
     # scans. swift's and ts's lines are untouched.
     ("c1_foreign_effectful", "ts"):    "R475 class — candor-ts 0.38.3: consumer ABSENT, same shape",
     ("c1_foreign_effectful", "swift"): "R475 class — candor-swift 0.38.3: consumer ABSENT, same shape",
+    # c6 — THE MIDDLE PACKAGE (SOUNDNESS R504). java PASSES this arm: its port closed the hole in the same
+    # commit that opened it, on the same four-package chain, keyed on INVOKEINTERFACE with a non-κ owner.
+    # The other three lines are here for three different reasons, and the difference is the point of an
+    # (arm, engine) table: ts and swift have not ported ⟨0.39⟩ at all, so c6 fails for the same reason c1
+    # does; rust HAS ported it and still fails c6 alone, because its obligation-1 pass was scoped to
+    # abstractions the producer DECLARES. A passing xfail is a FAILURE here — when rust closes it, this
+    # line comes out in the same commit as the fix.
+    ("c6_middle_package", "ts"):    "R475 class — candor-ts 0.38.3: ⟨0.39⟩ not ported; consumer ABSENT",
+    ("c6_middle_package", "swift"): "R475 class — candor-swift 0.38.3: ⟨0.39⟩ not ported; consumer ABSENT",
 }
 
 # The consumer's dispatching function, per engine. rust keeps its own casing convention; the assertion is
@@ -208,7 +244,12 @@ RUST_APP = {
     "dispatch": 'pub fn app_size(b: &dyn iface::Backend) -> usize { iface::term_size(b) }\n',
     "third":    'pub fn app_run() -> usize { app_size(&effimpl::Crossterm) }\n',
     "sealed":   'pub fn app_sealed() -> usize { iface::sealed_dispatch() }\n',
+    # c6 — the ONLY line that differs from `dispatch`: the dispatching callee lives one package over.
+    "middle":   'pub fn app_size(b: &dyn iface::Backend) -> usize { middle::mid_size(b) }\n',
 }
+# THE MIDDLE PACKAGE, four ways. It depends on `iface` and dispatches over `iface`'s abstraction; it
+# declares no abstraction and implements none.
+RUST_MIDDLE = 'pub fn mid_size(b: &dyn iface::Backend) -> usize { b.size() }\n'
 
 JAVA_IFACE = {
     "impl": {
@@ -230,6 +271,10 @@ JAVA_APP = {
     "dispatch": '  public static int appSize(iface.Backend b) { return iface.Terminal.termSize(b); }\n',
     "third":    '  public static int appRun() { return appSize(new effimpl.Crossterm()); }\n',
     "sealed":   '  public static int appSealed() { return iface.SealedDispatch.sealedDispatch(); }\n',
+    "middle":   '  public static int appSize(iface.Backend b) { return middle.Mid.midSize(b); }\n',
+}
+JAVA_MIDDLE = {
+    "Mid.java": 'package middle; public class Mid { public static int midSize(iface.Backend b) { return b.size(); } }\n',
 }
 
 TS_IFACE = {
@@ -251,7 +296,12 @@ TS_APP = {
                  'export function appRun(): number { return appSize(new Crossterm()) }\n'),
     "sealed":   ('import { sealedDispatch } from "iface";\n'
                  'export function appSealed(): number { return sealedDispatch() }\n'),
+    "middle":   ('import { Backend } from "iface";\n'
+                 'import { midSize } from "middle";\n'
+                 'export function appSize(b: Backend): number { return midSize(b) }\n'),
 }
+TS_MIDDLE = ('import { Backend } from "iface";\n'
+             'export function midSize(b: Backend): number { return b.size() }\n')
 
 SW_IFACE = {
     "impl": ('public protocol Backend { func size() -> Int }\n'
@@ -269,7 +319,10 @@ SW_APP = {
     "dispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return termSize(b) }\n',
     "third":    'import EffImpl\npublic func appRun() -> Int { return appSize(Crossterm()) }\n',
     "sealed":   'import Iface\npublic func appSealed() -> Int { return sealedDispatch() }\n',
+    "middle":   'import Iface\nimport Middle\npublic func appSize(_ b: Backend) -> Int { return midSize(b) }\n',
 }
+SW_MIDDLE = ('import Iface\n'
+             'public func midSize(_ b: Backend) -> Int { return b.size() }\n')
 
 
 def _w(path, text):
@@ -301,11 +354,35 @@ def iface_variant(arm):
 # attributed to the wrong arm — the same structural isolation split_arms.py enforces for P1/P2/P3.
 # Returns the ordered list of (package_dir, is_dep) for the arm.
 # =====================================================================================================
+def app_body(arm):
+    """Which consumer body this arm's app carries. `middle` is the c6 variant — the SAME function, the
+    same signature, one call target over."""
+    if arm["entry"] == "sealed":
+        return "sealed"
+    return "middle" if arm.get("middle") else "dispatch"
+
+
+def dep_order(root, arm):
+    """The dependency package directories, in scan order. `middle` sits between the abstraction's owner
+    and its foreign implementor because that is where it sits in the dependency graph."""
+    order = [os.path.join(root, "iface")]
+    if arm.get("middle"):
+        order.append(os.path.join(root, "middle"))
+    if arm["third"]:
+        order.append(os.path.join(root, "effimpl"))
+    return order
+
+
 def render_rust(root, arm):
-    var, third = iface_variant(arm), arm["third"]
+    var, third, mid = iface_variant(arm), arm["third"], arm.get("middle")
     _w(os.path.join(root, "iface", "Cargo.toml"), '[package]\nname="iface"\nversion="0.0.0"\nedition="2021"\n')
     _w(os.path.join(root, "iface", "src", "lib.rs"), RUST_IFACE[var])
     deps = ['iface={path="../iface"}']
+    if mid:
+        _w(os.path.join(root, "middle", "Cargo.toml"),
+           '[package]\nname="middle"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\niface={path="../iface"}\n')
+        _w(os.path.join(root, "middle", "src", "lib.rs"), RUST_MIDDLE)
+        deps.append('middle={path="../middle"}')
     if third:
         _w(os.path.join(root, "effimpl", "Cargo.toml"),
            '[package]\nname="effimpl"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\niface={path="../iface"}\n')
@@ -313,38 +390,45 @@ def render_rust(root, arm):
            'pub struct Crossterm;\nimpl iface::Backend for Crossterm { fn size(&self) -> usize { %s 0 } }\n'
            % SINK["rust"])
         deps.append('effimpl={path="../effimpl"}')
-    body = RUST_APP["sealed"] if arm["entry"] == "sealed" else RUST_APP["dispatch"]
+    body = RUST_APP[app_body(arm)]
     if third:
         body += RUST_APP["third"]
     _w(os.path.join(root, "app", "Cargo.toml"),
        '[package]\nname="app"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\n' + "\n".join(deps) + "\n")
     _w(os.path.join(root, "app", "src", "lib.rs"), body)
-    order = [os.path.join(root, "iface")] + ([os.path.join(root, "effimpl")] if third else [])
-    return order, os.path.join(root, "app")
+    return dep_order(root, arm), os.path.join(root, "app")
 
 
 def render_java(root, arm):
     """java scans BYTECODE, so the packages are class directories and javac is mandatory rather than a
     compile proof bolted on — the fixture cannot even be presented to the engine unbuilt."""
-    var, third = iface_variant(arm), arm["third"]
+    var, third, mid = iface_variant(arm), arm["third"], arm.get("middle")
     src = os.path.join(root, "src")
     for name, text in JAVA_IFACE[var].items():
         _w(os.path.join(src, "iface", name), text)
+    if mid:
+        for name, text in JAVA_MIDDLE.items():
+            _w(os.path.join(src, "middle", name), text)
     if third:
         _w(os.path.join(src, "effimpl", "Crossterm.java"),
            'package effimpl; public class Crossterm implements iface.Backend { public int size() { %s return 0; } }\n'
            % SINK["java"])
-    body = JAVA_APP["sealed"] if arm["entry"] == "sealed" else JAVA_APP["dispatch"]
+    body = JAVA_APP[app_body(arm)]
     if third:
         body += JAVA_APP["third"]
     _w(os.path.join(src, "app", "App.java"), "package app;\npublic class App {\n" + body + "}\n")
-    return src, third
+    return src, [p for p, on in (("iface", True), ("middle", mid), ("effimpl", third)) if on]
 
 
 def render_ts(root, arm):
-    var, third = iface_variant(arm), arm["third"]
+    var, third, mid = iface_variant(arm), arm["third"], arm.get("middle")
     _w(os.path.join(root, "iface", "package.json"), '{"name":"iface","version":"0.0.0","main":"src/index.ts"}\n')
     _w(os.path.join(root, "iface", "src", "index.ts"), TS_IFACE[var])
+    if mid:
+        _w(os.path.join(root, "middle", "package.json"),
+           '{"name":"middle","version":"0.0.0","main":"src/index.ts"}\n')
+        _w(os.path.join(root, "middle", "src", "index.ts"), TS_MIDDLE)
+        _link(os.path.join(root, "middle", "node_modules", "iface"), os.path.join(root, "iface"))
     if third:
         _w(os.path.join(root, "effimpl", "package.json"),
            '{"name":"effimpl","version":"0.0.0","main":"src/index.ts"}\n')
@@ -352,14 +436,18 @@ def render_ts(root, arm):
            'import * as netm from "node:net";\nimport { Backend } from "iface";\n'
            'export class Crossterm implements Backend { size(): number { %s ; return 0 } }\n' % SINK["ts"])
         _link(os.path.join(root, "effimpl", "node_modules", "iface"), os.path.join(root, "iface"))
-    body = TS_APP["sealed"] if arm["entry"] == "sealed" else TS_APP["dispatch"]
+    body = TS_APP[app_body(arm)]
     if third:
         body += TS_APP["third"]
-    dep_decl = '{"iface":"file:../iface"' + (',"effimpl":"file:../effimpl"' if third else "") + "}"
+    dep_decl = ('{"iface":"file:../iface"'
+                + (',"middle":"file:../middle"' if mid else "")
+                + (',"effimpl":"file:../effimpl"' if third else "") + "}")
     _w(os.path.join(root, "app", "package.json"),
        '{"name":"app","version":"0.0.0","dependencies":%s}\n' % dep_decl)
     _w(os.path.join(root, "app", "src", "index.ts"), body)
     _link(os.path.join(root, "app", "node_modules", "iface"), os.path.join(root, "iface"))
+    if mid:
+        _link(os.path.join(root, "app", "node_modules", "middle"), os.path.join(root, "middle"))
     if third:
         _link(os.path.join(root, "app", "node_modules", "effimpl"), os.path.join(root, "effimpl"))
     # `@types/node` is borrowed from the engine's own tree into EVERY package, not just the consumer:
@@ -367,10 +455,9 @@ def render_ts(root, arm):
     # `app` leaves the dependency unchecked and the typecheck fails there instead.
     types = os.path.join(gd.CANDOR_TS, "node_modules", "@types")
     if os.path.isdir(types):
-        for pkg in ["iface", "app"] + (["effimpl"] if third else []):
+        for pkg in ["iface", "app"] + (["middle"] if mid else []) + (["effimpl"] if third else []):
             _link(os.path.join(root, pkg, "node_modules", "@types"), types)
-    order = [os.path.join(root, "iface")] + ([os.path.join(root, "effimpl")] if third else [])
-    return order, os.path.join(root, "app")
+    return dep_order(root, arm), os.path.join(root, "app")
 
 
 def _link(link, target):
@@ -386,10 +473,17 @@ SW_MANIFEST = ('// swift-tools-version:5.9\nimport PackageDescription\n'
 
 
 def render_swift(root, arm):
-    var, third = iface_variant(arm), arm["third"]
+    var, third, mid = iface_variant(arm), arm["third"], arm.get("middle")
     _w(os.path.join(root, "iface", "Package.swift"), SW_MANIFEST % dict(mod="Iface", deps="", prods=""))
     _w(os.path.join(root, "iface", "Sources", "Iface", "iface.swift"), SW_IFACE[var])
     deps, prods = ['.package(path: "../iface")'], ['.product(name: "Iface", package: "iface")']
+    if mid:
+        _w(os.path.join(root, "middle", "Package.swift"),
+           SW_MANIFEST % dict(mod="Middle", deps='.package(path: "../iface")',
+                              prods='.product(name: "Iface", package: "iface")'))
+        _w(os.path.join(root, "middle", "Sources", "Middle", "mid.swift"), SW_MIDDLE)
+        deps.append('.package(path: "../middle")')
+        prods.append('.product(name: "Middle", package: "middle")')
     if third:
         _w(os.path.join(root, "effimpl", "Package.swift"),
            SW_MANIFEST % dict(mod="EffImpl", deps='.package(path: "../iface")',
@@ -400,14 +494,13 @@ def render_swift(root, arm):
            % SINK["swift"])
         deps.append('.package(path: "../effimpl")')
         prods.append('.product(name: "EffImpl", package: "effimpl")')
-    body = SW_APP["sealed"] if arm["entry"] == "sealed" else SW_APP["dispatch"]
+    body = SW_APP[app_body(arm)]
     if third:
         body += SW_APP["third"]
     _w(os.path.join(root, "app", "Package.swift"),
        SW_MANIFEST % dict(mod="App", deps=", ".join(deps), prods=", ".join(prods)))
     _w(os.path.join(root, "app", "Sources", "App", "app.swift"), body)
-    order = [os.path.join(root, "iface")] + ([os.path.join(root, "effimpl")] if third else [])
-    return order, os.path.join(root, "app")
+    return dep_order(root, arm), os.path.join(root, "app")
 
 
 # =====================================================================================================
@@ -526,7 +619,7 @@ def run_engine(name, ws):
         root = os.path.join(ws, name, arm["id"])
         os.makedirs(root, exist_ok=True)
         if name == "java":
-            src, third = render_java(root, arm)
+            src, pkgs = render_java(root, arm)
             texts[arm["id"]] = open(os.path.join(src, "app", "App.java")).read().replace(JAVA_APP["third"], "")
             cls = os.path.join(root, "cls")
             os.makedirs(cls, exist_ok=True)
@@ -536,8 +629,11 @@ def run_engine(name, ws):
             c = gd.run(["javac", "-nowarn", "-d", cls] + sorted(srcs))
             if c.returncode != 0:
                 return None, None, "javac failed on %s: %s" % (arm["id"], c.stderr.decode()[:300])
-            deps = [os.path.join(root, "d_iface")] + ([os.path.join(root, "d_effimpl")] if third else [])
-            for pkg, d in zip(["iface", "effimpl"], deps):
+            # ONE class directory per package, in the dependency order `pkgs` names — a package scanned
+            # with its siblings' classes on the same path is not a separate package at all, which is the
+            # isolation every arm here depends on.
+            deps = [os.path.join(root, "d_" + pkg) for pkg in pkgs]
+            for pkg, d in zip(pkgs, deps):
                 os.makedirs(d, exist_ok=True)
                 shutil.copytree(os.path.join(cls, pkg), os.path.join(d, pkg), dirs_exist_ok=True)
             app = os.path.join(root, "d_app")
@@ -590,11 +686,14 @@ def main():
     ws = tempfile.mkdtemp(prefix="candor-part92-")
     print("=" * 100)
     print("CHAINED-DISPATCH UNION differential ⟨0.39⟩ — a consumer carries every implementor it can see")
-    print("  fixture : THREE packages — iface (dispatches) · effimpl (a FOREIGN effectful impl) · app")
+    print("  fixture : THREE packages — iface (dispatches) · effimpl (a FOREIGN effectful impl) · app;")
+    print("            c6 adds a FOURTH — `middle`, which dispatches over iface's abstraction and owns")
+    print("            neither it nor any implementor of it (SOUNDNESS R504)")
     print("  property: c1 the foreign implementor's %s MUST reach the consumer;" % EFFECT)
     print("            c2 zero implementors MUST stay a disclosed Unknown (the toggle's other side);")
     print("            c3 an only-pure library MUST stay pure; c4 a sealed union stays EXACT;")
-    print("            c5 unchained, the same consumer discloses via `invisible`")
+    print("            c5 unchained, the same consumer discloses via `invisible`;")
+    print("            c6 a MIDDLE package that owns nothing must still name the member it dispatches on")
     print("  cross   : the consumer's dispatching source is BYTE-IDENTICAL across c1/c2/c3/c5, asserted")
     print("=" * 100)
     if NOBUILD:
