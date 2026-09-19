@@ -172,6 +172,15 @@ ARMS = [
 # not stay uniform: the moment one engine ports ⟨0.39⟩ its line comes out and the others' stay, which is
 # precisely the state an arm-keyed table cannot represent. A PASSING xfail is a FAILURE (see main()).
 XFAIL = {
+    # RETIRED 2026-09-20, candor-swift `9ae9ea5`/`68f89a0` — the THIRD engine, and both of its lines came
+    # out together because it ported the rung and R504's middle-package leg in one go. Its port recorded a
+    # real DIFFERENCE rather than smoothing one over: swift cannot see that a call IS a dispatch. rust
+    # reads `&dyn iface::Backend`, java reads INVOKEINTERFACE, ts reads the named import — Swift source
+    # says only `b.size()` on a parameter typed `Backend`, and whether `Backend` is a protocol, a class or
+    # a struct lives in a module the scan never opened. So obligation 1 over a foreign abstraction is
+    # recorded at the engine's EXISTING imported-supertype CHA site under its existing conjuncts, not as a
+    # second judgement about what a dispatch is.
+
     # RETIRED 2026-09-17, candor-rust `df4cf3f` — the FIRST engine to port ⟨0.39⟩, which is what this
     # table was built to notice. rust's three legs are live: the producer emits `dispatchesOn` on a row
     # that is otherwise PURE, a crate implementing a FOREIGN abstraction publishes its `interfaceUnion`
@@ -187,7 +196,6 @@ XFAIL = {
     # union entries rode behind CANDOR_WORKSPACE_CHAIN, and that gate is why the toggle survived default
     # scans. swift's and ts's lines are untouched.
     ("c1_foreign_effectful", "ts"):    "R475 class — candor-ts 0.38.3: consumer ABSENT, same shape",
-    ("c1_foreign_effectful", "swift"): "R475 class — candor-swift 0.38.3: consumer ABSENT, same shape",
     # c6 — THE MIDDLE PACKAGE (SOUNDNESS R504). java PASSES this arm: its port closed the hole in the same
     # commit that opened it, on the same four-package chain, keyed on INVOKEINTERFACE with a non-κ owner.
     # The other three lines are here for three different reasons, and the difference is the point of an
@@ -196,7 +204,6 @@ XFAIL = {
     # abstractions the producer DECLARES. A passing xfail is a FAILURE here — when rust closes it, this
     # line comes out in the same commit as the fix.
     ("c6_middle_package", "ts"):    "R475 class — candor-ts 0.38.3: ⟨0.39⟩ not ported; consumer ABSENT",
-    ("c6_middle_package", "swift"): "R475 class — candor-swift 0.38.3: ⟨0.39⟩ not ported; consumer ABSENT",
 }
 
 # The consumer's dispatching function, per engine. rust keeps its own casing convention; the assertion is
