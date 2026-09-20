@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.24⟩ CLARIFIED (SOUNDNESS R444) — an engine may not name an owner it has not verified.** No new
+  rung: the contract already answered. ⟨0.24⟩ reserves the dot-free `dispatch:` detail for a dispatch
+  whose owner the engine could not form, and `<owner-type>.<member>` is normative — so the DOTTED form
+  asserts that the owner declares the member. Picking a supertype off a list without checking does not
+  produce an imprecise detail, it produces a FALSE one, and a consumer joining on that key joins on a
+  name nothing answers for. Spec text only; no engine behaviour moves and no floor changes.
+
 ## [0.39.0] — 2026-09-20
 
 - **⟨0.39⟩ ALSO ADMITS `macro:` AS A SIXTH §4 REASON KIND.** It was absorbed by §6.2's catch-all, so consumers
