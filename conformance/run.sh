@@ -10741,6 +10741,17 @@ import re
 leaf = lambda fn: re.split(r"[.:]+", fn or "")[-1]
 at = {leaf(e.get("fn")): e.get("path") for e in oos}
 bad = 0
+# C — ⟨0.30⟩/R514: NO entry may carry an empty path. This is the same clause as A, stated over the WHOLE
+# array rather than over the two functions the fixture names — and it is the half that was missing. A
+# synthetic ⟨0.23⟩ `interfaceUnion` row has no `loc`, so when un-gating made those rows default, candor-scan
+# published `(io::AsyncRead::poll_read, '', excluded)` into `outOfScope` and a non-empty `outOfScope` makes
+# the verdict INCOMPLETE — a green gate became exit 2. A checked only the two named functions and could not
+# see it; every assertion this part already made still passed.
+_pathless = [e.get("fn") for e in oos if not str(e.get("path") or "").strip()]
+if _pathless:
+    print(f"  {eng:<6} DIVERGE outOfScope entr(y/ies) with an EMPTY path: {_pathless!r} — ⟨0.30⟩ makes a "
+          f"non-empty outOfScope INCOMPLETE, so a row naming no file turns a green gate into exit 2")
+    bad = 1
 # A — each function is named by ITS OWN file
 if not (str(at.get("fnOne", "")).endswith(one_path) and str(at.get("fnTwo", "")).endswith(two_path)):
     bad = 1
@@ -10776,7 +10787,13 @@ fi
 if [ -x "$SCAN" ]; then
   d="$DUPD/rs"; mkdir -p "$d/src" "$d/tests" "$d/examples"
   printf '[package]\nname="duprs"\nversion="0.0.0"\nedition="2021"\n' > "$d/Cargo.toml"
-  printf 'pub fn pure_x() -> i32 { 1 }\n' > "$d/src/lib.rs"
+  # ⟨0.39⟩/R514: a crate-root TRAIT + impl, so the scan publishes a synthetic `interfaceUnion` row.
+  # WITHOUT ONE THIS PART CANNOT FAIL THE WAY IT MATTERS — R511 shipped path-less `outOfScope` rows in
+  # real crates (tokio-rustls 0.26.4/0.26.5) while PART 58 stayed green, because its fixture had no
+  # abstraction and a union row only appears when the scanned crate has one. The trait must sit at the
+  # CRATE ROOT: R513 records that a module-nested trait publishes no union row at all in candor-scan,
+  # so a nested one here would restore exactly the blind spot this line exists to remove.
+  printf 'pub fn pure_x() -> i32 { 1 }\npub trait Sink { fn put(&self); }\npub struct FsSink;\nimpl Sink for FsSink { fn put(&self) { let _ = std::fs::read("/tmp/s"); } }\n' > "$d/src/lib.rs"
   printf 'pub fn fnOne() { let _ = std::fs::read("/tmp/one"); }\n' > "$d/tests/dup.rs"
   printf 'pub fn fnTwo() { let _ = std::fs::read("/tmp/two"); }\nfn main() {}\n' > "$d/examples/dup.rs"
   ( cd "$d" && "$SCAN" . --policy "$DUPD/pol" >/dev/null 2>&1 )
