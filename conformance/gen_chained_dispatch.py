@@ -139,6 +139,21 @@ ARMS = [
     dict(id="c4_sealed", iface="sealed", third=False, chained=True, entry="sealed",
          want=dict(has={EFFECT}, unknown=False, invisible=False),
          why="CONTROL: a sealed abstraction's union stays EXACT — the real effect, and no new hedge"),
+    # ⟨0.39⟩/R518 — THE SPELLING ARM, and the axis six arms never varied. c1-c6 all differ in WHICH
+    # PACKAGE holds what; every one of them writes the abstraction at the package ROOT. R513 (rust) and
+    # R512 (ts) were both defects in the SPELLING, and PART 92 was green with an empty xfail table
+    # throughout — it could not have failed on either. This arm holds the topology of c1 EXACTLY and moves
+    # only the declaration site, so "passes c1, fails c7" reads as "the engine keys on the written path".
+    #
+    # DECLARED INEXPRESSIBLE for java and swift rather than silently skipped, and for different reasons:
+    # java has no re-export, so nesting the interface forces `iface.Api.Backend` through the consumer and
+    # the implementor too — three variables instead of one, which is not this arm's question; swift has no
+    # submodules within a target, and its analogue (a protocol nested in an enum, SE-0404) renames the
+    # type to `Term.Backend`, with the same consequence. Both are worth their own arm; neither is this one.
+    dict(id="c7_nested_abstraction", iface="nested", third=False, chained=True, entry="nesteddispatch",
+         want=dict(has={EFFECT}), skip=("java", "swift"),
+         why="DEFECT-SHAPE: an EFFECTFUL implementor declared in a MODULE inside the dependency (R513) — "
+             "the LOCAL union leg, which is the one that had no fallback"),
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
@@ -212,11 +227,15 @@ XFAIL = {
 
 # The consumer's dispatching function, per engine. rust keeps its own casing convention; the assertion is
 # on the LEAF name after `leaf_info` strips module separators.
+# `nesteddispatch` names the SAME consumer function as `dispatch` — only its BODY differs (it dispatches
+# on the abstraction itself rather than delegating to a dep function). Kept as a separate entry key so
+# the arm table reads honestly; kept TOTAL across engines so a renderer cannot KeyError on an arm its
+# engine declares inexpressible.
 ENTRY = {
-    "rust":  dict(dispatch="app_size", sealed="app_sealed"),
-    "java":  dict(dispatch="appSize", sealed="appSealed"),
-    "ts":    dict(dispatch="appSize", sealed="appSealed"),
-    "swift": dict(dispatch="appSize", sealed="appSealed"),
+    "rust":  dict(dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed"),
+    "java":  dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
+    "ts":    dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
+    "swift": dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
 }
 
 # =====================================================================================================
@@ -246,6 +265,18 @@ RUST_IFACE = {
              'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'),
     "zero": ('pub trait Backend { fn size(&self) -> usize; }\n'
              'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'),
+    # ⟨0.39⟩/R518 — THE SPELLING ARM. Same abstraction, declared INSIDE A MODULE and re-exported at the
+    # root, so `effimpl` and `app` are byte-identical to the `impl` variant and the ONLY variable is where
+    # the abstraction is WRITTEN. That is R513's exact shape: candor-scan keyed its local union row on the
+    # self type AS WRITTEN, so a module-qualified impl's real key never matched and NO union row was
+    # published — a chained consumer read `[]` with no `invisible` and `deny Net` exited 0.
+    "nested": ('pub mod backend {\n'
+               '    pub trait Backend { fn size(&self) -> usize; }\n'
+               '    pub struct NestedSink;\n'
+               '    impl Backend for NestedSink { fn size(&self) -> usize { %s 0 } }\n'
+               '}\n'
+               'pub use backend::{Backend, NestedSink};\n'
+               'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n' % SINK["rust"]),
     "sealed": ('trait Sealed { fn go(&self) -> usize; }\n'
                'struct LocalImpl;\n'
                'impl Sealed for LocalImpl { fn go(&self) -> usize { %s 0 } }\n'
@@ -257,6 +288,12 @@ RUST_APP = {
     "sealed":   'pub fn app_sealed() -> usize { iface::sealed_dispatch() }\n',
     # c6 — the ONLY line that differs from `dispatch`: the dispatching callee lives one package over.
     "middle":   'pub fn app_size(b: &dyn iface::Backend) -> usize { middle::mid_size(b) }\n',
+    # c7/R518 — the consumer dispatches on the abstraction ITSELF rather than delegating to a dep
+    # function. That distinction is load-bearing and cost me a vacuous arm: with `iface::term_size(b)`
+    # the dep resolves its own dispatch by bounded CHA and the effect reaches the consumer through the
+    # ORDINARY chain join, so the arm passed against a pre-R513 binary. Dispatching here makes the
+    # union entry the only carrier, which is what R513 was about.
+    "nesteddispatch": 'pub fn app_size(b: &dyn iface::Backend) -> usize { b.size() }\n',
 }
 # THE MIDDLE PACKAGE, four ways. It depends on `iface` and dispatches over `iface`'s abstraction; it
 # declares no abstraction and implements none.
@@ -283,6 +320,9 @@ JAVA_APP = {
     "third":    '  public static int appRun() { return appSize(new effimpl.Crossterm()); }\n',
     "sealed":   '  public static int appSealed() { return iface.SealedDispatch.sealedDispatch(); }\n',
     "middle":   '  public static int appSize(iface.Backend b) { return middle.Mid.midSize(b); }\n',
+    # present only so the table is TOTAL — java declares c7 inexpressible (no re-export), so this is
+    # never rendered. A missing key here is a KeyError in a renderer, not a skip.
+    "nesteddispatch": '  public static int appSize(iface.Backend b) { return b.size(); }\n',
 }
 JAVA_MIDDLE = {
     "Mid.java": 'package middle; public class Mid { public static int midSize(iface.Backend b) { return b.size(); } }\n',
@@ -294,6 +334,11 @@ TS_IFACE = {
              'export function termSize(b: Backend): number { return b.size() }\n'),
     "zero": ('export interface Backend { size(): number }\n'
              'export function termSize(b: Backend): number { return b.size() }\n'),
+    # ⟨0.39⟩/R518 — the ts spelling arm: declared in a nested module, re-exported at the root, so the
+    # consumer's import is unchanged and only the declaration site moves.
+    "nested": ('export * from "./backend";\n'
+               'import { Backend } from "./backend";\n'
+               'export function termSize(b: Backend): number { return b.size() }\n'),
     "sealed": ('import * as netm from "node:net";\n'
                'interface Sealed { go(): number }\n'
                'class LocalImpl implements Sealed { go(): number { %s ; return 0 } }\n'
@@ -310,6 +355,8 @@ TS_APP = {
     "middle":   ('import { Backend } from "iface";\n'
                  'import { midSize } from "middle";\n'
                  'export function appSize(b: Backend): number { return midSize(b) }\n'),
+    "nesteddispatch": ('import { Backend } from "iface";\n'
+                       'export function appSize(b: Backend): number { return b.size() }\n'),
 }
 TS_MIDDLE = ('import { Backend } from "iface";\n'
              'export function midSize(b: Backend): number { return b.size() }\n')
@@ -331,6 +378,8 @@ SW_APP = {
     "third":    'import EffImpl\npublic func appRun() -> Int { return appSize(Crossterm()) }\n',
     "sealed":   'import Iface\npublic func appSealed() -> Int { return sealedDispatch() }\n',
     "middle":   'import Iface\nimport Middle\npublic func appSize(_ b: Backend) -> Int { return midSize(b) }\n',
+    # as above: swift declares c7 inexpressible (no submodules), so this is never rendered.
+    "nesteddispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return b.size() }\n',
 }
 SW_MIDDLE = ('import Iface\n'
              'public func midSize(_ b: Backend) -> Int { return b.size() }\n')
@@ -370,6 +419,12 @@ def app_body(arm):
     same signature, one call target over."""
     if arm["entry"] == "sealed":
         return "sealed"
+    if arm["entry"] == "nesteddispatch":
+        # R518: c7's consumer dispatches on the abstraction ITSELF. This branch is load-bearing — without
+        # it this function returned "dispatch" for c7, the consumer delegated to `iface::term_size`, the
+        # dep resolved its own dispatch by bounded CHA, and the effect reached the consumer through the
+        # ORDINARY chain join. The arm then passed against a PRE-R513 binary, i.e. it was vacuous.
+        return "nesteddispatch"
     return "middle" if arm.get("middle") else "dispatch"
 
 
@@ -435,6 +490,14 @@ def render_ts(root, arm):
     var, third, mid = iface_variant(arm), arm["third"], arm.get("middle")
     _w(os.path.join(root, "iface", "package.json"), '{"name":"iface","version":"0.0.0","main":"src/index.ts"}\n')
     _w(os.path.join(root, "iface", "src", "index.ts"), TS_IFACE[var])
+    if var == "nested":
+        # R518: the abstraction's own file, one level down. The root index re-exports it, so the
+        # consumer's `import { Backend } from "iface"` is unchanged and the spelling is the only variable.
+        _w(os.path.join(root, "iface", "src", "backend.ts"),
+           'import * as netm from "node:net";\n'
+           'export interface Backend { size(): number }\n'
+           'export class NestedSink implements Backend { size(): number { %s ; return 0 } }\n'
+           % SINK["ts"])
     if mid:
         _w(os.path.join(root, "middle", "package.json"),
            '{"name":"middle","version":"0.0.0","main":"src/index.ts"}\n')
@@ -627,6 +690,12 @@ def run_engine(name, ws):
         return None, None, scanner.err
     out, notes, texts = {}, [], {}
     for arm in ARMS:
+        # R518: an arm may declare itself INEXPRESSIBLE for an engine, with the reason in its comment.
+        # Declared, never silently skipped — PART 91 set this precedent when ts had no receiver form for
+        # a spawn, and the difference matters: a skipped cell that prints nothing reads like a pass.
+        if name in (arm.get("skip") or ()):
+            out[arm["id"]] = "SKIP"
+            continue
         root = os.path.join(ws, name, arm["id"])
         os.makedirs(root, exist_ok=True)
         if name == "java":
@@ -744,6 +813,12 @@ def main():
     for arm in ARMS:
         for name, res in sorted(live.items()):
             f = res[arm["id"]]
+            if f == "SKIP":
+                # DECLARED, and printed. A cell that says nothing reads like a pass; this one names the
+                # engine and the arm so a reader can see the coverage hole rather than infer its absence.
+                print("  SKIP  %-22s %-6s — declared inexpressible for this engine (see the arm's note)"
+                      % (arm["id"], name))
+                continue
             bad = judge(arm["want"], f)
             exp = XFAIL.get((arm["id"], name))
             if not bad:
