@@ -172,6 +172,12 @@ ARMS = [
 # not stay uniform: the moment one engine ports ⟨0.39⟩ its line comes out and the others' stay, which is
 # precisely the state an arm-keyed table cannot represent. A PASSING xfail is a FAILURE (see main()).
 XFAIL = {
+    # RETIRED 2026-09-20, candor-ts `ee844f0` — the FOURTH and last engine. **⟨0.39⟩ IS NOW PORTED IN ALL
+    # FOUR AND THIS TABLE IS EMPTY**, which is the state it was built to reach: every line was retired by
+    # the engine that earned it, and a PASSING xfail failing is what announced each one. Keep the mechanism
+    # rather than deleting it — the next cross-engine rung lands exactly the same way, and an arm-keyed
+    # table could not have expressed any of the four intermediate states this one passed through.
+
     # RETIRED 2026-09-20, candor-swift `9ae9ea5`/`68f89a0` — the THIRD engine, and both of its lines came
     # out together because it ported the rung and R504's middle-package leg in one go. Its port recorded a
     # real DIFFERENCE rather than smoothing one over: swift cannot see that a call IS a dispatch. rust
@@ -195,7 +201,6 @@ XFAIL = {
     # through the ordinary `crossDeps` index. Un-gating ⟨0.23⟩ was part of the port here too: this engine's
     # union entries rode behind CANDOR_WORKSPACE_CHAIN, and that gate is why the toggle survived default
     # scans. swift's and ts's lines are untouched.
-    ("c1_foreign_effectful", "ts"):    "R475 class — candor-ts 0.38.3: consumer ABSENT, same shape",
     # c6 — THE MIDDLE PACKAGE (SOUNDNESS R504). java PASSES this arm: its port closed the hole in the same
     # commit that opened it, on the same four-package chain, keyed on INVOKEINTERFACE with a non-κ owner.
     # The other three lines are here for three different reasons, and the difference is the point of an
@@ -203,7 +208,6 @@ XFAIL = {
     # does; rust HAS ported it and still fails c6 alone, because its obligation-1 pass was scoped to
     # abstractions the producer DECLARES. A passing xfail is a FAILURE here — when rust closes it, this
     # line comes out in the same commit as the fix.
-    ("c6_middle_package", "ts"):    "R475 class — candor-ts 0.38.3: ⟨0.39⟩ not ported; consumer ABSENT",
 }
 
 # The consumer's dispatching function, per engine. rust keeps its own casing convention; the assertion is
