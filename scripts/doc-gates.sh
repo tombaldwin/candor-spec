@@ -44,6 +44,7 @@ run "clause_check"         python3 conformance/clause_check.py
 run "part_declarations"    python3 conformance/part_declarations.py
 run "field_audit"          python3 conformance/field_audit.py
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
+run "rung_ladder"          python3 scripts/rung-ladder-check.py
 run "check_soundness_tables" python3 scripts/check_soundness_tables.py
 
 if [ $fail -eq 0 ]; then

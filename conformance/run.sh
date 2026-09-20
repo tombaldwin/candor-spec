@@ -2870,7 +2870,7 @@ use a::*; use b::*;
 pub fn go() { helper(); }
 RS
 "$SCAN" "$W/vocab" --json > "$W/vocab.json" 2>/dev/null || true
-# ⟨0.40⟩ THE MACRO-HIDDEN FIXTURE — `macro:` is a SIXTH §4 kind and this is what pins it. Same argument
+# ⟨0.39⟩ THE MACRO-HIDDEN FIXTURE — `macro:` is a SIXTH §4 kind and this is what pins it. Same argument
 # `ambiguous:` needed and for a reason none of the other five can state: a body EXISTS and is in-language,
 # and the analyser declines to run the expander that would reveal it. Measured at 9,290 entries across 330
 # of 1,608 crates before the rung — candor-rust's fifth-largest kind — absorbed until now by §6.2's
@@ -2931,7 +2931,7 @@ import json, os, sys
 # ⟨0.24⟩ FIVE canonical kinds. `ambiguous` was promoted from TOLERATED: §6.2 had always classed it
 # `dispatch`, so consumers were right while producers emitting it were non-conforming, and reclassifying it
 # to `indirect` was measured to take `deny E Unknown[dispatch]` from 58 of 200 crates to 0 of 200.
-# ⟨0.40⟩ SIX canonical kinds. `macro` was promoted from the §6.2 CATCH-ALL — the inverse of
+# ⟨0.39⟩ SIX canonical kinds. `macro` was promoted from the §6.2 CATCH-ALL — the inverse of
 # `ambiguous:`'s asymmetry, which §6.2 named explicitly while §4 omitted it. `macro:*` was absorbed by
 # the residual rule instead, so consumers classified it `unresolved` (the right answer) BY ACCIDENT,
 # while the producer emitting it stayed non-conforming. Its class is unchanged, so the promotion moves
@@ -3039,13 +3039,13 @@ elif _good != "ok":
 else:
     print("  self-check: `banana:` DIVERGEs and `reflect:` does not, through the same classifier the "
           "engine entries run through — the vocabulary check discriminates")
-# ⟨0.40⟩ THE MACRO FIXTURE MUST HAVE PRODUCED THE KIND IT EXISTS FOR, and ON THE CALLER. Same discipline
+# ⟨0.39⟩ THE MACRO FIXTURE MUST HAVE PRODUCED THE KIND IT EXISTS FOR, and ON THE CALLER. Same discipline
 # as the `ambiguous:` row below: a kind-set check that only asks "did the word appear anywhere" degrades
 # silently the moment the fixture stops triggering, and `macro:` reaching a report while `go` resolves
 # cleanly would say nothing about the call site the kind is for.
 _mp = sys.argv[8] if len(sys.argv) > 8 else ""
 if not _mp or not os.path.exists(_mp):
-    print("  DIVERGE [rust(macro)] the macro-hidden fixture produced NO REPORT — the ⟨0.40⟩ row cannot "
+    print("  DIVERGE [rust(macro)] the macro-hidden fixture produced NO REPORT — the ⟨0.39⟩ row cannot "
           "pass vacuously"); fails += 1
 else:
     _mf = [f for f in (json.load(open(_mp)).get("functions") or [])
@@ -3053,10 +3053,10 @@ else:
     _mw = [w for f in _mf for w in (f.get("unknownWhy") or [])]
     if not any(w.startswith("macro:") for w in _mw):
         print(f"  DIVERGE [rust(macro)] the macro-hidden fixture's CALLER `go` carries no `macro:` reason "
-              f"(saw {_mw!r}) — ⟨0.40⟩'s kind is unpinned, so admitting it to CANON is a widening with "
+              f"(saw {_mw!r}) — ⟨0.39⟩'s kind is unpinned, so admitting it to CANON is a widening with "
               "nothing behind it"); fails += 1
     else:
-        print(f"  rust(macro): `go` carries {[w for w in _mw if w.startswith('macro:')]!r} — ⟨0.40⟩'s "
+        print(f"  rust(macro): `go` carries {[w for w in _mw if w.startswith('macro:')]!r} — ⟨0.39⟩'s "
               "sixth kind is produced by a purpose-built input, not merely permitted")
 
 if "ambiguous" not in seen.get("rust(vocab)", set()):

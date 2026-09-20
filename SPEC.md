@@ -103,6 +103,29 @@ stat was always there and was always unreported, which is why the remedy is the 
 ⟨0.36⟩ this flips ONE way — a verdict can go 0 → 1, never 1 → 0 — so an upgrade can cost you a green
 gate and can never quietly hand you one.
 
+**⟨0.39⟩ IS NOT ADDITIVE, AND IT FLIPS ONE WAY ONLY — FAIL-CLOSED.** It adds no field a consumer must
+read and removes none, but it changes what a CHAINED consumer's signature contains: the effects of every
+implementor visible to it. So **a gate that passed on the previous floor can exit 1 on identical bytes**,
+over a function whose effect was always real and was hidden behind an abstraction the chain did not
+carry. There is no opposite direction — nothing that was red goes green, and no row loses an effect.
+**Measured over 1,608 crates: 310 rows gained an effect, ZERO lost one, and consumer verdicts move for 46
+crates — 2.86%, or roughly one crate in thirty-five.** An upgrader should expect that and read it as the
+rung working. *The first pricing of this rung said 0.8% and was wrong*: its census excluded ~70 trait leaf
+names — `Stream`, `AsyncRead`, `Future`, `Write` — which §4 permits only for formatting, equality, hashing
+and cloning and EXPLICITLY forbids extending to iterators, callbacks and I/O traits, i.e. precisely the
+abstractions an effect hides behind. Both numbers are kept in the clause, because the correction indicts
+the method and not the estimate.
+
+**⟨0.39⟩ ALSO ADMITS `macro:` TO §4's CLOSED KIND SET, and that half moves no verdict by construction.**
+Its §6.2 class is `unresolved` — exactly where the catch-all already put it — so every existing scoped
+policy binds as it did. What changes is that a producer emitting it is CONFORMANT rather than
+non-conforming, and the vocabulary once again describes what engines actually emit. The finer
+`Unknown[macro]` filter was considered and REFUSED with its price stated: it would withdraw those rows
+from `unresolved` and break every gate already written with the broad filter. *This was drafted as a
+separate rung, 0.40, and folded back in before either was released — a rung is a RELEASED contract
+version, and minting a second one against an unreleased first buys nothing and skips a number no engine
+would ever have declared.*
+
 **⟨0.36⟩ IS NOT ADDITIVE EITHER, AND UNLIKE EVERY RUNG BEFORE IT, IT FLIPS BOTH WAYS.** It adds no
 field and removes none; what moves is which `unknownWhy` detail §4 permits for one source shape. §4
 gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT DEFINITIONS*: several bodies published under
@@ -5157,7 +5180,7 @@ without reading any engine's raw reason strings:
 | `dispatch` | unresolved virtual/dynamic dispatch, invokedynamic, same-name ambiguity (`dispatch:*`, `indy*`, `ambiguous:*`) |
 | `indirect` | callback / closure / function-value / async-continuation indirection (`callback:*`, `closure*`, `task-handoff*`) |
 | `native` | FFI / native boundary (`native:*`) |
-| `unresolved` | generic unresolvable call/import, ⟨0.40⟩ `macro:*` (an unexpanded compile-time macro), **and the catch-all for any unrecognized raw reason** |
+| `unresolved` | generic unresolvable call/import, ⟨0.39⟩ `macro:*` (an unexpanded compile-time macro), **and the catch-all for any unrecognized raw reason** |
 | `setup` | the analysis is not wired up — fixable, not a real hole (`missing-config`, `no-tsconfig`, no-`node_modules`) |
 
 The projection is **conservative**: a raw reason matching no listed prefix maps to `unresolved`, and a
@@ -5318,7 +5341,7 @@ unresolved DISPATCH (no owner type was ever formed) and not a `callback:` (no fu
 the analyser's own name resolution was ambiguous. A vocabulary that cannot say that forces an engine to
 either lie or fall silent.
 
-⟨0.40⟩ **`macro:` is a SIXTH §4 kind, and the asymmetry that hid it is the INVERSE of `ambiguous:`'s.**
+⟨0.39⟩ **`macro:` is a SIXTH §4 kind, and the asymmetry that hid it is the INVERSE of `ambiguous:`'s.**
 Where `ambiguous:*` was named EXPLICITLY by the table above while §4 omitted it, `macro:*` is absorbed by
 the table's **catch-all**. So a consumer classifies it correctly — `unresolved`, which is the right
 answer — but **by accident rather than by decision**, and the catch-all exists for reasons that are

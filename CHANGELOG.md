@@ -25,7 +25,7 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
-- **⟨0.40⟩ `macro:` IS A SIXTH §4 REASON KIND.** It was absorbed by §6.2's catch-all, so consumers
+- **⟨0.39⟩ ALSO ADMITS `macro:` AS A SIXTH §4 REASON KIND.** It was absorbed by §6.2's catch-all, so consumers
   classified it `unresolved` — the right answer, reached **by accident** — while any producer emitting it
   was non-conforming. A kind carried on **9,290 entries across 330 of 1,608 crates (20.5%)**, candor-rust's
   fifth-largest, is not "unrecognized", and leaning on the residual to absorb it means the vocabulary no
@@ -48,8 +48,9 @@ Run it after any patch-cycle commit that adds a section here.
   FOREIGN abstraction emits its `interfaceUnion` entry under the abstraction's OWNING package; the
   consumer join unions per key. **`interfaceUnion` is no longer gated** — this is the floor rung the
   ⟨0.23⟩ paragraph was waiting for. Priced over 1,608 crates before the clause was written: producer
-  side is wire bytes and no verdict change; consumer verdicts move for at most 13 crates (0.8%) and only
-  by ADDING a real effect. SOUNDNESS R475.
+  side is wire bytes and no verdict change; consumer verdicts move for **46 crates (2.86%) — roughly one in thirty-five** — and only by
+  ADDING a real effect, fail-closed. *The first pricing said 0.8% and was wrong: its census excluded ~70
+  trait leaf names §4 forbids excluding.* **A gate that passed on 0.38 can exit 1 on identical bytes.**. SOUNDNESS R475.
 
 ## [0.38.3] — 2026-09-16
 
