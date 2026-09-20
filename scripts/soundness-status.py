@@ -25,6 +25,12 @@ sharpen the rows it names, not to sharpen the regex.
 """
 import re, sys, pathlib
 
+# `fail closed` / `fail-closed` / `closed-world` are ORDINARY VOCABULARY here — this contract is about
+# failing closed — so a bare \bCLOSED\b marks half the register resolved. Measured: R520 was filed as an
+# open defect and read as CLOSED purely because its evidence says "nothing to fail closed OVER". Strip
+# those spellings before looking for the marker; a status tool that mistakes the subject matter for a
+# verdict is worse than no tool.
+_NOT_A_VERDICT = re.compile(r'fails?[- ]closed|failing[- ]closed|closed[- ]world|fail[- ]closed', re.I)
 CLOSURE = re.compile(r'\bCLOSED\b|\bFIXED\b|\bREFUTED\b|\bRETIRED\b|\bWITHDRAWN\b|\bDECLINED\b|~~R\d+~~', re.I)
 FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured across all 476 rows,
                                                  # accepting bare hex added exactly 2 matches and no
@@ -41,6 +47,7 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 # output is four buckets that say which question each row leaves open.
 
 def bucket(line):
+    line = _NOT_A_VERDICT.sub(" ", line)
     w, s = bool(CLOSURE.search(line)), bool(FIXSHA.search(line))
     if w and s:  return "closed-with-fix"      # a defect, and here is the commit
     if w:        return "resolved-no-fix"      # declined / refuted / accepted limit — a DECISION, not a fix
