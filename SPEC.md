@@ -3762,6 +3762,17 @@ dropped. Dropping it is absence under a key that could have carried an answer: a
 from `possibleViaUnknownDispatch` as "no function may reach the target through an unresolved dispatch," and
 that is exactly the claim the engine is not entitled to make.
 
+**AN ENGINE MUST NOT NAME AN OWNER IT HAS NOT VERIFIED DECLARES THE MEMBER.** `<owner-type>.<member>`
+is normative, and the dotted form asserts that `<owner-type>` OWNS `<member>` — so picking a supertype off
+a list without checking it declares the member does not produce an imprecise detail, it produces a FALSE
+one. Where the owner cannot be verified, the dot-free form above is the answer the engine is entitled to:
+it says *"a dispatch I could not resolve"* rather than naming a type that has nothing to do with the call.
+This needed no new rung — it is what the normative `<owner-type>.<member>` shape already meant — and it is
+stated here because an engine did the other thing. **SOUNDNESS R444: candor-swift hedged `Int + Int` to
+`dispatch:IdentifiableType.+` on RxSwift, where `func +` exists nowhere in the tree; measured at 2,051
+such hedges on swift-nio, 298 of them the row's ONLY effect.** Note what this ruling does NOT license: the
+hedge itself is a separate question, and a hedge that should not exist is not cured by renaming it.
+
 This is the same direction the **no-hierarchy fallback already takes** one rung up: with no §2.2 sidecar,
 condition (3)'s subtype test is unanswerable, and the specified behaviour is to over-list by simple name
 rather than to drop. A dot-free detail is that situation one rung further down — no owner *and* no member —
