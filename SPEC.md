@@ -5625,6 +5625,28 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
+  *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
+  closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave
+  a chained consumer a disclosed `Unknown`, and adding ONE PURE implementor **silently certified the
+  consumer pure** — so adding a pure implementation REMOVED a disclosure from everyone downstream. Live
+  on `ratatui`, where `deny Ipc` and `pure` both exited 0 over a function performing `Ipc`. Three
+  inseparable obligations: the producer names the dispatched member (`dispatchesOn`) **even on
+  otherwise-pure rows**, a package implementing a FOREIGN abstraction keys its `interfaceUnion` entry
+  under the abstraction's OWNING package, and the consumer join unions per key. **`interfaceUnion` is no
+  longer gated** — this is the floor rung ⟨0.23⟩ was waiting for. **UPGRADE NOTE: a gate that passed on
+  0.38 can exit 1 on identical bytes** — measured at 46 crates of 1,608 (2.86%, roughly one in
+  thirty-five), 310 rows gaining an effect and **ZERO losing one**. *The rung's first pricing said 0.8%
+  and was wrong; its census excluded ~70 trait leaf names §4 permits excluding only for formatting,
+  equality, hashing and cloning.* **Obligation 1's first draft was UNIMPLEMENTABLE and only a port could
+  show it**: it required the transitive closure ON THE WIRE, which took `avro` from 852 member strings to
+  157,562 and left `jooq` unserialisable with 8 GB of heap; it now requires only that the member REACH
+  the caller, with §2 `calls` free to carry the closure. Pinned by PART 92, whose `(arm, engine)` xfail
+  table reached EMPTY as the fourth engine ported. **Also in this rung, and additive:** `macro:` becomes
+  a SIXTH §4 reason kind, absorbed until now by §6.2's catch-all — so a consumer classified it
+  `unresolved` correctly but BY ACCIDENT, while any producer emitting it was non-conforming. Its class
+  stays `unresolved`, so that half moves no verdict; the finer `Unknown[macro]` filter was REFUSED with
+  its price. Drafted as a separate rung 0.40 and folded back before either shipped.
 - **0.38 (rust + swift; java/ts are declared exclusions)** — a **NON-ADDITIVE** rung that adds no field
   and removes none. §4 gains *A CONDITIONAL BINDING RESOLVES TO THE UNION OF ITS ARMS, EXACTLY AS A
   CONDITIONAL DEFINITION DOES*, and **withdraws ⟨0.36⟩'s permission to hedge that shape to `{Unknown}`**
