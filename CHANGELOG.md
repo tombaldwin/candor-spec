@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.39.0] — 2026-09-20
+
 - **⟨0.39⟩ ALSO ADMITS `macro:` AS A SIXTH §4 REASON KIND.** It was absorbed by §6.2's catch-all, so consumers
   classified it `unresolved` — the right answer, reached **by accident** — while any producer emitting it
   was non-conforming. A kind carried on **9,290 entries across 330 of 1,608 crates (20.5%)**, candor-rust's
