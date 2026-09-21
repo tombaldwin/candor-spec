@@ -102,7 +102,49 @@ SHAPES = [
     # peek is a hand-mirror rather than shared code. The gate is still the oracle: whatever it concludes
     # over the in-scope twin is what the peek must conclude over the out-of-scope one.
     dict(id="deny-unknown-class", policy="deny Net Unknown[unresolved]\n", needs=None),
+    # ⟨0.19⟩ A CONFIG-DEFINED `unknown-alias`, added 2026-09-21 after SOUNDNESS R525 — a cardinal sin
+    # that SHIPPED in the published candor-scan 0.39.0 crates and that this matrix could not see.
+    #
+    # Every `Unknown[…]` form above names a BUILTIN reason class, so every arm resolved its filter from
+    # a table compiled into the engine and no arm ever needed the project's `.candor/config`. candor-rust's
+    # peek parsed with an EMPTY alias map while its gate parsed with the real one; an alias was therefore an
+    # unrecognised class, the parse went fatal, the peek returned None and the ⟨0.30⟩ fail-closed verdict
+    # never armed — so adding an UNRELATED rule took `deny Net` from exit 2 to exit 0 and erased
+    # `outOfScope`/`scannedUnder` entirely. 56 of 1,593 registry crates flipped a real violation to green.
+    #
+    # THE DISCRIMINATOR IS THAT THIS ALIASES TO THE CLASS THE ROW ABOVE NAMES DIRECTLY. `Unknown[corp]`
+    # with `corp = unresolved` MUST answer exactly as `Unknown[unresolved]` does, in both placements, in
+    # every engine — so the arm cannot pass by hedging, and a peek that silently drops the vocabulary
+    # diverges from its own gate on the very next line of the table.
+    dict(id="deny-unknown-alias", policy="deny Net Unknown[corp]\n", needs="unknown-alias corp = unresolved\n"),
 ]
+
+# ── DECLARED EXCEPTIONS, `(engine, shape)` -> the SOUNDNESS row that owns them. ─────────────────────
+#
+# PART 92's table, one PART over, and for the same reason: an engine that has not ported a behaviour must
+# be VISIBLE and TRACKED, never hidden by relaxing the invariant. Two rules make this a ledger rather than
+# an excuse list:
+#
+#   1. A PASSING XFAIL IS A FAILURE. When the engine is fixed the cell starts agreeing, and this table
+#      then FAILS the part until its line is retired — so an exception cannot outlive the defect. PART 92's
+#      table reached EMPTY exactly this way.
+#   2. Every entry names a ROW. An exception without a row is a defect somebody decided not to look at.
+#
+# The bar for adding a line: the divergence must FAIL CLOSED. `deny-unknown-alias`/java exits 2 — safe, but
+# under-disclosing (empty `outOfScope`). candor-rust's arm of the same defect exited 0 over a real violation
+# and was NOT xfailed; it was fixed before this shape landed, because a cardinal sin does not get a line here.
+XFAIL = {
+    ("java", "deny-unknown-alias"): "R526",
+}
+_XFAIL_SEEN = []          # list.append is atomic; the engines run on four threads
+
+
+def _xfail(engine, shape_id):
+    """True if this cell is a DECLARED exception. Records it so a PASSING xfail can be caught."""
+    if (engine, shape_id) in XFAIL:
+        _XFAIL_SEEN.append((engine, shape_id))
+        return True
+    return False
 
 # The effect-performing body, per language. It reaches a LITERAL host so destination-class filters have
 # something to classify — a runtime host would fail closed everywhere and hide the distinction.
@@ -433,6 +475,8 @@ def main():
                 # EVIDENCE too, or a peek that always answers 2 with an empty block passes every cell.
                 _rp2, d2 = report_at(peek_dir)
                 if not ((d2 or {}).get("outOfScope") or []):
+                    if _xfail(engine, shape["id"]):
+                        print(f"  {engine:6} {shape['id']:16} XFAIL  EMPTY-FINDING — declared in XFAIL, owned by {XFAIL[(engine, shape['id'])]}"); continue
                     bad += 1
                     print(f"  {engine:6} {shape['id']:16} EMPTY-FINDING  exit 2 with an EMPTY "
                           f"`outOfScope` — the exit is right for the wrong reason, which is how a peek "
@@ -468,6 +512,8 @@ def main():
                           f"is not a licence to refuse, it is a refusal with a named cause")
                     continue
             if peek_rc != want:
+                if _xfail(engine, shape["id"]):
+                    print(f"  {engine:6} {shape['id']:16} XFAIL  DISAGREE — declared in XFAIL, owned by {XFAIL[(engine, shape['id'])]}"); continue
                 bad += 1
                 print(f"  {engine:6} {shape['id']:16} DISAGREE  in-scope gate={gate_rc} -> peek should be "
                       f"{want}, got {peek_rc}")
@@ -597,6 +643,16 @@ def main():
                 LOADED[sid].add(engine)
 
     inert = sorted(sid for sid, engs in LOADED.items() if not engs)
+    # A PASSING XFAIL IS A FAILURE — the rule that keeps this a ledger and not an excuse list. A cell
+    # declared in XFAIL that AGREED means the engine was fixed and the line must be retired; left in, it
+    # would silently exempt a cell that no longer needs exempting, and the next real regression there
+    # would pass unnoticed. Only engines actually asked are judged, so a SKIPped engine cannot fake it.
+    asked = ENGINES if not only else {only}
+    stale = [(e, sid) for (e, sid) in XFAIL if e in asked and (e, sid) not in _XFAIL_SEEN]
+    for e, sid in sorted(stale):
+        bad += 1
+        print(f"  {e:6} {sid:16} XFAIL-PASSING  this cell AGREES but is still declared in XFAIL "
+              f"(owned by {XFAIL[(e, sid)]}) — the engine was fixed; RETIRE the line")
     print(f"  policy matrix: {cells} cell(s) over {len(ENGINES) if not only else 1} engine(s), "
           f"{bad} disagreement(s)")
     print(f"  load-bearing:  {sum(1 for engs in LOADED.values() if engs)}/{len(LOADED)} shape(s) make the "
