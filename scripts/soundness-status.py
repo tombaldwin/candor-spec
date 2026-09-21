@@ -54,7 +54,18 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 # Sharpening this further would be the wrong move. The remaining ambiguity is in the ROWS, and the honest
 # output is four buckets that say which question each row leaves open.
 
-def bucket(line):
+# AN EXPLICIT DECLARATION BEATS INFERENCE. A row whose outcome cell OPENS with `OPEN` is its author
+# saying so in as many words, and no amount of SHA-spotting should overrule that. R524 says
+# "**OPEN — needs a family-level ruling, not a patch**" and cites R519's fix SHA to name the work that
+# did NOT close it; the tool read the sha and filed it under "cites a sha, read it" — better than the
+# closed-with-fix it started in, but still not the list its author put it on. Anchored to the START of
+# the cell so the WORD "open" in ordinary prose ("an open question", "left open by") cannot trigger it.
+_DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*OPEN\b')
+
+
+def bucket(line, outcome=None):
+    if outcome is not None and _DECLARED_OPEN.match(outcome):
+        return "open"
     line = _NOT_A_VERDICT.sub(" ", line)
     line = _NEGATED_CLOSURE.sub(" ", line)
     w, s = bool(CLOSURE.search(line)), bool(FIXSHA.search(line))
@@ -66,11 +77,43 @@ def bucket(line):
 def main(argv):
     ids_only = "--ids" in argv
     p = pathlib.Path(__file__).resolve().parent.parent / "SOUNDNESS.md"
-    rows = [l.rstrip("\n") for l in p.read_text().splitlines() if re.match(r'^\| ~?~?R\d+', l)]
+    # ONLY THE REGISTER TABLE. SOUNDNESS.md holds seven tables with different schemas, and matching
+    # `^| R\d+` across the whole file swept in the ACCEPTED-FLOOR table (R2–R9 and friends), whose shape
+    # is `| id | engine | description | SILENT | low | remedy |`. Its 5th cell is a SEVERITY ("low"),
+    # not an outcome, so every one of those rows carried no closure word and printed as OPEN — 38 rows
+    # of garbled text at the top of the list this tool exists to produce, which is also why its row count
+    # (491) disagreed with `grep -c '^| R' SOUNDNESS.md` (453). An accepted, documented limit is not a
+    # shipping defect, and padding the open list with them makes the real ones harder to see.
+    #
+    # The register table is identified by its HEADER, not by a line number or a row count: find
+    # `| entry | date | engine | class | outcome |` and take the contiguous rows under its separator,
+    # which is the same contiguity rule check_soundness_tables.py enforces.
+    all_lines = p.read_text().splitlines()
+    rows, in_register = [], False
+    for ln in all_lines:
+        low = ln.lower().replace(" ", "")
+        if low.startswith("|entry|date|engine|class|outcome|"):
+            in_register = True
+            continue
+        if in_register:
+            if not ln.startswith("|"):
+                in_register = False
+                continue
+            if re.match(r'^\| ~?~?R\d+', ln):
+                rows.append(ln.rstrip("\n"))
+    if not rows:
+        print("soundness-status: REFUSING — no `| entry | date | engine | class | outcome |` table found.",
+              file=sys.stderr)
+        print("  A silent empty list is exactly the under-report this tool exists to prevent.", file=sys.stderr)
+        return 2
     by = {}
     for l in rows:
         rid = re.match(r'^\| ~?~?(R\d+)', l).group(1)
-        by.setdefault(bucket(l), []).append((rid, l))
+        # The outcome is the LAST cell of the register table; pass it separately so a declared OPEN
+        # is read as a declaration rather than hunted for in the whole row's prose.
+        _c = re.split(r'(?<!\\)\|', l)
+        _outcome = _c[5] if len(_c) > 5 else None
+        by.setdefault(bucket(l, _outcome), []).append((rid, l))
 
     if ids_only:
         for rid, _ in sorted(by.get("open", []), key=lambda t: int(t[0][1:])):
@@ -123,10 +166,15 @@ def selftest():
         ("**CLOSED — `abc1234`.** The callee is not resolved through the alias.", "closed-with-fix"),
         ("**CLOSED — `abc1234`.** fails-closed on an unresolved import.",        "closed-with-fix"),
         ("the dispatch could not be resolved, so the row stands. `deadbee`",     "cites-a-sha-only"),
+        # DECLARED OPEN beats a SHA. R524's real shape: it names the work that did NOT close it.
+        ("**OPEN — needs a family-level ruling, not a patch.** See `82da250`.",  "open"),
+        # …but only as a DECLARATION at the start of the cell. "open" in ordinary prose must not move a
+        # closed row, or the bucket fills with rows that merely discuss open questions.
+        ("**CLOSED — `abc1234`.** This left an open question for R99.",          "closed-with-fix"),
     ]
     bad = 0
     for text, want in cases:
-        got = bucket(text)
+        got = bucket(text, text)   # in a real row the outcome IS the last cell
         flag = "ok  " if got == want else "FAIL"
         if got != want:
             bad += 1
