@@ -46,6 +46,12 @@ run "field_audit"          python3 conformance/field_audit.py
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
 run "rung_ladder"          python3 scripts/rung-ladder-check.py
 run "check_soundness_tables" python3 scripts/check_soundness_tables.py
+# The STATUS tool gates itself, added 2026-09-21. It is not a document check — it is the instrument that
+# prints "THIS is the shipping-defect list" — and for its whole life it read `Not fixed.` as FIXED,
+# because CLOSURE matched the word and nothing looked left of it. 43 rows were in the wrong bucket and 32
+# were real open defects missing from the list. A tool nobody calibrates is a tool nobody can trust, and
+# this one's failure direction was the register's own cardinal sin: under-reporting what is open.
+run "soundness_status_selftest" python3 scripts/soundness-status.py --selftest
 
 if [ $fail -eq 0 ]; then
   echo "doc-gates: OK — every documents-only gate passed"

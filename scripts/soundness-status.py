@@ -31,6 +31,14 @@ import re, sys, pathlib
 # those spellings before looking for the marker; a status tool that mistakes the subject matter for a
 # verdict is worse than no tool.
 _NOT_A_VERDICT = re.compile(r'fails?[- ]closed|failing[- ]closed|closed[- ]world|fail[- ]closed', re.I)
+# …AND EXPLICIT NEGATION OF THE CLOSURE WORD, which is a different failure from the fail-closed idiom
+# above. Measured 2026-09-21 on R524: the row says a defect was "surfaced by the R519 work and NOT closed
+# by it" and cites R519's fix SHA to say WHICH work did not close it — so CLOSURE matched `closed`,
+# FIXSHA matched the sha, and the row was filed under closed-with-fix. It never appeared in the OPEN list
+# the tool exists to produce, and the row was one I had written an hour earlier and was about to escalate.
+# A status tool that reads a row saying NOT CLOSED as CLOSED is the register's own cardinal-sin shape.
+_NEGATED_CLOSURE = re.compile(r"\b(?:not|never|isn'?t|was\s?n'?t|are\s?n'?t)\s+(?:yet\s+)?"
+                              r"(?:been\s+)?(?:closed|fixed|resolved|retired|withdrawn)\b", re.I)
 CLOSURE = re.compile(r'\bCLOSED\b|\bFIXED\b|\bREFUTED\b|\bRETIRED\b|\bWITHDRAWN\b|\bDECLINED\b|~~R\d+~~', re.I)
 FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured across all 476 rows,
                                                  # accepting bare hex added exactly 2 matches and no
@@ -48,6 +56,7 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 
 def bucket(line):
     line = _NOT_A_VERDICT.sub(" ", line)
+    line = _NEGATED_CLOSURE.sub(" ", line)
     w, s = bool(CLOSURE.search(line)), bool(FIXSHA.search(line))
     if w and s:  return "closed-with-fix"      # a defect, and here is the commit
     if w:        return "resolved-no-fix"      # declined / refuted / accepted limit — a DECISION, not a fix
@@ -85,5 +94,48 @@ def main(argv):
             print(f"  {rid}")
     return 0
 
+def selftest():
+    """Prove the bucketing can distinguish a claim of closure from a denial of one.
+
+    WHY THIS EXISTS. For its whole life this tool read `Not fixed.` as FIXED. `CLOSURE` matched the word
+    `fixed`, nothing looked left of it, and a row whose outcome cell opens "Not fixed." was filed as
+    resolved — so on 2026-09-21, 43 rows were in the wrong bucket and 32 of them were REAL OPEN DEFECTS
+    absent from the list this tool exists to print. The docstring called the OPEN bucket "the
+    shipping-defect list" while the shipping-defect list was missing a third of itself.
+
+    Each case below is a string this tool got wrong, or a near-miss that must NOT move. The domain cases
+    are the ones that matter: `unresolved` and "could not be resolved" are candor's own vocabulary for
+    DISPATCH, not for a row's status, and a strip that ate them would empty the resolved bucket instead.
+    """
+    cases = [
+        # (text, expected bucket)
+        ("Not fixed. One producer, or a normalisation at the writer.",          "open"),
+        ("Not yet fixed — the remedy is known.",                                "open"),
+        # R524's exact shape, and the bucket is `cites-a-sha-only` rather than `open` ON PURPOSE: it
+        # cites a SHA (to name the work that did NOT close it) while making no closure claim, so the
+        # honest answer is "neither clearly — read it", which is what that bucket means. This expectation
+        # was written as `open` first and the selftest caught it. What matters is that it is no longer
+        # filed under closed-with-fix, where it was invisible.
+        ("surfaced by the R519 work and NOT closed by it. See `82da250`.",      "cites-a-sha-only"),
+        ("**CLOSED — candor-ts `82da250`, shipped and verified.**",             "closed-with-fix"),
+        ("**REFUTED** — measured, the premise was wrong.",                      "resolved-no-fix"),
+        # NEAR-MISSES that must NOT be stripped: domain vocabulary, not a status claim.
+        ("**CLOSED — `abc1234`.** The callee is not resolved through the alias.", "closed-with-fix"),
+        ("**CLOSED — `abc1234`.** fails-closed on an unresolved import.",        "closed-with-fix"),
+        ("the dispatch could not be resolved, so the row stands. `deadbee`",     "cites-a-sha-only"),
+    ]
+    bad = 0
+    for text, want in cases:
+        got = bucket(text)
+        flag = "ok  " if got == want else "FAIL"
+        if got != want:
+            bad += 1
+        print(f"  {flag} {got:17s} want {want:17s} {text[:64]!r}")
+    print("soundness-status selftest: " + ("OK" if not bad else f"FAILED ({bad})"))
+    return 1 if bad else 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
+        sys.exit(selftest())
     sys.exit(main(sys.argv))
