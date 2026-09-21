@@ -134,7 +134,14 @@ SHAPES = [
 # under-disclosing (empty `outOfScope`). candor-rust's arm of the same defect exited 0 over a real violation
 # and was NOT xfailed; it was fixed before this shape landed, because a cardinal sin does not get a line here.
 XFAIL = {
-    ("java", "deny-unknown-alias"): "R526",
+    # EMPTY, and it reached empty the way PART 92's did — the engine was fixed and the table DEMANDED the
+    # retirement rather than waiting to be tidied. Declared 2026-09-21 for (java, deny-unknown-alias);
+    # candor-java `1d51e23` closed it the next day and `XFAIL-PASSING` reddened this part until this line
+    # went. Total lifetime: under a day. That is the whole argument for a ledger over a relaxed invariant.
+    #
+    # Before adding a line here, read the two rules in the block below: a PASSING xfail is a FAILURE, and
+    # every entry names a ROW. The bar is that the divergence FAILS CLOSED — candor-rust's arm of this same
+    # defect exited 0 over a real violation and got a fix, not an exception.
 }
 _XFAIL_SEEN = []          # list.append is atomic; the engines run on four threads
 
