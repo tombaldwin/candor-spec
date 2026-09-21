@@ -25,6 +25,32 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 55 gains a `deny-unknown-alias` shape — and it found a cardinal sin that had SHIPPED (SOUNDNESS
+  R525), plus a second engine (R526).** Every one of the matrix's eleven `Unknown[…]` shapes named a
+  BUILTIN reason class, so every arm resolved its filter from a table compiled into the engine and no arm
+  had ever needed the project's `.candor/config`. The whole ⟨0.19⟩ alias class was unreachable. In
+  candor-scan 0.39.0 the ⟨0.29⟩/⟨0.30⟩ peek parsed the policy alias-LESS while the gate parsed it with the
+  vocabulary, so adding an unrelated `deny Unknown[<alias>]` beside `deny Net` took a real violation from
+  exit 2 to **exit 0** and erased `outOfScope`/`scannedUnder` entirely. Of 1,593 registry crates, 56 flip
+  exit 0 → exit 2 under the fix.
+
+  The new shape aliases to the class the row above names DIRECTLY (`corp = unresolved` against
+  `Unknown[unresolved]`), so it cannot pass by hedging, and it is **calibrated**: run against the pre-fix
+  binary it reports the exact disagreement.
+
+- **PART 55 gains PART 92's `XFAIL` table**, because the new shape also found `(java,
+  deny-unknown-alias)` — exit 2 with an EMPTY `outOfScope`, the same root cause failing in the safe
+  direction. A passing xfail is a FAILURE (calibrated by declaring one on a cell that already agrees), and
+  every entry names a row. The bar for a line is that the divergence FAILS CLOSED: candor-rust's arm
+  exited 0 and got a fix, not an exception.
+
+- **`scripts/check_soundness_tables.py` was VACUOUS against a doubled leading pipe (R524's filing).**
+  `|| R524 …` renders as a row with an empty first cell, shifting every column right — the exact
+  corruption the cell-count property exists to catch — and `ROW_RE` matched neither the orphan scan nor
+  the cell-count loop, so the file printed `OK` over a six-cell row in a five-column table. Rows are now
+  identified by their ID in the first NON-EMPTY cell; calibrated against four malformations.
+
+
 - **⟨0.24⟩ CLARIFIED (SOUNDNESS R444) — an engine may not name an owner it has not verified.** No new
   rung: the contract already answered. ⟨0.24⟩ reserves the dot-free `dispatch:` detail for a dispatch
   whose owner the engine could not form, and `<owner-type>.<member>` is normative — so the DOTTED form
