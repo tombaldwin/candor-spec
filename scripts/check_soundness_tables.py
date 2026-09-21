@@ -46,6 +46,34 @@ from pathlib import Path
 
 # A row we care about: `| R12 ...` or `| ~~R12~~ ...` (struck-through rows are retracted, still rows).
 ROW_RE = re.compile(r'^\| ~{0,2}R\d+')
+# …AND THE MALFORMED SPELLINGS, which is the whole point (added 2026-09-21).
+# THIS CHECKER WAS VACUOUS AGAINST A DOUBLED LEADING PIPE. `|| R524 …` renders in GFM as a row with an
+# EMPTY first cell, shifting every column one to the right — precisely the corruption the cell-count
+# property exists to catch — and ROW_RE matched neither spelling, so the orphan scan skipped it AND the
+# cell-count loop `continue`d past it. The file printed OK over a six-cell row in a five-column table.
+# Measured, not suspected: injecting `||` before R524 left the verdict at OK.
+#
+# That is this docstring's own warning ("a validator that measures the wrong property is worse than
+# none") committed inside the validator. A row is therefore identified by its ID appearing as the first
+# NON-EMPTY cell, not by a literal prefix — so a malformed row is SEEN, and then fails on cell count
+# like any other.
+ROW_ANY_RE = re.compile(r'^\|')
+
+
+def row_id(line):
+    """The register ID of `line` if it is a register row at all, else None.
+
+    Tolerates leading empty cells (`|| R5`, `| | R5`) so they are caught rather than skipped."""
+    if not ROW_ANY_RE.match(line):
+        return None
+    cells = re.split(r'(?<!\\)\|', line)[1:-1] or re.split(r'(?<!\\)\|', line)[1:]
+    for cell in cells[:2]:                      # an ID past the second cell is not a register row
+        m = re.match(r'\s*~{0,2}(R\d+)', cell)
+        if m:
+            return m.group(1)
+        if cell.strip():                        # first non-empty cell is not an ID -> not our row
+            return None
+    return None
 # A GFM delimiter row: `|---|---|`, optionally with alignment colons and spaces.
 SEP_RE = re.compile(r'^\|[\s:-]+\|[\s|:\-]*$')
 
@@ -79,7 +107,7 @@ def main() -> int:
         in_table.update(rows)
 
     orphans = [(i + 1, lines[i][:70]) for i, line in enumerate(lines)
-               if ROW_RE.match(line) and i not in in_table]
+               if row_id(line) and i not in in_table]
 
     if orphans:
         print(f'check_soundness_tables: FAILED — {len(orphans)} row(s) render as RAW TEXT, not as table rows.')
@@ -96,13 +124,12 @@ def main() -> int:
     for sep, rows in found:
         width = lines[sep].count('|') - 1
         for i in rows:
-            if not ROW_RE.match(lines[i]):
+            if not row_id(lines[i]):
                 continue
             # UNESCAPED pipes only: `\\|` inside a cell is content, and is the correct spelling.
             got = len(re.split(r'(?<!\\)\|', lines[i])) - 2
             if got != width:
-                rid = re.match(r'\| ~{0,2}(R\d+)', lines[i])
-                shape.append((rid.group(1) if rid else '?', i + 1, got, width))
+                shape.append((row_id(lines[i]) or '?', i + 1, got, width))
 
     if shape:
         print(f'check_soundness_tables: FAILED — {len(shape)} row(s) do not carry their table\'s cell count.')
