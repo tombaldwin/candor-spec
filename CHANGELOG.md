@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.39.2] — 2026-09-22
+
 - **PART 55 gains a `deny-unknown-alias` shape — and it found a cardinal sin that had SHIPPED (SOUNDNESS
   R525), plus a second engine (R526).** Every one of the matrix's eleven `Unknown[…]` shapes named a
   BUILTIN reason class, so every arm resolved its filter from a table compiled into the engine and no arm
