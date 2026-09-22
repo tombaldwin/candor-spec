@@ -154,6 +154,29 @@ ARMS = [
          want=dict(has={EFFECT}), skip=("java", "swift"),
          why="DEFECT-SHAPE: an EFFECTFUL implementor declared in a MODULE inside the dependency (R513) — "
              "the LOCAL union leg, which is the one that had no fallback"),
+    # ⟨0.39⟩/R533 — THE CONSUMER'S OWN FOREIGN SITE WITH AN EMPTY UNION, which `c2_zero_impl` does NOT
+    # reach. In c2 the zero-implementor dispatch lives in the DEP (`iface::term_size`), where the dep's own
+    # bounded CHA fires and the consumer inherits the hedge through the ordinary chain join. Here the
+    # CONSUMER dispatches directly on the foreign abstraction — the `nesteddispatch` body, which is why
+    # that branch is load-bearing (see app_body) — and NOTHING implements it anywhere.
+    #
+    # MEASURED 2026-09-22 on a hand fixture, same consumer body per language, one dep report, zero
+    # implementors in both packages, only the ENGINE varying: **THREE OF FOUR READ SILENTLY PURE**, the
+    # REFERENCE ENGINE INCLUDED. java `app.App.go` is `inferred: []`, `unresolved: false`,
+    # `unknownWhy: null`, carrying `dispatchesOn` — so the engine KNOWS it is a dispatch — and `pure`
+    # EXITS 0 over a call whose target it knows nothing about. rust the same plus a non-gating
+    # `invisible`; swift the same. ts is the only engine that discloses `Unknown`.
+    #
+    # FILED AS A MEASURED DIVERGENCE, NOT YET AS A MUST. The tightening it implies — an EMPTY union at a
+    # consumer's dispatch site reads `Unknown` — is a real ⟨0.40⟩ MINOR, and ⟨0.39⟩'s own cost paragraph
+    # DECLINED the neighbouring hedge at 2.60% of functions across 435 libraries. This one bills every
+    # middle library scanned alone. So the arm exists to PIN the divergence and make it retire loudly; the
+    # clause waits on a corpus A/B per engine. ts passing is the existence proof that it is affordable
+    # somewhere.
+    dict(id="c9_consumer_zero_union", iface="zero", third=False, chained=True, entry="nesteddispatch",
+         want=dict(hasnt={EFFECT}, unknown=True),
+         why="R533: the CONSUMER dispatches on a foreign abstraction nobody implements — an empty union "
+             "must not read as purity"),
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
@@ -187,6 +210,15 @@ ARMS = [
 # not stay uniform: the moment one engine ports ⟨0.39⟩ its line comes out and the others' stay, which is
 # precisely the state an arm-keyed table cannot represent. A PASSING xfail is a FAILURE (see main()).
 XFAIL = {
+    # ⟨0.40⟩ CANDIDATE, DECLARED 2026-09-22 — SOUNDNESS R533. Three engines read a consumer's own
+    # zero-implementor foreign dispatch as SILENTLY PURE; ts discloses. These are NOT a port lag like the
+    # lines below them: no engine has ever been asked for this, because no clause requires it yet. They
+    # are here so the divergence is PINNED and retires loudly the moment an engine closes it, and so that
+    # a ⟨0.40⟩ decision is made against a measured four-way row rather than against my summary of one.
+    ("c9_consumer_zero_union", "rust"):  "R533",
+    ("c9_consumer_zero_union", "java"):  "R533",
+    ("c9_consumer_zero_union", "swift"): "R533",
+
     # RETIRED 2026-09-20, candor-ts `ee844f0` — the FOURTH and last engine. **⟨0.39⟩ IS NOW PORTED IN ALL
     # FOUR AND THIS TABLE IS EMPTY**, which is the state it was built to reach: every line was retired by
     # the engine that earned it, and a PASSING xfail failing is what announced each one. Keep the mechanism
