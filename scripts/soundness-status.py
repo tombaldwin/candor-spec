@@ -63,6 +63,13 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 _DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*OPEN\b')
 
 
+def _idkey(rid):
+    """Sort R529 before R529b before R530. `int(rid[1:])` raised on a lettered sub-row and the OPEN
+    listing died after printing its counts — 52 open, none named. Added 2026-09-22 with the suffix fix."""
+    m = re.match(r'R(\d+)([a-z]*)$', rid)
+    return (int(m.group(1)), m.group(2)) if m else (0, rid)
+
+
 def bucket(line, outcome=None):
     if outcome is not None and _DECLARED_OPEN.match(outcome):
         return "open"
@@ -108,7 +115,13 @@ def main(argv):
         return 2
     by = {}
     for l in rows:
-        rid = re.match(r'^\| ~?~?(R\d+)', l).group(1)
+        # THE LETTER SUFFIX IS PART OF THE ID. `(R\d+)` dropped it, so R529c printed as "R529", R531b as
+        # "R531" and R532b as "R532" — and on 2026-09-22 all three of those BASE rows were CLOSED while
+        # their lettered siblings were open. The shipping-defect list was therefore naming rows that are
+        # fixed: a reader looking up "R529" finds a closed row and concludes the list is wrong, or worse
+        # re-opens work that is done. Sub-rows are how this register splits one finding into its separate
+        # measurable parts, so collapsing them loses exactly the distinction they were created to make.
+        rid = re.match(r'^\| ~?~?(R\d+[a-z]?)', l).group(1)
         # The outcome is the LAST cell of the register table; pass it separately so a declared OPEN
         # is read as a declaration rather than hunted for in the whole row's prose.
         _c = re.split(r'(?<!\\)\|', l)
@@ -116,7 +129,7 @@ def main(argv):
         by.setdefault(bucket(l, _outcome), []).append((rid, l))
 
     if ids_only:
-        for rid, _ in sorted(by.get("open", []), key=lambda t: int(t[0][1:])):
+        for rid, _ in sorted(by.get("open", []), key=lambda t: _idkey(t[0])):
             print(rid)
         return 0
 
@@ -125,7 +138,7 @@ def main(argv):
         print(f"  {k:18s} {len(by.get(k, []))}")
     print()
     print("OPEN — nothing in the row claims it is resolved. THIS is the shipping-defect list:")
-    for rid, l in sorted(by.get("open", []), key=lambda t: int(t[0][1:])):
+    for rid, l in sorted(by.get("open", []), key=lambda t: _idkey(t[0])):
         cells = re.split(r'(?<!\\)\|', l)
         eng = cells[3].strip()[:20] if len(cells) > 3 else "?"
         claim = " ".join(cells[1].split())[len(rid) + 1:][:86]
@@ -133,7 +146,7 @@ def main(argv):
     if by.get("cites-a-sha-only"):
         print()
         print("CITES A SHA BUT NO CLOSURE WORD — read these, they are neither clearly:")
-        for rid, _ in sorted(by["cites-a-sha-only"], key=lambda t: int(t[0][1:])):
+        for rid, _ in sorted(by["cites-a-sha-only"], key=lambda t: _idkey(t[0])):
             print(f"  {rid}")
     return 0
 
@@ -173,6 +186,16 @@ def selftest():
         ("**CLOSED — `abc1234`.** This left an open question for R99.",          "closed-with-fix"),
     ]
     bad = 0
+    # The ID parse is part of the contract too — see the comment at `rid`. A base row and its lettered
+    # sibling are DIFFERENT rows and routinely have different verdicts.
+    for line, want_id in (("| R529c rust: a body-local struct's field type…", "R529c"),
+                          ("| R529 rust: an implementor written inside a block…", "R529"),
+                          ("| ~~R116~~ retracted", "R116")):
+        got = re.match(r'^\| ~?~?(R\d+[a-z]?)', line).group(1)
+        flag = "ok  " if got == want_id else "FAIL"
+        if got != want_id:
+            bad += 1
+        print(f"  {flag} id={got:7s} want {want_id:7s} {line[:46]!r}")
     for text, want in cases:
         got = bucket(text, text)   # in a real row the outcome IS the last cell
         flag = "ok  " if got == want else "FAIL"
