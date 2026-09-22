@@ -237,8 +237,13 @@ XFAIL = {
     #   swift — R532, a conformance inside a func/init body: DeclCollector's four `.skipChildren` sites.
     # rust passes by DISCLOSING (R529's hedge) and ts by COMPLETING (R512) — which is why `want` is the
     # ⟨0.35⟩ disjunction and not `has`.
-    ("c8_body_local_implementor", "java"):  "R530b",
-    ("c8_body_local_implementor", "swift"): "R532",
+    # RETIRED 2026-09-22 — candor-java `d17dc66` (R530b) and candor-swift `5c53e96` (R532), both on the
+    # same day the arm was written. Each was announced by its own line PASSING, which is the mechanism
+    # working: java now COMPLETES (a lambda is an implementor via `samLambdaImpls`, kept out of
+    # `chaTargets` because every emptiness test there reads empty as "disclose"), and swift COMPLETES too
+    # (`finishBodyLocalTypes` mints the body-local conformer). So all four engines now answer c8: rust by
+    # DISCLOSING, the other three by COMPLETING — which is exactly the shape `disclosed` was added to
+    # express, and the reason the arm did not have to prefer one.
 
     ("c9_consumer_zero_union", "rust"):  "R533",
     ("c9_consumer_zero_union", "java"):  "R533",

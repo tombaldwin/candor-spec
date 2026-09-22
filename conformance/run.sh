@@ -16835,7 +16835,10 @@ P87_OK=0
 # `argstore` shape 2026-09-22 — its `one` arm is SOUNDNESS R530b, a lambda handed to a project
 # dispatcher, which no field-held shape above could reach. The bar for a line here is the same as
 # elsewhere: the divergence must be understood and owned, not merely tolerated.
-P87_XFAIL="argstore:one:R530b"
+# EMPTY as of 2026-09-22 — candor-java `d17dc66` closed R530b the same day the `argstore` shape was
+# written, and the line PASSING is what said so. Keep the mechanism: the next shape added here lands the
+# same way, and a table that has reached empty once is the only kind worth trusting.
+P87_XFAIL=""
 P87="$W/p87"; mkdir -p "$P87"
 [ -f "$HERE/cha_completeness_check.py" ] || { echo "  -> DIVERGE — cha_completeness_check.py is MISSING; the row cannot judge"; P87_OK=1; rc=1; }
 if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
