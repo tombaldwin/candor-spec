@@ -16719,7 +16719,7 @@ fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
 # ENGINES: java ts swift; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and `impl Fn` is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST
-# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited ts-pure sw-pure sw-calib sw-proto-zero sw-proto-one — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; `java-pure-*`, `ts-pure` and `sw-pure` are the OVER-CHARGE controls, one per shape per engine, each proving a PURE implementor through that shape's identical path gains no Fs and is not blanket-hedged into Unknown either; `sw-calib` is the CALIBRATION that proves branch (b) fires at all on candor-swift, without which its branch-(a) arms are evidence about nothing; `sw-proto-zero`/`sw-proto-one` are the §2 control that fails if an inherited Unknown ever gains an `unknownWhy` (SPEC.md:1381) or if the reason disappears from the source that owes it
+# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited java-pure-argstore ts-pure sw-pure sw-calib sw-proto-zero sw-proto-one — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; `java-pure-*`, `ts-pure` and `sw-pure` are the OVER-CHARGE controls, one per shape per engine, each proving a PURE implementor through that shape's identical path gains no Fs and is not blanket-hedged into Unknown either; `sw-calib` is the CALIBRATION that proves branch (b) fires at all on candor-swift, without which its branch-(a) arms are evidence about nothing; `sw-proto-zero`/`sw-proto-one` are the §2 control that fails if an inherited Unknown ever gains an `unknownWhy` (SPEC.md:1381) or if the reason disappears from the source that owes it
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -16830,6 +16830,12 @@ fi
 echo
 echo "[87] a dispatch whose implementor set includes a synthesised/structural implementor: effects OR Unknown, never a silent resolve"
 P87_OK=0
+# DECLARED DIVERGENCES, `shape:arm:row`. Same two rules as PART 92's and PART 55's tables: a PASSING
+# xfail is a FAILURE, so a line cannot outlive the defect, and every entry names a ROW. Added with the
+# `argstore` shape 2026-09-22 — its `one` arm is SOUNDNESS R530b, a lambda handed to a project
+# dispatcher, which no field-held shape above could reach. The bar for a line here is the same as
+# elsewhere: the divergence must be understood and owned, not merely tolerated.
+P87_XFAIL="argstore:one:R530b"
 P87="$W/p87"; mkdir -p "$P87"
 [ -f "$HERE/cha_completeness_check.py" ] || { echo "  -> DIVERGE — cha_completeness_check.py is MISSING; the row cannot judge"; P87_OK=1; rc=1; }
 if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
@@ -16852,7 +16858,7 @@ if [ -n "$JAR" ] && [ -f "$HERE/cha_completeness_check.py" ]; then
   # constant (implicitly static final), an inner/outer class field, a write in a constructor or static
   # initializer, and a `super.`-qualified read are NOT built here. They are named so the next reader
   # extends the list rather than reading three green rows as "fields are covered".
-  for shape in instance static inherited mrefstore mrefhof; do
+  for shape in instance static inherited mrefstore mrefhof argstore; do
   for arm in zero one; do
     slabel="$shape field"
     d="$P87/java-$shape-$arm"; mkdir -p "$d/src/app" "$d/classes"
@@ -16881,6 +16887,27 @@ public class Widget {
   private static Runnable task;
   public static void install(Store s) { task = () -> s.write(); }
   public static void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+      # ⟨0.35⟩/R530b — THE LAMBDA AS AN ARGUMENT, not stored in a field at all. Every shape above
+      # holds the callable in a FIELD and the row's boundary had been drawn around that: a review
+      # measured `dispatch(() -> s.write())` — the lambda handed straight to a project dispatcher —
+      # and found `Widget.dispatch` goes from `['Unknown']` + `callback:java.lang.Runnable.run` to
+      # ABSENT the moment one unrelated pure `Runnable` exists. That is this clause's own toggle, in
+      # the most ordinary spelling Java has, and no arm here reached it.
+      #
+      # The caller under test is the DISPATCHER, not the creator: `fire` stays pure by
+      # `lambdaEscapesUninvoked` (deliberately — it is the clinit-smear guard), so the row that can
+      # answer is the one that actually performs `h.run()`.
+      argstore)
+        slabel='lambda passed as an ARGUMENT to a project dispatcher'
+        caller='Widget.dispatch'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  static void dispatch(Runnable h) { h.run(); }
+  public static void fire(Store s) { dispatch(() -> s.write()); }
 }
 JEOF
         ;;
@@ -16950,8 +16977,15 @@ JEOF
     javac -d "$d/classes" "$d"/src/app/*.java 2>/dev/null
     java -jar "$JAR" "$d/classes" --json "$d/rep.json" >/dev/null 2>&1
     out="$(python3 "$HERE/cha_completeness_check.py" "$d/rep.json" "$caller" Fs 2>&1)"
-    if printf '%s' "$out" | grep -q '^OK'; then echo "  OK  java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"
-    else echo "  -> DIVERGE — java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+    xrow="$(printf '%s\n' $P87_XFAIL | grep "^$shape:$arm:" || true)"
+    if printf '%s' "$out" | grep -q '^OK'; then
+      if [ -n "$xrow" ]; then
+        echo "  -> DIVERGE — XFAIL PASSING java ($slabel, $arm implementor(s)): declared in P87_XFAIL as ${xrow##*:} but the arm AGREES — the engine was fixed; RETIRE the line"; P87_OK=1
+      else echo "  OK  java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c5-110)"; fi
+    else
+      if [ -n "$xrow" ]; then echo "  xfail java ($slabel, $arm implementor(s)) — declared, owned by ${xrow##*:}: $(printf '%s' "$out" | cut -c11-150)"
+      else echo "  -> DIVERGE — java ($slabel, $arm implementor(s)): $(printf '%s' "$out" | cut -c11-200)"; P87_OK=1; fi
+    fi
   done
   done
   # OVER-CHARGE CONTROL: the identical shape with a PURE lambda must NOT gain an effect, AND must not
@@ -16978,7 +17012,7 @@ JEOF
   # composed at runtime cannot be matched to the declaration that claims it exists, which is the whole
   # failure mode ("a control that does not exist is documentation") that check was written for. The
   # declaration and the code now share one source of truth instead of two spellings that can drift.
-  for pdir in java-pure-instance java-pure-static java-pure-inherited; do
+  for pdir in java-pure-instance java-pure-static java-pure-inherited java-pure-argstore; do
     shape="${pdir#java-pure-}"
     d="$P87/$pdir"; mkdir -p "$d/src/app" "$d/classes"
     cat > "$d/src/app/Quiet.java" <<'JEOF'
@@ -17005,6 +17039,19 @@ public class Widget {
   private static Runnable task;
   public static void install(Quiet q) { task = () -> q.bump(); }
   public static void fire() { if (task != null) task.run(); }
+}
+JEOF
+        ;;
+      # The argstore shape's own control. One per shape, because this family's measured rate is 4
+      # defects in 5 fabrication-fixes: a shape whose sin arm has teeth and whose control does not is
+      # a shape where the next fix trades one direction for the other unobserved.
+      argstore)
+        pcaller='Widget.dispatch'
+        cat > "$d/src/app/Widget.java" <<'JEOF'
+package app;
+public class Widget {
+  static void dispatch(Runnable h) { h.run(); }
+  public static void fire(Quiet q) { dispatch(() -> q.bump()); }
 }
 JEOF
         ;;
@@ -17066,7 +17113,7 @@ if 'Fs' in inf: sys.exit(1)
 if 'Unknown' in inf and unresolved is True: sys.exit(2)
 sys.exit(0)" 2>"$d/reader.err"; echo $?)"
     case "$p87pure_rc" in
-      0) echo "  OK  OVER-CHARGE CONTROL ($shape field) — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
+      0) echo "  OK  OVER-CHARGE CONTROL ($shape) — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
       1) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was charged Fs — the fix fabricates"; P87_OK=1 ;;
       2) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
       3) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): the report has NO \`functions\` key — malformed, not pure"; P87_OK=1 ;;
