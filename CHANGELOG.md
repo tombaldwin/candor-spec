@@ -27,6 +27,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.39.2] — 2026-09-22
 
+- **SOUNDNESS register: R544.** The umbrella's `release-preflight.sh` [10] reported a verifiably-pushed
+  commit as `NOT PUSHED` — the sibling copy of R505, fixed in `ci-watch.sh` and never ported. Register at
+  455 rows, 54 open.
+
 - **PART 55 gains a `deny-unknown-alias` shape — and it found a cardinal sin that had SHIPPED (SOUNDNESS
   R525), plus a second engine (R526).** Every one of the matrix's eleven `Unknown[…]` shapes named a
   BUILTIN reason class, so every arm resolved its filter from a table compiled into the engine and no arm
