@@ -173,6 +173,20 @@ ARMS = [
     # middle library scanned alone. So the arm exists to PIN the divergence and make it retire loudly; the
     # clause waits on a corpus A/B per engine. ts passing is the existence proof that it is affordable
     # somewhere.
+    # ⟨0.39⟩/R529+R530b+R532 — THE CONSUMER SUPPLIES THE IMPLEMENTOR, AND WRITES IT IN A PLACE ITS OWN
+    # INDEX DOES NOT HOLD. The dep declares ONE PURE implementor, so the toggle's right side is present
+    # and bounded CHA resolves happily to it; the consumer's own effectful implementor is written inside
+    # a function body (rust `impl` in a block, swift a conformance in a func, java a LAMBDA — the one
+    # shape with no class file, ts a structural literal, which is R512's closed shape and so a REGRESSION
+    # PIN here rather than a new question).
+    #
+    # `disclosed` rather than `has`: ⟨0.35⟩ licenses COMPLETING the dispatch or DISCLOSING it, and after
+    # R529 rust legitimately takes the hedge. Demanding the effect would score rust's licensed choice as a
+    # failure and measure this arm's preference instead of the contract.
+    dict(id="c8_body_local_implementor", iface="impl", third=False, chained=True, entry="escapedispatch",
+         want=dict(disclosed={EFFECT}),
+         why="R529/R530b/R532: an implementor the consumer's own body walk READ but its index does not "
+             "HOLD must not be papered over by the dep's pure one"),
     dict(id="c9_consumer_zero_union", iface="zero", third=False, chained=True, entry="nesteddispatch",
          want=dict(hasnt={EFFECT}, unknown=True),
          why="R533: the CONSUMER dispatches on a foreign abstraction nobody implements — an empty union "
@@ -215,6 +229,17 @@ XFAIL = {
     # lines below them: no engine has ever been asked for this, because no clause requires it yet. They
     # are here so the divergence is PINNED and retires loudly the moment an engine closes it, and so that
     # a ⟨0.40⟩ decision is made against a measured four-way row rather than against my summary of one.
+    # c8 — the two engines that have NOT closed the body-local implementor, declared 2026-09-22 with the
+    # arm. Unlike c9's lines these ARE port lags against text that already binds: ⟨0.35⟩ names "a lambda
+    # or closure coerced to an interface" an implementor, and ⟨0.39⟩ obligation 2 requires a package
+    # implementing a FOREIGN abstraction to publish an entry. Both rows are open and priced.
+    #   java  — R530b, a returned LAMBDA: no class file, so `unionCandidates` ARM 2 never sees it.
+    #   swift — R532, a conformance inside a func/init body: DeclCollector's four `.skipChildren` sites.
+    # rust passes by DISCLOSING (R529's hedge) and ts by COMPLETING (R512) — which is why `want` is the
+    # ⟨0.35⟩ disjunction and not `has`.
+    ("c8_body_local_implementor", "java"):  "R530b",
+    ("c8_body_local_implementor", "swift"): "R532",
+
     ("c9_consumer_zero_union", "rust"):  "R533",
     ("c9_consumer_zero_union", "java"):  "R533",
     ("c9_consumer_zero_union", "swift"): "R533",
@@ -264,10 +289,10 @@ XFAIL = {
 # the arm table reads honestly; kept TOTAL across engines so a renderer cannot KeyError on an arm its
 # engine declares inexpressible.
 ENTRY = {
-    "rust":  dict(dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed"),
-    "java":  dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
-    "ts":    dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
-    "swift": dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed"),
+    "rust":  dict(dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size"),
+    "java":  dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "ts":    dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "swift": dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
 }
 
 # =====================================================================================================
@@ -326,6 +351,18 @@ RUST_APP = {
     # ORDINARY chain join, so the arm passed against a pre-R513 binary. Dispatching here makes the
     # union entry the only carrier, which is what R513 was about.
     "nesteddispatch": 'pub fn app_size(b: &dyn iface::Backend) -> usize { b.size() }\n',
+    # c8/R529+R532 — the consumer SUPPLIES a body-local implementor. Two functions on purpose: the
+    # supplier declares `L` inside its own body (so containment charges the SUPPLIER, correctly) and
+    # hands it to the entry, which delegates to the dep exactly as `dispatch` does. No call edge runs
+    # from the entry to the effect, so the ONLY route by which `app_size` can learn of `L` is the union —
+    # which is the thing under test. Put the impl inside `app_size` itself and containment answers, and
+    # the arm measures nothing.
+    "escapedispatch": ('pub fn app_size(b: &dyn iface::Backend) -> usize { iface::term_size(b) }\n'
+                       'pub fn app_supply() -> usize {\n'
+                       '    struct L;\n'
+                       '    impl iface::Backend for L { fn size(&self) -> usize { %s 0 } }\n'
+                       '    app_size(&L)\n'
+                       '}\n' % SINK["rust"]),
 }
 # THE MIDDLE PACKAGE, four ways. It depends on `iface` and dispatches over `iface`'s abstraction; it
 # declares no abstraction and implements none.
@@ -355,6 +392,11 @@ JAVA_APP = {
     # present only so the table is TOTAL — java declares c7 inexpressible (no re-export), so this is
     # never rendered. A missing key here is a KeyError in a renderer, not a skip.
     "nesteddispatch": '  public static int appSize(iface.Backend b) { return b.size(); }\n',
+    # c8 — java's spelling of the same thing is a LAMBDA, which is the one implementor shape with no
+    # class file and therefore no CHA entry (SOUNDNESS R530b). `Backend` is a SAM, so this compiles.
+    "escapedispatch": ('  public static int appSize(iface.Backend b) { return iface.Terminal.termSize(b); }\n'
+                       '  public static int appSupply() { iface.Backend b = () -> { %s return 0; }; return appSize(b); }\n'
+                       % SINK["java"]),
 }
 JAVA_MIDDLE = {
     "Mid.java": 'package middle; public class Mid { public static int midSize(iface.Backend b) { return b.size(); } }\n',
@@ -389,6 +431,15 @@ TS_APP = {
                  'export function appSize(b: Backend): number { return midSize(b) }\n'),
     "nesteddispatch": ('import { Backend } from "iface";\n'
                        'export function appSize(b: Backend): number { return b.size() }\n'),
+    # c8 — ts's spelling is a STRUCTURAL literal, which is R512's shape. This arm is a REGRESSION PIN
+    # for that fix rather than a new question, and it is expected GREEN.
+    "escapedispatch": ('import * as netm from "node:net";\n'
+                       'import { Backend, termSize } from "iface";\n'
+                       'export function appSize(b: Backend): number { return termSize(b) }\n'
+                       'export function appSupply(): number {\n'
+                       '  const l: Backend = { size() { %s return 0 } };\n'
+                       '  return appSize(l)\n'
+                       '}\n' % SINK["ts"]),
 }
 TS_MIDDLE = ('import { Backend } from "iface";\n'
              'export function midSize(b: Backend): number { return b.size() }\n')
@@ -412,6 +463,14 @@ SW_APP = {
     "middle":   'import Iface\nimport Middle\npublic func appSize(_ b: Backend) -> Int { return midSize(b) }\n',
     # as above: swift declares c7 inexpressible (no submodules), so this is never rendered.
     "nesteddispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return b.size() }\n',
+    # c8 — swift's spelling is a conformance declared INSIDE a function body, which DeclCollector's
+    # `.skipChildren` sites never reach (SOUNDNESS R532). Same two-function shape as the other three.
+    "escapedispatch": ('import Iface\nimport Foundation\n'
+                       'public func appSize(_ b: Backend) -> Int { return termSize(b) }\n'
+                       'public func appSupply() -> Int {\n'
+                       '    struct L: Backend { func size() -> Int { %s; return 0 } }\n'
+                       '    return appSize(L())\n'
+                       '}\n' % SINK["swift"]),
 }
 SW_MIDDLE = ('import Iface\n'
              'public func midSize(_ b: Backend) -> Int { return b.size() }\n')
@@ -457,6 +516,13 @@ def app_body(arm):
         # dep resolved its own dispatch by bounded CHA, and the effect reached the consumer through the
         # ORDINARY chain join. The arm then passed against a PRE-R513 binary, i.e. it was vacuous.
         return "nesteddispatch"
+    if arm["entry"] == "escapedispatch":
+        # c8. THE SAME TRAP AS c7 ABOVE, AND I WALKED INTO IT ADDING THIS ARM. Without this branch the
+        # function returns "dispatch", the renderer writes ONLY `app_size`, the consumer never supplies a
+        # body-local implementor at all — and the arm failed on all FOUR engines, which looked like a
+        # four-way finding and was a missing two lines. `app_body` is TOTAL over `entry` by construction
+        # or it is silently wrong; a fall-through default is what makes that possible.
+        return "escapedispatch"
     return "middle" if arm.get("middle") else "dispatch"
 
 
@@ -695,6 +761,15 @@ def facts(leaves, entry):
 
 def judge(want, f):
     bad = []
+    # `disclosed=E` is ⟨0.35⟩'s DISJUNCTION, not a third way of spelling `has`. The contract says an
+    # engine must either COMPLETE the dispatch (the effect arrives) or DISCLOSE it (a hedged Unknown) —
+    # never silently pure — and it explicitly licenses both. An arm that demanded `has={E}` would fail an
+    # engine taking the licensed hedge (rust after R529) and so would measure the ARM's preference rather
+    # than the contract; one that demanded `unknown=True` would fail an engine that did the better thing.
+    # Added 2026-09-22 with c8, where two engines complete, one hedges, and one is silent.
+    for x in sorted(want.get("disclosed", ())):
+        if x not in f["eff"] and not f["unknown"]:
+            bad.append("SILENT on %s — neither the effect nor a disclosed Unknown" % x)
     for x in sorted(want.get("has", ())):
         if x not in f["eff"]:
             bad.append("missing %s" % x)
