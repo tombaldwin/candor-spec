@@ -201,6 +201,19 @@ ARMS = [
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="R548/CONTROL for c9: unchained + DIRECT dispatch must disclose via `invisible` exactly as "
              "c5 does through a free function — the body shape must not change whether anything is said"),
+    # SOUNDNESS R524 (re-scoped) + R556 — SHAPE (i): the consumer's OWN effectful implementor of a
+    # FOREIGN abstraction, reached through a LOCAL BINDING rather than a signature parameter. ⟨0.35⟩
+    # (SPEC.md:4655) already binds here — "where a synthesised or structural implementor is VISIBLE to the
+    # engine's own resolution", with no local-abstraction restriction — so this is a PORT GAP, not a rung.
+    # `disclosed` rather than `has`, because ⟨0.35⟩ licenses COMPLETING the dispatch or DISCLOSING it.
+    #
+    # THIS ARM EXISTS BECAUSE THE INSTRUMENT THAT COVERED IT COULD NOT FAIL: PART 4s's `fn_ok`
+    # (run.sh:1394-1398) is true if ANY function carries `invisible` naming the dep OR ANY function
+    # anywhere carries `Unknown` — so both spellings passed by construction.
+    dict(id="c11_local_impl_via_binding", iface="impl", third=False, chained=False, entry="localbinding",
+         want=dict(disclosed={EFFECT}),
+         why="R524/R556: an implementor the consumer OWNS, reached through a let/local binding instead "
+             "of a signature parameter, must not read pure — `dispatch` is the same shape one variable over"),
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
@@ -262,6 +275,14 @@ XFAIL = {
     # affirmative purity claim under SPEC §2 rule 3 over a call it cannot resolve. Not gate-affecting
     # (`invisible` arms no policy form — R133, CLOSED as a documentation gap on Tom's 2026-09-03 ruling),
     # which is exactly why it needs pinning rather than trusting: nothing else in the suite would notice.
+    # SOUNDNESS R556 — rust ALONE, with java, swift AND ts all carrying the effect on the identical
+    # fixture. `dyn_sig_trait_leaves` (lang.rs:83) iterates `sig.inputs` and nothing else — its own doc
+    # says "a signature's PARAMETERS" — so the imported-trait local-impl arm (collector.rs:3676) never
+    # fires for a `let`-position `dyn`. The control is `c5_unchained`/`dispatch`, where the SAME
+    # implementor reached through a signature parameter resolves. Gate-visible: `deny Fs <fn>` and
+    # `pure <fn>` both 1→0 on this shape, while the same run publishes the union entry carrying the effect.
+    ("c11_local_impl_via_binding", "rust"): "R556",
+
     ("c10_unchained_direct", "swift"): "R548",
 
     ("c9_consumer_zero_union", "rust"):  "R533",
@@ -313,10 +334,10 @@ XFAIL = {
 # the arm table reads honestly; kept TOTAL across engines so a renderer cannot KeyError on an arm its
 # engine declares inexpressible.
 ENTRY = {
-    "rust":  dict(dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size"),
-    "java":  dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
-    "ts":    dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
-    "swift": dict(dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "rust":  dict(localbinding="app_size", dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size"),
+    "java":  dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "ts":    dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "swift": dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
 }
 
 # =====================================================================================================
@@ -364,6 +385,12 @@ RUST_IFACE = {
                'pub fn sealed_dispatch() -> usize { let s: &dyn Sealed = &LocalImpl; s.go() }\n' % SINK["rust"]),
 }
 RUST_APP = {
+    # c11/R524+R556 — the CONTROL for this arm is `dispatch` above: the same implementor, the same
+    # abstraction, reached through a SIGNATURE PARAMETER instead of a `let`. One variable.
+    "localbinding": ('pub struct LocalB;\n'
+                     'impl iface::Backend for LocalB { fn size(&self) -> usize { %s 0 } }\n'
+                     'pub fn app_size() -> usize { let b: &dyn iface::Backend = &LocalB; b.size() }\n'
+                     % SINK["rust"]),
     "dispatch": 'pub fn app_size(b: &dyn iface::Backend) -> usize { iface::term_size(b) }\n',
     "third":    'pub fn app_run() -> usize { app_size(&effimpl::Crossterm) }\n',
     "sealed":   'pub fn app_sealed() -> usize { iface::sealed_dispatch() }\n',
@@ -409,6 +436,9 @@ JAVA_IFACE = {
     },
 }
 JAVA_APP = {
+    # c11 — java measured CLEAN on this shape, so this arm is a regression pin for it.
+    "localbinding": ('  public static int appSize() { iface.Backend b = () -> { %s return 0; }; return b.size(); }\n'
+                     % SINK["java"]),
     "dispatch": '  public static int appSize(iface.Backend b) { return iface.Terminal.termSize(b); }\n',
     "third":    '  public static int appRun() { return appSize(new effimpl.Crossterm()); }\n',
     "sealed":   '  public static int appSealed() { return iface.SealedDispatch.sealedDispatch(); }\n',
@@ -444,6 +474,12 @@ TS_IFACE = {
                % SINK["ts"]),
 }
 TS_APP = {
+    # c11 — ts is clean on THIS spelling. Its own R524 defect needs an INDEX-SIGNATURE dep, a different
+    # dep shape, so it is deliberately NOT approximated here.
+    "localbinding": ('import * as netm from "node:net";\n'
+                     'import { Backend } from "iface";\n'
+                     'export function appSize(): number { const b: Backend = { size() { %s return 0 } }; return b.size() }\n'
+                     % SINK["ts"]),
     "dispatch": ('import { Backend, termSize } from "iface";\n'
                  'export function appSize(b: Backend): number { return termSize(b) }\n'),
     "third":    ('import { Crossterm } from "effimpl";\n'
@@ -481,6 +517,12 @@ SW_IFACE = {
                % SINK["swift"]),
 }
 SW_APP = {
+    # c11 — swift measured clean on this shape; a regression pin.
+    "localbinding": ('import Iface\nimport Foundation\n'
+                     'public struct LocalB: Backend { public init() {}\n'
+                     '    public func size() -> Int { %s; return 0 } }\n'
+                     'public func appSize() -> Int { let b: Backend = LocalB(); return b.size() }\n'
+                     % SINK["swift"]),
     "dispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return termSize(b) }\n',
     "third":    'import EffImpl\npublic func appRun() -> Int { return appSize(Crossterm()) }\n',
     "sealed":   'import Iface\npublic func appSealed() -> Int { return sealedDispatch() }\n',
@@ -540,6 +582,14 @@ def app_body(arm):
         # dep resolved its own dispatch by bounded CHA, and the effect reached the consumer through the
         # ORDINARY chain join. The arm then passed against a PRE-R513 binary, i.e. it was vacuous.
         return "nesteddispatch"
+    if arm["entry"] == "localbinding":
+        # c11/R524+R556. The consumer declares its OWN effectful implementor of the FOREIGN abstraction
+        # and dispatches through a LOCAL BINDING typed as that abstraction, NOT through a signature
+        # parameter. That distinction is the whole arm: rust's `dyn_sig_trait_leaves` reads `sig.inputs`
+        # and nothing else, so the imported-trait local-impl route never fires for this spelling — while
+        # the signature spelling, which `dispatch` already covers, resolves correctly. Same trap as c7 and
+        # c8: without this branch `app_body` falls through to "dispatch" and the arm measures the control.
+        return "localbinding"
     if arm["entry"] == "escapedispatch":
         # c8. THE SAME TRAP AS c7 ABOVE, AND I WALKED INTO IT ADDING THIS ARM. Without this branch the
         # function returns "dispatch", the renderer writes ONLY `app_size`, the consumer never supplies a

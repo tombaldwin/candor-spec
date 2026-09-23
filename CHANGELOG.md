@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 92 gains `c11_local_impl_via_binding` — and it replaces a control that could not fail.** An
+  implementor the consumer OWNS, reached through a local binding instead of a signature parameter:
+  java, swift and ts all carry `['Net']`; **rust is SILENT on it**, neither the effect nor a disclosed
+  `Unknown` (R556). Three engines as the control, and `dispatch` — the same implementor through a
+  signature parameter — as the one-variable control within the arm. PART 4s, the instrument that
+  nominally covered this, passes both spellings by construction.
+
 - **R524's "family-level ruling" DISSOLVED under review, before it was escalated.** The row conflated two
   fixture shapes: one is a port gap against ⟨0.35⟩/⟨0.39⟩ text that already binds (ts + rust, one
   spelling each; java and swift clean), the other is exactly what PART 92 c5/c10 pin and R533 is already
