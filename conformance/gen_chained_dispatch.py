@@ -281,7 +281,13 @@ XFAIL = {
     # fires for a `let`-position `dyn`. The control is `c5_unchained`/`dispatch`, where the SAME
     # implementor reached through a signature parameter resolves. Gate-visible: `deny Fs <fn>` and
     # `pure <fn>` both 1→0 on this shape, while the same run publishes the union entry carrying the effect.
-    ("c11_local_impl_via_binding", "rust"): "R556",
+    # RETIRED 2026-09-23, candor-rust `e82e00f` — R556 CLOSED, and the arm is what announced it. The fix
+    # is a new ADDITIVE index (`dyn_local_traits`) written at one site and read by one predicate, not a
+    # widening of `dyn_sig_traits`, which every other resolver sees. The diagnosis was confirmed by
+    # BREAKING it rather than by reading the source: adding an entirely UNUSED `_x: &dyn Handlers`
+    # parameter to the failing function flipped it `inferred:[]` → `['Fs']` with the body unchanged,
+    # which names `dyn_sig_traits` and nothing else. Keep the arm: it is now a four-way regression pin,
+    # and its `dispatch` control is what makes the one variable legible.
 
     ("c10_unchained_direct", "swift"): "R548",
 

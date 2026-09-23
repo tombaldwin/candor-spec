@@ -25,6 +25,26 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R556 CLOSED (candor-rust `e82e00f`)** — a new additive index `dyn_local_traits`, one write site, one
+  reader. The diagnosis was confirmed by BREAKING it: adding an entirely unused `_x: &dyn Handlers`
+  parameter flipped the failing function `inferred:[]` → `['Fs']`. A/B over 1,598 crates / 321,606 rows:
+  0/0/0 — and the lane wrote down that this makes the registry arm close to safety-only, with a source
+  census explaining why (a registry of self-contained libraries is not this defect's population).
+  PART 92's `c11` xfail retired in the same wave.
+- **R533's rust price COLLAPSES once R549's malformed keys are discounted: 3.83% → 1.71% → 0.23%.**
+  After conjunct 4, 90% of remaining hits sit on keys R549 proved malformed. 0.23% is a quarter of
+  java's 0.87% and a tenth of the 2.60% ⟨0.39⟩ declined. **Pricing this rung before today's two engine
+  fixes would have overstated it ~7×** — which is what "DO NOT DRAFT IT YET" was protecting against.
+- **R549's chain-drift half: the proposed member check is REFUTED on today's wire**, with three proofs —
+  it would delete `bytes#Buf::chunk`/`::advance`/`::remaining`, three of which `186e854` restored,
+  because absent-from-report is exactly what a REQUIRED trait method looks like. Needs the wire to carry
+  each trait's declared member set. A purely local rule cannot cover it either: 15 of 58 malformed keys
+  are on a DIRECT receiver no chain rule can see.
+- **R557, R561, R562 (new, rust)**: a `static`/`const` item as a method receiver resolves nothing at all
+  (not `dyn`-specific — `pure` exits 0 over a body that writes); a closure parameter annotated `&dyn T`
+  resolves no trait; and R556's FIELD and RETURN positions remain erased, stated open rather than
+  reported closed.
+
 - **R524's ts half CLOSED (candor-ts `d46c098`)** — the foreign index-signature arm now joins to the
   visible implementor rather than hedging. Two corrections to the diagnosed mechanism: the call is
   answered by the CallExpression arm (`scan.mjs:8149`), not the desugared `chargeExternalDecl`, so a fix
