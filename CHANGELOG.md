@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R549 fix attempted and not landed — the attempt found a gap one level down.** Recording a trait
+  method named as a function reference built clean and did NOT fire: the reach probe showed 0 hits while
+  5 other hits came through the same channel, so the code never ran. Cause: `trait_quals` is built by
+  `sig_trait_quals(sig)` from a FUNCTION SIGNATURE's generics only, so a bound written on the IMPL BLOCK
+  (`impl<T: Buf> BufList<T>` — what both the fixture and the real http-body-util code use) never reaches
+  the trait-name index. Closing that gap comes first; then the fix is small.
+
 - **R549 (new, shipped 0.39.2) — SYSTEMIC: 26 of 75 checkable `dispatchesOn` keys (35%) name members
   their dep does not declare, across four consumers and four dep crates.** Two mechanisms: an
   extension trait's method attributed to the base trait (`ServiceExt::map_err` → `Service::map_err`),
