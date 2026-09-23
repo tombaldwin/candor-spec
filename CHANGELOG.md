@@ -25,6 +25,17 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R524's "family-level ruling" DISSOLVED under review, before it was escalated.** The row conflated two
+  fixture shapes: one is a port gap against ⟨0.35⟩/⟨0.39⟩ text that already binds (ts + rust, one
+  spelling each; java and swift clean), the other is exactly what PART 92 c5/c10 pin and R533 is already
+  pricing — a ruling there would have duplicated R533. R133 does not settle it either: the foreign rows
+  carry a FALSE `invisible` (the dep has no code, none of it is called), and chaining the dep was
+  measured and does not help. PART 4s's control is vacuous for this by construction.
+- **R556 (new, rust): a `let`-position `dyn` bypasses the imported-trait local-impl arm and the gate
+  flips** (`deny Fs <fn>`, `pure <fn>` 1→0) — because `dyn_sig_trait_leaves` reads signature parameters
+  only. **Third occurrence in one day of one root cause: an abstraction index built from a function
+  signature, blind to every other spelling of the same bound** (R549/R551 rust, R550 swift, R556 rust).
+
 - **R550 FIXED (candor-swift `92496cb`) — a CARDINAL SIN, and the IDENTICAL root cause as rust's R549 in
   a second engine.** A generic bound written on the ENCLOSING TYPE was invisible to the dispatch
   spelling, so `struct Box<B: Backend> { func boxSize }` read `inferred:[]` and `deny Net` exited 0 over
