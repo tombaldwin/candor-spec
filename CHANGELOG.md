@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R555 CLOSED (candor-swift `0c16614`)** — ownership decided where the key is spelled, sharing the
+  function the protocol-CHA publish site already used, so the two disagreeing sites became one. The
+  removal audit this row demanded, done in full: 11,680 rows, ADDED 0 / REMOVED 0 / CHANGED 29,
+  `dispatchesOn` the only field that moved, **no row lost its last key and none left `functions[]`**.
+  A chained A/B is byte-identical but its reach is ZERO — stated as safety-only, not read as coverage.
+- **R559 (new, FIXED, `52c1668`): a package's own name came from a regex taking the first `name:` in
+  `Package.swift`** — swift-nio called itself `Atomics`. The package name is §2 rule 3's coverage key,
+  and on a fixture this **inverted the disclosure pairing**. The limitation was documented in two places
+  and measured in neither.
+- **R563 (new, cardinal sin, NOT fixed): a generic parameter used as a TYPE receiver over a local
+  protocol loses the effect entirely** — five spellings absent, `deny Net` exit 0, over a conformer
+  reaching `URLSession.dataTask`. Left open deliberately: it widens a protocol CHA (over-charge
+  direction, needs its own A/B) and spans three syntactic paths.
+
 - **R556 CLOSED (candor-rust `e82e00f`)** — a new additive index `dyn_local_traits`, one write site, one
   reader. The diagnosis was confirmed by BREAKING it: adding an entirely unused `_x: &dyn Handlers`
   parameter flipped the failing function `inferred:[]` → `['Fs']`. A/B over 1,598 crates / 321,606 rows:
