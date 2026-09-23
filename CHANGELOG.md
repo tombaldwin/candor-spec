@@ -25,6 +25,15 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R543's two rust corpus findings re-examined at HEAD — they are not one thing.** clap is EXPLAINED and
+  split out as **R570**: `OsStringValueParser::parse_ref` calls `TypedValueParser::parse(self, …)`, a
+  fully-qualified trait call, and that is a SEVENTH receiver spelling in today's vein — reproduced on a
+  minimal fixture where `T::method(self)` reads ABSENT while `self.method()` and a parameter receiver
+  both resolve. serde is **NOT** explained by the obvious hypothesis (a `self` receiver in a trait
+  default method resolves fine) and stays undiagnosed rather than assumed. Both still live at HEAD.
+  Near-miss worth keeping: the `clap` facade crate scans to `analyzed=1`, so reading ABSENT off it would
+  have proved nothing — R543 names `clap_builder`, and that distinction is load-bearing.
+
 - **PART 93 — RECEIVER-SPELLING INVARIANCE (new, four-way): one dispatch, six spellings of the receiver,
   and the answer must not depend on which you write.** Built because five rust rows closed today —
   R556/R557/R561/R562/R564 — turned out to be ONE question asked at six declaration sites, and the class
