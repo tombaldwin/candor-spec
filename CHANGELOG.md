@@ -25,6 +25,21 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R557, R561 and R562 all CLOSED (candor-rust `36a917d`, `2078e08`, `6985ef2`)**, plus **R564, a new
+  cardinal sin found only because R557's carve-out could not be built without hitting it: a purity claim
+  decided by the SPELLING of a parameter name.** `fn p_upper(Z: &dyn Q) { Z.fetch() }` reads ABSENT with
+  `deny Net` exit 0, while the same function with `Z_A` or `z` reads `['Net']` and exits 1.
+- **R562's stated blocker was mine and was wrong** — refuted by a fixture, not an argument: the erasure
+  can be asked of the receiver EXPRESSION rather than a crate-wide union, and a fixture carrying a `dyn`
+  field, a `dyn` return AND three monomorphized receivers in one crate shows the monomorphized three
+  stay `eff=∅`. **Live instance: aws-smithy-http-client's `Connector { adapter: Box<dyn HttpConnector> }`
+  — an AWS SDK HTTP dispatch entry point — reported `inferred: []`.**
+- **Two of R557's four arms were not static-specific** and are split out as R568 and R569, measured
+  against their `let` twins rather than trusted from the arm list.
+- Across the wave, 1,598 registry crates / 321,807 rows: ADDED 201, **REMOVED 0**, and **not one added
+  row carries a concrete effect** — all disclosure. The single `Unknown` withdrawal is a fabrication
+  retired (termwiz's `const CSI: &str` was typed as its same-named `enum CSI`).
+
 - **R565 (new): ⟨0.39⟩ keys by MODULE, §2 chaining keys by PACKAGE, and for a conventional SPM package
   those namespaces never intersect — so the whole chain is a NO-OP and nothing says so.** 0 of 1,051
   foreign dispatch keys across 5 real chained pairs name a chained package; chaining nio-ssl onto
