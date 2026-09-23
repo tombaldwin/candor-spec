@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R565 (new): ⟨0.39⟩ keys by MODULE, §2 chaining keys by PACKAGE, and for a conventional SPM package
+  those namespaces never intersect — so the whole chain is a NO-OP and nothing says so.** 0 of 1,051
+  foreign dispatch keys across 5 real chained pairs name a chained package; chaining nio-ssl onto
+  swift-nio gives a byte-identical report. Verified independently on a fresh two-package fixture, one
+  variable: `Package(name: "Iface")` → `['Net']`, `deny Net` exit 1; `name: "iface-pkg"` → `[]`, exit 0.
+  Not a cardinal sin — the coverage ledger discloses — but the disclosure is identical to never having
+  chained, so a user gets nothing and no warning. **It BLOCKS R533's swift pricing.**
+- **R563 CLOSED (candor-swift `6d7fd06`)** — all five spellings, all three syntactic paths in one commit.
+  `inferred` ADDED 3 / REMOVED 0 / CHANGED 25, reach 46 across 4 of 11 packages. **The first cut
+  regressed the ⟨0.39⟩ wire and the A/B caught it** — it removed the 15 keys R555 had fixed hours before.
+- **R567 (new): swift's R549** — the dispatch key takes the OUTER base's type for a member-chain receiver,
+  and a bare-leaf key cannot match a producer's arity-suffixed overload. 13 of 18 measured sites; 0 of
+  the 18 were R533's actual shape.
+
 - **R555 CLOSED (candor-swift `0c16614`)** — ownership decided where the key is spelled, sharing the
   function the protocol-CHA publish site already used, so the two disagreeing sites became one. The
   removal audit this row demanded, done in full: 11,680 rows, ADDED 0 / REMOVED 0 / CHANGED 29,
