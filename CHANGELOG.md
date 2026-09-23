@@ -25,6 +25,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R549's fn-ref half is FIXED in candor-rust `186e854`** — the half that lost a key. The predicate is a
+  new additive index (`bound_trait_leaves`), not `trait_quals`; A/B over six chained pairs shows 0 effect
+  rows changed, 12 dispatch keys added, 0 lost. Mechanism A and the chain-drift half stay open.
+
 - **R549 fix attempted and not landed — the attempt found a gap one level down.** Recording a trait
   method named as a function reference built clean and did NOT fire: the reach probe showed 0 hits while
   5 other hits came through the same channel, so the code never ran. Cause: `trait_quals` is built by
