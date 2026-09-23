@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R551 FIXED (candor-rust `0cc0b4e`)** — an extension trait's method was keyed to the base trait, which
+  does not declare it: 31 of 53 malformed occurrences. A/B over three corpora including a 39-package
+  CONTROL printing 0/0/0: ADDED 0, REMOVED 0, `inferred` unchanged; all 43 changed rows audited singly.
+  Two near-misses caught by the A/B and not by reasoning — a false soundness proof that would have
+  rewritten 11 REAL joinable keys, and a marker supertrait that fabricated a dispatch.
+- **R549's A/B split was mis-drawn and its cited example sat on the wrong side** — corrected by
+  instrumenting the key-formation site: 31 direct-receiver / 22 chain-drift, and all nine
+  `Service::map_err` occurrences are chain drift.
+- **R554 (standing hazard): a 1,608-crate corpus cited by a measurement is now 1,608 empty directories.**
+  The ⟨0.39⟩ cost numbers are NOT void — a hollow corpus prints 0/0/0 and that paragraph reports
+  9,636/0/34,211, so its corpus was populated when measured. The finding is that evidence under a temp
+  path decays while a citation to it still reads as evidence.
+
 - **R522 CLOSED (candor-ts `a70e435`)** — an unwritable out-prefix ran a full successful scan and then
   died with an uncaught `EROFS` stack trace: exit 1, no usage error, no refusal marker. R520's control
   never caught it because that arm refuses at argv-parse time, a different code path — a neighbouring
