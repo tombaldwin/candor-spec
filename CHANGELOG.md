@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R560's under-report half CLOSED (candor-ts `d534b62`)** — the `!eff` guard was the whole of it: κ's
+  whole-module rule matched unconditionally and its truthy `eff` then SUPPRESSED the ⟨0.39⟩ obligation-3
+  join, while the same report published the union entry carrying the real effect. **The row's scope was
+  too narrow** — a declared-member arm loses it identically. **The κ fabrication half is deliberately NOT
+  fixed and is now pinned by a control**: withdrawing it is a ruling, not a patch.
+- **R558 CLOSED (same commit), and one cell of four in that row was wrong** — the foreign declared-member
+  case already resolved, so it became a CONTROL rather than a defect assertion that could not fail.
+  **The A/B caught a defect no fixture would have: the first cut published `<pkg>#ArrayConstructor.isArray`
+  on 530 typeorm rows — rust's R549 malformed-key class, reproduced in a second engine BY A FIX.**
+- **java swept for R558's class and is CLEAN — and now pinned** (`smoke.sh` 547 → 559), calibrated so the
+  greens discriminate. Clean because `invokedynamic` names the target in the constant pool, which is
+  exactly why it could silently un-clean later with absence as the only symptom.
+- **R566 (new): a second implementor of an index-signature interface takes a scoped `deny` from exit 1 to
+  exit 0** — disclosed, so not a sin, but a handler map with several implementors is the normal case, so
+  R524's resolution effectively only lands with a single implementor.
+
 - **R557, R561 and R562 all CLOSED (candor-rust `36a917d`, `2078e08`, `6985ef2`)**, plus **R564, a new
   cardinal sin found only because R557's carve-out could not be built without hitting it: a purity claim
   decided by the SPELLING of a parameter name.** `fn p_upper(Z: &dyn Q) { Z.fetch() }` reads ABSENT with
