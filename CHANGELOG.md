@@ -25,8 +25,15 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
-- **R549 (new, shipped 0.39.2): a published `dispatchesOn` key names a member the named trait does not
-  declare, so no consumer can ever join it** — and ⟨0.39⟩ obligation 3 *is* the join. On `tower`, 11 of 19
+- **R549 (new, shipped 0.39.2) — SYSTEMIC: 26 of 75 checkable `dispatchesOn` keys (35%) name members
+  their dep does not declare, across four consumers and four dep crates.** Two mechanisms: an
+  extension trait's method attributed to the base trait (`ServiceExt::map_err` → `Service::map_err`),
+  and the receiver's trait drifting along a method chain onto the wrong link
+  (`self.bufs.front().map(Buf::chunk).unwrap_or_default()` → `Buf::map`, `Buf::unwrap_or_default`).
+  Mostly additive noise — the real key is published alongside — **but where the trait method is passed
+  as a FUNCTION REFERENCE the real key is DROPPED**: `BufList::chunk` publishes only the two bogus
+  keys and `bytes#Buf::chunk` appears nowhere in the report, while the row reads `inferred: []`.
+  A published key naming a member the trait does not declare — and ⟨0.39⟩ obligation 3 *is* the join. On `tower`, 11 of 19
   distinct keys are `tower_service#Service::<member>` for members `Service` does not have (`map_err`,
   `clone`, `load`, `make_service`…); `Service` declares only `call` and `poll_ready`. The engine already
   filters these keys by OWNER (`scan.rs:3852`, "a key no consumer could ever join is not harmless") and
