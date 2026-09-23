@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R533 rust A/B: 3.68%, and conjunct 5 turns out to be COMPLEMENTARY to this rung, not a superset.**
+  Prototype env-gated behind `CANDOR_R533_PROTO` so both arms are one binary; prototype-OFF verified
+  identical to HEAD. 97 of 2,637 analyzed functions gain `Unknown`, zero lose an effect, 118 reach
+  probes. Only 5.9% of hits sit on SPEC §4's permitted exclusions, so the cost is real — `poll_ready`,
+  `call`, `map_err`. **java's conjunct 5 requires the chained report to hold an effectful body, and
+  `tower-service` publishes nothing at all — so java's shipped rule would not catch this row's
+  motivating case either.** The two rules are disjoint; the case between them is ⟨0.39⟩'s own toggle.
+  Also: `candor-rust/target/release/candor-scan` is stale at `scan-0.39.1` — measure with the debug
+  binary or rebuild.
+
 - **R533 rust census — and the finding is about the INSTRUMENT.** Six chained crate pairs in the
   `tower`/`http-body` vein, stock HEAD engine (rust already emits `dispatchesOn` for keys it cannot
   answer, so no prototype was needed): 102 of 2,637 analyzed functions (3.87%) dispatch on a key nothing
