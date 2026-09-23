@@ -180,13 +180,18 @@ COVERED = {
         "holds":  r"CHAINED-DISPATCH: OK — every engine's consumer carries the effects",
         "breaks": r"CHAINED-DISPATCH: [1-9]\d* cell\(s\) wrong",
     },
+    "gen_receiver_spelling.py": {
+        "args":   [],
+        "holds":  r"RECEIVER-SPELLING: OK — every engine answers the same",
+        "breaks": r"RECEIVER-SPELLING: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 13
+COVERED_FLOOR = 14
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

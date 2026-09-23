@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 93 — RECEIVER-SPELLING INVARIANCE (new, four-way): one dispatch, six spellings of the receiver,
+  and the answer must not depend on which you write.** Built because five rust rows closed today —
+  R556/R557/R561/R562/R564 — turned out to be ONE question asked at six declaration sites, and the class
+  is not rust's (swift's R550, ts's R558). `via_param` is the control, so every arm differs from it in
+  exactly one thing.
+- **It reopened R561 and R562 within minutes of existing.** Both fixes are real for a LOCAL abstraction:
+  `via_param_field`, `via_return` and `via_closure` all read `[Net]` with the trait declared locally.
+  With the SAME six shapes over a FOREIGN (chained-dependency) trait — the case ⟨0.39⟩ exists for — all
+  three read **ABSENT**, and the fix's own probe takes zero hits. **A local-only fixture would have
+  reported the class fixed**, which is why this part's dep is foreign.
+- Probe-covered (coverage floor 13 → 14): the fault is at the fixture — the implementor is rendered pure,
+  so the CONTROL stops resolving and the part must fail through its own verdict.
+
 - **R560's under-report half CLOSED (candor-ts `d534b62`)** — the `!eff` guard was the whole of it: κ's
   whole-module rule matched unconditionally and its truthy `eff` then SUPPRESSED the ⟨0.39⟩ obligation-3
   join, while the same report published the union entry carrying the real effect. **The row's scope was

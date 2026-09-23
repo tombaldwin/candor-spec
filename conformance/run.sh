@@ -2742,10 +2742,44 @@ P92_OK=0
 ) || { P92_OK=1; rc=1; }
 [ "$P92_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on c1_foreign_effectful is the silent-purity toggle itself; a ✘ on c2_zero_impl means a fix traded one silence for another; a ✘ on c3_pure_only or c4_sealed is the union FABRICATING an effect nobody implements; a ✘ on c5_unchained means the unchained reference stopped disclosing, and the toggle can no longer be read"
 echo "PART 92 — a chained consumer's inherited signature carries every visible implementor (SPEC §4 ⟨0.39⟩; SOUNDNESS R475)"
+
 # ENGINES: rust java ts swift
 # NOTE: all four, and all four FAIL the defect arm identically — measured against released artifacts at spec 0.38 (candor-scan 0.38.4, candor-java 0.38.3, candor-ts 0.38.3, candor-swift 0.38.3), never a working tree. The producer-side diagnostics the part prints show why: `dispatchesOn` is absent and `interfaceUnion` null in every producer report, so obligations 1 and 2 of ⟨0.39⟩ are unimplemented everywhere.
 # CONTROLS: c2_zero_impl c3_pure_only c4_sealed c5_unchained — c2_zero_impl is the toggle's other side and MUST stay a disclosed Unknown, so a fix cannot trade one silence for another; c3_pure_only is the FABRICATION guard, a consumer whose library has only a pure implementor anywhere is legitimately pure and must stay pure; c4_sealed pins that a sealed abstraction's union stays EXACT and gains no new hedge; c5_unchained is the unchained reference that makes "chaining DELETES the `invisible` disclosure" a measurement rather than a claim
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders c2_zero_impl's DEPENDENCY with the one-pure-implementor variant, so the arm that must stay a disclosed Unknown cannot be; all four engines go red (4 cells, exit 1). It corrupts the CHAINED INPUT rather than a comparison, which is the only thing that proves the dependency's content reached the consumer's scan. The xfail mechanism is calibrated separately by declaring an already-true expectation and observing exit 1.
+# PART 93 — RECEIVER-SPELLING INVARIANCE, FOUR-WAY. ONE dispatch, SIX spellings of the receiver.
+#
+# WHY IT EXISTS, and it is a day's evidence rather than a hypothesis: on 2026-09-23 five rust rows —
+# R556 (a `let`-position `dyn`), R561 (a closure parameter), R562 (a `dyn` FIELD and RETURN), R557 (a
+# `static`/`const` ITEM) and R564 (an Upper-initial BINDING NAME) — turned out to be ONE question asked
+# at six declaration sites. Each read ABSENT or `eff=∅`, a ⟨0.21⟩ purity claim, while the SAME dispatch
+# written as a signature parameter resolved; one of them was a live AWS SDK HTTP dispatch entry point.
+# The class is not rust's: swift's R550 was the same mistake in `FnInfo.genericBounds`, ts's R558 in a
+# first-class member reference.
+#
+# `via_param` is the CONTROL, so every other arm differs from it in exactly one thing: how the receiver
+# is spelled. An engine that resolves the control and not an arm did not judge that program — it failed
+# to ask. And the fixture's abstraction is FOREIGN on purpose: the same six shapes over a LOCAL trait
+# pass in rust today, so a local fixture would have reported this class fixed when it is not.
+[ -f "$HERE/gen_receiver_spelling.py" ] || { echo "FAIL: gen_receiver_spelling.py is missing"; exit 2; }
+echo
+echo "[93] one dispatch, six spellings of the receiver — the answer must not depend on which you write"
+P93_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_receiver_spelling.py"
+) || { P93_OK=1; rc=1; }
+[ "$P93_OK" = 0 ] || echo "  -> DIVERGE — the receiver's SPELLING decided whether a dispatch was seen; compare the failing arm against \`via_param\`, which is the same program one spelling over"
+echo "PART 93 — receiver-spelling invariance (SPEC §4 ⟨0.35⟩ disjunction; SOUNDNESS R556/R557/R561/R562/R564)"
+# ENGINES: rust java ts swift
+# CONTROLS: via_param — the signature-parameter spelling of the SAME dispatch, which every engine
+#   resolves, so each other arm is a one-variable comparison; plus the LOCAL-trait twin of the whole
+#   fixture, which rust PASSES on all six, and which is what proves the foreign xfails are a
+#   NARROWING of R561/R562 rather than the class being unfixed.
+# NOTE: java, ts and swift pass all six arms. rust xfails three — R562 (field, return) and R561 (closure)
+# are closed for a LOCAL abstraction and open for a FOREIGN one, which is what this part measured first.
 
 
 # ====================================================================================================
