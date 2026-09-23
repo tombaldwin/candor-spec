@@ -25,6 +25,21 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R524's ts half CLOSED (candor-ts `d46c098`)** — the foreign index-signature arm now joins to the
+  visible implementor rather than hedging. Two corrections to the diagnosed mechanism: the call is
+  answered by the CallExpression arm (`scan.mjs:8149`), not the desugared `chargeExternalDecl`, so a fix
+  at the named line would not have moved the fixture; and **controls 2 and 4 were in tension at HEAD**,
+  which is why the fix had to be precise rather than symmetric. A/B: ADDED 0, REMOVED 0, CHANGED 6 —
+  and 15 real third-party repos contributed **zero reach**, stated up front rather than found later.
+- **R558 (new, cardinal sin): an interface member passed as a FIRST-CLASS VALUE evaporates** —
+  `[n].map(d.roll)` is ABSENT from `functions[]` and `pure` exits 0 over a body that writes to disk,
+  while a plain function ref, a class member ref, and the same member CALLED all resolve `['Fs']`.
+  **It is the ts spelling of rust's R549 mechanism B, fixed today in `186e854`** — but worse: rust lost
+  the key, ts loses the whole row. java and swift are unswept.
+- **R560 (new, cardinal sin + fabrication): a κ whole-module rule fires on a call whose only link to the
+  package is its TYPE**, dropping the real effect and inventing another — `deny Fs` exits 0 while the
+  body writes, `deny Net` exits 1 while nothing dials.
+
 - **PART 92 gains `c11_local_impl_via_binding` — and it replaces a control that could not fail.** An
   implementor the consumer OWNS, reached through a local binding instead of a signature parameter:
   java, swift and ts all carry `['Net']`; **rust is SILENT on it**, neither the effect nor a disclosed
