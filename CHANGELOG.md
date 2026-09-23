@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R550 FIXED (candor-swift `92496cb`) — a CARDINAL SIN, and the IDENTICAL root cause as rust's R549 in
+  a second engine.** A generic bound written on the ENCLOSING TYPE was invisible to the dispatch
+  spelling, so `struct Box<B: Backend> { func boxSize }` read `inferred:[]` and `deny Net` exited 0 over
+  a call reaching `URLSession.dataTask`, while the function-level spelling of the same call exited 1.
+  In rust the blind index was `sig_trait_quals` missing `impl<T: Buf>`; in swift, `FnInfo.genericBounds`
+  missing a type-level bound. A/B over 11 packages incl. swift-nio-ssl/http2 chained onto swift-nio,
+  10,210 rows: ADDED 0, REMOVED 0, `inferred` CHANGED 0 — and the reach probe's 15 hits are all
+  name-only on that corpus, which the commit states rather than leaves to be found.
+- **R532b item (d) reclassified** — it was filed under "keys nobody can answer"; it is a lost key, a lost
+  effect and a gate flip.
+- **R555 (new): a guard written to exclude LOCAL abstractions is vacuous for nearly every abstraction it
+  was written for** — it tests `localTypes`, which protocols are deliberately kept out of.
+- **R548 fix built and DELIBERATELY REVERTED**: it made `c10` byte-match `c5` and A/B'd as pure
+  disclosure (ADDED 150, REMOVED 0, nothing lost), but candor-swift's own over-disclosure guard went red
+  on a platform-module receiver. The `c10_unchained_direct` swift XFAIL stays.
+
 - **R551 FIXED (candor-rust `0cc0b4e`)** — an extension trait's method was keyed to the base trait, which
   does not declare it: 31 of 53 malformed occurrences. A/B over three corpora including a 39-package
   CONTROL printing 0/0/0: ADDED 0, REMOVED 0, `inferred` unchanged; all 43 changed rows audited singly.
