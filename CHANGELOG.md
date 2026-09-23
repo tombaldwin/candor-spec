@@ -25,6 +25,15 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R522 CLOSED (candor-ts `a70e435`)** — an unwritable out-prefix ran a full successful scan and then
+  died with an uncaught `EROFS` stack trace: exit 1, no usage error, no refusal marker. R520's control
+  never caught it because that arm refuses at argv-parse time, a different code path — a neighbouring
+  green control reading as coverage. Portable regression added (`chmod 555`, not macOS SIP).
+- **R547's java half CLOSED (candor-java `85cb65c`)**, swift half still open. Written from a first-hand
+  three-arm measurement, whose chained arm independently confirms R533's shape in the reference engine.
+- **R524 re-verified present at HEAD and deliberately NOT fixed** — the row calls for a family-level
+  ruling and prohibits the obvious patch as non-additive for every dependency-typed callback.
+
 - **The open-defect list was under-reporting itself by nine rows (SOUNDNESS R553).**
   `soundness-status.py` substituted a negated closure away before testing, so a cell reading
   `Not fixed. … abc1234` lost its only status word and was filed under "neither clearly — read it"
