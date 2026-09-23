@@ -463,8 +463,15 @@ A call on a value typed as an interface/protocol *imported from a chained packag
 method signature, which has no body — so the chain join can miss it. An engine MAY expose the
 implementation-union as a synthetic `interfaceUnion: true` report entry (`hash: pkg#Iface.method`, effects =
 the union over local implementers), so the consumer's existing chain lookup resolves; and MAY auto-discover
-workspace deps with `--workspace`/`--deps`. **No longer gated: ⟨0.39⟩ (§4) is the floor rung that pins it, and both the foreign-abstraction entry and the consumer-side union are now REQUIRED.** (Until ⟨0.39⟩ this read *"Gated/opt-in until a floor rung pins it"* — recorded because the gate is exactly what let the silent-purity toggle survive in default scans.) NB the *silent-pure*
-form of this miss was candor-ts-specific; the other engines already fall to a disclosed `Unknown` here. When the field is absent, coverage is derivable from the entries' `hash`
+workspace deps with `--workspace`/`--deps`. **No longer gated: ⟨0.39⟩ (§4) is the floor rung that pins it, and both the foreign-abstraction entry and the consumer-side union are now REQUIRED.** (Until ⟨0.39⟩ this read *"Gated/opt-in until a floor rung pins it"* — recorded because the gate is exactly what let the silent-purity toggle survive in default scans.) NB **this sentence asserted the INVERSE of the truth until 2026-09-23, and it is corrected here rather than
+deleted, because the claim it made is exactly what a reader would have relied on to decide this needed no
+clause.** It read *"the silent-pure form of this miss was candor-ts-specific; the other engines already fall
+to a disclosed `Unknown` here"*. Measured four-way at HEAD on PART 92 arm `c9_consumer_zero_union` (the
+consumer's OWN foreign dispatch site with an empty implementor union): **candor-ts is the ONLY engine that
+discloses** — `eff=∅ unknown=True` — while java, rust and swift all read `eff=∅ unknown=False invisible=∅`,
+i.e. silent purity. SOUNDNESS R533 carries the four-way evidence and R546 records this correction. The
+direction matters for anyone pricing a tightening here: ts is the existence proof that disclosure ships, not
+the outlier that needed fixing. When the field is absent, coverage is derivable from the entries' `hash`
 prefixes (`pkg#…`), which an all-pure empty report does not have; emit the field.
 
 **The factory-bound receiver — `typeSurface`** ⟨0.23⟩ (design: `DEP-RECEIVER-TYPING-DESIGN.md`; produced and

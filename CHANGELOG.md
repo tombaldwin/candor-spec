@@ -25,6 +25,25 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §2's cross-package interface dispatch clause asserted the INVERSE of four-way behaviour
+  (SOUNDNESS R546).** It read *"the silent-pure form of this miss was candor-ts-specific; the other
+  engines already fall to a disclosed `Unknown` here"*. Measured at HEAD on PART 92's
+  `c9_consumer_zero_union`: candor-ts is the ONLY engine that discloses; java, rust and swift all read
+  `unknown=False invisible=∅`. Corrected in place rather than deleted, and the MUST-ledger entry
+  re-anchored by re-reading the clause against its part. This was the sentence a reader would have used
+  to conclude the case needed no clause.
+- **PART 92 gains `c10_unchained_direct` — the control `c9` never had (SOUNDNESS R548).** `c5_unchained`
+  pins "unchained discloses via `invisible`" for a consumer that calls a FREE FUNCTION; `c9` tests a
+  consumer that dispatches DIRECTLY on the value. Nothing pinned the direct shape UNCHAINED, so half the
+  claim was assumed. swift alone fails it — its consumer row goes ABSENT, an affirmative purity claim —
+  while java, rust and ts disclose. Declared in the arm-keyed XFAIL table against R548 and calibrated
+  both directions in the same commit.
+- **SOUNDNESS R547** — the silence at a foreign-abstraction dispatch is permitted by SPEC §4 only if
+  documented as a named miss (§7 item 7), and java and swift document nothing. candor-rust DOES
+  (`README.md:181`) and is not in the row; ts flags and owes nothing.
+
+Register: 459 rows, 56 open.
+
 ## [0.39.2] — 2026-09-22
 
 - **SOUNDNESS register: R544.** The umbrella's `release-preflight.sh` [10] reported a verifiably-pushed

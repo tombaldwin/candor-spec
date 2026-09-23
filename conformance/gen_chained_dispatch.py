@@ -191,6 +191,16 @@ ARMS = [
          want=dict(hasnt={EFFECT}, unknown=True),
          why="R533: the CONSUMER dispatches on a foreign abstraction nobody implements — an empty union "
              "must not read as purity"),
+    # SOUNDNESS R548 — c5's REFERENCE claim is about ONE consumer shape, and the other one behaves
+    # differently in one engine. c5's consumer calls a FREE FUNCTION that takes the abstraction
+    # (`iface.termSize(b)`); this arm dispatches DIRECTLY on the value (`b.size()`), which is the
+    # `nesteddispatch` body c9 uses — so this is c9 with the chaining removed, and it is the control c9
+    # never had. Without it "unchained discloses via `invisible`" was pinned for one body shape and
+    # ASSUMED for the other, in a part whose whole subject is that the two shapes resolve differently.
+    dict(id="c10_unchained_direct", iface="zero", third=True, chained=False, entry="nesteddispatch",
+         want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
+         why="R548/CONTROL for c9: unchained + DIRECT dispatch must disclose via `invisible` exactly as "
+             "c5 does through a free function — the body shape must not change whether anything is said"),
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
@@ -244,6 +254,15 @@ XFAIL = {
     # (`finishBodyLocalTypes` mints the body-local conformer). So all four engines now answer c8: rust by
     # DISCLOSING, the other three by COMPLETING — which is exactly the shape `disclosed` was added to
     # express, and the reason the arm did not have to prefer one.
+
+    # SOUNDNESS R548 — swift ALONE, and the tell is that it PASSES c5_unchained on the same dep with the
+    # same abstraction. The only thing that changes between them is the CONSUMER BODY: c5 calls a free
+    # function taking the abstraction, c10 dispatches directly on the value. java, rust and ts disclose
+    # `invisible:['iface']` on both; swift discloses on c5 and its consumer row goes ABSENT on c10 — an
+    # affirmative purity claim under SPEC §2 rule 3 over a call it cannot resolve. Not gate-affecting
+    # (`invisible` arms no policy form — R133, CLOSED as a documentation gap on Tom's 2026-09-03 ruling),
+    # which is exactly why it needs pinning rather than trusting: nothing else in the suite would notice.
+    ("c10_unchained_direct", "swift"): "R548",
 
     ("c9_consumer_zero_union", "rust"):  "R533",
     ("c9_consumer_zero_union", "java"):  "R533",

@@ -3296,10 +3296,10 @@
       "unenforced": "A MEASUREMENT RECORD AND A DRAFTING HISTORY, not an obligation a build can meet or fail — the same classification as the ⟨0.37⟩ measurement record one section over, and for the same reason: what it asserts is what PREVIOUS BINARIES did, and every conformance row measures ONE build. It is kept rather than trimmed because it now records the family's most expensive recurring shape twice over: the RULING's premise was measured false, and then EACH ENGINE'S FIRST FIX was bounded by its own closing fixture (rust's arms were both external, swift's both project-declared), so neither could see the MIXED set and both needed a second round. The enforceable half IS pinned — PART 89, all nine arms, both engines — and the xfail mechanism that held the gap open in the meantime is described in that part's own header."
     },
     {
-      "sha": "b0e24764186dcacd",
+      "sha": "2b45cd153fe6a4e1",
       "at": "2. The report",
       "excerpt": "**Cross-package interface dispatch** (design: `WORKSPACE-CHAINING-DESIGN.md`, prototype in candor-ts 0.22). A ",
-      "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — the §2 gate this rung removes is exactly what let the silent-purity toggle survive in default scans; c1/c3 are the chained arms that read it"
+      "part": "PART 92 — the CHAINED-DISPATCH UNION differential (conformance/gen_chained_dispatch.py) — the §2 gate this rung removes is exactly what let the silent-purity toggle survive in default scans; c1/c3 are the chained arms that read it RE-ANCHORED 2026-09-23 (SOUNDNESS R546): the statement's sha moved because a FACTUAL NB inside the block was corrected — it asserted the silent-pure form was candor-ts-specific, which measured INVERTED four-way at HEAD. The NORMATIVE content is unchanged, so PART 92 still exercises it; re-confirmed by re-reading the clause against the part, not by assuming the reword was cosmetic."
     },
     {
       "sha": "d4a6fec0b569a7ee",
