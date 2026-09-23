@@ -25,6 +25,17 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R549 (new, shipped 0.39.2): a published `dispatchesOn` key names a member the named trait does not
+  declare, so no consumer can ever join it** — and ⟨0.39⟩ obligation 3 *is* the join. On `tower`, 11 of 19
+  distinct keys are `tower_service#Service::<member>` for members `Service` does not have (`map_err`,
+  `clone`, `load`, `make_service`…); `Service` declares only `call` and `poll_ready`. The engine already
+  filters these keys by OWNER (`scan.rs:3852`, "a key no consumer could ever join is not harmless") and
+  never checks the MEMBER.
+- **R533 rust re-priced with conjunct 4: 3.68% → 1.93%**, below the 2.60% precedent that was declined.
+  Corrects an earlier claim in the same row: tower carries 80 local `impl … Service<` sites, so about
+  half its `Service::call` rows have a local answer and are NOT R533's case. R549 makes 1.93% an upper
+  bound — rust gets re-priced after that fix, not before.
+
 - **R533 rust A/B: 3.68%, and conjunct 5 turns out to be COMPLEMENTARY to this rung, not a superset.**
   Prototype env-gated behind `CANDOR_R533_PROTO` so both arms are one binary; prototype-OFF verified
   identical to HEAD. 97 of 2,637 analyzed functions gain `Unknown`, zero lose an effect, 118 reach
