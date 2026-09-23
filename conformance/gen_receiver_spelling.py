@@ -63,6 +63,8 @@ ARMS = [
     ("via_return",  "the return of a local factory (R562)"),
     ("via_static",  "a static / module-level item — it passes through no binding site (R557)"),
     ("via_closure", "a closure parameter (R561)"),
+    ("via_field_qualified",
+                    "the SAME field, with the trait written INLINE as `dep::Q` instead of imported — the\n                     one variable that actually decides it (R577); rust only, others resolve both"),
 ]
 
 # XFAIL is arm-keyed and names a ROW, never a bare engine: a PASSING xfail is a FAILURE here, so a line
@@ -78,26 +80,51 @@ XFAIL = {
     #
     # So the rows are closed for the local abstraction and open for the foreign one, which is why this
     # part uses a FOREIGN dep: a local-only fixture would have passed and reported the class fixed.
-    ("via_field",   "rust"): "R562",
-    ("via_return",  "rust"): "R562",
-    ("via_closure", "rust"): "R561",
+    # RETIRED 2026-09-24 by the code review of this very part. These three were declared on the belief
+    # that R561/R562 were "closed for a LOCAL abstraction, open for a FOREIGN one". That was WRONG, and
+    # the part's own fixture was what made it look right: it wrote the bound inline as `&dyn dep::Q`
+    # while the local comparison used a bare leaf. With the trait IMPORTED all three resolve. The real
+    # variable is the QUALIFICATION SPELLING at the declaration site, and it is carried below.
+    ("via_field_qualified", "rust"): "R577",
     # `via_self_field` (a field reached through `self` inside an impl) is ABSENT in BOTH the local and
     # foreign arms — a smaller, separate gap recorded on R562 rather than given an arm here, because this
     # part varies the RECEIVER's spelling and that one varies the enclosing context too.
 }
 
 RUST_DEP = 'pub trait Q { fn fetch(&self) -> usize; }\n'
-RUST_APP_T = '''pub struct L;
-impl dep::Q for L { fn fetch(&self) -> usize { %s 0 } }
+# THE `use` IS LOAD-BEARING AND WAS MISSING: without it `S.fetch()` does not COMPILE (`E0599` — a trait
+# method needs its trait in scope), and this generator was asserting six results off a program rustc
+# rejects. candor-scan is syntactic and analyses it happily, which is exactly why §E3 exists: the scan
+# working is not the program building. Found by the code review of PART 93 itself.
+#
+# It also turned out to be the VARIABLE. Writing the bound inline as `&dyn dep::Q` makes `via_field`,
+# `via_return` and `via_closure` read ABSENT; writing `use dep::Q;` + `&dyn Q` makes all six resolve —
+# because `trait_fields`, `rets` and R561's closure arm record only the BARE LEAF, and the foreign branch
+# is gated on `full.contains("::")` after expanding that leaf through the file's `use` map. So the arms
+# below carry the IMPORTED spelling (which every engine resolves) and `via_field_qualified` carries the
+# inline one, which is where the defect actually lives. R561/R562's "local vs foreign" framing was mine
+# and was wrong: the local fixture happened to use a bare leaf.
+RUST_APP_T = '''use dep::Q;
+pub struct L;
+impl Q for L { fn fetch(&self) -> usize { %s 0 } }
 pub static S: L = L;
-pub struct Holder { pub inner: Box<dyn dep::Q> }
-pub fn mk() -> Box<dyn dep::Q> { Box::new(L) }
-pub fn via_param(q: &dyn dep::Q) -> usize { q.fetch() }
-pub fn via_let() -> usize { let q: &dyn dep::Q = &L; q.fetch() }
+pub struct Holder { pub inner: Box<dyn Q> }
+pub fn mk() -> Box<dyn Q> { Box::new(L) }
+pub fn via_param(q: &dyn Q) -> usize { q.fetch() }
+pub fn via_let() -> usize { let q: &dyn Q = &L; q.fetch() }
 pub fn via_field(h: &Holder) -> usize { h.inner.fetch() }
 pub fn via_return() -> usize { mk().fetch() }
 pub fn via_static() -> usize { S.fetch() }
-pub fn via_closure() -> usize { let f = |q: &dyn dep::Q| q.fetch(); f(&L) }
+pub fn via_closure() -> usize { let f = |q: &dyn Q| q.fetch(); f(&L) }
+// R577 — the inline-qualified spelling, in a module with NO `use` for the trait. That distinction is the
+// whole arm: `trait_fields` records the bare LEAF, and the foreign branch expands it through the FILE's
+// `use` map, so the same field resolves in a scope that imports the trait and vanishes in one that does
+// not. A `dyn` receiver needs no import to compile (only the concrete `static` above does), so this is a
+// program rustc accepts.
+pub mod noimport {
+    pub struct HolderQ { pub inner: Box<dyn dep::Q> }
+    pub fn via_field_qualified(h: &HolderQ) -> usize { h.inner.fetch() }
+}
 '''
 
 JAVA_DEP = 'package dep;\npublic interface Q { int fetch(); }\n'
@@ -118,6 +145,9 @@ public class App {
     java.util.function.Function<dep.Q, Integer> f = q -> q.fetch();
     return f.apply(new L());
   }
+  // R577's arm: java has no inline-vs-imported distinction — the fully-qualified name IS the type —
+  // so this is the same field spelling and MUST pass. It is the control that keeps rust's xfail honest.
+  public static int viaFieldQualified(Holder h) { return h.inner.fetch(); }
 }
 '''
 
@@ -134,7 +164,7 @@ export function via_field(h: Holder): number { return h.inner.fetch() }
 export function via_return(): number { return mk().fetch() }
 export function via_static(): number { return S.fetch() }
 export function via_closure(): number { const f = (q: Q) => q.fetch(); return f(new L()) }
-'''
+export function via_field_qualified(h: Holder): number { return h.inner.fetch() }\n'''
 
 SW_DEP = 'public protocol Q { func fetch() -> Int }\n'
 SW_APP_T = '''import Dep
@@ -152,7 +182,7 @@ public func via_field(_ h: Holder) -> Int { return h.inner.fetch() }
 public func via_return() -> Int { return mk().fetch() }
 public func via_static() -> Int { return S.fetch() }
 public func via_closure() -> Int { let f: (Q) -> Int = { q in q.fetch() }; return f(L()) }
-'''
+public func via_field_qualified(_ h: Holder) -> Int { return h.inner.fetch() }\n'''
 
 # The engines name the same function differently; the ARM is the question, not the identifier.
 NAMES = {

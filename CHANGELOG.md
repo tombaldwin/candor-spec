@@ -25,6 +25,25 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **CODE REVIEW of the 2026-09-23 wave — three reviewers, one per engine, ~3,300 lines of engine source.
+  Ten rows filed, and the wave introduced an over-charge in THREE engines.**
+  - **R571 (rust), R574 (ts), R580 (swift)** — each of yesterday's fixes traded a little precision for the
+    disclosure it added, and **all three A/Bs missed it.** rust: a `dyn` binding anywhere in a body
+    licenses CHA on unrelated monomorphized receivers. ts: removing `!eff` added a fabricated `Exec` to a
+    call κ had already answered precisely. swift: a filter applied before the shadowing precedence.
+  - **R577 corrects PART 93 and two of my own rows.** R561/R562 were recorded as "closed for a LOCAL
+    abstraction, open for a FOREIGN one". Wrong — the variable is the trait's QUALIFICATION SPELLING, and
+    my local fixture happened to use a bare leaf. **PART 93's rust fixture did not even compile** (`E0599`,
+    a trait method needs its trait in scope) and was asserting six results off a program rustc rejects.
+    Fixed, three stale XFAILs retired, and one arm added that varies the real thing.
+  - **R543's four corpus findings ALL have a named mechanism now**: R570 (clap), R576 (serde), R572
+    (Alamofire), R578+R579 (swift-argument-parser). Three are separate pre-existing cardinal sins.
+  - **R573 (ts)** — five call spellings that provably write a file report `inferred: []`, found only
+    because the reviewer measured all four policy forms; blanket `deny` exits 1 on every arm.
+  - **R581** — R563 took R550's and R555's corpus reach to ZERO four hours after they were filed, so
+    re-running those probes now reads 0 and would call both changes inert. Nothing was lost (LOST 0,
+    GAINED 216); the probe counts a BRANCH, and a later fix re-routed the work through another one.
+
 - **R543's two rust corpus findings re-examined at HEAD — they are not one thing.** clap is EXPLAINED and
   split out as **R570**: `OsStringValueParser::parse_ref` calls `TypedValueParser::parse(self, …)`, a
   fully-qualified trait call, and that is a SEVENTH receiver spelling in today's vein — reproduced on a
