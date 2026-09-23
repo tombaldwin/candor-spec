@@ -61,6 +61,12 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 # closed-with-fix it started in, but still not the list its author put it on. Anchored to the START of
 # the cell so the WORD "open" in ordinary prose ("an open question", "left open by") cannot trigger it.
 _DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*OPEN\b')
+# SOUNDNESS R553 — A DECLARATION OF NON-CLOSURE AT THE HEAD OF THE CELL, which is a status claim, as
+# opposed to a negation buried in prose and SCOPED TO SOME OTHER WORK ("surfaced by the R519 work and NOT
+# closed by it"), which is not. Anchored for exactly the reason `_DECLARED_OPEN` is: the first thing the
+# cell says is the row's own verdict; anything later is commentary about something else. The selftest
+# case for that scoped shape is what stopped this being written unanchored — it must stay `cites-a-sha-only`.
+_DECLARED_NOT_FIXED = re.compile(r"^\s*(?:\*\*|__)?\s*(?:not|never)\s+(?:yet\s+)?(?:fixed|closed|resolved)\b", re.I)
 
 
 def _idkey(rid):
@@ -73,11 +79,27 @@ def _idkey(rid):
 def bucket(line, outcome=None):
     if outcome is not None and _DECLARED_OPEN.match(outcome):
         return "open"
+    declared_not_fixed = outcome is not None and bool(_DECLARED_NOT_FIXED.match(outcome))
     line = _NOT_A_VERDICT.sub(" ", line)
+    # SOUNDNESS R553 — AN EXPLICIT "NOT FIXED" OUTRANKS AN INCIDENTALLY-CITED SHA, and until 2026-09-23
+    # it did not. The negation was SUBSTITUTED AWAY before the test ran, so a row reading
+    # `Not fixed. … measured at abc1234` lost its only status word, matched FIXSHA on the incidental
+    # commit, and landed in `cites-a-sha-only` — a bucket the report prints as "read these, they are
+    # neither clearly". EIGHT of the twelve rows in that bucket said "Not fixed" in plain English.
+    #
+    # The consequence is the one that matters: `open` is THE SHIPPING-DEFECT LIST, and eight defects
+    # that declared themselves open were being kept off it by a commit hash. The count this tool prints
+    # was an UNDER-REPORT — the same class it exists to find, in the instrument that finds it. That is
+    # the third defect of this shape in this file (reading `Not fixed.` as FIXED hid 32 rows; sweeping
+    # the accepted-floor table added 38 phantom ones).
+    #
+    # A POSITIVE closure word still wins, deliberately: a row that says both is a row where something
+    # WAS closed, and `closed-with-fix` sends a human to read it.
     line = _NEGATED_CLOSURE.sub(" ", line)
     w, s = bool(CLOSURE.search(line)), bool(FIXSHA.search(line))
     if w and s:  return "closed-with-fix"      # a defect, and here is the commit
     if w:        return "resolved-no-fix"      # declined / refuted / accepted limit — a DECISION, not a fix
+    if declared_not_fixed: return "open"       # the cell OPENS by saying it is not fixed; a cited commit does not overrule that
     if s:        return "cites-a-sha-only"     # odd; read it
     return "open"                              # nothing claims this is resolved
 
@@ -166,6 +188,18 @@ def selftest():
     cases = [
         # (text, expected bucket)
         ("Not fixed. One producer, or a normalisation at the writer.",          "open"),
+        # SOUNDNESS R553 — THE SAME DECLARATION, PLUS AN INCIDENTAL COMMIT. Before 2026-09-23 the
+        # negation was substituted away BEFORE the test ran, so the row lost its only status word,
+        # matched FIXSHA on a commit it merely cites, and landed in `cites-a-sha-only`. NINE rows did
+        # this — R126/R137/R138/R162/R202/R213/R225/R231/R369 — every one of them saying "Not fixed" in
+        # plain English while absent from the list this tool calls the shipping-defect list.
+        ("Not fixed. The remedy is known; measured at `abc1234`.",              "open"),
+        ("Not yet fixed — see the A/B in `deadbee1`.",                          "open"),
+        ("**Not fixed.** The gap is the finding. `0123456`",                    "open"),
+        # …AND THE NEAR-MISS THAT MUST NOT MOVE, which is why the rule is ANCHORED to the head of the
+        # cell. A negation buried in prose and scoped to SOME OTHER WORK is not this row's verdict. The
+        # unanchored version of this fix broke the case below, and the selftest is what caught it.
+        ("R519's work surfaced it and did not close it; not fixed there. `82da250`.", "cites-a-sha-only"),
         ("Not yet fixed — the remedy is known.",                                "open"),
         # R524's exact shape, and the bucket is `cites-a-sha-only` rather than `open` ON PURPOSE: it
         # cites a SHA (to name the work that did NOT close it) while making no closure claim, so the

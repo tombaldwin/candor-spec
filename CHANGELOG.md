@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **The open-defect list was under-reporting itself by nine rows (SOUNDNESS R553).**
+  `soundness-status.py` substituted a negated closure away before testing, so a cell reading
+  `Not fixed. … abc1234` lost its only status word and was filed under "neither clearly — read it"
+  because of a commit it merely cites. Nine rows, every one saying "Not fixed" in plain English.
+  The first fix was too wide and the selftest caught it: the landed rule is anchored to the head of the
+  cell, so a negation scoped to other work still reads as limbo. **460 rows, 65 open.**
+
 - **R549's fn-ref half is FIXED in candor-rust `186e854`** — the half that lost a key. The predicate is a
   new additive index (`bound_trait_leaves`), not `trait_quals`; A/B over six chained pairs shows 0 effect
   rows changed, 12 dispatch keys added, 0 lost. Mechanism A and the chain-drift half stay open.
