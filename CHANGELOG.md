@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R533 (the ⟨0.40⟩ candidate) is PRICED on java, and it comes in at one third of the precedent that
+  was declined.** Nine chained JVM library pairs, 48,116 analyzed functions, chained via `CANDOR_DEPS`
+  and differenced with `bin/corpus-ab.py`: the broad form costs **0.87% of analyzed functions with ZERO
+  effect losses**, against the **2.60%** in-crate hedge ⟨0.39⟩ declined and the **2.1%** this same form
+  measured in July at ⟨0.23⟩. The narrow form is a strict subset of that. No clause is drafted — rust and
+  swift are still owed, and the row's "DO NOT DRAFT IT YET" stands.
+
 - **SPEC §2's cross-package interface dispatch clause asserted the INVERSE of four-way behaviour
   (SOUNDNESS R546).** It read *"the silent-pure form of this miss was candor-ts-specific; the other
   engines already fall to a disclosed `Unknown` here"*. Measured at HEAD on PART 92's
