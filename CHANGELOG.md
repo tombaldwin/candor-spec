@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R533 rust census — and the finding is about the INSTRUMENT.** Six chained crate pairs in the
+  `tower`/`http-body` vein, stock HEAD engine (rust already emits `dispatchesOn` for keys it cannot
+  answer, so no prototype was needed): 102 of 2,637 analyzed functions (3.87%) dispatch on a key nothing
+  answers and still read pure. **The same census on java gives 5.56% where java's measured A/B cost is
+  0.87% — the census overstates the rule by 6.4×.** So it is an upper bound, and the only defensible
+  cross-engine claim is like-for-like: rust (3.87%) is CHEAPER than java (5.56%) on the identical
+  instrument, not the expensive outlier the ⟨0.39⟩ paragraph predicted. `tower` alone carries 98 rows
+  dispatching on `tower_service#Service::call`, every one `inferred: []`, while `tower-service` publishes
+  zero union entries — R533's NARROW case, live.
+
 - **R533 (the ⟨0.40⟩ candidate) is PRICED on java, and it comes in at one third of the precedent that
   was declined.** Nine chained JVM library pairs, 48,116 analyzed functions, chained via `CANDOR_DEPS`
   and differenced with `bin/corpus-ab.py`: the broad form costs **0.87% of analyzed functions with ZERO
