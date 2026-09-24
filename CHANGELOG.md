@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R572 FIXED (candor-swift `5b2dc0e`) — a cardinal sin, 8 live violations in Alamofire — and the OBVIOUS
+  fix would have introduced a fresh one.** Substituting `matchOverloads` for `resolveQual` is a REMOVAL
+  smuggled into an additive change: the signature-suffixing pass skips accessor units, so an overloaded
+  base can still have real units under the bare name (45 such in swift-argument-parser). Measured: that
+  form lost call edges on 10 corpus rows and took one arm from `[Net]` to `[]`. The landed fix UNIONS.
+  A/B over 7 packages / 8,091 rows: ADDED 0, REMOVED 0, CHANGED 184, and **0 rows lost an effect, a call
+  edge, or a wire key**; 817 edges and 93 keys gained. The residual over-charge is named, not waved at.
+- **R580 FIXED (`42bb6c1`)** — precedence first, filter second. Its 0/0/0 is retired honestly: an
+  independent **source census** (1,027 files, 46 generic functions inside generic types) found 0
+  instances of the shape, so the zero is a property of the shape and not of the corpus.
+- **R584 (new): the CLASS half of type-receiver dispatch is silent** — every protocol spelling resolves,
+  all five class spellings are ABSENT with `deny Net` and `pure` both exit 0. R563 closed the protocol
+  half and the class half was never asked. Corpus reach could not be established and is reported as that.
+
 - **R574 FIXED (candor-ts `6be1c47`) — and the premise I filed it on was wrong in a load-bearing way.**
   The `Exec` is not peculiar to κ-classified packages: the same consumer against a NON-κ package reads
   `['Exec']` at `d46c098` too. R560 widened the SCOPE of a shipped ⟨0.35⟩ over-approximation, not its
