@@ -85,7 +85,16 @@ XFAIL = {
     # the part's own fixture was what made it look right: it wrote the bound inline as `&dyn dep::Q`
     # while the local comparison used a bare leaf. With the trait IMPORTED all three resolve. The real
     # variable is the QUALIFICATION SPELLING at the declaration site, and it is carried below.
-    ("via_field_qualified", "rust"): "R577",
+    # RETIRED 2026-09-24 — candor-rust `845cb32` (R577): a declaration site now carries its own crate
+    # qualification, shared through one `syn::visit` that has no arm set of its own so it cannot drift
+    # from the sites it serves. All four engines resolve this arm.
+    #
+    # AND THE ARM WAS NEVER MEASURING WHAT IT CLAIMED. Its consumer writes `use dep::Q;` at FILE scope
+    # and puts the inline-qualified field in `mod noimport` below it — but rust's `use` map is FILE-scoped,
+    # not module-scoped, so the submodule never escaped the import. It only ever read ABSENT because this
+    # file's judge split a qualified name on `.` alone and could not find `noimport::via_field_qualified`
+    # at all. A false xfail that looked exactly like the defect it was written for. Both are fixed; the
+    # arm stays as a four-way regression pin for the qualification path.
     # `via_self_field` (a field reached through `self` inside an impl) is ABSENT in BOTH the local and
     # foreign arms — a smaller, separate gap recorded on R562 rather than given an arm here, because this
     # part varies the RECEIVER's spelling and that one varies the enclosing context too.
@@ -196,7 +205,14 @@ NAMES = {
 def judge(rows, arm, lang):
     """PRESENT, and either carrying the effect or disclosing. ABSENT is the defect this part is about."""
     want = NAMES[lang](arm)
-    hit = [f for f in rows if (f.get("fn") or "").split(".")[-1] == want]
+    # SPLIT ON BOTH SEPARATORS. rust qualifies a module path with `::` and the others with `.`, so a
+    # `.`-only split left `noimport::via_field_qualified` unmatched and this judge reported it ABSENT —
+    # a FALSE xfail that looked exactly like the defect the arm was written for, and stayed hidden
+    # because every other arm sits at file scope and has no module prefix at all. Found when a fix for
+    # R577 did not retire the xfail it should have.
+    def _leaf(name):
+        return (name or "").replace("::", ".").split(".")[-1]
+    hit = [f for f in rows if _leaf(f.get("fn")) == want]
     if not hit:
         return False, "ABSENT from functions[] — a purity claim (SPEC §2 rule 3)"
     f = hit[0]

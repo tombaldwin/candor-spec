@@ -25,6 +25,26 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R584 FIXED (candor-swift `1edf1ee`/`c40ffc5`)** — the class half of type-receiver dispatch. The ruling:
+  a class hierarchy is NOT a protocol conformer set, so the generic/metatype spelling resolves to exactly
+  what the LITERAL spelling of the same call resolves to — no ≤12 cap, no hedge, because the literal has
+  neither and one program must not answer two ways depending on how its receiver was written. 15
+  packages / 33,434 rows: `inferred` 0/0/0, 117 wide rows audited with zero values lost.
+- **R577 and R582 FIXED (candor-rust `845cb32`)**; **R573 FIXED (candor-ts `6b55ed6`)**.
+- **Three of my rows were wrong and the lanes said so.** R573's scope was five spellings — the real set is
+  **fifteen**, and its stated remedy (mine) closes three and structurally cannot close the rest (R587).
+  R582's stated mechanism was not the mechanism — the inline `for x in vec![s]` with no binder is equally
+  absent, so it is a missing collection-LITERAL arm, not the `let` binder (R586).
+- **PART 93's `via_field_qualified` arm was a FALSE xfail** — its `use` sits at FILE scope, which a
+  submodule cannot escape, and the judge split a qualified name on `.` alone so
+  `noimport::via_field_qualified` never matched at all. It was reporting ABSENT because of my own
+  name-matching bug, in the shape of the defect it was written for. Both fixed; xfail retired.
+- **R585 (new): a metatype receiver resolves only as a function/initializer PARAMETER** — six other
+  binders drop it, in the class half and in R563's protocol half. Its documentation half is closed:
+  AGENTS.md asserted the contract holds "however the receiver was bound", true of a value receiver and
+  false of a type one — a documented guarantee licenses narrowing, so it converts into a silent
+  under-report.
+
 - **R572 FIXED (candor-swift `5b2dc0e`) — a cardinal sin, 8 live violations in Alamofire — and the OBVIOUS
   fix would have introduced a fresh one.** Substituting `matchOverloads` for `resolveQual` is a REMOVAL
   smuggled into an additive change: the signature-suffixing pass skips accessor units, so an overloaded
