@@ -46,6 +46,7 @@ run "field_audit"          python3 conformance/field_audit.py
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
 run "rung_ladder"          python3 scripts/rung-ladder-check.py
 run "check_soundness_tables" python3 scripts/check_soundness_tables.py
+run "sha_citations"        python3 scripts/sha-citations.py --check
 # The STATUS tool gates itself, added 2026-09-21. It is not a document check — it is the instrument that
 # prints "THIS is the shipping-defect list" — and for its whole life it read `Not fixed.` as FIXED,
 # because CLOSURE matched the word and nothing looked left of it. 43 rows were in the wrong bucket and 32

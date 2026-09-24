@@ -7,7 +7,7 @@ the fix, and the gates. Entries sit in chronological order; new ones append at t
 are append-only history — corrections are appended, never edited in. The index table in
 SOUNDNESS.md §8.1 is the one-line-per-entry view.
 
-### 2026-08-24 — `"peeked": "true"` deleted a refusal: the coercion class, four instances (candor-java `0d9e7fc`)
+### 2026-08-24 — `"peeked": "true"` deleted a refusal: the coercion class, four instances (candor-java `24e4cba`)
 
 **The sin.** `Query.readEnvelope` read `excluded[].peeked` with `getAsBoolean()`. Gson answers
 `Boolean.parseBoolean` on a JSON *string*, so `"peeked": "true"` — a string where a boolean belongs —
@@ -41,7 +41,7 @@ been — nothing decides on that token. That would have been a fail-closed regre
 fail-open repair; it withholds and answers, with a control row saying why.
 
 **Pinned:** PART 62's `peeked`-corruption cell, four-way over `"true"`/`"false"`/`1`/`0`/`null`/`{}`/
-`[]`/absent plus the `bool-true`/`bool-false` over-charge pair (candor-spec `3d3af89`). All four engines
+`[]`/absent plus the `bool-true`/`bool-false` over-charge pair (candor-spec `a8c209a`). All four engines
 clean on every shape at HEAD; the arm was falsified by injecting `bool-true` into the shape set. This is
 the FOURTH type-coercion bug to delete a refusal in this family — JS truthiness, Foundation bridging
 integer `1` to a number `as? Bool` accepts, `Gson.getAsBoolean` on `judgedElsewhere`, and now on
@@ -57,7 +57,7 @@ implicit-conversion 6-sub-case probe) each found 0 silent; the 9th (rust-deep
 fire-forget/lazy-init/deferred-iterator probe, candor-rust `8bf9c6b`) found 1 — the lazy-init
 forcing site read pure (effectful `LazyLock` init charged to the static, never to the forcing fn).
 FIXED + gated (ui/deferred_effects.rs); the other two seams were already caught. The 10th (agents
-seam battery, candor-agents `755216a`) found 1 — named-delegation narrowing trusted a prompt mention
+seam battery, candor-agents `71a6cc7`) found 1 — named-delegation narrowing trusted a prompt mention
 as proof of the spawn set, silently dropping unmentioned-but-spawnable agents. FIXED
 (allowlist→sound, bare-Agent→disclosed Unknown) + gated (test.py). The 11th (rust-deep
 `thread_local!` probe) found 1 — R13, a `.with()`-forced thread_local read pure (effect orphaned in
@@ -77,7 +77,7 @@ receiver→ctor-arg escape provenance (the infra exists; CHA-blanket rejected by
 precision design) and the idiom is rare, so it's tracked as a low SILENT residual rather than
 rushed. SWEEP COMPLETE: write-fmt writer side assessed across ALL engines — silent in 4
 (deep/scan/swift/java), FIXED in 3, java tracked (R16). R16 since FIXED (candor-java 0.5.40
-`5f86d3e`, constructor-site reentry) — so the write-fmt writer-side class is now closed in ALL 4
+`efc88f5`, constructor-site reentry) — so the write-fmt writer-side class is now closed in ALL 4
 engines. Convergence: 17 rounds, ~14 finds, ALL 14 fixed. Also validated on real code: PetClinic
 dogfood (the JVM gate works end-to-end, 0 Unknown, caught a real cross-layer smell) + the gson
 InetAddress catch.
@@ -108,7 +108,7 @@ modelOutputStreamCall). Gated by ui/write_trait.rs (deep), the write_macro test 
 
 The candor-java analog (R16, the 4th engine with the class): a custom effectful
 `Appendable`/`Writer` wrapped in a JDK `Formatter`/`PrintWriter` and driven by `format`/`printf`
-read PURE. FIXED 2026-06-18 (candor-java 0.5.40 `5f86d3e`) via a CONSTRUCTOR-site reentry: at
+read PURE. FIXED 2026-06-18 (candor-java 0.5.40 `efc88f5`) via a CONSTRUCTOR-site reentry: at
 `new Formatter(Appendable)` / `new PrintWriter(Writer|OutputStream)` / `new PrintStream(OutputStream)`,
 edge the enclosing method to the sink arg's `append`/`write` (new C_APPEND/C_WRITE contracts,
 by-name reentryEdge over the arg's declType, same machinery as compareTo). Resolve-or-skip → a std
@@ -202,7 +202,7 @@ Verdict: candor's bytecode analysis is language-shape-robust — PRECISE where t
 resolvable (Java, Kotlin incl. coroutines), HONEST `Unknown` where it's genuinely dynamic (Groovy). The
 cardinal-sin floor holds across the JVM-language surface, not just Java. Find-rate on this NEW axis = 0.
 
-### 2026-06-21 — real-app dogfood → κ batch 24: Hibernate-6 / Jakarta Data (candor-java 0.7.9 `ed231ed`)
+### 2026-06-21 — real-app dogfood → κ batch 24: Hibernate-6 / Jakarta Data (candor-java 0.7.9 `4231ed6`)
 
 The Bet-1 case-study work ran candor on five real third-party JVM projects (two Spring apps, a Kotlin app,
 a Quarkus app, the gson library). Four resolved cleanly. The Quarkus **Hibernate ORM / Jakarta Data
@@ -231,7 +231,7 @@ of every framework enumerated). The latter is open-ended and best driven by dogf
 framework can surface a vein, always disclosed `invisible` first (never silent), then optionally mined for
 precision. Hibernate was the dominant-ORM instance; the same loop applies to the next unmodeled framework.
 
-### 2026-06-21 — κ batch 25: Quarkus Panache → Db (candor-java post-0.7.9 `cf359ce`)
+### 2026-06-21 — κ batch 25: Quarkus Panache → Db (candor-java post-0.7.9 `fdd2278`)
 
 **A genuine SILENT-PURE cardinal sin, NOT just an `invisible` gap.** Continuing the dogfood thread to
 Quarkus's *other* (and dominant) persistence — Panache active-record (`Fruit.listAll()`, `f.persist()`) +
@@ -250,7 +250,7 @@ call owner is a project class), it reads silent-pure, not invisible. That shape 
 dogfooding the next framework (active-record / base-class-mixin APIs, not just repository/builder APIs whose
 calls keep an external owner).
 
-### 2026-06-21 — κ batch 26: the inherited-into-project vein class swept (candor-java post-0.7.9 `32229da`)
+### 2026-06-21 — κ batch 26: the inherited-into-project vein class swept (candor-java post-0.7.9 `93c3116`)
 
 Rather than wait for the next framework, probed the persistence ecosystem for batch 25's shape directly (an
 external stub base + a project subtype + the inherited call, scan only the project). Spring Data was the
@@ -264,7 +264,7 @@ for the major JVM persistence frameworks (Spring/Jakarta Data/Panache/Micronaut 
 Hibernate/JPA + Panache/Ebean/ActiveJDBC active-record + jOOQ DAO). The general METHOD (external-stub probe of
 any base-class API) is the reusable instrument for the next framework.
 
-### 2026-06-21 — κ batch 27: general fix for classify-MODELED bases (candor-java post-0.7.9 `7421301`)
+### 2026-06-21 — κ batch 27: general fix for classify-MODELED bases (candor-java post-0.7.9 `699c1ea`)
 
 Batches 24–26 covered bases candor does NOT model at the leaf (via repoTypes/AR_DB_BASES
 registries). The complementary case: a project class subclasses a base candor DOES model at the leaf, and calls
@@ -342,7 +342,7 @@ unresolved-dispatch disclosure. So the deeper param-taint fix is NOT warranted f
 abstract-stream-with-unknown-concrete; a new kind would break the 4-kind vocabulary for a 0-occurrence
 case, so unchanged.)
 
-### 2026-07-06 — κ batch 28: the legacy-enterprise frontier (candor-java post-0.8.2 `aefca4f`)
+### 2026-07-06 — κ batch 28: the legacy-enterprise frontier (candor-java post-0.8.2 `dae561b`)
 
 **JCL / Joda-Time / commons-lang3 / hibernate.criterion / Struts 1.x.** Found by dogfooding a real
 2,257-class Struts webapp whose κ ledger listed 81 packages — dominated by struts (5,502 calls),
@@ -374,7 +374,7 @@ silent-invisible now read honest-Unknown. More honesty, not less precision — t
 contract orders these. Residual ledger heads (commons-validator 95, threeten-extra 61, jsonwebtoken 31)
 are future batch candidates.
 
-### 2026-07-06 — κ batch 29: the next tier, same discipline (candor-java `2575683`)
+### 2026-07-06 — κ batch 29: the next tier, same discipline (candor-java `d8035d3`)
 
 The dogfood app's complete 68-member frontier into the residual heads, triaged member-by-member.
 Pure-surface coverage: commons-validator (predicates), commons-beanutils (property shuffling), displaytag
@@ -390,7 +390,7 @@ namespace can inflate a report with disclosure noise, and coverage legitimately 
 trajectory across batches 28+29: ledger 81 → 64 → 49 packages; the top head fell from 5,502 calls (struts)
 to 25 (jackson-databind — the one broadly-valuable batch-30 candidate; the rest is long tail).
 
-### 2026-07-06 — κ batch 30 + 30b: Jackson, and a live SILENT-NET find (candor-java `cd617cb`)
+### 2026-07-06 — κ batch 30 + 30b: Jackson, and a live SILENT-NET find (candor-java `f434361`)
 
 Jackson yields to ONE descriptor-driven rule (a File/Path parameter is a source or sink → Fs; a URL → Net
 — uniform across the stack; String/bytes/stream overloads pure-relative). The important entry is 30b: the
@@ -402,7 +402,7 @@ for the register: a curated rule's OWNER GATE is itself a soundness surface — 
 code actually types its variables (interfaces), not just the concrete classes. Dogfood ledger after
 batches 28–30b: 81 → 37 packages, everything remaining ≤ 20 calls (long tail).
 
-### 2026-07-07 — κ batch 31: the long-tail sweep, the ledger reaches zero (candor-java `17eb81d`)
+### 2026-07-07 — κ batch 31: the long-tail sweep, the ledger reaches zero (candor-java `5210837`)
 
 All 37 remaining packages, 111 members triaged — the dogfood app's ledger reaches ZERO (81 → 0 across
 batches 28–31). Register-worthy findings beyond the coverage itself: (1) **the sweep audits earlier
@@ -421,7 +421,7 @@ handles → Db (remote data structures by design), DbUnit execute → Db, hibern
 covered WITH its effectful internals classified so the one pure member apps reach (the SQL formatter, 685
 fns of invisible noise) floors clean.
 
-### 2026-07-08 — candor-java 0.8.4 review patch: six shipped regressions (R19, `4bdb996`)
+### 2026-07-08 — candor-java 0.8.4 review patch: six shipped regressions (R19, `18717b5`)
 
 **Six soundness regressions the batch 28–31 work SHIPPED in 0.8.3, caught by a high-effort code
 review.** The same sweep that CLOSED veins opened new ones, via two failure shapes the inventory method
@@ -488,7 +488,7 @@ doesn't know N dependencies". The SAFE direction (over-disclosure, not a silent-
 conformance divergence vs candor-java/ts, which honor the claim. Coverage is now keyed on the envelope
 `package`/`packages` field (hyphenated names also register in Rust ident form); pinned by PART 14.
 
-### 2026-07-09 — candor-java mutation_probe rot (meta-soundness, `a6c60c0`)
+### 2026-07-09 — candor-java mutation_probe rot (meta-soundness, `bca8040`)
 
 The meta-soundness harness had decayed to 3/14 PATCH-ERROR — its anchors still targeted the pre-typed
 (`return "Fs"`) pre-extraction Candor.java. Re-anchored (per-mutation target file, dual
@@ -852,7 +852,7 @@ candor-rust AND candor-java. Both parse `[1,2,3]` as a legacy bare array, drop e
 missing `fn`, and read the net-empty result as an effect-free crate. (swift + ts were already loud on
 it.) FIXED: candor-rust `load_entries_inner` marks hard_fail when a file parsed but all its entries
 were dropped (`fdb5e63`); candor-java `load()` throws → loud exit 2 when a non-empty report array
-yields zero usable functions (`60d812b`). A WELL-FORMED empty `functions: []` report still exits 0 in
+yields zero usable functions (`bc13f53`). A WELL-FORMED empty `functions: []` report still exits 0 in
 all four (the only non-corrupt empty — parity preserved, pinned by a clean-empty complement seed).
 Conformance PART 4k now pins BOTH shapes (syntactic + semantic) plus the complement, four-way. Residual
 CLOSED: all four engines fail loud on null / junk-array / wrong-typed `functions`, and exit 0 only on a
@@ -1313,12 +1313,12 @@ MACRO writer edge had been recovered; the direct METHOD-CALL form had not — as
 `dyn Sink` case, which correctly disclosed Unknown.
 
 FIX, both Rust front-ends (the shipped stable scan AND the nightly MIR lint — one spec, so both):
- • candor-scan (`445a1e0`): `is_write_provided`/`is_read_provided` (lang.rs) + a coercion charge in
+ • candor-scan (`d478ab2`): `is_write_provided`/`is_read_provided` (lang.rs) + a coercion charge in
    `visit_expr_method_call` (collector.rs), exactly like the existing iterator-`next` / `to_string`-`fmt`
    coercions. Resolve-or-skip on the concrete local type via `charge_coercion` — a std `Vec`/`File`/`String`
    receiver is absent from `trait_impls` (LOCAL impls only) → no edge; a generic/`dyn` receiver yields no
    concrete type → the documented external-dispatch miss, unchanged. `s.write_all()` → precise Fs.
- • dylint lint (`445a1e0`): generalized `fmt_write_local_edge` → `io_provided_local_edge`, lifting the
+ • dylint lint (`d478ab2`): generalized `fmt_write_local_edge` → `io_provided_local_edge`, lifting the
    callee-name gate from `write_fmt`-only to the full provided-method set, driven method chosen by
    (trait, provided-method) so an io method never resolves against `fmt::Write` and vice-versa. `w.write_all()`
    → Fs* + its honest Unknown residual (identical to the pre-existing `write!`-macro `via_write_io` case).
@@ -1336,7 +1336,7 @@ and operators as provided→required coercions — io::Write/io::Read were the o
 that treatment. When an engine hand-lists the std traits whose provided methods drive a required method,
 audit the list for completeness: a missing family is a silent-pure vein on every concrete local impl.
 
-### 2026-07-18 — R32 cross-engine sweep: the JVM sibling (candor-java `453cbe9`)
+### 2026-07-18 — R32 cross-engine sweep: the JVM sibling (candor-java `577c38d`)
 
 The R32 vein (a provided Write/Read method driving the receiver's required override, the driving
 invisible inside std/JDK) is not rust-specific — the SOUNDNESS-LOG discipline is to sweep every engine.
@@ -1454,7 +1454,7 @@ result builders) — each a separate desugar path that must be wired into the ef
 family, and the discriminator for "fix vs leave" is whether the dispatch target is LOCAL (fix, precise) or
 EXTERNAL (leave — CHA would fabricate or flood, per the Iterator/Add precedent).
 
-### 2026-07-18 — R36: rust trait-default → required-method dispatch (candor-rust `7f80e41`)
+### 2026-07-18 — R36: rust trait-default → required-method dispatch (candor-rust `a60ca09`)
 
 The general form of the R32 vein (a default method calling a requirement) swept across all four engines.
 Java (`default void saveAll(){ persist(); }`) and TS (`abstract class Store { abstract persist(); saveAll(){
@@ -1484,7 +1484,7 @@ arbitrary runtime metaprogramming" boundary.
 
 Continuing the autonomous dispatch-vein sweep — the heterogeneous-collection iteration shape, probed four-way.
 
- • R37 (candor-rust `27b0e34`): iterating a COLLECTION OF TRAIT OBJECTS — `for it in &items { it.go() }` /
+ • R37 (candor-rust `044f429`): iterating a COLLECTION OF TRAIT OBJECTS — `for it in &items { it.go() }` /
    `items.iter().for_each(|it| it.go())` over `items: Vec<Box<dyn Doer>>` (or `&[Box<dyn>]`) — read
    silent-pure. `elem_type` returns None for a `dyn`/`impl` element (no nominal path), so the loop/closure
    var was untyped and its method call dropped. FIX: a new `elem_trait_leaves` (the trait-object counterpart
@@ -1495,7 +1495,7 @@ Continuing the autonomous dispatch-vein sweep — the heterogeneous-collection i
    over 18 rule impls (>12) now discloses Unknown instead of silent-pure. Swift already handled `[any Doer]`;
    ts (array-of-interface) + java (List<Interface> enhanced-for) already handled it too.
 
- • R38 (candor-java `7047572`): an UNBOUND interface-method reference — `stream.forEach(Doer::go)` /
+ • R38 (candor-java `1d57e43`): an UNBOUND interface-method reference — `stream.forEach(Doer::go)` /
    `list.removeIf(Rule::stale)` — targets an ABSTRACT method (no body), so the LambdaMetafactory Handle edge
    was silent-pure, while the equivalent LAMBDA (`it -> it.go()`) worked via its synthetic body's
    invokeinterface CHA. The ubiquitous idiomatic-streams shape read pure at every caller. FIX: at the Handle
@@ -1508,11 +1508,11 @@ Continuing the autonomous dispatch-vein sweep — the heterogeneous-collection i
    R34 (swift generic-operator), R35 (swift @dynamicCallable), R36 (rust trait-default), R37 (rust dyn-vec),
    R38 (java method-ref) — every one gated with a regression + corpus A/B + four-way conformance, all riding 0.22.
 
-### 2026-07-18 — R37b + R39: generic-bound collection elements (candor-rust `b00f2e6`, candor-swift `c67506c`)
+### 2026-07-18 — R37b + R39: generic-bound collection elements (candor-rust `728e137`, candor-swift `c67506c`)
 
 Extending the collection-of-trait-objects vein (R37) from concrete `dyn` elements to GENERIC-BOUND elements.
 
- • R37b (candor-rust `b00f2e6`): `fn f<T: Doer>(items: Vec<T>) { for it in items { it.go() } }` (and
+ • R37b (candor-rust `728e137`): `fn f<T: Doer>(items: Vec<T>) { for it in items { it.go() } }` (and
    `where T: Doer`, and `.iter().for_each`) read silent-pure — R37 seeded `elem_trait_of` with EMPTY generic
    bounds, so a bare `T` element didn't resolve. FIX: (1) thread `generic_bounds_of(sig)` into
    `elem_trait_leaves` so `T` resolves through its bound to `["Doer"]`; (2) the for-loop / adapter binders
@@ -1537,7 +1537,7 @@ registries/observers-as-fields are common, so this is high-priority. The swift/t
 swept at the same time (java erases generics + the enhanced-for over a field already worked in the R37 probe;
 ts/swift field-of-existential likely already handled — confirm).
 
-### 2026-07-18 — R40: the collection-of-trait-objects FIELD form (candor-rust `3f5dd5a`) — vein now fully closed
+### 2026-07-18 — R40: the collection-of-trait-objects FIELD form (candor-rust `cc0bc5f`) — vein now fully closed
 
 The queued follow-on from the R37b entry, DONE. `struct Registry { handlers: Vec<Box<dyn Handler>> }` +
 `self.handlers.iter().for_each(|h| h.handle())` read silent-pure — R37/R37b's `elem_trait_of` covered PARAMS
@@ -1559,14 +1559,14 @@ override), R33-R35 (swift deinit/generic-operator/@dynamicCallable), R36 (rust t
 (rust dyn-collection param/generic/field), R38 (java method-ref), R39 (swift generic-array) — every one
 regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
 
-### 2026-07-18 — R41: container / Option trait-object dispatch (candor-rust `0b0881e` + candor-swift `54e54c8`, done IN PARALLEL)
+### 2026-07-18 — R41: container / Option trait-object dispatch (candor-rust `3c33545` + candor-swift `54e54c8`, done IN PARALLEL)
 
 Extending the collection-of-trait-objects vein to the remaining common container shapes, and — as a test of
 parallel execution — the rust and swift halves were done SIMULTANEOUSLY (a background subagent took swift
 while the main loop took rust), reconverging only at four-way conformance (the one serialization point). Both
 were independent repos, so no conflict; conformance OK after.
 
- • candor-rust (`0b0881e`): (1) MAP VALUES `HashMap<String, Box<dyn Handler>>` via `.values()` —
+ • candor-rust (`3c33545`): (1) MAP VALUES `HashMap<String, Box<dyn Handler>>` via `.values()` —
    `elem_trait_leaves` takes a map's 2nd type arg; (2) SMART-POINTER / interior-mutability chains
    `Arc<Mutex<Vec<Box<dyn>>>>` / `Rc<RefCell<..>>` — `elem_trait_leaves` peels Mutex/RwLock/RefCell/Cell and
    `resolve_elem_trait_leaves` peels the guard chain (`.lock`/`.unwrap`/`.borrow`/`.read`/`.as_ref`/…);
@@ -1591,7 +1591,7 @@ subagents (separate repos, separate build+test) and reconverge at four-way confo
 edit→build→test→A/B cycle stays sequential. This session's arc: R32–R41, ~15 fixes across all four engines,
 every one regression-gated + corpus-A/B'd + four-way-conformance-clean, all riding 0.22.
 
-### 2026-07-18 — R42: a METHOD factory returning a trait object dispatches (candor-rust `2c59637`)
+### 2026-07-18 — R42: a METHOD factory returning a trait object dispatches (candor-rust `d897c6d`)
 
 `self.handler().go()` where `handler(&self) -> &dyn Doer` / `-> Box<dyn Doer>` read silent-pure, while a
 free/static `Reg::make().go()` (an `Expr::Call`) already dispatched. Root cause: `resolve_recv_type`'s
@@ -1654,7 +1654,7 @@ in its own corpus A/B and switched to the dedicated map — the A/B gate doing e
 branch. So the supertrait vein is closed: rust R43, swift `11f40a7`, java (bytecode CHA) already; ts discloses
 sound Unknown (a precision residual, not a sin). Four-way conformance OK after reconvergence.
 
-### 2026-07-18 — R44: method/factory returning a collection of trait objects (candor-rust `afcd20a`)
+### 2026-07-18 — R44: method/factory returning a collection of trait objects (candor-rust `270989d`)
 
 Cleared the most common of the just-queued long-tail residuals. `for d in r.all()` where `all() -> Vec<Box<dyn
 Doer>>`, and `if let Some(d) = self.opt()` where `opt() -> Option<Box<dyn>>`, read silent-pure (record_return
@@ -1704,7 +1704,7 @@ constructor pattern while helping ~zero real cases. Both R48/R49 are documented-
 the honesty-first posture prefers a disclosed known-gap over shipping either a no-incidence plumbing round or a
 fabricating over-approximation.
 
-### 2026-07-18 — R50: inline struct-literal receiver typed (candor-rust `71fad60`)
+### 2026-07-18 — R50: inline struct-literal receiver typed (candor-rust `09099cd`)
 
 A REAL (shipped) fix in the same probing session that produced R48/R49 (both residual). A value
 CONSTRUCTED INLINE and immediately consumed read silent-pure: `for _ in (RowIter { conn }) {}` and
@@ -1725,7 +1725,7 @@ syntax distinct from a call; the others construct via `new`/`T(..)` calls that a
 LESSON pair with R49: incidence is low for BOTH, but R50 ships (correct + zero-over-fire) while R49 doesn't
 (fabricates) — the discriminator is the A/B gate, not the incidence.
 
-### 2026-07-18 — R51: smart-pointer ctor typed as its pointee (candor-rust `f93bd6a`)
+### 2026-07-18 — R51: smart-pointer ctor typed as its pointee (candor-rust `774da5f`)
 
 Second REAL ship of the receiver-typing sweep (after R50). `let db = Arc::new(Db::new()); db.migrate()`
 read silent-pure — `ctor_type`'s Call arm typed the ctor as the impl-less wrapper "Arc" and DROPPED the
@@ -1747,7 +1747,7 @@ never charge the clone). Session receiver-typing arc: R50 (inline struct-literal
 shipped, R52 residual — all discovered while sitting in `resolve_recv_type`/`ctor_type` after the R48/R49
 probes; the A/B gate passed both ships (zero over-fire) and had rejected R49 (14 flate2 fabrications).
 
-### 2026-07-18 — R52 SHIPPED: clone-rebind type-carry recovers the clone-then-use idiom (candor-rust `2f487dd`)
+### 2026-07-18 — R52 SHIPPED: clone-rebind type-carry recovers the clone-then-use idiom (candor-rust `84c3dc8`)
 
 Characterized as a residual earlier this session, then reconsidered + shipped when the A/B revealed it
 recovers REAL silent-pure. `let b = a.clone(); b.method()` read pure — `ctor_type` doesn't consult `vars`
@@ -1776,7 +1776,7 @@ smart-pointer ctor, clone-rebind); R48/R49/R53 residual. Four-way conformance OK
 four-way conformance OK, every one turning out sound (and two far more valuable than their "low incidence"
 estimates suggested).
 
-**R53 — trait-qualified UFCS** (`dbc1e24`). `<T as Trait>::m(&t)` / `Trait::m(&t)` dropped silent (no fn
+**R53 — trait-qualified UFCS** (`2a1ca07`). `<T as Trait>::m(&t)` / `Trait::m(&t)` dropped silent (no fn
 `Trait::m`; the impl is `T::m`). FIX: an ADDITIONAL precise typed `T::method` edge from the STATICALLY-KNOWN
 receiver — the qself type of `<T as Trait>::m` (explicit impl, correct even for an associated fn) or the first
 arg's type of `Trait::m(&t)`. NEVER CHA-over-all-impls (T is known → charging other impls fabricates). Gate:
@@ -1784,7 +1784,7 @@ arg's type of `Trait::m(&t)`. NEVER CHA-over-all-impls (T is known → charging 
 (`Trait::build(&data)`) is never mis-read as a receiver call on `data`. A/B zero concrete over-fire ~2600 fns
 (only +Unknown recoveries, e.g. syn `Box::parse` resolving `<Pat as ParseQuote>::parse`). Controls pass.
 
-**R48 — local `macro_rules!` template** (`94f333c`). A bare `NAME!(..)` whose TEMPLATE does I/O read pure
+**R48 — local `macro_rules!` template** (`c6f32de`). A bare `NAME!(..)` whose TEMPLATE does I/O read pure
 (syn leaves the body opaque; the arg-walk sees only invocation args). FIX: collect each `macro_rules!` → its
 arm tokens (a cache-threaded string map mirroring const_strings — new `local_macros` through FileDecls/
 MergedDecls/merge/digest); at a bare invocation, `$`-strip metavars + parse-or-skip each arm as a block +
@@ -1793,7 +1793,7 @@ recovers the PERVASIVE local-logging-wrapper pattern (`macro_rules! trace { ($($
 $($a)*) } }`) — tokio-util +4 Log (FramedImpl::poll_*), h2 +8 Log (proto_err! wrapping tracing::debug), zero
 fabrication. The original do_io!/log_file!/call_sink! probes + the metavar case all work.
 
-**R49 — effectful-Drop guard as a struct FIELD** (`3e2a52c`). The hard one — the first prototype A/B-reverted
+**R49 — effectful-Drop guard as a struct FIELD** (`7c719bf`). The hard one — the first prototype A/B-reverted
 (14 flate2 fabrications) because a constructor's owned drop-type ESCAPES into the returned aggregate
 (`Compress::new` builds a `Stream`, returns the `Compress`). FIX has three parts: (1) a transitive drop-owner
 closure (`drop_types` × `fields`/`field_elem`, leaf-keyed, to a fixpoint); (2) a RETURN-ESCAPE gate — skip the
@@ -1819,14 +1819,14 @@ shapes (blanket impls R45, nested Vec<Option<Box<dyn>>> R46) + ts super-interfac
 The "do the remaining open items" pass — every open residual closed, each regression-gated + A/B
 zero-fabrication + four-way conformance OK.
 
-**R45 blanket impls** (`edf35b3`). `x.ext()` from `impl<T> Ext for T` read pure (the blanket body's qual is
+**R45 blanket impls** (`7dea9e8`). `x.ext()` from `impl<T> Ext for T` read pure (the blanket body's qual is
 `T::ext`, the generic self param). FIX: a cache-threaded `blanket_methods` map (leaf -> self-param, ambiguous
 -> ""); a TYPED unresolved `x.leaf()` edges to `by_tail2["<param>::leaf"]`. Gated to a typed receiver so an
 inherent method resolves first (regression: `calls_inherent` stays Net, not the blanket's Fs). A/B zero
 fabrication across futures-util (13 blanket impls)/syn/hyper/h2/tower — effectful blanket bodies are rare, so
 no recovery, but the vein is closed.
 
-**R46 dispatch long-tail** (`d2a58d2` nesting + `bf8ed07` tuple). (a) Nested `Vec<Option<Box<dyn>>>` /
+**R46 dispatch long-tail** (`b7a0433` nesting + `4b3aa03` tuple). (a) Nested `Vec<Option<Box<dyn>>>` /
 `Option<Vec<Box<dyn>>>`: `elem_trait_leaves` peel steps now compose (trait_leaves-or-elem_trait_leaves) and
 `resolve_elem_trait_leaves` on a bare var falls back to `trait_vars`, so the outer-then-inner unwrap keeps the
 dispatch. (b) Tuple-of-dyn destructure (`let (d,_) = pair; d.go()`): a new per-fn `tuple_trait_of` (param),
@@ -1838,7 +1838,7 @@ Sup) read disclosed-Unknown. FIX: register an impl class under its interface's t
 (climb `extends`), so the super-method CHA finds it — the ts sibling of the rust/swift supertrait dispatch.
 553 tests + fabrication probe OK.
 
-**Unary-deref** (`249c947`). `(*b).method()` read pure — `resolve_recv_type` had no Unary arm; since candor
+**Unary-deref** (`3838c74`). `(*b).method()` read pure — `resolve_recv_type` had no Unary arm; since candor
 collapses pointers to pointees, `*b` is transparent (recurse into the operand).
 
 The residual register is now EMPTY of open SILENT rows. Session arc (2026-07-18/19): R32–R53 + Unary-deref —
@@ -1846,7 +1846,7 @@ The residual register is now EMPTY of open SILENT rows. Session arc (2026-07-18/
 conformance-clean. The rust-scan receiver/dispatch/macro/drop/tuple surface is saturated for all probed veins;
 dynamic ground truth (the syscall oracle) remains the growth axis (§3 #1).
 
-### 2026-07-19 — code review of the receiver-typing cohort: 3 fabrications fixed + R53 reverted (candor-rust `8585c42`)
+### 2026-07-19 — code review of the receiver-typing cohort: 3 fabrications fixed + R53 reverted (candor-rust `825ab3b`)
 
 A high-effort multi-agent code review of the R45–R53 receiver-typing/close-residuals fixes found FABRICATIONS
 the corpus A/B had passed (the A/B crates lacked the exact shapes; the review reached them by construction):
@@ -2007,7 +2007,7 @@ byte-identical. FOLLOW-ONS: transitive workspace-dep chaining (a dep's own works
 flag. DURABLE: per-package scanning of a monorepo is a systematic under-report multiplier — chaining is not a
 nicety but the difference between reading a microservice backend as mostly-pure and seeing its real reach.
 
-### 2026-07-19 — workspace chaining: transitive fixpoint + the four-way assessment + spec (candor-ts `c6b8767`, spec `9ba6b9b`)
+### 2026-07-19 — workspace chaining: transitive fixpoint + the four-way assessment + spec (candor-ts `c6b8767`, spec `5095adc`)
 
 Two follow-ons to the `--workspace` productionization. (1) TRANSITIVE chaining: `--workspace` now scans the
 workspace dep graph to a monotone FIXPOINT (each dep re-scanned WITH the accumulating deps dir chained), so a
@@ -2026,7 +2026,7 @@ real Unknown-heavy corpus. DURABLE: not every "four-way vein" is a four-way SIN 
 resolution strategy (ts's type-checker-keyed lookup) creates a silent-pure hole the others' never-silent
 default already covers; the honest roll assesses posture per engine before porting.
 
-### 2026-07-19 — interfaceUnion rolled to candor-swift + pinned four-way (swift `f7acad5`, spec `297f239`)
+### 2026-07-19 — interfaceUnion rolled to candor-swift + pinned four-way (swift `f7acad5`, spec `69b51ef`)
 
 The workspace-chaining `interfaceUnion` rung now SHIPS on a SECOND engine and is conformance-pinned.
 candor-swift: gated behind `CANDOR_WORKSPACE_CHAIN`, emit synthetic `pkg#Protocol.method` union entries =
@@ -2046,7 +2046,7 @@ gap; the 2-package empirical fixture is the honest oracle for "does this engine 
 dispatch as pure?" — and both source engines did. rust roll (trait-union) is the remaining source-engine
 follow-on; java sidesteps via whole-classpath bytecode.
 
-### 2026-07-19 — interfaceUnion rolled to candor-scan (rust) → PART 18 THREE-WAY + swift --workspace (rust `c51a369`, swift `d7ed521`, spec `5413b49`)
+### 2026-07-19 — interfaceUnion rolled to candor-scan (rust) → PART 18 THREE-WAY + swift --workspace (rust `e96f4d2`, swift `d7ed521`, spec `5e94b04`)
 
 The workspace-chaining `interfaceUnion` rung now ships on ALL THREE source engines. (1) candor-scan (rust):
 PRODUCER trait-CHA union entries (gated CANDOR_WORKSPACE_CHAIN, unioning trait_impls over trait_decls'
@@ -2067,7 +2067,7 @@ java is N/A (whole-classpath bytecode). DURABLE (reinforced): the 2-package empi
 code-read of one resolution path — is the honest oracle for "does this engine read cross-package dispatch as
 pure?"; it read pure in every source engine. All rides 0.22, unpublished.
 
-### 2026-07-19 — code review of the interfaceUnion rung: a three-way collision-fabrication guard (rust `b4ae3b9`, swift `0de57e4`, ts `4a75e5c`)
+### 2026-07-19 — code review of the interfaceUnion rung: a three-way collision-fabrication guard (rust `f512361`, swift `0de57e4`, ts `4a75e5c`)
 
 Adversarial code review of the workspace-chaining / interfaceUnion work (the review workflow crashed on an
 infra StructuredOutput error, so it was done inline). Found ONE real cross-crate FABRICATION risk the corpus
@@ -2093,14 +2093,14 @@ The transitive verify-oracle's reconcile-against-reality engine (RQ1 on independ
 on Apache commons-compress: an OPAQUE functional param handed to a SYNCHRONOUS higher-order invoker
 (`Iterator.forEachRemaining`, `Iterable/Collection/Map/Stream.forEach`, `Optional.ifPresent`) read
 SILENT-PURE, while a DIRECT opaque call (`cb()`) was already correctly Unknown. candor-java closed it
-first (`c755acd`: `SYNC_CALLBACK_INVOKERS` + `isSyncCallbackInvoker`, opaque-arg-only guard so inline
+first (`d003698`: `SYNC_CALLBACK_INVOKERS` + `isSyncCallbackInvoker`, opaque-arg-only guard so inline
 lambdas keep their edged effect). Per the standing "a find in one engine is a SWEEP trigger for ALL"
 rule, probed the other three with a calibrated repro (known-pure / known-effect / `forEach(opaqueParam)`
 / direct `cb()`): the vein was present in ALL THREE — candor-scan (`for_each(cb)` direct-pass leaked
 while the closure-wrapped `for_each(|x| cb(x))` was already Unknown — the asymmetry was the tell),
 candor-ts (`arr.forEach(cb)` pure while `cb()` Unknown), candor-swift (`arr.forEach(cb)` pure while
 `cb()` Unknown). FIXED four-way, fanned out to three parallel subagents (separate repos, reconverged at
-conformance): candor-scan `0784052` (route the direct-pass fn-typed arg through the existing
+conformance): candor-scan `492963a` (route the direct-pass fn-typed arg through the existing
 `expr_is_fn_typed`→unresolved path; +Option/Result combinators; A/B itertools +16 Unknown, zero fab),
 candor-swift `027b184` (`SYNC_CALLBACK_INVOKERS` table + param→`callbackInvoked` index-resolved / local→Unknown;
 250/250; A/B swift-argument-parser +5, zero fab), candor-ts `014fcd8` (`HOF_INVOKERS` opaque-callback arm
@@ -2118,7 +2118,7 @@ the STATIC receiver type (`java/util/List`, `ArrayList`, `HashSet`, a user colle
 `java/lang/Iterable` where the default method is declared, and candor-java has no JDK supertype index to
 normalize it. The Rust/TS/Swift arms all key their sync-invoker check on the method NAME (owner-agnostic),
 so they caught it; java's owner-exact table silently missed the most common case. FIX candor-java
-`ead40c6`: match `forEach`/`forEachOrdered`/`forEachRemaining` by name (`FOR_EACH_FAMILY`), any owner —
+`33b5994`: match `forEach`/`forEachOrdered`/`forEachRemaining` by name (`FOR_EACH_FAMILY`), any owner —
 the forEach idiom invokes its functional arg synchronously by contract across the whole JDK and user
 collections alike; over-disclosure stays at the floor (A/B commons-io 1188→1188 and commons-compress
 824→824: ZERO new Unknowns — the corpora's forEach sites are inline lambdas or already-Iterable-typed).
@@ -2145,7 +2145,7 @@ compress). Ran its OFFLINE provider suites (local/ram/temp/zip/jar/tar/bzip2/gzi
 JVM via ConsoleLauncher under the transitive `candor verify` agent. **4 real silent under-reports**, two
 distinct veins, both closed, oracle re-run confirms **0 violations (was 4), exit 0**:
 
-(1) **`AccessController.doPrivileged` as a synchronous invoking HOF** (candor-java `3a63266`). `Privileged
+(1) **`AccessController.doPrivileged` as a synchronous invoking HOF** (candor-java `f3a800c`). `Privileged
 FileReplicator.init` → `AccessController.doPrivileged(new InitAction())` where InitAction is a project
 `PrivilegedExceptionAction` whose `run()` calls the wrapped replicator's effectful `init()` (Net/Fs); candor
 read the caller PURE because it did not model doPrivileged as INVOKING `action.run()` — the exact
@@ -2155,8 +2155,8 @@ this invoker + these SAM interfaces. FIX: `doPrivileged` → `isInvokingHof`; `P
 over the wrapped FileReplicator, covering observed Net/Fs). A/B io 1188→1188, compress 824→824 (zero — they
 don't use doPrivileged). Regression `SoundnessSweepTest.doPrivilegedActionRunsSynchronouslyAndPropagates`.
 
-(2) **filter/buffered stream read/write/skip DELEGATE to the unknown wrapped sink** (candor-java `3353860`,
-extending the close/flush rule `2433db6`). `MonitorOutputStream.write`/`flush` → `super.write`/`super.flush`
+(2) **filter/buffered stream read/write/skip DELEGATE to the unknown wrapped sink** (candor-java `be19dab`,
+extending the close/flush rule `2f61fe1`). `MonitorOutputStream.write`/`flush` → `super.write`/`super.flush`
 (super = BufferedOutputStream) → the wrapped `out` — here a RAM sink updating lastModified = Clock — read
 PURE. Extended the wrapped-sink rule to the ACTIVE-I/O methods (read/write/skip) and the Buffered* bases:
 Filter/Buffered {Output,Input}Stream/{Reader,Writer} read/write/skip/flush/close → Unknown. NATURALLY NARROW
@@ -2382,7 +2382,7 @@ reported **uncalibrated by name** because its marker did not fire at the lowered
 A third, in the checker itself: a **multi-effect driver whose marker did not fire vanished from BOTH** the
 falsifiable set and the uncalibrated list, so recall would have read 1.0 over a quietly smaller denominator
 — the exact silent truncation the design exists to prevent, in my own code. Found on the Swift arm and
-fixed (candor-rust `c0a142c`).
+fixed (candor-rust `c710d4a`).
 
 A fourth, environmental: under Docker Desktop, `strace` + Foundation's `Process` hangs indefinitely, which
 previously confined those Swift drivers to CI. The traced run is now bounded (`timeout 90`), degrading a
@@ -2604,8 +2604,8 @@ key. Patching those means designing qualified type identity and distinguishing "
 entry", which is the rung's actual design work. Requirements for a second attempt are recorded in the design
 doc, each derived from a confirmed defect rather than imagined.
 
-Half 1 is untouched and remains the floor in all four engines. Fixes: rust `71c2495`, java `ba8c0c5`,
-ts `8ee89f5`, swift `81a9dc3`; revert `eb12d3e`.
+Half 1 is untouched and remains the floor in all four engines. Fixes: rust `81775a7`, java `56bdbfc`,
+ts `8ee89f5`, swift `81a9dc3`; revert `e39f551`.
 
 ### 2026-07-26 (cont.) — auditing the review's own repairs: four defects in five fixes
 
@@ -2639,7 +2639,7 @@ qualification", a whole missing feature, looked like working code. Removing the 
 gap; it revealed it. Expect an apparent regression when you stop guessing, and establish which it is before
 treating it as one.
 
-Fixes: rust `0eca79c` + `fee73fe`, java `020fb62`, ts `c08063a`.
+Fixes: rust `0444069` + `ac4ee63`, java `c0509f9`, ts `c08063a`.
 
 ### 2026-07-26 — java joins PART 18: the `interfaceUnion` PRODUCER, and the `implements` rung comes off the queue
 
@@ -2686,7 +2686,7 @@ needs a PURE `static` interface method beside an implementer declaring the same 
 method — otherwise the static call site is charged a body it never runs. A test that has never failed is not
 evidence, and neither is a guard that has never fired.
 
-Fixes: java `5f29f08`, spec (this commit) — PART 18 java arm, verified to catch against the pre-fix jar:
+Fixes: java `1c289df`, spec (this commit) — PART 18 java arm, verified to catch against the pre-fix jar:
 both java rows FAIL there and pass here.
 
 ### 2026-07-26 (cont.) — review round 2: the repairs needed repairs
@@ -2700,9 +2700,9 @@ The rust chain is the clearest case, because the same defect survived three atte
 | attempt | what it did | what it missed |
 |---|---|---|
 | last-wins map | picked one crate for a colliding trait leaf | FABRICATED the other crate's effects |
-| tombstone (`71c2495`) | dropped the colliding leaf for both | LOST the genuine reach — cardinal sin |
-| per-receiver (`0eca79c`) | resolved `&dyn` receivers per parameter | GENERIC and WHERE spellings still collided |
-| per-type-param (`eac96e7`) | attributed each bound to its own type param | — plus two scoping holes the previous fix opened |
+| tombstone (`81775a7`) | dropped the colliding leaf for both | LOST the genuine reach — cardinal sin |
+| per-receiver (`0444069`) | resolved `&dyn` receivers per parameter | GENERIC and WHERE spellings still collided |
+| per-type-param (`bafbbfe`) | attributed each bound to its own type param | — plus two scoping holes the previous fix opened |
 
 The through-line is not carelessness about any one case. It is that **each fix was written against the
 fixture that demonstrated the previous defect**, and that fixture contains only the shape already known to be
@@ -2723,7 +2723,7 @@ position map with the callee's signature was strictly better information — and
 signatures. Unioning the two sources keeps both blind spots harmless. That regression was caught by a test
 written months ago, which is the case for running the whole suite rather than the new case.
 
-Fixes: rust `eac96e7`, ts `4958a6d`, java + swift in progress. Round 1 and the audit are the two entries above.
+Fixes: rust `bafbbfe`, ts `4958a6d`, java + swift in progress. Round 1 and the audit are the two entries above.
 
 ### 2026-07-26 — the erasure gate, and the fifth case of a fix scoped to its own fixture
 
@@ -2776,7 +2776,7 @@ construction site passes a Combine `AnyPublisher`). Instrumented, the gate fires
 across all eleven targets — the trigger is real and this corpus barely exercises it, which is the
 honest reading of a clean A/B rather than a claim that the fix is free.
 
-Fixes: swift `d62dd69`, `81a9dc3`, `af9dbf8`, `02fb0ad`; rust `1950a27`, `7a5fc1d`.
+Fixes: swift `d62dd69`, `81a9dc3`, `af9dbf8`, `02fb0ad`; rust `dbe2348`, `68479dc`.
 
 ### 2026-07-26 — a proc-macro2 span crossing a thread, and the `let` annotation that never asked
 
@@ -2816,8 +2816,8 @@ Three things worth keeping:
 
 Measured on the whole local registry, both arms preserved by content hash: panics 3 → 0, **21 effect
 gains, 0 losses**, `unanalyzed` −3, 973 of 976 crates identical, every gain traced (`libc::open` →
-`Fs`, `libc::nanosleep` → `Clock`). Fix: candor-rust `4f7b704`; the per-file containment from
-`a593197` stays — this closes one trigger, not the class.
+`Fs`, `libc::nanosleep` → `Clock`). Fix: candor-rust `29d2a1f`; the per-file containment from
+`5e9486f` stays — this closes one trigger, not the class.
 
 **2. A `let`'s annotation can NAME a generic, and nothing asked the signature for its bound.** Opened
 by a note from the swift `02fb0ad` round asking whether rust has swift's shape — a container/field
@@ -2847,7 +2847,7 @@ plus `let mut value: u32 = …; value.as_()`, which was ABSENT and so a purity c
 19 impls). Six guards, six mutants, six named failing tests. The residuals — tuple INDEX access, an
 unannotated rebind, a factory return bound into a local — are pinned as a test WITH the finding that
 makes them residuals: each one's `dyn` control is silent too, so they are POSITION-level gaps rather
-than this rung's "never asks". Fix: candor-rust `a80bb15`.
+than this rung's "never asks". Fix: candor-rust `4b14dc4`.
 
 ### 2026-07-26 — java: four supertype walks resolved by DEPTH; the JVM resolves the CLASS first
 
@@ -2866,7 +2866,7 @@ already decided. The JVM runs `Root.write`. **Both halves of the honesty invaria
 the real `Fs` was dropped (the cardinal sin) and Trace's empty effects were charged in its place.
 
 **The review named two sites; there were three, and the third was the worst.** `reentryTargets`
-(in-scan, `9ae68f7`) and `nearestDepFnsNamed` (the chained-boundary sibling, `dd81bfa`) were the
+(in-scan, `c89aa49`) and `nearestDepFnsNamed` (the chained-boundary sibling, `5cea956`) were the
 known pair. `Cha.nearestConcreteSuper` — which `chaTargets` and `monomorphicTarget` both end in, i.e.
 every polymorphic dispatch candor resolves — walked `transSupers`, a **HashSet**, and returned the
 first `declaresConcrete` hit in HASH order, with no notion of the class chain at all. It was not
@@ -2920,7 +2920,7 @@ Both fixtures, second written first: the case that must NOW resolve (superclass 
 across the boundary + ordinary dispatch) and the case that must STILL resolve (a genuine interface
 `default` with no competing class declaration is still charged — "the class wins" is not implemented
 by dropping interfaces). Three guards, three mutants, each with the named failing test recorded;
-`9ae68f7`'s per-OVERLOAD shadowing invariant untouched and still asserted in both directions.
+`c89aa49`'s per-OVERLOAD shadowing invariant untouched and still asserted in both directions.
 
 **A measurement trap, and it was in my own instrument.** The first mutation round reported the wrong
 tests failing, in a pattern that looked like a real inversion, because the results parser matched
@@ -2950,7 +2950,7 @@ and asserts both directions (a real widening survives; a union that adds nothing
 SAME entry). Verified to catch: restoring the size comparison fails that test and, across all 512,
 only that test.
 
-Fix: candor-java `9f8e71c` (walks) + `c583da7` (merge). 512 tests, `check`, 392-case smoke and
+Fix: candor-java `1be432c` (walks) + `b1754bb` (merge). 512 tests, `check`, 392-case smoke and
 four-way conformance all green. Unpushed.
 
 2026-08-02 (⟨0.26⟩, the sidecar manifest): a SILENT UNDER-REPORT in the `callers --include-unknown`
@@ -2966,8 +2966,8 @@ FORMAT change rather than a consumer patch: without a manifest a consumer cannot
 silence from its answer. java and ts behaved identically — evidence about the format, since neither had
 a third answer available.
 
-Fixed four-way: java `78aad6d`, ts `caeda66`, swift `ea3de21` (producer; protocols were missing from
-its sidecar ENTIRELY, as keys and as edges, so every two-level chain dead-ended), rust `4cae735`
+Fixed four-way: java `35dce3a`, ts `caeda66`, swift `ea3de21` (producer; protocols were missing from
+its sidecar ENTIRELY, as keys and as edges, so every two-level chain dead-ended), rust `d4ef3f4`
 (consumer-only — candor-scan writes no sidecar, so every hierarchy it walks came from another engine).
 Pinned by conformance PART 30 (P6), 12 live cells, verified to catch on all four by reverting each
 engine's own commit.
@@ -3000,7 +3000,7 @@ than the hypothesis.
 into `vec![]` on the way in, collapsing "no conformance pass ran" into "the pass ran and found nothing" —
 the same claim the producer had just carefully omitted. Now `Option<Vec<String>>`; the stable scanner
 writes None and the deep lint writes Some, which is two honest answers from one type. candor-rust
-`296d11b`.
+`b4d7bd5`.
 
 ### 2026-08-05 — a partial scan claiming the whole package's identity: real in swift, checked and ABSENT in rust/ts
 
@@ -3049,7 +3049,7 @@ four-way conformance green.
 **The clause existed and nothing executed it** — §3.3.1 (3) ⟨0.28⟩ ("AND AN INPUT LOCATOR NAMES A SET —
 COMPARE THE EXPANSION, NEVER THE TOKEN") is one of the two clauses that motivated the PART 41 must-ledger,
 and on the day the ledger shipped the clause was still inert on three of the four engines' `gate --report`
-routes. candor-swift closed the report half first (`ef6476a`) and its commit named the other three;
+routes. candor-swift closed the report half first (`9b9a02b`) and its commit named the other three;
 measured today, all three had it, on both spellings:
 
     gate --report r --policy P --gate-json r.<crate>.scan.json     (rust; java/ts identical in shape)
@@ -3083,7 +3083,7 @@ commit, on bytes or on the engine blaming the file it destroyed) and in the harn
 the (g) rows fail naming the destroyed path). The three clause blocks moved from `pre-ledger` to
 `PART 37 (g)` in the must-ledger — the ledger's first upgrade in the direction it was built for.
 
-Commits: candor-rust `4b4384a` · candor-java `3a805d4` · candor-ts `18d10f0` · candor-swift `2853068`.
+Commits: candor-rust `ed6ce81` · candor-java `95bc711` · candor-ts `18d10f0` · candor-swift `5255d9c`.
 
 ### 2026-08-12 — two sink routes nobody had audited, and the matrix's own binary list made checkable
 
@@ -3100,7 +3100,7 @@ at exit 2; the `.candor/config` `baseline` spelling — the spelling that defeat
 this guard in all four engines — destroyed it identically through `--gate-json`. And the SINK is a set
 too: file-mode `--json <stem>` also writes `<stem>.callgraph.json`, so `CANDOR_BASELINE=base.json …
 --json base` replaced the ratchet's sidecar with the CURRENT call graph at a SUCCESS exit — candor-scan's
-`baseline_artifact_files` defect (`e9b1aff`), one spelling over, silently narrowing the ratchet from the
+`baseline_artifact_files` defect (`f4184db`), one spelling over, silently narrowing the ratchet from the
 next run on. Fixed in `runInputs` (report-shaped inputs registered with their on-disk §2.2 sidecars, via
 `Loader.reportSidecarSegments` so the `gate` exclusion rides along) and `refuseJsonOverAnyInput` (the
 sink's full write set compared). Four `SinkArmingIntegrityTest` rows on bytes; the stem-collision row's
@@ -3129,7 +3129,7 @@ printed every run — candor-agents' `scan`/`observe --json` are today's two dec
 of absent. Falsified both directions. Not waivable through the ratchet: a waiver accuses an engine, these
 accuse the suite's own coverage.
 
-Commits: candor-java `d841550` · candor-rust `c96c474` · candor-spec `a097c54`.
+Commits: candor-java `6bce289` · candor-rust `3973208` · candor-spec `cf3d43c`.
 
 ### 2026-08-13 — a caller of a body-less declaration read pure: the dependency case was pinned, the local one never asked
 
@@ -3290,8 +3290,8 @@ identical bytes:
     unverified --strict   (same report, same policy)        -> 0   "every function … PROVABLY clean ✓"
 
 `--strict` is how CI consumes both verbs, so this is a green CI step over code the producing scan never
-opened, printed with a tick. Fixed four-way on the day (candor-rust `9bf3f2f`, candor-swift `2bf8de7`,
-candor-java `3682835`, candor-ts `9f22581`).
+opened, printed with a tick. Fixed four-way on the day (candor-rust `06edf9e`, candor-swift `7ce37ba`,
+candor-java `e60a832`, candor-ts `9f22581`).
 
 **THE THIRD TIME, WHICH IS THE ACTUAL FINDING.** candor-java's own `ReportCompleteness` comments record
 ⟨0.24⟩ doing this for `unanalyzed` and ⟨0.30⟩ doing it again for `outOfScope`, and say so in as many
@@ -3316,7 +3316,7 @@ that certifies the empty set passes its cell without asking anything.
 
 **FALSIFIED AGAINST PRE-FIX BINARIES, not by reasoning about them.** candor-query built at `9bf3f2f^` over
 PART 67's own fixture: gate 2, `fix-gate --strict` 0, `unverified --strict` 0, with both ticks printed —
-the isolated advisory case, rust's gate-route fix (`ab505c0`) having already landed. candor-java at
+the isolated advisory case, rust's gate-route fix (`c545896`) having already landed. candor-java at
 `3682835^`: all three 0, that engine having closed both halves in one commit. The over-charge control
 answered 0/0/0 on both, before and after, so the control is not what moved.
 
@@ -3382,7 +3382,7 @@ SwiftData/`@Model`, Observation/`@Observable`, and Swift Testing actually take) 
 Net`: exit 0, `functions: []`, zero disclosure. No visitor existed for `MacroExpansionExprSyntax` at all,
 and no attribute-handling path treated a decl's own custom attributes as a possible attached macro.
 
-**The fix (candor-swift `dc27915`).** Both forms route into the existing `Unknown`/`unknownWhy`
+**The fix (candor-swift `94d1aef`).** Both forms route into the existing `Unknown`/`unknownWhy`
 vocabulary (`"macro:<name>"` / `"macro:@Attr"`) rather than resolving what the macro does — a syntax-only
 engine cannot run a compiler plugin, so disclosing the miss is the sound move, not guessing at it. A
 trailing-closure macro (`#Preview { ... }`) is unaffected: the existing `ClosureExprSyntax` visitor
@@ -3493,7 +3493,7 @@ severity low-med (rare by measured incidence, genuinely silent when it occurs).
 **rust-deep (R60, SILENT open) — the row's prior claim, finally measured, was false.** The footnote this
 row carried ("🟢¹ … clean/correct by construction") existed because nobody had ever built the ONE fixture
 it was actually about: a local, bodiless `extern "C"` foreign declaration. Built here, against the nightly
-dylib (`d0c906d`, via `cargo dylint --lib-path`) using a fixture identical in shape to rust-scan's own
+dylib (`ac1da11`, via `cargo dylint --lib-path`) using a fixture identical in shape to rust-scan's own
 `native:extern fn` regression: the report is `"functions": []`, but the SAME run's callgraph sidecar reads
 `{"main":["run_cmd"],"run_cmd":["system"]}` — the HIR walk visited the call, and attached nothing to it. A
 sanity fixture (`std::fs::write` in the same harness) confirmed the pipeline itself works
@@ -3611,8 +3611,8 @@ performs `Fs` — a real but EFFECTFUL match, not the missing quadrant); candor-
 the actual files, not by re-summarising the filing.
 
 Built the missing quadrant fresh — a rule scoped to a REAL function that is pure on BOTH routes — against
-throwaway-clone builds of all four engines at HEAD (candor-rust `caca530`, candor-java `fee92bd`,
-candor-ts `b4c3a22`, candor-swift `328a67f`), not against whatever binary happened to be sitting in
+throwaway-clone builds of all four engines at HEAD (candor-rust `925d756`, candor-java `8f8c9e7`,
+candor-ts `b4c3a22`, candor-swift `3147e6f`), not against whatever binary happened to be sitting in
 `target/`/`.build/` (the R60 lesson: `cargo build --release` at candor-rust's OWN root builds the dylint
 lint, not `candor-scan`/`candor-query` — its own Cargo.toml says so in a comment, `-p candor-scan
 -p candor-query` is required). Fixture: `add_numbers`/`write_something` (rust), `app.Svc.addNumbers`/
@@ -3673,7 +3673,7 @@ Full detail and per-item evidence lives in SOUNDNESS.md's §8.1 round/batch inde
 dated 2026-08-29); this entry is the index pointer the file's own convention asks for. Summary, in the
 order the table carries them:
 
-1. **The peek scope-match cardinal sin, four-way** (swift `7378f4f`, rust `27f4beb`, java `a034371`,
+1. **The peek scope-match cardinal sin, four-way** (swift `793e796`, rust `84ccbf1`, java `7fe654f`,
    ts `8584572`) — a peek finding's `<scope>` test ran only against the excluded declaration's own
    qualified name, never against an in-scope caller reaching it via dynamic dispatch, so a scoped `deny`
    rule silently missed effects an unscoped rule already caught. Closed with four genuinely different
@@ -3684,25 +3684,25 @@ order the table carries them:
    `classes/` directory trips the OLD binary's separate, ancillary classpath bug), isolated by using a
    flat compiled-output layout so the row measures the scope-match fix alone.
 2. **rust-deep**: closure/coroutine captures and `drop(x)` container walking were silently pure
-   (`3e9848c`) — two independent gaps in the implicit-Drop model, fixed by recursing into upvar types and
+   (`ac939b1`) — two independent gaps in the implicit-Drop model, fixed by recursing into upvar types and
    by routing the explicit-`drop` edge through the same walker the scope-exit case already uses.
-3. **swift**: R33 deinit-glue only fired for the unannotated `let`/`var` binder shape (`10dc79e`) — the
+3. **swift**: R33 deinit-glue only fired for the unannotated `let`/`var` binder shape (`65a0825`) — the
    annotated and wildcard binder forms silently missed an effectful `deinit`, fixed by extracting one
    shared `applyDeinitGlue` function called from all three binder shapes.
 4. **java records**: a component's effectful `equals`/`hashCode`/`toString` override ran unattributed
-   (`3a84522`) — the JEP 384 `ObjectMethods` bootstrap's per-component contract-method reentry was never
+   (`4eac631`) — the JEP 384 `ObjectMethods` bootstrap's per-component contract-method reentry was never
    wired up. Falsified on 388 real third-party jars, byte-identical except one genuine, honestly-disclosed
    recovery.
 5. **candor-agents**: `deny Unknown` compiled to nothing, and the compound `deny Net Unknown` silently
-   dropped the `Net` denial too (`69e9e98`) — `guard.py`'s hand-rolled parser never inherited `policy.py`'s
+   dropped the `Net` denial too (`d61121d`) — `guard.py`'s hand-rolled parser never inherited `policy.py`'s
    `Unknown` special case. First time this repo had been attacked; the rest of it (`drift`/`observe`/
    `scan`/`policy`) came back a verifiably clean negative.
-6. **The consumer-refusal class** (candor `0d483a8`/`ac4a71b`) — three `integrations/` consumers each
+6. **The consumer-refusal class** (candor `b9b3a86`/`f398d20`) — three `integrations/` consumers each
    converted an engine's fail-closed refusal into a clean pass (the Stop hook, `candor-sarif`, and
    `fingerprint/`), defeating every scan-side completeness rung at once. The most consequential class found
    this session precisely because it sits downstream of everything else that was ever hardened.
 7. **The instrument survey**: 13 of 13 standalone conformance checkers survived having their body replaced
-   with `sys.exit(0)` (`90cee30`, partial fix) — `mutation-gate.sh` extracts checker bodies out of `run.sh`
+   with `sys.exit(0)` (`02f27ca`, partial fix) — `mutation-gate.sh` extracts checker bodies out of `run.sh`
    and a standalone `conformance/*.py` file is structurally invisible to it, including `check_honesty.py`
    (the family's one cardinal-sin detector) and `peek_route_equality_check.py`. Seven hardened, six filed,
    and a generator now owed for the fourth recurrence of the same four comparison-shape bypasses.
