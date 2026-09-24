@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R571 FIXED (candor-rust `4752644`/`736852b`) — the whole class, and by SUBTRACTION rather than by the
+  obvious route.** The body-wide read is narrowed by a per-name denylist derived from two existing
+  authorities so it cannot drift, instead of being replaced by the per-receiver walker R575 shows has
+  fewer arms. **The safety property is structural: a denylist entry can only REMOVE a receiver from the
+  CHA, so a gap keeps today's over-charge and cannot produce a silent under-report** — it fails toward
+  the over-report, never toward the sin. `dispatchesOn` is untouched, so the disclosure survives.
+  Registry 0/0/0 with **REACH 1, named** (tower's `BoxService::new`, reached but not moved because tower
+  has 39 impls against a fan-out bound of 12) — a different claim from a 0/0/0 with no reach.
+- **R582 (new, cardinal sin, pre-existing): an unannotated `let` collection built from a `dyn` parameter
+  loses the element's dispatch entirely** — no row, no `Unknown`, nothing — while the annotated twin and
+  the direct control both read `['Fs']`. Scoped `deny Fs` and `pure` both exit 0 over a body that reads
+  a file; blanket `deny Fs` catches it only incidentally.
+
 - **CODE REVIEW of the 2026-09-23 wave — three reviewers, one per engine, ~3,300 lines of engine source.
   Ten rows filed, and the wave introduced an over-charge in THREE engines.**
   - **R571 (rust), R574 (ts), R580 (swift)** — each of yesterday's fixes traded a little precision for the
