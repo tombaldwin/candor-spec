@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **R574 FIXED (candor-ts `6be1c47`) — and the premise I filed it on was wrong in a load-bearing way.**
+  The `Exec` is not peculiar to κ-classified packages: the same consumer against a NON-κ package reads
+  `['Exec']` at `d46c098` too. R560 widened the SCOPE of a shipped ⟨0.35⟩ over-approximation, not its
+  KIND — and that correction ruled out two fixes I would have accepted. The landed one takes ⟨0.35⟩'s
+  other sanctioned branch: where the receiver is demonstrably the package's own product it **hedges**
+  (`Unknown` + `dispatch:` + `unresolved`) rather than deleting, so `deny Unknown` goes 0 → **1**.
+  Ground-truthed by execution against a runnable `got`, with the residual named and demonstrated.
+- **R583 (new, instrument, FIXED `6a639e6`): three reach probes counted branch entries, not joins.**
+  Re-derived on the same corpus: **77 branch entries → 0 joins.** So R560's published "182 hits with real
+  reach" measured nothing, and on that corpus R560's whole change contributes nothing — as does its fix.
+  Found by grepping the MECHANISM rather than the row; the other two figures were not wrong, which is
+  why it was latent. All three now key on the join's returned outcome.
+
 - **R571 FIXED (candor-rust `4752644`/`736852b`) — the whole class, and by SUBTRACTION rather than by the
   obvious route.** The body-wide read is narrowed by a per-name denylist derived from two existing
   authorities so it cannot drift, instead of being replaced by the per-receiver walker R575 shows has
