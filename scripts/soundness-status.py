@@ -92,9 +92,26 @@ _DECLARED_RESOLVED = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
 # would close it", "R99 closed the sibling" — because a row that cites a commit for its own closure is
 # making a claim about ITSELF. Not anchored, unlike the status-head patterns: this is deliberately
 # looking for a statement buried mid-cell, which is the whole failure.
+# SOUNDNESS R591 — AND IT MUST NOT FIRE INSIDE A *PARTIAL* CLOSURE. The first version matched
+# `\bCLOSED\b`, which sits inside "PARTIALLY CLOSED", "HALF CLOSED", "SWIFT HALF CLOSED" and "(b)
+# CLOSED" — so the advisory named R198, R209 and R576 as rows that "say both" when all three say
+# PARTLY, correctly, and are correctly open. The check was right to fire and wrong about what it had
+# found, which is the worse failure of the two: a reader who checks three and finds them all fine
+# stops reading the fourth.
+_PARTIAL_BEFORE = re.compile(r'(?:PARTIALLY|PARTLY|HALF|\(\w\)|\bONE\s+HALF)\s*$', re.I)
 _BODY_CLOSURE = re.compile(
     r'\b(?:NOW\s+)?(?:FULLY\s+|BOTH\s+HALVES\s+(?:OF\s+THIS\s+ROW\s+)?(?:ARE\s+)?)?'
     r'CLOSED\b[^.`]{0,70}`[0-9a-f]{7,40}`')
+
+
+def _body_closure(body):
+    """A closure recorded mid-cell, EXCLUDING one that is explicitly partial."""
+    for m in _BODY_CLOSURE.finditer(body):
+        head = body[max(0, m.start() - 24):m.start()]
+        if _PARTIAL_BEFORE.search(head.rstrip()):
+            continue
+        return m
+    return None
 
 _DECLARED_PARTLY = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
                               r'(?:PARTLY|PARTIALLY|HALF|\w+\s+HALF)\b[^|]{0,28}?(?:CLOSED|FIXED)', re.I)
@@ -121,7 +138,41 @@ def bucket(line, outcome=None):
     oc = outcome if outcome is not None else ""
     # An explicit closure at the head of the OUTCOME cell is the row's LATER word and wins over a status
     # head left stale (R230). Everything else: a declared OPEN in EITHER status cell outranks inference.
-    if not _DECLARED_RESOLVED.match(oc):
+    # SOUNDNESS R591 — AND THE RULE MUST BE SYMMETRIC, which R588 left it not. R588 taught
+    # `_DECLARED_OPEN` to read the STATUS cell as well as the outcome cell, because the register
+    # overloads column 3 as current status. It did not teach `_DECLARED_RESOLVED` the same thing, so a
+    # row whose STATUS head says `RETRACTED` and whose OUTCOME head still carries its filing-time
+    # "Not yet fixed" note bucketed OPEN — the asymmetry recovered 23 rows in one direction and then
+    # held R126 in the other. Rows here are updated by APPENDING, so the outcome cell's HEAD is the
+    # oldest thing in it; the status cell is what gets rewritten. Reading a closure in either is the
+    # only rule consistent with how the file is actually edited.
+    # …BUT A CELL THAT SAYS BOTH IS NOT RESOLVED. R162 heads its status cell "RESOLVED as a PROCESS
+    # GAP, not a live generator defect; two real generator bugs found beside it, OPEN" — resolved word
+    # first, so the head test matched and the row left the shipping-defect list while its own outcome
+    # cell still ends "What a correct instrument does, NOT IMPLEMENTED" over four items. That is a
+    # FALSE CLOSURE, the direction this tool must never fail in, and the symmetry fix above introduced
+    # it. So a closure head only counts when the SAME cell does not also declare something open; a row
+    # that says both stays open and gets read. Costs a few rows that are genuinely finished sitting on
+    # the list until someone rewrites the sentence — the cheap direction.
+    _SAYS_OPEN_TOO = re.compile(r'\b(?:OPEN|REOPENED|NOT\s+IMPLEMENTED|STILL\s+OWED)\b')
+
+    def _closure_head(cell):
+        return bool(_DECLARED_RESOLVED.match(cell)) and not _SAYS_OPEN_TOO.search(cell)
+
+    resolved_head = _closure_head(oc) or _closure_head(status)
+    # AND THE HEAD SAYS WHICH KIND OF CLOSURE IT IS. `closed-with-fix` asserts "a defect, and here is
+    # the commit"; `resolved-no-fix` says "a DECISION, not a fix". Deciding between them by whether a
+    # sha appears ANYWHERE in the row is the R553 defect one bucket over — an INCIDENTALLY cited
+    # commit picking the label. R225 is the case: it resolves as an accepted-and-watched environmental
+    # limit, nothing was fixed, and it landed in `closed-with-fix` on shas it merely cites as evidence
+    # (`845cb32`, the commit it was MEASURED at). So when the row declares its own closure, read the
+    # KIND off that declaration: a fix word with its commit beside it is a fix; a decision word with no
+    # commit beside it is a decision.
+    _head = next((c for c in (status, oc) if _closure_head(c)), "")
+    _decided = bool(re.match(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
+                             r'(?:RESOLVED|RETRACTED|WITHDRAWN|REFUTED|SUPERSEDED)\b', _head)) \
+        and not FIXSHA.search(_head[:110])
+    if not resolved_head:
         if _DECLARED_OPEN.match(status) or _DECLARED_OPEN.match(oc):
             return "open"
         if _DECLARED_PARTLY.match(status):
@@ -151,8 +202,10 @@ def bucket(line, outcome=None):
     # it is the row saying what happened to IT. Without this the R230 shape (stale `OPEN` status head,
     # real closure in the outcome cell) falls through to `cites-a-sha-only`, which sends a reader to a
     # row that already answered itself.
-    if _DECLARED_RESOLVED.match(oc):
+    if resolved_head:
         w = True
+    if resolved_head and _decided:
+        return "resolved-no-fix"               # the row's own head calls it a decision, with no commit
     if w and s:  return "closed-with-fix"      # a defect, and here is the commit
     if w:        return "resolved-no-fix"      # declined / refuted / accepted limit — a DECISION, not a fix
     if declared_not_fixed: return "open"       # the cell OPENS by saying it is not fixed; a cited commit does not overrule that
@@ -236,7 +289,7 @@ def main(argv):
     for rid, l in by.get("open", []):
         cells = re.split(r'(?<!\\)\|', l)
         body = " ".join(cells[4:6]) if len(cells) > 5 else ""
-        if _BODY_CLOSURE.search(body):
+        if _body_closure(body):
             contra.append((rid, l))
     if contra:
         print()
@@ -244,7 +297,7 @@ def main(argv):
         for rid, l in sorted(contra, key=lambda t: _idkey(t[0])):
             cells = re.split(r'(?<!\\)\|', l)
             body = " ".join(cells[4:6]) if len(cells) > 5 else ""
-            m = _BODY_CLOSURE.search(body)
+            m = _body_closure(body)
             print(f"  {rid:6s} body says: {' '.join(m.group(0).split())[:84]}")
 
     if by.get("partly-closed"):
@@ -332,6 +385,24 @@ def selftest():
          " class | Not yet fixed. The fix is to route the bare `let`. |", "closed-with-fix"),
         ("| R190 rust: a thing | 2026-09-05 | **PARTLY CLOSED — candor-rust `93cb988` closes (e)** |"
          " class | Not fixed. The union must be taken wherever. |", "partly-closed"),
+        # SOUNDNESS R591 — THE SYMMETRY, both directions. A closure word at the head of the STATUS
+        # cell counts even when the OUTCOME cell still opens with its filing-time "Not yet fixed"
+        # note, because rows are updated by APPENDING and the outcome head is the oldest text in the
+        # row (R126's shape: status `RETRACTED`, outcome `Not yet fixed.`).
+        # `resolved-no-fix`, not `closed-with-fix`, and this expectation was written the OTHER way an
+        # hour before the rule below existed: RETRACTED means "not a defect", which is a DECISION, and
+        # the `abc1234` here is evidence the row cites, not a commit that fixed anything. The selftest
+        # caught my own stale expectation, which is the only reason the distinction got made at all.
+        ("| R126 swift: a thing | 2026-09-02 | **RETRACTED — NOT A DEFECT. Measured** |"
+         " class `abc1234` | Not yet fixed. Fixture at `scratchpad/x`. |", "resolved-no-fix"),
+        # …and the same shape WITH the commit beside the closure word is a fix, not a decision.
+        ("| R127 swift: a thing | 2026-09-02 | **RESOLVED — candor-swift `abc1234`, shipped** |"
+         " class | Not yet fixed. |", "closed-with-fix"),
+        # …AND THE FALSE CLOSURE THAT FIX INTRODUCED, which is why this case exists. A cell that says
+        # BOTH is not resolved: R162 heads "RESOLVED as a PROCESS GAP ... two real generator bugs
+        # found beside it, OPEN" and must STAY on the shipping-defect list.
+        ("| R162 rust: a thing | 2026-09-04 | **RESOLVED as a PROCESS GAP, not a live defect; two real"
+         " generator bugs found beside it, OPEN** | class `abc1234` | Not fixed. |", "open"),
         # AND THE ESCAPED PIPE: a row whose code sample contains `\|` must not shift the status index.
         ("| R571 rust: `move \\| i: Input \\|` | 2026-09-23 | **OPEN — measured** |"
          " class | Not fixed. |", "open"),
