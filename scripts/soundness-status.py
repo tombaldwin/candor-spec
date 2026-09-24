@@ -87,6 +87,15 @@ _DECLARED_RESOLVED = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
 # still owed (R101, R190, R208, R214, R243, R249, R347, R414 …). Bucketing them `closed-with-fix` hides
 # the remainder; bucketing them `open` overstates it. They get their own line so a reader is SENT to
 # them rather than told an answer — the same reason `cites-a-sha-only` exists.
+# The shape of a closure recorded INSIDE a row's prose: a closure word followed closely by a commit.
+# Requiring the sha is what keeps it off the many rows that merely DISCUSS closing something — "the fix
+# would close it", "R99 closed the sibling" — because a row that cites a commit for its own closure is
+# making a claim about ITSELF. Not anchored, unlike the status-head patterns: this is deliberately
+# looking for a statement buried mid-cell, which is the whole failure.
+_BODY_CLOSURE = re.compile(
+    r'\b(?:NOW\s+)?(?:FULLY\s+|BOTH\s+HALVES\s+(?:OF\s+THIS\s+ROW\s+)?(?:ARE\s+)?)?'
+    r'CLOSED\b[^.`]{0,70}`[0-9a-f]{7,40}`')
+
 _DECLARED_PARTLY = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
                               r'(?:PARTLY|PARTIALLY|HALF|\w+\s+HALF)\b[^|]{0,28}?(?:CLOSED|FIXED)', re.I)
 # SOUNDNESS R553 — A DECLARATION OF NON-CLOSURE AT THE HEAD OF THE CELL, which is a status claim, as
@@ -212,6 +221,32 @@ def main(argv):
         eng = cells[3].strip()[:20] if len(cells) > 3 else "?"
         claim = " ".join(cells[1].split())[len(rid) + 1:][:86]
         print(f"  {rid:6s} {eng:20s} {claim}")
+    # SOUNDNESS R588 (the MIRROR) — A ROW THAT SAYS BOTH. R588 fixed `bucket()` reading a declared
+    # `OPEN` only in the outcome cell; the defect pointing the other way is a STATUS HEAD left at
+    # `OPEN` while the row's own body records the closure, and it hid SIX rows — R140, R349, R364,
+    # R372, R387, R429 — every one of them closed, cited, and sitting on the shipping-defect list.
+    # R222's row already documents the shape ("STATUS CELL WAS STALE ... corrected 2026-09-07"), which
+    # is the argument for detecting it rather than trusting authors to update two places.
+    #
+    # ADVISORY, NOT FATAL, and deliberately: a row may legitimately head `OPEN` while its body closes
+    # ONE HALF — R547 read exactly that way for a day and was correct to. So this cannot decide, and
+    # does not try; it prints the candidates and lets a reader settle each. Guessing here would trade
+    # six false opens for an unknown number of false closures, which is the worse direction.
+    contra = []
+    for rid, l in by.get("open", []):
+        cells = re.split(r'(?<!\\)\|', l)
+        body = " ".join(cells[4:6]) if len(cells) > 5 else ""
+        if _BODY_CLOSURE.search(body):
+            contra.append((rid, l))
+    if contra:
+        print()
+        print(f"SAYS BOTH — {len(contra)} row(s) bucket OPEN while the body records a closure. Read each:")
+        for rid, l in sorted(contra, key=lambda t: _idkey(t[0])):
+            cells = re.split(r'(?<!\\)\|', l)
+            body = " ".join(cells[4:6]) if len(cells) > 5 else ""
+            m = _BODY_CLOSURE.search(body)
+            print(f"  {rid:6s} body says: {' '.join(m.group(0).split())[:84]}")
+
     if by.get("partly-closed"):
         print()
         print("PARTLY CLOSED — a fix landed and the row NAMES what is still owed. Read the remainder:")
