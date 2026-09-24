@@ -142,6 +142,49 @@ def main() -> int:
         print('  more text in the existing one: merge it, do not widen the table.')
         return 1
 
+    # THIRD PROPERTY (R588): A ROW ID IS UNIQUE, AND NOTHING CHECKED IT. On 2026-09-24 the register
+    # held TWO rows numbered R540 — a swift ternary-receiver sin and a rust dispatch-guard sin, filed
+    # nine lines apart in different batches, both OPEN. `soundness-status.py` keys its report by row id,
+    # so one of the two was silently absent from every count and every listing it printed; the defect
+    # surfaced only because a bucket-count taken two ways disagreed by one. `[[R540]]` in a third row
+    # resolved to whichever the reader guessed.
+    #
+    # This is the failure CLAUDE.md's row-ID paragraph is written about ("a wrong ID silently conflates
+    # two unrelated findings in every future grep") — measured there for AGENTS inventing an id, and it
+    # happens to the coordinator appending one. The next free number is the MAXIMUM, not the last row:
+    #     grep -oE '^\| R[0-9]+' SOUNDNESS.md | grep -oE '[0-9]+' | sort -n | tail -1
+    # THE LETTER SUFFIX IS PART OF THE ID and `row_id()` drops it, so this check reads the full one
+    # itself rather than widening a helper three other properties depend on. R529, R529b and R529c are
+    # THREE different rows — the register splits one finding into separately measurable parts that way,
+    # and on 2026-09-22 a base row was CLOSED while its lettered sibling was open. Collapsing them here
+    # reported four phantom duplicates on the first run of this guard, which is how the point got made.
+    def full_id(line):
+        if not row_id(line):
+            return None
+        cells = re.split(r'(?<!\\)\|', line)[1:]
+        for cell in cells[:2]:
+            m = re.match(r'\s*~{0,2}(R\d+[a-z]?)', cell)
+            if m:
+                return m.group(1)
+        return None
+
+    seen: dict = {}
+    for _sep, rows in found:
+        for i in rows:
+            rid = full_id(lines[i])
+            if rid:
+                seen.setdefault(rid, []).append(i + 1)
+    dupes = {r: ns for r, ns in seen.items() if len(ns) > 1}
+    if dupes:
+        print(f'check_soundness_tables: FAILED — {len(dupes)} row id(s) used more than once.')
+        print('  Two rows with one id conflate two findings in every grep, and the status tool keys')
+        print('  its report by id, so one of them is absent from the shipping-defect list entirely.')
+        for rid, ns in sorted(dupes.items()):
+            print(f'    {rid}: lines {", ".join(str(n) for n in ns)}')
+        print('  Renumber the row with FEWER in-code references to the MAXIMUM id + 1, and update any')
+        print('  [[link]] that meant it. Do not renumber the one whose id is baked into engine source.')
+        return 1
+
     total = sum(len(r) for _s, r in found)
     print(f'check_soundness_tables: OK — {len(found)} table(s), {total} row(s), every row inside one '
           f'and carrying its own table\'s cell count.')

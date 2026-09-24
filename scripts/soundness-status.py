@@ -60,7 +60,35 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 # did NOT close it; the tool read the sha and filed it under "cites a sha, read it" — better than the
 # closed-with-fix it started in, but still not the list its author put it on. Anchored to the START of
 # the cell so the WORD "open" in ordinary prose ("an open question", "left open by") cannot trigger it.
-_DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*OPEN\b')
+# SOUNDNESS R588 — AND THE DECLARATION IS NOT ALWAYS IN THE OUTCOME CELL. The register overloads the
+# THIRD column ("engine") as the row's CURRENT STATUS for every row filed before ~R430 — `**CLOSED —
+# candor-rust `ff6efad`**` sits there while the outcome cell still carries the original "Not yet fixed.
+# The fix is to route…" note written at filing. That convention is fine; reading only ONE of the two
+# cells is not. 24 rows whose status cell OPENS with `OPEN` or `REOPENED` were bucketed
+# `closed-with-fix`/`resolved-no-fix` — R198, R209, R227, R305 and R372 among them, every one saying
+# "Not fixed" in the outcome cell, R372 a declared CARDINAL SIN. This is the FOURTH defect of this shape
+# in this file and the second in two days; the first three are enumerated in `bucket()` below. The
+# instrument that exists to find silent under-reports was under-reporting its own shipping-defect list
+# by roughly a quarter.
+#
+# `REOPENED` and `STILL OPEN` are here because both are used as status heads (R140, R429) and neither
+# is the word the R524 fix anchored on. Still CASE-SENSITIVE and still anchored to the head of the cell:
+# the shouty form is the convention, and a lowercase "open question" in prose must not move a closed row.
+_DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?(?:STILL\s+OPEN|REOPENED|OPEN)\b')
+# …AND A STALE STATUS HEAD MUST NOT OUTRANK A LATER CLOSURE. R230's status cell still opens `**OPEN —
+# mechanism now MEASURED…` while its OUTCOME cell opens `**RESOLVED 2026-09-06 by building the shape
+# this row said would decide it**`. The outcome cell is the later word, so an explicit closure at ITS
+# head suppresses the status-cell shortcut above. Without this the fix trades 24 false closures for a
+# handful of false OPENs, which is the same error pointing the other way.
+_DECLARED_RESOLVED = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
+                                r'(?:RESOLVED|CLOSED|FIXED|WITHDRAWN|RETRACTED|SUPERSEDED)\b')
+# A CLOSURE WITH A DECLARED OPEN REMAINDER IS NOT A CLOSURE, AND IT IS NOT FULLY OPEN EITHER. Eleven
+# rows head their status cell `PARTLY CLOSED` / `HALF CLOSED` / `FIRST HALF FIXED` and then name what is
+# still owed (R101, R190, R208, R214, R243, R249, R347, R414 …). Bucketing them `closed-with-fix` hides
+# the remainder; bucketing them `open` overstates it. They get their own line so a reader is SENT to
+# them rather than told an answer — the same reason `cites-a-sha-only` exists.
+_DECLARED_PARTLY = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
+                              r'(?:PARTLY|PARTIALLY|HALF|\w+\s+HALF)\b[^|]{0,28}?(?:CLOSED|FIXED)', re.I)
 # SOUNDNESS R553 — A DECLARATION OF NON-CLOSURE AT THE HEAD OF THE CELL, which is a status claim, as
 # opposed to a negation buried in prose and SCOPED TO SOME OTHER WORK ("surfaced by the R519 work and NOT
 # closed by it"), which is not. Anchored for exactly the reason `_DECLARED_OPEN` is: the first thing the
@@ -77,8 +105,18 @@ def _idkey(rid):
 
 
 def bucket(line, outcome=None):
-    if outcome is not None and _DECLARED_OPEN.match(outcome):
-        return "open"
+    # The STATUS cell is the register's third column — see `_DECLARED_OPEN`. Split the same
+    # escaped-pipe-aware way `main()` does, or a row with `\|` in a code sample shifts every index.
+    _cells = re.split(r'(?<!\\)\|', line)
+    status = _cells[3] if len(_cells) > 3 else ""
+    oc = outcome if outcome is not None else ""
+    # An explicit closure at the head of the OUTCOME cell is the row's LATER word and wins over a status
+    # head left stale (R230). Everything else: a declared OPEN in EITHER status cell outranks inference.
+    if not _DECLARED_RESOLVED.match(oc):
+        if _DECLARED_OPEN.match(status) or _DECLARED_OPEN.match(oc):
+            return "open"
+        if _DECLARED_PARTLY.match(status):
+            return "partly-closed"
     declared_not_fixed = outcome is not None and bool(_DECLARED_NOT_FIXED.match(outcome))
     line = _NOT_A_VERDICT.sub(" ", line)
     # SOUNDNESS R553 — AN EXPLICIT "NOT FIXED" OUTRANKS AN INCIDENTALLY-CITED SHA, and until 2026-09-23
@@ -97,6 +135,15 @@ def bucket(line, outcome=None):
     # WAS closed, and `closed-with-fix` sends a human to read it.
     line = _NEGATED_CLOSURE.sub(" ", line)
     w, s = bool(CLOSURE.search(line)), bool(FIXSHA.search(line))
+    # SOUNDNESS R588 — `RESOLVED` at the head of the outcome cell IS a closure declaration, and CLOSURE
+    # deliberately does not contain the word: `resolved`/`unresolved`/`could not be resolved` are
+    # candor's vocabulary for DISPATCH, so matching them anywhere in a row would empty the resolved
+    # bucket (that near-miss is a selftest case). At the HEAD of the outcome cell it is unambiguous —
+    # it is the row saying what happened to IT. Without this the R230 shape (stale `OPEN` status head,
+    # real closure in the outcome cell) falls through to `cites-a-sha-only`, which sends a reader to a
+    # row that already answered itself.
+    if _DECLARED_RESOLVED.match(oc):
+        w = True
     if w and s:  return "closed-with-fix"      # a defect, and here is the commit
     if w:        return "resolved-no-fix"      # declined / refuted / accepted limit — a DECISION, not a fix
     if declared_not_fixed: return "open"       # the cell OPENS by saying it is not fixed; a cited commit does not overrule that
@@ -156,7 +203,7 @@ def main(argv):
         return 0
 
     print(f"SOUNDNESS status — {len(rows)} rows")
-    for k in ("closed-with-fix", "resolved-no-fix", "cites-a-sha-only", "open"):
+    for k in ("closed-with-fix", "partly-closed", "resolved-no-fix", "cites-a-sha-only", "open"):
         print(f"  {k:18s} {len(by.get(k, []))}")
     print()
     print("OPEN — nothing in the row claims it is resolved. THIS is the shipping-defect list:")
@@ -165,6 +212,13 @@ def main(argv):
         eng = cells[3].strip()[:20] if len(cells) > 3 else "?"
         claim = " ".join(cells[1].split())[len(rid) + 1:][:86]
         print(f"  {rid:6s} {eng:20s} {claim}")
+    if by.get("partly-closed"):
+        print()
+        print("PARTLY CLOSED — a fix landed and the row NAMES what is still owed. Read the remainder:")
+        for rid, l in sorted(by["partly-closed"], key=lambda t: _idkey(t[0])):
+            cells = re.split(r'(?<!\\)\|', l)
+            head = " ".join(cells[3].split())[:96] if len(cells) > 3 else ""
+            print(f"  {rid:6s} {head}")
     if by.get("cites-a-sha-only"):
         print()
         print("CITES A SHA BUT NO CLOSURE WORD — read these, they are neither clearly:")
@@ -218,6 +272,34 @@ def selftest():
         # …but only as a DECLARATION at the start of the cell. "open" in ordinary prose must not move a
         # closed row, or the bucket fills with rows that merely discuss open questions.
         ("**CLOSED — `abc1234`.** This left an open question for R99.",          "closed-with-fix"),
+        # SOUNDNESS R588 — the other two status heads the register actually uses. R140 heads its cell
+        # `**REOPENED 2026-09-10, HALF CLOSED…`, R429 `**REOPENED BY THE PRE-RELEASE REVIEW…`; both were
+        # `closed-with-fix` because `_DECLARED_OPEN` only knew the word OPEN.
+        ("**REOPENED 2026-09-10.** `aa280d1` unions the arms on the PATH route only.", "open"),
+        ("**STILL OPEN: the CHAIN-DRIFT half.** Swept at `1234abc`.",            "open"),
+        # …and a lowercase near-miss that must NOT move, for the same reason the rule is case-sensitive.
+        ("**CLOSED — `abc1234`.** Reopened briefly, then fixed again.",          "closed-with-fix"),
+    ]
+    # THE STATUS CELL IS A DIFFERENT CODE PATH and the cases above cannot reach it — `bucket(text, text)`
+    # has no columns, so `status` is "". These are whole rows, which is the shape that was mis-bucketed.
+    row_cases = [
+        ("| R198 rust: a thing | 2026-09-07 | **OPEN — PRE-EXISTING, all arms** |"
+         " **CARDINAL SIN** `abc1234` | Not fixed. MATRIX-VERIFIED, closed nothing. |", "open"),
+        # R230: status head left stale, outcome cell records the real closure — the outcome wins.
+        ("| R230 rust: a thing | 2026-09-06 | **OPEN — mechanism now MEASURED** |"
+         " class | **RESOLVED 2026-09-06 by building the shape that decides it.** |",
+         "resolved-no-fix"),
+        # …and the same shape WITH a fix commit is a closure with a fix, not a decision.
+        ("| R231 rust: a thing | 2026-09-06 | **OPEN — mechanism MEASURED** |"
+         " class | **RESOLVED — candor-rust `abc1234`, shipped.** |", "closed-with-fix"),
+        # A normal closed row must not move: status head says CLOSED, outcome is the filing-time note.
+        ("| R88 rust: a thing | 2026-08-30 | **CLOSED — candor-rust `ff6efad`** |"
+         " class | Not yet fixed. The fix is to route the bare `let`. |", "closed-with-fix"),
+        ("| R190 rust: a thing | 2026-09-05 | **PARTLY CLOSED — candor-rust `93cb988` closes (e)** |"
+         " class | Not fixed. The union must be taken wherever. |", "partly-closed"),
+        # AND THE ESCAPED PIPE: a row whose code sample contains `\|` must not shift the status index.
+        ("| R571 rust: `move \\| i: Input \\|` | 2026-09-23 | **OPEN — measured** |"
+         " class | Not fixed. |", "open"),
     ]
     bad = 0
     # The ID parse is part of the contract too — see the comment at `rid`. A base row and its lettered
@@ -230,6 +312,13 @@ def selftest():
         if got != want_id:
             bad += 1
         print(f"  {flag} id={got:7s} want {want_id:7s} {line[:46]!r}")
+    for line, want in row_cases:
+        _c = re.split(r'(?<!\\)\|', line)
+        got = bucket(line, _c[5] if len(_c) > 5 else None)
+        flag = "ok  " if got == want else "FAIL"
+        if got != want:
+            bad += 1
+        print(f"  {flag} {got:17s} want {want:17s} {line[:64]!r}")
     for text, want in cases:
         got = bucket(text, text)   # in a real row the outcome IS the last cell
         flag = "ok  " if got == want else "FAIL"
