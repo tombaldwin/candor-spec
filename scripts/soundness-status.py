@@ -74,7 +74,28 @@ FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured
 # `REOPENED` and `STILL OPEN` are here because both are used as status heads (R140, R429) and neither
 # is the word the R524 fix anchored on. Still CASE-SENSITIVE and still anchored to the head of the cell:
 # the shouty form is the convention, and a lowercase "open question" in prose must not move a closed row.
-_DECLARED_OPEN = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?(?:STILL\s+OPEN|REOPENED|OPEN)\b')
+# AND THE CONVENTION MOVED UNDER THE TOOL, 2026-09-25 — THE FIFTH DEFECT OF THIS SHAPE IN `bucket()`.
+# Every row filed on 2026-09-25 heads its status cell with the ENGINE: `swift — OPEN, PRE-EXISTING`,
+# `rust — OPEN BY DECISION`, `instrument (candor-spec) — OPEN as a CONVENTION defect`. The head anchor
+# misses all of them, inference takes over, and ANY closure word anywhere in the row wins — including
+# ANOTHER ROW'S closure. R611 and R615 were bucketed closed on the words "[[R555]] closed this" and
+# "R585 closed nine binders"; R604 on `fixed` inside "not A fixed one", where the article defeats
+# `_NEGATED_CLOSURE`. Five rows (R600, R604, R606, R611, R615) sat off the shipping-defect list.
+#
+# SO THE ANCHOR NOW ADMITS A SHORT PREFIX ENDING IN A DASH, and the bound is what makes it safe: the
+# OPEN must sit IMMEDIATELY after the dash, so `swift — CLOSED, …` cannot match, and a prose "open
+# question" 80 characters in is still out of reach. MEASURED, not assumed: this flips exactly those
+# five rows and no others on the register as it stands.
+#
+# Note WHY the head anchor was right and still lost. It was never wrong about prose; it encoded a
+# CONVENTION, and a convention is not a property of the document — it is a habit of whoever is filing
+# that day. An instrument keyed to a habit goes quietly wrong the day the habit improves, which is
+# exactly what a richer status cell was. `--selftest` could not catch it because every selftest row
+# was written in the old convention too.
+_DECLARED_OPEN = re.compile(
+    r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
+    r'(?:[A-Za-z][^|]{0,70}?[\u2014-]{1,2}\s*(?:\*\*|__)?\s*)?'
+    r'(?:STILL\s+OPEN|REOPENED|OPEN)\b')
 # …AND A STALE STATUS HEAD MUST NOT OUTRANK A LATER CLOSURE. R230's status cell still opens `**OPEN —
 # mechanism now MEASURED…` while its OUTCOME cell opens `**RESOLVED 2026-09-06 by building the shape
 # this row said would decide it**`. The outcome cell is the later word, so an explicit closure at ITS
@@ -351,6 +372,24 @@ def selftest():
         ("surfaced by the R519 work and NOT closed by it. See `82da250`.",      "cites-a-sha-only"),
         ("**CLOSED — candor-ts `82da250`, shipped and verified.**",             "closed-with-fix"),
         ("**REFUTED** — measured, the premise was wrong.",                      "resolved-no-fix"),
+        # THE ENGINE-PREFIXED STATUS HEAD, 2026-09-25. Five rows filed that day — R600, R604, R606,
+        # R611, R615 — were off the shipping-defect list because the head anchor could not see an OPEN
+        # that follows `<engine> — `. THE SELFTEST COULD NOT HAVE CAUGHT IT: every case above is
+        # written in the OLD convention, so the suite agreed with the tool about a convention they
+        # both assumed. These cases are the new convention, and the three near-misses below are what
+        # bound the widening.
+        ("swift — OPEN, PRE-EXISTING; REDUCED but not closed by R592.",         "open"),
+        ("rust — OPEN BY DECISION, measured and priced.",                       "open"),
+        ("instrument (candor-spec) — OPEN as a CONVENTION defect; ADVISORY.",   "open"),
+        # …and the incidental closure word that used to win, now correctly outranked by the head.
+        ("swift — OPEN; the stated residual of R585, which closed nine binders.", "open"),
+        ("java — OPEN. A differently-wrong owner, not a fixed one.",            "open"),
+        # NEAR-MISSES THAT MUST NOT MOVE. The OPEN has to sit IMMEDIATELY after the dash, so a closed
+        # row with an engine prefix stays closed; and a prose "open" beyond the 70-char bound stays
+        # out of reach, which is the property the original head anchor was protecting.
+        ("swift — CLOSED, candor-swift `abc1234`; the open question it raised is R9.", "closed-with-fix"),
+        ("rust — CLOSED `abc1234`. This was an open problem for three weeks before the fix landed here.",
+         "closed-with-fix"),
         # NEAR-MISSES that must NOT be stripped: domain vocabulary, not a status claim.
         ("**CLOSED — `abc1234`.** The callee is not resolved through the alias.", "closed-with-fix"),
         ("**CLOSED — `abc1234`.** fails-closed on an unresolved import.",        "closed-with-fix"),
