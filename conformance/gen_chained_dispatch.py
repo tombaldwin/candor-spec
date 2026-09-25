@@ -187,6 +187,24 @@ ARMS = [
          want=dict(disclosed={EFFECT}),
          why="R529/R530b/R532: an implementor the consumer's own body walk READ but its index does not "
              "HOLD must not be papered over by the dep's pure one"),
+    # SOUNDNESS R595 — A CONSUMER-SUPPLIED IMPLEMENTOR REACHED THROUGH A MUTABLE GLOBAL, not through a
+    # type. Measured in java first: the library declares a hook field with a PURE default and invokes it;
+    # the consumer reassigns it with an EFFECTFUL callable. **Adding that pure default DELETES a
+    # disclosure and a real effect from every consumer** — with the default absent the consumer reads
+    # `["Fs","Unknown"]` and `deny` exits 1; with it present the consumer reads `inferred: []` and exits 0.
+    #
+    # THE CONSTANT: the consumer body is byte-identical to the control in every language; only the
+    # library's hook default moves. That is how R595 itself was measured, and it is why this is an arm
+    # rather than three agent reports — ⟨0.39⟩ says the open-world trade "stops being acceptable" across
+    # a CHAIN because "the consumer supplies it, and the engine can see it", and that sentence is
+    # engine-independent. Each language spells the mutable global differently (java a `public static`
+    # field, swift a `public static var`, ts a property on an exported object since ES bindings are
+    # read-only to importers, rust a `OnceLock` since it has no safe mutable static) — the SHAPE is what
+    # is held constant, not the syntax.
+    dict(id="c13_reassigned_field_hook", iface="hook", third=False, chained=True, entry="reassignhook",
+         want=dict(has={EFFECT}),
+         why="R595: a consumer-supplied implementor reached through a MUTABLE GLOBAL the dependency "
+             "invokes — a pure default in the library must not delete the consumer's own effect"),
     dict(id="c9_consumer_zero_union", iface="zero", third=False, chained=True, entry="nesteddispatch",
          want=dict(hasnt={EFFECT}, unknown=True),
          why="R533: the CONSUMER dispatches on a foreign abstraction nobody implements — an empty union "
@@ -291,6 +309,17 @@ XFAIL = {
 
     ("c10_unchained_direct", "swift"): "R548",
 
+    # SOUNDNESS R607 — c13's four-way answer, and rust is the only engine that does not COMPLETE.
+    # java carries `['Net']` (which is R595's fix, confirmed four-way by this arm rather than by three
+    # agent reports); swift and ts carry it AND hedge. rust reads `eff=∅ unknown=True`.
+    #
+    # NOTE WHAT THAT IS AND IS NOT. `unknown=True` means rust DISCLOSES — under ⟨0.35⟩'s disjunction
+    # (complete the dispatch OR disclose it; only silence is forbidden) rust is CONFORMANT here, and
+    # this is NOT the cardinal sin. What it fails is ⟨0.39⟩'s COMPLETENESS obligation: a chained
+    # consumer's inherited signature must carry the effects of every implementor visible to it, and the
+    # consumer supplied this one itself. A weaker finding than java's was, recorded at its real weight.
+    ("c13_reassigned_field_hook", "rust"): "R607",
+
     ("c9_consumer_zero_union", "rust"):  "R533",
     ("c9_consumer_zero_union", "java"):  "R533",
     ("c9_consumer_zero_union", "swift"): "R533",
@@ -340,10 +369,10 @@ XFAIL = {
 # the arm table reads honestly; kept TOTAL across engines so a renderer cannot KeyError on an arm its
 # engine declares inexpressible.
 ENTRY = {
-    "rust":  dict(localbinding="app_size", dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size"),
-    "java":  dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
-    "ts":    dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
-    "swift": dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize"),
+    "rust":  dict(localbinding="app_size", dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size", reassignhook="app_run"),
+    "java":  dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
+    "ts":    dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
+    "swift": dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
 }
 
 # =====================================================================================================
@@ -367,6 +396,14 @@ SINK = {  # one `Net` sink per language, the same vocabulary gen_differential.EF
 }
 
 RUST_IFACE = {
+    # SOUNDNESS R595 / c13 — rust has no safe mutable static, so the analogous shape is a consumer-
+    # SUPPLIED callable behind a global the library invokes. `OnceLock` is set-once rather than
+    # reassignable — the closest safe spelling — with `noop` as the PURE DEFAULT. The question is
+    # identical: the consumer supplies the implementor and the engine can see it.
+    "hook": ('use std::sync::OnceLock;\n'
+             'fn noop() {}\n'
+             'pub static AFTER_STAGE: OnceLock<fn()> = OnceLock::new();\n'
+             'pub fn run_stage() -> usize { (AFTER_STAGE.get().copied().unwrap_or(noop as fn()))(); 0 }\n'),
     "impl": ('pub trait Backend { fn size(&self) -> usize; }\n'
              'pub struct TestBackend;\n'
              'impl Backend for TestBackend { fn size(&self) -> usize { 7 } }\n'
@@ -391,6 +428,9 @@ RUST_IFACE = {
                'pub fn sealed_dispatch() -> usize { let s: &dyn Sealed = &LocalImpl; s.go() }\n' % SINK["rust"]),
 }
 RUST_APP = {
+    "reassignhook": ('fn sink() { %s }\n'
+                     'pub fn app_run() -> usize { let _ = iface::AFTER_STAGE.set(sink); iface::run_stage() }\n'
+                     % SINK["rust"]),
     # c11/R524+R556 — the CONTROL for this arm is `dispatch` above: the same implementor, the same
     # abstraction, reached through a SIGNATURE PARAMETER instead of a `let`. One variable.
     "localbinding": ('pub struct LocalB;\n'
@@ -426,6 +466,14 @@ RUST_APP = {
 RUST_MIDDLE = 'pub fn mid_size(b: &dyn iface::Backend) -> usize { b.size() }\n'
 
 JAVA_IFACE = {
+    # SOUNDNESS R595 / c13 — the exact shape the row was measured on: a PUBLIC STATIC NON-FINAL field
+    # with a PURE default, invoked by a library entry.
+    "hook": {
+        "Hook.java": 'package iface; public interface Hook { void run(); }\n',
+        "Hooks.java": ('package iface; public class Hooks {\n'
+                       '  public static Hook afterStage = () -> { };\n'
+                       '  public static int runStage() { afterStage.run(); return 0; }\n}\n'),
+    },
     "impl": {
         "Backend.java": 'package iface; public interface Backend { int size(); }\n',
         "TestBackend.java": 'package iface; public class TestBackend implements Backend { public int size() { return 7; } }\n',
@@ -442,6 +490,8 @@ JAVA_IFACE = {
     },
 }
 JAVA_APP = {
+    "reassignhook": ('  public static int appRun() { iface.Hooks.afterStage = () -> { %s }; '
+                     'return iface.Hooks.runStage(); }\n' % SINK["java"]),
     # c11 — java measured CLEAN on this shape, so this arm is a regression pin for it.
     "localbinding": ('  public static int appSize() { iface.Backend b = () -> { %s return 0; }; return b.size(); }\n'
                      % SINK["java"]),
@@ -463,6 +513,11 @@ JAVA_MIDDLE = {
 }
 
 TS_IFACE = {
+    # SOUNDNESS R595 / c13 — an ES module BINDING is read-only to importers, so the idiomatic spelling
+    # of "a mutable hook a consumer reassigns" is a property on an exported object. Same question.
+    "hook": ('export type Hook = () => void\n'
+             'export const hooks: { afterStage: Hook } = { afterStage: () => {} }\n'
+             'export function runStage(): number { hooks.afterStage(); return 0 }\n'),
     "impl": ('export interface Backend { size(): number }\n'
              'export class TestBackend implements Backend { size(): number { return 7 } }\n'
              'export function termSize(b: Backend): number { return b.size() }\n'),
@@ -480,6 +535,10 @@ TS_IFACE = {
                % SINK["ts"]),
 }
 TS_APP = {
+    "reassignhook": ('import * as netm from "node:net";\n'
+                     'import { hooks, runStage } from "iface";\n'
+                     'export function appRun(): number { hooks.afterStage = () => { %s }; return runStage() }\n'
+                     % SINK["ts"]),
     # c11 — ts is clean on THIS spelling. Its own R524 defect needs an INDEX-SIGNATURE dep, a different
     # dep shape, so it is deliberately NOT approximated here.
     "localbinding": ('import * as netm from "node:net";\n'
@@ -511,6 +570,10 @@ TS_MIDDLE = ('import { Backend } from "iface";\n'
              'export function midSize(b: Backend): number { return b.size() }\n')
 
 SW_IFACE = {
+    # SOUNDNESS R595 / c13 — swift spells it `public static var` on a public enum.
+    "hook": ('public enum Hooks {\n'
+             '  public static var afterStage: () -> Void = { }\n'
+             '  public static func runStage() -> Int { afterStage(); return 0 }\n}\n'),
     "impl": ('public protocol Backend { func size() -> Int }\n'
              'public struct TestBackend: Backend { public init() {}; public func size() -> Int { return 7 } }\n'
              'public func termSize(_ b: Backend) -> Int { return b.size() }\n'),
@@ -523,6 +586,9 @@ SW_IFACE = {
                % SINK["swift"]),
 }
 SW_APP = {
+    "reassignhook": ('import Iface\nimport Foundation\n'
+                     'public func appRun() -> Int { Hooks.afterStage = { %s }; return Hooks.runStage() }\n'
+                     % SINK["swift"]),
     # c11 — swift measured clean on this shape; a regression pin.
     "localbinding": ('import Iface\nimport Foundation\n'
                      'public struct LocalB: Backend { public init() {}\n'
@@ -596,6 +662,11 @@ def app_body(arm):
         # the signature spelling, which `dispatch` already covers, resolves correctly. Same trap as c7 and
         # c8: without this branch `app_body` falls through to "dispatch" and the arm measures the control.
         return "localbinding"
+    if arm["entry"] == "reassignhook":
+        # c13 / SOUNDNESS R595. Same trap as c7, c8 and c11 above and the file says so three times: a
+        # missing branch here silently renders the "dispatch" body instead, and the arm then measures
+        # the control on every engine while looking like a four-way finding.
+        return "reassignhook"
     if arm["entry"] == "escapedispatch":
         # c8. THE SAME TRAP AS c7 ABOVE, AND I WALKED INTO IT ADDING THIS ARM. Without this branch the
         # function returns "dispatch", the renderer writes ONLY `app_size`, the consumer never supplies a
