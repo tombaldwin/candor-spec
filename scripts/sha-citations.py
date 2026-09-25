@@ -138,9 +138,15 @@ def remap_one(sha, maps):
 # as the evidence. A row whose claim can only be checked by opening a directory that no longer exists
 # is, to a reader, indistinguishable from a row with no evidence at all.
 def ephemeral_citations(paths=None):
-    """(total, dead, sample) for scratchpad path citations across the register files."""
+    """(total, dead, sample) for scratchpad path citations; (0,0,[]) when it cannot look."""
     import os
+    # WITHOUT A SESSION DIR THIS CANNOT ANSWER, AND MUST NOT ANSWER "ALL DEAD". The first cut read
+    # `CANDOR_SCRATCH` and, when doc-gates did not set it, reported 32 of 32 citations dead — a check
+    # that looks nowhere and calls everything missing. It is the vacuous-guard shape this register
+    # keeps finding in its own instruments, and it fired on the very commit that added the check.
     sess = os.environ.get("CANDOR_SCRATCH", "")
+    if not sess or not os.path.isdir(sess):
+        return (0, 0, [])          # unknown, not zero and not everything
     seen, dead = set(), []
     for path in (paths or TARGETS):
         if not path.exists():
