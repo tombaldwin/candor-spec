@@ -53,6 +53,12 @@ run "sha_citations"        python3 scripts/sha-citations.py --check
 # were real open defects missing from the list. A tool nobody calibrates is a tool nobody can trust, and
 # this one's failure direction was the register's own cardinal sin: under-reporting what is open.
 run "soundness_status_selftest" python3 scripts/soundness-status.py --selftest
+# PART 92's arm table, added 2026-09-25 (SOUNDNESS R677/R678). Also not a document check — it is the
+# conformance part that pins ⟨0.39⟩, and two of its thirteen arms could be satisfied by an engine that
+# said NOTHING, one of them added BECAUSE the other did not pin. `--selftest` drives `judge()` and
+# RENDERS the fixtures to prove each `hasnt` names an effect the fixture can actually perform; it builds
+# nothing and invokes no engine, so it belongs here rather than behind the four-way suite.
+run "part92_arm_table"     python3 conformance/gen_chained_dispatch.py --selftest
 
 if [ $fail -eq 0 ]; then
   echo "doc-gates: OK — every documents-only gate passed"

@@ -75,6 +75,17 @@ engine produces. `cargo build` / `javac` / `tsc --noEmit` / `swift build` run ov
 and a build failure FAILS the part. Set CANDOR_PART92_NOBUILD=1 only to iterate; the run says loudly
 when the proof was skipped.
 
+AN ABSENT CONSUMER ROW IS A FAILURE HERE, NOT A SKIP — SOUNDNESS R636/R677. Every engine omits pure
+functions from `functions[]`, so a broken engine and a correct one produce the same bytes when the answer
+is silence: `facts()` renders a missing entry as `eff=∅, unknown=False, invisible=∅`, which satisfies
+every `hasnt`, every `unknown=False` and every `invisible=False` in the table below. Driven against that
+value, 11 of these 13 arms went red on their other assertions and TWO PASSED — `c3_pure_only` and
+`c12_consumer_pure_only_union`, the second of which exists precisely because the first did not pin. So
+`judge()` now rejects an absent row unless the arm carries a NAMED `absent_ok` licence, `--selftest`
+drives that with no engine, and `assert_hasnt_is_reachable()` refuses a `hasnt` naming an effect no sink
+in the arm's own fixture performs — four arms had one (`c2`, `c3`, `c9`, `c12`), which is the same
+vacuity one level down. SPEC.md:4680 states the rule verbatim for this exact reason.
+
 THE XFAIL TABLE. `c1_foreign_effectful` fails on ALL FOUR engines today — measured against the released
 artifacts, spec 0.38 (candor-scan 0.38.4, candor-java 0.38.3, candor-ts 0.38.3, candor-swift 0.38.3).
 Every one is declared as an `(arm, engine)` expectation rather than hidden, and **A PASSING XFAIL IS A
@@ -126,15 +137,47 @@ NOBUILD = os.environ.get("CANDOR_PART92_NOBUILD")
 # The exactness demand belongs on c4, where the clause really does say the union stays exact.
 # =====================================================================================================
 EFFECT = "Net"
+
+# THE CARRIER EFFECT — SOUNDNESS R677/R678. A SECOND, DISTINCT effect, read from `gen_differential`'s
+# vocabulary rather than re-spelled here (attack G: ask the authority, never reimplement it). Two arms
+# needed an effect that is NOT `Net`: `c12` needs one its consumer legitimately CARRIES, so that "reads
+# the dep's one pure implementor" and "produced no row at all" stop being the same bytes; `c2`, `c3` and
+# `c9` need one that EXISTS in their fixture, so their `hasnt` can fail at all. Using `Net` for either
+# would have collided with the very assertion under test in `c1`/`c5`/`c10`.
+_FS = next(e for e in gd.EFFECTS if e["id"] == "fs")
+CARRIER = _FS["sink"]           # {lang: statement}
+CARRIER_EFFECT = _FS["effect"]  # "Fs"
 ARMS = [
     dict(id="c1_foreign_effectful", iface="impl", third=True, chained=True, entry="dispatch",
          want=dict(has={EFFECT}),
          why="DEFECT: a FOREIGN effectful implementor in a third package must reach the consumer"),
+    # `hasnt` carries the CARRIER effect for the reason spelled out on c3: `hasnt={Net}` alone is
+    # VACUOUS BY CONSTRUCTION here (no third package, no sink in the `zero` dependency). This arm was
+    # never at risk from it — `unknown=True` is its real assertion and absence fails that — but an
+    # assertion that cannot fail should not be left in a table whose whole subject is unfalsifiable
+    # greens.
     dict(id="c2_zero_impl", iface="zero", third=False, chained=True, entry="dispatch",
-         want=dict(hasnt={EFFECT}, unknown=True),
+         want=dict(hasnt={EFFECT, CARRIER_EFFECT}, unknown=True),
          why="CONTROL: zero implementors anywhere MUST stay a disclosed Unknown (the toggle's left side)"),
+    # SOUNDNESS R677/R678 — TWO CHANGES, BOTH ABOUT WHAT A GREEN CELL HERE MEANS.
+    #
+    # (a) `absent_ok`, NAMED rather than implicit. This arm is the one place in the table where an
+    #     omitted row is the CORRECT answer: the consumer is genuinely pure and does not itself dispatch
+    #     (it delegates to `iface::term_size`, whose own bounded CHA resolves the dep's one pure
+    #     implementor), and SPEC §2 rule 3 licenses omitting a pure function. Demanding a row would score
+    #     an engine on this arm's preference rather than on the contract. What the arm is FOR is catching
+    #     a CHARGE, and a charge cannot be absent — so the licence costs the assertion nothing.
+    # (b) `hasnt` gains the CARRIER effect, because `hasnt={Net}` ALONE COULD NOT FAIL: measured
+    #     2026-09-25 by rendering every arm and grepping for its own sink, `c2`, `c3`, `c9` and `c12`
+    #     contain NO `Net` anywhere — no third package, and neither the `impl` nor the `zero` dependency
+    #     has a sink. R636 recorded that vacuity for `c12` only; it is four arms. The dependency now
+    #     declares an effectful function the consumer never calls, so "an engine that unions
+    #     indiscriminately — charging every consumer of a dispatching library for effects nobody
+    #     implements" finally has something to charge, and this fabrication guard can go red.
     dict(id="c3_pure_only", iface="impl", third=False, chained=True, entry="dispatch",
-         want=dict(hasnt={EFFECT}, unknown=False, invisible=False),
+         want=dict(hasnt={EFFECT, CARRIER_EFFECT}, unknown=False, invisible=False,
+                   absent_ok="a pure, non-dispatching consumer — SPEC §2 rule 3 licenses the omission, "
+                             "and this arm exists to catch a CHARGE, which cannot be absent"),
          why="CONTROL: only-pure-implementor-anywhere is LEGITIMATELY pure — the fabrication guard"),
     dict(id="c4_sealed", iface="sealed", third=False, chained=True, entry="sealed",
          want=dict(has={EFFECT}, unknown=False, invisible=False),
@@ -201,12 +244,32 @@ ARMS = [
     # producer publishes the pure-only entry, the consumer can tell the two apart, and this arm reads
     # PURE — which is the target state asserted here.
     #
-    # So it is declared xfail FOUR-WAY until both halves ship, and the day it passes is the day the
-    # producer half is real. That is the opposite failure direction from `c9_consumer_zero_union`, and
-    # having both means a port cannot satisfy one by breaking the other.
+    # It was DECLARED xfail four-way on that reasoning and THREE ENGINES PASSED ON THE FIRST RUN — see
+    # the XFAIL note for what each pass rests on, which is not the same thing in java/swift as in rust
+    # (SOUNDNESS R646). Only ts's line remains. The failure direction is the opposite of
+    # `c9_consumer_zero_union`'s, and having both means a port cannot satisfy one by breaking the other.
+    # SOUNDNESS R677 — THIS ARM COULD NOT FAIL, AND IT WAS WRITTEN TO CLOSE c3's SAME HOLE.
+    # As first written its `want` was `hasnt={Net}, unknown=False`, and BOTH halves are satisfied by a
+    # report that never mentions `appSize`: `hasnt` was vacuous by construction (no `Net` anywhere in
+    # this fixture) and `unknown=False` is what absence gives for free. So its green for java, rust and
+    # swift did not distinguish *resolves the dep's one pure implementor* from *produced no row*.
+    #
+    # THE FIX IS A CARRIER, NOT A STRICTER `want`. `judge()` now rejects an absent row outright, which
+    # would be enough IF ⟨0.39⟩ obligation 1's "a dispatching row is no longer absent" were relied on —
+    # but that would make the arm red for a ⟨0.39⟩ reason and stop it measuring its ⟨0.40⟩ question. So
+    # the consumer additionally CALLS a pure-to-it dependency function that performs the CARRIER effect.
+    # The row must then exist and carry `Fs` for reasons that have nothing to do with the dispatch, and
+    # `unknown=False` — the ⟨0.40⟩ question, *can the engine tell "no implementors" from "all
+    # implementors pure"* — is asked of a row rather than of silence.
+    #
+    # THE COST, STATED: `c12` now differs from `c3` in TWO things rather than one — the dispatch site
+    # (the knob) and the carrier call. The carrier is not an input to the dispatch question, and c4
+    # already establishes four-way that a dep function's effect reaches a consumer through the ordinary
+    # chain join, so a green `Fs` here is also evidence CANDOR_DEPS reached this arm's scan. `hasnt` is
+    # dropped rather than kept vacuous: there is no `Net` in this fixture to fabricate.
     dict(id="c12_consumer_pure_only_union", iface="impl", third=False, chained=True,
-         entry="nesteddispatch",
-         want=dict(hasnt={EFFECT}, unknown=False),
+         entry="pureonlydispatch",
+         want=dict(has={CARRIER_EFFECT}, unknown=False),
          why="⟨0.40⟩ PRODUCER HALF: a consumer dispatching on a dependency whose ONLY implementor "
              "anywhere is PURE must read pure, not Unknown — which requires the producer to publish "
              "the pure-only union entry it currently drops"),
@@ -228,8 +291,9 @@ ARMS = [
          want=dict(has={EFFECT}),
          why="R595: a consumer-supplied implementor reached through a MUTABLE GLOBAL the dependency "
              "invokes — a pure default in the library must not delete the consumer's own effect"),
+    # `hasnt` carries the CARRIER effect for the same reason as c2 — see c3's note.
     dict(id="c9_consumer_zero_union", iface="zero", third=False, chained=True, entry="nesteddispatch",
-         want=dict(hasnt={EFFECT}, unknown=True),
+         want=dict(hasnt={EFFECT, CARRIER_EFFECT}, unknown=True),
          why="R533: the CONSUMER dispatches on a foreign abstraction nobody implements — an empty union "
              "must not read as purity"),
     # SOUNDNESS R548 — c5's REFERENCE claim is about ONE consumer shape, and the other one behaves
@@ -409,10 +473,10 @@ XFAIL = {
 # the arm table reads honestly; kept TOTAL across engines so a renderer cannot KeyError on an arm its
 # engine declares inexpressible.
 ENTRY = {
-    "rust":  dict(localbinding="app_size", dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size", reassignhook="app_run"),
-    "java":  dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
-    "ts":    dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
-    "swift": dict(localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
+    "rust":  dict(pureonlydispatch="app_size", localbinding="app_size", dispatch="app_size", nesteddispatch="app_size", sealed="app_sealed", escapedispatch="app_size", reassignhook="app_run"),
+    "java":  dict(pureonlydispatch="appSize", localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
+    "ts":    dict(pureonlydispatch="appSize", localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
+    "swift": dict(pureonlydispatch="appSize", localbinding="appSize", dispatch="appSize", nesteddispatch="appSize", sealed="appSealed", escapedispatch="appSize", reassignhook="appRun"),
 }
 
 # =====================================================================================================
@@ -447,9 +511,11 @@ RUST_IFACE = {
     "impl": ('pub trait Backend { fn size(&self) -> usize; }\n'
              'pub struct TestBackend;\n'
              'impl Backend for TestBackend { fn size(&self) -> usize { 7 } }\n'
-             'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'),
+             'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'
+             'pub fn conf_load() -> usize { %s 0 }\n' % CARRIER["rust"]),
     "zero": ('pub trait Backend { fn size(&self) -> usize; }\n'
-             'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'),
+             'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'
+             'pub fn conf_load() -> usize { %s 0 }\n' % CARRIER["rust"]),
     # ⟨0.39⟩/R518 — THE SPELLING ARM. Same abstraction, declared INSIDE A MODULE and re-exported at the
     # root, so `effimpl` and `app` are byte-identical to the `impl` variant and the ONLY variable is where
     # the abstraction is WRITTEN. That is R513's exact shape: candor-scan keyed its local union row on the
@@ -478,6 +544,13 @@ RUST_APP = {
                      'pub fn app_size() -> usize { let b: &dyn iface::Backend = &LocalB; b.size() }\n'
                      % SINK["rust"]),
     "dispatch": 'pub fn app_size(b: &dyn iface::Backend) -> usize { iface::term_size(b) }\n',
+    # c12/R677 — `nesteddispatch` PLUS one call to the dep's carrier function. See the arm's note: the
+    # call is what makes the row EXIST, so "reads the dep's one pure implementor" and "produced no row"
+    # stop being the same bytes. It is a dep call rather than a contained sink on purpose — `c4_sealed`
+    # already proves the ordinary chain join delivers a dep's effect four-way, so a green `Fs` here is
+    # also evidence that this arm's CANDOR_DEPS reached the scan.
+    "pureonlydispatch": ('pub fn app_size(b: &dyn iface::Backend) -> usize '
+                         '{ let _ = iface::conf_load(); b.size() }\n'),
     "third":    'pub fn app_run() -> usize { app_size(&effimpl::Crossterm) }\n',
     "sealed":   'pub fn app_sealed() -> usize { iface::sealed_dispatch() }\n',
     # c6 — the ONLY line that differs from `dispatch`: the dispatching callee lives one package over.
@@ -518,10 +591,12 @@ JAVA_IFACE = {
         "Backend.java": 'package iface; public interface Backend { int size(); }\n',
         "TestBackend.java": 'package iface; public class TestBackend implements Backend { public int size() { return 7; } }\n',
         "Terminal.java": 'package iface; public class Terminal { public static int termSize(Backend b) { return b.size(); } }\n',
+        "Conf.java": 'package iface; public class Conf { public static int confLoad() { %s return 0; } }\n' % CARRIER["java"],
     },
     "zero": {
         "Backend.java": 'package iface; public interface Backend { int size(); }\n',
         "Terminal.java": 'package iface; public class Terminal { public static int termSize(Backend b) { return b.size(); } }\n',
+        "Conf.java": 'package iface; public class Conf { public static int confLoad() { %s return 0; } }\n' % CARRIER["java"],
     },
     "sealed": {
         "Sealed.java": 'package iface; interface Sealed { int go(); }\n',
@@ -536,6 +611,9 @@ JAVA_APP = {
     "localbinding": ('  public static int appSize() { iface.Backend b = () -> { %s return 0; }; return b.size(); }\n'
                      % SINK["java"]),
     "dispatch": '  public static int appSize(iface.Backend b) { return iface.Terminal.termSize(b); }\n',
+    # c12/R677 — see RUST_APP["pureonlydispatch"].
+    "pureonlydispatch": ('  public static int appSize(iface.Backend b) '
+                         '{ iface.Conf.confLoad(); return b.size(); }\n'),
     "third":    '  public static int appRun() { return appSize(new effimpl.Crossterm()); }\n',
     "sealed":   '  public static int appSealed() { return iface.SealedDispatch.sealedDispatch(); }\n',
     "middle":   '  public static int appSize(iface.Backend b) { return middle.Mid.midSize(b); }\n',
@@ -558,11 +636,15 @@ TS_IFACE = {
     "hook": ('export type Hook = () => void\n'
              'export const hooks: { afterStage: Hook } = { afterStage: () => {} }\n'
              'export function runStage(): number { hooks.afterStage(); return 0 }\n'),
-    "impl": ('export interface Backend { size(): number }\n'
+    "impl": ('import * as fsm from "node:fs";\n'
+             'export interface Backend { size(): number }\n'
              'export class TestBackend implements Backend { size(): number { return 7 } }\n'
-             'export function termSize(b: Backend): number { return b.size() }\n'),
-    "zero": ('export interface Backend { size(): number }\n'
-             'export function termSize(b: Backend): number { return b.size() }\n'),
+             'export function termSize(b: Backend): number { return b.size() }\n'
+             'export function confLoad(): number { %s return 0 }\n' % CARRIER["ts"]),
+    "zero": ('import * as fsm from "node:fs";\n'
+             'export interface Backend { size(): number }\n'
+             'export function termSize(b: Backend): number { return b.size() }\n'
+             'export function confLoad(): number { %s return 0 }\n' % CARRIER["ts"]),
     # ⟨0.39⟩/R518 — the ts spelling arm: declared in a nested module, re-exported at the root, so the
     # consumer's import is unchanged and only the declaration site moves.
     "nested": ('export * from "./backend";\n'
@@ -587,6 +669,9 @@ TS_APP = {
                      % SINK["ts"]),
     "dispatch": ('import { Backend, termSize } from "iface";\n'
                  'export function appSize(b: Backend): number { return termSize(b) }\n'),
+    # c12/R677 — see RUST_APP["pureonlydispatch"].
+    "pureonlydispatch": ('import { Backend, confLoad } from "iface";\n'
+                         'export function appSize(b: Backend): number { confLoad(); return b.size() }\n'),
     "third":    ('import { Crossterm } from "effimpl";\n'
                  'export function appRun(): number { return appSize(new Crossterm()) }\n'),
     "sealed":   ('import { sealedDispatch } from "iface";\n'
@@ -614,11 +699,15 @@ SW_IFACE = {
     "hook": ('public enum Hooks {\n'
              '  public static var afterStage: () -> Void = { }\n'
              '  public static func runStage() -> Int { afterStage(); return 0 }\n}\n'),
-    "impl": ('public protocol Backend { func size() -> Int }\n'
+    "impl": ('import Foundation\n'
+             'public protocol Backend { func size() -> Int }\n'
              'public struct TestBackend: Backend { public init() {}; public func size() -> Int { return 7 } }\n'
-             'public func termSize(_ b: Backend) -> Int { return b.size() }\n'),
-    "zero": ('public protocol Backend { func size() -> Int }\n'
-             'public func termSize(_ b: Backend) -> Int { return b.size() }\n'),
+             'public func termSize(_ b: Backend) -> Int { return b.size() }\n'
+             'public func confLoad() -> Int { %s; return 0 }\n' % CARRIER["swift"]),
+    "zero": ('import Foundation\n'
+             'public protocol Backend { func size() -> Int }\n'
+             'public func termSize(_ b: Backend) -> Int { return b.size() }\n'
+             'public func confLoad() -> Int { %s; return 0 }\n' % CARRIER["swift"]),
     "sealed": ('import Foundation\n'
                'protocol Sealed { func go() -> Int }\n'
                'struct LocalImpl: Sealed { func go() -> Int { %s; return 0 } }\n'
@@ -636,6 +725,9 @@ SW_APP = {
                      'public func appSize() -> Int { let b: Backend = LocalB(); return b.size() }\n'
                      % SINK["swift"]),
     "dispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return termSize(b) }\n',
+    # c12/R677 — see RUST_APP["pureonlydispatch"].
+    "pureonlydispatch": ('import Iface\n'
+                         'public func appSize(_ b: Backend) -> Int { _ = confLoad(); return b.size() }\n'),
     "third":    'import EffImpl\npublic func appRun() -> Int { return appSize(Crossterm()) }\n',
     "sealed":   'import Iface\npublic func appSealed() -> Int { return sealedDispatch() }\n',
     "middle":   'import Iface\nimport Middle\npublic func appSize(_ b: Backend) -> Int { return midSize(b) }\n',
@@ -707,6 +799,11 @@ def app_body(arm):
         # missing branch here silently renders the "dispatch" body instead, and the arm then measures
         # the control on every engine while looking like a four-way finding.
         return "reassignhook"
+    if arm["entry"] == "pureonlydispatch":
+        # c12/R677. THE SAME TRAP AS c7, c8, c11 AND c13 ABOVE, and the file now says so five times: a
+        # missing branch here renders the "dispatch" body instead, the consumer never dispatches on the
+        # abstraction at all, and the arm measures c3 while looking like a ⟨0.40⟩ finding.
+        return "pureonlydispatch"
     if arm["entry"] == "escapedispatch":
         # c8. THE SAME TRAP AS c7 ABOVE, AND I WALKED INTO IT ADDING THIS ARM. Without this branch the
         # function returns "dispatch", the renderer writes ONLY `app_size`, the consumer never supplies a
@@ -941,7 +1038,12 @@ def producer_note(path):
 def facts(leaves, entry):
     """The consumer's row as a triple, with ABSENCE made explicit. `leaf_info` omits pure functions
     because the engines do — so a missing key is a POSITIVE purity claim, not a missing measurement, and
-    conflating the two is the shape of the sin itself."""
+    conflating the two is the shape of the sin itself.
+
+    THAT DOCSTRING WAS TRUE AND `judge()` DID NOT READ THE FLAG (SOUNDNESS R636/R677). The `absent` key
+    was set correctly from the day it was written and consumed only by `show()`; the comparison it exists
+    for was never made. A field that records the right thing with no assertion that reads it is the same
+    vacuity as no field at all."""
     if leaves is None:
         return None
     e = leaves.get(entry)
@@ -952,6 +1054,26 @@ def facts(leaves, entry):
 
 def judge(want, f):
     bad = []
+    # SOUNDNESS R677 — AN ABSENT ROW USED TO PASS, AND `facts()`' OWN DOCSTRING SAYS WHY IT MUST NOT.
+    # A missing consumer entry is rendered `eff=∅, unknown=False, invisible=∅`, so EVERY `hasnt`,
+    # `unknown=False` and `invisible=False` in the table above is satisfied by a report that never
+    # mentioned the function at all. Driven against that value, 11 of the 13 arms went red on their
+    # other assertions and `c3_pure_only` and `c12_consumer_pure_only_union` PASSED — attack B, an
+    # unconditional pass, in the arm written to close the gap c3 left open.
+    #
+    # SPEC §4 ⟨0.35⟩ states the rule this enforces verbatim (SPEC.md:4680): *any row asserting this
+    # clause MUST treat a missing entry as a FAILURE, never as a skip … a checker that looks the caller
+    # up and skips-if-absent is green on a broken engine forever.*
+    #
+    # THE LICENCE IS NAMED, NEVER IMPLICIT, and `_assert_arm_table()` refuses one that contradicts its
+    # own arm. Exactly one arm carries it today — `c3_pure_only`, where an omitted pure row is what a
+    # conforming engine produces — and the reason is PRINTED in that cell, so a reader can see which
+    # greens silence can buy instead of deriving it from `want`.
+    if f["absent"]:
+        if not want.get("absent_ok"):
+            return ["ABSENT — no row for this function at all. Under SPEC §2 rule 3 that is a POSITIVE "
+                    "purity claim, not a missing measurement, and it is the sin's own signature"]
+        return []
     # `disclosed=E` is ⟨0.35⟩'s DISJUNCTION, not a third way of spelling `has`. The contract says an
     # engine must either COMPLETE the dispatch (the effect arrives) or DISCLOSE it (a hedged Unknown) —
     # never silently pure — and it explicitly licenses both. An arm that demanded `has={E}` would fail an
@@ -974,11 +1096,168 @@ def judge(want, f):
     return bad
 
 
-def show(f):
+def show(f, want=None):
     if f["absent"]:
-        return "ABSENT (a purity claim)"
+        lic = (want or {}).get("absent_ok")
+        # A cell that says nothing reads like a pass — the same reason a declared SKIP is printed.
+        return "ABSENT (a purity claim)" + (" — LICENSED: %s" % lic if lic else "")
     return "eff=%s unknown=%s invisible=%s" % (sorted(f["eff"]) or "∅", f["unknown"],
                                                sorted(f["invisible"]) or "∅")
+
+
+
+
+# =====================================================================================================
+# THE TWO TABLE GUARDS, and why they are executable rather than review notes. SOUNDNESS R636/R677/R678:
+# this part shipped two arms whose `want` could be satisfied by an engine that said NOTHING, and one of
+# them was added BECAUSE the other did not pin. Neither was caught by reading; both are caught by
+# driving `judge()` against the values `facts()` can actually produce. `--selftest` runs them with no
+# engine, no build and no network, and `scripts/doc-gates.sh` runs `--selftest`.
+# =====================================================================================================
+SINKS_BY_EFFECT = {EFFECT: SINK, CARRIER_EFFECT: CARRIER}
+
+
+def assert_arm_table(arms=None):
+    """`absent_ok` may not contradict its own arm. An arm that demands an effect, a disclosure or a
+    non-empty kappa ledger CANNOT be satisfied by an omitted row, so declaring the licence there is
+    either a copy-paste or a misunderstanding — and it would silently convert a real assertion into a
+    pass. Returns a list of complaints."""
+    bad = []
+    for arm in (arms if arms is not None else ARMS):
+        w = arm["want"]
+        if not w.get("absent_ok"):
+            continue
+        for key in ("has", "disclosed"):
+            if w.get(key):
+                bad.append("%s: absent_ok with `%s` — an omitted row can never carry %s"
+                           % (arm["id"], key, sorted(w[key])))
+        if w.get("unknown") is True:
+            bad.append("%s: absent_ok with `unknown=True` — an omitted row discloses nothing" % arm["id"])
+        if w.get("invisible") is True:
+            bad.append("%s: absent_ok with `invisible=True` — an omitted row has no kappa ledger"
+                       % arm["id"])
+    return bad
+
+
+def assert_hasnt_is_reachable(arms=None):
+    """A `hasnt` names an effect the consumer MUST NOT carry. If no sink for any of those effects exists
+    anywhere in the arm's rendered fixture, no engine can fail it and the assertion is decoration.
+
+    MEASURED 2026-09-25 by rendering all 13 arms four ways and counting each language's own sink:
+    `c2`, `c3`, `c9` and `c12` contained ZERO `Net` — no third package, and neither the `impl` nor the
+    `zero` dependency had a sink. R636 recorded that vacuity for `c12`; it was four arms, which is why
+    this is a gate and not a fix to one line. Renders only — nothing is built and no engine is invoked.
+    """
+    import tempfile
+    bad = []
+    ws = tempfile.mkdtemp(prefix="candor-part92-armcheck-")
+    renderers = dict(rust=render_rust, java=render_java, ts=render_ts, swift=render_swift)
+    for arm in (arms if arms is not None else ARMS):
+        hasnt = sorted(arm["want"].get("hasnt", ()))
+        if not hasnt:
+            continue
+        for eng, render in sorted(renderers.items()):
+            if eng in (arm.get("skip") or ()):
+                continue
+            root = os.path.join(ws, eng, arm["id"])
+            os.makedirs(root, exist_ok=True)
+            render(root, arm)
+            seen = set()
+            for d, _dd, fs in os.walk(root):
+                if "node_modules" in d:
+                    continue
+                for fn in fs:
+                    p = os.path.join(d, fn)
+                    if os.path.islink(p):
+                        continue
+                    try:
+                        text = open(p).read()
+                    except Exception:
+                        continue
+                    for eff in hasnt:
+                        if SINKS_BY_EFFECT.get(eff, {}).get(eng, "\0") in text:
+                            seen.add(eff)
+            if not seen:
+                bad.append("%s/%s: hasnt=%s is VACUOUS — no sink for any of those effects is rendered "
+                           "anywhere in the fixture, so the assertion cannot fail" % (arm["id"], eng, hasnt))
+    shutil.rmtree(ws, ignore_errors=True)
+    return bad
+
+
+ABSENT_ROW = dict(eff=frozenset(), unknown=False, invisible=frozenset(), absent=True)
+
+
+def absent_passers(arms):
+    """Which arms would a report that never mentions the consumer satisfy? SOUNDNESS R636 drove this by
+    hand and found two; the answer must stay the declared set."""
+    return {a["id"] for a in arms if not judge(a["want"], ABSENT_ROW)}
+
+
+def selftest():
+    """CALIBRATED, not asserted: every check below is first shown FAILING on an injected defect, then
+    passing on the real table. A gate that has never gone red has not been shown to be a gate."""
+    fails = []
+
+    ran = []
+
+    def check(label, got, want):
+        ran.append(label)
+        status = "OK  " if got == want else "FAIL"
+        if got != want:
+            fails.append("%s: got %r want %r" % (label, got, want))
+        print("  %s %s" % (status, label))
+
+    # 1. THE DEFECT ITSELF, pinned independently of the arm table so a future edit cannot retire it by
+    #    accident: the exact `want` shape R636 found — hasnt + unknown=False + invisible=False — is what
+    #    an absent row satisfies, and it must now be rejected.
+    r636_shape = dict(hasnt={EFFECT}, unknown=False, invisible=False)
+    check("R636 shape is REJECTED when absent", bool(judge(r636_shape, ABSENT_ROW)), True)
+    check("R636 shape PASSES when the row exists and is pure",
+          judge(r636_shape, dict(eff=frozenset(), unknown=False, invisible=frozenset(), absent=False)), [])
+    check("a NAMED licence still passes",
+          judge(dict(r636_shape, absent_ok="a reason"), ABSENT_ROW), [])
+
+    # 2. EVERY ARM, against the value `facts()` produces for a missing entry. The licensed set is
+    #    declared here as a literal rather than derived from ARMS: a count compared against itself is
+    #    the two-sided drift that makes a ratchet vacuous (the COVERED_FLOOR convention in probe_check).
+    #    NOTE WHAT THIS CHECK CAN AND CANNOT SEE. It is a RATCHET on the licensed set, not a second
+    #    detector for R677 — once no arm's `want` is the R636 shape any more, removing the absence
+    #    branch from `judge()` leaves this set unchanged (verified by injection). Check 1 is the one
+    #    that fails on that; this one fails when an arm quietly GAINS a licence, which is calibrated
+    #    below on a poisoned table rather than assumed.
+    licensed = {"c3_pure_only"}
+    check("exactly the declared arms pass on an absent row", absent_passers(ARMS), licensed)
+    check("and every other arm goes red", len(ARMS) - len(absent_passers(ARMS)), 12)
+    poison = ARMS + [dict(id="poison", want=dict(hasnt={EFFECT}, absent_ok="smuggled in"))]
+    check("the licensed-set ratchet CATCHES an arm that gains a licence",
+          absent_passers(poison) - licensed, {"poison"})
+
+    # 3. `absent_ok` may not contradict its own arm — calibrated on an injected one.
+    poison = [dict(id="poison", want=dict(has={EFFECT}, absent_ok="wrong"))]
+    check("arm-table guard CATCHES a contradictory licence", len(assert_arm_table(poison)), 1)
+    check("arm-table guard is clean on the real table", assert_arm_table(), [])
+
+    # 4. `hasnt` reachability — calibrated on an arm naming an effect no fixture contains.
+    poison = [dict(ARMS[2], id="poison", want=dict(hasnt={"Exec"}))]
+    check("hasnt guard CATCHES an unreachable effect", len(assert_hasnt_is_reachable(poison)) > 0, True)
+    check("hasnt guard is clean on the real table", assert_hasnt_is_reachable(), [])
+
+    # 5. `app_body` must be TOTAL over `entry` — the trap this file records five times. A `pureonlydispatch`
+    #    arm that fell through to "dispatch" would silently re-measure c3.
+    bodies = {a["id"]: app_body(a) for a in ARMS}
+    check("c12 renders its OWN body", bodies["c12_consumer_pure_only_union"], "pureonlydispatch")
+    check("every entry has a renderer four ways",
+          sorted({b for b in bodies.values()} - set(RUST_APP) - {"middle"}), [])
+    check("every arm's entry is in every engine's ENTRY map",
+          sorted({a["entry"] for a in ARMS} - set.intersection(*[set(v) for v in ENTRY.values()])), [])
+
+    if fails:
+        print("\nPART 92 SELFTEST: %d FAILED" % len(fails))
+        for f in fails:
+            print("  " + f)
+        return 1
+    print("\nPART 92 SELFTEST: OK — %d checks, no engine invoked" % len(ran))
+    return 0
 
 
 def run_engine(name, ws):
@@ -1082,6 +1361,13 @@ def main():
         print("       'impl' variant (one pure implementor), so the arm that MUST stay a disclosed")
         print("       Unknown cannot be. This run's verdict MUST go red. A clean run never prints this.")
 
+    table = assert_arm_table()
+    if table:
+        for t in table:
+            print("  ARM TABLE: " + t)
+        print("\nCHAINED-DISPATCH: the arm table contradicts itself — NOT a pass")
+        return 2
+
     results, all_notes = {}, []
     for name in ("rust", "java", "ts", "swift"):
         res, notes, err = run_engine(name, ws)
@@ -1124,12 +1410,13 @@ def main():
                     print("  XFAIL ARM PASSED  %-22s %-6s — expectation is STALE: %s" % (arm["id"], name, exp))
                     xfail_passed.append((arm["id"], name))
                 else:
-                    print("  OK    %-22s %-6s %s" % (arm["id"], name, show(f)))
+                    print("  OK    %-22s %-6s %s" % (arm["id"], name, show(f, arm["want"])))
             elif exp:
-                print("  xfail %-22s %-6s %s — %s" % (arm["id"], name, show(f), "; ".join(bad)))
+                print("  xfail %-22s %-6s %s — %s" % (arm["id"], name, show(f, arm["want"]),
+                                                          "; ".join(bad)))
             else:
-                print("  FAIL  %-22s %-6s %s — %s  [%s]" % (arm["id"], name, show(f), "; ".join(bad),
-                                                            arm["why"]))
+                print("  FAIL  %-22s %-6s %s — %s  [%s]" % (arm["id"], name, show(f, arm["want"]),
+                                                            "; ".join(bad), arm["why"]))
                 fails.append((arm["id"], name))
 
     print()
@@ -1148,4 +1435,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        print("PART 92 selftest — the arm table and judge(), with NO engine and NO build")
+        sys.exit(selftest())
     sys.exit(main())
