@@ -123,6 +123,37 @@ def remap_one(sha, maps):
     return repo, new[:len(sha)]
 
 
+# SOUNDNESS R600 — A PATH CITATION IS A PROMISE A READER CAN FOLLOW, AND MOST OF THEM CANNOT BE.
+# The register cites scratchpad directories as evidence ("fixture at `scratchpad/agsw/f5`"). Those live
+# in a SESSION-SCOPED temp dir: a new session gets a new path, and the old one is gone. Measured
+# 2026-09-25: 33 distinct scratchpad citations, **26 of them point at nothing**.
+#
+# This is the same class as the 531 dead sha citations repaired above, with one difference that decides
+# the remedy: THOSE WERE RECOVERABLE and these are not. There is no commit-map for a deleted temp
+# directory. So this reports rather than repairs, and it is ADVISORY rather than fatal — a checker that
+# is permanently red on something unfixable gets disabled, and then it is not a checker.
+#
+# The real remedy is a CONVENTION, and it belongs in the row that cites: put the decisive artefact IN
+# the row (the numbers, the fixture source, the exact command), and treat the path as a courtesy, never
+# as the evidence. A row whose claim can only be checked by opening a directory that no longer exists
+# is, to a reader, indistinguishable from a row with no evidence at all.
+def ephemeral_citations(paths=None):
+    """(total, dead, sample) for scratchpad path citations across the register files."""
+    import os
+    sess = os.environ.get("CANDOR_SCRATCH", "")
+    seen, dead = set(), []
+    for path in (paths or TARGETS):
+        if not path.exists():
+            continue
+        text = path.read_text()
+        for c in set(re.findall(r'scratchpad/[A-Za-z0-9_./*-]+', text)):
+            top = c.split("/")[1].rstrip("*") if "/" in c else c
+            seen.add(top)
+            if not (sess and os.path.exists(os.path.join(sess, top))):
+                dead.append(top)
+    return len(seen), len(set(dead)), sorted(set(dead))[:8]
+
+
 def main(argv):
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
@@ -172,6 +203,11 @@ def main(argv):
 
     print(f"sha-citations: {total} citation(s) checked, {dead} dead, {repaired} "
           f"{'repaired' if args.apply else 'repairable'}, {len(unresolved)} unresolvable")
+    _t, _d, _s = ephemeral_citations()
+    if _d:
+        print(f"  ADVISORY (R600): {_d} of {_t} scratchpad path citation(s) point at nothing — "
+              f"session-scoped evidence, NOT recoverable. e.g. {', '.join(_s[:5])}")
+        print("  Put the decisive artefact IN the row; a path is a courtesy, never the evidence.")
     if unresolved:
         print("  UNRESOLVABLE — these cite a commit no map can recover:")
         for f, s in unresolved[:40]:
