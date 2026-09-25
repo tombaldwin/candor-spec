@@ -187,6 +187,29 @@ ARMS = [
          want=dict(disclosed={EFFECT}),
          why="R529/R530b/R532: an implementor the consumer's own body walk READ but its index does not "
              "HOLD must not be papered over by the dep's pure one"),
+    # ⟨0.40⟩ — THE MIDDLE CASE `c3_pure_only` DOES NOT PIN, and the gap is one knob wide. c3 puts the
+    # dispatch in the DEPENDENCY (`entry="dispatch"` -> the consumer calls `iface::termSize(b)`), where
+    # the dep's OWN CHA resolves its one pure implementor and the consumer inherits a resolved answer.
+    # This arm holds everything else and moves the dispatch to the CONSUMER's own body, which is the
+    # site ⟨0.40⟩ actually governs: the dep has exactly one implementor, it is PURE, and the consumer
+    # has none of its own.
+    #
+    # WHY IT IS THE ARM THAT SEPARATES THE TWO HALVES OF THE RUNG. Under the CONSUMER half alone the
+    # consumer hedges on WIRE ABSENCE — all three silent producers drop a pure-only union entry
+    # (`silence = purity`), so "no implementor" and "all implementors pure" are indistinguishable on
+    # the wire and this arm reads `Unknown`, which is an OVER-disclosure. Under BOTH halves the
+    # producer publishes the pure-only entry, the consumer can tell the two apart, and this arm reads
+    # PURE — which is the target state asserted here.
+    #
+    # So it is declared xfail FOUR-WAY until both halves ship, and the day it passes is the day the
+    # producer half is real. That is the opposite failure direction from `c9_consumer_zero_union`, and
+    # having both means a port cannot satisfy one by breaking the other.
+    dict(id="c12_consumer_pure_only_union", iface="impl", third=False, chained=True,
+         entry="nesteddispatch",
+         want=dict(hasnt={EFFECT}, unknown=False),
+         why="⟨0.40⟩ PRODUCER HALF: a consumer dispatching on a dependency whose ONLY implementor "
+             "anywhere is PURE must read pure, not Unknown — which requires the producer to publish "
+             "the pure-only union entry it currently drops"),
     # SOUNDNESS R595 — A CONSUMER-SUPPLIED IMPLEMENTOR REACHED THROUGH A MUTABLE GLOBAL, not through a
     # type. Measured in java first: the library declares a hook field with a PURE default and invokes it;
     # the consumer reassigns it with an EFFECTFUL callable. **Adding that pure default DELETES a
@@ -320,7 +343,24 @@ XFAIL = {
     # consumer supplied this one itself. A weaker finding than java's was, recorded at its real weight.
     ("c13_reassigned_field_hook", "rust"): "R607",
 
-    ("c9_consumer_zero_union", "rust"):  "R533",
+    # ⟨0.40⟩'s consumer-site pure-only union. I DECLARED THIS XFAIL FOUR-WAY AND WAS WRONG ON THREE
+    # ENGINES — the arm's first run reported `XFAIL ARM PASSED` for java, rust and swift, which is the
+    # ledger working exactly as R475 intended: an expectation that has become true is a FAILURE here.
+    #
+    # java and swift already read this correctly with `interfaceUnion=absent`, resolving the dep's one
+    # pure implementor through the dependency's own row rather than through a union entry. rust passes
+    # for a different reason and it is worth recording: its dep line reads `interfaceUnion=present`,
+    # which is R609's producer half — shipped the same night — doing precisely what it was built for.
+    #
+    # ts is the one that over-discloses (`unknown=True` where the answer is knowable), so it keeps its
+    # line under its own row rather than under the rung's.
+    ("c12_consumer_pure_only_union", "ts"):    "R613",
+
+    # RETIRED 2026-09-25, candor-rust `e4808bf` — the FIRST engine to close it. rust now reads
+    # `['Unknown'], unresolved: true, unknownWhy: ['dispatch:Backend.size']` on this arm. Keep the
+    # table rather than deleting it: java and swift are still open, and a PASSING xfail is what
+    # announced this one, exactly as it announced each of ⟨0.39⟩'s four.
+    # ("c9_consumer_zero_union", "rust"):  "R533",
     ("c9_consumer_zero_union", "java"):  "R533",
     ("c9_consumer_zero_union", "swift"): "R533",
 
