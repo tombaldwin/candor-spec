@@ -44,8 +44,12 @@ import re
 import sys
 from pathlib import Path
 
-# A row we care about: `| R12 ...` or `| ~~R12~~ ...` (struck-through rows are retracted, still rows).
-ROW_RE = re.compile(r'^\| ~{0,2}R\d+')
+# THE RECOGNISER IS SHARED NOW (SOUNDNESS R641). This file had TWO copies of it and
+# `soundness-status.py` three more, and they disagreed: a `|| R524` row was seen here and NOT there, so
+# it vanished from the shipping-defect list while this tool went red on its cell count. One module,
+# imported by both, with one selftest table — `scripts/soundness_row.py`.
+from soundness_row import row_id, split_cells   # noqa: E402
+import soundness_row                            # noqa: E402
 # …AND THE MALFORMED SPELLINGS, which is the whole point (added 2026-09-21).
 # THIS CHECKER WAS VACUOUS AGAINST A DOUBLED LEADING PIPE. `|| R524 …` renders in GFM as a row with an
 # EMPTY first cell, shifting every column one to the right — precisely the corruption the cell-count
@@ -57,23 +61,8 @@ ROW_RE = re.compile(r'^\| ~{0,2}R\d+')
 # none") committed inside the validator. A row is therefore identified by its ID appearing as the first
 # NON-EMPTY cell, not by a literal prefix — so a malformed row is SEEN, and then fails on cell count
 # like any other.
-ROW_ANY_RE = re.compile(r'^\|')
 
 
-def row_id(line):
-    """The register ID of `line` if it is a register row at all, else None.
-
-    Tolerates leading empty cells (`|| R5`, `| | R5`) so they are caught rather than skipped."""
-    if not ROW_ANY_RE.match(line):
-        return None
-    cells = re.split(r'(?<!\\)\|', line)[1:-1] or re.split(r'(?<!\\)\|', line)[1:]
-    for cell in cells[:2]:                      # an ID past the second cell is not a register row
-        m = re.match(r'\s*~{0,2}(R\d+)', cell)
-        if m:
-            return m.group(1)
-        if cell.strip():                        # first non-empty cell is not an ID -> not our row
-            return None
-    return None
 # A GFM delimiter row: `|---|---|`, optionally with alignment colons and spaces.
 SEP_RE = re.compile(r'^\|[\s:-]+\|[\s|:\-]*$')
 
@@ -153,25 +142,17 @@ def main() -> int:
     # two unrelated findings in every future grep") — measured there for AGENTS inventing an id, and it
     # happens to the coordinator appending one. The next free number is the MAXIMUM, not the last row:
     #     grep -oE '^\| R[0-9]+' SOUNDNESS.md | grep -oE '[0-9]+' | sort -n | tail -1
-    # THE LETTER SUFFIX IS PART OF THE ID and `row_id()` drops it, so this check reads the full one
-    # itself rather than widening a helper three other properties depend on. R529, R529b and R529c are
-    # THREE different rows — the register splits one finding into separately measurable parts that way,
-    # and on 2026-09-22 a base row was CLOSED while its lettered sibling was open. Collapsing them here
-    # reported four phantom duplicates on the first run of this guard, which is how the point got made.
-    def full_id(line):
-        if not row_id(line):
-            return None
-        cells = re.split(r'(?<!\\)\|', line)[1:]
-        for cell in cells[:2]:
-            m = re.match(r'\s*~{0,2}(R\d+[a-z]?)', cell)
-            if m:
-                return m.group(1)
-        return None
-
+    # THE LETTER SUFFIX IS PART OF THE ID. R529, R529b and R529c are THREE different rows — the
+    # register splits one finding into separately measurable parts that way, and on 2026-09-22 a base row
+    # was CLOSED while its lettered sibling was open. Collapsing them reported four phantom duplicates on
+    # the first run of this guard, which is how the point got made. This used to be a SECOND local scan
+    # (`full_id`) because the first one dropped the suffix; both carried the `cells[:2]` bound that
+    # SOUNDNESS R640 measured, so `||| R900` and `| **R900** |` escaped this property entirely. The
+    # shared recogniser keeps the suffix and reads the first NON-EMPTY cell whatever its index.
     seen: dict = {}
     for _sep, rows in found:
         for i in rows:
-            rid = full_id(lines[i])
+            rid = row_id(lines[i])
             if rid:
                 seen.setdefault(rid, []).append(i + 1)
     dupes = {r: ns for r, ns in seen.items() if len(ns) > 1}
@@ -191,5 +172,64 @@ def main() -> int:
     return 0
 
 
+def selftest() -> int:
+    """CALIBRATED, not asserted. Until 2026-09-25 this file had no selftest at all, which is how it
+    shipped blind to `|| R524` for twelve days and to `||| R900` / `| **R900** |` for four more. Each
+    case below is a row shape the tool was once green over."""
+    print('check_soundness_tables selftest — the shared recogniser, then this tool on a poisoned file')
+    bad = soundness_row.selftest()
+
+    import tempfile
+    good = ['# fixture', '', '| entry | date | engine | class | outcome |',
+            '|---|---|---|---|---|',
+            '| R900 a row | d | e | c | o |',
+            '| R901 another | d | e | c | o |', '']
+
+    def verdict(body, label, want):
+        nonlocal bad
+        with tempfile.NamedTemporaryFile('w', suffix='.md', delete=False) as fh:
+            fh.write('\n'.join(body))
+            p = fh.name
+        argv = sys.argv
+        sys.argv = [argv[0], p]
+        try:
+            import io
+            import contextlib
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = main()
+        finally:
+            sys.argv = argv
+        ok = rc == want
+        bad += not ok
+        print('  %s rc=%d want %d  %s' % ('ok  ' if ok else 'FAIL', rc, want, label))
+
+    verdict(good, 'a clean fixture', 0)
+    # R641 — one leading empty cell. The 2026-09-21 fix was written for this and it must stay caught.
+    verdict(good[:5] + ['|| R901 a doubled leading pipe | d | e | c | o |', ''],
+            'a doubled leading pipe is CAUGHT on cell count', 1)
+    # R640 — two leading empty cells, and a bolded id. Both escaped every property before the shared
+    # recogniser; the second is a DUPLICATE ID, which is the property that matters most here.
+    verdict(good[:6] + ['||| R900 two leading empty cells, a duplicate id | d | e | c | o |', ''],
+            'two leading empty cells + duplicate id is CAUGHT', 1)
+    verdict(good[:6] + ['| **R900** a bolded duplicate id | d | e | c | o |', ''],
+            'a bolded duplicate id is CAUGHT', 1)
+    # The contiguity property, which is the one this file was written for.
+    verdict(good[:5] + ['', '| R901 orphaned by a blank line | d | e | c | o |', ''],
+            'a row orphaned by a blank line is CAUGHT', 1)
+    # And the control for the widened recogniser: a row whose id sits past the first non-empty cell is
+    # NOT a register row, so widening must not have swept prose in.
+    verdict(good + ['| a paragraph mentioning R900 | and a second cell |', ''],
+            'prose naming a row is NOT read as one', 0)
+
+    if bad:
+        print('check_soundness_tables SELFTEST: %d FAILED' % bad)
+    else:
+        print('check_soundness_tables SELFTEST: OK')
+    return 1 if bad else 0
+
+
 if __name__ == '__main__':
+    if '--selftest' in sys.argv:
+        sys.exit(selftest())
     sys.exit(main())

@@ -24,6 +24,7 @@ register starts lying; this one makes the ambiguity the output. If that bucket g
 sharpen the rows it names, not to sharpen the regex.
 """
 import re, sys, pathlib
+import soundness_row
 
 # `fail closed` / `fail-closed` / `closed-world` are ORDINARY VOCABULARY here — this contract is about
 # failing closed — so a bare \bCLOSED\b marks half the register resolved. Measured: R520 was filed as an
@@ -258,7 +259,19 @@ def main(argv):
             if not ln.startswith("|"):
                 in_register = False
                 continue
-            if re.match(r'^\| ~?~?R\d+', ln):
+            # SOUNDNESS R641 — THE RECOGNISER IS SHARED NOW. This was `^\| ~?~?R\d+`, which sees
+            # neither malformed spelling: a row written `|| R524 …` (a doubled leading pipe, which GFM
+            # renders as a row with an EMPTY first cell) was skipped here and seen by
+            # `check_soundness_tables.py`, so it vanished from the counts, the OPEN list and `--ids`
+            # while the other tool went red on it. One module, `scripts/soundness_row.py`, one selftest
+            # table, imported by both.
+            #
+            # A malformed row is now SEEN rather than dropped, and that is deliberate even though its
+            # COLUMNS are shifted by the empty cell and `bucket()` may therefore read the wrong one:
+            # appearing in the wrong bucket is loud, vanishing from the shipping-defect list is the
+            # under-report this tool exists to prevent — and `check_soundness_tables.py` fails on the
+            # same row, which is what stops it being committed.
+            if soundness_row.row_id(ln):
                 rows.append(ln.rstrip("\n"))
     if not rows:
         print("soundness-status: REFUSING — no `| entry | date | engine | class | outcome |` table found.",
@@ -273,7 +286,7 @@ def main(argv):
         # fixed: a reader looking up "R529" finds a closed row and concludes the list is wrong, or worse
         # re-opens work that is done. Sub-rows are how this register splits one finding into its separate
         # measurable parts, so collapsing them loses exactly the distinction they were created to make.
-        rid = re.match(r'^\| ~?~?(R\d+[a-z]?)', l).group(1)
+        rid = soundness_row.row_id(l)
         # The outcome is the LAST cell of the register table; pass it separately so a declared OPEN
         # is read as a declaration rather than hunted for in the whole row's prose.
         _c = re.split(r'(?<!\\)\|', l)
@@ -446,13 +459,16 @@ def selftest():
         ("| R571 rust: `move \\| i: Input \\|` | 2026-09-23 | **OPEN — measured** |"
          " class | Not fixed. |", "open"),
     ]
-    bad = 0
+    # SOUNDNESS R641 — the SHARED recogniser's own table, run here so neither tool can drift from
+    # the other's idea of what a row is. It is the same list `check_soundness_tables.py --selftest`
+    # runs, which is the point: one contract, two consumers.
+    bad = soundness_row.selftest()
     # The ID parse is part of the contract too — see the comment at `rid`. A base row and its lettered
     # sibling are DIFFERENT rows and routinely have different verdicts.
     for line, want_id in (("| R529c rust: a body-local struct's field type…", "R529c"),
                           ("| R529 rust: an implementor written inside a block…", "R529"),
                           ("| ~~R116~~ retracted", "R116")):
-        got = re.match(r'^\| ~?~?(R\d+[a-z]?)', line).group(1)
+        got = soundness_row.row_id(line)
         flag = "ok  " if got == want_id else "FAIL"
         if got != want_id:
             bad += 1

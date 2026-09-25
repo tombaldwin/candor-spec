@@ -62,6 +62,15 @@ jobs:
       - name: SOUNDNESS rows must render as table rows (GFM contiguity, not pipe counts)
         working-directory: candor-spec
         run: python3 scripts/check_soundness_tables.py
+      # …AND THE CHECKER ITSELF (SOUNDNESS R640/R641). It ran in CI for its whole life with no
+      # selftest, and was measured VACUOUS twice: blind to `|| R524` for twelve days, and blind to
+      # `||| R900` and `| **R900** |` — the second of which hides a DUPLICATE ROW ID, which makes one
+      # of two rows absent from the shipping-defect list entirely. The selftest injects each of those
+      # spellings into a fixture and requires a non-zero exit, and it runs the row-recogniser table
+      # that `soundness-status.py` shares, so the two tools cannot drift apart again.
+      - name: ...and the checker is itself calibrated (R640/R641 spellings, shared recogniser)
+        working-directory: candor-spec
+        run: python3 scripts/check_soundness_tables.py --selftest
 
       # R155: `Llm` was in SPEC §1 and enforced by every engine's classifier while every
       # agent-facing vocabulary copy omitted it — and the two doc-vs-doc gates above cannot see it,
