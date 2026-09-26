@@ -1475,8 +1475,14 @@ Each entry:
   "unknownWhy":   ["dispatch:Foo.bar"],  // ⟨0.6⟩ REQUIRED when this fn introduces `Unknown` DIRECTLY (a source); absent if purely inherited. Why —
                                          // `reflect:<callee>` (reflection / dynamic invoke),
                                          // `native:<method>` (no analysable body),
-                                         // `dispatch:<type>.<method>` (a project abstraction with no
-                                         // visible impl), or `callback:<what>` (a call through a
+                                         // `dispatch:<type>.<method>` (an owner type's NAMED member
+                                         // whose implementation this scan did not see — PROJECT OR
+                                         // PLATFORM. The earlier wording, "a project abstraction",
+                                         // described only half of what every engine already emitted:
+                                         // a delegating PLATFORM type such as java.io.FilterInputStream
+                                         // is the largest single instance of this class. No rung: this
+                                         // widens a DESCRIPTION of shipped behaviour, not a contract),
+                                         // or `callback:<what>` (a call through a
                                          // function-typed value — a closure/fn-pointer parameter or
                                          // field whose target isn't statically known), or ⟨0.24⟩
                                          // `ambiguous:<what>` (the analyser's own NAME RESOLUTION was
