@@ -72,7 +72,25 @@ LOST = {
     "80d3c48": "branch `rung/per-file-module-identity`, the NetNewsWire module-identity measurement",
 }
 
+# A BACKTICKED HEX TOKEN INTRODUCED AS A `sha1`/`sha256`/`digest` IS NOT A COMMIT CITATION, and the
+# convention alone did not hold: on 2026-09-26 the register acquired THREE of them in one day — two jar
+# sha1 prefixes proving an A/B's two arms differed, and one proving a rebuilt jar matched a lane's. Each
+# time this checker correctly reported a dead commit, and each time the honest repair was to drop the
+# backticks, because the register's convention is that backticks mean "a commit a reader can follow".
+#
+# Rather than keep paying that, the CONTEXT is read: a token immediately preceded by one of these words
+# is excluded from the commit check. It is deliberately narrow — the word must be adjacent, so a commit
+# mentioned in a sentence that happens to contain "sha1" elsewhere is still checked.
+_NOT_A_COMMIT_CONTEXT = re.compile(
+    r"(?:jar\s+)?sha-?(?:1|256)|digest|checksum"
+    r"(?:\s+prefix(?:es)?)?"
+    r"(?:\s*(?:,|vs\.?|and|or)\s*|\s+)$", re.I)
 TOKEN = re.compile(r"`([0-9a-f]{7,40})`")
+
+
+def _is_commit_citation(text, m):
+    """False when the token is introduced as a hash of something that is not a commit."""
+    return not _NOT_A_COMMIT_CONTEXT.search(text[max(0, m.start() - 28):m.start()])
 
 
 def load_maps(prefer_committed=True):
@@ -179,7 +197,8 @@ def main(argv):
         if not path.exists():
             continue
         text = path.read_text()
-        seen = sorted(set(TOKEN.findall(text)))
+        seen = sorted({m.group(1) for m in TOKEN.finditer(text)
+                       if _is_commit_citation(text, m)})
         edits = {}
         for sha in seen:
             if sha in NOT_SHAS or sha in LOST:
@@ -207,6 +226,11 @@ def main(argv):
             repaired += len(edits)
             print(f"  {path.name}: {len(edits)} dead citation(s) WOULD be repaired")
 
+    if total == 0:
+        print("sha-citations: REFUSING — ZERO citations checked. This register cites hundreds of commits;"
+              " a run that finds none has a broken token pattern or an over-wide context exclusion, and"
+              " an empty check must not read as a clean one.", file=sys.stderr)
+        return 2
     print(f"sha-citations: {total} citation(s) checked, {dead} dead, {repaired} "
           f"{'repaired' if args.apply else 'repairable'}, {len(unresolved)} unresolvable")
     _t, _d, _s = ephemeral_citations()
