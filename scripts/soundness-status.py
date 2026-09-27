@@ -41,9 +41,21 @@ _NOT_A_VERDICT = re.compile(r'fails?[- ]closed|failing[- ]closed|closed[- ]world
 _NEGATED_CLOSURE = re.compile(r"\b(?:not|never|isn'?t|was\s?n'?t|are\s?n'?t)\s+(?:yet\s+)?"
                               r"(?:been\s+)?(?:closed|fixed|resolved|retired|withdrawn)\b", re.I)
 CLOSURE = re.compile(r'\bCLOSED\b|\bFIXED\b|\bREFUTED\b|\bRETIRED\b|\bWITHDRAWN\b|\bDECLINED\b|~~R\d+~~', re.I)
-FIXSHA  = re.compile(r'`?\b[0-9a-f]{7,40}\b`?')   # backticked OR bare: measured across all 476 rows,
-                                                 # accepting bare hex added exactly 2 matches and no
-                                                 # false positives, so the looser form is the correct one
+# SOUNDNESS R645 — AND THE COMMENT THIS REPLACES WAS ALREADY FALSE WHEN IT WAS WRITTEN. It said
+# accepting BARE hex "added exactly 2 matches and no false positives". Measured 2026-09-27: a row whose
+# evidence reads "the remedy is known; measured 20260924 over 1179132 rows" buckets `cites-a-sha-only` —
+# OFF the shipping-defect list — and the same row with the numbers removed buckets `open`. The register
+# quotes 7-digit unit counts constantly. Of the 15 rows then decided by a bare token, 14 resolved to real
+# commits and one did not: R527's `deadbee`, a FIXTURE LITERAL quoted in that row's own prose.
+#
+# So: a BACKTICKED token keeps the old laxity, because a human typed the backticks and meant a citation.
+# A BARE token must LOOK like a sha rather than merely be spellable in hex — at least one [a-f] AND at
+# least one [0-9]. One rule kills both measured false positives: a decimal date or unit count has no hex
+# letter, and `deadbee` has no digit. The residual is stated rather than discovered: a real bare sha that
+# happens to be all-digits (~3.7% of 7-hex strings) or all-letters (~0.03%) now reads as OPEN instead of
+# closed — which is the SAFE direction for a shipping-defect list, and the backticked form is exempt.
+FIXSHA  = re.compile(r'`[0-9a-f]{7,40}`'
+                     r'|\b(?=[0-9a-f]{7,40}\b)(?=[0-9a-f]*[a-f])(?=[0-9a-f]*[0-9])[0-9a-f]{7,40}\b')
 
 # THE DISCRIMINATOR, and why it is this one. The first version of this script asked only "does a closure
 # WORD appear anywhere in the row", and put 191 of 476 rows in an UNCERTAIN bucket — useless, because a
@@ -458,6 +470,20 @@ def selftest():
         # AND THE ESCAPED PIPE: a row whose code sample contains `\|` must not shift the status index.
         ("| R571 rust: `move \\| i: Input \\|` | 2026-09-23 | **OPEN — measured** |"
          " class | Not fixed. |", "open"),
+        # SOUNDNESS R645 — FIXSHA's four calibration cases. The old rule accepted any bare 7-40 char
+        # hex-spellable token, so a DATE or a UNIT COUNT beside a closure word moved a row off the
+        # shipping-defect list. These four pin both directions of the replacement: a bare token must
+        # contain a hex LETTER and a DIGIT; a backticked one is exempt because a human typed the
+        # backticks and meant a citation. Cases 1 and 4 are the two false positives that were MEASURED
+        # in the live register — a 7-digit unit count, and R527's `deadbee` fixture literal.
+        ("| R900 rust: a thing | 2026-09-27 | **CLOSED — measured 20260924 over 1179132 rows** |"
+         " class | Not fixed. |", "resolved-no-fix"),
+        ("| R901 rust: a thing | 2026-09-27 | **CLOSED — candor-rust 46f69ad** |"
+         " class | Not fixed. |", "closed-with-fix"),
+        ("| R902 rust: a thing | 2026-09-27 | **CLOSED — candor-rust `1234567`** |"
+         " class | Not fixed. |", "closed-with-fix"),
+        ("| R903 rust: a thing | 2026-09-27 | **CLOSED — the fixture spells it deadbee** |"
+         " class | Not fixed. |", "resolved-no-fix"),
     ]
     # SOUNDNESS R641 — the SHARED recogniser's own table, run here so neither tool can drift from
     # the other's idea of what a row is. It is the same list `check_soundness_tables.py --selftest`

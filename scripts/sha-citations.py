@@ -156,15 +156,20 @@ def remap_one(sha, maps):
 # as the evidence. A row whose claim can only be checked by opening a directory that no longer exists
 # is, to a reader, indistinguishable from a row with no evidence at all.
 def ephemeral_citations(paths=None):
-    """(total, dead, sample) for scratchpad path citations; (0,0,[]) when it cannot look."""
+    """(total, dead, sample) for scratchpad path citations.
+
+    `dead` is None — NOT 0 — when this run could not look. SOUNDNESS R639: returning 0
+    made "no session dir" indistinguishable from "every citation resolves", and since
+    nothing in either repo sets CANDOR_SCRATCH, the unlookable case was EVERY case. The
+    total is still counted in that state, because how many citations exist is knowable
+    without a session dir and is the number that makes the advisory worth printing."""
     import os
     # WITHOUT A SESSION DIR THIS CANNOT ANSWER, AND MUST NOT ANSWER "ALL DEAD". The first cut read
     # `CANDOR_SCRATCH` and, when doc-gates did not set it, reported 32 of 32 citations dead — a check
     # that looks nowhere and calls everything missing. It is the vacuous-guard shape this register
     # keeps finding in its own instruments, and it fired on the very commit that added the check.
     sess = os.environ.get("CANDOR_SCRATCH", "")
-    if not sess or not os.path.isdir(sess):
-        return (0, 0, [])          # unknown, not zero and not everything
+    can_look = bool(sess) and os.path.isdir(sess)
     seen, dead = set(), []
     for path in (paths or TARGETS):
         if not path.exists():
@@ -173,9 +178,81 @@ def ephemeral_citations(paths=None):
         for c in set(re.findall(r'scratchpad/[A-Za-z0-9_./*-]+', text)):
             top = c.split("/")[1].rstrip("*") if "/" in c else c
             seen.add(top)
-            if not (sess and os.path.exists(os.path.join(sess, top))):
+            if can_look and not os.path.exists(os.path.join(sess, top)):
                 dead.append(top)
+    if not can_look:
+        return len(seen), None, []     # counted, NOT judged — and the caller must say so
     return len(seen), len(set(dead)), sorted(set(dead))[:8]
+
+
+def selftest():
+    """Prove this checker's two judgement calls can FAIL — SOUNDNESS R643.
+
+    Until 2026-09-27 this script had no selftest and no fixture. Its only input was the live,
+    currently-clean documents, so `attack B` was trivial: replace the body with `sys.exit(0)` and
+    every gate it appears in stays green. Two things here are real judgement calls rather than
+    plumbing, and both were got WRONG once already:
+
+      - `_is_commit_citation`'s CONTEXT window. The first cut of it looked back 40 characters and
+        suppressed GENUINE citations, which its own calibration caught; it is now 28 and requires
+        the introducing word to be ADJACENT. Cases 5 and 6 below are that narrowness — a commit in
+        a sentence that merely CONTAINS "sha1" must still be checked.
+      - `ephemeral_citations`' THREE states. It returned 0 for "could not look", which made a
+        missing session dir indistinguishable from a clean result, and since nothing sets
+        CANDOR_SCRATCH the unlookable case was every case (R639). `dead is None` is now the
+        cannot-look state and the caller must say so.
+    """
+    import os, tempfile
+    bad = []
+
+    ctx = [
+        ("the jar sha1 `aa08496` proves the arms differ",            False, "jar sha1, adjacent"),
+        ("sha256 `f955ecd` of the rebuilt jar",                      False, "sha256, adjacent"),
+        ("digest `4081edf9` of the artifact",                        False, "digest, adjacent"),
+        ("checksum `abc1234` recomputed",                            False, "checksum, adjacent"),
+        ("candor-java `46f69ad` fixes it",                           True,  "an ordinary citation"),
+        ("the sha1 mismatch was noted; the fix is `46f69ad`",         True,
+         "NARROWNESS: sha1 appears but is NOT adjacent — still a citation"),
+        ("jar sha1 prefixes `aa08496` vs `f955ecd`",                 False, "prefixes + vs, both excluded"),
+    ]
+    for text, want, why in ctx:
+        for m in TOKEN.finditer(text):
+            got = _is_commit_citation(text, m)
+            # in case 7 both tokens must be excluded; elsewhere there is exactly one token
+            if got != want:
+                bad.append(f"_is_commit_citation({text!r}, {m.group(1)}) = {got}, want {want} — {why}")
+
+    # ephemeral_citations' three states, over a throwaway target file so the live register is not read.
+    with tempfile.TemporaryDirectory() as td:
+        tgt = pathlib.Path(td) / "FAKE.md"
+        tgt.write_text("evidence in scratchpad/alpha/ and scratchpad/beta/x.json\n")
+        saved = os.environ.pop("CANDOR_SCRATCH", None)
+        try:
+            t, d, _ = ephemeral_citations([tgt])
+            if (t, d) != (2, None):
+                bad.append(f"cannot-look state gave (total={t}, dead={d}), want (2, None) — "
+                           "R639: returning 0 dead is what made silence look like success")
+            sess = pathlib.Path(td) / "sess"
+            (sess / "alpha").mkdir(parents=True)
+            os.environ["CANDOR_SCRATCH"] = str(sess)
+            t, d, _ = ephemeral_citations([tgt])
+            if (t, d) != (2, 1):
+                bad.append(f"half-alive state gave (total={t}, dead={d}), want (2, 1)")
+            empty = pathlib.Path(td) / "empty"
+            empty.mkdir()
+            os.environ["CANDOR_SCRATCH"] = str(empty)
+            t, d, _ = ephemeral_citations([tgt])
+            if (t, d) != (2, 2):
+                bad.append(f"all-dead state gave (total={t}, dead={d}), want (2, 2)")
+        finally:
+            os.environ.pop("CANDOR_SCRATCH", None)
+            if saved is not None:
+                os.environ["CANDOR_SCRATCH"] = saved
+
+    for b in bad:
+        print("  FAIL " + b)
+    print("sha-citations selftest: " + ("OK" if not bad else f"FAILED ({len(bad)})"))
+    return 1 if bad else 0
 
 
 def main(argv):
@@ -183,7 +260,11 @@ def main(argv):
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true")
     g.add_argument("--apply", action="store_true")
+    g.add_argument("--selftest", action="store_true")
     args = ap.parse_args(argv[1:])
+
+    if args.selftest:
+        return selftest()
 
     maps = load_maps()
     if not maps:
@@ -234,7 +315,14 @@ def main(argv):
     print(f"sha-citations: {total} citation(s) checked, {dead} dead, {repaired} "
           f"{'repaired' if args.apply else 'repairable'}, {len(unresolved)} unresolvable")
     _t, _d, _s = ephemeral_citations()
-    if _d:
+    if _d is None and _t:
+        # R639: a stated non-result. This branch is the whole point of the row — the check
+        # spent two days reporting nothing at all, which read as a clean result.
+        print(f"  NOT CHECKED (R600/R639): {_t} scratchpad path citation(s) in the register "
+              f"were not resolved — CANDOR_SCRATCH is unset, so this run could not look.")
+        print("  Set CANDOR_SCRATCH to the session scratchpad to check them, and read the "
+              "absence of a verdict as an absence, not as a pass.")
+    elif _d:
         print(f"  ADVISORY (R600): {_d} of {_t} scratchpad path citation(s) point at nothing — "
               f"session-scoped evidence, NOT recoverable. e.g. {', '.join(_s[:5])}")
         print("  Put the decisive artefact IN the row; a path is a courtesy, never the evidence.")

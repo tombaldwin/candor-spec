@@ -52,6 +52,14 @@ run "check_soundness_tables" python3 scripts/check_soundness_tables.py
 # Both tools now share one row-recogniser (`scripts/soundness_row.py`) and both run its case table.
 run "check_tables_selftest"  python3 scripts/check_soundness_tables.py --selftest
 run "sha_citations"        python3 scripts/sha-citations.py --check
+# …AND ITS SELFTEST, added 2026-09-27 (SOUNDNESS R643). `sha-citations.py` ran as a gate for its whole
+# life with NO selftest and NO fixture — its only input was the live, currently-clean documents, so
+# attack B on it was trivial: replace the body with `sys.exit(0)` and every gate it appears in stays
+# green. It has two real judgement calls and both were wrong once: the context window that decides a
+# `sha1`-introduced token is not a commit citation (first cut too WIDE, suppressing real citations),
+# and `ephemeral_citations` returning 0-dead for "could not look" (R639), which made silence read as
+# success. Both are pinned, and both cases FAIL when their subject is degraded.
+run "sha_citations_selftest" python3 scripts/sha-citations.py --selftest
 # The STATUS tool gates itself, added 2026-09-21. It is not a document check — it is the instrument that
 # prints "THIS is the shipping-defect list" — and for its whole life it read `Not fixed.` as FIXED,
 # because CLOSURE matched the word and nothing looked left of it. 43 rows were in the wrong bucket and 32
