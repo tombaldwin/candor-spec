@@ -31,6 +31,20 @@ import soundness_row
 # open defect and read as CLOSED purely because its evidence says "nothing to fail closed OVER". Strip
 # those spellings before looking for the marker; a status tool that mistakes the subject matter for a
 # verdict is worse than no tool.
+# …AND A CLOSURE WORD WHOSE SUBJECT IS THE REMEDY, NOT THE ROW. Measured 2026-09-27 on R521, a CONFIRMED
+# CARDINAL SIN that sat in `closed-with-fix` and off the shipping-defect list for hours because its status
+# cell read "the proposed fix shape is REFUTED" — `REFUTED` is in CLOSURE, a sha was present, and the row
+# was filed as resolved. The word described the REMEDY. This is the fourth spelling of one defect: R520's
+# `fails-closed`, R524's "NOT closed", R162's "RESOLVED as a PROCESS GAP", and now a refuted FIX.
+#
+# The register's newer rows routinely refute a remedy while the defect stands — seven briefed remedies were
+# refuted on one thread in this session alone — so this spelling will recur, and it is the coordinator's
+# own prose that produces it.
+_REFUTED_SUBJECT = re.compile(
+    r'\b(?:fix|fix[- ]shape|remedy|remedies|premise|claim|argument|reading|sentence|hypothesis|brief|'
+    r'option|approach|framing|proposal|mechanism|excuse|justification)s?\b[^|.]{0,40}?\b'
+    r'(?:is|was|are|were|has\s+been|have\s+been)\s+(?:now\s+|also\s+|already\s+){0,2}'
+    r'(?:REFUTED|WITHDRAWN|DECLINED|RETRACTED|DISPROVED)\b', re.I)
 _NOT_A_VERDICT = re.compile(r'fails?[- ]closed|failing[- ]closed|closed[- ]world|fail[- ]closed', re.I)
 # …AND EXPLICIT NEGATION OF THE CLOSURE WORD, which is a different failure from the fail-closed idiom
 # above. Measured 2026-09-21 on R524: the row says a defect was "surfaced by the R519 work and NOT closed
@@ -229,6 +243,10 @@ def bucket(line, outcome=None):
             return "partly-closed"
     declared_not_fixed = outcome is not None and bool(_DECLARED_NOT_FIXED.match(outcome))
     line = _NOT_A_VERDICT.sub(" ", line)
+    # R521 — strip a closure word whose SUBJECT is the remedy before looking for the row's verdict.
+    # Substituted away rather than tested for, the same way the fail-closed idiom is, so a row that
+    # refutes a FIX keeps whatever verdict its own text gives.
+    line = _REFUTED_SUBJECT.sub(" ", line)
     # SOUNDNESS R553 — AN EXPLICIT "NOT FIXED" OUTRANKS AN INCIDENTALLY-CITED SHA, and until 2026-09-23
     # it did not. The negation was SUBSTITUTED AWAY before the test ran, so a row reading
     # `Not fixed. … measured at abc1234` lost its only status word, matched FIXSHA on the incidental
@@ -535,6 +553,43 @@ def selftest():
     # whose evidence says the engine must FAIL CLOSED is discussing candor's semantics, not its own status.
     _fc = ("| R904 rust: a thing | 2026-09-27 | class |"
            " The engine must fail closed here. Measured at `abc1234`. |")
+    # SOUNDNESS R521 — a closure word whose SUBJECT is the remedy. The live instance sat in
+    # `closed-with-fix`, OFF the shipping-defect list, for hours: "the proposed fix shape is REFUTED" over a
+    # CONFIRMED CARDINAL SIN, with a sha in the row.
+    #
+    # WHAT THE GUARD BUYS, stated exactly, because my first three expectations here were all wrong and the
+    # selftest caught them: stripping the remedy-refutation does NOT make such a row `open` — nothing in it
+    # declares open — it moves it out of `closed-with-fix` into `cites-a-sha-only`, the "read these, they
+    # are neither clearly" bucket. That is the whole improvement: the row stops CLAIMING closure. A row
+    # that is open must also SAY so, which is why R521's own cell now leads with `OPEN`.
+    _rs = [
+        # the live shape, with the declaration its row now carries -> open
+        ("| R905 ts: a thing | 2026-09-27 | ts \u2014 **OPEN.** a sin, and the proposed fix shape is REFUTED |"
+         " class `abc1234` | Not fixed. |", "open",
+         "declared OPEN + a refuted FIX stays open"),
+        # the same text WITHOUT the declaration -> no longer closed, and not silently open either
+        ("| R905 ts: a thing | 2026-09-27 | ts \u2014 a sin, and the proposed fix shape is REFUTED |"
+         " class `abc1234` | Not fixed. |", "cites-a-sha-only",
+         "an undeclared refuted FIX stops claiming closure"),
+        # a withdrawn PREMISE is the same family. Spelled with a word that IS in CLOSURE on purpose: the
+        # first cut of this case used "DISPROVED", which CLOSURE does not match, so it passed with the
+        # guard DISABLED and tested nothing.
+        ("| R907 rust: a thing | 2026-09-27 | rust \u2014 the premise was WITHDRAWN, the defect stands |"
+         " class `abc1234` | Not fixed. |", "cites-a-sha-only",
+         "a withdrawn PREMISE stops claiming closure"),
+        # …AND THE GUARD MUST NOT SWALLOW A REFUTATION OF THE ROW ITSELF. R126's live spelling.
+        ("| R906 swift: a thing | 2026-09-02 | **RETRACTED \u2014 NOT A DEFECT. Measured** |"
+         " class `abc1234` | Not yet fixed. |", "resolved-no-fix",
+         "a retraction OF THE ROW still resolves it"),
+    ]
+    for _line, _want, _why in _rs:
+        _g = bucket(_line)
+        if _g != _want:
+            bad += 1
+            print("  FAIL %-56s got %r want %r" % (_why, _g, _want))
+        else:
+            print("  ok   %-56s %s" % (_why, _g))
+
     _fcgot = bucket(_fc)
     if _fcgot != "cites-a-sha-only":
         bad += 1
