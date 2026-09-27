@@ -113,6 +113,44 @@ def load_maps(prefer_committed=True):
     return out
 
 
+def scratchpad_citations(paths=None):
+    """The set of top-level scratchpad directory names the documents cite as evidence."""
+    out = set()
+    for path in (paths or TARGETS):
+        if not path.exists():
+            continue
+        for c in set(re.findall(r'scratchpad/[A-Za-z0-9_./*-]+', path.read_text())):
+            out.add(c.split("/")[1].rstrip("*") if "/" in c else c)
+    return out
+
+
+SCRATCH_BASELINE = ROOT / "history" / "scratchpad-citations.baseline"
+
+
+def scratchpad_baseline(path=None):
+    """The grandfathered set — SOUNDNESS R600. Comments and blanks ignored."""
+    p = path or SCRATCH_BASELINE
+    if not p.exists():
+        return None                  # unknown, NOT empty: the caller must refuse rather than pass
+    return {l.strip() for l in p.read_text().splitlines()
+            if l.strip() and not l.lstrip().startswith("#")}
+
+
+def new_scratchpad_citations(paths=None, baseline_path=None):
+    """Citations not on the grandfather list. A RATCHET: the 34 dead ones cannot be repaired, so the
+    only thing left to protect is the 35th.
+
+    SOUNDNESS R600, and the cost is measured rather than argued: R655 was re-verified on 2026-09-27,
+    could not be reproduced on FIVE binaries, and is now un-actionable because what was load-bearing
+    lived in a scratchpad that no longer exists. `git filter-repo` leaves a commit-map; a deleted temp
+    directory leaves nothing, so there is no --apply for this class and there never will be.
+    """
+    base = scratchpad_baseline(baseline_path)
+    if base is None:
+        return None                  # see scratchpad_baseline: unknown, not clean
+    return scratchpad_citations(paths) - base
+
+
 def family_repos_present(family=None):
     """Which family repos have a `.git` this process could interrogate.
 
@@ -201,16 +239,10 @@ def ephemeral_citations(paths=None):
     # keeps finding in its own instruments, and it fired on the very commit that added the check.
     sess = os.environ.get("CANDOR_SCRATCH", "")
     can_look = bool(sess) and os.path.isdir(sess)
-    seen, dead = set(), []
-    for path in (paths or TARGETS):
-        if not path.exists():
-            continue
-        text = path.read_text()
-        for c in set(re.findall(r'scratchpad/[A-Za-z0-9_./*-]+', text)):
-            top = c.split("/")[1].rstrip("*") if "/" in c else c
-            seen.add(top)
-            if can_look and not os.path.exists(os.path.join(sess, top)):
-                dead.append(top)
+    seen, dead = scratchpad_citations(paths), []
+    for top in seen:
+        if can_look and not os.path.exists(os.path.join(sess, top)):
+            dead.append(top)
     if not can_look:
         return len(seen), None, []     # counted, NOT judged — and the caller must say so
     return len(seen), len(set(dead)), sorted(set(dead))[:8]
@@ -252,6 +284,31 @@ def selftest():
             # in case 7 both tokens must be excluded; elsewhere there is exactly one token
             if got != want:
                 bad.append(f"_is_commit_citation({text!r}, {m.group(1)}) = {got}, want {want} — {why}")
+
+    # SOUNDNESS R600's ratchet, both directions. Without these the gate is exactly the shape this file
+    # keeps finding in its own instruments: a check whose only input is the currently-clean documents.
+    import tempfile as _t0
+    with _t0.TemporaryDirectory() as _d0:
+        _p0 = pathlib.Path(_d0)
+        _bl = _p0 / "baseline"
+        _bl.write_text("# a comment that must be ignored\n\nagsw\ncarveout\n")
+        _doc = _p0 / "DOC.md"
+        _doc.write_text("fixture at `scratchpad/agsw/f5` and `scratchpad/carveout/x`\n")
+        if new_scratchpad_citations([_doc], _bl) != set():
+            bad += 1
+            print("  FAIL a document citing ONLY grandfathered names must report no new citations")
+        _doc.write_text("fixture at `scratchpad/agsw/f5` and `scratchpad/brandnew-lane/out.json`\n")
+        if new_scratchpad_citations([_doc], _bl) != {"brandnew-lane"}:
+            bad += 1
+            print("  FAIL an UNGRANDFATHERED citation must be reported — this is the 35th, the only "
+                  "one a ratchet can still prevent")
+        if scratchpad_baseline(_p0 / "nope") is not None:
+            bad += 1
+            print("  FAIL a MISSING baseline must read as unknown (None), never as an empty set — "
+                  "an empty set would silently make every citation look new, and a caller that "
+                  "treated None as clean would make every citation look grandfathered")
+        print("  ok   R600 ratchet: grandfathered pass, ungrandfathered reported, missing baseline "
+              "is unknown rather than empty")
 
     # family_repos_present: the environmental predicate the R643 self-skip rests on. Tested over REAL
     # clones rather than inferred, because the WRONG way to detect this is "nothing resolved" — a
@@ -410,6 +467,21 @@ def main(argv):
         print(f"  ADVISORY (R600): {_d} of {_t} scratchpad path citation(s) point at nothing — "
               f"session-scoped evidence, NOT recoverable. e.g. {', '.join(_s[:5])}")
         print("  Put the decisive artefact IN the row; a path is a courtesy, never the evidence.")
+    # SOUNDNESS R600 — the ratchet. A new scratchpad citation is a promise nobody can keep.
+    _new = new_scratchpad_citations()
+    if _new is None:
+        print(f"sha-citations: REFUSING — the R600 grandfather list is missing at "
+              f"{SCRATCH_BASELINE}. A ratchet with no baseline cannot say whether the set grew, and "
+              f"an absent baseline must not read as a clean one.", file=sys.stderr)
+        return 2
+    if _new:
+        print(f"  NEW SCRATCHPAD CITATION(S) (R600): {len(_new)} — {', '.join(sorted(_new))}")
+        print("  A scratchpad path is session-scoped: it is dead the moment the session ends, and")
+        print("  unlike a dead sha it CANNOT be repaired. R655 is the measured cost — un-actionable")
+        print("  on five binaries because what was load-bearing lived in a directory that is gone.")
+        print("  Put the decisive artefact IN the row. Do not add a baseline line to pass this gate.")
+        return 1
+
     if unresolved:
         print("  UNRESOLVABLE — these cite a commit no map can recover:")
         for f, s in unresolved[:40]:

@@ -1,0 +1,51 @@
+# SOUNDNESS R600 — THE GRANDFATHER LIST, AND IT IS A RATCHET, NOT A REGISTRY.
+#
+# Every name below is a scratchpad directory some row cites as its evidence. They are all DEAD: a
+# scratchpad lives in a session-scoped temp dir, so a new session gets a new path and the old one is
+# gone. Unlike the 531 dead SHA citations repaired in the R591 era, these are NOT RECOVERABLE — git
+# filter-repo leaves a commit-map, a deleted temp directory leaves nothing. There is no --apply for
+# this and there never will be.
+#
+# THE COST IS MEASURED, NOT HYPOTHETICAL. R655 (swift) was re-verified on 2026-09-27 and could not be
+# reproduced on FIVE separate binaries, one of them built three weeks BEFORE the row was filed. The row
+# says "the two arms above are the whole evidence" and they are not sufficient; what was load-bearing
+# lived in a scratchpad that no longer exists. That row is now un-actionable until someone re-derives
+# what it was measuring, which is the whole of what this class costs.
+#
+# So this file exists to stop the NEXT one. `sha-citations.py --check` FAILS on any scratchpad citation
+# not listed here. Do not add a line to make a gate pass: put the decisive artefact IN the row instead.
+# A path is a courtesy, never the evidence. Removing a line when a row stops citing it is always fine.
+034-report-trust-design.md
+agsw
+carveout
+dropglue-fixture
+dupqual
+fable-r475-corpus
+fix-macro-out
+fix-resolve-out
+fix-visible-out
+gen
+jtsagent-r566
+panel-fixes
+panel-fixes-2
+panel-fixes-3
+panel-fixes-4
+panel-fixes-5
+panel-spec
+r160
+r163
+r192-out
+r211-out
+r212
+r215-out
+r549-fix
+rsfwd-iso
+rustagent-r511
+rustagent-r557
+rustfix-r582
+rustlane-r688
+rustlane-r722
+stale-engines
+stale-rust
+swift-escape
+swiftagent-r559
