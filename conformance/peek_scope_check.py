@@ -2,7 +2,7 @@
 """
 PART 85 — THE PEEK SCOPE-MATCH PROPERTY, and the CONDITIONAL `dispatch-widened` fallback (SPEC §2 ⟨0.34⟩).
 
-FOUR-WAY CARDINAL SIN, found and closed 2026-08-29 (swift `7378f4f`, rust `27f4beb`, java `a034371`,
+FOUR-WAY CARDINAL SIN, found and closed 2026-08-29 (swift `793e796`, rust `84ccbf1`, java `7fe654f`,
 ts `8584572`): a peek finding is attributed to the EXCLUDED declaration (correct, unchanged by any of the
 four fixes), but the `<scope>` test a `deny`/`pure` rule runs (SPEC §6.2 "Scope matching") was run ONLY
 against that declaration's own qualified name. So a rule scoped to the IN-SCOPE CALLER that reaches the

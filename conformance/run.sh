@@ -944,7 +944,7 @@ echo "[4n] SPEC-EXTENSION tolerance  (a privacy/1 report + extensions field is r
 # alone created no `$W/ext` at all and this part's rows fired three FAILs and a DIVERGE against
 # HEALTHY engines — a false red in the direction that reads as an engine defect, visible only to
 # the person iterating on one part, which is exactly who trusts it. PART 10 had the identical
-# shape and was moved for the identical reason in `939a8c0`. `part.sh --check` cannot catch this
+# shape and was moved for the identical reason in `a389f1f`. `part.sh --check` cannot catch this
 # class: it verifies a slice PARSES and names one part, never that it can still ANSWER.
 mkdir -p "$W/ext"
 cat > "$W/ext/report.demo.scan.json" <<'EOF'
@@ -11318,7 +11318,7 @@ json.dump(b, open(sys.argv[3], "w"))
 # `has("peeked") && isJsonPrimitive() && getAsBoolean()`, and the Gson `getAsBoolean` call on a JSON
 # string is `Boolean.parseBoolean`, so `"peeked": "true"` came back TRUE, reached
 # `if (peeked || judgedElsewhere) continue;` and carved the class out: same bytes but for one value's
-# TYPE, exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr. Fixed in candor-java `0d9e7fc`;
+# TYPE, exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr. Fixed in candor-java `24e4cba`;
 # what let it ship was that the sibling was pinned and this one was not, so it is pinned here.
 #
 # THE SHAPES ARE ENUMERATED, NEVER REASONED ABOUT. Measured on the PRE-FIX java build: only the STRING
@@ -11386,7 +11386,7 @@ p62pk() {
 # The FAIL-branch explainer, shared by all four rows: a regression here must name its own cause wherever
 # it lands, not only in the row where the defect was first measured. Single-quoted so the backticks stay
 # literal, and free of apostrophes for the same reason.
-P62PK_WHY='         peeked-corrupt: a NON-BOOLEAN `excluded[].peeked` CERTIFIED where the genuine `false` refuses — the ⟨0.32⟩ unread-code refusal deleted by a value TYPE. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-java, 2026-08-24, fixed in `0d9e7fc`): `Query.readEnvelope` read the key as `isJsonPrimitive() && getAsBoolean()`, and the Gson `getAsBoolean` call on a string is `Boolean.parseBoolean`, so `"true"` carved the class out silently. ONE RULE PER READER: ABSENT takes the §2 default, PRESENT-BUT-NOT-THE-§2-SHAPE impeaches the document
+P62PK_WHY='         peeked-corrupt: a NON-BOOLEAN `excluded[].peeked` CERTIFIED where the genuine `false` refuses — the ⟨0.32⟩ unread-code refusal deleted by a value TYPE. THE MECHANISM THIS ARM WAS WRITTEN AGAINST (candor-java, 2026-08-24, fixed in `24e4cba`): `Query.readEnvelope` read the key as `isJsonPrimitive() && getAsBoolean()`, and the Gson `getAsBoolean` call on a string is `Boolean.parseBoolean`, so `"true"` carved the class out silently. ONE RULE PER READER: ABSENT takes the §2 default, PRESENT-BUT-NOT-THE-§2-SHAPE impeaches the document
 '
 P62=$(mktemp -d); P62_BAD=0; P62_OUT=""
 mkdir -p "$P62/src/com/x" "$P62/build/classes/com/x"
@@ -11746,7 +11746,7 @@ P62_OUT="$P62_OUT$P62J_OUT"
 # ⟨0.32⟩ SWIFT'S EXCLUSION IS GONE, and it was wrong rather than stale. It read "NOT APPLICABLE — its `build-output` class carries `judgedElsewhere: true`", which is true of ONE class and false of the engine: an SPM tree's `harness-target` (Tests/, which CI runs) and `manifest` (Package.swift, which every `swift build` runs) carry no such flag and come back `peeked: false`. Measured 2026-08-24 on this part's own fixture, so swift now carries a full row in both shapes — an excluded file the peek cannot READ, and a report whose producer was never ASKED
 # CONTROLS: built-control peeked-bool-true peeked-bool-false — built-control: the same policy over compiled output alone must still answer 0, or the row passes for an engine that refuses everything; peeked-bool-true / peeked-bool-false: the two over-charge controls of the `peeked-corrupt` arm, and they are half of it — a GENUINE `true` must still certify (the legitimate ⟨0.32⟩ carve-out; without it the arm passes for an engine that refuses every document) and a GENUINE `false` must still refuse, both travelling the identical rewrite-and-round-trip path as the corrupt shapes, which is also what proves the key REACHES the verdict on that fixture: 0 against 2 over documents differing in one value; readable-control — the same excluded class, readable and CLEAN, must answer 0 (carried by rust, ts and swift); never-asked-control — a policy with no DENY rule never asks the peek, so `peeked: false` there means unasked, not unread, and must not refuse (carried by all four rows); gate--report — the second route must agree from the document, since `excluded` rides the report; judgedElsewhere:true=0 — the producer's own carve-out is the over-charge control for the `judgedElsewhere:non-boolean=2` arm beside it, so refusing everything cannot pass either
 # ⟨0.32⟩ NO-POLICY-REPORT — the arm that keys the rule on the QUESTION rather than the producer's history, and the reason it was worth adding. HISTORY, not status: when this arm was first written on 2026-08-24 it was RED on two engines. rust=2 and ts=2 (fixed that morning, candor-rust ab505c0 / candor-ts 9f22581), java=0 and swift=0 — a live fail-open where `gate --report` certified over a class the producing scan never opened, because both keyed the whole ⟨0.32⟩ rule on the PRODUCER's history (java `Query.java` `scanWasAsked = envObj.has("outOfScope")`, swift `GateReportCLI.swift` wrapping the read in `if obj["outOfScope"] != nil`) instead of on the policy in force holding a deny rule. Both were fixed the same afternoon and all four rows are green; the FAIL branch still prints the mechanism rather than a bare exit code, so a regression names its own cause
-# ⟨0.32⟩ PEEKED-CORRUPT — the cell added 2026-08-24 because its ABSENCE let a cardinal sin ship that morning, and the shape of the gap is the lesson: `judgedElsewhere: non-boolean` was pinned FOUR-WAY in the rows above from the day this rung landed, while `peeked` — the sibling key, read two lines earlier by the same reader, and the one the whole rung turns on — had no corruption arm anywhere in this file. candor-java coerced `"peeked": "true"` through Gson to boolean TRUE, carved the class out, and deleted the ⟨0.32⟩ refusal silently: exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr (fixed in `0d9e7fc`). THE SHAPES ARE ENUMERATED because reasoning about the class gets it wrong — on the pre-fix build ONLY the string was fail-open; `1`, `0` and `null` coerced to `false` and refused for the WRONG REASON, which is a pass that proves nothing. MEASURED HERE 2026-08-24 on each row's own fixture, and unlike the no-policy-report arm this one landed GREEN: `str-true` `str-false` `int-1` `int-0` `null` `object` `array` and ABSENT all refuse at 2 on rust, java, ts and swift, and `bool-true` certifies at 0 on all four. WHAT A GREEN ROW DOES NOT SAY: "impeached the document" and "coerced to false" are indistinguishable by exit code here (both refuse), so what is asserted is the one observable direction, which is also the cardinal sin — no non-boolean may CERTIFY where the genuine `false` refuses
+# ⟨0.32⟩ PEEKED-CORRUPT — the cell added 2026-08-24 because its ABSENCE let a cardinal sin ship that morning, and the shape of the gap is the lesson: `judgedElsewhere: non-boolean` was pinned FOUR-WAY in the rows above from the day this rung landed, while `peeked` — the sibling key, read two lines earlier by the same reader, and the one the whole rung turns on — had no corruption arm anywhere in this file. candor-java coerced `"peeked": "true"` through Gson to boolean TRUE, carved the class out, and deleted the ⟨0.32⟩ refusal silently: exit 2 → exit 0, `ok:true`, no `incomplete`, nothing on stderr (fixed in `24e4cba`). THE SHAPES ARE ENUMERATED because reasoning about the class gets it wrong — on the pre-fix build ONLY the string was fail-open; `1`, `0` and `null` coerced to `false` and refused for the WRONG REASON, which is a pass that proves nothing. MEASURED HERE 2026-08-24 on each row's own fixture, and unlike the no-policy-report arm this one landed GREEN: `str-true` `str-false` `int-1` `int-0` `null` `object` `array` and ABSENT all refuse at 2 on rust, java, ts and swift, and `bool-true` certifies at 0 on all four. WHAT A GREEN ROW DOES NOT SAY: "impeached the document" and "coerced to false" are indistinguishable by exit code here (both refuse), so what is asserted is the one observable direction, which is also the cardinal sin — no non-boolean may CERTIFY where the genuine `false` refuses
 # ⟨0.32⟩ THE SIBLING KEY WAS RE-MEASURED RATHER THAN TRUSTED while this cell was written, because four rows elsewhere were found green today while asserting something other than what they claimed. `judgedElsewhere` was driven over the SAME ten shapes on all four engines (2026-08-24): `bool-true` certifies at 0 and every one of `bool-false` `str-true` `str-false` `str-yes` `int-1` `int-0` `null` `object` `array` refuses at 2, four-way. So the existing `judgedElsewhere:true=0` / `judgedElsewhere:non-boolean=2` pair is exercising what it says — the 0/2 split over one changed value is what proves the key is read at all — and its `"yes"` probe is representative of the wider set rather than a lucky single shape. No new row was needed there; the finding is that the sibling was sound and the gap was the unpinned key beside it
 echo "PART 62 — code the scan did not READ makes the verdict INCOMPLETE (SPEC §2 ⟨0.32⟩)"
 printf '%s' "$P62_OUT"
@@ -12304,7 +12304,7 @@ fi
 #     fix-gate   --strict   (same report, same policy)        -> 0   "no deny/pure boundary crossings ✓"
 #     unverified --strict   (same report, same policy)        -> 0   "every function … PROVABLY clean ✓"
 #
-# Fixed the same day in candor-rust `9bf3f2f`, candor-swift `2bf8de7`, candor-java `3682835`
+# Fixed the same day in candor-rust `06edf9e`, candor-swift `7ce37ba`, candor-java `e60a832`
 # (`Query.java`'s `ReportCompleteness.unpeeked`) and candor-ts `9f22581` (`query-core.mjs`). NOTHING
 # ASSERTED IT. PART 62 pins the ⟨0.32⟩ CAUSE and drives `gate --report` only; no row anywhere ran a
 # `--strict` verb over an unread report, so the fix was four commits with no gate under them — which is
@@ -12353,7 +12353,7 @@ fi
 # candor-rust at `9bf3f2f^` over this fixture's row report: `gate --report` 2, `fix-gate --strict` 0
 # printing `no deny/pure boundary crossings in this report ✓`, `unverified --strict` 0 printing `every
 # function in a pure/deny layer is PROVABLY clean (no Unknown holes) ✓`. That is the blocker exactly, and
-# it is the ISOLATED case — rust's gate-route fix (`ab505c0`) had already landed, so the gate was at 2
+# it is the ISOLATED case — rust's gate-route fix (`c545896`) had already landed, so the gate was at 2
 # while both siblings certified. candor-java at `3682835^`: all three answered 0, that engine having
 # closed both halves in one commit. Both controls answered 0/0/0 pre-fix and post-fix, so the control is
 # not what moved.
@@ -12610,7 +12610,7 @@ true
 # this suite exists to make unwritable, arriving inside the ledger rather than inside an engine.
 #
 # THE DEFECT, MEASURED 2026-08-24 on candor-ts, candor-java and candor-swift at HEAD (candor-rust had
-# closed it the day before, at `a8f8902`): two reports whose members both declare `go` and both violate
+# closed it the day before, at `513240d`): two reports whose members both declare `go` and both violate
 # `deny Exec` produced two BYTE-IDENTICAL rows —
 #
 #     { "rule": "AS-EFF-006", "fn": "go", "effects": ["Exec"], "detail": "`go` performs { Exec } …" },
@@ -13225,7 +13225,7 @@ rm -rf "$P69"
 # ENGINES: rust java ts swift
 # CONTROLS: p69j_c1 p69j_c2 p69j_c3 p69j_puc p69j_fxc p69j_uvc p69j_tr p69r_c1 p69r_c2 p69r_c3 p69r_puc p69r_fxc p69r_uvc p69r_tr p69t_c1 p69t_c2 p69t_c3 p69t_puc p69t_fxc p69t_uvc p69t_tr p69s_c1 p69s_c2 p69s_c3 p69s_puc p69s_fxc p69s_uvc p69s_tr — same-policy (c1): a report gated under the policy it was SCANNED under must certify, or the scan-then-gate pipeline this rung exists to protect cannot pass at all; subset (c2): a producer holding `deny Net` AND `deny Exec` fully answers a consumer asking one of them, which is the control that decides RULE SET over DIGEST — a digest can only test equality and would redden this; no-peek (c3): differing policies over a report that peeked NOTHING must certify, because analysed code's effect sets are policy-independent and only the PEEK was bounded — the loud-direction over-charge a careless implementation ships, which is why the design names it first; pure-ctl (puc): `deny Net` over the SAME pure-tree report must certify, or the `pure` cell beside it passes for an engine that refuses every strict policy; fix-ctl/unv-ctl (fxc/uvc): the two advisory verbs under the SAME policy must still answer 0, or their refusal cells pass for a verb that refuses everything, and the 0-against-2 split over one changed policy is also what proves the key REACHES those verbs; tour (tr): a DESCRIPTIVE verb carrying no policy has an EMPTY rule set, which is a subset of everything, so it must not gain a hedge — the observable half of the never-asked carve-out, whose gate-route half §3.1 makes unaskable (an allow/forbid/only-only policy refuses there for its own reasons)
 # ⟨0.33⟩ THE SKIPS ARE PROBED, NEVER DECLARED, and that is a deliberate departure from the `# ENGINES:` prose that carried earlier reference-led parts. A declared exclusion goes stale in silence — this suite has recorded two that did — while a probe (does this engine's own policy-scanned report carry `scannedUnder`?) flips the row to ASSERTING on the commit that ports the rung, with no edit here. An engine that ships the PRODUCER half and not the CONSUMER half is scored and FAILS, which is right: half of this rung is the fail-open half
-# ⟨0.33⟩ FALSIFIED AGAINST A PRE-FIX BINARY, not reasoned about. candor-java built from HEAD `0a5fc2f` (the commit before this rung) over this part's own trees: cross-policy=0, pure=0, fix-gate--strict=0, unverified--strict=0 — four RED cells, the fail-open in all four channels — while same-policy=0, subset=0, no-peek=0, pure-ctl=0, fix-ctl=0, unv-ctl=0 and tour=0 were ALREADY GREEN, so the controls are not what moved. Post-fix every cell is as the row above requires. The `scannedUnder-corrupt` cell cannot be falsified against that binary (the key does not exist there, so every shape reads as ABSENT and refuses); it is falsified instead by its own control — the GENUINE value certifies at 0 over the identical bytes where all twelve corrupt shapes refuse at 2, which is what proves the cell reads the key at all rather than refusing everything
+# ⟨0.33⟩ FALSIFIED AGAINST A PRE-FIX BINARY, not reasoned about. candor-java built from HEAD `0f6232a` (the commit before this rung) over this part's own trees: cross-policy=0, pure=0, fix-gate--strict=0, unverified--strict=0 — four RED cells, the fail-open in all four channels — while same-policy=0, subset=0, no-peek=0, pure-ctl=0, fix-ctl=0, unv-ctl=0 and tour=0 were ALREADY GREEN, so the controls are not what moved. Post-fix every cell is as the row above requires. The `scannedUnder-corrupt` cell cannot be falsified against that binary (the key does not exist there, so every shape reads as ABSENT and refuses); it is falsified instead by its own control — the GENUINE value certifies at 0 over the identical bytes where all twelve corrupt shapes refuse at 2, which is what proves the cell reads the key at all rather than refusing everything
 echo "PART 69 — a gate must not answer from a peek that was put a DIFFERENT question (SPEC §2 ⟨0.33⟩)"
 printf '%s' "$P69_OUT"
 [ "$P69_BAD" = 0 ] && echo "  -> MATCH — a report answers only for the deny set its producer held, and still certifies for every rule that set covers"
@@ -13241,7 +13241,7 @@ true
 # THE MUST IS ALREADY IN THE DOCUMENT — nothing here is a new rung, which is the whole reason this is a
 # PART and not a clause. SPEC §3.1 ⟨0.24⟩: *"`whatif` OVER AN INCOMPLETE REPORT OMITS `ok` — it does not
 # answer `true`, and it does not answer `false` either"*, and, two clauses down, *"THE SAME RULE BINDS
-# EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later sibling. `0075987`
+# EVERY ADVISORY VERB THAT ANSWERS `ok` — `unverified`, `fix-gate`, and any later sibling. `b1fc4d9`
 # ruled it for `whatif` and I scoped it to `whatif`, which is the eighth time this document has been
 # scoped to the verb its defect was found in."* The law itself is a RELATION over BYTES rather than a
 # list of causes: *"AN ADVISORY VERB MUST NEVER BE LESS SENSITIVE TO INCOMPLETENESS THAN THE GATE OVER
@@ -14015,8 +14015,8 @@ true
 #
 # MEASURED, four-way, before this row was written, and this is why it is a MUTANT-FALSIFIED row rather
 # than a pre-fix-binary one: the property ALREADY HOLDS, both at HEAD and on each engine's OWN pre-⟨0.32⟩
-# route-split commit (candor-rust `a3bf792`, candor-ts `396d6f4`, candor-java `dd0a503`, and confirmed at
-# HEAD for candor-swift). The historical fail-open those commits fixed (candor-java `3682835` et al.,
+# route-split commit (candor-rust `7cf30b8`, candor-ts `396d6f4`, candor-java `7bf7f5f`, and confirmed at
+# HEAD for candor-swift). The historical fail-open those commits fixed (candor-java `e60a832` et al.,
 # PART 62's own "NO-POLICY-PRODUCER ROUTE") was about a report produced WITH NO POLICY AT ALL gated
 # afterwards — a different condition from this row's, which holds the SAME policy across both the
 # producing scan and both gate calls. Building a mutant is PART 69's author's own remedy for exactly this
@@ -14285,8 +14285,8 @@ rm -rf "$P72"
 # tree is not actually clean or the combined tree does not actually carry both a violation and a peeked
 # completeness cause, which is the vacuity this row exists to avoid measuring past.
 # MUTANT-FALSIFIED, NOT PRE-FIX-BINARY-FALSIFIED — recorded here because a reader expecting the usual
-# transcript needs to know why. Measured against candor-rust `a3bf792`, candor-ts `396d6f4` and
-# candor-java `dd0a503` (each engine's own commit immediately before its ⟨0.32⟩ route-split fix) and at
+# transcript needs to know why. Measured against candor-rust `7cf30b8`, candor-ts `396d6f4` and
+# candor-java `7bf7f5f` (each engine's own commit immediately before its ⟨0.32⟩ route-split fix) and at
 # HEAD for all four: the clean and combined cells are ALREADY equal on every one of those binaries — the
 # historical fail-open they fixed was a report produced WITH NO POLICY gated afterwards (PART 62's own
 # "no-policy-producer route"), a different condition from this row's, which holds one policy across both
@@ -14329,8 +14329,8 @@ true
 # evidence for the first. candor-java and candor-ts have no compile-time conditional-declaration construct
 # (a runtime `if`/`process.platform` check is not equivalent — both branches are always live code there).
 #
-# THE FOUR CELLS, each MEASURED against candor-swift `bcb4bc8` (the commit immediately before the fix,
-# `098a035`) and at HEAD:
+# THE FOUR CELLS, each MEASURED against candor-swift `1c90a2f` (the commit immediately before the fix,
+# `345ac15`) and at HEAD:
 #
 #   defect          the repro above. PRE-FIX: `realUsage` ABSENT from `functions` (silently pure).
 #                   POST-FIX: `inferred == ["Env"]`.
@@ -14407,7 +14407,7 @@ rm -rf "$P73"
 # before, on both the pre-fix and post-fix binary); ctrl-unconditional proves the shadow mechanism itself
 # still fires for a REAL, unambiguous same-module declaration — without it this row would pass for an
 # engine that deleted the shadow entirely rather than narrowed it to the conditional case
-# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `bcb4bc8` (immediately before `098a035`): `defect`
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `1c90a2f` (immediately before `345ac15`): `defect`
 # read `absent` where HEAD reads `["Env"]`, and `ctrl-union` read `["Log"]` where HEAD reads
 # `["Env", "Log"]` — two RED cells. `ctrl-unaffected` and `ctrl-unconditional` were ALREADY at their
 # wanted values on that same binary, so the controls are not what moved.
@@ -14432,10 +14432,10 @@ true
 # `walkdir::IntoIter`. So no idiomatic usage — a bare `for entry in WalkDir::new(p) { … }`,
 # `.into_iter().count()`, walkdir's own README `.filter_map(|e| e.ok())` form, or an untyped
 # `let it = …into_iter(); it.next()` — ever reached a TYPED `IntoIter` receiver, and `deny Fs` exited 0,
-# `policy ✓`, over code that plainly walks the filesystem. Fixed in candor-rust `e6ac9ee` (parent
-# `8734b87`) by charging at `WalkDir::new` (construction) instead — an ordinary `Expr::Call` needing no
+# `policy ✓`, over code that plainly walks the filesystem. Fixed in candor-rust `0831d19` (parent
+# `fdd394f`) by charging at `WalkDir::new` (construction) instead — an ordinary `Expr::Call` needing no
 # receiver typing at all, mirroring the already-modeled `ignore::WalkBuilder::build`/`glob::glob`. Swept
-# for the one other same-shape victim in `19ce144` (`ignore::Walk::new`, a second constructor on the
+# for the one other same-shape victim in `32cac3b` (`ignore::Walk::new`, a second constructor on the
 # already-modeled crate — the other nine fixes in that commit are a different bug, missing verb
 # spellings, not this construction/iteration split).
 #
@@ -14456,7 +14456,7 @@ true
 # way candor-rust's `classify(crate_name, path)` works; whether an equivalent third-party SPM package
 # shape exists is UNAUDITED, filed to BACKLOG.md rather than assumed clean.
 #
-# SIX CELLS, MEASURED against candor-rust `8734b87` (immediately before the fix `e6ac9ee`) and at HEAD:
+# SIX CELLS, MEASURED against candor-rust `fdd394f` (immediately before the fix `0831d19`) and at HEAD:
 #
 #   defect-forloop   `for entry in WalkDir::new(".") { … }`. PRE-FIX: `walk` ABSENT from `functions`
 #                     (silently pure — no blind reach either). POST-FIX: `inferred == ["Fs"]`.
@@ -14546,7 +14546,7 @@ p74 ctrl-vec-iter       "$p74_veciterctrl" absent
 rm -rf "$P74"
 # ENGINES: rust; java: `java.nio.file.Files.walk`/`.list` are charged at the PRODUCING call directly (bytecode names the concrete invocation), so this MECHANISM — a syntactic receiver-typing blocklist blinding a same-crate iterator verb — does not apply, and it is not otherwise audited for every lazy-iterator shape; ts: resolves through the real TypeScript type-checker rather than a syntactic verb blocklist, so the same mechanism does not apply, and it is not otherwise audited; swift: shares candor-rust's syntax-only resolution style and has an analogous receiver-typing split for ITERATION, but only for local `Sequence`/`IteratorProtocol` conformers, not a third-party-package classify table — whether an equivalent third-party SPM package shape exists is UNAUDITED, filed to BACKLOG.md
 # CONTROLS: p74_typednext p74_ignorectrl p74_veciterctrl — ctrl-typed-next proves the fix is ADDITIVE (a second charging point at construction) rather than a relocation that would have left the already-working typed-annotation shape newly blind; ctrl-ignore proves the fix did not touch the GENERAL construction-charge mechanism the sibling `ignore` crate already relies on; ctrl-vec-iter proves the fix did not widen the receiver-typing blocklist itself, which is the whole reason it exists (stopping a coarse crate rule from fabricating an effect onto a std collection's iterator)
-# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-rust `8734b87` (immediately before `e6ac9ee`, built in a
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-rust `fdd394f` (immediately before `0831d19`, built in a
 # throwaway clone rather than a worktree so the tracked checkout was never touched): `defect-forloop`,
 # `defect-count` and `defect-untyped-next` all read `absent` where HEAD reads `["Fs"]` — three RED cells,
 # the fail-open in three independently-idiomatic forms. `ctrl-typed-next`, `ctrl-ignore` and
@@ -14574,17 +14574,17 @@ true
 # second, UNRELATED overload of the same provided-member name made the lookup ambiguous, and the call
 # site's ONLY edge to the provided member was dropped — not even `Unknown`. A/B: adding one unrelated
 # `func run()` beside a `Runner` extension's `Exec`-performing `run(times:)` turned `deny Exec` from
-# exit 1 into exit 0 over IDENTICAL call behaviour. Fixed in candor-swift `bcb4bc8` (parent `a9ab1a6`) by
+# exit 1 into exit 0 over IDENTICAL call behaviour. Fixed in candor-swift `1c90a2f` (parent `30d6319`) by
 # routing the same branch through `matchOverloads`, using the `argc`/`argTypes` already captured at the
 # call site: an arity-discriminated call resolves precisely, and a genuinely ambiguous one (this engine
 # does not model argument LABELS, so `run(x:)` and `run(y:)` of the same arity look identical to it) gets
 # the sound UNION rather than a drop.
 #
 # NEAR BUT NOT INSIDE THE PART 73 COMMIT RANGE — recorded so the relationship is a decision, not a gap.
-# `bcb4bc8` and PART 73's `098a035` are siblings from the same 2026-08-27 fix wave, both filed by the
+# `1c90a2f` and PART 73's `345ac15` are siblings from the same 2026-08-27 fix wave, both filed by the
 # corpus round that produced them, but they are DIFFERENT DEFECTS on different code paths (an overload
 # resolution drop vs. a conditionally-compiled declaration shadow) and PART 73 already carries its own
-# cross-engine question; this part is the row for `bcb4bc8` specifically.
+# cross-engine question; this part is the row for `1c90a2f` specifically.
 #
 # NOT A CROSS-ENGINE ROW IN THIS PASS — not because the shape is swift-only (dispatch through a provided
 # protocol-extension member with overload resolution exists in every OOP-ish engine this family has), but
@@ -14592,7 +14592,7 @@ true
 # identical "ambiguous lookup silently drops instead of disclosing/unioning" shape was not attempted this
 # pass — UNAUDITED, filed to BACKLOG.md rather than assumed clean or assumed unique to swift.
 #
-# FOUR CELLS, MEASURED against candor-swift `a9ab1a6` (immediately before the fix `bcb4bc8`) and at HEAD:
+# FOUR CELLS, MEASURED against candor-swift `30d6319` (immediately before the fix `1c90a2f`) and at HEAD:
 #
 #   defect            the repro above: `run()` (pure) beside `run(times:)` (`Exec`), called via a
 #                      CONCRETE (non-protocol-typed) receiver. PRE-FIX: `useS` ABSENT from `functions`
@@ -14668,7 +14668,7 @@ fi
 rm -rf "$P75"
 # ENGINES: swift; rust: an analogous overload-resolution-through-a-default-member shape is UNAUDITED for this pass, filed to BACKLOG.md rather than assumed clean; java: same — UNAUDITED, not assumed unique to swift; ts: same — UNAUDITED, not assumed unique to swift
 # CONTROLS: p75_local p75_nonov — ctrl-local-override proves the fix left LOCAL-OVERRIDE PRECEDENCE untouched (a genuine override must still win over both provided overloads, on both binaries); ctrl-non-overloaded proves the fix is about the OVERLOADED case specifically — a concrete receiver reaching a SINGLE, non-overloaded provided member worked before this fix and must still work identically after it, or the "fix" would really be a change to concrete-receiver dispatch in general
-# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `a9ab1a6` (immediately before `bcb4bc8`, built in a
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `30d6319` (immediately before `1c90a2f`, built in a
 # throwaway clone rather than a worktree so the tracked checkout was never touched): `defect` and `union`
 # both read `absent` where HEAD reads `["Exec"]` and `["Env", "Exec"]` respectively — two RED cells, the
 # fail-open in both the arity-discriminable and the genuinely-ambiguous case. `ctrl-local-override` and
@@ -14840,7 +14840,7 @@ true
 # `deny Net`: exit 0, `functions: []` — no visitor existed for `MacroExpansionExprSyntax` at all, and no
 # attribute-handling path treated a decl's own custom attributes as a possible attached macro.
 #
-# FIXED in candor-swift `dc27915`: both forms route into the EXISTING `Unknown`/`unknownWhy` vocabulary
+# FIXED in candor-swift `94d1aef`: both forms route into the EXISTING `Unknown`/`unknownWhy` vocabulary
 # (`"macro:<name>"` / `"macro:@<Attr>"`) rather than resolving what the macro does — a syntax-only engine
 # cannot run a compiler plugin, so disclosing the miss is the sound move. A trailing-closure macro
 # (`#Preview { ... }`) is UNAFFECTED: its closure body is ordinary Swift the existing `ClosureExprSyntax`
@@ -14862,7 +14862,7 @@ true
 # expression minting no unit) is a DIFFERENT mechanism, found the same audit sweep, and is tracked as its
 # own row (SOUNDNESS.md R57, fixed `0a5d493`, pinned by PART 81) rather than folded into this one.
 #
-# EIGHT CELLS, MEASURED against candor-swift `70274c3` (immediately before the fix `dc27915`) and at
+# EIGHT CELLS, MEASURED against candor-swift `99b3354` (immediately before the fix `94d1aef`) and at
 # HEAD — ported directly from the fix's own regression suite (CandorCoreTests/MacroDisclosureProcessTests.swift)
 # so the conformance row and the engine's own gate assert the identical shapes:
 #
@@ -14983,7 +14983,7 @@ fi
 rm -rf "$P77"
 # ENGINES: swift; rust: has its own SEPARATE macro-reach mechanism (macro_rules!/proc-macro expansion, R48, already closed) — a different KIND of macro, not this Swift compiler-plugin shape; java: reads compiled bytecode, never source, so a Swift-syntax-tree macro-expansion node has no JVM analogue; ts: has no compiler-plugin macro system of its own — its own separate codegen gap (an anonymous decorator, R57, CLOSED and pinned by PART 81) is a different mechanism and is not this row
 # CONTROLS: p77_trailing p77_namealike p77_builtin p77_resultbuilder p77_globalactor — ctrl-trailing-closure proves the fix did not regress an already-concrete catch to a vague one riding beside it; ctrl-namealike proves a name-alike function and a builtin decl-attribute gain nothing; ctrl-builtin-literals proves the compiler-builtin freestanding literal denylist (incl. the fileID/isolation gap MEASURED missing from the first cut) stays silent; ctrl-local-resultbuilder proves an unresolved-macro-candidate attribute does not shadow a real, resolved @resultBuilder; ctrl-local-globalactor proves a locally-declared @globalActor is not treated as an attached macro
-# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `70274c3` (immediately before `dc27915`, built in a
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-swift `99b3354` (immediately before `94d1aef`, built in a
 # throwaway clone so the tracked checkout was never touched): `defect-freestanding`, `defect-attached-func`
 # and `defect-attached-type` all read `absent` where HEAD reads `["Unknown"]|[...]` — three RED cells, the
 # cardinal sin in three independently-idiomatic macro shapes (a `#`-expression, a decl attribute on a
@@ -15202,7 +15202,7 @@ true
 #   (a generic fd verb — `read`/`write`/`close`/…) silently vanished — no `Unknown`, no `invisible`,
 #   nothing — when no CLASSIFIED sibling call established the effect in the same function.
 #   `CALIBRATED_CRATES` exempted the whole crate from the coverage ledger outright, reading "classify has
-#   rules here" as "an unmatched call was reviewed and found pure". FIXED candor-rust `3cb1906`: a new
+#   rules here" as "an unmatched call was reviewed and found pure". FIXED candor-rust `905e1cd`: a new
 #   `CALIBRATED_BUT_PARTIAL_CRATES` carves libc/nix/rustix out of that blanket exemption.
 #
 #   R60, rust-deep: a fn declared in a LOCAL `extern "C" { .. }` block was silently dropped even though
@@ -15211,21 +15211,21 @@ true
 #   and a local extern declaration IS local. This made rust-deep — the engine positioned as the sound
 #   backstop for exactly this class of miss — WORSE than rust-scan on the identical mechanism (rust-scan's
 #   `ForeignMod` handling already disclosed `native:extern fn` for this shape, unaffected by either fix).
-#   FIXED the same commit (`3cb1906`): `Unknown`/`native:extern fn` unconditionally on `is_foreign_item()`.
+#   FIXED the same commit (`905e1cd`): `Unknown`/`native:extern fn` unconditionally on `is_foreign_item()`.
 #
 #   R61, swift: raw C-interop through `import Darwin`/`import Glibc` free functions and `@_silgen_name`/
 #   `@_extern` direct C-symbol linkage read silent-pure — no generic "unresolved call through an
 #   opaque/foreign value" fallback existed in candor-swift's dispatch model at all, while the MODELED
 #   `Process`/Foundation API stayed correctly charged throughout (the over-charge control this row
-#   reuses). FIXED candor-swift `ec3e50f`: both shapes route into `Unknown`/`native:<symbol>`, gated on an
+#   reuses). FIXED candor-swift `bcb4a4e`: both shapes route into `Unknown`/`native:<symbol>`, gated on an
 #   ALLOWLIST of real syscalls (`NATIVE_DISCLOSURE_C_FREE_FNS`) plus a `C_PLATFORM_MODULES` import check —
 #   an unrestricted first cut measured 1519 false hits on swift-nio alone (`#if os(...)`/`canImport(...)`
 #   build-config predicates and stdlib control flow, none of them FFI), which the allowlist eliminates.
-#   `ec3e50f` fixed a THIRD swift mechanism the same commit — `dlsym`/`unsafeBitCast` resolved-then-
+#   `bcb4a4e` fixed a THIRD swift mechanism the same commit — `dlsym`/`unsafeBitCast` resolved-then-
 #   invoked — which this row left unpinned until 2026-08-29 (BACKLOG.md "OWED"); see `swift-defect-
 #   bitcast`/`swift-ctrl-bitcast-uncalled` below. Its rust-scan twin (a raw `transmute`d libc pointer, the
 #   SAME "resolved at runtime, then invoked" property one call form over) was independently found silent
-#   the same day and fixed in candor-rust `defe53d` — folded into ONE fixture pair here (`rust-scan-defect-
+#   the same day and fixed in candor-rust `658613e` — folded into ONE fixture pair here (`rust-scan-defect-
 #   dlsym`/`rust-deep-ctrl-dlsym`) rather than two, since the shapes coincide: both are "a function pointer
 #   this engine cannot see the definition of, invoked" and both close out BACKLOG.md's separate item 2
 #   (`grep "callback:fn-pointer" candor-spec` used to return nothing — rust-deep's OWN, already-correct
@@ -15346,7 +15346,7 @@ printf 'import Darwin\nfunc doRm() {\n    system("rm -rf /tmp/x")\n}\n' > "$P79/
 printf '@_silgen_name("system")\nfunc c_system(_ cmd: UnsafePointer<CChar>) -> Int32\nfunc doRmViaSilgen() {\n    "rm -rf /tmp/x".withCString { cs in\n        _ = c_system(cs)\n    }\n}\n' > "$P79/silgen/a.swift"
 printf 'import Foundation\nfunc doRmViaProcess() {\n    let p = Process()\n    p.executableURL = URL(fileURLWithPath: "/bin/rm")\n    p.arguments = ["-rf", "/tmp/x"]\n    try? p.run()\n}\n' > "$P79/ctrl/a.swift"
 # ⟨OWED, BACKLOG.md 2026-08-29⟩ MECHANISM 2 — a pointer resolved via dlopen/dlsym and invoked through a
-# cast. `ec3e50f` fixed THREE FFI mechanisms; PART 79 pinned mechanisms 1 (`@_silgen_name`, swift-defect-
+# cast. `bcb4a4e` fixed THREE FFI mechanisms; PART 79 pinned mechanisms 1 (`@_silgen_name`, swift-defect-
 # silgen above) and 3 (the raw-syscall allowlist, swift-defect-rawc above) but had no fixture for this
 # one. The defect function below takes the pointer as a PARAMETER — no `dlopen`/`dlsym` call anywhere in
 # it — so it cannot be confused with mechanism 3's allowlist branch (`import Darwin` is present only for
@@ -15380,19 +15380,19 @@ rm -rf "$P79"
 # ENGINES: rust swift; java: independently CLOSED (SOUNDNESS.md footnote ⁹) through its own existing disclosure paths (reflect:/dispatch:), not a dedicated FFI rule, and shares no compilation-unit shape with this row; ts: independently CLOSED (footnote ¹⁰) the same way through callback:/the body-less-declaration rule, also no shared compilation-unit shape (both are per-engine measurements, not a cross-engine cell this row could join)
 # CONTROLS: p79_rs_run_cmd p79_rd_drain p79_sw_ctrl p79_sw_bitcast_uncalled p79_rs_dlsym_uncalled p79_rd_dlsym_uncalled — p79_rs_run_cmd (rust-scan's direct-extern path, already sound before R59/R60) proves the libc fix did not disturb it; p79_rd_drain (rust-deep's libc invisible disclosure, already sound before R60) proves the extern fix did not disturb it; p79_sw_ctrl (the modelled Process/Foundation Exec path) proves the FFI fallback did not regress an already-concrete catch to a vague one; the three `*-uncalled`/`*-dlsym-uncalled` rows are the mechanism-2 over-charge controls — a pointer resolved but never invoked must stay pure (rust) or carry only its own dlopen call (swift), proving the fix charges the CALL, not the resolution
 # FALSIFIED AGAINST THE PRE-FIX BINARIES, all built in throwaway clones so the tracked checkouts were
-# never touched: candor-rust `763e51a` (immediately before `3cb1906`) reads `rust-scan-defect-libc` as
+# never touched: candor-rust `250851b` (immediately before `905e1cd`) reads `rust-scan-defect-libc` as
 # `absent` (drain missing from `functions` entirely — no `invisible`, no `Unknown`, nothing) where HEAD
 # reads `[]|-|["libc"]`, and its rust-deep counterpart (`cargo dylint` against the SAME pre-fix commit)
 # reads `rust-deep-defect-extern` as `absent` (run_cmd missing entirely) EVEN THOUGH that binary's own
 # callgraph sidecar carries `"run_cmd":["system"]`, proving the HIR walk visited the call — where HEAD
-# reads `["Unknown"]|["native:extern fn"]|-`. candor-swift `52d24b9` (immediately before `ec3e50f`) reads
+# reads `["Unknown"]|["native:extern fn"]|-`. candor-swift `21f1240` (immediately before `bcb4a4e`) reads
 # both `swift-defect-rawc` and `swift-defect-silgen` as `absent` (the function missing from `functions`
 # entirely) where HEAD reads `["Unknown"]|["native:system"]|-` — FOUR red cells across two engines' two
 # independent mechanisms. `rust-scan-ctrl-extern`, `rust-deep-ctrl-libc` and `swift-ctrl-process` were
 # ALREADY at their wanted values on their respective pre-fix binaries, so the controls are not what moved.
 # MECHANISM 2 (dlsym/unsafeBitCast), added 2026-08-29 closing the BACKLOG.md OWED item: candor-rust
 # `defe53d^` reads `rust-scan-defect-dlsym` as `absent` (`dlsym_call` missing from `functions` entirely)
-# where HEAD reads `["Unknown"]|["callback:unresolved call"]|-` — the SAME `763e51a`-shaped cardinal sin,
+# where HEAD reads `["Unknown"]|["callback:unresolved call"]|-` — the SAME `250851b`-shaped cardinal sin,
 # one call form over, reproduced against the ACTUAL commit that fixed it this time rather than a sibling
 # one. candor-swift `ec3e50f^` reads BOTH `swift-defect-bitcast` and its over-charge control as `absent`
 # (`functions: []` entirely — the tree parses but nothing in it was judged) where HEAD reads
@@ -15453,7 +15453,7 @@ true
 # fix for. MEASURED WHEN THIS PART WAS WRITTEN (2026-08-30): candor-java and candor-ts already trimmed
 # (PASS); candor-rust and candor-swift did not (SKIP) — `Int(" 0")` is `nil` in Swift and
 # `" 0".parse::<u32>()` errs in Rust, neither language's numeric parser tolerates surrounding whitespace
-# by itself. CLOSED ON BOTH the next day, 2026-08-31 (candor-rust `7401af9`: `parse_spec_ladder` now
+# by itself. CLOSED ON BOTH the next day, 2026-08-31 (candor-rust `d3723b3`: `parse_spec_ladder` now
 # calls `spec.trim_ascii()`, crates/candor-report/src/lib.rs:1712; candor-swift's `parseSpecLadder`/
 # `specPredates` trim the same ASCII whitespace class its policy-line tokenizer already uses — see its
 # CHANGELOG's ⟨0.34⟩ entry) — re-measured against this row, not inferred from either changelog: all four
@@ -16123,7 +16123,7 @@ printf '%s' "$P82_OUT"
 # ====================================================================================================
 # PART 83 — THE MISSING BYTE-EQUALITY QUADRANT: A RULE SCOPED TO A REAL FUNCTION THAT IS PURE ON BOTH
 #           ROUTES. PINS THE MEASURED zeroMatch DIVERGENCE AS SPEC'D BEHAVIOUR — Tom's ruling D landed
-#           at candor-spec `3601c04`: SPEC §3.1's ⟨0.34⟩ carve-out now RULES this exact divergence IN,
+#           at candor-spec `40c3a1e`: SPEC §3.1's ⟨0.34⟩ carve-out now RULES this exact divergence IN,
 #           so a red defect cell going forward means the ruling changed, never that this row is stale
 #           (SPEC §3.1/§4) [TIER 1]
 # ====================================================================================================
@@ -16159,7 +16159,7 @@ printf '%s' "$P82_OUT"
 # the ⟨0.21⟩ purity-by-absence trade-off family-wide; B narrow the scan route — deletes a true
 # observation; C suppress on the report route — swallows the genuine typo case PART 32/36 already pin;
 # D a narrow SPEC carve-out on §3.1 scoped to this one condition, mirroring the ⟨0.24⟩
-# manifest-limitation precedent) and left the choice to Tom. TOM RULED D (candor-spec `3601c04`, SPEC
+# manifest-limitation precedent) and left the choice to Tom. TOM RULED D (candor-spec `40c3a1e`, SPEC
 # §3.1's ⟨0.34⟩ carve-out) — this row's assertions below did not have to change, because the carve-out
 # rules IN exactly the state this row already measured, but what the row now PINS did: it is no longer
 # a measurement awaiting a ruling, it is the ruling's own conformance row. So the assertions below pin the
@@ -16340,7 +16340,7 @@ rm -rf "$P83"
 # the row's own comment above for why, and what to do when it changes. This is DELIBERATE per the brief
 # that produced this row: gating it behind the (then-pending) §3.1 ruling, or writing it to pass by
 # scoping away from the quadrant, would recreate the exact blind spot this row exists to close.
-# THE §3.1 RULING LANDED (candor-spec `3601c04`, Tom's ruling D) — SPEC §3.1's ⟨0.34⟩ carve-out now
+# THE §3.1 RULING LANDED (candor-spec `40c3a1e`, Tom's ruling D) — SPEC §3.1's ⟨0.34⟩ carve-out now
 # RULES the measured divergence IN; this row pins that carve-out as SPEC'd behaviour, not merely a
 # measurement on file for a ruling still to come.
 echo "PART 83 — a policy rule scoped to a real, pure-on-both-routes function: the report route's false zeroMatch disclosure, SPEC'd as a ⟨0.34⟩ §3.1 carve-out (Tom's ruling D) and pinned four-way (SPEC §3.1/§4)"
@@ -16352,7 +16352,7 @@ printf '%s' "$P83_OUT"
 # PART 84 — verb_reject: `--policy` is a USAGE ERROR (exit 2) on every verb whose pinned §3.1/§3.2      [TIER 1]
 #           JSON shape carries no policy-derived field — `gains`'s own rule (PART 5b) generalised to
 #           its twelve siblings (SPEC §3.3.1 ⟨0.34⟩). BACKLOG "`--policy` accept-and-drop is THREE
-#           engines, not one". Fixed today: java `37c9b10` (12 verbs), rust `e4bc419` (10; its own
+#           engines, not one". Fixed today: java `dd92982` (12 verbs), rust `99370ec` (10; its own
 #           `diff`/`rewire` already rejected, pre-existing, unrelated to this fix), ts `2c2147e` (11;
 #           no `rewire` verb to fix); swift was ALREADY conformant on its narrower 3-verb surface of
 #           this set (`path`/`tour`/`gains` — verified below, not assumed, that it genuinely lacks the
@@ -16514,8 +16514,8 @@ echo "PART 84 — --policy is a usage error on every descriptive/comparative ver
 
 # ====================================================================================================
 # PART 85 — THE PEEK SCOPE-MATCH PROPERTY + THE CONDITIONAL `dispatch-widened` FALLBACK               [TIER 1]
-#           (SPEC §2/§6.2 ⟨0.34⟩). FOUR-WAY CARDINAL SIN, closed 2026-08-29: swift `7378f4f`, rust
-#           `27f4beb`, java `a034371`, ts `8584572` (BACKLOG "FOUR-WAY CARDINAL SIN — a peek finding is
+#           (SPEC §2/§6.2 ⟨0.34⟩). FOUR-WAY CARDINAL SIN, closed 2026-08-29: swift `793e796`, rust
+#           `84ccbf1`, java `7fe654f`, ts `8584572` (BACKLOG "FOUR-WAY CARDINAL SIN — a peek finding is
 #           scope-matched against the WRONG ENTITY"). A peek finding is attributed to the EXCLUDED
 #           declaration, correctly — but the SCOPE TEST a `deny <Effect> <scope>` rule runs was matched
 #           ONLY against that declaration's own qualified name, so a rule scoped to the IN-SCOPE CALLER
@@ -16533,7 +16533,7 @@ P85="$W/peek85"; mkdir -p "$P85"
 
 # ---- rust — the excluded declaration lives in tests/ (SPEC ⟨0.29⟩ `non-library-target`); rust's peek
 # never unions in-scope and excluded material, so it cross-references dispatch SITES the primary already
-# computed (`27f4beb`) rather than re-analysing — attribution is never ambiguous, hence never `dispatch-widened`.
+# computed (`84ccbf1`) rather than re-analysing — attribution is never ambiguous, hence never `dispatch-widened`.
 if [ -x "$SCAN" ]; then
   mkdir -p "$P85/rs/src" "$P85/rs/tests"
   printf '[package]\nname="p85"\nversion="0.0.0"\nedition="2021"\n' > "$P85/rs/Cargo.toml"
@@ -16542,14 +16542,14 @@ if [ -x "$SCAN" ]; then
   printf 'deny Net Runner\n' > "$P85/rs/scoped.pol"; printf 'deny Net\n' > "$P85/rs/unscoped.pol"; printf 'deny Net NoSuchCaller\n' > "$P85/rs/nomatch.pol"
 fi
 # ---- java — the excluded declaration is a loose `.java` beside its compiled siblings (SPEC ⟨0.29⟩
-# `source-without-class`); java's fix (`a034371`) re-runs its OWN `runScan` over a scratch union rather
+# `source-without-class`); java's fix (`7fe654f`) re-runs its OWN `runScan` over a scratch union rather
 # than a second dispatch resolver.
 mkdir -p "$P85/java/src/com/x"
 printf 'package com.x;\npublic interface Doer { void work(); }\n' > "$P85/java/src/com/x/Doer.java"
 printf 'package com.x;\npublic class PureDoer implements Doer { public void work(){} }\n' > "$P85/java/src/com/x/PureDoer.java"
 printf 'package com.x;\npublic class RunnerCaller { public static void invoke(Doer d){ d.work(); } }\n' > "$P85/java/src/com/x/RunnerCaller.java"
 # Compiled DIRECTLY under the scan root (not a nested `classes/`): isolates the SCOPE-MATCH defect this
-# row exists for from the ⟨0.29⟩ classpath-resolution bug `a034371` also fixed as an ancillary — a
+# row exists for from the ⟨0.29⟩ classpath-resolution bug `7fe654f` also fixed as an ancillary — a
 # `classes/` subdirectory one level down trips the PRE-FIX binary's naive scan-root-literal classpath
 # (measured: it makes the source-peek fail closed, `peeked: false`, exit 2 on ALL THREE policies
 # uniformly, which would conflate two different bugs in one row) and is unaffected by the fix this row
@@ -16579,7 +16579,7 @@ if [ -n "$TS_PRESENT" ]; then
   printf 'deny Net Runner\n' > "$P85/tsdw/scoped.pol"
 fi
 # ---- swift — the excluded declaration lives under Tests/ (SPEC ⟨0.29⟩ `harness-target`); swift's fix
-# (`7378f4f`) diffs the child's CHA-union effect set against the primary's own finalized result.
+# (`793e796`) diffs the child's CHA-union effect set against the primary's own finalized result.
 if [ -n "$SW_PRESENT" ]; then
   mkdir -p "$P85/sw/Sources/App" "$P85/sw/Tests/AppTests"
   printf '// swift-tools-version: 6.0\nimport PackageDescription\nlet package = Package(name: "App", targets: [.executableTarget(name: "App")])\n' > "$P85/sw/Package.swift"
@@ -16667,11 +16667,11 @@ fi
 # THE SIN: `--peek-classpath` / the `.candor/config` `peek-classpath` key / `CANDOR_PEEK_CLASSPATH` name a
 # jar or directory the ⟨0.32⟩ compile-peek READS to resolve dispatch — exactly what §3.3.1(3) means by an
 # input — and that path had never been added to the input list the three existing spellings (`--policy`,
-# the scan target, a chained dep report) already protect. MEASURED against candor-java `dc1f934`
+# the scan target, a chained dep report) already protect. MEASURED against candor-java `9ec7475`
 # (immediately before the fix, built in a throwaway worktree so the tracked checkout was never touched):
 # `--peek-classpath libs/dep.jar --json libs/dep.jar` wrote a 576-byte report OVER the 909-byte dependency
 # jar (MD5 changed) at EXIT 0 — the operator's own dependency, destroyed, reported as success. FIXED
-# candor-java `9a17c4c`: all three spellings now register the declared classpath as an input; a sink
+# candor-java `220af66`: all three spellings now register the declared classpath as an input; a sink
 # naming it is refused, exit 2, nothing written.
 # ====================================================================================================
 echo
@@ -16739,7 +16739,7 @@ echo "PART 86 — a declared peek classpath (flag, config key, or env var) is an
 # CONTROLS: the --gate-json sibling proves the property on both sinks named in §3.3.1, not only --json; the
 # config-key and env-var cells prove the guard is keyed on the DECLARATION, not the flag; the OVER-CHARGE
 # CONTROL proves the guard refuses the exact artifact, never every sink a peek-classpath scan happens to use.
-# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-java `dc1f934` (immediately before `9a17c4c`, built in a
+# FALSIFIED AGAINST THE PRE-FIX BINARY, candor-java `9ec7475` (immediately before `220af66`, built in a
 # throwaway worktree so the tracked checkout was never touched): the flag-spelling cell wrote a 576-byte
 # report over the 909-byte dependency jar (MD5 changed) at exit 0 — HEAD reads exit 2, jar byte-identical.
 # The over-charge control was already at its wanted value on that same pre-fix binary (a --peek-classpath
@@ -16787,7 +16787,7 @@ fi
 #               reference engine, and the arm was committed RED — not skipped, because a row that never
 #               runs its question scores PASS (this suite's own PART 39 / PART 37(e) lesson) and a
 #               FIXABLE silent under-report gets gated, never booked as a residual.
-#               CLOSED THE SAME DAY, candor-java `c97e1e4`: `Widget.fireRef` now carries
+#               CLOSED THE SAME DAY, candor-java `b6892ca`: `Widget.fireRef` now carries
 #               `Unknown` + `unresolved: true` + `callback:java.lang.Runnable.run` with
 #               `direct: ['Unknown']` — branch (b), and a DIRECT source, so the reason is earned (see
 #               the §2 discussion below). `deny Unknown app.Widget.fireRef` goes 0 → 1. The arm is
@@ -16804,7 +16804,7 @@ fi
 # Until 2026-09-03 the ENGINES line read `swift: measured exempt from THIS toggle`. That is TRUE and it
 # was the wrong question, so the arm was made to run. But the arm it was made to run asked for a SPEC
 # VIOLATION. It read ⟨0.35⟩(b)'s third conjunct — an `unknownWhy` of kind `callback:`/`dispatch:` — off
-# `Widget.fire` over the closure-carrying-conformer fixture, and MEASURED on candor-swift `39ad496`
+# `Widget.fire` over the closure-carrying-conformer fixture, and MEASURED on candor-swift `407d441`
 # that caller has `direct: []` and `calls: [ClosureTask.go, Repaint.go]`: it RESOLVED the dispatch, to
 # BOTH conformers. Its `Unknown` is purely INHERITED from `ClosureTask.go`, which is the real source and
 # does carry `dispatch:ClosureTask.f`. SPEC §2 (SPEC.md:1381, the `"unknownWhy"` field: *"REQUIRED when

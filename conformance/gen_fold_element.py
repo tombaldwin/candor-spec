@@ -5,7 +5,7 @@ PART 90 — THE FOLD-ELEMENT DIFFERENTIAL — ⟨0.21⟩, four-way.
 A closure parameter that IS the element of a collection carries that element's effects into the caller.
 This needs no new SPEC clause: ⟨0.21⟩ already says absence from `functions[]` is a purity claim, and a
 fold over effectful elements reaches those effects. What it needs is a part, because the defect was live
-in TWO engines at once (SOUNDNESS R349, fixed 2026-09-15 in rust `626f046` and swift `dd22413`) and
+in TWO engines at once (SOUNDNESS R349, fixed 2026-09-15 in rust `1c87f8a` and swift `3eca7f5`) and
 neither engine's fix was the one its own row prescribed.
 
 WHY THE SHORTHAND/NAMED PAIR IS THE WHOLE POINT, and it is not a stylistic duplicate.

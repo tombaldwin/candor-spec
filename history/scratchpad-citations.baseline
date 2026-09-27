@@ -15,15 +15,22 @@
 # So this file exists to stop the NEXT one. `sha-citations.py --check` FAILS on any scratchpad citation
 # not listed here. Do not add a line to make a gate pass: put the decisive artefact IN the row instead.
 # A path is a courtesy, never the evidence. Removing a line when a row stops citing it is always fine.
+# ADDED 2026-09-27 by R638's widening, NOT to make a gate pass: `collision` and `fixtures2` are
+# real citations in SCAN-BOUNDARY-WORK-QUEUE.md that the old three-file TARGETS never looked at.
+# They are as dead as the other 34 and equally unrepairable; grandfathering them is what the
+# ratchet is for. Four selftest FIXTURE paths surfaced in the same run and are NOT here — they
+# are excluded at the source instead, because a fixture is not a citation.
 034-report-trust-design.md
 agsw
 carveout
+collision
 dropglue-fixture
 dupqual
 fable-r475-corpus
 fix-macro-out
 fix-resolve-out
 fix-visible-out
+fixtures2
 gen
 jtsagent-r566
 panel-fixes

@@ -112,7 +112,7 @@ specifically rather than accepting the number.
 
 ### A THIRD conjunct, found by measuring — the dep must be CHAINED
 
-Implemented first in rust (`5fde0d6`), and the two-conjunct version above is **not** what shipped. It fired
+Implemented first in rust (`50ebd63`), and the two-conjunct version above is **not** what shipped. It fired
 on `let finds = candor_classify::best_finds(); finds.first()` — a std `Vec` method on a dep-returned value.
 Genuinely an unformed key, and genuinely not worth a disclosure, because for an **unchained** crate the κ
 ledger *already* discloses `invisible: [cr]`. The reader is warned; a second disclosure is pure false
@@ -149,7 +149,7 @@ is declared twice in a package (never guess which one). That refusal is right, a
 silence. **Half 1 is the fail-closed floor under every guard the resolution path is correct to refuse** —
 which is the same reason it does not become dead code when half 2 lands.
 
-### What "could not form a key" means in an engine with no untyped receivers (java, `828ca18`)
+### What "could not form a key" means in an engine with no untyped receivers (java, `e202379`)
 
 JVM bytecode always carries a static owner, so java has no untyped receiver to test for. The conjunct that
 replaces it is the **opcode**: `INVOKEINTERFACE` *proves* the owner is an interface, so the hash formed at
@@ -207,7 +207,7 @@ A new OPTIONAL top-level envelope block, sibling to `coverage`, not attached to 
 
 ### ATTEMPTED AND REVERTED (2026-07-26) — read this before trying again
 
-A full producer+consumer prototype was built in rust (`58ddff0`, `b98957f`) and **reverted**. It worked on
+A full producer+consumer prototype was built in rust (`47800db`, `d44ccd4`) and **reverted**. It worked on
 its fixture — the effect crossed the boundary and `deny Fs` went exit 0 → exit 1 — and a code review then
 confirmed **four** defects in it, two of them soundness. The fixture passing is not the bar.
 
@@ -332,7 +332,7 @@ qualified id against a tail2 index would simply miss every time, which is the si
    for it exactly instead of settling for tail2) and because bundling it would hide its own regressions
    inside a bigger change.
 
-   **LANDED — candor-rust `5feba18`, and it corrected two of this note's own claims.**
+   **LANDED — candor-rust `1529cac`, and it corrected two of this note's own claims.**
 
    - *"Purely additive"* is only true **with a dedup**, and that is the whole safety argument. For a 1- or
      2-segment qual the full qual **IS** the leaf or tail2 string, so an undeduped third push self-collides
@@ -356,10 +356,10 @@ Only then does the rest become implementable:
    distinguish "no such method" from "the index withdrew an ambiguous entry";
 4. the join applies **every** surface, via the one shared application path rather than a second copy of it.
    candor-java shipped this rung's sibling with `crossDepJoin` duplicating `inheritDepFn` line for line, and
-   the copies drifted until a reason-scoped gate was inert on the ordinary call path (`6ab26e4`). Rust
+   the copies drifted until a reason-scoped gate was inert on the ordinary call path (`9b096ce`). Rust
    should be checked for the same duplication BEFORE adding a third consumer of a DepFn.
 
-   **AUDIT DONE — candor-rust `7cb5748`, and rust had THREE copies which had drifted the same way.** In the
+   **AUDIT DONE — candor-rust `77d9590`, and rust had THREE copies which had drifted the same way.** In the
    DISCLOSURE surfaces this time: the cross-crate drop-glue join carried effects + paths only; the dep-lazy
    join carried no `invisible` and no `incomplete`. A join that carries the effect and drops the
    `incomplete` beside it lets a benign literal in the CONSUMER certify a surface the dependency already
@@ -397,8 +397,8 @@ correct behaviour is half 1 — disclose — not a widened match. **Never trade 
 ## Order of work
 
 1. **Half 1, per engine, independently.** Each engine's own schedule; no rung, no negotiation. Measure the
-   hedge count and check the trigger is the conjunction, not the disjunct. Done: rust `5fde0d6`, java
-   `828ca18` (candor-java), ts `420e715` (candor-ts). Open: swift.
+   hedge count and check the trigger is the conjunction, not the disjunct. Done: rust `50ebd63`, java
+   `e202379` (candor-java), ts `420e715` (candor-ts). Open: swift.
 2. **Conformance part** pinning that an untyped cross-package receiver DISCLOSES rather than reads pure —
    verified-to-catch by reverting one engine, as PARTs 19 and 20 were. **Done, PART 21**, three arms live
    (java, rust, ts), each verified to catch against its own pre-fix engine.

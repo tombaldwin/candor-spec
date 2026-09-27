@@ -1,6 +1,6 @@
 # Two chained reports, one key, different answers — what should an engine do?
 
-**Status: SHIPPED FOUR-WAY 2026-08-02.** rust `0adb35b` (withdrawal → union), java `6f7ec94`
+**Status: SHIPPED FOUR-WAY 2026-08-02.** rust `4e3bdfb` (withdrawal → union), java `87b9f1b`
 (last-non-empty-wins → union), swift `612f6dc` (the trust ladder → union), ts unchanged as the reference —
 verified by reading it rather than assumed, `crossDeps.get(hash) ?? new Set()` then `.add()`, including
 `stale ? ["Unknown"] : e.inferred` **into the same cell**, which is the across-trust-level union in the
@@ -100,7 +100,7 @@ rust withdraws. But:
 - java and ts have both shipped non-withdrawing rules and neither has produced a reported fabrication from
   this path;
 - the collision that motivates withdrawal is a *leaf* collision, and the full-qualification key
-  (rust `5feba18`, swift `9a51e7f`) exists precisely to make those rarer.
+  (rust `1529cac`, swift `9a51e7f`) exists precisely to make those rarer.
 
 **It also dissolves rust's open row.** Rust's alternative fix — disclose `Unknown` on a withdrawn key — was
 built and measured at **15–20% of functions newly carrying `Unknown`** (30/200 pgman, 108/544 ebman). A
@@ -111,7 +111,7 @@ cost.
 
 1. **What a union does to rust's corpus.** Unmeasured. Do it before landing.
 2. **Whether the union should extend to the literal surfaces.** Probably yes (a surface union is already the
-   sound reading), and rust `6f2210c` established that most collisions agree on effects and differ only in
+   sound reading), and rust `8106f5e` established that most collisions agree on effects and differ only in
    surfaces — 1536/2041 on pgman, 2255/3276 on ebman.
 3. **The `Unknown`-vs-effect asymmetry.** One entry `['Unknown']` and another `['Fs']` unions to
    `['Fs','Unknown']`, which is right but noisier than either. Check the rate.

@@ -55,13 +55,13 @@ Everything else that was waived this session was either fixed or retracted.
    `w.doThing()` and `w.toString()` both carry `invisible:[dep]`, while `dep.Cls.V` and `"v="+w` are
    omitted from `functions` entirely — the same reach, disclosed or not by how it happens to be spelled.
 
-   **HALF CLOSED, java `c0fd974`:** a static read that resolves nothing now records a κ blind spot, so
+   **HALF CLOSED, java `73cd901`:** a static read that resolves nothing now records a κ blind spot, so
    `lazy_init`'s 8 residual cells are gone (java's PART 26 residual: 16 → 8, `[implicit_conv]` alone).
    The tally is deliberately NOT incremented — `Cls.INSTANCE.m()` is one reach compiled as a GETSTATIC
    plus a call, and counting both moved the pinned completeness threshold (it put two tests red). The
    package joins the ledger's LIST instead; `calls` keeps meaning call volume.
 
-   **CLOSED 2026-08-03, java `272d05f` — AND THE REASON I FILED IT AS BLOCKED WAS WRONG.** The reentry
+   **CLOSED 2026-08-03, java `8200807` — AND THE REASON I FILED IT AS BLOCKED WAS WRONG.** The reentry
    sites now record a κ blind spot when they resolve nothing, exactly as `clinitEdge` does. java's
    `empty_zero` waiver went STALE and is deleted: **java's κ-reach residual is 16 → 8 → 0**, and
    trust-monotonicity is down to ONE waiver (swift's).
@@ -178,7 +178,7 @@ Everything else that was waived this session was either fixed or retracted.
    ts — two engines with no third answer available, which is evidence about the FORMAT rather than either
    engine. And the swift half turned out to be a bigger hole than filed: protocols were absent from that
    engine's sidecar ENTIRELY, as keys and as edges, so every `Impl: Mid`/`Mid: Base` chain dead-ended.
-   Engines: java `78aad6d`, ts `caeda66`, swift `ea3de21`, rust `4cae735`.
+   Engines: java `35dce3a`, ts `caeda66`, swift `ea3de21`, rust `d4ef3f4`.
 
 4. ~~**The frontier differential's three arms and two independent consumers**~~ **CLOSED 2026-08-03 —
    it is now a PRODUCER x CONSUMER MATRIX.** The defect was real and inside the instrument: candor-swift
@@ -290,7 +290,7 @@ and immediately found the theory wrong twice.
 
 **THE ITEM THAT DOMINATED THIS LIST IS DONE (2026-08-02).**
 
-1. ~~**The ENTRY-COLLISION UNION (§2).**~~ **SHIPPED FOUR-WAY** — rust `0adb35b`, java `6f7ec94`, swift
+1. ~~**The ENTRY-COLLISION UNION (§2).**~~ **SHIPPED FOUR-WAY** — rust `4e3bdfb`, java `87b9f1b`, swift
    `612f6dc`, ts unchanged as the reference (verified by reading it, not assumed). **Both `stale_beside`
    waivers are RETIRED** and PART 26's BESIDE arm is 0 erasures on all four engines, where it was java
    72/72 and rust 64/72 ERASED. The predicted ratio held. Three things the implementation found that the
@@ -311,7 +311,7 @@ and immediately found the theory wrong twice.
      quietly re-run.)
 
 1b. **NEW, found while retiring the rust waiver — and the waiver had named the WRONG CAUSE.** rust
-   `9d1d679`: SPEC §3.4 defines `CANDOR_DEPS` as *whitespace-separated* paths and rust split on `:` alone,
+   `bce0d2d`: SPEC §3.4 defines `CANDOR_DEPS` as *whitespace-separated* paths and rust split on `:` alone,
    so PART 26's `stale_beside` arm — which passes `"<trusted> <stale>"` — had been measuring
    **rust-with-nothing-chained** since it was written. The waiver read "the key is withdrawn, the effect is
    gone and the package is re-declared uncovered": a precise description of a mechanism that was not
@@ -377,7 +377,7 @@ and immediately found the theory wrong twice.
      it verbatim"*. Two engines agreeing with the spec and one disagreeing is not a tie. The correction
      was right and the item still sat under a heading that said otherwise.
 4. ~~**java's `blindspots` never lists a setup-only source** (§4).~~ **CLOSED 2026-08-02 (java
-   `0f5761a`), and the SWEEP came back CLEAN with a reason worth keeping.** `UnknownReason.parse`
+   `c5abb7f`), and the SWEEP came back CLEAN with a reason worth keeping.** `UnknownReason.parse`
    returned null for any colon-free tag and `ReportJson.parseEntries` drops the nulls, so §6.2's
    detail-less tokens were deleted on the way in. Measured on a three-source fixture, jar rebuilt
    between:
@@ -404,7 +404,7 @@ and immediately found the theory wrong twice.
 
 **FILED WITH MEASUREMENTS, NOT STARTED** — each has a number attached and none is blocking: the manifest
 that cannot cross a trust boundary (§2b); the return-index collision lead (§3c — recovers >half of one
-corpus's unresolved markers, and is `6f2210c`'s rule one index over); the networked-DB classifier question
+corpus's unresolved markers, and is `8106f5e`'s rule one index over); the networked-DB classifier question
 (§2b); the frontier differential's three-arms-two-consumers (§2); the per-type sidecar unanswerability
 (§2); two off-vocabulary swift kinds (§4); candor-agents' `Net[…]` widening (§2c).
 
@@ -450,7 +450,7 @@ and probably the dot-free detail fix.
         because the dot-free detail makes `simple_method`/`declaring_type` return the whole string and
         `by_method.get(m)` cannot hit. A consumer reads that omission as "no function may reach the target
         through an unresolved dispatch", about a call the engine explicitly charged `Unknown`.
-        - **The rule generalises past the symptom** (SPEC §3.1 ⟨0.24⟩, `ec75631`): when frontier condition
+        - **The rule generalises past the symptom** (SPEC §3.1 ⟨0.24⟩, `7334f9d`): when frontier condition
           (3) cannot be EVALUATED, the entry is disclosed with the raw detail, never dropped. The spec
           already took this direction one rung up — no §2.2 sidecar → over-list by simple name. Dot-free is
           that case one rung down (no owner AND no member) and takes the same answer.
@@ -463,7 +463,7 @@ and probably the dot-free detail fix.
           `dispatch:`" and returns `[]` by language model, not as a gap. It emits `dispatch:` for every
           dispatch reason in a 1062-report census. **The spec was reading a silent drop as a language
           property** — which is how the drop survived.
-        - [x] **rust FIXED `a11adf1`** — and the brief UNDERSTATED it: **three** defective shapes, not
+        - [x] **rust FIXED `7d9e4f4`** — and the brief UNDERSTATED it: **three** defective shapes, not
           one. The agent measured all three on the pre-fix binary rather than taking my one.
           | dot-free detail | no-hier | with-hier |
           |---|---|---|
@@ -482,7 +482,7 @@ and probably the dot-free detail fix.
         - [x] **swift `5f9e75e` — MY BRIEF'S PREMISE WAS WRONG, and the agent measured instead of
           complying.** candor-swift implements **no `callers` verb at all** (`--include-unknown` → exit 2);
           it is a PRODUCER that writes the §2.2 sidecar *for* the other engines' consumers. The frontier is
-          a **three**-surface query (rust/java/ts). SPEC corrected `7fb5356`. In-scope work done instead:
+          a **three**-surface query (rust/java/ts). SPEC corrected `a0c4465`. In-scope work done instead:
           the producer half pinned — `reasonClass("dispatch:untyped cross-package receiver") == "dispatch"`,
           previously unpinned (only the DOTTED form was asserted), verified by mutation, and the gate arms
           measured (`deny Unknown[dispatch]` exit 1 / `deny Unknown[indirect]` exit 0 — the control showing
@@ -532,10 +532,10 @@ and probably the dot-free detail fix.
 Neither depends on the other or on (1). Both are the same failure: the spec is silent and the engines
 diverged, so a `deny` gate gives different verdicts per engine on identical input.
 
-- [x] **SHIPPED FOUR-WAY 2026-08-02** (rust `0adb35b`, java `6f7ec94`, swift `612f6dc`; ts the reference). Both `stale_beside` waivers retired, PART 26 clean. **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
+- [x] **SHIPPED FOUR-WAY 2026-08-02** (rust `4e3bdfb`, java `87b9f1b`, swift `612f6dc`; ts the reference). Both `stale_beside` waivers retired, PART 26 clean. **Entry collision: three engines, three behaviours.** rust WITHDRAWS, java takes last-NON-EMPTY-wins
       (and a stale `{Unknown}` therefore erases a trusted effect — measured, `deny Fs` exit 1 → 0), ts
       UNIONS. Measured across all four and written up in `ENTRY-COLLISION-DECISION.md`.
-      **DECIDED 2026-07-27 (`b47c9ab`) — adopt ts's union.** The gating measurement (item 1, "what a union
+      **DECIDED 2026-07-27 (`0b33533`) — adopt ts's union.** The gating measurement (item 1, "what a union
       does to rust's corpus") is done, read-only over the real `.candor/deps` trees of candor-rust/pgman/
       ebman. It cost SEVEN effect-items across all three corpora and buys back 123 purity claims + 24
       `deny Fs` flips. It also **moved the argument**, which is what waiting for it was worth:
@@ -553,14 +553,14 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
         30/37/273, `calls` 57/120/326). Rust discards all of it at once.
       - Item 2 (surfaces) recorded as **UNDER-POWERED, not answered** — my first pass produced a flattering
         zero by comparing absent keys to absent keys. Real sample is 0-9 keys.
-      - [x] **DONE 2026-08-02** (rust `0adb35b`, java `6f7ec94`, swift `612f6dc`; ts unchanged as the reference, verified by reading it). **IMPLEMENT four-way**, behind the decision: rust stops withdrawing, java stops last-non-empty,
+      - [x] **DONE 2026-08-02** (rust `4e3bdfb`, java `87b9f1b`, swift `612f6dc`; ts unchanged as the reference, verified by reading it). **IMPLEMENT four-way**, behind the decision: rust stops withdrawing, java stops last-non-empty,
             swift's trust-level-first rule reconciled with the union (doc item 4, still open), ts unchanged
             as the reference. Plus a conformance PART verified-to-catch per engine, with a row that FAILS
             for an engine that withdraws or picks. Do NOT start while the four frontier agents hold the
             repos.
       Note the doc's own history: this rule has been described three times and been wrong twice — which is
       itself part of the argument for a rule that discards nothing.
-- [x] **RULED (SPEC §3.1 ⟨0.24⟩, `ec75631`) — empty, absent and unparseable are ONE input: over-list.**
+- [x] **RULED (SPEC §3.1 ⟨0.24⟩, `7334f9d`) — empty, absent and unparseable are ONE input: over-list.**
       `hasHier` gates on EMPTINESS (rust `!hier.is_empty()`, ts `Object.keys(...).length > 0`) vs ABSENCE
       (java `hier == null`). Three engines, two answers — and java's is the unsafe one: a sidecar that
       parses to `{}` is non-null, so java HONOURS it, `isSubtypeOf` fails for every type, condition (3)
@@ -623,7 +623,7 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       (c) leave it and document the hazard, which is what the ⟨0.24⟩ per-file ruling implicitly did.
       Do NOT patch around it with a leaf-key guess. Measurement done; the ruling is open.
 
-- [x] **CLOSED `94de3b0` + SPEC §2.2 ⟨0.24⟩ `5652ce6` — and it was not cosmetic, and it needed no sweep.**
+- [x] **CLOSED `523069a` + SPEC §2.2 ⟨0.24⟩ `329f1c3` — and it was not cosmetic, and it needed no sweep.**
       Filed as a spurious warning; measured as **three real losses**, each against a sidecar-removed control:
       - **an effect-free crate was REFUSED OUTRIGHT** — the bogus parse failure set the `hard_fail` bit that
         distinguishes "no effects" from "every report was corrupt", so a well-formed `functions: []` report
@@ -641,7 +641,7 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       real (the frontier differential has one engine produce and another consume), so the short-list
       consumer claims the other's sidecar as a report. Reserved set now enumerated in §2.2, denylist
       required, direct-file locator explicitly exempt.
-      - [x] **java `c406119` — and java HAS the "refused outright" consequence, in its own form.** Measured:
+      - [x] **java `0656e52` — and java HAS the "refused outright" consequence, in its own form.** Measured:
         one report plus two foreign sidecars → a FALSE ambiguity disclosure (`matches 3 reports`), then it
         **picks the sidecar** (`gate` sorts before `jvm`; the resolver takes the lexicographically first
         hit) and refuses every query about a file the user never named. After: exit 0, silent, answered from
@@ -675,7 +675,7 @@ diverged, so a `deny` gate gives different verdicts per engine on identical inpu
       ts(prod+cons), swift(prod) + **rust(cons)**.
       Two consequences, and the second is the sharp one:
       - Its header excludes rust because *"rust has no `dispatch:` — its indeterminacy is callback/native"*.
-        **That is the same stale claim SPEC §3.1 carried** (`7fb5356`): rust emits `dispatch:` for every
+        **That is the same stale claim SPEC §3.1 carried** (`a0c4465`): rust emits `dispatch:` for every
         dispatch reason in a 1062-report census. So rust's producer side is untested here **while rust's
         consumer silently carries the swift arm**.
       - A common-mode defect in the rust consumer appears IDENTICALLY in the swift arm and cannot be
@@ -693,7 +693,7 @@ same day. FIXED already: `pure` (§6.2 + the model), §4's four-kinds + two stal
 "NOT YET RULED", `netClass`'s rung tag, "the ten effects", the falsified `--class dynamic` diagnostic, the
 overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missing `Ipc`/`Clipboard`.
 
-- [x] **FIXED (`2b4c9a1`) — and the fix was one SENTENCE, three places.** §1 said "`Llm` refines `Net`
+- [x] **FIXED (`59f0323`) — and the fix was one SENTENCE, three places.** §1 said "`Llm` refines `Net`
       **the way `Db` does**". The test for what "refines" may mean: **every occurrence of the refining
       effect must be an occurrence of the base channel.** An `Llm` call is an outbound request in every
       instance (engines **co-emit** `Llm`+`Net`); an embedded/file-backed/in-process store has **no egress
@@ -784,7 +784,7 @@ overstated frontier pin, `dep:`/`dep-stale:` registration, and the model's missi
       `D={dispatch,reflect}` → model REJECT, engine passes). Also unmodelled: `deny Net[dest…]`, the
       marketed security gate. **Consequence: the planned engine-vs-model differential will falsely flag
       engines on the ratchet row and cannot exercise `forbid`/`allow`/`Net[dest]` at all.** Paper work.
-- [x] **CLEARED (`eab46fc`) the spec-only leftovers** — the three NAMED-BUT-UNDEFINED surfaces
+- [x] **CLEARED (`3b9782d`) the spec-only leftovers** — the three NAMED-BUT-UNDEFINED surfaces
       (`blindspots --stats`, the `reports` verb — cited in §2.2 as *"the canonical what-counts-as-a-report
       oracle"* and specified NOWHERE, and the `encountered-*` family), plus the locale clause's two readings
       (locale-independence binds EVERY ordering; code-point binds only where a field's collation is pinned,
@@ -832,7 +832,7 @@ renderings of the same program. The engine's own single-tree answer is the oracl
 no reference implementation, no second opinion, no spec interpretation in the loop.
 
 - [x] **P1 — SPLIT-INVARIANCE. BUILT AND WIRED IN — `conformance/gen_split_invariance.py`, conformance
-      PART 24 (`75b7044` + `41216aa`).** 8 effects × 10 split shapes = 80 cells, each rendered in all four
+      PART 24 (`11ba61a` + `607782a`).** 8 effects × 10 split shapes = 80 cells, each rendered in all four
       languages and scanned BOTH as one tree and as two chained packages; the assertion is that each
       engine agrees with ITSELF. Reuses `gen_differential.py`'s EFFECTS table so the effect vocabulary
       stays in one place. **Counts: 80 cells, 80 LIVE, 0 vacuous, on every engine.** (`direct` is the one
@@ -841,7 +841,7 @@ no reference implementation, no second opinion, no spec interpretation in the lo
 
       **VERIFIED TO CATCH**, on two engines, by reverting a shipped boundary fix in an isolated worktree
       with its own build dir — never the shared binaries (item 7f): candor-ts `625e8fd` → the 8
-      `implicit_conv` cells go ABSENT, **ts only, its other 72 unchanged**; candor-rust `1623a07` → the
+      `implicit_conv` cells go ABSENT, **ts only, its other 72 unchanged**; candor-rust `5c68de3` → the
       same 8 cells, **rust only, ts and swift unchanged**. Each fires on exactly the shape whose fix was
       removed and on exactly the engine that was mutated.
 
@@ -876,7 +876,7 @@ no reference implementation, no second opinion, no spec interpretation in the lo
       report twice WITHDRAWS the key — effect gone, package re-declared `uncovered`, `deny Fs` **exit 1 →
       exit 0**. That is the ENTRY-COLLISION union decision's own defect, now gated.
       ORIGINAL — P2, chain idempotence. Would have caught the
-      identical-entry withdrawal (`6f2210c`) — two byte-identical reports made a consumer vanish from
+      identical-entry withdrawal (`8106f5e`) — two byte-identical reports made a consumer vanish from
       `functions`.
 - [x] **P3 — BUILT, conformance PART 26.** 80 cells × **7 degraded arms** against two reference arms.
       Relation = a **SANDWICH**, `unchained ≤ degraded ≤ trusted`, with direction stated per arm — and the
@@ -925,7 +925,7 @@ no reference implementation, no second opinion, no spec interpretation in the lo
 know `Foo.bar()` performs `Net`, single-tree and chained agree on the same wrong answer and no property
 here fires. That is the runtime oracle's job, the instrument exists, and it is calibrated.
 
-- [x] **CLOSED — LOCALE-SENSITIVE ORDERING (candor-ts `6502b56`, SPEC §2 ⟨0.24⟩ `e3e61d6` + `aa82937`).**
+- [x] **CLOSED — LOCALE-SENSITIVE ORDERING (candor-ts `6502b56`, SPEC §2 ⟨0.24⟩ `f9ef51c` + `d87c2b8`).**
       Raised by the ts engine as out of scope for its own task, which was the right call twice over.
       **7 call sites** (not 8 — one grep hit is a comment), one of them ordering the κ-coverage ledger
       **inside the emitted report**. Wider sweep found nothing beyond the list: no `Intl.Collator`, no
@@ -952,7 +952,7 @@ here fires. That is the runtime oracle's job, the instrument exists, and it is c
       value, so no such claim exists to break. The §3.1 collation rule binds the one joined field it names.
 
 - [→] **P2 (chain idempotence) + P3 (trust monotonicity) DISPATCHED** into `conformance/`. Both picked next
-      because both are **regression-shaped**: P2 would have caught rust `6f2210c` (two byte-identical
+      because both are **regression-shaped**: P2 would have caught rust `8106f5e` (two byte-identical
       reports made a consumer **VANISH from `functions`**), P3 would have caught the coverage door **in all
       four engines** plus java's stale-`{Unknown}` erasing a trusted effect (`deny Fs` exit 1 → 0).
       Briefed with every P1 judgment call restated as a CONSTRAINT rather than a suggestion, since those are
@@ -982,17 +982,17 @@ works" from further down this file, and it means none of these should need a rep
 fixture picked ONE spelling.** This is finding (1) at the top of §3 — a human chose each shape — landing
 with four concrete instances rather than an argument.
 
-- [x] **ALL THREE FIXED — candor-rust `ca27ecc`, waivers retired `e995c51`, `known` now EMPTY four-way.**
+- [x] **ALL THREE FIXED — candor-rust `7639be4`, waivers retired `aae4fe9`, `known` now EMPTY four-way.**
       No report-format change on any of them — *"emit the call shape the join already understands"*, third
       time running.
-      **THE `5447eba` VERDICT IS *YES*, AND FAR WIDER THAN THE FILING.** Measured three ways on one fixture
+      **THE `48b7669` VERDICT IS *YES*, AND FAR WIDER THAN THE FILING.** Measured three ways on one fixture
       (`use crate::ROOT_CFG;` from a submodule — the ORDINARY shape, not the filing's inline `mod m`):
       | | same module | 4 cross-module spellings |
       |---|---|---|
-      | before `5447eba` | `Fs` | **`Fs`** |
+      | before `48b7669` | `Fs` | **`Fs`** |
       | at HEAD | `Fs` | **PURE** |
       | after | `Fs` | `Fs` |
-      `5447eba` made the WRITER module-qualified while the READER still built `<lazy>::<its own module>::
+      `48b7669` made the WRITER module-qualified while the READER still built `<lazy>::<its own module>::
       NAME`. **A fabrication fix that introduced a cardinal sin** — and at HEAD *any* crate-root lazy static
       read from *any* submodule read pure. The identity property it bought is preserved.
       [[feedback-fabrication-fixes-cause-misses]] landing again, established by measurement rather than
@@ -1024,7 +1024,7 @@ with four concrete instances rather than an argument.
             `String` (7), local modules — not one a real dependency. Of the 95 gains: **0** have no chained
             marker, **0** are backed only by an unchained one. `chrono` and `serde_yml` are chained with
             substantial reports (191 and 337 fns). **None is the false-uncertainty shape.**
-      - [x] **CLOSED 2026-08-02 (rust `4656d48`) — AND THE DIAGNOSIS BELOW IS WRONG. It is not a
+      - [x] **CLOSED 2026-08-02 (rust `54aacbb`) — AND THE DIAGNOSIS BELOW IS WRONG. It is not a
             collision.** The missing `Utc::now` return type has nothing to do with the `#[cfg]`
             duplication: a `#[cfg]`-duplicated NON-generic return publishes fine, and chrono's entry never
             reached the never-guess rule at all (`bound_returns=0` for it — nothing to collide). The cause
@@ -1051,7 +1051,7 @@ with four concrete instances rather than an argument.
             plausible, specific, and written by someone who had just measured something adjacent — which
             is exactly what makes them expensive: a precise wrong cause reads as diagnosed and stops the
             next person looking. ORIGINAL FILING BELOW, kept for that reason.
-      - [→] **ORIGINAL (WRONG) — `6f2210c`'s rule, one index over.** Chasing WHY
+      - [→] **ORIGINAL (WRONG) — `8106f5e`'s rule, one index over.** Chasing WHY
             the chained markers miss: of ebman's 73, 10 resolve, 6 miss on a module-qualification mismatch,
             and **57 are genuinely absent from the published surface — of which 37 are chrono's `Utc::now`
             alone, and its absence is a SPURIOUS COLLISION.** chrono declares `pub fn now() -> DateTime<Utc>`
@@ -1059,7 +1059,7 @@ with four concrete instances rather than an argument.
             design, the return index sees two same-named defs, and its never-guess rule drops the entry —
             **even though both candidates name the SAME return type. There is nothing to guess between.**
             The report already carries `offset::utc::Utc::now ['Clock']`; only the return type was withheld.
-            **This is the ENTRY-COLLISION union decision (`b47c9ab`) applied to the RETURN index instead of
+            **This is the ENTRY-COLLISION union decision (`0b33533`) applied to the RETURN index instead of
             the entry index** — same principle: *when the colliding candidates AGREE, the collision is not a
             reason to withhold.* Worth naming as a general rule, because it has now arisen twice in two
             different indexes on the same day.
@@ -1081,7 +1081,7 @@ with four concrete instances rather than an argument.
       ORIGINAL FILING — rust, a chained dep's lazy static is charged only through a PATH-QUALIFIED read.**
       `deplib::C.len()` → `['Env']`; `use deplib::C; C.len()` → **absent**. Deref vs method call makes no
       difference; the `use` does. PART 19's rust fixture uses the qualified spelling.
-- [x] **ALL THREE rust §3c FIXED `ca27ecc`** (see the block above for the `5447eba` verdict).
+- [x] **ALL THREE rust §3c FIXED `7639be4`** (see the block above for the `48b7669` verdict).
       ORIGINAL — rust, a chained dep FACTORY call with NO intermediate binding reads silent-pure.**
       `let c = deplib::build(); c.fetch()` → `['Fs']` (resolved); `deplib::build().fetch()` → **absent**.
       `let t = deplib::get_dyn(); t.run()` → `['Unknown'] dispatch:untyped cross-package receiver`;
@@ -1107,7 +1107,7 @@ with four concrete instances rather than an argument.
       dep factory whose product is pure has no report entry, the key MISSes, and it falls to PART 21's
       disclosure. `boundPure` already did this on HEAD. Matching it is the invariant; anything else
       re-creates the divergence.
-      Baseline entries deleted (`bda00a5`); cells flipped `A`→`.` (lazy_init, exact) and `A`→`h`
+      Baseline entries deleted (`aa706ac`); cells flipped `A`→`.` (lazy_init, exact) and `A`→`h`
       (fn_returned_dyn — **now identical to java and ts, so the four-way divergence is CLOSED**). Ratchet
       verified in the other direction: with the entries restored it reports FAIL (STALE WAIVER), exit 2.
       ORIGINAL FILING — swift, a chained dep type's PROPERTY ACCESSOR read is silent-pure.** The dep report carries
@@ -1125,7 +1125,7 @@ with four concrete instances rather than an argument.
       `mod m { pub static INNER: LazyLock<u8> = …Fs…; pub fn inside() { let _ = *INNER; } }` charges
       `m::inside` correctly; `fn outside() { let _ = *m::INNER; }` reads **pure**. The unit is emitted as
       `<lazy>::m::INNER ['Fs']`, so the writer knows; the reader-side edge does not make the hop. Worth
-      checking against `5447eba` (which moved the module path INSIDE the `<lazy>::` prefix to stop
+      checking against `48b7669` (which moved the module path INSIDE the `<lazy>::` prefix to stop
       same-named globals merging) — if the reader still keys on the bare name, that fix bought identity
       at the cost of this edge, which is [[feedback-fabrication-fixes-cause-misses]] exactly.
 
@@ -1151,7 +1151,7 @@ candor-agents (four clauses in one pass, verdict-changing, **no conformance PART
 four independent `--class` fixes (fabrication-mirror risk), and my own floor bump (the only work of the day
 not written by an agent and checked by a second party).
 
-- [x] **FINDING 1 FIXED (candor-agents `f83b3c8`) — reproduced exactly, and the agent CORRECTED MY BRIEF.**
+- [x] **FINDING 1 FIXED (candor-agents `f58b09f`) — reproduced exactly, and the agent CORRECTED MY BRIEF.**
       `link_code_report` now resolves each linked report's **own transitive** reason classes (the
       `.callgraph.json` sidecar **unioned with the rows' `calls`**, so it works sidecar-less) and seeds them
       into the direct map before propagation. Post-fix: `[dispatch]` → exit 1 with
@@ -1257,7 +1257,7 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
 - [ ] **rust: count-0 breaks byte-equality against RUST'S OWN SCAN.** Same policy, the report the scan just
       wrote: `scan` exit 0 with a verdict, `gate --report` **exit 2 and no document written**. ~7–10% of
       real dep reports. `ci/gate-equivalence.sh`'s 90 rows cannot reach it — every corpus crate has
-      functions. **Fix per the corrected §3.1** (`0744d29`): caveat on stderr, exit and document unmoved.
+      functions. **Fix per the corrected §3.1** (`1324a58`): caveat on stderr, exit and document unmoved.
 - [x] **STALE — VERIFIED FIXED 2026-08-02.** Measured on the named route: `gate --report` over a report carrying a `deny Net` hit AND `unanalyzed` exits **1** with `violations: 1`, `incomplete: true`, `unanalyzed: 1`. The `gate.rs` comment records the rewrite. **rust: incomplete analysis SWALLOWS the violation and the verdict DROPS it.** `gate.rs:558-565`
       writes `&mut []` before violations are recorded → exit 2, `violations: []`, **a real finding absent
       from the artifact**. §3.3 settles it: *"a real violation (exit 1) still dominates."* java/swift/ts
@@ -1274,7 +1274,7 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
       hole one edge away is tolerated. **Fix: propagate "contributed nothing determinable" through the
       fixpoint; refuse on an INCOMPLETE set, not only an empty one.**
 - [x] **STALE — VERIFIED 2026-08-02: fixed, and pinned by `testAnAbsentOrGarbledAnalyzedManifestIsReadAsAClaimOnlyWhenItIsOne`.** **swift: `analyzed: {count: true}` reads as JUDGED** — Foundation bridges `NSNumber(bool:)` through
-      `as? Int`. Byte-identical to `count: 2`; the caller drops out of `functions`. **Specced `18fb770`.**
+      `as? Int`. Byte-identical to `count: 2`; the caller drops out of `functions`. **Specced `1d441a5`.**
 - [ ] **rust: a malformed `unanalyzed` manifest is silently dropped** (`.ok()…unwrap_or_default()`) →
       exit 0 where the other three exit 2. `unanalyzed` non-emptiness IS the fail-closed trigger.
 - [ ] **ts + java: a partially-corrupt multi-report prefix gates GREEN** — the dropped member is exactly
@@ -1292,8 +1292,8 @@ reproduced live on scan-produced reports. `_rust_scan`/`_ts_scan` verified real 
 - [ ] `analyzed:{count:0}` in the verdict for a **pre-⟨0.21⟩ manifest-less** report now collides with the
       token that means "judged nothing".
 
-**D — MY HARNESS/PREFLIGHT. CLOSED 2026-07-28** (`fff7bdf`, `5b535c9`, `96fedca`, `36a38c0`, `7caea30`,
-`c35e29d`). Every item below is fixed and each fix carries its own negative control, run. Two things worth
+**D — MY HARNESS/PREFLIGHT. CLOSED 2026-07-28** (`31addb0`, `b43364e`, `5a98241`, `e3a1c15`, `7946974`,
+`dc7c627`). Every item below is fixed and each fix carries its own negative control, run. Two things worth
 keeping from the round. First, **three of the five were the same defect wearing different clothes: a check
 whose subject and whose oracle came from the same source.** PART 23 derived the expected lattice size by
 importing the module it was checking; PART 10's control asserted properties of the sets the decision reads
@@ -1322,7 +1322,7 @@ disclosure** in that case.
 
 ### 3d — WHAT P2/P3 FOUND ON HEAD · the four-way one is a CARDINAL SIN with a proven fix path
 
-- [→] **SPECCED (§2 ⟨0.24⟩ `34f8443`, harm restated `400e8e1`) and IN FLIGHT four-way.**
+- [→] **SPECCED (§2 ⟨0.24⟩ `75bbe4b`, harm restated `6cfe000`) and IN FLIGHT four-way.**
       **swift LANDED `b41b1df`.** Placement — `Deps.swift`'s `loadDepReports`, beside the ⟨0.21⟩
       `incomplete` computation, **consumer-side coverage bookkeeping, NOT the gate**. Its reasoning is the
       part to keep: *"coverage is the single mechanism that turns a report's silence into a purity claim,
@@ -1341,7 +1341,7 @@ disclosure** in that case.
       reading *"This is a fake target that depends on all targets in the package."* **A rare facade, not
       half a dep tree** — precisely the shape the rule is for.
       **PART 26 CONTROL SEPARATION**: java **56/80**, swift **24/80**, rust + ts **INDISTINGUISHABLE**.
-      - [x] **rust `faf4430` — and it hit TRAP 1 exactly as warned, in a shape java's warning did not
+      - [x] **rust `218b30a` — and it hit TRAP 1 exactly as warned, in a shape java's warning did not
             cover.** rust has **FOUR** coverage anchors (envelope `package`, `packages[]`, **filename
             fallback**, entry `hash` prefix), and *"a count-0 report reaches the entry loop with no entries,
             so the `hash` anchor never fires for it"* — the envelope and **filename** anchors are the two
@@ -1392,7 +1392,7 @@ disclosure** in that case.
             one reads `unchained=(ABSENT)`, so the unchained baseline is equally silent, and PART 26 credits
             only shapes where swift also attributes a per-fn `invisible`. **java shares two of them.** Worth
             its own pass.
-      - [x] **java LANDED `110bec5`, and it produced THE number of the whole exercise.** Same placement
+      - [x] **java LANDED `c913d03`, and it produced THE number of the whole exercise.** Same placement
             shape as swift, reached independently: a **third conjunct on the COVERED set**, beside §2.1
             `stale` and ⟨0.21⟩ `incomplete`. **Keyed on the INTEGER, never on the emptiness of
             `functions`** — and here is why, over **1997 deduplicated JVM dependency jars**:
@@ -1411,7 +1411,7 @@ disclosure** in that case.
             looks like"*.
             **BOTH ENGINES CORRECTED MY BRIEF THE SAME WAY**: `deny Fs` does NOT return to exit 1 and
             should not — *"restoring the verdict would mean asserting an effect the consumer has no
-            evidence for."* Spec text fixed (`400e8e1`).
+            evidence for."* Spec text fixed (`6cfe000`).
       - [x] **Both waivers NARROWED, not retired** — java 72→16 cells, swift 64→40. The residuals are a
             **separate pre-existing gap**: every one reads `unchained=(ABSENT)`, so the reference arm is
             itself silent and the property has nothing to compare against. java's two shapes are a subset
@@ -1421,7 +1421,7 @@ disclosure** in that case.
             deliberate, with the guidance to re-point such a pin at a manifest-bearing fixture rather than
             delete it.
       - [ ] **NEW, from java: the same rule must bind `gate --report`** — a `count: 0` report handed
-            DIRECTLY to the verb still prints "no violations", exit 0. Specced (`4ef7166`); unimplemented
+            DIRECTLY to the verb still prints "no violations", exit 0. Specced (`5d63011`); unimplemented
             in java and swift, and rust/ts are building the verb now.
       - [ ] **Minor, live shell bug java found and fixed**: a smoke row's label had unescaped backticks
             inside a double-quoted string, so it had been **running `package` as a command** and printing
@@ -1448,7 +1448,7 @@ disclosure** in that case.
             N for all-pure) **on candor-rust only**. Whether java/ts/swift EMIT 0 correctly for their own
             facade packages is a separate question.
 - [→] **rust's chain-idempotence and the BESIDE-erasure are both the ENTRY-COLLISION union decision**
-      (§2, decided `b47c9ab`, unimplemented). They now have a conformance gate waiting for them — PARTs 25
+      (§2, decided `0b33533`, unimplemented). They now have a conformance gate waiting for them — PARTs 25
       and 26 will go green on the engines the moment the union lands, and fail if it regresses.
 - [x] **The harness caught a defect in ITSELF, the same shape P1's did.** P2's first draft reused a
       `GAINED` verdict and printed *"the duplicate arm invented an effect … once=(ABSENT) twice=(ABSENT)"* —
@@ -1457,7 +1457,7 @@ disclosure** in that case.
 
 ### 3b — THE GATE-A-REPORT VERB · **BUILT in java as reference**; rust/ts/swift to copy the shape
 **candor-java SHIPPED it, and it produced more normative content than the clause I wrote — three
-requirements found by MEASUREMENT, not design** (SPEC §3.1 ⟨0.24⟩ `a96da88`).
+requirements found by MEASUREMENT, not design** (SPEC §3.1 ⟨0.24⟩ `54394f1`).
 `candor gate --report <locator> --policy <file> [--json] [--gate-json <file>]` — a QUERY verb, inheriting
 §3.3.1's grammar unchanged, no positionals, exit codes exactly `scan --policy`'s. **`--json` ≡
 `--gate-json -`**, which CONTRADICTS my brief ("support `--json` exactly as the scanning path does") and the
@@ -1486,7 +1486,7 @@ meaning would be the one place a consumer could tell the routes apart.
 - **100 model disagreements over 1792 rows, ALL one family** — `Db` under `deny Net`. The engine reached
   **the same ruling I had recorded independently**: model-vs-contract, not an engine defect, pinned both
   ways rather than patched. `pure` went from 15 disagreements to **0/256** once the model was corrected.
-- [x] **DONE FOUR-WAY — rust `93ed0a1`, ts `c2b8ce4`, and PART 27's R6 is OK on ALL TWELVE CELLS.**
+- [x] **DONE FOUR-WAY — rust `b665e39`, ts `c2b8ce4`, and PART 27's R6 is OK on ALL TWELVE CELLS.**
       The harness needed three fixes of MINE before it could say so: `GATE_ENGINES` hard-coded to
       java+swift, no rust/ts branch in `q_gate`, and — the real bug — **the equivalence cell dispatched
       everything non-java to `_swift_scan`**, so rust's and ts's gate was compared against SWIFT's scan.
@@ -1507,11 +1507,11 @@ meaning would be the one place a consumer could tell the routes apart.
       mirror**). Now read verbatim. ts also confirmed **the minimal-refusal rule was implementable as
       stated**: it exits 1 on PART 27's R1 fixture where swift exits 2, because it already CONTRIBUTES
       `unresolved` at the entry.
-      **`allow`'s justification was FALSIFIED by rust and is corrected** (`98ac23b`): the clause said the
+      **`allow`'s justification was FALSIFIED by rust and is corrected** (`f7730f0`): the clause said the
       completeness marker "does not ride the wire" — rust emits a per-entry `incomplete` field §2 names, so
       it COULD answer. It refuses anyway, and its reason is better than mine: **an engine that answers a
       question its three siblings refuse has SPLIT THE VERB.**
-- [x] **CLOSED 2026-08-02 (rust `a256e72`)** — the POLICY gate was already right; the live half was the AS-EFF-005 BASELINE guard, a site this entry never named. **rust DEFECT against an EXISTING MUST — I filed this as "needs a four-way ruling" and it is not one.**
+- [x] **CLOSED 2026-08-02 (rust `81dc870`)** — the POLICY gate was already right; the live half was the AS-EFF-005 BASELINE guard, a site this entry never named. **rust DEFECT against an EXISTING MUST — I filed this as "needs a four-way ruling" and it is not one.**
       §3.3.1 already says it, verbatim: *"A configured gate over incompletely-analyzed code MUST fail closed
       (exit ≠ 0); **a real violation (exit 1) still dominates.**"* java and swift are right; **rust is
       wrong** — `had_parse_failure` returns 2 *before* recording violations, so a real violation found
@@ -1527,7 +1527,7 @@ meaning would be the one place a consumer could tell the routes apart.
       **Lesson for me, not for rust**: I read a cross-engine disagreement as an open question without
       checking whether the contract already settled it. Two engines agreeing with the spec and one
       disagreeing is not a tie.
-- [x] **CLOSED 2026-07-28 (rust `89f2c0f`). NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
+- [x] **CLOSED 2026-07-28 (rust `8db9f43`). NEW, from rust: `ci/self-gate.sh` DELETES TRACKED FILES.** Its `rm -rf "$d/.candor"` removed the
       checked-in `report.*.scan.json` artifacts in all four crates. The agent restored them byte-for-byte
       via `git show HEAD:<path> >` rather than `git checkout` (the standing rule). Harmless in CI,
       destructive locally — and it is a script a contributor is told to run.
@@ -1540,7 +1540,7 @@ meaning would be the one place a consumer could tell the routes apart.
       those rows would manufacture divergences out of the theory (§2b).
 
 ORIGINAL FILING — the gate-a-report verb, parallel per engine, unblocks P4
-**SPECCED ⟨0.24⟩ `3dd2e39` as `gate --report <locator> --policy <file>`; java DISPATCHED as reference.**
+**SPECCED ⟨0.24⟩ `8b86076` as `gate --report <locator> --policy <file>`; java DISPATCHED as reference.**
 Shape: exit codes and verdict identical to `scan --policy`, only the source of `S`/`D` differs. The
 load-bearing half is a **MUST NOT** — no re-deriving, widening or re-classifying; an ABSENT entry stays
 absent and is not back-filled from a sidecar or a chained dep. The verb's whole value is being a pure
@@ -1593,13 +1593,13 @@ the only verdict-changing one — do not bundle them.
             special case. Its empty-set default is **UNREACHABLE — 0 fires across 487 Unknown-bearing
             functions** over two real targets, corroborated by an offline fixpoint recomputation. My
             specified join-side change would have been a no-op that looked like a fix.
-            **Now normative** (SPEC §6.2 `f6337fa`): attach at the source. Same conclusion the formal model
+            **Now normative** (SPEC §6.2 `a49d596`): attach at the source. Same conclusion the formal model
             reaches from the other end — a reasonless `Unknown` is not representable in `(S,D)` at all, so
             the state must be made unreachable, not handled. **Swift got there independently, before the
             model was written.**
             Calibration number for the other engines: the naive form (contribute whenever `Unknown` is
             present) marks **435** on the corpus where the legitimate count is **0**.
-      - [x] **java FIXED `82bf4d4` — REPRODUCED, unlike swift, and the difference is instructive.** Java
+      - [x] **java FIXED `f19cb7a` — REPRODUCED, unlike swift, and the difference is instructive.** Java
             records an `unknownWhy` beside every `Unknown` it raises itself (**all 13 `dir.add(UNKNOWN)`
             sites checked**), so the only route to a reasonless one is the **dependency boundary** — a §2.1
             distrusted report whose effects were downgraded wholesale, or an entry neither its own tags nor
@@ -1626,16 +1626,16 @@ the only verdict-changing one — do not bundle them.
             `unknownWhy: ["unresolved"]` on any unnamed direct `Unknown`, AND a trust-marker self-check
             **REFUSES TO WRITE THE REPORT AT ALL** (exit 2) if one escaped. *"The state is not merely
             unwritten, it is unwritable."* Established by MUTATION — deleting the fallback turns the
-            stale-dep arm into exit 2 with no report. Now the stated ideal in SPEC §6.2 (`7aa0ebc`): a
+            stale-dep arm into exit 2 with no report. Now the stated ideal in SPEC §6.2 (`83a9d8a`): a
             join-side default COPES, a source-side contribution makes it UNREACHED, a producer-side
             self-check makes it UNWRITABLE.
             **So 4a is: java the ONLY engine where it was reachable** — via the dependency boundary, the one
             route swift and ts had already closed. Three of four were already right at the source.
       - [→] rust pending.
-- [x] **CLOSED FOUR-WAY.** swift `2c96569`, rust `5df4af1`, ts `cbbb05c` (+ `72a9b51` for the over-fire the
-      review found), java `03b833b`. Worst was ts at **got 64→21 (−67%)**. All four now share one fixpoint
-      and one match rule with their own gate. Plus the ⟨0.24⟩ **value grammar** four-way (rust `7d916f4`,
-      swift `0646085`, java `735204c`, ts `53e4585`) — a shared gap no engine had implemented.
+- [x] **CLOSED FOUR-WAY.** swift `2c96569`, rust `69e3940`, ts `cbbb05c` (+ `72a9b51` for the over-fire the
+      review found), java `112ef55`. Worst was ts at **got 64→21 (−67%)**. All four now share one fixpoint
+      and one match rule with their own gate. Plus the ⟨0.24⟩ **value grammar** four-way (rust `6d22166`,
+      swift `0646085`, java `86548c0`, ts `53e4585`) — a shared gap no engine had implemented.
       ORIGINAL — `unverified --class` FAILS OPEN under absence (swift `Fix.swift:242`), found while measuring
       4a.** The tool whose entire job is to name the holes a green gate does not prove — and its filter
       **under-reports the more the user narrows**. Two causes, both needed:
@@ -1666,7 +1666,7 @@ the only verdict-changing one — do not bundle them.
         1 → 387. `direct`/`calls` are now non-defaulted on the entry type so a construction site cannot
         silently rebuild the direct-only reading. **No format rung needed** — both fields were already on
         every entry, just unread.
-      - [x] **rust FIXED `5df4af1` — reproduced in `unverified`, and WORSE than swift.** All 8 target ×
+      - [x] **rust FIXED `69e3940` — reproduced in `unverified`, and WORSE than swift.** All 8 target ×
         policy rows converge exactly after; unfiltered → `--class dynamic` before: **54→26 (−52%)**,
         **7→1 (−86%)**, **94→23 (−76%)**, **43→21 (−51%)**. Fault 1 (direct-only read) was the bulk —
         101/124 ebman `Unknown` entries, 37/60 pgman, 6/7 candor-scan holes carry no direct reason.
@@ -1676,7 +1676,7 @@ the only verdict-changing one — do not bundle them.
         **zero of 17,306 entries across 173 dep reports** carry a direct `Unknown` with no reason. Applying
         swift's fix here would have been a regression: it would pull in exactly the inherited units the
         verb is DEFINED to exclude. *One verb's definition is the other verb's bug.*
-      - **THE ROOT CAUSE, and it is the durable part** (now SPEC §6.2 `15041de`): **rust's GATE was never
+      - **THE ROOT CAUSE, and it is the durable part** (now SPEC §6.2 `253f306`): **rust's GATE was never
         party to this defect.** It already resolved transitively and already treated an absent class set as
         `unresolved`. The divergence was purely consumer-side, in the one query that reads a **report**
         rather than the scan's in-memory graph — carrying an **open-coded second copy** of the
@@ -1710,7 +1710,7 @@ the only verdict-changing one — do not bundle them.
       remedy, `path` traces the origin), but incoherent to read. Putting the RESOLVED class set on the wire
       is a **format rung**, and it was left alone deliberately given the standing result that none of this
       vein's fixes has needed one.
-- [x] **4b JAVA DONE (`91930f2`) — and the audit produced the SHAPE, which is worth more than the fix.**
+- [x] **4b JAVA DONE (`af27b83`) — and the audit produced the SHAPE, which is worth more than the fix.**
       **Every engine holds the kind vocabulary TWICE**: a prefix/STRING classifier feeding §6.2's class
       table, and a TYPED/structural one (enum/union/match). They are authored from different sources — the
       class table from a cross-engine audit of what engines EMIT, the typed vocabulary from §4's list — so
@@ -1724,13 +1724,13 @@ the only verdict-changing one — do not bundle them.
       **java emits NO `ambiguous:`** (a JVM invoke carries owner+name+descriptor, so bytecode resolution is
       never ambiguous) **but it RELAYS them**: `depTransitiveWhy` parses a chained dep's tags into java's own
       report, so a rust `ambiguous:` appears in java's output. **A consumer needs kinds it never emits** —
-      now stated in §4 (`57eaf6f`).
+      now stated in §4 (`ef945a7`).
       **The frontier point is a checkable prediction**: java's frontier keys off the TYPED `DISPATCH`, so it
       excludes `ambiguous:` for free; an engine keying off the CLASS would admit entries with no owner to
       resolve against. Sent to rust with 8710 entries at stake.
       Control: `banana:whatever` unchanged, asserted at model level AND end-to-end. **Four mutations, each
       caught** — including catch-all→`DISPATCH` (the blanket), which failed BOTH controls. No verdict change.
-      - [x] **rust: ONE representation, structurally immune** (`0a3e6c9`). Raw `kind:detail` strings out,
+      - [x] **rust: ONE representation, structurally immune** (`a0b466b`). Raw `kind:detail` strings out,
             one prefix table in, already right since ⟨0.19⟩. **Both predictions answered NO**: it is not
             emitting a kind it cannot parse back (no typed vocabulary to lack it), and its frontier is
             **KIND-keyed** (`strip_prefix("dispatch:")`) so `ambiguous:` is excluded for free — **0 wrongly
@@ -1744,7 +1744,7 @@ the only verdict-changing one — do not bundle them.
             verbatim, so a chained rust `ambiguous:` lands in swift's own report and is gated on there.
             No class-where-kind instance (it ships no `callers`/`blindspots`, and nothing parses a
             `dispatch:` detail into `owner.member`).
-            **ITS MUTATION TABLE UPGRADED A SPEC SHOULD TO A MUST** (`fc501bb`): rewriting the prefix test
+            **ITS MUTATION TABLE UPGRADED A SPEC SHOULD TO A MUST** (`4d7b7b1`): rewriting the prefix test
             from *is the kind in the SET* to *does the token have the `kind:detail` SHAPE* passes EVERY
             assertion about EVERY real kind — they all have the shape — and is caught **solely by the
             fabricated kind**. Load-bearing in 3 of 4 mutations, sole detector in one. *A control only
@@ -1774,7 +1774,7 @@ the only verdict-changing one — do not bundle them.
             question from the five**: all five mean *"the body could not be resolved"*, this means *"the
             call resolved; its effect CATEGORY is unprovable"*. Recorded in §4, not reconciled — either fix
             changes report bytes.
-      - [x] **conformance PART 10 FIXED (`2efe0bf`) — it CONTRADICTED the spec and would have hard-DIVERGEd
+      - [x] **conformance PART 10 FIXED (`7881832`) — it CONTRADICTED the spec and would have hard-DIVERGEd
             any engine implementing ⟨0.24⟩ in the field, two ways.** `CANON` still held four kinds with
             `ambiguous` in a warn bucket and `dep:`/`dep-stale:` in none. Worse, the dispatch-detail check
             DIVERGEd on **any dot-free detail** — the exact form ⟨0.24⟩ reserves, and the reference Rust
@@ -1793,9 +1793,9 @@ the only verdict-changing one — do not bundle them.
       Mostly a conformance/vocabulary-check update per engine — check each engine's `unknownWhy` kind
       validator, not just its emitter.
 - [x] **4c. The §3.1 frontier rung** — dot-free disclosed, empty sidecar ≡ absent, mixed source pinned,
-      collation named. **rust `a11adf1`, java (3 commits), swift `5f9e75e` (producer half — no `callers`
+      collation named. **rust `7d9e4f4`, java (3 commits), swift `5f9e75e` (producer half — no `callers`
       verb), ts in flight.** Three-surface, not four.
-- [x] **4d DONE — conformance PART 27 (`dc892a7`), 45 live cells, every row VERIFIED-TO-CATCH in isolated
+- [x] **4d DONE — conformance PART 27 (`ef384c2`), 45 live cells, every row VERIFIED-TO-CATCH in isolated
       worktrees.** `gen_rung024.py` + a both-ways ratchet. Seven rows: CONTRIBUTES, the `viaDispatchOn`
       exact literal, the dot-free frontier (3 shapes × 2 arms), the sidecar triple, `--class`, `gate
       --report`, and locale. **All fixtures are hand-written reports, so the classifier is out of the loop
@@ -1806,7 +1806,7 @@ the only verdict-changing one — do not bundle them.
       - **java's `unverified --class` never landed the §6.2 repair** the other three carry: `--class
         unresolved` selects **nothing** where they select three, `--class dynamic` **2 of 7**. Its GATE half
         is clean — §6.2's own diagnosis, an open-coded second copy consumer-side.
-      - [x] **rust `7d916f4` + swift `0646085` — grammar landed.** rust covers BOTH verbs that take the
+      - [x] **rust `6d22166` + swift `0646085` — grammar landed.** rust covers BOTH verbs that take the
         flag, with the token rule in one place (`parse_class_filter`, now `Result`-returning) so the two
         cannot drift and the repeat rule in `grammar.rs` covering every verb; swift covers `unverified`,
         which is its whole surface. Messages carry the REASONING, not just the refusal — *"a `--class`
@@ -1821,7 +1821,7 @@ the only verdict-changing one — do not bundle them.
         test; filter-keeps-everything → both regression controls and **neither** refusal test. The repeat
         test asserts two phrases PRESENT and two ABSENT, which is what stops it passing for the wrong
         reason — the exact trap a swift test fell into earlier today.
-      - [x] **java `735204c` (grammar) + `03b833b` (`unverified --class`) — LAST engine, and it changed
+      - [x] **java `86548c0` (grammar) + `112ef55` (`unverified --class`) — LAST engine, and it changed
         the GATE, which the diagnosis had said it would not.** The structural repair landed as briefed:
         `Policy.reasonClassesOf` + `reasonClassMatches` are now the single definition, called by BOTH the
         gate's `Unknown[c…]` scoping and `unverified --class`. Measured on PART 27's own 7-entry fixture:
@@ -1834,11 +1834,11 @@ the only verdict-changing one — do not bundle them.
         `deny Unknown[native]` **2 → 0** (tolerates), **both now matching what `scan --policy` already did
         over the same signature.** So *"the old refusal had become a scan-vs-report DIVERGENCE rather than a
         protection"* — java reached the over-broad-refusal conclusion independently, and it is the same one
-        specced at `05158db` from swift's evidence. Control retained for the genuinely underivable case.
+        specced at `b84bfcd` from swift's evidence. Control retained for the genuinely underivable case.
         **Two of its own gate fixtures were the comment-that-lies defect** (fifth today): they read
         `// INHERITED, no calls` while the helper wrote `direct: ["Unknown"]`, so they were asserting the
         CONTRIBUTES case, not the inherited one.
-- [x] **CLOSED 2026-08-02 (java `0f5761a`)**; sweep of the other three came back CLEAN — they classify from the RAW string, so there was no parse to fail. **NEW, pre-existing, and a SILENT UNDER-REPORT IN THE SOURCE VIEW — found by java while routing
+- [x] **CLOSED 2026-08-02 (java `c5abb7f`)**; sweep of the other three came back CLEAN — they classify from the RAW string, so there was no parse to fail. **NEW, pre-existing, and a SILENT UNDER-REPORT IN THE SOURCE VIEW — found by java while routing
       AROUND it.** `UnknownReason.parse` returns null for a **colon-free** tag, so `ReportJson.parseEntries`
       **silently drops** `missing-config` from `Effector.unknownWhy()`. Consequence: **`blindspots` never
       lists a setup-only source at all** — 2 sources where there are 3 on the setup fixture, and
@@ -1871,7 +1871,7 @@ the only verdict-changing one — do not bundle them.
       **R4's equivalence assertion alone did NOT catch** java's `hasHier` deletion, because ts's absent path
       normalises to `{}`; adding the over-listing assertion caught it on both. *Equality between two arms is
       weaker than equality plus a positive claim about what must survive.*
-      - [x] **The open question ANSWERED and specced (`05158db`)**: swift's `gate --report` REFUSED the
+      - [x] **The open question ANSWERED and specced (`b84bfcd`)**: swift's `gate --report` REFUSED the
             CONTRIBUTES counterexample instead of firing, and that is **over-broad**. The refusal is now
             MINIMAL: refuse only when the absent datum could CHANGE the answer. The class set only grows and
             `Reject` is upward-closed, so if the entry-alone classes already intersect the filter the rule
@@ -1931,7 +1931,7 @@ re-litigates them, not as work.
 - **java's concrete-dep override** — 12 of 22 changed functions are `super` calls that can never dispatch
   to an override. It is the wrong KEY, not a missing bound.
 - **rust's withdrawn-key disclosure** — built and verified in five directions, costs 15–20% of functions
-  newly carrying `Unknown`. **DISSOLVED 2026-07-27 by the collision decision in (2)** (`b47c9ab`): the union
+  newly carrying `Unknown`. **DISSOLVED 2026-07-27 by the collision decision in (2)** (`0b33533`): the union
   withdraws nothing, so there is no withdrawn key left to disclose. The same defect closed at a fraction of
   the cost — 7 effect-items across three corpora against 15–20% of all functions. Recorded because the
   cheap fix only became visible once the expensive one had been built and measured.
@@ -2007,7 +2007,7 @@ content hash, four-way conformance green after each commit.
       incompleteness now wins.** Coverage turns SILENCE into a purity claim, so a set of reports' silence
       is only as strong as the weakest completeness claim in it — **two reports covering one package do
       not cover the same SOURCE**. Measured: B alone hedges `invisible: ['RatesDep']`, A+B went ABSENT.
-      The sharper form is `63bbe87`'s argument arriving on the COMPLETENESS axis — two fresh reports
+      The sharper form is `84812b8`'s argument arriving on the COMPLETENESS axis — two fresh reports
       disagreeing on a key withdraw it (rule 1, correctly) and complete-wins turned the withdrawal into
       a purity claim over a function both reports call effectful (`A alone go->['Net']`, `C alone
       go->['Exec']`, `A+C go->ABSENT`). The staleness line one below is NOT the same shape and is
@@ -2016,7 +2016,7 @@ content hash, four-way conformance green after each commit.
       also closes the open "FOR candor-swift" row further down this file: swift does NOT drop the
       colliding key the way rust does.** `testPackageChainedCompleteAndIncompleteKeepsItsCoverage`
       PINNED the defect (item 7g) and is inverted with flip instructions rather than deleted.
-- [x] **swift `Deps.swift:212` — the identical-entry exemption was a PARTIAL port** of rust `6f2210c`:
+- [x] **swift `Deps.swift:212` — the identical-entry exemption was a PARTIAL port** of rust `8106f5e`:
       trusted arm only. Two byte-identical entries from two STALE reports still withdrew the key,
       costing the §2.1 `Unknown` downgrade the stale arm exists to produce (`['Unknown']` +
       `dep-stale:RatesDep` → a bare ledger hedge, so `deny E Unknown[…]` stopped firing). **FIXED
@@ -2074,11 +2074,11 @@ up, so they are written here first and worked second.
       STALENESS alone, so an incomplete dep report's silence still reads as a purity claim. This is
       shape 1's second door — the one ts found in its own sweep (`21277eb`) — unswept in three engines.
       **The sweep found the door and did not carry it across, which is the exact thing the sweep exists
-      to do.** **JAVA `d1d3045`. SWIFT `74cd8f1`. RUST `dbab8be` — THE VEIN IS NOW CLOSED FOUR-WAY.**
+      to do.** **JAVA `090da2d`. SWIFT `74cd8f1`. RUST `a44ce71` — THE VEIN IS NOW CLOSED FOUR-WAY.**
       - Entries KEPT (they came from source the dep really did read), coverage withheld, stderr says why.
         Absent or explicitly EMPTY `unanalyzed` = complete; anything else, malformed included, fails
         closed. ts's item-0 trade — the ledger hedge REPLACING half 1's `Unknown[dispatch]`, its
-        `deny Fs Unknown[dispatch]` going exit 1 → 0 — **cannot happen in java**, because `7e41327` had
+        `deny Fs Unknown[dispatch]` going exit 1 → 0 — **cannot happen in java**, because `7b3492d` had
         already given chained-ness its own ungated set. That is an argument, so it is a third arm of the
         κ-curated fixture rather than a comment.
       - **Two things to carry into rust and swift.** (1) In java, coverage AND chained-ness are each
@@ -2109,8 +2109,8 @@ up, so they are written here first and worked second.
         is the ordinary shape once `--workspace` prepends its scanned dir to a configured `CANDOR_DEPS`.
         §2 rule 1 forbids PICKING between candidates; there is nothing to pick when they are equal.
         Worth checking in rust and java: the fixture that finds it is "chain the same package twice".
-        (rust had it too and closed it independently, `6f2210c`; java is clean — last-wins keeps an answer.)
-      - **RUST (`dbab8be`), and this is the one engine where the corpus is EVIDENCE rather than a
+        (rust had it too and closed it independently, `8106f5e`; java is clean — last-wins keeps an answer.)
+      - **RUST (`a44ce71`), and this is the one engine where the corpus is EVIDENCE rather than a
         fabrication control.** java measured 0 of 11 real dep reports declaring `unanalyzed` and swift 0
         of 34 packages; rust measures **4 of 855** (0.47%, two distinct crates) and **1 of 200** crates.io
         crates scanned cold. The live case is as sharp as the shape gets: **`signal-hook-registry` 1.4.8's
@@ -2128,7 +2128,7 @@ up, so they are written here first and worked second.
         gate reads the CHAINED set (`deps_idx.crates`), which an incomplete report is still in — asserted
         as a fourth arm on the half-1 fixture, and the mutant that gates it on coverage fails that row.
       - **rust does NOT adopt swift's `incompletePkgs.subtract(coveredPkgs)`**, for the same rust-specific
-        reason `63bbe87` refused to align fresh-vs-stale: rust's index DROPS a key two dep entries
+        reason `84812b8` refused to align fresh-vs-stale: rust's index DROPS a key two dep entries
         disagree under, so complete-wins makes the withdrawn key read confidently PURE. Pinned with flip
         instructions; the mutant that implements complete-wins fails exactly that fixture.
       - **Eight guards, eight mutants**, and one of them deleted a guard rather than proving it: the
@@ -2400,7 +2400,7 @@ up, so they are written here first and worked second.
 
 ### Cross-engine divergence — `Unknown[class]` gates now fire differently per engine
 - [x] **ts `query-core.mjs:333` — a hierarchy-sidecar key the reader cannot interpret was coerced to `[]`
-      and KEPT, which is a PHANTOM TYPE.** Routed from java's `bb8459a`/`403f24b` `"@superclass"` rung.
+      and KEPT, which is a PHANTOM TYPE.** Routed from java's `2f56429`/`ad84e67` `"@superclass"` rung.
       Not inert: `callersFrontier` gates on `Object.keys(hierarchy).length > 0`, so ONE metadata key takes
       the frontier off its documented over-listing simple-name fallback and onto the precise subtype test
       over a hierarchy that can answer nothing. Measured: sidecar `{}` → `possibleViaUnknownDispatch:
@@ -2415,11 +2415,11 @@ up, so they are written here first and worked second.
       so a present-but-EMPTY sidecar takes the over-listing fallback; candor-java's `Query.java:672`
       gates on absence and takes the PRECISE path over an empty map, which NARROWS the frontier. Three
       engines, two answers, same input, and no PART pins it. Deliberately NOT aligned unilaterally
-      (`63bbe87`'s precedent). ts's new rows pin only "metadata-only == empty", which stays correct under
+      (`84812b8`'s precedent). ts's new rows pin only "metadata-only == empty", which stays correct under
       either ruling; nothing there asserts "empty == absent".
 - [x] **java `Loader.java:203` — `entryPackage`'s slash fallback takes the last `/` in the whole hash**,
       which for java's own hash form lands inside the method DESCRIPTOR, so entry-level coverage registers
-      a garbage package name. **DONE — candor-java `47e2721`**, and the review's "harmless-looking"
+      a garbage package name. **DONE — candor-java `879eab7`**, and the review's "harmless-looking"
       caveat was the right question to ask: the two directions came out opposite.
       - It could never FABRICATE coverage. A parse that runs into the descriptor necessarily keeps the
         `(` that opens it, and no JVM package name can contain one, so the bogus string matched nothing
@@ -2442,7 +2442,7 @@ up, so they are written here first and worked second.
       `indirect`, where the other three leave it `unresolved`. Rust is the four-way outlier, and the class
       the stale Unknown used to carry has been replaced by a fabricated one. This is the fail-closed
       fallback rust's own sweep agent wrote. Also java `ReasonClass.java:77`.
-      **DONE — candor-rust `f2309a5`**, both sites (the staleness downgrade AND the reasonless-Unknown
+      **DONE — candor-rust `de6f89f`**, both sites (the staleness downgrade AND the reasonless-Unknown
       fallback in `apply_dep_fn`). The generalisation is worth keeping: **`callback:` is not a residual
       bucket.** §4 ⟨0.7⟩ defines it as an unresolved higher-order / owner-less INVOCATION — a claim about
       code — and §6.2 already names the residual, `unresolved`, reached by ABSENCE. Reaching for a
@@ -2470,7 +2470,7 @@ up, so they are written here first and worked second.
       fabricated tag was groping for. 15 fns on the three-project corpus are waiting for it.
 - [x] **rust `deps.rs:377` — a package chained BOTH fresh and stale resolves as untrusted**; java, ts and
       swift all resolve the same input the other way (fresh wins). Four engines, two answers, same input.
-      **REFUSED, with the counterfactual measured — candor-rust `63bbe87`.** Aligning rust costs a silent
+      **REFUSED, with the counterfactual measured — candor-rust `84812b8`.** Aligning rust costs a silent
       under-report. Coverage is the claim that an absent entry is a purity claim (§2 rule 3); rust's index
       DROPS a key two dep functions share rather than picking, so a fresh+stale collision withdraws the
       answer entirely. With `untrusted` cleared (the ts/swift shape, one line) the fixture's consumer fn
@@ -2497,12 +2497,12 @@ up, so they are written here first and worked second.
 
 ### The one I would look at hardest
 - [x] **rust `scan.rs:622` — the cached parser-abort replay is gated on content hash + decl-index hash,
-      but the abort is NOT a function of those two.** `4f7b704` established that the abort depends on how
+      but the abort is NOT a function of those two.** `29d2a1f` established that the abort depends on how
       much each rayon worker happened to parse, so a ONE-OFF abort is latched into the cache and replayed
       forever. This is the fix for MY cache-poisoning defect, and it may have replaced one latch with
       another — the direction is different (a spurious `unanalyzed` + a gate that will not go green, rather
       than a false all-clear) but the shape is identical. Also `:618`.
-      **CONFIRMED AND DONE — candor-rust `35466f0`.** A cached abort is now a marker that the FnInfos were
+      **CONFIRMED AND DONE — candor-rust `06ea498`.** A cached abort is now a marker that the FnInfos were
       never derived, not an answer to replay: the entry is dropped at the one place `cached_fninfos` is
       populated, so the reuse gate misses it, the round-2 re-parse picks it up as ordinary stale FnInfos,
       and the file either aborts again (disclosing by the same cold path, byte for byte) or produces the
@@ -2525,12 +2525,12 @@ up, so they are written here first and worked second.
 
 ### Closed already — both mine
 - [x] **conformance PART 22 could not regress two of the four defects its own header cites** — `unknownWhy`
-      was neither compared nor producible by the fixture. Fixed `81e919e`; verified to catch via a java
+      was neither compared nor producible by the fixture. Fixed `957d193`; verified to catch via a java
       mutant (`java -> DIVERGE (surface dropped by the join: unknownWhy[...])`). Rust could not demonstrate
       it because its own fail-closed writer assertion aborts the run first — a stronger guarantee than the row.
 - [x] **`release-preflight` check [4] silently covered four of five components** — no `grabver` row for
       candor-java. Legitimate (java's build id is GENERATED from the git hash, so it cannot lag) but unsaid.
-      Fixed `f6cc184`: the row now prints, naming itself out of scope.
+      Fixed `1cb941b`: the row now prints, naming itself out of scope.
 
 ## OPEN — the THIRD review (2026-07-27 evening): 10 confirmed, 1 fixed, 9 in flight
 
@@ -2545,7 +2545,7 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       purity claim". **`{Unknown}` is non-empty.** The §2.1 staleness downgrade produces exactly that, so a
       STALE report's Unknown overwrites a TRUSTED report's concrete effects. Verified in BOTH file orders:
       trusted `Fs` + stale report → consumer reads `['Unknown']`, and **`deny Fs` goes exit 1 → exit 0**.
-      Corrected in `a7a6147`, with the wrong paragraph left visible: **this rule has now been described
+      Corrected in `b5d6edc`, with the wrong paragraph left visible: **this rule has now been described
       three times and been wrong twice** (plain last-wins → last-non-empty-wins → last-non-empty-wins-except-
       Unknown-counts). A rule nobody can state correctly on three attempts is not one a policy gate should
       depend on, which strengthens the union recommendation rather than weakening it.
@@ -2562,12 +2562,12 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       class after `b4f6cbc` deleted user-placed reports.
 - [x] **FIXED candor-swift `756a8f0`, INVERTED so incompleteness wins** — swift `Deps.swift:424` — `incompletePkgs.subtract(coveredPkgs)` restored FULL coverage as soon as
       any report claims the package complete, cancelling a second report's hedge over a region it could not
-      read. Complete-wins is the reading rust REFUSED twice (`63bbe87`, `dbab8be`): **two reports covering
+      read. Complete-wins is the reading rust REFUSED twice (`84812b8`, `a44ce71`): **two reports covering
       one package do not cover the same SOURCE.**
 - [x] **rust `deps.rs:135`** — the reasonless-Unknown class reaches only a `debug_assert`, never
       `reason_class_direct`. §6.2's `unresolved` fallback is per-FUNCTION and fires only on an absent or
       empty class set, so **any other reason on the same function swallows it** — precisely where a gate
-      needs it. **CONFIRMED AND FIXED — candor-rust `558342f`.**
+      needs it. **CONFIRMED AND FIXED — candor-rust `f1c1810`.**
       - Reproduced at gate level first, bracketed by both single-call controls, and the sharpest statement
         of it is a MONOTONICITY failure: `one(){dep::mute();}` exits 1 under `deny Unknown[unresolved]`,
         `one(){dep::murky();}` exits 0 (correctly, it is classified), and
@@ -2594,23 +2594,23 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
         Its mutant fails a named test, so it is not the item-8c "costs nothing" case.
 - [ ] **THE RESIDUAL THAT FIX LEAVES IS THE FORMAT'S, AND IT IS FOUR-WAY.** A report cannot say
       "`Unknown`, and one of them has no reason" *alongside* a reason the function does have: §4's kind
-      vocabulary has no member for it (that is why `f2309a5` had to remove an invented one) and §6.2's
+      vocabulary has no member for it (that is why `de6f89f` had to remove an invented one) and §6.2's
       "no recorded reason ⇒ `unresolved`" is stated per FUNCTION and keyed on ABSENCE, so it does not
       compose. Consequence: a SECOND-hop consumer chaining the fixed report re-derives `dispatch` alone
       and the same gate goes quiet one boundary further out. rust fixed its own in-process gate and
       **cannot fix the wire half without a token PART 10 makes a hard divergence** — which would be the
-      fabrication `f2309a5` removed. java, ts and swift have the same hole (swift's `dep:` pointer is the
+      fabrication `de6f89f` removed. java, ts and swift have the same hole (swift's `dep:` pointer is the
       nearest thing to an answer and is off-vocabulary). **This wants a §4/§6.2 rung**, e.g. an explicit
       per-function reason-CLASS surface, or a §6.2 rule that a reason set is a LOWER bound. Not a
       unilateral edit.
 
 ### The wire-format break, both halves from one java commit
-- [x] **FIXED candor-rust `e3e99aa` (mine)** — THE THIRD READER — `candor-query::load_hierarchy` deserializes the sidecar as a strict
-      `BTreeMap<String, Vec<String>>`, so java `bb8459a`'s new `"@superclass"` OBJECT makes the WHOLE file
+- [x] **FIXED candor-rust `6a25c34` (mine)** — THE THIRD READER — `candor-query::load_hierarchy` deserializes the sidecar as a strict
+      `BTreeMap<String, Vec<String>>`, so java `2f56429`'s new `"@superclass"` OBJECT makes the WHOLE file
       fail to parse and be silently discarded. **That is the identical failure the same commit fixed in the
       SECOND reader** (`Query.loadHierarchy` threw, swallowed it, and dropped the whole hierarchy with 540
       tests green). Introduced by the fix for it, in another language.
-- [x] **FIXED candor-java `7acd64a`; the key is now a flat ARRAY (`403f24b`)** — `@superclass` was written UNCONDITIONALLY, so an empty sidecar becomes `{"@superclass":{}}` and
+- [x] **FIXED candor-java `65b1a29`; the key is now a flat ARRAY (`ad84e67`)** — `@superclass` was written UNCONDITIONALLY, so an empty sidecar becomes `{"@superclass":{}}` and
       candor-ts's `callersFrontier` — which gates on `Object.keys(hierarchy).length > 0` — flips from its
       safe over-listing fallback to the precise path over an EMPTY hierarchy. A metadata key silently
       narrows another engine's frontier.
@@ -2619,7 +2619,7 @@ trusting a green suite: all thirty had clean A/Bs and passing suites.
       WRITER-side constraint would have made both defects impossible.
 
 ### Partial ports and a comment that lies
-- [x] **FIXED candor-swift `cbed5df`** — swift `Deps.swift:212` — the identical-entry exemption (rust `6f2210c`) was added only to the
+- [x] **FIXED candor-swift `cbed5df`** — swift `Deps.swift:212` — the identical-entry exemption (rust `8106f5e`) was added only to the
       TRUSTED arm; two IDENTICAL entries from two STALE reports still withdraw the key, losing the §2.1
       `Unknown` downgrade the stale arm exists to produce.
 - [x] **FIXED candor-swift `fce24ec`, one parse and one transform, both the writer's** — swift `main.swift:447` — `ownedReportFile` parsed the manifest name anchored AFTER `Package(`;
@@ -2637,11 +2637,11 @@ Both were sent as "establish whether this is reachable, or record precisely why 
 reachable and is fixed; the other's claim held with one word wrong. Neither would have been found by a
 suite or an A/B — the first needs a producer the corpus does not contain, the second is a claim about the
 source rather than about any run.
-- [x] **rust `deps.rs` — the identical-entry exemption (`6f2210c`) compared SERIALISATIONS, not claims.
-      REACHABLE, and FIXED in the type — candor-rust `811bbf3`.** Derived `PartialEq` on a `Vec` is
+- [x] **rust `deps.rs` — the identical-entry exemption (`8106f5e`) compared SERIALISATIONS, not claims.
+      REACHABLE, and FIXED in the type — candor-rust `5d47987`.** Derived `PartialEq` on a `Vec` is
       element-wise and order-sensitive, so two entries stating one claim in a different order (or one of
       them restating a host) read as a DISAGREEMENT, the key was withdrawn, and under ⟨0.21⟩ the
-      consumer's silence is a purity claim — **the same cardinal sin `6f2210c` closed, surviving for any
+      consumer's silence is a purity claim — **the same cardinal sin `8106f5e` closed, surviving for any
       producer that orders a vector differently.** All eight `DepFn` fields are `BTreeSet`s now: the
       argument is that `apply_dep_fn` folds every one into a set, so the join is invariant under order and
       multiplicity and set-equality is not a RELAXATION of never-guess but its exact statement. A type
@@ -2660,8 +2660,8 @@ source rather than about any run.
         three are identical to the unarmed baseline, and unarmed the two binaries are byte-identical.
       - The opposite direction is safe by construction: `DepFn` IS what a consumer inherits, `apply_dep_fn`
         is its only reader, and equality compares all eight fields.
-- [x] **rust — `dbab8be`'s own "four anchors, one `cover`, one consumer" claim: TRUE in substance, wrong in
-      one word, and now a TEST — candor-rust `8a9618e`.** Enumerated rather than re-read: the three set
+- [x] **rust — `a44ce71`'s own "four anchors, one `cover`, one consumer" claim: TRUE in substance, wrong in
+      one word, and now a TEST — candor-rust `ed7f3c9`.** Enumerated rather than re-read: the three set
       writes appear exactly once each in the whole workspace and all sit inside `cover`; `untrusted` and
       `incomplete_pkgs` are CONSUMED at exactly one place (the κ-ledger `covered` predicate), with every
       downstream surface reading the one `coverage_ledger`/`global_blind` derived from it. **The comment
@@ -2684,7 +2684,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
 
 ### Needs its own measurement before anyone touches it
 - [x] **java — a CONCRETE dep method overridden effectfully — MEASURED, and the obvious fix REFUSED with
-      the numbers (candor-java `61cfcc4`).** It answers only for its own body across the boundary, where
+      the numbers (candor-java `4db34c3`).** It answers only for its own body across the boundary, where
       in-scan the same site is charged the CHA union. The row is real: over 11 real dep jars, 12 242
       concrete overridable members, 861 (7.0%) with any override inside the dependency, **76** whose
       override carries an effect the base does not — 35 of them under a key with NO entry, i.e. a live
@@ -2707,7 +2707,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         `[Fs,Log,Unknown]` through `OrderComparator.getPriority`, which `AnnotationAwareOrderComparator`
         really does override (the row's one traced real reach), its caller, and a `BasicFuture.get` pair
         that is the same over-approximation the in-scan CHA already makes. That needs a NEW resolution path
-        in the consumer (`333cf10` needed none) plus a synthetic entry shape no other engine produces or
+        in the consumer (`7d85fa4` needed none) plus a synthetic entry shape no other engine produces or
         consumes — a **four-way question**, for 4 functions in 10 914. Left open on those terms.
       - Pinned by two SEPARATE tests: the row with flip instructions against a single-tree control that IS
         charged the union, and `aSuperCallToAConcreteDepMethodIsNeverChargedItsOverrides`, which must never
@@ -2718,14 +2718,14 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       concrete effects → hedge. The deciding argument is recorded in the code — for an IMPORTED protocol
       the in-scan conformers are an arbitrary subset of the candidates, for a LOCAL one they BOUND them.
       Re-open only with an A/B, since this arm is what R28/R39 and the whole element-dispatch family run on.
-- [x] **java — the dep-sidecar hierarchy half — DONE, candor-java `bb8459a`, and it found a defect in its
+- [x] **java — the dep-sidecar hierarchy half — DONE, candor-java `2f56429`, and it found a defect in its
       own compatibility argument.** `writeHierarchy` wrote a sorted `TreeSet` with no superclass marker, so
-      a chain lying ENTIRELY inside a dependency stayed depth-ordered and `9f8e71c`'s JLS rule could not be
+      a chain lying ENTIRELY inside a dependency stayed depth-ordered and `1be432c`'s JLS rule could not be
       applied to it. It now also writes `"@superclass"`, a sibling key whose value is an OBJECT; its
       PRESENCE licenses the split, ABSENCE keeps exactly the depth-ordered answer that shipped, and neither
       side needs a version gate. Fixture: the whole chain in `lib` (`Half9 extends Mid9 implements Trace9`,
       `Mid9 extends Root9`) goes `['Env']` → `['Fs']` chained, against a single-tree control that is `Fs`
-      in both arms. `9f8e71c`'s own fixtures put the branching class in the APP, where a project ClassNode
+      in both arms. `1be432c`'s own fixtures put the branching class in the APP, where a project ClassNode
       states the split — **ask separately what an engine does when every link is in the dependency.**
       - **THE SECOND FIXTURE COULD NOT FAIL AT FIRST, and mutating it is what showed that.** The competing
         interface used `System.out.println`, which produces no report entry at all, so the "unmarked list
@@ -2784,8 +2784,8 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       across 253 crates**. PART 10 misses it because the harness's fixtures never produce that kind.
       Renaming is not free: `callback:` moves the class Dispatch→Indirect and WEAKENS
       `deny Unknown[dispatch]`. Wants its own measurement and probably the spec's MIGRATION mechanism.
-      **REFUSED, with the counterfactual measured — candor-rust `4817b71`; PART 10 repaired,
-      candor-spec `90ad1f6`.**
+      **REFUSED, with the counterfactual measured — candor-rust `d6388b9`; PART 10 repaired,
+      candor-spec `e91aa6f`.**
       - **What it IS in §4 terms: none of the four kinds can express it.** NOT `dispatch:` — that kind
         needs a resolvable owner type and its detail is NORMATIVE `<owner>.<member>`; a BARE FREE call has
         no owner, so the detail cannot be formed and PART 10 rejects a dot-free `dispatch:`. It is also
@@ -2822,7 +2822,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       the string in both engines' rows). Worse, §4's own dividing line says an **untyped receiver is
       `callback:`** — so the kind is wrong too. 20 emissions in a 1062-report rust census.
       **Not fixed here for two reasons**: swift emits the identical string, so this wants a four-way
-      ruling like `63bbe87`, not a unilateral edit; and landing it alone would turn the shared suite red
+      ruling like `84812b8`, not a unilateral edit; and landing it alone would turn the shared suite red
       the moment PART 10 gets a chaining fixture. Note the cost is not obviously zero — moving it to
       `callback:` takes the class Dispatch→Indirect, and in rust `deny Unknown[dispatch]` would then rest
       entirely on `ambiguous:`.
@@ -2882,7 +2882,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
         fixtures use package == module and would not notice), and wants its own A/B — the honest scope is
         its own session, not a tail-end of this one.
 - [ ] **swift — a nested-type factory does not resolve IN-SCAN either**, so that row has no single-tree
-      control and the chained arm is now strictly BETTER than the unsplit one — candor-java `9ae68f7`'s
+      control and the chained arm is now strictly BETTER than the unsplit one — candor-java `c89aa49`'s
       smell, one repo over. Documented on the test rather than asserted, because pinning it would encode
       the gap as a requirement.
 - [ ] **swift — `returnsIdx` is bare-name keyed package-wide**, a pre-existing residual doing one conjunct
@@ -2891,11 +2891,11 @@ Each was refused or deferred with a measurement, not left undone. None is a know
       is served from the PREVIOUS run's file while the code comment claims it "is skipped".
       ABSENT-BY-ACCIDENT: the incompleteness fix (`21277eb`) removed the sharpest edge, but nothing prevents
       the shape returning.
-- [x] **rust — the QUIET half of the span-crossing-a-thread defect is unmeasured.** `4f7b704` closed the
+- [x] **rust — the QUIET half of the span-crossing-a-thread defect is unmeasured.** `29d2a1f` closed the
       loud tail (the panic; 60 unseen crates now clean). The quiet form resolves a span against the WRONG
       file instead of aborting, and the precondition was measured at **72.4% of 88,927 macro re-parses**.
       No known wrong output — and no measurement either.
-      **CONFINED — candor-rust `fc71bc9`. Row closed with evidence rather than a fix.**
+      **CONFINED — candor-rust `1c69c0d`. Row closed with evidence rather than a fix.**
       - **Structural, by enumeration of every span read and what its result feeds:** `fn_locs` is the ONLY
         one whose result is PUBLISHED (`loc`), and it runs INSIDE the parse closure on the worker that owns
         the map; the four moved-token re-parses are re-stamped to `call_site()` = `(0,0)`, the dummy file
@@ -2923,7 +2923,7 @@ Each was refused or deferred with a measurement, not left undone. None is a know
 ### Release-shape, needs Tom
 - [x] **STALE — VERIFIED 2026-08-02: every engine is at 0.24.0.** **candor-ts is at build 0.23.2, the family at 0.23.1.** Legitimate — its module-unit wire key moved
       and §2.1's staleness gate keys on the per-engine build id. `release-preflight` check [4] was relaxed
-      to report rather than fail (`candor` `b5e2cb0`), and its `WANT_VER` arm still catches a genuine lag
+      to report rather than fail (`candor` `f8d545b`), and its `WANT_VER` arm still catches a genuine lag
       exactly. The release set is a decision, not a defect.
 
 ## Standing bar 7o — A CLEAN TREE IS NOT A COMPLETION SIGNAL. I broke 7f myself (2026-07-28)
@@ -2955,9 +2955,9 @@ entirely. `coverage.modules` recurring on the very next field.
 
 **And R9 was blind to it by construction.** I chose one uniformly-minimal fixture so no optional block was
 present, which stops the row flagging legitimate per-situation differences — and thereby made it blind to
-every optional block, which is exactly where divergence lives. Fixed (`f06c762`): the row is a LIST OF
+every optional block, which is exactly where divergence lives. Fixed (`2ad378a`): the row is a LIST OF
 SITUATIONS, and the rule is **every optional block needs an arm that makes it PRESENT**. Shape ruled in
-`b4e9155` — `policyVocabulary: {config, aliases}`, object not array, because naming the source without the
+`d9a1793` — `policyVocabulary: {config, aliases}`, object not array, because naming the source without the
 content leaves the reader knowing they were affected and not how.
 
 Same shape of error twice in one session, mine both times: **a check whose fixture cannot reach the
@@ -3062,7 +3062,7 @@ Ran after the audit above closed 11 verified-stale items. Every remaining item t
 
 §3.3.1 is explicit — *"a real violation (exit 1) still dominates"* — so **java is right and the other
 three are wrong.** This is the SAME machine-consumer under-report closed in candor-rust's `scan` route
-that morning (`a256e72`), on a different ROUTE (`gate --report`) with a different TRIGGER (a malformed
+that morning (`81dc870`), on a different ROUTE (`gate --report`) with a different TRIGGER (a malformed
 manifest rather than a parse failure). It corrects item [14], which recorded rust as the sole offender
 with the opposite polarity ("rust silently drops → exit 0 where the other three exit 2"): rust now exits
 2, and the divergence that remains is about the DOCUMENT, not the exit code.
@@ -3522,7 +3522,7 @@ the coordinator too.**
      `git hash-object -w` + `git update-index --cacheinfo` so its commit carried only its own version
      while the working tree kept the other's. **A plain `git add -A` from either side would have swallowed
      the other's work** — which is the same failure as [[feedback-evidence-dirs-are-sacred]], one repo over.
-     Outcome was clean (`276838c` + `97c1a2b`, working tree clean, `cargo test --workspace` 14 legs exit 0),
+     Outcome was clean (`a713186` + `97c1a2b`, working tree clean, `cargo test --workspace` 14 legs exit 0),
      but that was the agent's recovery, not my orchestration.
      - **THE RULE, tightened: one WRITER per repo at a time, not one agent per task.** Two tasks that are
        independent in subject matter are not independent if they touch the same repo. Sequence them, or
@@ -3631,7 +3631,7 @@ the coordinator too.**
        their judgment, not my instruction, and it is now the instruction.
    - **AND OF candor-spec ITSELF, which is worse: `git add -A` there COMMITS ANOTHER AGENT'S IN-FLIGHT
      EDIT under your message.** 2026-07-27: the SPEC §2.2 + CHANGELOG halves of the java hierarchy-sidecar
-     rung (`bb8459a`) were written into the working tree and swept, minutes later, into `272e423` — a
+     rung (`2f56429`) were written into the working tree and swept, minutes later, into `96b8eaa` — a
      commit about swift's `boundLocals` that says nothing about them. Nothing was lost and nothing
      conflicted, so no tool complained; the record is simply wrong, and the next person looking for why
      the sidecar grew an extension point will not find it in `git log`. In a repo more than one agent is
@@ -3708,7 +3708,7 @@ the coordinator too.**
    2-segment qual the "new" key IS the string already pushed, and the index's never-guess rule drops a key
    two entries share. Without a dedup the entry collides with ITSELF and the key that worked before is
    REMOVED: a silent under-report manufactured by a change whose whole argument was that it removed nothing.
-   Landing it alone, with a mutant test in both directions, is what caught it (`5feba18`). **An additive
+   Landing it alone, with a mutant test in both directions, is what caught it (`1529cac`). **An additive
    change still needs the second-direction check of item 0 — ask what the new thing collides with, including
    the old copy of itself.**
 9c. **AN AUTOMATED FIXER WILL DELETE YOUR REASONING, AND THE DIFF LOOKS LIKE A CLEANUP.** `clippy --fix`
@@ -3759,11 +3759,11 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
 
 ## Queue
 
-### rust — 4 of 5 done; R5's DISCLOSURE half also landed (`5fde0d6`), determination half open
-- [x] implicit stringification via a dep's `Display::fmt` — `1623a07`
-- [x] drop glue via a dep's `Drop` — `a2fbe74`
-- [x] `interfaceUnion` emitted in `--deps` child scans — `50218e3`
-- [x] **R4 — imported-trait dispatch — `1950a27`.** DECIDED as resolution 1 (provenance) and shipped, with
+### rust — 4 of 5 done; R5's DISCLOSURE half also landed (`50ebd63`), determination half open
+- [x] implicit stringification via a dep's `Display::fmt` — `5c68de3`
+- [x] drop glue via a dep's `Drop` — `83fb749`
+- [x] `interfaceUnion` emitted in `--deps` child scans — `c8c8de6`
+- [x] **R4 — imported-trait dispatch — `dbe2348`.** DECIDED as resolution 1 (provenance) and shipped, with
       the test that said "external-trait local impl must not resolve (fabrication)" **unchanged and still
       passing**: it uses a bare `Iterator`, which needs no `use`, so `expand` leaves it unqualified and the
       provenance gate keeps it out. The hazard it protects is untouched.
@@ -3797,13 +3797,13 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       Known over-fire, bounded: there is no external analogue of the local arm's `trait_declares_method`
       guard, so a blanket-trait method on a `dyn` receiver (hyper 0.14's `.into()` on a `&dyn Stream`) forms
       an edge that dangles. Zero measured effect.
-- [x] **R5 — CLOSED, both halves. Half 2 landed on the SECOND attempt — `a1e53e7`.** The canonical fixture
+- [x] **R5 — CLOSED, both halves. Half 2 landed on the SECOND attempt — `9ab537d`.** The canonical fixture
       goes exit 0 → **exit 1**, matching a single-tree control that is exit 1 in both arms, so it is a
       boundary defect and not a limit. Every one of attempt 1's four reverted defects is now a requirement
       with a mutation that was run and confirmed to fail: fully-qualified type identity on both ends;
       wrapper returns refused outright (`-> Result<Conn,E>` must not publish `Conn` — the binding holds the
       Result); a miss on `returns` OR on the entry lookup after a `returns` hit falls back to half 1's
-      disclosure; every surface applied through the ONE `apply_dep_fn` from `7cb5748`.
+      disclosure; every surface applied through the ONE `apply_dep_fn` from `77d9590`.
       - **Item 0 fired for real, mid-implementation.** The first producer used suffix matching, and the
         MODULAR second fixture reproduced defect 1 through a new door: a bare `-> Client` inside `mod mock`
         is module-relative, `expand` leaves it bare, so it published `deplib#mock::client → deplib#sync::Client`.
@@ -3817,7 +3817,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
         `aws_config::defaults(v) -> ConfigLoader` then `.load()`, 2 functions gain `Log` and 45 gain
         `invisible: [aws_credential_types, aws_runtime]`, a blind-crate disclosure ebman could not make for
         itself.
-      - Spec side: the field is now documented in SPEC §2 + the 0.23 changelog (`8394af0`). PART 21's rust
+      - Spec side: the field is now documented in SPEC §2 + the 0.23 changelog (`929feb5`). PART 21's rust
         row reads `RESOLVED — ['Fs']`, an arm the checker already accepted, so conformance needed no edit.
 
       Original framing, kept because it is what half 2 addressed:
@@ -3837,12 +3837,12 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       format — spec-visible, so it wants a rung and four-way agreement. Largest item here, and now the last.
 
       **Both PREREQUISITES for attempt 2 are landed, each on its own, each measured (2026-07-26):**
-      prerequisite 0, the full-qual third index key — `5feba18`, and it falsified this doc's claim that a
+      prerequisite 0, the full-qual third index key — `1529cac`, and it falsified this doc's claim that a
       full qual is unique within a crate (pgman: 1865 of 17861 collide, on duplicate cfg-gated entries), so
       requirement 3's fall-back-to-disclosure is load-bearing rather than belt-and-braces; and requirement
-      4's duplication audit — `7cb5748`, which found rust carrying THREE drifted copies of the dep-apply
-      path, exactly candor-java's `6ab26e4` shape. The rung itself is what remains.
-- [x] **R6 — fully-qualified `&dyn deplib::Handler` — `7a5fc1d`.** The cause was one line of lossy indexing:
+      4's duplication audit — `77d9590`, which found rust carrying THREE drifted copies of the dep-apply
+      path, exactly candor-java's `9b096ce` shape. The rung itself is what remains.
+- [x] **R6 — fully-qualified `&dyn deplib::Handler` — `68479dc`.** The cause was one line of lossy indexing:
       `bound_leaves` keeps only `segments.last()` (every downstream index is leaf-keyed), and with no `use`
       to expand through the crate identity was simply GONE — `expand` returned a bare `Handler`, the
       `contains("::")` test failed, and the site emitted nothing at all: no dep key, no CHA, no disclosure.
@@ -3862,18 +3862,18 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       `impl Trait` spellings of an imported trait still do not CHA local impls.
 
 ### java — 6 mechanism families DONE, and the JVM half of the vein has NO open row (fixture 15 silent-pure → 0; six gates exit 0 → 1 on the effect itself — the dep-interface row went `deny E Unknown[dispatch]` at half 1 and now flips on `deny Fs` too, and the abstract dep CLASS flips on `deny Fs` outright)
-- [x] implicit stringification + equals/hashCode reentry — `bdf272c`. `reentryEdge` ended in a project-only
+- [x] implicit stringification + equals/hashCode reentry — `9644329`. `reentryEdge` ended in a project-only
       `chaTargets`, and **an empty CHA emitted no Unknown, only a dropped edge**. New `nearestDepFn` — the
       cross-boundary analogue of `nearestConcreteSuper` — plus a shared `inheritDepFn` fold.
       *Independently verified here:* `app.S.show -> ['Env']`, gate exit 1.
-- [x] inherited / default methods from a dep supertype — `a5b0a41`. `this.load()` compiles to invokevirtual
+- [x] inherited / default methods from a dep supertype — `1bebfb2`. `this.load()` compiles to invokevirtual
       with the PROJECT class as owner, so the join was never reached; the subclass's own ClassNode names its
       dep parent, so the chain is walkable from this side.
-- [x] callback / HOF hand-off — `b891d5f`. Method refs join on the handle's exact owner+name+desc; a
+- [x] callback / HOF hand-off — `81aacb6`. Method refs join on the handle's exact owner+name+desc; a
       constructed functional takes the type's reported surface, gated on the PARAMETER being a functional
       interface.
-- [x] **dep-interface-typed dispatch to a dep impl — HALF 1 DONE, `828ca18`** (java is the second engine to
-      take [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md) half 1, after rust `5fde0d6`).
+- [x] **dep-interface-typed dispatch to a dep impl — HALF 1 DONE, `e202379`** (java is the second engine to
+      take [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESIGN.md) half 1, after rust `50ebd63`).
       Resolution still needs the dependency's HIERARCHY — that stays half 2 — but the DISCLOSURE needed no
       format change: `Store s = Factory.build(); s.save()` was ABSENT from `functions` while counted in
       ⟨0.21⟩ `analyzed`, i.e. a positive purity claim, and now reads `['Unknown']` /
@@ -3885,7 +3885,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       interface, so the hash we formed names a declaration the JVM will not run. INVOKEVIRTUAL is
       excluded (a plain dep class usually IS the body, so a miss there is a real purity claim), which is
       why an abstract dep CLASS — jackson's `ObjectIdGenerator`, the case originally recorded here — was
-      left open here. **It is now CLOSED (`333cf10`, its own row below), and NOT by `typeSurface`:** the
+      left open here. **It is now CLOSED (`7d85fa4`, its own row below), and NOT by `typeSurface`:** the
       producer knows something no consumer can read off a call site, namely `ACC_ABSTRACT` on the member,
       and that flag answers the same question the opcode answers, one step earlier and with better
       evidence. The claim that this was "the sharpest thing half 2's `typeSurface` would buy java" was
@@ -3948,18 +3948,18 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
         on — a silent under-report. Now MERGED into the claiming entry, which correctly stays UNMARKED (it is
         a real analysed unit counted in `analyzed`; marking it would make a consumer subtract it twice).
         Measured: `deny Net` two-tree exit 0 → 1, single-tree control exit 1 in both arms. On real code
-        okhttp's `Interceptor.intercept` went `[]` → `[Clock,Fs,Log,Net,Unknown]`. — `48a5f18`
+        okhttp's `Interceptor.intercept` went `[]` → `[Clock,Fs,Log,Net,Unknown]`. — `e6127a5`
       - it unioned every implementer with NO fan-out bound, so an open hierarchy re-exported the smear the
         in-scan `CHA_FANOUT_LIMIT` exists to prevent (kafka `Message`, 217 subtypes). Now bounded, and a
         broad interface publishes `["Unknown"]` rather than silence — twelve pure implementers do not make
-        the thirteenth pure, and §2 rule 3 makes an absent entry a purity claim. — `429c7b2`
+        the thirteenth pure, and §2 rule 3 makes an absent entry a purity claim. — `d6ffb69`
       - the union's `netClass` merged hosts across implementers, letting one literal telemetry host certify
         another implementer's runtime-computed endpoint. Now classified PER IMPLEMENTER. Real but latent:
-        across 52 jars, 1089 union entries carry a netClass and **not one** was certified. — `90af98f`
+        across 52 jars, 1089 union entries carry a netClass and **not one** was certified. — `3ac576a`
 
       So the earlier claim in this row that the union used "the CHA universe in-scan dispatch uses" was NOT
       true as written — the bound was missing. It is true now.
-- [x] **by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — `dd81bfa`** (+ `47caf53`). No
+- [x] **by-NAME reentry contracts (`compareTo`/`append`/`write`/`read`) — `5cea956`** (+ `4cd3351`). No
       single hash to join on, so the join enumerates the type's whole reported surface under the contract
       NAME — what the in-scan `reentryTargets` already does over project subtypes. Six shapes reproduced
       silent-pure split+chained; four now match their single-tree control, gate `deny Env` exit 0 → 1.
@@ -3972,20 +3972,20 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       project), so the corpus is the fabrication CONTROL and the fixtures are the evidence.
       - **The `interfaceUnion` does not answer this one** (checked first): `Comparable`/`Appendable` are JDK
         types, never in a scanned set, and the consumer's key is the concrete dep type anyway.
-      - **The sink bound shipped as an ALLOWLIST and was inverted — `47caf53`.** `comparesArgZero` listed
+      - **The sink bound shipped as an ALLOWLIST and was inverted — `4cd3351`.** `comparesArgZero` listed
         the element-taking sinks, so a newly-added one would default to SUPPRESSING the dep join: omissions
         that are cardinal sins, the SAM-name allowlist shape one repo over. Today's partition is identical
         either way, so no fixture and no corpus can tell them apart — the direction is pinned by a unit
         test on the predicate itself, verified to catch (allowlist restored → that test and only that test
         fails, all 33 others green).
-      - **RESIDUAL — CLOSED by `800f471`, the way its own test instructed.** The receiver-driven form (`w.write("x")`)
+      - **RESIDUAL — CLOSED by `e1e90e4`, the way its own test instructed.** The receiver-driven form (`w.write("x")`)
         fails only on `isJavaIoStreamType`, which needs the DEPENDENCY's supertypes. Relaxing it was
         measured on 11 split-and-chained libraries: 161 sites over 31 dep types, only 3 of the 31 are
         java.io streams — the rest (`PacketLineOut.writeString`, `RebaseState.readFile`,
         `ObjectWriter.writeValueAsString`) are already resolved by the exact-hash join. ~90% wrong-receiver
         fabrication, so the gate stays shut. Pinned as a test that says: *if this passes, the hierarchy
         arrived — delete the residual, don't relax the gate.*
-- [x] **CONSUME `<report>.hierarchy.json` — DONE, `800f471`, and it closed the write/read residual with
+- [x] **CONSUME `<report>.hierarchy.json` — DONE, `e1e90e4`, and it closed the write/read residual with
       it.** Traced on real code: httpclient's `LoggingManagedHttpClientConnection.getSocketInputStream`
       went `[] → ['Net']` because `nearestDepFn` stopped at the first DEPENDENCY class — it could not see
       that class's own super, so the declaring body one hop further up (httpcore's
@@ -4010,7 +4010,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       abstract-dep-CLASS row, swift row 3 and the write/read residual were all blocked on — and for java it
       needed no format rung at all, only a consumer.
       **THE FOLLOW-ON IS SETTLED — and BOTH halves of "the abstract-dep-CLASS row wants the hierarchy in
-      the SUBTYPE INDEX" turned out to be wrong.** That sentence stood here as the one use `800f471`
+      the SUBTYPE INDEX" turned out to be wrong.** That sentence stood here as the one use `e1e90e4`
       refused, needing "its own argument about what happens to the Unknowns that resolution would
       suppress". The argument was measured before a line of fix was written (item 8: a shadow subtype
       index built from the sidecar, compared against the real one at every polymorphic dispatch site, over
@@ -4023,7 +4023,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
         7 functions lose a disclosed `Unknown`, one loses a concrete `Net`. httpclient's
         `IdleConnectionHandler.closeExpiredConnections` and three siblings become confident purity claims
         on methods that close network connections, because the target set substituted for the disclosure
-        is not the true one (httpcore's own implementers are outside the scan). **The gate `800f471`'s
+        is not the true one (httpcore's own implementers are outside the scan). **The gate `e1e90e4`'s
         comment named is not the one that fired**: instrumented per site, the JDK-functional-SAM
         `callback:` branch suppressed ZERO, as did the missing-project-impl branch — what suppressed was
         half 1, whose conjunct 4 is the same "the project CHA is empty" test. The argument generalises and
@@ -4032,13 +4032,13 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       - **The first arm said byte-identical, zero cost — the flattering way again (item 7), and the cause
         is worth carrying.** As a literal one-liner inside `externalSupers` the widening is **INERT**:
         `runScan` builds the subtype index BEFORE `loadCrossDeps` populates `depSupers`. So the hazard
-        `800f471` argued against could not fire as written, and a future reordering of `runScan` would arm
+        `e1e90e4` argued against could not fire as written, and a future reordering of `runScan` would arm
         it silently. The numbers above are from the arm with the load hoisted. **A control that produces
         no diff may be measuring nothing — check the mechanism is reachable before believing its zero.**
       The refusal + the numbers now live in `Cha#depDirectSupers` (candor-java `cb8c1aa`), so nobody has
       to re-derive them, and the surviving guard is named there: `CrossScanBoundaryTest`'s "`externalSupers`
       on a sidecar type must still return empty" holds under either ordering.
-- [x] **dispatch through a dependency's ABSTRACT CLASS — DONE, candor-java `333cf10`, producer-side, and
+- [x] **dispatch through a dependency's ABSTRACT CLASS — DONE, candor-java `7d85fa4`, producer-side, and
       the consumer changed not at all.** The last open JVM row. `Store s = Factory.build(); s.save()` where
       `Store` is a dep's abstract class read SILENT-PURE (absent from `functions`, counted in ⟨0.21⟩
       `analyzed`) — INVOKEVIRTUAL, so half 1 deliberately does not disclose, and the project CHA is empty
@@ -4071,7 +4071,7 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
       it." False: `writeJson`'s filter keeps a BODILESS entry when the method is framework-rooted or its
       class declares a capability — **17 such entries across twelve real dep reports**, logback's
       `AppenderBase.append` among them, an entry point carrying `inferred: []`. The merge is *right* there,
-      for the reason `48a5f18` gives: `[]` under a hash a consumer keys on IS a purity claim about the
+      for the reason `e6127a5` gives: `[]` under a hash a consumer keys on IS a purity claim about the
       dispatch and it was false. Verified widening-only across all 17.
 
       Measured, seven chained pairs, both arms' jars kept by content hash and the final jar re-run to
@@ -4087,11 +4087,11 @@ with its result — and the traffic goes BOTH ways: rust's measurement is what s
 
       **Residual, deliberately not taken here:** a CONCRETE dep method that is overridden effectfully still
       answers only for its own body across the boundary, where in-scan the same site is charged the CHA
-      union. That is the `48a5f18` "the engine contradicts itself across the scan boundary" argument one
+      union. That is the `e6127a5` "the engine contradicts itself across the scan boundary" argument one
       rung down — but unlike the abstract case the key IS answerable and the answer IS true, so it is a
       narrower question than a purity claim, and its blast radius (every non-final method of every
       non-final class) wants its own measurement.
-- [x] **`reentryTargets` fanned only DOWN the subtype index — FIXED, candor-java `9ae68f7`.** A SINGLE-TREE
+- [x] **`reentryTargets` fanned only DOWN the subtype index — FIXED, candor-java `c89aa49`.** A SINGLE-TREE
       silent under-report, found by a smell rather than a report: making the chained arm walk a dependency's
       supers left the in-scan control strictly LESS complete than the cross-boundary case, which is the
       wrong way round and meant the in-scan gap had been there all along. `new Formatter(half)` where `Half`
@@ -4267,7 +4267,7 @@ Residual, still open:
     brings new information makes the name ambiguous and refuses both. Instrumented: 27 typings arms across
     the corpus, **21 collide and all 21 are redundant**, so @ukri-tfs/common's seven entries survive by the
     rule rather than by exemption.
-  - **NO FAN-OUT BOUND — candor-ts `fc8d297`, the ts sibling of java `429c7b2`.** The emitter unioned every
+  - **NO FAN-OUT BOUND — candor-ts `fc8d297`, the ts sibling of java `d6ffb69`.** The emitter unioned every
     implementer while the in-scan dispatch site bounds at 12, so the producer published what its own
     dispatch refuses to resolve: rxjs `Operator` has 70 implementers, 16 reaching Net, and rxjs's own
     `Observable.subscribe` reads `Unknown[dispatch:…Operator.call]` while the report offered a consumer
@@ -4288,7 +4288,7 @@ Residual, still open:
     under is the wrong question.**
     1. ~~The ts dep-join copies `inferred` and `invisible` only, so a chained dep's Unknown loses its REASON
        CLASS at the consumer and falls back to `unresolved`~~ — **CLOSED**, and the root cause was the same
-       one candor-java `6ab26e4` found: DUPLICATION. The CallExpression arm and the desugared-declaration
+       one candor-java `9b096ce` found: DUPLICATION. The CallExpression arm and the desugared-declaration
        arm each spelled the apply-a-dep-entry copy out, they had already drifted, and the reason class was
        added to neither; there is one `applyDepHit` now. A report failing the §2.1 check keeps the BARE
        Unknown — its reasons are assertions from a build we do not trust — and that is asserted, not
@@ -4358,7 +4358,7 @@ Residual, still open:
     are the same evidential position.** Bite measured across 8 real `node_modules` trees: 3 packages in
     3213 (rxjs, @angular/common), costing 7 union entries, every one a bare `['Unknown']`.
   - **A real entry claiming a union's hash suppressed the union — candor-ts `67d092d`, the ts sibling of
-    java `48a5f18`.** TS reaches the collision by a BARE NAME (`pkg#Store.save`), so any `class Store`
+    java `e6127a5`.** TS reaches the collision by a BARE NAME (`pkg#Store.save`), so any `class Store`
     claims the key an interface-typed consumer forms — by declaration merging or by two unrelated
     declarations across files. In-scan `['Fs','Net']` and `deny Net` exit 1; split and chained the consumer
     read an unrelated class's `['Env']`, exit 0, plus a fabricated `deny Env` catch. **It is NOT
@@ -4378,7 +4378,7 @@ Residual, still open:
     mechanism was armed on real code instead (one report re-marked). The union-hash arms are byte-identical
     because the trigger never fires: instrumented over **270 producer-scanned packages, a union hash is
     claimed zero times**, which makes the corpus the fabrication CONTROL and the fixtures the evidence — the
-    posture java's `dd81bfa` landed under. **A third arm measured nothing at all and looked clean:** five
+    posture java's `5cea956` landed under. **A third arm measured nothing at all and looked clean:** five
     `--workspace` targets that chained "0 workspace dep report(s)", byte-identical for a reason with nothing
     to do with the change. Check the chain actually chained before reading its diff.
 - **A LOCAL class implementing a DEPENDENCY's interface is outside the CHA universe.** `interfaceImpls`
@@ -4400,7 +4400,7 @@ and the only conformer, app has none:
 
 - **Row 2 (`goFactory`) is implementable now.** `rootOf` types a factory call via `returns[n]`, which holds
   LOCAL function returns only; `build` is a dep function so the root is `nil`, no `extOwner` is formed, and
-  the member call falls through silently. Same shape as rust `5fde0d6`: mark the binding dep-provenance-
+  the member call falls through silently. Same shape as rust `50ebd63`: mark the binding dep-provenance-
   untyped, emit a marker, disclose `Unknown` when the file imports a COVERED package (the third conjunct).
 - **Row 3 (`go`) needs half 2.** The join forms `DepLib#Store.save` and misses, because `Store.save` is a
   protocol REQUIREMENT — no body is ever hashed under that key, so no report can answer it. Distinguishing
@@ -4458,7 +4458,7 @@ and the only conformer, app has none:
       Note what this does and does not move: `deny E Unknown[dispatch]` now flips, `deny Fs` does NOT. Half 1
       converts the cardinal sin into a disclosed gap; it does not recover the effect.
 - [x] **factory-bound receiver — the DETERMINATION half — DONE, candor-swift `f537ac3`.** The rung is
-      no longer blocked: SPEC §2 fixes `typeSurface.returns` and rust shipped it at `a1e53e7`. swift is
+      no longer blocked: SPEC §2 fixes `typeSurface.returns` and rust shipped it at `9ab537d`. swift is
       the second engine to take it. Canonical fixture goes exit 0 → **exit 1** on `deny Fs`, single-tree
       control exit 1 in both arms. Every one of rust's four reverted defects is a requirement here with a
       mutation that was RUN and confirmed to fail a named test.
@@ -4511,7 +4511,7 @@ and the only conformer, app has none:
         later, `some P` is not.
       - **FOUND WHILE FIXTURING, reported not fixed:** `let c = openMock(); c.probe()` on a NESTED type
         does not resolve IN-SCAN either, so the new row has no single-tree control and the chained arm is
-        now strictly BETTER than the unsplit one — candor-java `9ae68f7`'s smell, one repo over. The
+        now strictly BETTER than the unsplit one — candor-java `c89aa49`'s smell, one repo over. The
         local returns/binder path does not carry a nested type path. Documented on the test rather than
         asserted, since pinning it would encode the gap as a requirement (item 7g).
 - [x] **swift row 3 — ALREADY SOLVED by `interfaceUnion`; my characterisation was wrong (2026-07-26).**
@@ -4564,8 +4564,8 @@ and the only conformer, app has none:
         `PLATFORM_MODULES`/`KAPPA_MODULES` (`main.swift:526`) are pure functions of the package NAME, and
         `depCoveredPkgs`/`coveredPkgs` are populated at report-LOAD time. No call site can move a package
         from uncovered to covered. Fixtures in the write-up show both arms identical.
-- [x] **Conformance PART 20** pinning the boundary contract four-way — `3bd69ec` (java/rust/swift) then
-      `08b796a` (ts joins). Verified-to-catch on each engine's row by unchaining that engine's consumer:
+- [x] **Conformance PART 20** pinning the boundary contract four-way — `1e6f8fa` (java/rust/swift) then
+      `4458cb5` (ts joins). Verified-to-catch on each engine's row by unchaining that engine's consumer:
       the row goes DIVERGE and the suite FAILED while the others still match.
 - [x] **PAPER1 §6.1b / PAPER2 §4.6b** updated through the four-way half-1 close. §6.1b now carries the
       three-row rule and swift's row 3 as the argument for the format rung; §4.6b carries the methodology
@@ -4605,7 +4605,7 @@ each is actionable.
       Fix shape: sort the supertype candidates before picking, or emit all of them. Cheap. The reason it has
       survived is that nobody diffs a report against ITSELF, only against another version.
 
-- [x] **REASON CLASS ACROSS THE BOUNDARY — FIXED (candor-java `6ab26e4`).** `DepFn` now carries
+- [x] **REASON CLASS ACROSS THE BOUNDARY — FIXED (candor-java `9b096ce`).** `DepFn` now carries
       `unknownWhy`, and the real cause was DUPLICATION: `crossDepJoin` reproduced `inheritDepFn` line for
       line instead of calling it, so the ⟨0.19⟩ class reached the task/HOF hand-off sites and not the
       ORDINARY call. Deleting the copy was the fix. Measured: `deny Net Unknown[reflect]` exit 0 → 1 on a
@@ -4615,7 +4615,7 @@ each is actionable.
       class. The reason-scoped gate — a shipped ⟨0.19⟩ rung — is therefore silently inert at the boundary,
       which is exactly where a consumer most needs it. Additive fix: teach `DepFn` to carry `unknownWhy`.
 
-- [x] **netClass fails open in the ORDINARY path — FIXED (candor-java `e24edd9`).** The marker is now
+- [x] **netClass fails open in the ORDINARY path — FIXED (candor-java `759aa35`).** The marker is now
       derived from what a Net call YIELDED rather than from a list of owners, so it fails closed for idioms
       nobody enumerated; restricted to calls taking arguments, because a zero-arg call (`socket.close()`)
       carries no destination and is evidence of neither completeness nor incompleteness — an existing masking
@@ -4625,7 +4625,7 @@ each is actionable.
       `new URL("https://sentry.io/x").openStream()` with `HttpClient.send(request, …)` reports
       `netClass: ["known-telemetry"]`. Each hostless idiom alone yields `unknown-host` via the empty-hosts
       branch, but that branch is per-function, so a literal sibling masks it. Same shape as the union defect
-      `90af98f` fixed, one layer beneath it — and the union fix does not reach it.
+      `3ac576a` fixed, one layer beneath it — and the union fix does not reach it.
 
 ## Found while VERIFYING `02fb0ad` and landing swift's typeSurface rung (2026-07-26)
 
@@ -4689,8 +4689,8 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       `Unknown[dispatch:untyped cross-package receiver]`. False uncertainty, not a cardinal sin, so it is
       filed rather than patched; the fix is to widen the local-name exclusion beyond free functions.
 - [x] **swift carried THREE copies of the chained-dep apply path and one had drifted — `84a71ea`.** Asked
-      BEFORE adding the typeSurface consumer, exactly as this queue's rust (`7cb5748`) and java
-      (`6ab26e4`) rows instruct. The chained-GLOBAL read applied effects/`hosts`/`cmds`/`paths` and
+      BEFORE adding the typeSurface consumer, exactly as this queue's rust (`77d9590`) and java
+      (`9b096ce`) rows instruct. The chained-GLOBAL read applied effects/`hosts`/`cmds`/`paths` and
       dropped `tables`, `invisible` and `incomplete`: a consumer reading a dependency's effectful lazy
       global inherited the EFFECT and none of the dependency's honesty markers, turning "Fs plus a blind
       spot inside the dependency" into a fully-analysed `Fs`. Fixture-proven both ways; no corpus output
@@ -4700,13 +4700,13 @@ result stands: its A/B, its five monomorphized rows and its three erased control
 ## Found in passing while landing the typeSurface rung (2026-07-26) — not boundary defects
 
 - [x] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2` — CLOSED, candor-rust
-      `4f7b704`, and the cause was a SPAN CROSSING A THREAD.** proc-macro2's fallback `Span` is a pair
+      `29d2a1f`, and the cause was a SPAN CROSSING A THREAD.** proc-macro2's fallback `Span` is a pair
       of byte offsets into a THREAD-LOCAL source map; candor parses on rayon workers and walks on the
       collector thread (`SendFile`). The contract was written as if candor were the only span reader —
       **syn's parser reads spans too**, and `visit_macro` hands it the moved token stream, where
       `parse_negative_lit` JOINs the `-` punct's span with the literal's. A `-1` in any macro body is the
       whole trigger. Fixed by `respan_call_site` at all four sites that re-parse moved tokens; the
-      `a593197` containment stays. **`0.4.3` was crashing too** — nobody had looked.
+      `5e9486f` containment stays. **`0.4.3` was crashing too** — nobody had looked.
       - The claim that it could not be reduced was about the setup, not the bug: parse on one thread,
         walk on a second FRESH one, and the panic is deterministic. Three fixtures, four mutants, four
         named failing tests.
@@ -4723,7 +4723,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
 - [~] **`candor-scan` PANICS deterministically on `getrandom@0.3.4` / `0.4.2`.** `proc-macro2`'s
       `Span::join`: *"Invalid span with no related FileInfo"*. Two things to fix, and the queue was right
       that the second matters more.
-      - **BLAST RADIUS — FIXED, candor-rust `a593197`.** Contained per FILE and DISCLOSED through the
+      - **BLAST RADIUS — FIXED, candor-rust `5e9486f`.** Contained per FILE and DISCLOSED through the
         ⟨0.21⟩ `unanalyzed` array, which also sets `had_parse_failure`, so a configured gate refuses to go
         green over the hole (`deny Fs` → exit 2, "policy NOT enforced"). getrandom now yields a real report
         naming `src/backends/use_file.rs` as unanalyzed, instead of no report at all. The fault is INJECTED
@@ -4732,7 +4732,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
         has checked. Both directions asserted: the surviving file keeps its effects, and the lost file is
         NAMED (absence from `functions` is a purity claim, so a dropped file with no disclosure is the
         cardinal sin wearing a crash).
-      - **THE PARSE DEFECT ITSELF — CLOSED, candor-rust `4f7b704`, and my diagnosis was not merely wrong,
+      - **THE PARSE DEFECT ITSELF — CLOSED, candor-rust `29d2a1f`, and my diagnosis was not merely wrong,
         it was INVERTED.** I wrote here that "synthesized `Group::new` spans are call-site spans with no
         FileInfo". `Span::call_site()` is `(0,0)` — the DUMMY FILE every thread's source map is seeded
         with, i.e. the one span that is always resolvable, and it is now the FIX (`respan_call_site`, at
@@ -4755,7 +4755,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
         instrumented over 121 crates, **72.4% of 88,927 macro re-parses were handed a stream the walking
         thread cannot resolve**. The panic is the loud tail; the quiet form silently resolves a span against
         an unrelated file.
-- [x] **`build.rs` fails clippy `collapsible_if` — CLOSED, candor-rust `0d63ead`, and the qualifier is
+- [x] **`build.rs` fails clippy `collapsible_if` — CLOSED, candor-rust `235f653`, and the qualifier is
       gone.** The cause of the qualifier was never a preference: stable clippy cannot compile the
       `rustc_private` dylint lib at all, so the `-p` list was the only thing that could work, and
       `build.rs` (root package) fell outside it too. Nothing linted either, so 45 warnings had
@@ -4774,7 +4774,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       is NOT the argument (44 arms over 353 targets; one with 70). The decisive finding was that rxjs's OWN
       `Observable.subscribe` reads `Unknown[dispatch:…Operator.call]` — the in-scan site declining the 70-way
       fan-out — while the report it wrote handed a chained consumer the smear. **candor published what candor
-      refuses to resolve.** Past the bound: `['Unknown']` + `unresolved` + reason, never silence. ORIGINAL: candor-java added one (`429c7b2`) after a
+      refuses to resolve.** Past the bound: `['Unknown']` + `unresolved` + reason, never silence. ORIGINAL: candor-java added one (`d6ffb69`) after a
       217-subtype smear: past a threshold a union stops being information, and java's answer was to drop to
       a DISCLOSED Unknown rather than emit the smear. The same hazard is live in ts. Measure the
       distribution before implementing — and note the bound must not silently drop the union and leave
@@ -4786,7 +4786,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
       PROPERTY as the owner type. ORIGINAL: so an interface member declared as a property with a
       function type (`@cucumber/cucumber`'s `IDefinition.getInvocationParameters`) is never unioned.
       Pre-existing, and shared with the in-scan arm. *(in flight)*
-- [x] **rust dictionary values / `fieldArrayElem` — ANSWERED, candor-rust `a80bb15`, and the premise was
+- [x] **rust dictionary values / `fieldArrayElem` — ANSWERED, candor-rust `4b14dc4`, and the premise was
       wrong.** Probed with a `dyn` control per row: the container and field positions ALREADY thread the bound
       map and all resolve. The real gap was the local `let` ANNOTATION, and a parameter-position defect was
       hiding underneath it (a tuple destructure wrote both type maps and `vars` won). ORIGINAL: so they are
@@ -4810,7 +4810,7 @@ result stands: its A/B, its five monomorphized rows and its three erased control
 ## Found while answering the swift generic-bound note (2026-07-26)
 
 - [x] **rust HAS swift's "correct by accident" shape, and it is not where the note guessed — candor-rust
-      `a80bb15`.** The note asked whether rust has a container/field position where a generic bound WOULD
+      `4b14dc4`.** The note asked whether rust has a container/field position where a generic bound WOULD
       resolve but the code never asks. Answered with a probe crate carrying every dispatch position and a
       `dyn` CONTROL beside each row, because a silent row that is silent for a DIFFERENT reason looks
       identical.
@@ -4975,7 +4975,7 @@ real Swift targets / 12 004 entries (0 gains, 0 losses, Unknown unchanged) and f
       the same conjunct firing on `max()`/`min()` before narrowing it.
 - [x] **FIXED — candor-swift `9a51e7f` (the key) + `74bed40` (the guard it makes provable), 2026-07-27.**
       Swift's index now carries `pkg#<full qual>` beside `pkg#leaf` and `pkg#tail2`, NORMALIZED rather
-      than raw — the one place it is not a copy of rust's `5feba18`, since `tail2` already folds `.`/`::`
+      than raw — the one place it is not a copy of rust's `1529cac`, since `tail2` already folds `.`/`::`
       and the raw qual would key a string no Swift call site spells. Additive with the dedup, both
       directions mutation-verified; 14 535 → 15 398 keys over seven real repos split one package per
       target, 0 keys lost, and 43 chained consumer reports byte-identical.
@@ -4999,15 +4999,15 @@ narrowed past a real reach. Two were mine, and both are in the fail-closed direc
 protect. *(All in flight 2026-07-26 evening.)*
 
 **Cardinal sins (silent under-reports):**
-- [x] **FIXED `39bbc8b`** — rust `scan.rs:663` — the contained parser abort (`a593197`, MINE) writes `fninfos: []` into the
+- [x] **FIXED `e7f34ae`** — rust `scan.rs:663` — the contained parser abort (`5e9486f`, MINE) writes `fninfos: []` into the
       `--incremental` cache under the file's REAL content hash, so a warm run reuses it, skips the
       `catch_unwind`, emits no `unanalyzed` and no `had_parse_failure`, and a gate goes GREEN over a file
       whose effects were never derived. **I converted a fail-closed crash into a cached, reproducible false
       all-clear.** The asymmetry that proves it: a round-1 parse failure `continue`s BEFORE the cache write
       and re-discloses every run.
-- [x] **FIXED, candor-java `9f8e71c` — and the review named two sites; there were FOUR, one of them every
-      polymorphic dispatch candor resolves.** java `Candor.java:3673` (`9ae68f7`, MINE) + `:2810`
-      (`dd81bfa`) — single-queue BFS over `directSupers` interleaves the superclass chain with interfaces by
+- [x] **FIXED, candor-java `1be432c` — and the review named two sites; there were FOUR, one of them every
+      polymorphic dispatch candor resolves.** java `Candor.java:3673` (`c89aa49`, MINE) + `:2810`
+      (`5cea956`) — single-queue BFS over `directSupers` interleaves the superclass chain with interfaces by
       DEPTH, so a nearer `interface` default settles a descriptor and suppresses the superclass body the JVM
       actually runs (JLS 15.12.2.5 / 8.4.8: **the class wins**, at any depth). I added per-overload shadowing
       to stop dropping inherited bodies and dropped a different one. Both halves failed at once: the real
@@ -5041,7 +5041,7 @@ protect. *(All in flight 2026-07-26 evening.)*
       sidecar key whose value is an OBJECT (`Loader#loadDepHierarchy` already skips non-array values, so an
       older consumer ignores it, and a sidecar without it keeps today's answer). A format rung with its own
       compatibility surface — it wants its own measurement, so it did not ride.
-- [x] **FIXED, candor-java `c583da7`** — java `ReportWriter.java:499` — `mergeUnionInto`'s `unchanged` test
+- [x] **FIXED, candor-java `b1754bb`** — java `ReportWriter.java:499` — `mergeUnionInto`'s `unchanged` test
       compared each widened `TreeSet`'s SIZE against the original LIST's size; those agree only while no
       list holds a duplicate, so a genuine widening could land on the same count, read as "no change", and
       drop the union — the entry then claiming a narrower effect set than the dispatch reaches, under the
@@ -5057,7 +5057,7 @@ protect. *(All in flight 2026-07-26 evening.)*
 - [x] **FIXED `42093b6`** — swift `CallCollector.swift:805` — **the third scope leak**, arriving through the PATTERN not the scope:
       `patternNames` returns `[]` for optional/expression/enum-case patterns, so `for case let x? in` never
       shadows and an enclosing `some P` parameter's flag stays attached to an unrelated erased binder.
-- [x] **FIXED `9196c89`** — rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
+- [x] **FIXED `12853fa`** — rust `collector.rs:907` — `mem::take` blanks `generic_bounds` inside a nested `fn` and never installs
       the nested signature's own bounds, so `fn inner<T: Doer>(d: T) { d.go() }` resolves to nothing. The
       commit's fixture asserted only the FABRICATION direction; the second fixture was never written.
 - [x] **FIXED `651c9f9` (and the brief was wrong — see below)** — ts `scan.mjs:1631` — the module unit's wire key changed shape with **no engine-version bump**, and
@@ -5075,7 +5075,7 @@ protect. *(All in flight 2026-07-26 evening.)*
       and checks only that the ENTRY lookup is unambiguous, never that the `returns` answer was. Two packages
       exporting `build` → one silently wins, and the caller is charged the other's `Fs` and its path literal.
       **The reverted rust attempt's defect 1, reappearing ACROSS packages instead of within one.**
-- [x] **FIXED `67d092d` (NOT by porting java — see below)** — ts `scan.mjs:4062` — the union is DROPPED where java MERGES (`48a5f18`), so a narrow real entry
+- [x] **FIXED `67d092d` (NOT by porting java — see below)** — ts `scan.mjs:4062` — the union is DROPPED where java MERGES (`e6127a5`), so a narrow real entry
       replaces the dispatch union including its `['Unknown']` fan-out disclosure.
 
 **REFUTED and worth knowing:** the "fourth unpatched `respan_call_site` site" — the `macro_rules!` template
@@ -5098,7 +5098,7 @@ the second time that path has been wrongly accused today.
 
 ### rust's two review defects — CLOSED, and the fix corrected the finding's own shape
 
-`39bbc8b` persists the abort IN the cache entry (`FileCache::aborted`, schema rev8) and replays it, rather
+`e7f34ae` persists the abort IN the cache entry (`FileCache::aborted`, schema rev8) and replays it, rather
 than refusing to cache. The argument that decided it: **replaying assumes exactly what reusing the FnInfos
 already assumes** — same content hash AND same decl index ⇒ same walk ⇒ same outcome — so it is gated on
 both, and a decl-index move sends the file back through the walk. Verified by me in both directions: with
@@ -5107,7 +5107,7 @@ the abort CLEARS (`unanalyzed: []`, entries 1→2, gate back to a real exit 1). 
 MIRROR SIN and needed its own fixture — *a cached abort that outlives a clean re-walk is a gate that can
 never go green.*
 
-`9196c89` — **the review's finding was right about the cause and wrong about the shape, and probing before
+`12853fa` — **the review's finding was right about the cause and wrong about the shape, and probing before
 patching is what showed it.** A nested `fn inner<T: Doer>(d: T) { d.go() }` is NOT fixed by the bound map:
 its `dyn` control (`fn inner(d: &dyn Doer)`) is equally silent, because a nested item's PARAMETERS are
 never typed at all — a position-level gap, now pinned as a residual with both controls. What the blanked
@@ -5166,7 +5166,7 @@ will get it built.
 
 The sweep hypothesis (a shape found in one engine belongs swept in all four) paid immediately.
 
-- **1. An untrusted report still grants coverage — PRESENT, `069b4c0`.** The predicted one, and the worst.
+- **1. An untrusted report still grants coverage — PRESENT, `a4ffc02`.** The predicted one, and the worst.
   §2.1 downgraded a stale report's effects to `Unknown` while the same load registered its package in
   `DepIndex::crates` — the set that EXEMPTS a crate from the κ ledger. So every function the distrusted
   report did not mention became a purity claim with `invisible`, `coverage.uncovered` and the stderr line
@@ -5175,23 +5175,23 @@ The sweep hypothesis (a shape found in one engine belongs swept in all four) pai
   and **13 crates re-entering the ledger** (`ratatui` at 2977 calls, silently claimed covered); pgman
   195→244. **Verified independently:** a consumer calling a PURE dep fn under a stale report now discloses
   `invisible: ['deplib']` + `coverage.uncovered: [deplib]`, where it previously read as a clean purity claim.
-- **2. An unordered walk — ABSENT, now pinned `b16dd38`.** `resolve_target` filters on `v.len() == 1` — it
+- **2. An unordered walk — ABSENT, now pinned `557dc89`.** `resolve_target` filters on `v.len() == 1` — it
   REFUSES rather than picks — and the dep index removes colliding keys. **The never-guess rule that
   prevents fabrication is what makes it order-independent**, which is a nice structural result. Gate added
   (123 targets × 5 runs byte-identical, with a probe confirming `RandomState` really reseeds). Note the
   agent's first fixture COULD NOT WITNESS the property — its hits came from a walk-ordered `Vec`; it needed
   a type implementing two traits with differing defaults to reach a genuinely hash-ordered container.
-- **3. A disclosure lost to a cache — ABSENT-BY-ACCIDENT, closed `34e425e`.** The abort/ordering paths are
+- **3. A disclosure lost to a cache — ABSENT-BY-ACCIDENT, closed `a93a100`.** The abort/ordering paths are
   sound, but `MergedDecls` has 17 fields and the digest hashed 16 (`deref_target` missing). It costs
   nothing ONLY because the deref chase reads it live rather than baking it into an FnInfo — every other
   receiver-typing rung of the last month landed in `CallCollector`. **The reflective guard that promised
   "add a field → the build fails" could not deliver it** (two hand-maintained lists, so binding the field
   `_` restored the build). One macro now generates both.
-- **4. A trust marker failing open — PRESENT, `e429a0e`.** ts's exact shape is impossible (`unresolved` is
+- **4. A trust marker failing open — PRESENT, `3b9e67c`.** ts's exact shape is impossible (`unresolved` is
   derived), but the ⟨0.19⟩ reason class was lost instead: `deny Unknown[indirect]` exited 0 on a function
   whose dep report NAMED `indirect`. Partial, which is why it survived — bare `deny Unknown` and
   `[dynamic]` both fired; only the class-targeted middle, which is how the ratchet is adopted, read green.
-- **5. A flag outliving its scope — PRESENT, `05d0ee9`.** `fn f(s: &dyn Store) { for s in 0..3 { s.go(); } }`
+- **5. A flag outliving its scope — PRESENT, `8cb6123`.** `fn f(s: &dyn Store) { for s in 0..3 { s.go(); } }`
   charged `f` with `Fs` on a `u8`. **`scoped_var` DID clear `vars`, and `vars` is read before `trait_vars`
   — so every TYPABLE shadow is masked by precedence and looks perfect**; only a shadow that types to
   nothing exposes it, and the agent's five typed-shadow fixtures all passed. Instrumented: 72,872 binder
@@ -5205,7 +5205,7 @@ never produce that kind. Renaming is not free: `callback:` moves the class Dispa
 
 ### java's five-shape sweep — 2 PRESENT, 2 absent-by-accident closed, 1 structurally absent
 
-- **1. An untrusted report still grants coverage — PRESENT, `7e41327`.** The same defect rust had, in the
+- **1. An untrusted report still grants coverage — PRESENT, `7b3492d`.** The same defect rust had, in the
   same place: `loadCrossDeps` registered `depCoveredPkgs` from a report whose effects it had just
   downgraded. The three-arm fixture is the sharp bit — **the STALE arm was byte-for-byte the FRESH arm, and
   `app.S.go` vanished from `functions` entirely**, with the arms differing only in the build id. Measured
@@ -5214,17 +5214,17 @@ never produce that kind. Renaming is not free: `callback:` moves the class Dispa
   logback-classic with no `invisible` to replace them, because `ch.qos.logback` is a κ-curated prefix — so
   `depCoveredPkgs` (trust-gated) and `depChainedPkgs` (ungated) are now separate sets, both directions
   mutation-verified.
-- **2. An unordered walk — NO soundness instance; one WITNESS instance fixed `54350bf`.** Every
+- **2. An unordered walk — NO soundness instance; one WITNESS instance fixed `9319a41`.** Every
   effect-owner selection is a monotone set-union or an existential boolean, hence order-invariant. The one
   that could differ is `Policy.reachesScope`, which picked the AS-EFF-009 `via` witness by DFS over a
   HashSet-seeded stack — and `--gate-json` PUBLISHES that witness. Now nearest-first: verdicts identical on
   5 real jars, and for all 452 jgit violations the new witness is **107 strictly nearer, 0 farther**. The
   agent explicitly declined to call this a soundness defect, which is right.
-- **3. A disclosure lost to a memo — no live hazard; one ABSENT-BY-ACCIDENT closed `2b606ee`.** All 14
+- **3. A disclosure lost to a memo — no live hazard; one ABSENT-BY-ACCIDENT closed `d644d56`.** All 14
   memos traced. `depDeclaresSigElsewhere` latched `built` unconditionally — safe only via a property of its
   CALLER, while both its siblings guard directly.
-- **4. A trust marker failing open — PRESENT, `2f7479a`, AND IT IS A HOP FURTHER OUT THAN THE BRIEF SAID.**
-  `unresolved` does not fail open; the REASON CLASS does, one hop past `6ab26e4`: a dep unit whose Unknown
+- **4. A trust marker failing open — PRESENT, `0a6920f`, AND IT IS A HOP FURTHER OUT THAN THE BRIEF SAID.**
+  `unresolved` does not fail open; the REASON CLASS does, one hop past `9b096ce`: a dep unit whose Unknown
   was itself INHERITED publishes no `unknownWhy`, so in A→B→C the reason never reaches A.
   `deny Net Unknown[reflect]` went exit 1 single-tree → **exit 0 chained**, while bare `deny Net Unknown`
   fired throughout — only the class-targeted middle read green, and that middle is how the ratchet is
@@ -5237,8 +5237,8 @@ never produce that kind. Renaming is not free: `callback:` moves the class Dispa
   12/12 byte-identical under a reentrancy selftest.
 
 **Two found off-brief, both real:** `--parallel` ignored every target's `.candor/config` while its own
-documentation promised byte-identity (`4ddbd3c`), and `test/smoke.sh` had pinned shape 1 as a REQUIREMENT
-(`640630b`) — see standing-bar item 7g.
+documentation promised byte-identity (`396cffc`), and `test/smoke.sh` had pinned shape 1 as a REQUIREMENT
+(`a6614eb`) — see standing-bar item 7g.
 
 ### swift's five-shape sweep — 4 of 5 PRESENT, the richest of the four
 
@@ -5267,7 +5267,7 @@ documentation promised byte-identity (`4ddbd3c`), and `test/smoke.sh` had pinned
   `dynamicMemberLookup` for EQUALITY while the engine emits `kind:detail`, so `Unknown[reflect]` was
   unsatisfiable even single-tree.** A dead parallel `unresolvedSet` (written 7×, read 0×) was
   absent-by-accident and removed (`c5929e3`).
-  - **CROSS-ENGINE CONSEQUENCE, verified and fixed by me in java (`d9b07b0`).** The same equality test is
+  - **CROSS-ENGINE CONSEQUENCE, verified and fixed by me in java (`bd78605`).** The same equality test is
     in candor-java `ReasonClass.java:70` and candor-ts `policy.mjs:20`. Swift emits
     `dynamicMemberLookup:<root>.<prop>` and never the bare token, so neither could ever match a real one.
     REFLECT and UNRESOLVED are both in the `dynamic` set, so a bare `deny Unknown` fires either way — what
@@ -5357,7 +5357,7 @@ asserted at its apply site: **an entry carrying `Unknown` must carry the marker 
 non-empty `unresolved`/`unknownWhy`. 14,185 opportunities to fail, zero failures, on code the assertion was
 never written against.
 
-Also: **60 rust crates, zero parse aborts.** The `respan_call_site` fix (`4f7b704`) had been verified on
+Also: **60 rust crates, zero parse aborts.** The `respan_call_site` fix (`29d2a1f`) had been verified on
 the three getrandom versions that crashed; this is the breadth check it did not have. Note what this does
 NOT show — the quiet form of that defect (a span resolving against the WRONG file rather than panicking)
 is invisible here, and the 72.4% precondition rate measured at the time says it is common. The loud tail is
@@ -5389,16 +5389,16 @@ Chasing candor-swift's handover ("two reports carrying an IDENTICAL entry withdr
 rust and java should check it") turned up a confirmed cardinal sin in rust, a clean negative in java, and
 one deeper defect underneath both that is NOT fixed.
 
-**CLOSED, candor-rust `6f2210c`** — two IDENTICAL entries under one key were withdrawn. Measured both ways
+**CLOSED, candor-rust `8106f5e`** — two IDENTICAL entries under one key were withdrawn. Measured both ways
 on one fixture: one report chained gives `go = ['Exec']`; the SAME report chained twice gives **ABSENT, no
 `invisible`, no coverage hedge**. java is CLEAN (last-wins keeps an answer) — verified directly, not
 assumed. A/B free: pgman 0/0/0, ebman +2 entries recovered from absence.
 
-- [D] **DECIDED — see THE QUEUE §5; may be dissolved entirely by the collision ruling.** A WITHDRAWN KEY READS AS SILENCE AT THE ORDINARY CALL JOIN — and `a1e53e7` says it must not.**
+- [D] **DECIDED — see THE QUEUE §5; may be dissolved entirely by the collision ruling.** A WITHDRAWN KEY READS AS SILENCE AT THE ORDINARY CALL JOIN — and `9ab537d` says it must not.**
       Two TRUSTED reports that DISAGREE about one function leave the consumer ABSENT from `functions` with
       no `invisible` and no coverage hedge: a confident purity claim assembled out of the index's refusal to
       answer. This is the three-row rule (PART 21) one level down — at the INDEX rather than at the receiver
-      — and `a1e53e7`'s own commit message states the requirement verbatim: *"a miss on an exact key still
+      — and `9ab537d`'s own commit message states the requirement verbatim: *"a miss on an exact key still
       cannot distinguish 'no such method' from 'the index withdrew an entry', so it must fall back to
       disclosure, never to silence."* The `typeSurface` consumer implements it; the ordinary call join does
       not, because the withdrawn-key set is local to `load_dep_reports` and never reaches a consumer.
@@ -5451,7 +5451,7 @@ One mutant `started life unable to fail` (its edge came from `globalReads`, whic
 consults) and was rewritten until it could — the third instance this week of a test that cannot reach the
 code it names.
 
-- [ ] **swift chaining is INERT when a package's name is not its module's** — reproduced `399433c`, filed
+- [ ] **swift chaining is INERT when a package's name is not its module's** — reproduced `255974b`, filed
       not fixed, and the filing explains why the one-liner is a CARDINAL SIN. Two-package fixture: dep
       manifest `name: "swift-dep-kit"`, target `DepKit` → chained and unchained reports are BYTE-IDENTICAL.
       Rename the manifest to `DepKit` and the same code resolves `['Fs']`. Cause: `pkgName` is both the
@@ -5468,7 +5468,7 @@ code it names.
 
 ### rust's three rows — the door closes FOUR-WAY, and two refusals with decisive numbers
 
-**TASK 1, the incomplete-report door — CLOSED (`dbab8be`), and rust is the only engine where the corpus is
+**TASK 1, the incomplete-report door — CLOSED (`a44ce71`), and rust is the only engine where the corpus is
 EVIDENCE rather than a fabrication control.** java saw 0 of 11 real dep reports declaring `unanalyzed`,
 swift 0 of 34; rust sees **4 of 855** (0.47%, two crates) and 1 of 200 crates.io crates cold. The live case
 is as sharp as this shape gets: **`signal-hook-registry` 1.4.8's entire `src/lib.rs` fails to parse**,
@@ -5481,14 +5481,14 @@ Now `invisible: ['signal_hook_registry']` plus a ledger row. ARMED across all 85
 - One mutant DELETED a guard: the `!stale &&` conjunct failed nothing, because `cover`'s `else if` already
   decides it (item 8c, a guard that cannot be observed).
 - **Refused swift's `subtract(coveredPkgs)`**: rust drops a key two entries disagree under, so complete-wins
-  makes it read confidently pure — `63bbe87`'s argument, same shape.
+  makes it read confidently pure — `84812b8`'s argument, same shape.
 
 - [x] **CLOSED FOUR-WAY — ts `26a89fc`, swift `6de5169` (mine).** ts and swift failed OPEN on a MALFORMED `unanalyzed` manifest (present but not an array). java fails
       closed and rust adopted java's reading. A report carrying `"unanalyzed": "oops"` is therefore read as
       COMPLETE and its silence buys full coverage — the door `21277eb` closed for the well-formed case,
       reopened by a malformed one. Relayed to the live ts agent; **swift remains.**
 
-**TASK 2, `ambiguous:` — REFUSED, and the number is a deletion rather than a narrowing (`4817b71`).**
+**TASK 2, `ambiguous:` — REFUSED, and the number is a deletion rather than a narrowing (`d6388b9`).**
 With `ambiguous*` → `indirect`, `deny E Unknown[dispatch]` goes from **58 of 200 crates.io crates to 0 of
 200**, and exit 1 → 0 on all three projects — because rust's only OTHER `dispatch:` needs a chained dep. The
 filed "757 across 253 crates" was a large undercount: censused over 1062 reports it is **8710 of 19607
@@ -5505,7 +5505,7 @@ with a WARNING, and carries a vacuity floor.
       cannot reach — 156 of 930 emissions have ≤1 free candidate, 48 have none (bare `drop(x)` is the
       prelude fn, charged 36 times).
 
-**TASK 3, the quiet span half — CONFINED, measured (`fc71bc9`).** **24,008 of 24,008** non-synthetic `loc`
+**TASK 3, the quiet span half — CONFINED, measured (`1c69c0d`).** **24,008 of 24,008** non-synthetic `loc`
 strings across 200 crates pass an oracle that opens the named file and checks it declares the function —
 and **the oracle was calibrated rather than trusted**: permuted locs flag at 84.5%. 800 scans across four
 rayon thread counts are byte-identical, and a seeded control (moving `fn_locs` out of the parse closure)
@@ -5565,7 +5565,7 @@ rather than a missing case:
 **Adding a call removed a class.** The pre-existing fixture could not see it — its consumer calls ONE dep
 function, so the class set was empty and the fallback answered — **and it still passes under the mutant.**
 
-**MY CHECK 1 WAS RIGHT, and it was a SECOND CARDINAL SIN in my own `6f2210c`.** Derived `PartialEq`
+**MY CHECK 1 WAS RIGHT, and it was a SECOND CARDINAL SIN in my own `8106f5e`.** Derived `PartialEq`
 compares `Vec`s element-wise and order-sensitively, so the exemption decided "the same claim restated" by
 **SERIALISATION** rather than by the claim: two reports making an identical claim with a differently-ordered
 `hosts` vector were still withdrawn → absent entry → purity claim. Fixed in the TYPE (all eight `DepFn`
@@ -5607,25 +5607,25 @@ the forbidden literal with zero bytes on stderr; the four-way scoped-`Unknown[C]
    `[dispatch]`, so it no longer gates native-caused holes while the operator reads a gate that looks armed.
    **I specced this asymmetry deliberately and my reasoning was false:** I argued a dropped policy token can
    only widen, so the failure is loud. It does both, and the narrowing half is the common case — a typo
-   lands beside correct tokens far more often than alone. **RULED `382a7e0`:** both sides refuse.
+   lands beside correct tokens far more often than alone. **RULED `a520625`:** both sides refuse.
    *Still to implement four-way.*
 
 2. **The FOURTH CHANNEL — `.candor/config` `unknown-alias` moves the verdict, and no engine's MUST-NOT test
    covers it.** The three documented baits are all covered; this one was not even a candidate. Worse than
    the coverage gap: **the two routes anchor differently** — every gate verb at the policy file's dir, every
    scan route at the target — so byte-equality is breakable by a file that is neither report nor policy.
-   **RULED `99eb4e9`:** vocabulary anchors at the policy on both routes, and a config that participated MUST
+   **RULED `bc59b9b`:** vocabulary anchors at the policy on both routes, and a config that participated MUST
    be named in the document. *Still to implement four-way, plus a fourth bait in all four MUST-NOT tests.*
 
 3. **A refusal writes NO document, so a CI wrapper re-reads the PREVIOUS run's verdict as current.** Uniform
    four-way and defensible in isolation, which is why neither engine's authors saw it — the hazard is not in
-   the exit code, it is in what the file on disk says afterwards. **RULED `107755b`:** a refusal writes a
+   the exit code, it is in what the file on disk says afterwards. **RULED `0dc54d9`:** a refusal writes a
    document that is fail-closed to a naive reader (`ok:false` + `refused:true`, and NO `violations` key,
    because an empty array is exactly the claim a refusal cannot make). *Still to implement four-way.*
 
 Also new, lower: java's prefix locator gates only ONE of several matched reports (engine-wide, pre-existing,
 but the workspace prefix is this verb's use case — dispatched); a present-but-unparseable `unanalyzed`
-dropped by rust, and by ALL FOUR in the bare-string-list shape (ruled `38ba3e2`, dispatched); a
+dropped by rust, and by ALL FOUR in the bare-string-list shape (ruled `20e2f52`, dispatched); a
 pre-⟨0.21⟩ report emitting `analyzed:{count:0}` — the exact token that now means "judged nothing" — to a
 machine consumer; swift's verdict using `modules` where the other three use `packages`.
 
@@ -5655,7 +5655,7 @@ for an unexamined assumption to have been promoted to a rule. Adjudicate from th
 
 ## OPEN, four-way, opened by CORRECTING MY OWN RULING (2026-07-28) — violation dominates refusal
 
-`7271c69`. I pinned `refusal (2) > violation (1)` in `107755b`, ratifying what all four engines measurably
+`6744644`. I pinned `refusal (2) > violation (1)` in `0dc54d9`, ratifying what all four engines measurably
 do, and it was wrong inside the hour. If a rule FIRES on evidence the report carries, `Reject` is
 upward-closed (Lemma 2), so however the unanswerable rule would have resolved **cannot un-reject it** —
 exit 1 is *certain*, not merely fail-closed, and it names the violation where exit 2 does not.
@@ -5668,8 +5668,8 @@ plus one unanswerable scoped rule → **exit 2 with no document on rust, java, t
 - [ ] Implement violation-dominates-refusal four-way, with the refusal message still disclosing which
       rules could not be evaluated.
 - [ ] Implement the refusal document (`ok:false` + `refused:true`, **no `violations` key**) four-way.
-- [ ] Implement the policy-side class-token refusal (`382a7e0`) four-way.
-- [ ] Implement the config anchor + its disclosure (`99eb4e9`) four-way, and add the **fourth bait** to all
+- [ ] Implement the policy-side class-token refusal (`a520625`) four-way.
+- [ ] Implement the config anchor + its disclosure (`bc59b9b`) four-way, and add the **fourth bait** to all
       four MUST-NOT tests.
 - [ ] A conformance row for the precedence itself. It cannot be `deny Fs` alone — the row must carry a
       firing rule AND an unanswerable one *in the same policy*, or it tests neither.
@@ -5687,7 +5687,7 @@ about to write** — at that moment it stops being evidence and becomes confirma
 and I walked past it: the behaviour I was about to bless deletes a finding from the machine channel, which
 is the exact harm I had spent the morning making rust fix.
 
-## java's round — CLOSED (`92a7891`, `6c64835`, `2cdc443`), and it corrected the brief
+## java's round — CLOSED (`3088ed0`, `63e9f37`, `fe75957`), and it corrected the brief
 
 All four dispatched items landed; 596 tests / 0 failures, counted from the XML rather than from "BUILD
 SUCCESSFUL", and each new test verified to fail at its parent by stashing only the main-source file.
@@ -5727,7 +5727,7 @@ effects from its dispatch union, so **skipping by "the hash names an interface m
 [[feedback-fabrication-fixes-cause-misses]] exists to forbid. It needs a four-engine format rung. It fails
 safe as it stands: an extra row, never a missing one. Recorded in java's BACKLOG.md.
 
-## rust's round — CLOSED (`ff34070`, `a88a562`, `464c682`, `6175f3d`), and it caught its own overreach
+## rust's round — CLOSED (`2bd5a5a`, `07ebe86`, `3de493b`, `23aac88`), and it caught its own overreach
 
 428 tests (426 before), clippy clean, 51 byte-equal gate-equivalence rows, every new test verified to FAIL
 against stashed pre-fix sources.
@@ -5752,7 +5752,7 @@ exit 1, so the hedge can never swallow a finding.
 **And it caught its own overreach.** Its `unanalyzed` fix was too strict on `coverage`: sweeping the
 reviewer's 22×10 bait matrix afterwards, `cov.json` refused on all ten policies because its ledger spells
 the count differently while naming the package perfectly well. Refusing there **drops a hedge in order to
-be strict about a decoration** — `calls` is never read on the gate route. `6175f3d` gets a better answer
+be strict about a decoration** — `calls` is never read on the gate route. `23aac88` gets a better answer
 than either the pre-fix silent drop or the refusal: exit 1 with `coverage: {uncovered:1, packages:
 [ratesdep]}`. Ledgers that cannot be read at all still refuse. This is [[feedback-fabrication-fixes-cause-misses]]
 running in the OTHER direction — a strictness fix costing a disclosure — and it was found by SWEEPING the
@@ -5767,7 +5767,7 @@ disagreeing.
 
 - **`ci/self-gate.sh:21,34` does `rm -rf "$d/.candor"` on every crate dir**, deleting eight TRACKED
   `crates/*/.candor/report.*.json` files and never restoring them. It caught the agent inside a `git add
-  -A`; restored from `abbb67c`, verified byte-identical. This is [[feedback-evidence-dirs-are-sacred]]
+  -A`; restored from `0806bbe`, verified byte-identical. This is [[feedback-evidence-dirs-are-sacred]]
   again and it has now bitten twice. **Queued to fix — it is a live trap for anyone running that leg.**
 - **`cargo build --release` at the workspace root builds only the root package** (standing bar 7h, third
   sighting). It left a stale `candor-query` **with no `gate` verb at all**. Caught before it produced a
@@ -5808,7 +5808,7 @@ Brief correction: swift did not write *zero* bytes to stderr on `empty/` — it 
 ### R8 IS VERIFIED NON-VACUOUS, and I did not have to run the suite to learn it
 
 The agent's own conformance run went OK → FAILED mid-session and **it correctly attributed the change to my
-`fae26a0`, not to its work** — checking that its diff touched no `gateDie`, `writeGateVerdict` or `exit(`
+`45a40f1`, not to its work** — checking that its diff touched no `gateDie`, `writeGateVerdict` or `exit(`
 line, and that the pre-session matrix already recorded `mixed_prec` at exit 2 four-way. That is the
 discipline this project keeps asking for: when the suite turns red, establish *which* change moved it
 before defending your own.
@@ -5821,7 +5821,7 @@ satisfies it arrived within an hour of each other from opposite directions.
 
 ## MY RULING CREATED A FABRICATION — found by java, reproduced by me in rust, worse there (2026-07-28)
 
-`7271c69` said a certain violation dominates a refusal. Correct, and incomplete. **candor-java implemented
+`6744644` said a certain violation dominates a refusal. Correct, and incomplete. **candor-java implemented
 it and the implementation produced a fabrication that the ruling made reachable**, then reported it rather
 than shipping it.
 
@@ -5830,10 +5830,10 @@ never reached before. A scoped `deny Unknown[unresolved]` over an entry whose cl
 began emitting a violation record, because the class-set helper floors an empty set at `unresolved`. **That
 floor is the correct fail-closed default for a MATCHER — "could this rule apply?" — and the wrong basis for
 a FIRING — "did it?"** One helper served both questions safely only while the short-circuit hid the
-difference. Ruled in `5a8cf48`: withhold per (rule, function), never whole-policy.
+difference. Ruled in `04493df`: withhold per (rule, function), never whole-policy.
 
 **I then measured rust, and rust is worse — it is a fabrication AND a false disclosure.** Fresh
-`--workspace` build at `89f2c0f`, fixture: `app.opaque` with `inferred:["Unknown"]`, no `direct`, no
+`--workspace` build at `8db9f43`, fixture: `app.opaque` with `inferred:["Unknown"]`, no `direct`, no
 `unknownWhy`, no `calls`:
 
 ```
@@ -5925,13 +5925,13 @@ It then converged swift to `policyVocabulary`. **The interval between "I am inve
 "this is a measured three-way divergence" was under an hour**, which is the strongest argument yet that an
 unspecified field is not a small debt.
 
-### THE BLOCKER: my `be0b9a9` took the whole differential offline
+### THE BLOCKER: my `e66169a` took the whole differential offline
 
 `parsepolicy` began exiting 2 on the conformance battery — which contains unrecognised tokens
 DELIBERATELY, as the four-way pin on how such a token parses. **The suite HALTS at PART 4.** java and ts
 applied the token ruling in the PARSER; rust and swift kept the parse and refuse only at the gate.
 
-**Ruled `6929dce`: `parsepolicy` MUST NOT refuse.** The refusal belongs to the gate, which must not enforce
+**Ruled `5781f66`: `parsepolicy` MUST NOT refuse.** The refusal belongs to the gate, which must not enforce
 a policy it cannot honour. It does not belong to the *witness*, whose job is to answer *what did this engine
 make of my policy?* — a question most valuable exactly when the answer is "not what you meant". A
 diagnostic that declines to explain the thing being diagnosed has inverted its purpose. It emits its parse
@@ -5939,7 +5939,7 @@ plus an `errors` list and exits 0, and the token must APPEAR there rather than b
 behaviour was drop-with-a-warning, and **a diff that cannot distinguish "dropped" from "rejected" cannot
 pin this rung at all.** java dispatched, ts told.
 
-**The lesson is about blast radius, not about the ruling.** `be0b9a9` was correct and I did not ask which
+**The lesson is about blast radius, not about the ruling.** `e66169a` was correct and I did not ask which
 OTHER verbs share the code path it changed. Two of four engines put the error where it disabled the
 instrument that would have caught the disagreement — so the failure was silent until an engine tried to run
 the suite. **When a ruling changes a shared component, name the verbs that share it before dispatching.**
@@ -5959,7 +5959,7 @@ the suite. **When a ruling changes a shared component, name the verbs that share
       unrecognised-TOKEN rule and stays warn-and-skip: the name IS recognised, and skipping leaves the
       built-in meaning standing, so there is no fail-open. Pinned four-way by PART 4. Confirmed, not open.
 
-## The parsepolicy blocker is CLEARED (java `a71cf3a`) — suite runs all 27 PARTs again
+## The parsepolicy blocker is CLEARED (java `a0609bf`) — suite runs all 27 PARTs again
 
 PART 4 MATCH four-way, 18/7/3 in every engine; zero java FAIL rows in the whole run. `errors` is omitted
 when empty so a clean dump stays byte-identical and PART 4's comparison is untouched. An unreadable policy
@@ -6022,7 +6022,7 @@ right — only the firing side was wrong. Fixed by asking the firing question th
 filter got the same split — it never fabricated, it silently DROPPED, which is the other half of one
 defect.** Both directions of one bug, found because the fix forced the question.
 
-**THE SAME HAZARD BIT TWICE.** Deferring the `forbid`/`allow` refusal (my `1503368`) silently started
+**THE SAME HAZARD BIT TWICE.** Deferring the `forbid`/`allow` refusal (my `a5da1c9`) silently started
 *evaluating* them: `deny Net` + `allow Net other.example.com` put an **AS-EFF-008 record in the document**,
 derived from a `surface_incomplete` map the report route leaves empty ON PURPOSE — precisely the unsound
 verdict that refusal exists to prevent, shipped as if certain. Its own new test caught it on the first run.
@@ -6041,8 +6041,8 @@ a *disclosure* verb, not just gates.
       (PART 12d); (b) `whatif` reconstructs the printed rule from `effects`+`scope` instead of `raw`.
       **Fixing (b) alone would be WORSE while (a) stands** — it would attribute an unfiltered verdict to the
       operator's actual narrowed rule.
-- [ ] **A wider vein under `be0b9a9`, for a four-way call:** a policy line whose rule KIND or EFFECT NAME is
-      unrecognised is still dropped with a warning. Now half-addressed: `195d45a` requires `parsepolicy` to
+- [ ] **A wider vein under `e66169a`, for a four-way call:** a policy line whose rule KIND or EFFECT NAME is
+      unrecognised is still dropped with a warning. Now half-addressed: `f7f964f` requires `parsepolicy` to
       REPORT every dropped line, which is additive and needs no grammar decision. Whether the GATE should
       refuse stays open — `deny Net Exex app` cannot be told from a legitimate scope by the parser.
 
@@ -6052,18 +6052,18 @@ Its first corpus run **discarded the violation lines** (they go to stdout), and 
 **didn't rebuild after restoring**, so a non-compiling mutant inherited the previous mutant's binary and
 looked "caught". **A mutant that doesn't compile is not a mutant** — and the tell was arithmetic: 6 bait
 failures with 0 test failures is impossible. Also fixed: a `gate-equivalence` arm asserting *neither* route
-writes a document on a policy error — an equality claim about an ABSENCE, which `1503368`(b) inverted.
+writes a document on a policy error — an equality claim about an ABSENCE, which `a5da1c9`(b) inverted.
 
 ## R8 IS GREEN FOUR-WAY — and the last fix CREATED the mirror rather than leaving it standing
 
-ts round 2 (`4faac08`, `4762b2f`, +2) and java (`74f348c`, `93ac572`, `868dbc9`) close the rung.
+ts round 2 (`4faac08`, `4762b2f`, +2) and java (`e489b2f`, `fc918a7`, `ea6814c`) close the rung.
 **All four engines pass both R8 cells and both R9 cells.** One red cell remains in the whole suite —
 rust's `key-parity(opt)` — dispatched.
 
 **My withholding clause was wrong and an engine measured it.** I specced per `(rule, function)`. On one
 function carrying a certain `Fs` beside a `netClass`-less `Net`, that form gives **exit 2 with the
-`violations` key ABSENT** — the certain finding deleted, which is `7271c69`'s defect arrived at through the
-fix for `7271c69`'s defect. Amended to per `(rule, function, EFFECT)` in `b3748ed`. **I then assumed java
+`violations` key ABSENT** — the certain finding deleted, which is `6744644`'s defect arrived at through the
+fix for `6744644`'s defect. Amended to per `(rule, function, EFFECT)` in `d4be36a`. **I then assumed java
 and swift both had it and measured instead: only java did.** swift exits 1 with the violation present.
 Second time today that measuring corrected an assumption before it reached a brief.
 
@@ -6096,7 +6096,7 @@ merely-dropped line would itself be a false disclosure. The `Policy.java` NUL is
 `grep -n unanswerableKey Policy.java` went from **nothing to three hits** — and the guard is a scan over
 the whole main tree, not the one line, because candor-ts hit the same idiom independently.
 
-## rust closes the last red cell (`15917d2`, `481269b`, `736957b`) — FULL FOUR-WAY CONFORMANCE EXIT 0
+## rust closes the last red cell (`0b44e66`, `7fa1251`, `766546e`) — FULL FOUR-WAY CONFORMANCE EXIT 0
 
 442 tests, clippy 0, all 18 rust PART 27 cells OK with no other cell moved, PART 12b/12c/12d unmoved,
 PART 2's whatif differential matching java. Mutant audit re-run: the empty-`violations` serializer is now
@@ -6116,7 +6116,7 @@ until the fix reached it. That is now **four times on this rung**, and the shape
 time: *code that was correct only because something upstream never handed it the case it mishandles.*
 
 Two further copies of the same defect, found by measuring rather than by the brief: **candor-scan's gate
-note re-parsed the policy WITHOUT the `.candor/config` vocabulary** — `ea0df4f`'s defect standing in the
+note re-parsed the policy WITHOUT the `.candor/config` vocabulary** — `6ab5425`'s defect standing in the
 other copy — and **`fix-gate` ran the mirror**, computing a hoist remedy for a crossing the gate does not
 report. `fix`'s upward climb correctly keeps the hypothetical predicate, because it asks about a *layer*.
 
@@ -6127,7 +6127,7 @@ while `whatif` asks a hypothetical — a narrowing filter quantifies over the cl
 yet**, so there is nothing to match. And printing `raw` alone, which is what I asked for, would have been
 **worse than the bug it fixed**: attaching an unconditional verdict to the operator's narrowed line reads as
 a filter candor evaluated and didn't. The answer is §3.1's own rule — disclose the condition, never score
-it. Pinned as `conditional` in `6f30540`, **before the other three implement it**, which is the first time
+it. Pinned as `conditional` in `5693031`, **before the other three implement it**, which is the first time
 this rung has got ahead of the unpinned-field hole instead of behind it.
 
 ## swift's release round — CLOSED (`db3e9e6`…`954bc04`), 457 tests, zero swift cells failing
@@ -6168,13 +6168,13 @@ becomes *"enforced it anyway"*.
       PART 4e pins only `NWConnection` for swift, so **the suite cannot see any of this** — a
       single-idiom fixture standing in for a language's whole network surface.
 
-## java's release round — CLOSED (`d6a1312`…`54e11ca`), 621 tests, all 18 PART 27 java cells OK
+## java's release round — CLOSED (`2de4703`…`634f283`), 621 tests, all 18 PART 27 java cells OK
 
 Six items reproduced then fixed, plus a **seventh found while checking a mirror**. Its `report-parity` FAIL
 is `packages:list` vs `package:str` — **byte-identical on the pre-change jar**, so R10 is reporting a
 pre-existing divergence, which is the row working.
 
-**The seventh is the stale-document defect on the SCAN route** — specced in `901f14d`, implemented by
+**The seventh is the stale-document defect on the SCAN route** — specced in `48b43a5`, implemented by
 nobody: a clean run leaves `ok:true` in the gate-json, then an invalidated baseline OR an unreadable scan
 target exits 2 and **leaves the green in place**. Its fix is better than the obvious one: rather than thread
 a sink through ~20 exit sites — *the position-scoped fix this rung has criticised four times, and one that
@@ -6194,8 +6194,8 @@ refused policy, since naming only the typo'd line would read as the rest having 
 
 `allow` takes **FIVE** effects, not four — `Llm` rides `Net`'s host literal (⟨0.13⟩) and all three
 measurable engines have accepted `allow Llm <host>` the whole time. The grammar clause has said "four"
-since before `Llm` existed, and I repeated it in `1e1748a` while declaring the position CLOSED — which
-would have made **`allow Llm api.openai.com`, the privacy-manifest use case, exit 2.** Fixed `a07b9d3`.
+since before `Llm` existed, and I repeated it in `dd675bc` while declaring the position CLOSED — which
+would have made **`allow Llm api.openai.com`, the privacy-manifest use case, exit 2.** Fixed `60ef335`.
 
 **Six scoping errors today were too narrow in what they REFUSED, leaving a fail-open. This one was too
 narrow in what it ADMITTED, and would have shipped a fail-CLOSED regression on working policy.** A closed
@@ -6209,7 +6209,7 @@ changelog: a record that reads as current while describing a state that no longe
 by checking the CODE, not by trusting the checkboxes. The one genuinely open item is the `whatif` rung.
 
 - [x] **CLOSED — java: normalise `errors[].kind` onto the pinned set** (`rule-form` live in `Policy.java`) (`forbid form`/`allow values` → `rule-form`,
-      added in `f735b16` after java's round began; it argued for exactly this member and was right).
+      added in `b380777` after java's round began; it argued for exactly this member and was right).
 - [x] **CLOSED — R10's baseline** (2 waivers recorded: java + rust report-parity; plus the population
       gate, since a majority over a SUBSET of engines is a different question and CI's ubuntu leg has 3).
       Original text: the row is live and correct but has no waiver file yet, so today's real
@@ -6491,7 +6491,7 @@ Everything else is measured with it, and it currently has two known holes:
 ### 2. THE FOUR-WAY CONVERGENCE THE ⟨0.24⟩ RUNG STILL OWES
 
 - java: normalise `errors[].kind` onto the pinned five (`forbid form`/`allow values` → `rule-form`).
-- rust/ts/swift: emit the `aliases` OBJECT (ruled `7f5b5ba`; ts already does).
+- rust/ts/swift: emit the `aliases` OBJECT (ruled `e2e7faf`; ts already does).
 - `whatif` returns `ok:true` over a report declaring `unanalyzed` — measured by rust AND java, both correctly
   declined to decide it unilaterally. §3.2 pins whatif's shape with no `incomplete` field, so this is a
   four-way rung, not a bug.
@@ -6518,14 +6518,14 @@ Not more engine fixes. The last three rounds each found more defects in the *ins
 engines, and the 0.23.2 release shipped a fabrication through a green gate. **The suite is the bottleneck,
 not the analysers.**
 
-## Step 2 of the plan — java (`cd4bda9`…`1dafd51`) and swift (`bda49af`…`4fa329c`) landed
+## Step 2 of the plan — java (`ffd6c85`…`9c8367a`) and swift (`bda49af`…`4fa329c`) landed
 
-R9 `key-parity(opt)` is **OK four-way** and its waiver is deleted (`d400cc2`) — **the ratchet reported it
+R9 `key-parity(opt)` is **OK four-way** and its waiver is deleted (`c31ba2a`) — **the ratchet reported it
 STALE before anyone thought to check**, which is the both-ways design earning its keep. java was the last
 engine on the array; rust and swift had already moved.
 
 **java corrected me twice.** My `errors[].kind` measurement was STALE — I reported seven values, four of
-which had been normalised at `74fd040`; the real remainder was two. And its test pins the closed set as a
+which had been normalised at `b9583a7`; the real remainder was two. And its test pins the closed set as a
 **membership list written out longhand rather than read from the engine**, because *a test deriving its
 admissible set from the code it checks cannot catch that code widening it* — the subject-and-oracle defect
 avoided by design rather than found by review.
@@ -6570,7 +6570,7 @@ open, which is [[feedback-fabrication-fixes-cause-misses]] exactly. Left whole f
 
 ## STEP 2 COMPLETE — suite green, 77 live cells, 0 unwaived FAILs, 0 stale waivers
 
-rust (`270d30b`, `ff565ea`, `531c415`) closes the round. 449 tests, clippy clean, 54 byte-equal
+rust (`f5b34b7`, `2af7969`, `2a0bf00`) closes the round. 449 tests, clippy clean, 54 byte-equal
 equivalence rows, PART 27 exit 0.
 
 **rust's mutant M8 is the finding of the round, and java found it independently.** It built a mutant that
@@ -6578,9 +6578,9 @@ kept the ENTIRE JSON fix and deleted only the printed human line — **it surviv
 Absence-asserts on `ok` cannot see the other channel, and the ruling says "no disclosure on ANY channel".
 java hit the same thing from the other side: `✓ within policy` IS the prose `ok: true`, so removing the JSON
 field while leaving the sentence standing MOVES the false all-clear rather than removing it. **Two engines,
-two routes, one hole — and the suite was blind to it in both.** Ruled in `ec1a441`.
+two routes, one hole — and the suite was blind to it in both.** Ruled in `8077297`.
 
-**And I scoped `0075987` to `whatif` — the eighth instance.** swift and rust independently measured
+**And I scoped `b1fc4d9` to `whatif` — the eighth instance.** swift and rust independently measured
 `unverified --strict` and `fix-gate --strict` returning `ok:true` over an incomplete report, with `--strict`
 being how CI consumes both. `unverified` is the sharpest case the family has: **the verb that exists to say
 "your green gate is not provably green" certifying a set it knows it cannot see all of.** Now bound for
@@ -6606,7 +6606,7 @@ spellings of it.
 ## THE `unknownClasses` ROUND — present in 3 of 4, and the same adjacent defect fired in all four
 
 Suite green: exit 0, 77 live cells, 0 unwaived FAILs, 0 stale waivers, 0 per-shape vacuity.
-java `acc6ee7` · swift `9aa7552` · ts `caac688`+`612b7d8` · **rust: measured null result, already correct.**
+java `847cadf` · swift `9aa7552` · ts `caac688`+`612b7d8` · **rust: measured null result, already correct.**
 
 **The defect.** `deniedLayer` and `unverifiedHoleRule` computed from the effect SET alone and never consulted
 the rule's `Unknown[…]` / `Net[…]` class filter, which lived inlined inside the gate and nowhere else. Two
@@ -6634,14 +6634,14 @@ under — and every engine's upgrade path then dropped the bracket, printing the
 un-narrowing a rule scoped to one destination class.** Dormant in every engine until the fix reached it.
 
 **This is the fifth firing of the hazard on this rung, and the first where the lesson propagated instead of
-recurring**: rust had settled the shape in `736957b`, the queue recorded it, and **ts read that record and
+recurring**: rust had settled the shape in `766546e`, the queue recorded it, and **ts read that record and
 matched rust byte-for-byte rather than rediscovering it.** That is the first time this session a recorded
 lesson prevented a defect rather than explaining one after the fact.
 
 ### rust's null result is the model for how to deliver one
 
-Already correct — `481269b` pointed BOTH consumers at one `rule_hits` decision in a single commit. But it
-did not stop at "I looked and it is fine": it **built the pre-`481269b` binary in a worktree and ran the
+Already correct — `7fa1251` pointed BOTH consumers at one `rule_hits` decision in a single commit. But it
+did not stop at "I looked and it is fine": it **built the pre-`7fa1251` binary in a worktree and ran the
 identical 10-row matrix against it**, reproducing the defect on all 6 filtered rows and none of the 4
 unfiltered controls. *A null result is worthless without proof the measurement can fail*, and that is the
 proof.
@@ -6666,7 +6666,7 @@ proof.
       passer goes unnamed. Unlike reason classes it **cannot be derived from the fields `FixFn`/
       `UnverifiedFn` carry** (it needs the host surface plus the partner set), so it is a data-threading
       job, not a conjunct. Four-way.
-- [ ] **STILL OPEN, but the PROBE REQUIREMENT is now known — 2026-08-02.** Two probes failed to reach it and neither was evidence: the first fed `conditional Net` as a POLICY LINE (it is not a rule kind at all — §3.2 defines it as a VERDICT FIELD, `"conditional": [{rule, condition}]`), and the second used `deny Net[unknown-host]` over an entry with no `netClass`, which produces a whole-policy REFUSAL (`refused: true`, `unevaluated: 1`) on all four engines and never reaches the conditional path. §3.2 places `conditional` on an answer that is *fail-closed BUT CONDITIONAL* — the gate DOES answer — so a correct probe needs a rule that FIRES on carried evidence while one of its narrowings stays unevaluated. **Not closed, and deliberately not guessed a third time.** **`conditional` is one-engine.** Pinned in `6f30540`, implemented only by rust; java measured its own
+- [ ] **STILL OPEN, but the PROBE REQUIREMENT is now known — 2026-08-02.** Two probes failed to reach it and neither was evidence: the first fed `conditional Net` as a POLICY LINE (it is not a rule kind at all — §3.2 defines it as a VERDICT FIELD, `"conditional": [{rule, condition}]`), and the second used `deny Net[unknown-host]` over an entry with no `netClass`, which produces a whole-policy REFUSAL (`refused: true`, `unevaluated: 1`) on all four engines and never reaches the conditional path. §3.2 places `conditional` on an answer that is *fail-closed BUT CONDITIONAL* — the gate DOES answer — so a correct probe needs a rule that FIRES on carried evidence while one of its narrowings stays unevaluated. **Not closed, and deliberately not guessed a third time.** **`conditional` is one-engine.** Pinned in `5693031`, implemented only by rust; java measured its own
       absence. The pin got ahead of the implementations, which was the point — but three engines still owe it.
 - [ ] **swift and ts now disagree on manifest ELEMENT leniency** (swift skips a member with no string
       `path`, ts counts any object). ts's reasoning is recorded above and is sound; rule it or converge it
@@ -6674,7 +6674,7 @@ proof.
 
 ## java's netClasses/conditional round — a null result, a bigger defect than briefed, and a live measurement trap
 
-**ITEM 1 was a measured null result** (`e948ce0`). java's `classNarrowingFires` takes a **`GateInput`**, which
+**ITEM 1 was a measured null result** (`f468099`). java's `classNarrowingFires` takes a **`GateInput`**, which
 carries `netClasses()`, rather than an effect set — so threading it into `unverifiedHoleRule`/`deniedLayer`
 last round covered the Net axis for free. My data-threading argument was right in general and **had already
 been paid** in java's shape.
@@ -6689,7 +6689,7 @@ to fail first, then the partition property at scale on **httpclient5-5.6.1** (23
 Net-bearing functions**, so the Net axis is vacuous on the corpus the Unknown axis was measured on. *A
 self-scan is a corpus with a shape, and the shape decides which defects it can show you.*
 
-**ITEM 2's defect was bigger than "absent field"** (`8b98e09`). `whatif` **REBUILT** the rule from `scope`
+**ITEM 2's defect was bigger than "absent field"** (`ec56bff`). `whatif` **REBUILT** the rule from `scope`
 plus the effect asked about: `deny Unknown[reflect] app` → `deny Unknown app`, and `deny Net Db app` →
 `deny Net app` — **losing the operator's other denied effect entirely.** Both halves had to land together,
 which is what the SPEC text argues for itself. `narrowingCondition` is deliberately a SIBLING of
@@ -6717,7 +6717,7 @@ every ad-hoc probe here used an explicit `~/git/…/target/release/` path. Verif
 engine's finding:
 
 - **rust** — already correct on both axes (verified last round with a pre-fix binary A/B).
-- **java** (`e948ce0`, `8b98e09`) — `netClasses` a NULL: `classNarrowingFires` takes a `GateInput` carrying
+- **java** (`f468099`, `ec56bff`) — `netClasses` a NULL: `classNarrowingFires` takes a `GateInput` carrying
   `netClasses()`, so last round's hoist paid for both axes at once. `conditional` implemented, and its
   defect was bigger than absent-field: `whatif` **rebuilt** the rule from `scope` + the effect asked about,
   so `deny Net Db app` printed as `deny Net app` — losing the operator's other denied effect.
@@ -6765,7 +6765,7 @@ an absence.*
 
 ## R11 CLOSED FOUR-WAY — suite green, 81 live cells, 2 waivers left (both R10 report-parity)
 
-rust `e406e09` · java `ed4dcda` · swift `71732ff` · ts `1c664a1`. All four R11 waivers deleted hours after
+rust `e6b9751` · java `b273ef1` · swift `71732ff` · ts `1c664a1`. All four R11 waivers deleted hours after
 being written; each named its own exit condition and every engine met it.
 
 ### FOUR ENGINES, FOUR DIFFERENT MECHANISMS — the case for a comparison, proved
@@ -6786,7 +6786,7 @@ with three mechanisms nobody had seen.
 `fix` was not named in the ruling. **rust measured it as WORSE than `fix-gate`** (which already routed
 through the gate's firing decision and merely mis-set `ok`), and ts found it is *"the one the LSP code
 action and MCP tool run"* — the surface an agent acts on. Ninth instance of naming one verb and not its
-sibling; amended in `ad3ff08`.
+sibling; amended in `2d3c002`.
 
 ### The best implementations made the law true by CONSTRUCTION rather than by matching
 

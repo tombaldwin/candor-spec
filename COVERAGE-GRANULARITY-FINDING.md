@@ -19,8 +19,8 @@ and only one of them is a defect. Split apart and measured:
 
 **Recommendation: fix arm A only, in rust and java. Leave B and C alone.** Detail in §5.
 
-Everything below was reproduced this session against `candor-scan 0.23.1` (rebuilt from `50218e3`),
-`candor-java 0.23.1-all` (`b891d5f`, single jar, version checked), `candor-ts` at `8eba3af` run from
+Everything below was reproduced this session against `candor-scan 0.23.1` (rebuilt from `c8c8de6`),
+`candor-java 0.23.1-all` (`81aacb6`, single jar, version checked), `candor-ts` at `8eba3af` run from
 `~/git/candor-ts`, and `candor-swift` rebuilt from `eae2de2`. Every arm's output directory was deleted
 before the control was measured (standing bar item 7).
 
@@ -351,7 +351,7 @@ For the queue's own record, three things in the one-sentence item are wrong or m
 
 ## UPDATE 2026-07-26 — arm A FIXED in java, and the blast-radius number was wrong
 
-Landed as candor-java `5a76adf`, exactly as recommended (the `kappaClassified` deletion), plus a second
+Landed as candor-java `e70afd6`, exactly as recommended (the `kappaClassified` deletion), plus a second
 correction the recommendation did not name: `kappaSeen` counted CLASSIFIED calls too, so the tally beside a
 package overstated what was invisible (the arm-B fixture read *"2 calls"* when one of them was on the
 record). It now counts floored calls only, and a package whose every call is classified never enters the
@@ -384,7 +384,7 @@ Pinned by `CoverageEnvelopeTest.aClassifiedCallMustNotClearTheHedgeOnAnUnrelated
 **verified to catch**: against pre-fix source it fails on arm B with *"app.A.nm must be IN the report"* while
 arm A passes.
 
-**Rust half landed too** — candor-rust `9a4f471`, same shape, same two corrections (drop the dynamic set
+**Rust half landed too** — candor-rust `83bb04a`, same shape, same two corrections (drop the dynamic set
 from the filter; count floored calls only), plus a third site java did not have: the dep-report-join also
 marked the crate classified, which is redundant with the `deps_idx.crates` arm that already covers it.
 A/B pgman / ebman / candor-rust: **0 / 0 / 0** — structural, not luck, since the only `classify()`-matched

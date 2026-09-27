@@ -17,7 +17,7 @@ WHY THIS PROPERTY, AND WHY IT IS REGRESSION-SHAPED
 Two reports covering one package in one dep directory is ORDINARY, not pathological: measured at 7/167 dep
 reports in candor-rust, 9/259 in pgman, 30/378 in ebman (ENTRY-COLLISION-DECISION.md). It arises from a
 dep dir that accumulates, from `--workspace` prepending its own directory to `CANDOR_DEPS`, and from a
-package scanned twice. And it has already bitten: candor-rust `6f2210c` — two byte-identical reports made
+package scanned twice. And it has already bitten: candor-rust `8106f5e` — two byte-identical reports made
 a consumer VANISH from `functions`, which under ⟨0.21⟩ is a positive purity CLAIM, not a gap.
 
 DELIBERATELY NOT IN SCOPE: two reports under one key with DIFFERENT answers. That is a live design

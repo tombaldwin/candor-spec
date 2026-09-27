@@ -1731,7 +1731,7 @@ run_ifblock_sweep "PART63/swift" 'if [ "$p63_s_a"' P63_BAD \
 #                     NON-BOOLEAN must not be read as "yes, judged".
 #   · `pk`/`pkt`/`pkf` the `peeked` corruption cell — candor-java read it via Gson `getAsBoolean`, which on
 #                     a JSON string is `Boolean.parseBoolean`, so `"peeked": "true"` carved the class out:
-#                     exit 2 → exit 0, `ok:true`, nothing on stderr (fixed in candor-java `0d9e7fc`). Its
+#                     exit 2 → exit 0, `ok:true`, nothing on stderr (fixed in candor-java `24e4cba`). Its
 #                     two bool controls are the other half — a genuine `true` must still certify and a
 #                     genuine `false` must still refuse, which is what proves the key reaches the verdict.
 run_ifblock_sweep "PART62/java" 'if [ "$p62_root"' P62_BAD \

@@ -6,8 +6,8 @@ private client codebase from public history. Every sha those repos had ever publ
 Nothing failed, because **a sha in a markdown table is checked by nothing**. The register silently
 became a document whose evidence could not be followed: of 460 distinct backticked sha-like tokens in
 `SOUNDNESS.md`, **313 resolved nowhere**. It cost real work before it was noticed — a review agent
-read `f51eb27` off R372, could not resolve it, and reported the row as still open. It is closed;
-`f51eb27` is `94dc8b5`.
+read f51eb27 off R372, could not resolve it, and reported the row as still open. It is closed;
+f51eb27 is `94dc8b5`. (**The two OLD shas here are spelled WITHOUT backticks on purpose — SOUNDNESS R638. This passage exists to show an old->new pair, so `sha-citations.py --apply` rewriting the old one turns it into "`94dc8b5` is `94dc8b5`" and destroys the worked example. It did exactly that on the first widened run.**)
 
 `filter-repo` writes its old→new mapping to `.git/filter-repo/commit-map` **in the rewritten working
 copy**. `.git/` is not cloned, not pushed, and not on the second machine — so when this was found,

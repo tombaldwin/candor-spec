@@ -55,7 +55,7 @@ I first recorded Swift and Rust as N/A from language semantics alone. Sweeping w
 | engine | the analogue | result |
 |---|---|---|
 | **java** | a `GETSTATIC`/method touch forces the owner's `<clinit>` | sound INSIDE the scan; **the dependency side was MISSING → FIXED** `candor-java` |
-| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound inside the scan; **dependency side FIXED** `c4d0ca3` |
+| **rust** | reading a `LazyLock`/`lazy_static` static forces its initializer | sound inside the scan; **dependency side FIXED** `b2cfd9f` |
 | **ts** | `import`/`require` runs the module top level | **was MISSING → FIXED** (below) |
 | **swift** | globals are lazy, so *reading* one forces its initializer | **FIXED** `acfed07` (intra-package) + `7a1b077` (chained dep) |
 
@@ -70,7 +70,7 @@ A prototype that emits a speculative `cr::<lazy>::NAME` call for any qualified p
 (`main -> ['Env']`) with zero effect changes across four real crates — **but it also added a callgraph node**
 (`lang::is_non_nominal_type`), because it fires for every qualified path expression, not just dependency
 statics. Shipping an edge whose scope is not bounded is how fabrication gets in, so it was **reverted**.
-**Fixed (`c4d0ca3`) by bounding it at consumption instead**: the marker call is emitted, and `scan.rs`
+**Fixed (`b2cfd9f`) by bounding it at consumption instead**: the marker call is emitted, and `scan.rs`
 consumes it ONLY in the cross-crate join, skipping it everywhere else — so it can never reach local
 resolution or the classifier, and a crate the deps index does not cover resolves to nothing. A/B on four
 codebases: zero gains, zero losses, and **no change in report entry count** (the spurious node is gone).
@@ -151,7 +151,7 @@ fabrication probe, fuzz, four-way conformance 26/0.
 > identity was unique → 26 after the self-property exclusion → all 26 verified genuine.
 >
 > **UPDATE — (a) is DONE.** Global/lazy unit identity is now unique per module in all four engines
-> ([SOUNDNESS-VEIN-global-unit-identity.md](SOUNDNESS-VEIN-global-unit-identity.md); rust `5447eba`, swift
+> ([SOUNDNESS-VEIN-global-unit-identity.md](SOUNDNESS-VEIN-global-unit-identity.md); rust `48b7669`, swift
 > `b616caf`, plus swift's function-call halves `7cec437`/`7f18c38`). Re-attempting **(c)** on that foundation
 > took the fabrication count on candor-swift's own tree from **113 → 34**, and adding a guard for
 > implicit-self property reads (`self.typeStack.append(x)` is not a global read — `DeclCollector.pushType`,

@@ -131,13 +131,13 @@ The R17 entry-point case becomes a corollary row.
 
 ## Status (2026-07-20)
 
-- **Phase 1 — SHIPPED (candor-java `8537909`).** The intraprocedural half: a stream-consuming utility whose
+- **Phase 1 — SHIPPED (candor-java `2d59dd6`).** The intraprocedural half: a stream-consuming utility whose
   InputStream/Reader argument was NOT opened in this method (`newType == null` — a param/field/return)
   discloses Unknown at the call site (`externalStreamUtility`), never in `classify()` (so the source/sink
   stance table stands). Closes `ZipArchiveInputStream.readFully` and 31 sibling readers on commons-compress;
   the compress runtime oracle goes 1→0. The in-scope-open case stays pure-relative (no redundant Unknown) —
   *more* precise than the blanket κ-rule, which fired on 18 in-scope cases too. Regression pins both.
-- **The coverage-crediting companion — SHIPPED (candor-java `fbb8cda`).** The verify oracle's transitive
+- **The coverage-crediting companion — SHIPPED (candor-java `1f36b9a`).** The verify oracle's transitive
   attribution now stops at an uncovered-package boundary (VerifyCli passes `coverage.uncovered` → the agent;
   `Trace.emit` stops once its stack walk crosses an uncovered frame). Closes the `getResolver` false positive
   (configuration2 oracle 1→0); strictly sound, zero masking (a miss through all-covered frames still has no
@@ -163,7 +163,7 @@ The R17 entry-point case becomes a corollary row.
   CONCLUSION: Phase 1 + the coverage-crediting companion are the complete, sound answer for every case where
   candor can see the stream's origin (the in-*function* open is already precise; the cross-object case is
   honestly disclosed).
-- **Phase 2 — BUILT for the project-declared slice (candor-java `552553f`), knowingly narrow.** After the
+- **Phase 2 — BUILT for the project-declared slice (candor-java `a9ba59d`), knowingly narrow.** After the
   blocker above, built the construction-carried binding for the cases it CAN reach soundly: a PROJECT-declared
   (non-JDK-inherited) instance stream field proven bound only to in-scope concrete opens. `ProvValue.fieldOrigin`
   carries a GETFIELD's "owner#name"; a pre-pass `computeStreamFieldOrigins` populates `suppressibleStreamFields`

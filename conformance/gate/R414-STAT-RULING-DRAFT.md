@@ -97,7 +97,7 @@ determined-locator arm as an over-charge control, not as an afterthought.
 > **STATUS OF THAT GAP — past tense as of 2026-09-12, and stated in the past tense deliberately.** Both
 > halves were closed after this draft was written: rust by SOUNDNESS R416 (`resolve_str_expr` now peels
 > `Path::new`/`PathBuf::from`, and only those two — `join`/`with_extension`/`canonicalize` transform the
-> value and must keep returning nothing), candor-rust `1b981d3`; TypeScript's half in the same wave. The
+> value and must keep returning nothing), candor-rust `58242a4`; TypeScript's half in the same wave. The
 > PART's `a4local` arm reads `ok` for rust and ts as a result. **The paragraph above was TRUE WHEN WRITTEN
 > and would have shipped as a false claim about the engines a few hours later** — which is the whole
 > failure mode of a limitation recorded as prose: it reads as considered, so nobody re-measures it. The

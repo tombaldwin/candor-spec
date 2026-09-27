@@ -1,6 +1,6 @@
 # Vein: effect mechanisms that die at the scan boundary (ALL FOUR ENGINES)
 
-**Status: OPEN — reproduced and gate-confirmed in all four engines. First mechanism fixed in one engine (rust implicit stringification, `1623a07`); the rest open.** Found 2026-07-25 by a fan-out sweep after the
+**Status: OPEN — reproduced and gate-confirmed in all four engines. First mechanism fixed in one engine (rust implicit stringification, `5c68de3`); the rest open.** Found 2026-07-25 by a fan-out sweep after the
 [initializer edge](SOUNDNESS-VEIN-initializer-edge.md) turned out to be one instance of a general shape.
 
 ## The shape, and why it is worse than a missing feature
@@ -48,34 +48,34 @@ a general limitation:
 
 | mechanism | chained result |
 |---|---|
-| implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `1623a07` — was silent-pure |
-| `Drop` glue — a dependency type whose `Drop` writes a file | **FIXED** `a2fbe74` — was silent-pure |
-| `&dyn Trait` where the trait is **imported** (`use deplib::Handler`) | **FIXED** `50218e3` — `--deps` now sets `CANDOR_WORKSPACE_CHAIN` on its child scans |
-| `&dyn deplib::Handler` (fully qualified) | **FIXED** `7a5fc1d` — `bound_leaves` kept only the leaf, so with no `use` to expand through the crate identity was gone and the site emitted nothing at all |
+| implicit stringification (`Display::fmt` at a `format!` hole) | **FIXED** `5c68de3` — was silent-pure |
+| `Drop` glue — a dependency type whose `Drop` writes a file | **FIXED** `83fb749` — was silent-pure |
+| `&dyn Trait` where the trait is **imported** (`use deplib::Handler`) | **FIXED** `c8c8de6` — `--deps` now sets `CANDOR_WORKSPACE_CHAIN` on its child scans |
+| `&dyn deplib::Handler` (fully qualified) | **FIXED** `68479dc` — `bound_leaves` kept only the leaf, so with no `use` to expand through the crate identity was gone and the site emitted nothing at all |
 | a value bound from a dependency's factory (`let c = deplib::build(); c.fetch()`) | silent-pure — **no return-type information travels in the report**, so the receiver is untyped and every later method call drops |
-| dispatch over an **imported** trait whose impls are all local | **FIXED** `1950a27` — was silent-pure (`trait_decls` is local-only, so CHA never fired). Needs THREE carve-outs, each a measured flood: dependency provenance (incl. rejecting `self`/`crate`/`super` re-exports — 17 Unknowns on value-bag), `dyn` ERASURE (a caller-monomorphized `T: Trait` bound is not the crate's business — 32 Unknowns on serde_json), and nested-item scope |
+| dispatch over an **imported** trait whose impls are all local | **FIXED** `dbe2348` — was silent-pure (`trait_decls` is local-only, so CHA never fired). Needs THREE carve-outs, each a measured flood: dependency provenance (incl. rejecting `self`/`crate`/`super` re-exports — 17 Unknowns on value-bag), `dyn` ERASURE (a caller-monomorphized `T: Trait` bound is not the crate's business — 32 Unknowns on serde_json), and nested-item scope |
 
 ## Root causes, ranked by leverage
 
 1. **The join only fires on crate-qualified call paths.** Desugared edges — `Display::fmt` at a format hole,
    `Drop::drop` at scope exit — produce no such path, so the dep report's correct entry is never consulted.
-   **The `Display` half is now fixed (`1623a07`)**, and the fix is the template for the rest: emit the call
+   **The `Display` half is now fixed (`5c68de3`)**, and the fix is the template for the rest: emit the call
    shape the join *already* understands (`cr::Type::method`, whose tail2 is exactly the dep report's key)
    rather than adding a resolution path. Gate back to exit 1; A/B zero gains and zero losses on five real
-   crates. **`Drop::drop` at scope exit is now fixed too (`a2fbe74`)**, confirming the template generalises. One
+   crates. **`Drop::drop` at scope exit is now fixed too (`83fb749`)**, confirming the template generalises. One
 caveat learned there and worth carrying: the emitted shape must be **distinguishable from a real call**. A
 first attempt used a plain `cr::Type::drop`, which the κ ledger counted as a genuine dependency call and
 which added report entries on two of our own crates — the coverage-envelope test caught it. The marker is
 now `cr::<drop>::Type`, consumed only by the join, exactly as the lazy-static marker is.
 2. **No return types in the report**, so a receiver bound from a dependency factory is untyped.
-3. **`interfaceUnion` was shipped-but-off in the default `--deps` path** — **FIXED (`50218e3`)**. Measured:
+3. **`interfaceUnion` was shipped-but-off in the default `--deps` path** — **FIXED (`c8c8de6`)**. Measured:
    the same fixture reads `PURE` against a plainly-scanned dep report and `['Fs']` against a union-scanned
    one, so the flag was the whole difference. **A correction to the sweep that reported this:** it claimed
    the union recovers the field-typed `Vec<Box<dyn>>` and param-typed `&dyn` cases; neither reproduces. What
    it recovers is the **imported-trait** form, which is the idiomatic one. A fully-qualified
    `&dyn deplib::Handler` still reads pure because the consumer never forms the crate-qualified key — that
    residual is real and open.
-4. **`trait_decls` is local-only** — **FIXED (`1950a27`)**, and the fix's real content is the carve-outs,
+4. **`trait_decls` is local-only** — **FIXED (`dbe2348`)**, and the fix's real content is the carve-outs,
    not the CHA. Provenance alone (the queue's resolution 1 as written) is NOT safe: `serde::Serialize` is a
    dependency trait, so it passes, and CHA-ing serde_json's own `impl Serializer` types onto its generic
    entry points floods. The rule that works is *dependency provenance AND `dyn` erasure*: a `dyn` receiver
@@ -154,10 +154,10 @@ whole package, so **8 of the 13 are strictly less honest chained than unchained*
 
 | engine | silent-pure shapes | gate |
 |---|---|---|
-| **java** | **4 mechanism families FIXED** (`bdf272c` stringification + equals/hashCode reentry, `a5b0a41` inherited/default from a dep supertype, `b891d5f` callback/HOF hand-off) — fixture 15 silent-pure → 0 | 1 → **1** on all four |
+| **java** | **4 mechanism families FIXED** (`9644329` stringification + equals/hashCode reentry, `1bebfb2` inherited/default from a dep supertype, `81aacb6` callback/HOF hand-off) — fixture 15 silent-pure → 0 | 1 → **1** on all four |
 | **swift** | **6 of 7 gate-flipping mechanisms FIXED** (`83ca73c`, `41dc8de`, `eae2de2`) | 1 → **1** on six; factory-bound receiver still 1 → 0 |
 | **ts** | **all 4 confirmed mechanisms FIXED** (`6fb2560` symlink shape, `625e8fd` coercion, `965ac82` `new DepClass()`, `75ec3f6` by-reference HOF) | `deny Fs` 0 → **1**, matching the one-project control |
-| **rust** | **4 of 5 FIXED** (`1623a07` and follow-ons, then `1950a27` R4 + `7a5fc1d` R6) | 1 → **1** on four; R5 (return types) the only one open |
+| **rust** | **4 of 5 FIXED** (`5c68de3` and follow-ons, then `dbe2348` R4 + `68479dc` R6) | 1 → **1** on four; R5 (return types) the only one open |
 
 **Implicit stringification was silent across the boundary in all four, and is now fixed and independently
 verified in all four** — pinned by conformance **PART 20**, which is verified-to-catch on each engine's row
@@ -183,7 +183,7 @@ attempt are recorded in [DEP-RECEIVER-TYPING-DESIGN.md](DEP-RECEIVER-TYPING-DESI
 that was *made and missed* (a genuine purity claim — dep reports omit pure functions, §2 rule 3) and one
 that was *never made* because the receiver was never typed (which licenses nothing). Only the second is the
 cardinal sin, and telling them apart needs no format change — an engine always knows whether it formed a
-key. Landed in rust as `5fde0d6`: the fixture went from a confident `PURE` to
+key. Landed in rust as `50ebd63`: the fixture went from a confident `PURE` to
 `Unknown[dispatch:untyped cross-package receiver]`, at a measured cost of 0 on three unchained corpora and
 1 source + 4 transitive callers on a chained scan. The remaining format rung now buys *precision* rather
 than *honesty*, which is a much less urgent kind of debt.

@@ -365,7 +365,7 @@ def r_fn_returned_dyn(eff, name, sfx):
 # BACKLOG "FABRICATION in ts and swift: a shared HOF's effects are charged to EVERY caller" — the
 # single-caller `callback` cell above cannot see this class of bug at all: with exactly one caller per
 # HOF, a correct per-call-site resolution and a buggy union-everything-onto-the-HOF's-own-node resolution
-# produce IDENTICAL output, which is why the original fabrication (ts `d5f6c0c`, swift `7a89dbc`) survived
+# produce IDENTICAL output, which is why the original fabrication (ts `d5f6c0c`, swift `ae3a7fd`) survived
 # both engines' own fuzzers AND this generator for as long as neither ever seeded two callers of one HOF.
 #
 # Two callers of the SAME `hof`, passing two DIFFERENT named callbacks: `name_a`'s does the sink, `name_b`'s

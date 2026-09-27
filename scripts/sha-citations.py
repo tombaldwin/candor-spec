@@ -12,9 +12,16 @@ backticked sha-like tokens in SOUNDNESS.md, **313 no longer resolved anywhere**.
 
 That is not a cosmetic problem. This register's whole claim on a reader is "here is the commit that
 closed it"; a row citing a dead sha is indistinguishable, by `grep`, from a row citing a commit that
-never existed. It also cost real work: a review agent read `f51eb27` off R372, could not resolve it,
-and reported R372 as still open. It is closed — `f51eb27` is `94dc8b5`, "R372 rust: a cfg-twinned
+never existed. It also cost real work: a review agent read f51eb27 off R372, could not resolve it,
+and reported R372 as still open. It is closed — f51eb27 is `94dc8b5`, "R372 rust: a cfg-twinned
 `use` used as a TYPE was resolved by SOURCE ORDER".
+
+(Both mentions of the OLD sha above are spelled WITHOUT backticks on purpose — SOUNDNESS R638. This
+passage exists to show an old->new PAIR, so `--apply` repairing the old one rewrites it to the new one
+and leaves "`94dc8b5` is `94dc8b5`": a tautology where the worked example was. It did exactly that on
+its first widened run, here and in `history/commit-maps/README.md`, and both were caught by reading the
+diff rather than by any check. A document that deliberately quotes a pre-rewrite sha is the one place
+this tool must not touch, and backticks are how it tells the difference.)
 
 THE RECOVERY DATA IS NOT IN ANY CLONE. `git filter-repo` leaves `.git/filter-repo/commit-map` in the
 rewritten working copy, and `.git/` is not cloned, not pushed, and not on the second machine. When
@@ -47,7 +54,39 @@ REPOS = ["candor", "candor-spec", "candor-rust", "candor-java",
 # Files whose sha citations are load-bearing EVIDENCE. Deliberately NOT the per-repo CHANGELOGs: those
 # are published release notes, a rewrite of them edits what was shipped, and their shas are narrative
 # rather than a reader's route to the fix.
-TARGETS = [ROOT / "SOUNDNESS.md", ROOT / "SOUNDNESS-LOG.md", FAMILY / "candor" / "BACKLOG.md"]
+#
+# SOUNDNESS R638 — AND FOR MOST OF THIS FILE'S LIFE THE SET WAS THREE FILES, WHICH DREW THE BOUNDARY
+# AROUND ITS OWN TRIGGER (§9) IN THE INSTRUMENT BUILT TO ANSWER §9. The tool reported "795 citations
+# checked, 0 dead" while 299 dead citations sat one directory over — 189 in SCAN-BOUNDARY-WORK-QUEUE.md,
+# 35 in `conformance/run.sh` (the four-way suite's own evidence comments), and **20 in SPEC.md, the
+# NORMATIVE document**, where `:1051` cites all four engines' commits for a clause and none resolved.
+# `conformance/gen_chained_dispatch.py` cites the commit that EARNED each xfail retirement, and nothing
+# checked any of them either.
+#
+# So the set is now DERIVED from `git ls-files` rather than listed: every tracked `.md`, `.py` and `.sh`
+# in this repo, plus the umbrella's BACKLOG.md. Derived rather than enumerated on this file's own
+# evidence — an enumerated list is what went stale, and a new design document would have joined the
+# uncovered set silently.
+_SKIP_NAMES = {"CHANGELOG.md"}
+
+
+def _tracked_targets():
+    import subprocess
+    out = subprocess.run(["git", "-C", str(ROOT), "ls-files"], capture_output=True, text=True)
+    if out.returncode != 0:
+        return []                     # unknown, not empty — the caller refuses on a zero-citation run
+    keep = []
+    for rel in out.stdout.split():
+        if pathlib.Path(rel).name in _SKIP_NAMES:
+            continue
+        if rel.endswith((".md", ".py", ".sh")):
+            keep.append(ROOT / rel)
+    return keep
+
+
+TARGETS = [ROOT / "SOUNDNESS.md", ROOT / "SOUNDNESS-LOG.md", FAMILY / "candor" / "BACKLOG.md"] + [
+    p for p in _tracked_targets()
+    if p.name not in ("SOUNDNESS.md", "SOUNDNESS-LOG.md")]
 
 NOT_SHAS = {
     "305647574":        "a GitHub workflow id (gh workflow list wfid for integrations.yml)",
@@ -55,6 +94,23 @@ NOT_SHAS = {
     "d7608ec5a5adc4c4": "an analyzed.digest value from a coverage-refresh measurement",
     "6d35549032d3":     "a hash of a LINE, not a commit — BACKLOG.md hashes the byte-identical "
                         "`ENGINES = [...]` line across five files to show it is pure copy",
+    # SOUNDNESS R638 — SELFTEST FIXTURE LITERALS, and they must be named here rather than left to the
+    # widened TARGETS below, for TWO independent reasons. (1) Six of them can never resolve, so a
+    # widened check would stay red forever on something correct, and "a checker that stays red on
+    # something unfixable gets disabled" is this file's own stated rule one block down. (2) Worse, the
+    # other three DO remap — `93cb988`, `aa280d1` and `ff6efad` — so `--apply` would have silently
+    # REWRITTEN THE TEST FIXTURES that pin `bucket()`'s behaviour. A repair tool editing the tests that
+    # judge it is not a repair. Measured before widening, which is the only reason it was caught.
+    "0123456":          "soundness-status.py selftest fixture literal",
+    "1234567":          "soundness-status.py selftest fixture literal",
+    "1234abc":          "soundness-status.py selftest fixture literal",
+    "abc1234":          "soundness-status.py selftest fixture literal — the most-used one",
+    "deadbee":          "a fixture literal quoted in R527's own prose and in two selftests",
+    "deadbee1":         "soundness-status.py selftest fixture literal",
+    "93cb988":          "soundness-status.py selftest fixture (R190's PARTLY-CLOSED case) — REMAPPABLE, "
+                        "which is exactly why it is listed: --apply would have rewritten the test",
+    "aa280d1":          "soundness-status.py selftest fixture (the REOPENED case) — remappable, ditto",
+    "ff6efad":          "soundness-status.py comment quoting R588's spelling — remappable, ditto",
 }
 
 # CITATIONS THAT ARE GENUINELY LOST, NAMED RATHER THAN LEFT TO FAIL FOREVER. Each of these was written
@@ -63,7 +119,55 @@ NOT_SHAS = {
 # checker that stays red on something unfixable gets disabled, and a checker that silently skips it
 # tells you the register is sound when six of its citations lead nowhere. This is the same
 # disclosed-not-silent rule the engines are held to.
+# SOUNDNESS R747 — DEAD, REPAIRABLE, AND REPAIR IS BLOCKED. Every sha below is in `SPEC.md`, resolves
+# nowhere, and HAS a mapping — `--apply` rewrites all twenty happily. Doing so takes `must_ledger` RED:
+# it keys each normative statement by a HASH OF THE STATEMENT TEXT, and a citation sitting INSIDE a
+# clause is part of that text, so a repair orphans the ledger entry that classified it. Measured: 11
+# orphaned entries and 11 unclassified statements, and `reanchor_banner` correctly refuses to re-anchor
+# more than one at a time ("More than the banner moved, so this is a classification question").
+#
+# So these are NOT `LOST` — nothing is unrecoverable — and they are not silently skipped either. Fixing
+# them properly means keying the ledger on the statement's NORMATIVE TEXT with citations excluded, which
+# re-keys every entry in the ledger and is not a change to make unreviewed at the end of a long session.
+# Until then the debt is named here rather than absent, which is the same disclosed-not-silent rule the
+# engines are held to.
+REPAIR_BLOCKED = {
+    "0075987": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "01d5c6b": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "05158db": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "107755b": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "1503368": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "1969559": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "27f4beb": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "2d004b6": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "37c9b10": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "4805fca": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "4fd140c": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "5a8cf48": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "7271c69": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "7378f4f": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "93ed0a1": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "9a17c4c": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "a034371": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "e4bc419": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "ec1a441": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+    "ec3e50f": "SPEC.md — repair blocked by the must_ledger statement-hash coupling (R747)",
+}
+
 LOST = {
+    # SOUNDNESS R638 — surfaced the moment TARGETS stopped being three files. All four are cited in
+    # SCAN-BOUNDARY-WORK-QUEUE.md, resolve in NO family repo, and have NO entry in any commit-map, so
+    # there is nothing to repair. What each one WAS is recorded here from its own citation; the reason it
+    # is unmappable was NOT established, and this comment says so rather than guessing a cause:
+    #   2c90c8d — the PORTED half of a two-line fabrication fix, cited beside 47f460f "on main"
+    #   97c1a2b — half of a clean outcome, cited beside a713186
+    #   cb8c1aa — cited as candor-java, for `Cha#depDirectSupers`' refusal and its numbers
+    #   eb1c76b — the `locatorNameIsStable` whole-body pre-pass fix, "without back-porting"
+    # A branch commit and a pre-rewrite commit in an uncovered map look identical from here.
+    "2c90c8d": "scan-boundary queue: ported fabrication fix; unmappable, cause not established",
+    "97c1a2b": "scan-boundary queue: paired with a713186; unmappable, cause not established",
+    "cb8c1aa": "scan-boundary queue: candor-java Cha#depDirectSupers; unmappable, cause not established",
+    "eb1c76b": "scan-boundary queue: locatorNameIsStable pre-pass; unmappable, cause not established",
     "431c1f6": "a fix made ON A BRANCH, 2026-08-08 (BACKLOG: 'CLOSED on the branch')",
     "ef53a2a": "the hardening commit for 431c1f6, same branch, same day",
     "5f4736c": "candor-rust ci.yml wiring, cited from a branch",
@@ -113,11 +217,19 @@ def load_maps(prefer_committed=True):
     return out
 
 
+# SOUNDNESS R638 — the two instrument sources contain `scratchpad/...` strings BY CONSTRUCTION: they are
+# the fixtures that prove the extractor and the R600 ratchet can fail. Widening TARGETS to every tracked
+# source pulled those fixtures in as live citations (`alpha`, `beta`, `brandnew-lane`, `x`), which is the
+# same mistake as letting `--apply` rewrite a selftest's sha literal — a check reading its own test data
+# as evidence. Narrow by NAME, not by directory, so a real document is never skipped.
+_FIXTURE_SOURCES = {"sha-citations.py", "soundness-status.py"}
+
+
 def scratchpad_citations(paths=None):
     """The set of top-level scratchpad directory names the documents cite as evidence."""
     out = set()
     for path in (paths or TARGETS):
-        if not path.exists():
+        if not path.exists() or path.name in _FIXTURE_SOURCES:
             continue
         for c in set(re.findall(r'scratchpad/[A-Za-z0-9_./*-]+', path.read_text())):
             out.add(c.split("/")[1].rstrip("*") if "/" in c else c)
@@ -423,7 +535,7 @@ def main(argv):
                        if _is_commit_citation(text, m)})
         edits = {}
         for sha in seen:
-            if sha in NOT_SHAS or sha in LOST:
+            if sha in NOT_SHAS or sha in LOST or sha in REPAIR_BLOCKED:
                 continue
             total += 1
             if resolves(sha):
@@ -467,6 +579,17 @@ def main(argv):
         print(f"  ADVISORY (R600): {_d} of {_t} scratchpad path citation(s) point at nothing — "
               f"session-scoped evidence, NOT recoverable. e.g. {', '.join(_s[:5])}")
         print("  Put the decisive artefact IN the row; a path is a courtesy, never the evidence.")
+    # R638 — REPORT BEFORE RETURNING. The first cut of the R600 block below `return`ed 1 while the
+    # UNRESOLVABLE list was still unprinted, so widening TARGETS produced "4 unresolvable" as a COUNT
+    # with no names and no way to act on it. A guard that hides the finding it sits in front of is worth
+    # less than no guard. Both are now reported and either can fail the run.
+    _rc = 0
+    if unresolved:
+        print("  UNRESOLVABLE — these cite a commit no map can recover:")
+        for f, sh in unresolved[:40]:
+            print(f"    {f}: {sh}")
+        _rc = 1
+
     # SOUNDNESS R600 — the ratchet. A new scratchpad citation is a promise nobody can keep.
     _new = new_scratchpad_citations()
     if _new is None:
@@ -475,18 +598,15 @@ def main(argv):
               f"an absent baseline must not read as a clean one.", file=sys.stderr)
         return 2
     if _new:
+        _rc = 1
         print(f"  NEW SCRATCHPAD CITATION(S) (R600): {len(_new)} — {', '.join(sorted(_new))}")
         print("  A scratchpad path is session-scoped: it is dead the moment the session ends, and")
         print("  unlike a dead sha it CANNOT be repaired. R655 is the measured cost — un-actionable")
         print("  on five binaries because what was load-bearing lived in a directory that is gone.")
         print("  Put the decisive artefact IN the row. Do not add a baseline line to pass this gate.")
-        return 1
 
-    if unresolved:
-        print("  UNRESOLVABLE — these cite a commit no map can recover:")
-        for f, s in unresolved[:40]:
-            print(f"    {f}: {s}")
-        return 1
+    if _rc:
+        return _rc
     if args.check and dead:
         print("  Run `python3 scripts/sha-citations.py --apply`. A row whose closing commit cannot be")
         print("  resolved is, to `grep`, indistinguishable from a row citing a commit that never was.")

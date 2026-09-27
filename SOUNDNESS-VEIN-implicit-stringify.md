@@ -1,6 +1,6 @@
 # Vein: an effect reached through IMPLICIT STRINGIFICATION — silent in ALL FOUR engines
 
-**Status: CLOSED four-way** (2026-07-25) — java `5189da7`, swift `ca299f0`, ts `e1a84fc`, rust `382e7e0`.
+**Status: CLOSED four-way** (2026-07-25) — java `a97795c`, swift `ca299f0`, ts `e1a84fc`, rust `18cf71e`.
 Found under the `candor-java/eval/corpus-crossorg` pre-registration, which forbade fixing *during* the
 confirmatory run; these are the "separate, later effort with its own separate result" that PREREG.md
 anticipates. **Class: silent under-report (cardinal sin). Common-mode: 4 of 4 engines.**
@@ -9,10 +9,10 @@ anticipates. **Class: silent under-report (cardinal sin). Common-mode: 4 of 4 en
 
 | engine | mechanism reused | A/B fabrication gate | suite |
 |---|---|---|---|
-| java `5189da7` | implicit-contract-reentry sink table (existed for `String.format`/`append`/`println`) — logging facades were simply absent from it | the field case, 18.7k fns: **8939 -> 8939 effectful, 0 changed** | 436 |
+| java `a97795c` | implicit-contract-reentry sink table (existed for `String.format`/`append`/`println`) — logging facades were simply absent from it | the field case, 18.7k fns: **8939 -> 8939 effectful, 0 changed** | 436 |
 | swift `ca299f0` | `edgeStringWitness` (concrete operands already worked) — added CHA over protocol conformers for existential/generic/caught-error operands | 10 packages, 4360 fns: 3 gains, **0 fabricated concrete effects** (all transitive `Unknown`) | 268 + smoke 104 |
 | ts `e1a84fc` | `coercionTargets` (desugared the coercion protocol but never consulted the CHA machinery beside it) | 8 repos, ~17k fns: **0 effect-set changes**, 1 explained new edge | 600 |
-| rust `382e7e0` | `charge_coercion` (concrete operands) + the existing bounded-CHA arm — joined; also closed inline-captured holes, a silent miss even for concrete types | **962 crates, 470,971 fns**: 4 concrete gains (one genuine recovery, verified to source), 0 losses, 93 `Unknown` (0.020%) | 338 + integration 150 |
+| rust `18cf71e` | `charge_coercion` (concrete operands) + the existing bounded-CHA arm — joined; also closed inline-captured holes, a silent miss even for concrete types | **962 crates, 470,971 fns**: 4 concrete gains (one genuine recovery, verified to source), 0 losses, 93 `Unknown` (0.020%) | 338 + integration 150 |
 
 **The dynamic oracle re-run closes the loop on the original catch:** HikariCP, same corpus and suite,
 `cardinalSinViolations` **2 -> 0**, `honestyInvariantHolds` **false -> true**, and the two frames moved into

@@ -811,7 +811,7 @@ def row_r5(ws, pol_pure):
 
 # ⟨0.24⟩ ALL FOUR now implement `gate --report`. This list was ["java","swift"] while rust and ts had not
 # landed it, and the row printed NOSURF for them — which is honest but does not FAIL, so the suite stayed
-# green while a clause §3.1 calls a MUST was pinned 2-of-4. That gap is closed (rust `93ed0a1`, ts `c2b8ce4`).
+# green while a clause §3.1 calls a MUST was pinned 2-of-4. That gap is closed (rust `b665e39`, ts `c2b8ce4`).
 GATE_ENGINES = ["rust", "java", "ts", "swift"]
 
 R6_ABSENT_REPORT = {          # `app.hidden` is NOT here. Absent is absent.

@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS, and it is not the reason you would guess. This project has shipped a broken
 SOUNDNESS table FIVE times. Four were caught late by a reviewer. The fifth was caught only after a
-commit that CLAIMED to fix it (`97cfbfe`, "R116 was an orphaned table row, rendering as raw text")
+commit that CLAIMED to fix it (`9345801`, "R116 was an orphaned table row, rendering as raw text")
 moved the row from one orphaned block into the SAME orphaned block, and reported success — because
 its verification counted PIPES.
 

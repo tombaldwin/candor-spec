@@ -1,6 +1,6 @@
 # Vein: global/lazy unit identity is not module-qualified (rust + swift)
 
-**Status: CLOSED — rust `5447eba`, swift `b616caf` (+ `7cec437`, `7f18c38`).** Found 2026-07-25 while scoping blocker (a) of
+**Status: CLOSED — rust `48b7669`, swift `b616caf` (+ `7cec437`, `7f18c38`).** Found 2026-07-25 while scoping blocker (a) of
 [SOUNDNESS-VEIN-initializer-edge.md](SOUNDNESS-VEIN-initializer-edge.md). It is a defect in its own right,
 independent of that vein, and it is **honesty-critical in BOTH directions**.
 
@@ -15,7 +15,7 @@ module path, so the two collapse into one — carrying the union of their effect
 |---|---|---|
 | **java** | `core.C.<clinit>` — fully qualified | **SOUND** |
 | **ts** | `core.core.<module>` — path-qualified | **SOUND** |
-| **rust** | `<lazy>::CFG` — the synthetic prefix **replaced** the module path | **FIXED** `5447eba` |
+| **rust** | `<lazy>::CFG` — the synthetic prefix **replaced** the module path | **FIXED** `48b7669` |
 | **swift** | `cfg` — bare name | **FIXED** `b616caf` |
 
 The two sound engines already qualify by path, so the fix has in-family precedent: this is not a new spec
@@ -50,7 +50,7 @@ built on top of global reads.
 
 Qualify the global/lazy unit name with its **declaring module path**, as java and ts already do.
 
-**rust is done** (`5447eba`): `<lazy>::CFG` → `<lazy>::util_m::CFG`. The module path goes **inside** the
+**rust is done** (`48b7669`): `<lazy>::CFG` → `<lazy>::util_m::CFG`. The module path goes **inside** the
 prefix so `tail2` — which is how `resolve_target` resolves a `::` path, requiring a unique hit — stays
 discriminating (`util_m::CFG`). Appending it after the name would leave tail2 identical and fix nothing;
 that placement is the whole point. A shared `lazy_qual` builds the declaration and the forcing edge so they
