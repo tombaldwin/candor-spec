@@ -132,7 +132,22 @@ _DECLARED_RESOLVED = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
 # PARTLY, correctly, and are correctly open. The check was right to fire and wrong about what it had
 # found, which is the worse failure of the two: a reader who checks three and finds them all fine
 # stops reading the fourth.
-_PARTIAL_BEFORE = re.compile(r'(?:PARTIALLY|PARTLY|HALF|\(\w\)|\bONE\s+HALF)\s*$', re.I)
+# SOUNDNESS R642 — AND IT ONLY WORKED WHEN THE PARTIAL WORD TOUCHED `CLOSED`. The `\s*$` anchor above
+# required the partial word to end the look-back window, so four realistic spellings produced a FALSE
+# SAYS BOTH: `THE SWIFT HALF IS CLOSED`, `HALF of this row is NOW CLOSED`, `PARTLY — only the rust arm
+# is CLOSED`, and `PARTLY: CLOSED` (a colon was enough). On the live register TWO OF THE THREE rows the
+# advisory reported were this failure — R561 and R562 both read "The LOCAL half is CLOSED", which is a
+# partial closure correctly filed, exactly as R198/R209/R576 were before.
+#
+# The partial word must now appear within 40 characters of `CLOSED` with NO SENTENCE BREAK, pipe or
+# backtick between them — that guard is what keeps it from reaching across a sentence into an unrelated
+# clause, which is the only way a widening here could SUPPRESS a real says-both. Measured both
+# directions on the register: 4 rows newly suppressed (R385, R560, R561, R562 — all four genuinely
+# partial, read individually) and ZERO newly reported, so the widening costs no disclosure. `\(\w\)`
+# is spelled as its own alternative because `)` is not a word character, so a trailing `\b` would
+# never match after it — and that is how the first cut of this fix lost R576's `**(b) CLOSED`.
+_PARTIAL_BEFORE = re.compile(r'(?:\b(?:PARTIALLY|PARTLY|HALF|ONE\s+HALF)\b|\(\w\))'
+                             r'[^.`|]{0,40}$', re.I)
 _BODY_CLOSURE = re.compile(
     r'\b(?:NOW\s+)?(?:FULLY\s+|BOTH\s+HALVES\s+(?:OF\s+THIS\s+ROW\s+)?(?:ARE\s+)?)?'
     r'CLOSED\b[^.`]{0,70}`[0-9a-f]{7,40}`')
@@ -141,7 +156,8 @@ _BODY_CLOSURE = re.compile(
 def _body_closure(body):
     """A closure recorded mid-cell, EXCLUDING one that is explicitly partial."""
     for m in _BODY_CLOSURE.finditer(body):
-        head = body[max(0, m.start() - 24):m.start()]
+        # R642: 70, not 24 — the window must be at least as long as _PARTIAL_BEFORE can reach.
+        head = body[max(0, m.start() - 70):m.start()]
         if _PARTIAL_BEFORE.search(head.rstrip()):
             continue
         return m
@@ -489,6 +505,44 @@ def selftest():
     # the other's idea of what a row is. It is the same list `check_soundness_tables.py --selftest`
     # runs, which is the point: one contract, two consumers.
     bad = soundness_row.selftest()
+
+    # SOUNDNESS R642 — `_body_closure` AND THE SAYS-BOTH PATH HAD NO CASE AT ALL, and `_PARTIAL_BEFORE`
+    # was the uncalibrated guard the row named. `bucket()` never reaches this code, so every case above
+    # could pass with the whole path deleted. These eight are the spellings that decide it: the first
+    # five must be SUPPRESSED as partial closures, the last three must still be REPORTED.
+    #
+    # Case 5 exists because the first cut of R642's fix LOST it: `\(\w\)` cannot carry a trailing `\b`,
+    # since `)` is not a word character. Case 8 is the mirror — `CLOSED BOTH HALVES` is a FULL closure and
+    # must never be read as partial just because the word "HALVES" is nearby.
+    for text, want_suppressed, why in [
+        ("THE SWIFT HALF IS CLOSED — candor-swift `abc1234`",         True,  "partial, words between"),
+        ("HALF of this row is NOW CLOSED — see `abc1234`",            True,  "partial, prose between"),
+        ("PARTLY — only the rust arm is CLOSED, `abc1234`",           True,  "partial, em dash + clause"),
+        ("PARTLY: CLOSED — candor-rust `abc1234`",                    True,  "partial, a colon was enough"),
+        ("**(b) CLOSED 2026-09-24, candor-rust `abc1234`**",          True,  "R576's spelling: (b) CLOSED"),
+        ("The rust half is not the issue. CLOSED — `abc1234`",        False, "sentence break: NOT partial"),
+        ("PARTLY about something else entirely, and separately this row is now CLOSED `abc1234`",
+                                                                     False, "too far: NOT partial"),
+        ("**CLOSED BOTH HALVES — candor-java `abc1234`**",            False, "a FULL closure"),
+    ]:
+        got = _body_closure(text) is None
+        flag = "ok  " if got == want_suppressed else "FAIL"
+        if got != want_suppressed:
+            bad += 1
+        print(f"  {flag} suppressed={got!s:5} want={want_suppressed!s:5} {text[:58]!r}  ({why})")
+
+    # …and `_NOT_A_VERDICT` (the R520 guard), whose discriminating case is one line and was absent. A row
+    # whose evidence says the engine must FAIL CLOSED is discussing candor's semantics, not its own status.
+    _fc = ("| R904 rust: a thing | 2026-09-27 | class |"
+           " The engine must fail closed here. Measured at `abc1234`. |")
+    _fcgot = bucket(_fc)
+    if _fcgot != "cites-a-sha-only":
+        bad += 1
+        print(f"  FAIL the fail-closed idiom bucketed {_fcgot!r}, want 'cites-a-sha-only' — without "
+              "_NOT_A_VERDICT this reads as a CLOSURE, which is how R520 left the shipping list")
+    else:
+        print(f"  ok   {_fcgot:17} want cites-a-sha-only   the fail-closed idiom is not a verdict")
+
     # The ID parse is part of the contract too — see the comment at `rid`. A base row and its lettered
     # sibling are DIFFERENT rows and routinely have different verdicts.
     for line, want_id in (("| R529c rust: a body-local struct's field type…", "R529c"),
