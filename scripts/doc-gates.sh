@@ -1,5 +1,21 @@
 #!/usr/bin/env bash
-# doc-gates.sh — every candor-spec gate that reads DOCUMENTS ONLY, runnable without an engine.
+# doc-gates.sh — the candor-spec gates that need no four-way suite. TWO OF THEM ARE NOT DOCUMENTS-ONLY.
+#
+# SOUNDNESS R643, measured 2026-09-27 — THIS HEADER SAID "every candor-spec gate that reads DOCUMENTS
+# ONLY, runnable without an engine" AND IT WAS FALSE, in the direction that matters:
+#
+#   * `field_audit.py` BUILDS AND INVOKES ENGINES — it runs `candor-scan` and the candor-java jar, and
+#     its own refusal says so ("no engine could run — an empty table must never read as agreement").
+#     It passed here for its whole life only because the engines HAPPEN to be built on this machine.
+#     Two consequences the old header actively hid: this script is NOT safe to run during a conformance
+#     run (it reads engine trees, which is the contamination that file documents three times over), and
+#     it cannot be dropped into a documents-only CI job.
+#   * `sha-citations.py --check` needs the SIBLING REPOS' git history — it answers "does this sha name a
+#     commit in ANY family repo" by interrogating each one.
+#
+# Measured in an isolated candor-spec-only worktree: 10 of 12 gates pass, and exactly those two fail.
+# Both now SELF-SKIP with a stated reason when their prerequisite is absent, and this script reports
+# INCOMPLETE rather than OK when anything was skipped — green over an unrun gate is the whole hazard.
 #
 # WHY THIS EXISTS, measured 2026-09-17. SPEC ⟨0.39⟩ was written, gated on clause_check.py and
 # check_soundness_tables.py, committed and PUSHED — and it left `must_ledger.py` RED, with four
@@ -25,12 +41,19 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 2
 
 fail=0
+skipped=0
 run() {
   local label="$1"; shift
   local out rc
   out="$("$@" 2>&1)"; rc=$?
   if [ $rc -eq 0 ]; then
     printf '  %-28s OK\n' "$label"
+  elif [ $rc -eq 3 ]; then
+    # The self-skip convention `gate-run.sh` already uses: exit 3 means IT DID NOT RUN and said why.
+    # Counted as UNRUN, never as passed — the verdict below goes INCOMPLETE.
+    printf '  %-28s SELFSKIP — it did not run:\n' "$label"
+    printf '%s\n' "$out" | sed 's/^/      /' | head -6
+    skipped=$((skipped+1))
   else
     printf '  %-28s FAIL (exit %d)\n' "$label" "$rc"
     printf '%s\n' "$out" | sed 's/^/      /' | head -20
@@ -38,11 +61,34 @@ run() {
   fi
 }
 
-echo "doc-gates — documents only, no engine is built or invoked"
+echo "doc-gates — no four-way suite; field_audit INVOKES ENGINES and sha_citations needs the family"
 run "must_ledger"          python3 conformance/must_ledger.py
 run "clause_check"         python3 conformance/clause_check.py
 run "part_declarations"    python3 conformance/part_declarations.py
-run "field_audit"          python3 conformance/field_audit.py
+# field_audit INVOKES ENGINES (see the header). Its own exit 2 — "no engine could run: an empty table
+# must never read as agreement" — is CORRECT and is deliberately not softened; the decision about whether
+# to ASK it belongs here instead. Without a built engine this is an unrun gate, not a passing one.
+# DOC_GATES_NO_ENGINE=1 forces the skip. This exists because of what the header above establishes: a
+# gate that invokes engines READS ENGINE WORKING TREES, so the only safe time to run field_audit is when
+# no lane owns an engine — and the engine-presence test below cannot tell "no engine built" from "three
+# agents mid-edit with engines built". Measured 2026-09-27: I ran this script four times with three lanes
+# holding dirty engine trees before noticing. It passed each time, so nothing was lost; a FAIL would have
+# been indistinguishable from a real one, which is the hazard `CLAUDE.md` documents three times over.
+if [ -n "${DOC_GATES_NO_ENGINE:-}" ]; then
+  printf '  %-28s SELFSKIP — it did not run:\n' "field_audit"
+  echo "      DOC_GATES_NO_ENGINE is set. field_audit INVOKES ENGINES and so reads engine working"
+  echo "      trees; run it when no lane owns an engine."
+  skipped=$((skipped+1))
+elif [ -x "$HERE/../candor/target/debug/candor-scan" ] \
+   || [ -x "$HERE/../candor-rust/target/debug/candor-scan" ] \
+   || ls "$HERE"/../candor-java/build/libs/*-all.jar >/dev/null 2>&1; then
+  run "field_audit"        python3 conformance/field_audit.py
+else
+  printf '  %-28s SELFSKIP — it did not run:\n' "field_audit"
+  echo "      no engine binary is built here, and field_audit INVOKES ENGINES. Build one, or run"
+  echo "      this gate where the four-way suite runs. Its own exit-2 refusal is correct."
+  skipped=$((skipped+1))
+fi
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
 run "rung_ladder"          python3 scripts/rung-ladder-check.py
 run "check_soundness_tables" python3 scripts/check_soundness_tables.py
@@ -73,9 +119,15 @@ run "soundness_status_selftest" python3 scripts/soundness-status.py --selftest
 # nothing and invokes no engine, so it belongs here rather than behind the four-way suite.
 run "part92_arm_table"     python3 conformance/gen_chained_dispatch.py --selftest
 
-if [ $fail -eq 0 ]; then
-  echo "doc-gates: OK — every documents-only gate passed"
-else
+if [ $fail -ne 0 ]; then
   echo "doc-gates: FAILED — see above. Do not push."
+elif [ $skipped -ne 0 ]; then
+  # SOUNDNESS R643 — this branch is the point of the row. Two of these gates need something a
+  # documents-only checkout does not have, and for their whole life they simply went RED there, which
+  # is why nine of twelve were in no CI workflow at all. Skipping them is honest; calling the run OK
+  # afterwards would not be, and `gate-run.sh` has said INCOMPLETE over an unrun gate since 2026-08-30.
+  echo "doc-gates: INCOMPLETE — $skipped gate(s) did not run (see SELFSKIP above). No gate FAILED."
+else
+  echo "doc-gates: OK — all $(( 12 )) gates ran and passed"
 fi
 exit $fail

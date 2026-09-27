@@ -72,6 +72,19 @@ jobs:
         working-directory: candor-spec
         run: python3 scripts/check_soundness_tables.py --selftest
 
+      # SOUNDNESS R643 — the whole documents-only gate list, in ONE step `bin/gates.sh` can print.
+      # Nine of twelve doc-gates were in NO workflow, so the printed per-repo gate list could not name
+      # them, and the rule this family relies on ("run ITS gates, from a fixed list, not from whatever
+      # the report mentioned") had nothing to read. They were absent for a reason nobody wrote down:
+      # `field_audit` INVOKES ENGINES and `sha-citations --check` needs the siblings' git HISTORY, so
+      # both simply went red on a documents-only checkout. Both now self-skip with a stated reason and
+      # the script reports INCOMPLETE rather than OK, which is what makes this step safe to add.
+      # Placement is deliberately NOT load-bearing: sha-citations asks git whether each sibling is a
+      # SHALLOW clone, so this step behaves the same before or after the sibling checkouts below.
+      - name: Documents-only gates (doc-gates.sh — 10 run here, 2 self-skip and say why)
+        working-directory: candor-spec
+        run: bash scripts/doc-gates.sh
+
       # R155: `Llm` was in SPEC §1 and enforced by every engine's classifier while every
       # agent-facing vocabulary copy omitted it — and the two doc-vs-doc gates above cannot see it,
       # because a vocabulary omission that is CONSISTENT across copies (every copy silently drifted

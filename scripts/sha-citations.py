@@ -113,6 +113,37 @@ def load_maps(prefer_committed=True):
     return out
 
 
+def family_repos_present(family=None):
+    """Which family repos have a `.git` this process could interrogate.
+
+    SOUNDNESS R643. `resolves()` answers "does this sha name a commit in ANY family repo" by running
+    `git cat-file` in each sibling — so on a candor-spec-ONLY checkout it returns None for every sha
+    and this check reports EVERY citation dead. Measured in an isolated worktree 2026-09-27: 12 of the
+    register's doc-gates, and this one alone produced hundreds of "unresolvable" lines.
+
+    That is the same shape as R639 one level up — a check that looked nowhere and called everything
+    missing — so the answer is the same: test the ENVIRONMENT directly and refuse, rather than infer
+    absence from a result. Inferring it from "nothing resolved" would be wrong in the one case that
+    matters: a register whose citations really are all dead must still go RED.
+    """
+    fam = pathlib.Path(family) if family else FAMILY
+    return [r for r in REPOS if (fam / r / ".git").exists() and not _is_shallow(fam / r)]
+
+
+def _is_shallow(d):
+    """A depth-1 clone cannot resolve an old commit, so it cannot answer this check either.
+
+    SOUNDNESS R643. Without this, placement in CI decides the verdict: `conformance.yml`'s documents
+    job checks out every sibling repo SHALLOW (for check_agents_vocabulary), so a doc-gates step placed
+    after those checkouts would find six `.git` directories, run the check, resolve nothing, and go RED —
+    while the same step one line earlier would self-skip. A gate whose answer depends on where in a
+    workflow it sits is not a gate. Ask git instead.
+    """
+    r = subprocess.run(["git", "-C", str(d), "rev-parse", "--is-shallow-repository"],
+                       capture_output=True, text=True)
+    return r.returncode != 0 or r.stdout.strip() == "true"
+
+
 def resolves(sha):
     """Does this sha name a commit in ANY family repo? The register does not say which repo a sha
     belongs to, so the question is genuinely family-wide."""
@@ -222,6 +253,49 @@ def selftest():
             if got != want:
                 bad.append(f"_is_commit_citation({text!r}, {m.group(1)}) = {got}, want {want} — {why}")
 
+    # family_repos_present: the environmental predicate the R643 self-skip rests on. Tested over REAL
+    # clones rather than inferred, because the WRONG way to detect this is "nothing resolved" — a
+    # register whose citations really are all dead must still go RED.
+    #
+    # AND THESE CASES CAUGHT A STALE EXPECTATION OF MINE, which is the only reason the distinction got
+    # made: the first cut of them created an EMPTY `.git` DIRECTORY and asserted it counted as a repo.
+    # Once `_is_shallow` started asking git, an empty `.git` correctly stopped counting and both cases
+    # failed. An unusable `.git` is not a family repo, and now that is pinned rather than assumed.
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as _td:
+        _p = pathlib.Path(_td)
+        if family_repos_present(_p) != []:
+            bad.append("an EMPTY dir must give [] — otherwise the self-skip never fires")
+        _fake = _p / "fake"
+        (_fake / "candor-spec" / ".git").mkdir(parents=True)
+        if family_repos_present(_fake) != []:
+            bad.append("a `.git` that is not a usable repo must NOT count — a directory git cannot "
+                       "answer for is the same as no repo at all")
+        _src = _p / "src"
+        _src.mkdir()
+        subprocess.run(["git", "init", "-q", str(_src)], capture_output=True)
+        for _k, _v in (("user.email", "t@e"), ("user.name", "t")):
+            subprocess.run(["git", "-C", str(_src), "config", _k, _v], capture_output=True)
+        for _i in (1, 2):
+            (_src / "f").write_text(str(_i))
+            subprocess.run(["git", "-C", str(_src), "add", "f"], capture_output=True)
+            subprocess.run(["git", "-C", str(_src), "commit", "-qm", f"c{_i}"], capture_output=True)
+        _deep, _shal = _p / "deep" / "candor-rust", _p / "shal" / "candor-rust"
+        _deep.parent.mkdir(); _shal.parent.mkdir()
+        _c1 = subprocess.run(["git", "clone", "-q", str(_src), str(_deep)], capture_output=True)
+        _c2 = subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{_src}", str(_shal)],
+                             capture_output=True)
+        if _c1.returncode or _c2.returncode:
+            bad.append("could not build the shallow/deep clone pair — the _is_shallow cases did NOT "
+                       "run, and an unrun calibration case is not a passing one")
+        else:
+            if family_repos_present(_p / "deep") != ["candor-rust"]:
+                bad.append("a FULL clone must count — otherwise the gate self-skips everywhere and "
+                           "never runs at all, which is worse than the red it replaced")
+            if family_repos_present(_p / "shal") != []:
+                bad.append("a SHALLOW clone must NOT count: it cannot resolve an old commit, so "
+                           "whether this gate passes would depend on CI step ORDER")
+
     # ephemeral_citations' three states, over a throwaway target file so the live register is not read.
     with tempfile.TemporaryDirectory() as td:
         tgt = pathlib.Path(td) / "FAKE.md"
@@ -271,6 +345,16 @@ def main(argv):
         print("sha-citations: REFUSING — no commit-maps found, under history/commit-maps/ or any "
               ".git/filter-repo/. A check that cannot find its evidence must not pass.", file=sys.stderr)
         return 2
+
+    present = family_repos_present()
+    if len(present) < 2:
+        print("sha-citations: SKIPPED — it did not run. Only %d family repo(s) have a `.git` here (%s), "
+              "and this check answers `does this sha name a commit in ANY family repo` by interrogating "
+              "each one. On a single-repo checkout it would report every engine citation dead, which is "
+              "a check that looked nowhere calling everything missing — the R639 shape. Run it where the "
+              "family is cloned WITH HISTORY; a shallow clone cannot resolve an old commit either."
+              % (len(present), ", ".join(present) or "none"), file=sys.stderr)
+        return 3
 
     total = dead = repaired = 0
     unresolved = []
