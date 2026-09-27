@@ -86,6 +86,18 @@ drives that with no engine, and `assert_hasnt_is_reachable()` refuses a `hasnt` 
 in the arm's own fixture performs — four arms had one (`c2`, `c3`, `c9`, `c12`), which is the same
 vacuity one level down. SPEC.md:4680 states the rule verbatim for this exact reason.
 
+SOUNDNESS R730 — ⟨0.40⟩ IN THIS FILE'S COMMENTS MEANS THE CLAUSE THAT SHIPPED AS ⟨0.39⟩. The rung was
+folded in before either shipped, and R647 relabelled 21 register mentions without touching this
+generator, so the suite printed a rung no engine will ever declare. Exactly ONE mention was PRINTED —
+`c3_pure_only`'s `why=` — and it now carries the register's own spelling, "⟨0.39⟩ (the clause once
+drafted as 0.40)". That string is printed ONLY on the `FAIL` branch below, so the mislabel was LATENT
+rather than live; it surfaces exactly when someone is reading a RED arm, which is the worst moment to be
+shown a rung no engine will ever declare. The other NINE are comments recording the design reasoning as it happened, and they
+are deliberately NOT relabelled: they are the record that this behaviour WAS drafted as a separate rung,
+which is why three of the arms exist at all. Collapsing that would be the same mistake as repairing a
+pre-rewrite sha in a passage that exists to show an old->new pair (R638). No gate can catch either —
+`rung-ladder-check.py` reads SPEC.md only.
+
 THE XFAIL TABLE. `c1_foreign_effectful` fails on ALL FOUR engines today — measured against the released
 artifacts, spec 0.38 (candor-scan 0.38.4, candor-java 0.38.3, candor-ts 0.38.3, candor-swift 0.38.3).
 Every one is declared as an `(arm, engine)` expectation rather than hidden, and **A PASSING XFAIL IS A
@@ -270,7 +282,7 @@ ARMS = [
     dict(id="c12_consumer_pure_only_union", iface="impl", third=False, chained=True,
          entry="pureonlydispatch",
          want=dict(has={CARRIER_EFFECT}, unknown=False),
-         why="⟨0.40⟩ PRODUCER HALF: a consumer dispatching on a dependency whose ONLY implementor "
+         why="⟨0.39⟩ (the clause once drafted as 0.40) PRODUCER HALF: a consumer dispatching on a dependency whose ONLY implementor "
              "anywhere is PURE must read pure, not Unknown — which requires the producer to publish "
              "the pure-only union entry it currently drops"),
     # SOUNDNESS R595 — A CONSUMER-SUPPLIED IMPLEMENTOR REACHED THROUGH A MUTABLE GLOBAL, not through a
@@ -617,8 +629,14 @@ JAVA_APP = {
     "third":    '  public static int appRun() { return appSize(new effimpl.Crossterm()); }\n',
     "sealed":   '  public static int appSealed() { return iface.SealedDispatch.sealedDispatch(); }\n',
     "middle":   '  public static int appSize(iface.Backend b) { return middle.Mid.midSize(b); }\n',
-    # present only so the table is TOTAL — java declares c7 inexpressible (no re-export), so this is
-    # never rendered. A missing key here is a KeyError in a renderer, not a skip.
+    # SOUNDNESS R678 — THIS COMMENT WAS TRUE WHEN WRITTEN AND EXPIRED WHEN THE TABLE GREW. It said this
+    # body is "never rendered" because java declares c7 inexpressible, and c7 WAS the only
+    # `nesteddispatch` arm at the time. `c9_consumer_zero_union` (R533) was added later with the same
+    # `entry` and NO skip list, and `c10_unchained_direct` after it — so java has been rendering this
+    # body for both ever since, and R677's census figures were measured over it. VERIFIED BY RENDERING
+    # rather than by re-reading the comment. It is still the right key to keep for c7's totality; what
+    # was wrong was the claim that nothing reaches it.
+    # (c12 no longer renders it — R677's fix gave that arm its own body.)
     "nesteddispatch": '  public static int appSize(iface.Backend b) { return b.size(); }\n',
     # c8 — java's spelling of the same thing is a LAMBDA, which is the one implementor shape with no
     # class file and therefore no CHA entry (SOUNDNESS R530b). `Backend` is a SAM, so this compiles.
@@ -731,7 +749,9 @@ SW_APP = {
     "third":    'import EffImpl\npublic func appRun() -> Int { return appSize(Crossterm()) }\n',
     "sealed":   'import Iface\npublic func appSealed() -> Int { return sealedDispatch() }\n',
     "middle":   'import Iface\nimport Middle\npublic func appSize(_ b: Backend) -> Int { return midSize(b) }\n',
-    # as above: swift declares c7 inexpressible (no submodules), so this is never rendered.
+    # as above, and the same R678 correction applies: swift declares c7 inexpressible (no submodules),
+    # but c9_consumer_zero_union and c10_unchained_direct render this body for swift too. "Never
+    # rendered" was true of a table that had one such arm and is false of this one.
     "nesteddispatch": 'import Iface\npublic func appSize(_ b: Backend) -> Int { return b.size() }\n',
     # c8 — swift's spelling is a conformance declared INSIDE a function body, which DeclCollector's
     # `.skipChildren` sites never reach (SOUNDNESS R532). Same two-function shape as the other three.
