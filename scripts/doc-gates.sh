@@ -122,6 +122,12 @@ run "soundness_status_selftest" python3 scripts/soundness-status.py --selftest
 # RENDERS the fixtures to prove each `hasnt` names an effect the fixture can actually perform; it builds
 # nothing and invokes no engine, so it belongs here rather than behind the four-way suite.
 run "part92_arm_table"     python3 conformance/gen_chained_dispatch.py --selftest
+# SOUNDNESS R647 — the xfail ledger and the register are two records of one fact, and until now nothing
+# read them together. `part_declarations.py` checks the row a `(arm, engine)` expectation cites EXISTS;
+# this checks they AGREE about which engines are affected, and refuses if it cannot load the status tool
+# to ask what CLOSED means. Documents only — it parses generators with `ast`, invokes no engine.
+run "xfail_register_agree" python3 scripts/xfail-register-agree.py
+run "xfail_agree_selftest" python3 scripts/xfail-register-agree.py --selftest
 
 if [ $fail -ne 0 ]; then
   echo "doc-gates: FAILED — see above. Do not push."
