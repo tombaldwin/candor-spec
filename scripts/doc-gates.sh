@@ -90,6 +90,10 @@ else
   skipped=$((skipped+1))
 fi
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
+# rung_ladder NEEDS `v0.N` TAGS. It reads `git tag` to tell a released rung from an authored one, and
+# refuses when it finds none rather than guessing — which is right, and means a SHALLOW, TAGLESS
+# checkout makes it FAIL rather than self-skip. That is R746: it went red in CI on the very commit
+# that wired this script into `conformance.yml`, and the workflow now passes `fetch-tags: true`.
 run "rung_ladder"          python3 scripts/rung-ladder-check.py
 run "check_soundness_tables" python3 scripts/check_soundness_tables.py
 # …AND THE TOOL ITSELF, added 2026-09-25 (SOUNDNESS R640/R641). It had no selftest for its whole life,

@@ -53,6 +53,13 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: candor-spec
+          # SOUNDNESS R643/R746 — `rung_ladder` reads `git tag` to tell a RELEASED rung from an
+          # authored one, and a default checkout is shallow with NO tags, so it correctly refused
+          # ("no v0.N tags found — cannot tell released from unreleased") and took doc-gates.sh red on
+          # the commit that wired it in. `fetch-tags` costs ~2 MB against this repo's 153 MB of history
+          # (measured: a depth-1 clone plus `git fetch --tags --depth=1` goes 12 MB -> 14 MB and
+          # returns all 35 tags), so the gate RUNS here rather than becoming a third self-skip.
+          fetch-tags: true
       - name: AGENTS.md drift gate (spec floor + envelope shape)
         working-directory: candor-spec
         run: python3 scripts/check_agents_drift.py
