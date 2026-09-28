@@ -42,12 +42,16 @@ cd "$HERE" || exit 2
 
 fail=0
 skipped=0
+ran=0
+passed=0
 run() {
   local label="$1"; shift
   local out rc
+  ran=$((ran+1))
   out="$("$@" 2>&1)"; rc=$?
   if [ $rc -eq 0 ]; then
     printf '  %-28s OK\n' "$label"
+    passed=$((passed+1))
   elif [ $rc -eq 3 ]; then
     # The self-skip convention `gate-run.sh` already uses: exit 3 means IT DID NOT RUN and said why.
     # Counted as UNRUN, never as passed — the verdict below goes INCOMPLETE.
@@ -145,6 +149,12 @@ elif [ $skipped -ne 0 ]; then
   # afterwards would not be, and `gate-run.sh` has said INCOMPLETE over an unrun gate since 2026-08-30.
   echo "doc-gates: INCOMPLETE — $skipped gate(s) did not run (see SELFSKIP above). No gate FAILED."
 else
-  echo "doc-gates: OK — all $(( 12 )) gates ran and passed"
+  # COUNT THE GATES, DO NOT REMEMBER THEM. This line said `$(( 12 ))` — a literal — so it printed
+  # "all 12 gates ran and passed" on a run where SIXTEEN executed, and would have printed it just
+  # as happily if a gate had silently stopped being invoked. That is the umbrella's own rule
+  # ("How many are there? Do not answer that from this file — run the tool"), which was written
+  # after a remembered gate count was wrong twice in one day, arriving here in the verdict line of
+  # the thing doing the counting. SOUNDNESS R772.
+  echo "doc-gates: OK — all $passed gate(s) ran and passed"
 fi
 exit $fail
