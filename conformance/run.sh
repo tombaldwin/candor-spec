@@ -15881,6 +15881,27 @@ rm -rf "$P81"
 # were ALREADY at their wanted values on that same pre-fix binary (the ctrl-named report and gate-json were
 # measured BYTE-IDENTICAL between the two binaries, not merely value-equal), so the controls are not what
 # moved.
+# SOUNDNESS R782/R785 WILL MOVE A CELL HERE, AND IT IS FLAGGED RATHER THAN PRE-WRITTEN.
+# R782: class-definition-time work (a decorator APPLICATION, a decorator ARGUMENT, a `static {}` block)
+# is minted as a ROOT unit and never wired from the unit that EVALUATES the class. Measured
+# consequences: `deny Fs <module>` exits 0 over a module that writes on import; a named function
+# containing `@Deco class Y {}` reads PURE while writing on every call; and a LAYER gate
+# (`deny Fs src.domain`) goes green across a layer boundary, which is the README's headline use.
+# ⟨0.14⟩ (SPEC.md:1522-1528) already rules such code in scope, so this is a fix and not a question.
+#
+# WHAT IT DOES TO THIS PART: `ctrl-named-untouched-gate` wants `count:1` on a BLANKET `deny Fs`, and a
+# correct fix makes it `count:2` — `<module>` inherits the effect from the local effectful `Entity`. So
+# that cell currently PINS THE ABSENCE, as a side effect of counting globally rather than by intent.
+#
+# WHY THE NEW CELL IS NOT ADDED HERE YET, which is this part's own standard and not an omission: every
+# cell above was FALSIFIED AGAINST THE PRE-FIX BINARY (see the note below — two RED cells on candor-ts
+# `fbb9ea2`, with the controls proven byte-identical across the two binaries so they were not what
+# moved). A cell cannot be falsified before the fix it pins exists, and a cell added green-on-arrival to
+# the family's most important instrument is exactly the shape this register keeps finding in its own
+# gates. So the fix lands WITH its cell and its falsification in one pass, and the cell to add is the
+# CROSS-LAYER gate — an `infra` module exporting an effectful decorator applied to a `domain` class,
+# `deny Fs src.domain` — because the prefix scope over the decorator's OWN module already catches it and
+# would not discriminate. Use `P81_XFAIL` (`shape:arm:row`) if the cell must land before the engine.
 echo "PART 81 — an anonymous decorator expression is charged to a minted unit, never dropped silent (candor-ts; SPEC §4)"
 printf '%s' "$P81_OUT"
 [ "$P81_BAD" = 0 ] && echo "  -> MATCH — an anonymous decorator's own effect is charged to a position-keyed unit and fails \`deny Fs\`, the named-factory path already covering the same shape is untouched, and a genuinely pure anonymous decorator gains no fabricated effect"
