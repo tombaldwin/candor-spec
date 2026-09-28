@@ -126,6 +126,13 @@ run "part92_arm_table"     python3 conformance/gen_chained_dispatch.py --selftes
 # read them together. `part_declarations.py` checks the row a `(arm, engine)` expectation cites EXISTS;
 # this checks they AGREE about which engines are affected, and refuses if it cannot load the status tool
 # to ask what CLOSED means. Documents only — it parses generators with `ast`, invokes no engine.
+# THE SIN COUNT IS A GATE, NOT A REPORT. SOUNDNESS R771: "how many cardinal sins are open?" is the
+# most-asked question about this register and on 2026-09-28 it cost two failed automated attempts
+# (which returned 19 and 11) and a full manual read of 126 rows to answer correctly (48). It fails
+# when an OPEN row declares no direction, because an undeclared row is invisible to the count and a
+# count that silently omits rows is this register's own cardinal-sin shape pointed at itself.
+run "sin_direction"       python3 scripts/sin-direction.py
+run "sin_direction_selftest" python3 scripts/sin-direction.py --selftest
 run "xfail_register_agree" python3 scripts/xfail-register-agree.py
 run "xfail_agree_selftest" python3 scripts/xfail-register-agree.py --selftest
 
