@@ -1,236 +1,236 @@
 # origin	row	class (truncated) — QUESTIONS, not verdicts. See scripts/porting-queue.py
-java	R80	field-held lambdas were keyed so that static and inherited fields never matched
-java	R84	a method reference to an ABSTRACT interface method was accepted as a "clean" lambda body
-java	R86	a literal argument chosen by a TERNARY is captured from whichever branch sits adjacent
-java	R87	an entry-point marker annotation is only seen at RUNTIME retention
-java	R94	field-lambda binding trusts a PUBLIC MUTABLE field exactly as it trusts a private final one
-java	R147	socket-stream provenance — a read through a stored InputStream carries no Net
-java	R151	the refresh cache replays STALE dependency effects — deny Net flips 1 -> 0
-java	R183	a method reference passed to a HOF OUTSIDE the invoker allowlist (Optional.map(Supplier::get)) is silent while the lambda spelling discloses
-java	R191	a method reference to the SAM of an interface OUTSIDE SAM_OF — every primitive-specialised java.util.function interface — is silent
-java	R217	an OPAQUE callback handed to a HOF was silent while its LAMBDA and METHOD-REFERENCE twins disclosed — and the row's own premise was half wrong
-java	R236	Comparator and its family are outside EVERY arm, so xs.sort(cmpField) AND a direct cmp.compare(a,b) are both silent
-java	R237	an INVOKING higher-order function that isInvokingHof does not name is silent, even for an interface the set DOES cover
-java	R249	a MISSING JDK index resource degrades the engine into silent under-reporting, with no disclosure of any kind
-java	R274	the SLOT-vs-VALUE operand-stack index is THREE cardinal sins, not one, and the widest has NO TABLE bounding it
-java	R275	the suite's ONE long-bearing hand-off assertion was GREEN ON A FABRICATED REASON — which is why R248 sat latent under a suite that appears to cover it
-java	R423	java.nio.file.Path.toUri() is a filesystem STAT classified PURE — the same defect as File.toURI(), one type over, and the sweep that found the first could not s
-java	R433	the String-locator tail is closed for PATH_CTOR_OWNERS and WIDE OPEN for every other Fs owner — new PrintWriter(userPath) is charged Fs and enters NO masking gu
-java	R477	R464 closed the ARGUMENT form of the Exec masking guard and left the RECEIVER form OPEN — allow Exec git still exits 0 over f(ProcessBuilder b) with a benign si
-java	R493	org.jetbrains is κ-covered and has ZERO owner literals in the classifier — and the prefix also covers org.jetbrains.exposed, a SQL framework, so Database.connec
-java	R495	two covered-prefix candidates that could NOT be confirmed and are deliberately NOT fixed — org.apache.struts (RequestProcessor.doForward/doInclude, 63 census NU
-java	R498	org.eclipse.jgit.api.Git.open reaches a real new ProcessBuilder(String[]).start() via FS.readPipe on a platform-selected FS implementation
-java	R506	R480's own carve-out was a SHIPPED CARDINAL SIN. It mapped org.apache.commons.exec.environment.EnvironmentUtils.getProc* to Env, and in commons-exec ≤1.2 that d
-java	R515	the org.ehcache.xml descriptor gate was derived at 3.10.8, where the XML entry point takes a URI — but ConfigurationParser(String) (3.0.0-3.5.3) and public pars
-java	R665	THE GATE-FLIP CENSUS ON THE REFERENCE ENGINE — 18.5x rust's flip rate, AND 97.2% OF IT IS ONE COMMIT. Repeats R662/R664 on candor-java over the newly pinned 118
-java	R667	~~THREE OF EIGHT~~ ONE OF SIX ENGINE FIXES IS INVISIBLE ON 117 REAL JARS — CORRECTED 2026-09-25 by the reach lane, see R669. R547, R94 and R595 moved ZERO rows;
-java	R669	TWO OF THE THREE *INVISIBLE FIXES* CHANGED NO ENGINE CODE AT ALL — their zero movement is ARITHMETIC, not a measurement. R547 (85cb65c) touches CHANGELOG.md and
-java	R672	A CONSUMER CONTRADICTS THE REPORT IT WAS HANDED AND TURNS AN EXPLICIT UNCERTAINTY INTO A CERTAINTY — A SILENT UNDER-REPORT THAT SHIPPED IN 0.39.2, and the stand
-java	R685	A classify ANSWER REPLACED THE CHAINED DEPENDENCY'S OWN ROW — the consumer read MORE CERTAINTY than the report it was handed, and it SHIPPED in 0.39.2. Candor.c
-java	R712	THE 38 CLASSIFIER Unknown RULES NOW CARRY A PER-RULE REASON KIND — 4 native, 1 dispatch (8 owners), 33 reflect — derived from SPEC §4's own statement of what th
-java	R716	A METHOD REFERENCE TO A CLASSIFIER-Unknown NON-PROJECT TARGET CHARGED Unknown WITH NO REASON AT ALL. Closes R713 — the last reasonless Unknown source in the eng
-rust	R75	a callable factory's return was decoded on ONE route out of thirteen
-rust	R76	a dispatch-typed value round-tripped through an unannotated tuple literal
-rust	R88	the bare unannotated let binder never records a dispatch binding — the commonest form in the language
-rust	R89	a TRAIT method passed as a first-class value never dispatches
-rust	R90	the ambiguity guard drops SILENTLY where its own comment claims it discloses
-rust	R92	a SELF-SHADOWING let-else binding silently drops the RHS's own effects
-rust	R100	R92's ordering bug is live one level in, in elem_of
-rust	R101	the closed-world CHA premise makes a positive WRONG claim, and its config knob is declared-but-unimplemented
-rust	R104	the ORACLE reported a clean pass over its own build failure — and manufactured a cardinal sin out of a missing report
-rust	R105	a #[cfg]-duplicated alias is resolved by SOURCE ORDER, fabricating the losing arm's effect
-rust	R106	a seeded bare alias hijacks a FUNCTION-BODY-LOCAL item — and the shipped over-charge control cannot fail
-rust	R107	the capture/restore window's "a table added tomorrow is caught" guarantee is FALSE, and five reads escape it
-rust	R122	#[cfg(any(test, feature = "x"))] erases a PRODUCTION function
-rust	R123	two cfg'd use lines resolve by SOURCE ORDER, so a test mock captures production
-rust	R128	a use bound to a crate-local path that names nothing reads as PURE
-rust	R139	a local macro_rules! DEFINITION body is invisible to count_ident, so R119's promotion still kills the effect
-rust	R141	std::os::unix::process::CommandExt::exec — execvp, which replaces the process image — has no rule
-rust	R142	a macro_rules! defined INSIDE a function body is never recorded, so its template's I/O is invisible
-rust	R143	a MULTI-ARM macro's template is skipped, and the report says nothing at all
-rust	R144	a $(..)*-repetition macro template is unparseable and also silent
-rust	R157	coverage-gate-refresh has NEVER been green — its "stable" step runs nightly and links with a linker it never installs
-rust	R160	a public forwarder that calls a sibling via Self:: is ABSENT from the report
-rust	R161	rusqlite::init_auto_extension and Connection::from_handle went ['Db'] → [] between 08-28 and the 0.34.0 release
-rust	R165	a Drop-carrying value obtained through a FREE FUNCTION is invisible to the escape gate, so its local drop is not charged
-rust	R166	sqlite3_auto_extension is missing from the classifier's DB FFI leaf list
-rust	R168	the leaf-keyed escape gate loses a by-value Drop parameter's drop when the function returns a fresh value of the same type
-rust	R169	a forwarder calling a sibling through a MODULE path (sys::size()) is absent — a different arm from R160
-rust	R171	the coverage-gate GENERATOR's own renderer dropped 24 rows, and the drift job diffed on a key the generator can rewrite without any change in coverage
-rust	R172	R165 + R160 feed the LEAF-keyed construction escape gate — a real in-frame drop beside a returned construction of the same type is now ABSENT
-rust	R173	an ordering-blind ? veto charges a constructor its OWN type's drop; R160 makes it fire on the dominant x?; Ok(Self::new()) spelling
-rust	R174	R165's return-index route bypasses local_type_leaf's deliberate std refusal, and is blind to a unit-returning twin
-rust	R175	Self inside an impl NESTED in a method body resolves to the OUTER impl's type
-rust	R177	a callback stored as Option<Alias> where Alias = Box<dyn Fn()> and invoked through if let Some(c) = &self.cb { c() } is ABSENT
-rust	R182	R165's leaf collision is silent — two::mk -> H beside other::mk -> usize makes holds_two ABSENT with no Unknown
-rust	R184	a NON-NOMINAL type alias whose leaf collides with a struct declared elsewhere in the crate silently deletes EVERY effect edge through that struct's methods
-rust	R185	Option<ConcreteType> FIELD + if let Some(h) = &self.o { h.run() } is silent in all three arms
-rust	R189	CLOSED 2026-09-28 (candor-rust 321ec98) — AND THE MECHANISM I BRIEFED WAS INVERTED IN ITS SECOND HALF. I told the lane *the intersection erases the leaf*. Probe
-rust	R190	R176 is closed around ONE attribute position — cfg on the enclosing mod, a same-module caller, cfg-twin DEFINITIONS, use .. as imp twins, and the fan-out fallba
-rust	R194	R173's pre-order ? model is wrong for the ?'s OWN OPERAND — a construction stored into a pre-bound binding inside { .. }?, match .. ?, if .. ?, try_for_each(..)
-rust	R196	the drop route's leaf-keyed refusal (R174/R188's stated trade) IS a silent under-report — an unrelated unit method of the same leaf silences a real drop on an u
-rust	R203	a construction INVISIBLE to lang.rs's macro re-parse (a macro_rules! template, unparsable tokens, or a nested macro) while the same LEAF is constructed elsewher
-rust	R205	a crate-local macro_rules! template invoked BY PATH ($crate::mk_h!, crate::mk_h!) is skipped by the veto-side template lookup (name.contains("::") → return)
-rust	R206	a macro_rules! defined INSIDE a fn body is a Stmt::Item that walk_block discards and decls.rs:1919 never indexes
-rust	R207	the 'unreadable tokens' residual of R203 is a SILENCE vs published, not an over-charge — a repetition template is closable by flattening; a macro whose tokens f
-rust	R208	same-NAME macro_rules! twins — cache.rs:576 is last-writer-wins by bare name, so which module's template the veto (and R48's resolution) sees depends on FILE OR
-rust	R210	note_opaque_block — the veto's walk over a template body, block tokens or statement tokens — discarded Stmt::Item, so a macro_rules! defined INSIDE block tokens
-rust	R214	coverage-gate-refresh reports 'regressed' when its self-scan CANDIDATE ORACLE becomes more precise, not when classify() loses a rule — and the checked-in manife
-rust	R216	the corpus A/B caught ZERO of the six silence regressions this round — two PROPERTY gates now do, and they expose a 216-shape debt register of still-open silenc
-rust	R223	resolved_local suppresses the crate classifier on a call whose tail2 key matched a LOCAL definition — the newtype/wrapper forwarding idiom silently loses the ef
-rust	R229	the SITE walk and the ESCAPE walk read a macro DIFFERENTLY, so one macro-borne construction was certified pure in one direction and fabricated in the other
-rust	R230	a by-value parameter of a Drop type is charged a ::drop edge whether or not the callee drops it — a function that only STORES it is charged identically to one t
-rust	R264	a REFUSED FLAG before the target let --gate-json DELETE a source file of the scan
-rust	R272	R238's synthetic "Fn" leaf is asserted in-comment to be incapable of CHA fan-out; a crate that defines its own trait Fn falsifies it
-rust	R285	the named-fn-by-value edge lost a KNOWN effect, not a hedge — R271's row described only half the mechanism
-rust	R301	a SCOPED policy's function match is a PREFIX match, so a rule written for one function silently also binds its longer-named siblings — it defeated two independe
-rust	R302	the coverage gate's FIRST-EVER real verdict — 128 calibrated entries are newly uncovered, reproduced on BOTH hosts, and the manifest must NOT be refreshed to ma
-rust	R304	the same fix keyed its counters on a BARE IDENT with no scope, so a DIFFERENT entity's discarded call satisfied the test — and a use spelled in MACRO TOKENS is 
-rust	R311	the coverage-gate fixture pins calibrated crates with "*", so a MAJOR upstream release silently moves the ledger's REVIEWED-PURITY claim onto a version nobody r
-rust	R312	the native_tls_crate rule is DEAD IN PRODUCTION — classify() is asked the RESOLVED package name while the coverage gate feeds it the CALIBRATED_CRATES identifie
-rust	R313	the postgres ceiling I recorded was TOKIO-postgres's version, lifted by my own regex from a comment about a different crate
-rust	R315	three calibrated crates CITE a reviewed version in their own rule comments and have no ceiling enforcing it — and my sweep for such citations missed all three
-rust	R320	rand/rand_core renamed OsRng to SysRng and moved it into getrandom, leaving the OsRng clause in both rule blocks matching nothing
-rust	R321	terminal_colorsaurus 1.0.3 added a PURE accessor with the same trailing segment as its effectful free function, and the suffix rule charges Ipc to both
-rust	R333	the FALLIBLE draw verbs try_next_u32/try_next_u64 are unmatched — the natural API on rand 0.10's SysRng reads PURE
-rust	R334	the ENTROPY SOURCE passed as an ARGUMENT is invisible — StdRng::try_from_rng(&mut SysRng) reads pure, and so does the old from_rng(&mut OsRng)
-rust	R335	redis's whole SENTINEL lookup surface read PURE at redis 1.6.0 — the crate's OWN reviewed ceiling, so the exemption applied and nothing disclosed
-rust	R337	the native-tls Identity WRAPPERS read pure — a call taking only BYTES writes a keychain file on macOS, in reqwest and lettre
-rust	R338	a calibrated crate that builds a native-tls connector INTERNALLY discloses its transport effect but not the Fs cert-store read — redis, tungstenite, ureq, minre
-rust	R342	resp.text().await read PURE — the response BODY is drained off the socket and only send() was charged
-rust	R345	.as_ref() was missing from the element-preserving adapter list, so R185's fix did not cover the idiom most Rust actually writes
-rust	R346	the element-preserving adapter list is an ALLOWLIST and carried four names — sixteen ordinary spellings between a collection and its closure were silent
-rust	R370	note_use_collision has NO NOTION OF #[cfg] — it fires on ordinary legal SHADOWING, and the union then charges a shadowed binding as a real call edge
-rust	R371	R140 is filed CLOSED and source order still decides the same question one SPELLING over — let f = Alias::assoc; f(..) never consults the union
-rust	R372	collect_decls' uses map decides EDGES through record_return and type_path, and R140 handed it a THROWAWAY — the comment licensing that is false
-rust	R374	R140's three over-charge controls CANNOT FAIL — they probe a route the fix does not touch, through a resolution path two filed rows say returns nothing
-rust	R375	use_alts carries ALIAS_ALT_SEP-JOINED values and the consumer concatenates with format! where alias_join is required — and the rationale that justified the comp
-rust	R377	fixture_effects answered "pure" for a function that IS NOT IN THE REPORT, so a purity assertion over a misspelled or module-qualified name could not fail
-rust	R378	use super::X inside an INLINE MODULE never resolved through the parent's map, so every call through it read SILENT-PURE — and R140's union had been masking it
-rust	R379	the AS-EFF-008 MASKING GUARD's own allowlist is short, so a benign sibling literal CERTIFIES a DNS lookup of a caller-supplied host — allow Net <lit> returns ex
-rust	R380	resolve_recv_traits' MethodCall arm peels NOTHING, so opt.as_ref().unwrap().go() on a trait-object field is SILENT while the binder spelling charges
-rust	R388	the format-hole parser knew TWO of the NINE std::fmt traits, so six formatter impls were silently dropped
-rust	R399	the sentence R379 WITHDREW as false survives verbatim on both sibling guards — and both are live gate bypasses
-rust	R400	super::super::X strips N levels and resolves against ONE — HEAD is worse than a miss, it is confidently wrong
-rust	R422	str_locals was never block-scoped, so a nested-block SHADOW published a FALSE destination and dropped the disclosure — and R416 WIDENED it to the dominant path 
-rust	R438	a MIXED #[cfg] alias arm set PICKS the external arm and PUBLISHES its literal — allow Fs <lit> certifies a program that does something else in its other configu
-rust	R440	a #[cfg] alias arm set that classifies to NOTHING and resolves to NOTHING leaves the call with no trace — no charge, no edge, no disclosure — because R105's bra
-rust	R446	a container's ELEMENT reached through an ACCESSOR RECEIVER resolves to NOTHING on both routes — v.get(0).unwrap().run() over a Vec<Box<dyn Doer>> reads silent-p
-rust	R447	an element-yielding accessor is walked as a BUILDER STEP, so the OUTER method is attributed to the RECEIVER's own type — c.get("x").run() reports the caller ['E
-rust	R448	cmd_unverified looked reason classes up by BARE e.func in a map keyed by entry_key (the hash when present), so on EVERY REAL REPORT the hole predicate ran with 
-rust	R451	the builder-chain walk collapses a DELEGATION onto the delegator — where the delegating method shares its name with the step's declaring type, the walk forms th
-rust	R452	a typed call whose Type::method resolves to NO UNIT — absent, or ambiguous across a tail2 collision — is dropped with NO Unknown, NO unresolved, NO unknownWhy
-rust	R453	a TEST WAS PINNING A CARDINAL SIN — two_different_definitions_sharing_a_tail_are_still_an_ambiguity asserted that caller(p) { a::Bar::go(p) } must be ABSENT, ov
-rust	R454	a map's CONCRETE value was never an element — elem_trait_leaves has had a map arm since R46 and elem_type never did, so HashMap<String, Box<dyn Doer>> charged a
-rust	R457	a PRODUCTION source file named *_test.rs is excluded wholesale as a test-module on the FILENAME alone — regex-cli/cmd/compile_test.rs, the real source of the re
-rust	R458	a GENERIC-typed receiver resolves onto the crate's SOLE concrete impl and certifies purity — dropping an Unknown hedge over a type parameter a CONSUMER supplies
-rust	R460	a spawn whose Command arrives as a RECEIVER — parameter, field or conversion — has no Command::new in the function for the masking guard to fire on, so a benign
-rust	R474	a MACRO INVOCATION WITH NO LOCAL DEFINITION is dropped with no Unknown, no coverage entry and no invisible — the expansion could do anything and the report says
-rust	R476	R243's rust half is WORSE than R458 was — with the trait bound on the impl block rather than the struct, a generic FIELD receiver is silent at EVERY implementor
-rust	R536	is_element_yielding_accessor WAS FIVE NAMES OF A FAMILY OF TWENTY-FIVE, and the element-preserving list was missing the same twenty. if let Some(g) = v.pop() re
-rust	R538	A TUPLE-DESTRUCTURING LOOP OVER A CONTAINER OF TRAIT OBJECTS IS SILENTLY PURE — resolve_elem_tuple has a CONCRETE route and no DISPATCH counterpart. for (g, _) 
-rust	R541	(*b).emit() OVER A Box<dyn Sink> IS SILENTLY PURE — the deref arm had no dispatch twin. b.emit() charges, (*b).go() over Box<G> charges, (*b).emit() over Box<dy
-rust	R557	A static OR const ITEM USED AS A METHOD RECEIVER RESOLVES NOTHING AT ALL — the caller is ABSENT from functions[] and pure exits 0. NOT dyn-specific, and not abo
-rust	R564	A PURITY CLAIM DECIDED BY THE SPELLING OF A PARAMETER NAME — an Upper-initial binding read as a unit-struct literal. fn p_upper(Z: &dyn Q) { Z.fetch() } → ABSEN
-rust	R569	AN UNANNOTATED let BOUND TO A REFERENCE LOSES THE RECEIVER — let s = &C1; s.fetch() reads ABSENT, and so does let c = Client{..}; let r = &c; r.fetch().
-rust	R582	AN UNANNOTATED let COLLECTION BUILT FROM A dyn PARAMETER LOSES THE ELEMENT'S DISPATCH ENTIRELY — no row, no Unknown, no unresolved, no invisible, over a body th
-rust	R590	A REAL FUNCTION ROW DISPLACES THE SYNTHETIC interfaceUnion ROW ON THE SAME KEY, SO THE UNION'S EFFECTS ARE DROPPED THE MOMENT THE BODY IS ANALYSED. Found while 
-rust	R608	A CONSUMER DISPATCHING ON A CHAINED DEPENDENCY'S ABSTRACTION WITH AN EMPTY IMPLEMENTOR UNION READ SILENTLY PURE — rust's half of R533/⟨0.39⟩ (the clause once dr
-rust	R628	R609 PUBLISHES A PURE UNION ROW FOR A TRAIT WITH ZERO REAL IMPLEMENTORS whenever a same-LEAF foreign or std trait is implemented in the crate — breaking the exa
-rust	R631	R569 CHANGED PASS B WITHOUT BUMPING THE CACHE REV, so a warm --incremental cache serves the pre-fix silence — the exact class R569 closes. cf8782d adds an Expr:
-rust	R652	A LOCAL TRAIT WITH ZERO IMPLEMENTORS PUBLISHED A §2 PURITY CLAIM, because trait_impls is LEAF-KEYED with no locality test — impl <other path>::<same leaf> for Y
-rust	R659	163 ROWS LOST A CONCRETE EFFECT ACROSS THE MONTH, AND 162 OF THEM FLIP A REAL SCOPED GATE FROM exit 1 TO exit 0 OR 2. Found by the gate-flip census (R662), not 
-rust	R679	R659's *GENUINE RESIDUAL* IS NOT ONE — all 12 lost-effect rows are CORRECT, and both causes name those crates in their own commit messages. The census said 7; i
-rust	R680	THE *UNCONDITIONAL* ESCAPE ROUTES ARE EXEMPT FROM R173's POSITIONAL ? FILTER, so a mem::forget / ManuallyDrop::new or a FIELD/INDEX/DEREF STORE lying AFTER a ? 
-rust	R690	A GENERIC-BOUND RECEIVER WHOSE TRAIT IS DECLARED IN A CHAINED DEPENDENCY SILENTLY DROPS THE EFFECT OF THE IMPLEMENTOR THIS CRATE SUPPLIES — <T: dep::Tr>, impl d
-rust	R693	A RECEIVER WHOSE TRAIT IS DECLARED IN A CHAINED DEPENDENCY READ PURE WHENEVER THIS CRATE SUPPLIED THE IMPLEMENTOR — AND READ Unknown WHEN IT DID NOT. SUPPLYING 
-rust	R694	A TRAIT-MEMBER CALL IN AN EXTENSION TRAIT'S DEFAULT BODY PUBLISHED NO dispatchesOn KEY AT ALL, so ⟨0.39⟩ obligation 3's join had NOTHING TO JOIN — and a real Ra
-rust	R709	THE UNCONDITIONAL ESCAPE ROUTES ARE NOW POSITIONAL — a route certifies an escape only against the ?s it has already PASSED. Closes R680's cardinal sin and R209(
-rust	R710	owned_drops' FIELD-LEAF EXTRACTION DOES NOT CONSULT type_borrows, so a BORROWED field is read as an OWNED one and constructing the struct FABRICATES the field t
-rust	R718	A BORROWED FIELD NO LONGER FABRICATES ITS TYPE'S DROP GLUE — the FIELD half of R168. Closes R710, and the enumeration found EIGHT fabricating shapes where the r
-rust	R722	AN ALL-CAPS TYPE NAME IS A TYPE AGAIN — and the UpperCamel rule existed in THREE COPIES with THREE DIFFERENT CLAUSES. Closes R719.
-rust	R748	A CALL NAMING THE ENCLOSING impl's OWN TYPE REFUSES ON tail2 AMBIGUITY AND DISCLOSES NOTHING — crate::Tx::grab(self) inside impl Gen for crate::Tx is ABSENT fro
-rust	R749	unique_glob — a FILE'S OWN glob — applied to a ROOTED path is never a legitimate rustc resolution, and dropping it withdraws 32 UNJOINABLE dependency-flavoured 
-rust	R750	THE RESIDUAL OF R748(ii) — 446 CONTESTED CALL LINES THAT GENUINELY CANNOT BE RESOLVED, WHERE THE REFUSAL EMITS NO Unknown. 228 need an inherent-vs-trait fact th
-rust	R751	STRIPPING self::/super:: DESTROYS THE MODULE QUALIFIER THAT WOULD HAVE SETTLED THE RESOLUTION, COLLAPSING THE PATH BELOW THE LENGTH tail2 CAN KEY — AND A GLOB R
-swift	R96	a closure-typed FIELD is resolved from whatever default the scan saw, contradicting a PUBLISHED guarantee
-swift	R97	type information is dropped by 22 of 23 binder arms — only one calls dealias
-swift	R98	a binder that SHADOWS its receiver's name loses the effect in its own initializer
-swift	R117	an ANNOTATED closure parameter's type outlives its closure
-swift	R118	the VariableDecl .skipChildren rewrite stopped walking node.attributes
-swift	R124	vars is not in ShadowSave, so every raw vars[…] = in a scoped visitor leaks
-swift	R125	_BTree.forEach lost its callback:body disclosure somewhere in the unpushed wave
-swift	R126	an opaque callback inside a closure inside a NESTED FUNC reads silent-pure
-swift	R132	Kingfisher#MemoryStorage.Backend.isCached resolves to the WRONG nested Backend
-swift	R178	a stored optional closure invoked through if let c = cb { c() } or cb.map { $0() } is ABSENT — cb?() discloses
-swift	R215	an UNANNOTATED let-copy of a container drops the element index entirely — for NOMINAL elements too, not just closures
-swift	R228	a bare identifier ARGUMENT was resolved against a same-named FREE FUNCTION, discharging a callback deferral nobody made
-swift	R255	a MODULE-SCOPE function with the same name as a member of self claimed the call, and the caller went ABSENT
-swift	R265	R255's member-first reorder ignores ACCESS CONTROL and file/module visibility, so a private member claims a call Swift binds to the module-scope function
-swift	R279	R267's identifier misclassification also OVER-CHARGED — a pure member's caller charged the shadowed global's Fs over a program that deletes nothing
-swift	R280	a locally-bound ANNOTATED CLOSURE VARIABLE loses its Unknown disclosure the moment its enclosing function has a CALL SITE
-swift	R348	lazy — the ONE element-preserving adapter Swift spells as a PROPERTY — sat in the adapter list inside a function-CALL guard it can never satisfy
-swift	R351	arrayElem and arrayElemNested describe ONE binding and were not written in lockstep — a REGRESSION AGAINST THE PUBLISHED v0.35.0
-swift	R358	a nested rebind stopped shadowing a global of the same name — a FABRICATION introduced by R351
-swift	R381	R379's GATE BYPASS, in the second engine — the Net establishing tables omit every DNS RESOLVER and NSURLConnection, which the sibling κ tables classify as Net
-swift	R390	NetService/NetServiceBrowser never charge LocalNetwork, and the R385 fix's own comment asserts they do
-swift	R394	shellOut(to:at:) reports the WORKING DIRECTORY as the command
-swift	R420	URL(string:) publishes a URL STRING as a filesystem path, and the protected-folder class is silently lost
-swift	R429	a #if-duplicated typealias BINDING is resolved by SOURCE ORDER — the losing arm's effect is dropped and a scoped deny Fs is decided by which arm was written fir
-swift	R436	URL.append(path:) was exempted by an inert-call set BORROWED from another type family — allow Fs exits 0 over a caller-controlled path
-swift	R534	A PROTOCOL-TYPED *OPTIONAL PARAMETER* DISPATCHED BY OPTIONAL-CHAINING IS SILENTLY PURE — the function vanishes from functions[] entirely. func viaOptionalParam(
-swift	R537	THE SAME ACCESSOR-FAMILY HOLE AS R536, AND IT IS NOT R534. hs.first?.emitN(), hs.last?., v.popLast()?., v.removeFirst()., hs.dropFirst().first?., d.values.first
-swift	R555	A GUARD WRITTEN TO EXCLUDE LOCAL ABSTRACTIONS IS VACUOUS FOR NEARLY EVERY ABSTRACTION IT WAS WRITTEN FOR — it tests a set that protocols are DELIBERATELY kept o
-swift	R563	A GENERIC PARAMETER USED AS A *TYPE* RECEIVER OVER A LOCAL PROTOCOL LOSES THE EFFECT ENTIRELY — FIVE SPELLINGS SILENTLY ABSENT, deny Net EXIT 0, OVER A CONFORME
-swift	R565	⟨0.39⟩ KEYS BY MODULE, §2 CHAINING KEYS BY PACKAGE, AND FOR A CONVENTIONAL SPM PACKAGE THOSE NAMESPACES NEVER INTERSECT — SO THE ENTIRE CHAIN IS A NO-OP AND NOT
-swift	R567	THE DISPATCH KEY TAKES THE OUTER BASE'S TYPE FOR A MEMBER-CHAIN RECEIVER, AND A BARE-LEAF KEY CANNOT MATCH A PRODUCER'S ARITY-SUFFIXED OVERLOAD — swift's R549, 
-swift	R572	AN OVERLOADED CONFORMER MEMBER PLUS A PROTOCOL-EXTENSION DEFAULT DROPS EVERY CONFORMER'S EFFECTS SILENTLY — a CARDINAL SIN, and it is R543's ALAMOFIRE HALF, 8 h
-swift	R584	THE CLASS HALF OF TYPE-RECEIVER DISPATCH IS SILENT — every PROTOCOL spelling resolves and every CLASS spelling is ABSENT from functions[], over a body that exec
-swift	R585	A METATYPE RECEIVER RESOLVES ONLY WHEN IT IS A FUNCTION OR INITIALIZER PARAMETER — every other binder of a metatype is dropped, in the CLASS half AND in R563's 
-swift	R592	⟨0.39⟩ OBLIGATION-1 AND OBLIGATION-2 KEYS ARE ATTRIBUTED TO THE SCANNED PACKAGE'S OWN C TARGETS. Driver.foreignOwnerModule names the owner of a foreign abstract
-swift	R593	foreignOwnerModule COUNTS A DUPLICATED IMPORT AS TWO CANDIDATES, so a file with exactly ONE distinct candidate publishes no ⟨0.39⟩ key at all. fileImports is a 
-swift	R603	⟨0.39⟩ OBLIGATION 2's OWNER VOTE COUNTED MODULES WHERE THE THING IT ASSIGNS IS A PACKAGE. abstractionOwnerPkg took Set(files.compactMap { foreignOwnerModule($0)
-swift	R651	A CONSUMER THAT WRITES AN extension ON A DEPENDENCY TYPE SILENCES EVERY MEMBER CALL ON THAT TYPE. Extending a dependency type is completely idiomatic Swift, and
-swift	R656	A CONSUMER THAT WRITES AN extension ON A DEPENDENCY TYPE SILENCED EVERY MEMBER CALL ON THAT TYPE — INCLUDING AN EMPTY extension Chan { }. Closes R651.
-swift	R657	A RETROACTIVE CONFORMANCE ON A DEPENDENCY TYPE TRADES THE DEPENDENCY'S REAL EFFECT FOR Unknown, so a plain deny Env stays exit 0 over a real environment read.
-swift	R698	<T: DepProto> AND some DepProto DROP THE CONSUMER'S OWN IMPLEMENTOR — the direct sibling of rust R690, one engine over. The EXISTENTIAL spelling (any DepProto /
-swift	R699	A METATYPE BINDER WHOSE TYPE IS DEP-DECLARED IS TOTAL SILENCE — functions: [], analyzed.count 1. R585 fixed nine metatype binders for LOCAL types and the dep-ty
-swift	R704	R699 IS NOT ONE BINDER — THE DEP-DECLARED AXIS DEFEATS ALL TEN METATYPE BINDERS, BOTH HALVES, TWENTY ARMS, INCLUDING THE FUNCTION PARAMETER R585's OWN TABLE LIS
-swift	R705	R698 CLOSED — BUT NOT THE WAY THAT ROW IMPLIED, AND THE WRONG FIX WAS IMPLEMENTED AND MEASURED RED BEFORE BEING ABANDONED. The real defect is the OTHER conjunct
-swift	R720	A DEFERRED CALLBACK NAME WITH NO PARAMETER POSITION MADE CALLBACK-FLOW'S DISCHARGE TEST VACUOUS, so ONE CALL SITE DELETED THE DISCLOSURE. Closes R280, open sinc
-swift	R721	A FN-TYPED PARAMETER OF A NESTED FUNCTION, OR OF A CLOSURE WHOSE BINDER IS NOT ITSELF FN-TYPED, IS IN NO INDEX AT ALL — so invoking it is silently dropped.
-swift	R725	A FN-TYPED PARAMETER OF A NESTED func OR OF A CLOSURE REACHED NO INVOCATION-SITE AUTHORITY, so invoking it read SILENT-PURE. Closes R721 — and adds the third ar
-ts	R82	the ⟨0.35⟩ CHA-completeness fix introduced two cardinal sins of its own
-ts	R91	--allow-js silently discards the whole tsconfig.json, not just its include
-ts	R93	a process destructured from globalThis loses its Env effect entirely
-ts	R95	a fetch destructured from globalThis loses its Net effect — R93's sibling, different code path
-ts	R103	an externally-writable callable SLOT resolves to whatever default the scan saw — the whole report reads functions: []
-ts	R110	performance.now() is Clock under lib.dom and SILENT under @types/node — R109's split, opposite direction
-ts	R111	performance.mark/measure/eventLoopUtilization/timerify read the clock and are silent in BOTH arms
-ts	R113	localStorage.x = secret — the INDEX-SIGNATURE write — persists to disk and is pure in BOTH arms
-ts	R114	process.uptime() and os.uptime() are monotonic clocks reviewed pure BY NAME
-ts	R115	{...instance} charges a class PROTOTYPE getter that never runs — a fabrication that FAILS a gate
-ts	R116	Object.assign(target, src) invokes the TARGET's setters and charges nothing
-ts	R120	the structural-literal arm is narrower than its own comment claims
-ts	R136	a WebSocket SUBCLASS with no explicit constructor reads PURE under lib.dom
-ts	R137	two member-precise κ rules delete the BLIND-PACKAGE disclosure for the whole of undici-types
-ts	R138	a relatively-imported project shim under its own package.json is charged Net
-ts	R154	a policy ALIAS line disarms the ⟨0.30⟩ fail-closed INCOMPLETE verdict
-ts	R239	the globalThis. qualifier defeated FIVE text-keyed arms at once, three of them silently
-ts	R240	s[k] = v never resolved a setter unless the key was a SYNTACTIC string literal — 19 of 27 spellings silent
-ts	R245	a UNION-typed receiver charged whichever accessor arm the checker listed FIRST — the same program answers differently depending on the order of the union's arms
-ts	R251	Reflect.get(t, k) has NO ARM AT ALL, so an effectful getter reached through it is silent in every spelling
-ts	R252	Object.entries / Object.values / JSON.stringify over an OBJECT LITERAL with an effectful getter are all silent — and R115's comment asserts the opposite is corr
-ts	R263	an unnameable-owner MEMBER dispatch is kinded callback: (class indirect) where SPEC §4 ⟨0.24⟩ names that reclassification and REJECTS it — the exact mirror of R
-ts	R281	globalThis./window./self. structuredClone was silent in BOTH directions — the BARE-GLOBAL table the qualifier fix never reached
-ts	R282	recordAccessorHit never consulted classOverrides for ANY accessor
-ts	R284	an unnameable-owner MEMBER dispatch was kinded callback: at THREE sites, and R263 named one
-ts	R412	inverting NET_ESTABLISHING into a use-verb DENYLIST is NOT a drop-in — it over-charges on an OPEN-ENDED set, and the measurement says why
-ts	R512	a STRUCTURAL implementor of a FOREIGN abstraction publishes no interfaceUnion entry — registerStructuralImpl filters to projectFiles, so const x: ForeignIface =
-ts	R521	CLOSED — candor-ts fc5007e. THIS ROW'S OWN REFUTATION MISREAD THE INDEX (corrected 2026-09-28, Fable review, verified at source by the coordinator before rewrit
-ts	R531b	an arrow or function expression RETURNED FROM AN IIFE OR FACTORY and stored in a const is silent at its call site — the same isArrowFunction waiver as R531, on 
-ts	R531	a call to a function-valued member of an UNTYPED object literal was SILENT — the caller vanished from functions[] entirely. const u = { roll: (n) => Math.random
-ts	R558	AN INTERFACE MEMBER PASSED AS A FIRST-CLASS VALUE EVAPORATES — the function is ABSENT from functions[] and pure EXITS 0 over a body that writes to disk. [n].map
-ts	R560	A κ WHOLE-MODULE RULE FIRES ON A CALL WHOSE ONLY LINK TO THE PACKAGE IS ITS TYPE — dropping the real effect AND fabricating a different one. Both directions at 
-ts	R696	THE CANDOR_DEPS JOIN WAS GATED if (!eff && crossDeps.size > 0 …), and kappa's WHOLE-MODULE rules make eff truthy for EVERY MEMBER of a covered package — so the 
-ts	R697	THE UNANSWERABLE-KEY DISCLOSURE FUNNEL WAS GATED if (!eff && !inheritedFromDep …), so where the chained report carried NO entry for the key, the Unknown[dispatc
+java	R80	askable	field-held lambdas were keyed so that static and inherited fields never matched
+java	R84	askable	a method reference to an ABSTRACT interface method was accepted as a "clean" lambda body
+java	R86	askable	a literal argument chosen by a TERNARY is captured from whichever branch sits adjacent
+java	R87	askable	an entry-point marker annotation is only seen at RUNTIME retention
+java	R94	askable	field-lambda binding trusts a PUBLIC MUTABLE field exactly as it trusts a private final one
+java	R147	askable	socket-stream provenance — a read through a stored InputStream carries no Net
+java	R151	askable	the refresh cache replays STALE dependency effects — deny Net flips 1 -> 0
+java	R183	askable	a method reference passed to a HOF OUTSIDE the invoker allowlist (Optional.map(Supplier::get)) is silent while the lambda spelling discloses
+java	R191	askable	a method reference to the SAM of an interface OUTSIDE SAM_OF — every primitive-specialised java.util.function interface — is silent
+java	R217	askable	an OPAQUE callback handed to a HOF was silent while its LAMBDA and METHOD-REFERENCE twins disclosed — and the row's own premise was half wrong
+java	R236	askable	Comparator and its family are outside EVERY arm, so xs.sort(cmpField) AND a direct cmp.compare(a,b) are both silent
+java	R237	askable	an INVOKING higher-order function that isInvokingHof does not name is silent, even for an interface the set DOES cover
+java	R249	askable	a MISSING JDK index resource degrades the engine into silent under-reporting, with no disclosure of any kind
+java	R274	askable	the SLOT-vs-VALUE operand-stack index is THREE cardinal sins, not one, and the widest has NO TABLE bounding it
+java	R275	askable	the suite's ONE long-bearing hand-off assertion was GREEN ON A FABRICATED REASON — which is why R248 sat latent under a suite that appears to cover it
+java	R423	askable	java.nio.file.Path.toUri() is a filesystem STAT classified PURE — the same defect as File.toURI(), one type over, and the sweep that found the first could not s
+java	R433	askable	the String-locator tail is closed for PATH_CTOR_OWNERS and WIDE OPEN for every other Fs owner — new PrintWriter(userPath) is charged Fs and enters NO masking gu
+java	R477	askable	R464 closed the ARGUMENT form of the Exec masking guard and left the RECEIVER form OPEN — allow Exec git still exits 0 over f(ProcessBuilder b) with a benign si
+java	R493	askable	org.jetbrains is κ-covered and has ZERO owner literals in the classifier — and the prefix also covers org.jetbrains.exposed, a SQL framework, so Database.connec
+java	R495	askable	two covered-prefix candidates that could NOT be confirmed and are deliberately NOT fixed — org.apache.struts (RequestProcessor.doForward/doInclude, 63 census NU
+java	R498	askable	org.eclipse.jgit.api.Git.open reaches a real new ProcessBuilder(String[]).start() via FS.readPipe on a platform-selected FS implementation
+java	R506	askable	R480's own carve-out was a SHIPPED CARDINAL SIN. It mapped org.apache.commons.exec.environment.EnvironmentUtils.getProc* to Env, and in commons-exec ≤1.2 that d
+java	R515	askable	the org.ehcache.xml descriptor gate was derived at 3.10.8, where the XML entry point takes a URI — but ConfigurationParser(String) (3.0.0-3.5.3) and public pars
+java	R665	askable	THE GATE-FLIP CENSUS ON THE REFERENCE ENGINE — 18.5x rust's flip rate, AND 97.2% OF IT IS ONE COMMIT. Repeats R662/R664 on candor-java over the newly pinned 118
+java	R667	askable	~~THREE OF EIGHT~~ ONE OF SIX ENGINE FIXES IS INVISIBLE ON 117 REAL JARS — CORRECTED 2026-09-25 by the reach lane, see R669. R547, R94 and R595 moved ZERO rows;
+java	R669	askable	TWO OF THE THREE *INVISIBLE FIXES* CHANGED NO ENGINE CODE AT ALL — their zero movement is ARITHMETIC, not a measurement. R547 (85cb65c) touches CHANGELOG.md and
+java	R672	askable	A CONSUMER CONTRADICTS THE REPORT IT WAS HANDED AND TURNS AN EXPLICIT UNCERTAINTY INTO A CERTAINTY — A SILENT UNDER-REPORT THAT SHIPPED IN 0.39.2, and the stand
+java	R685	askable	A classify ANSWER REPLACED THE CHAINED DEPENDENCY'S OWN ROW — the consumer read MORE CERTAINTY than the report it was handed, and it SHIPPED in 0.39.2. Candor.c
+java	R712	askable	THE 38 CLASSIFIER Unknown RULES NOW CARRY A PER-RULE REASON KIND — 4 native, 1 dispatch (8 owners), 33 reflect — derived from SPEC §4's own statement of what th
+java	R716	askable	A METHOD REFERENCE TO A CLASSIFIER-Unknown NON-PROJECT TARGET CHARGED Unknown WITH NO REASON AT ALL. Closes R713 — the last reasonless Unknown source in the eng
+rust	R75	askable	a callable factory's return was decoded on ONE route out of thirteen
+rust	R76	askable	a dispatch-typed value round-tripped through an unannotated tuple literal
+rust	R88	askable	the bare unannotated let binder never records a dispatch binding — the commonest form in the language
+rust	R89	askable	a TRAIT method passed as a first-class value never dispatches
+rust	R90	askable	the ambiguity guard drops SILENTLY where its own comment claims it discloses
+rust	R92	askable	a SELF-SHADOWING let-else binding silently drops the RHS's own effects
+rust	R100	askable	R92's ordering bug is live one level in, in elem_of
+rust	R101	askable	the closed-world CHA premise makes a positive WRONG claim, and its config knob is declared-but-unimplemented
+rust	R104	askable	the ORACLE reported a clean pass over its own build failure — and manufactured a cardinal sin out of a missing report
+rust	R105	askable	a #[cfg]-duplicated alias is resolved by SOURCE ORDER, fabricating the losing arm's effect
+rust	R106	askable	a seeded bare alias hijacks a FUNCTION-BODY-LOCAL item — and the shipped over-charge control cannot fail
+rust	R107	askable	the capture/restore window's "a table added tomorrow is caught" guarantee is FALSE, and five reads escape it
+rust	R122	askable	#[cfg(any(test, feature = "x"))] erases a PRODUCTION function
+rust	R123	askable	two cfg'd use lines resolve by SOURCE ORDER, so a test mock captures production
+rust	R128	askable	a use bound to a crate-local path that names nothing reads as PURE
+rust	R139	askable	a local macro_rules! DEFINITION body is invisible to count_ident, so R119's promotion still kills the effect
+rust	R141	askable	std::os::unix::process::CommandExt::exec — execvp, which replaces the process image — has no rule
+rust	R142	askable	a macro_rules! defined INSIDE a function body is never recorded, so its template's I/O is invisible
+rust	R143	askable	a MULTI-ARM macro's template is skipped, and the report says nothing at all
+rust	R144	askable	a $(..)*-repetition macro template is unparseable and also silent
+rust	R157	askable	coverage-gate-refresh has NEVER been green — its "stable" step runs nightly and links with a linker it never installs
+rust	R160	askable	a public forwarder that calls a sibling via Self:: is ABSENT from the report
+rust	R161	askable	rusqlite::init_auto_extension and Connection::from_handle went ['Db'] → [] between 08-28 and the 0.34.0 release
+rust	R165	askable	a Drop-carrying value obtained through a FREE FUNCTION is invisible to the escape gate, so its local drop is not charged
+rust	R166	askable	sqlite3_auto_extension is missing from the classifier's DB FFI leaf list
+rust	R168	askable	the leaf-keyed escape gate loses a by-value Drop parameter's drop when the function returns a fresh value of the same type
+rust	R169	askable	a forwarder calling a sibling through a MODULE path (sys::size()) is absent — a different arm from R160
+rust	R171	askable	the coverage-gate GENERATOR's own renderer dropped 24 rows, and the drift job diffed on a key the generator can rewrite without any change in coverage
+rust	R172	askable	R165 + R160 feed the LEAF-keyed construction escape gate — a real in-frame drop beside a returned construction of the same type is now ABSENT
+rust	R173	askable	an ordering-blind ? veto charges a constructor its OWN type's drop; R160 makes it fire on the dominant x?; Ok(Self::new()) spelling
+rust	R174	askable	R165's return-index route bypasses local_type_leaf's deliberate std refusal, and is blind to a unit-returning twin
+rust	R175	askable	Self inside an impl NESTED in a method body resolves to the OUTER impl's type
+rust	R177	askable	a callback stored as Option<Alias> where Alias = Box<dyn Fn()> and invoked through if let Some(c) = &self.cb { c() } is ABSENT
+rust	R182	askable	R165's leaf collision is silent — two::mk -> H beside other::mk -> usize makes holds_two ABSENT with no Unknown
+rust	R184	askable	a NON-NOMINAL type alias whose leaf collides with a struct declared elsewhere in the crate silently deletes EVERY effect edge through that struct's methods
+rust	R185	askable	Option<ConcreteType> FIELD + if let Some(h) = &self.o { h.run() } is silent in all three arms
+rust	R189	askable	CLOSED 2026-09-28 (candor-rust 321ec98) — AND THE MECHANISM I BRIEFED WAS INVERTED IN ITS SECOND HALF. I told the lane *the intersection erases the leaf*. Probe
+rust	R190	askable	R176 is closed around ONE attribute position — cfg on the enclosing mod, a same-module caller, cfg-twin DEFINITIONS, use .. as imp twins, and the fan-out fallba
+rust	R194	askable	R173's pre-order ? model is wrong for the ?'s OWN OPERAND — a construction stored into a pre-bound binding inside { .. }?, match .. ?, if .. ?, try_for_each(..)
+rust	R196	askable	the drop route's leaf-keyed refusal (R174/R188's stated trade) IS a silent under-report — an unrelated unit method of the same leaf silences a real drop on an u
+rust	R203	askable	a construction INVISIBLE to lang.rs's macro re-parse (a macro_rules! template, unparsable tokens, or a nested macro) while the same LEAF is constructed elsewher
+rust	R205	askable	a crate-local macro_rules! template invoked BY PATH ($crate::mk_h!, crate::mk_h!) is skipped by the veto-side template lookup (name.contains("::") → return)
+rust	R206	askable	a macro_rules! defined INSIDE a fn body is a Stmt::Item that walk_block discards and decls.rs:1919 never indexes
+rust	R207	askable	the 'unreadable tokens' residual of R203 is a SILENCE vs published, not an over-charge — a repetition template is closable by flattening; a macro whose tokens f
+rust	R208	askable	same-NAME macro_rules! twins — cache.rs:576 is last-writer-wins by bare name, so which module's template the veto (and R48's resolution) sees depends on FILE OR
+rust	R210	askable	note_opaque_block — the veto's walk over a template body, block tokens or statement tokens — discarded Stmt::Item, so a macro_rules! defined INSIDE block tokens
+rust	R214	askable	coverage-gate-refresh reports 'regressed' when its self-scan CANDIDATE ORACLE becomes more precise, not when classify() loses a rule — and the checked-in manife
+rust	R216	askable	the corpus A/B caught ZERO of the six silence regressions this round — two PROPERTY gates now do, and they expose a 216-shape debt register of still-open silenc
+rust	R223	askable	resolved_local suppresses the crate classifier on a call whose tail2 key matched a LOCAL definition — the newtype/wrapper forwarding idiom silently loses the ef
+rust	R229	askable	the SITE walk and the ESCAPE walk read a macro DIFFERENTLY, so one macro-borne construction was certified pure in one direction and fabricated in the other
+rust	R230	askable	a by-value parameter of a Drop type is charged a ::drop edge whether or not the callee drops it — a function that only STORES it is charged identically to one t
+rust	R264	askable	a REFUSED FLAG before the target let --gate-json DELETE a source file of the scan
+rust	R272	askable	R238's synthetic "Fn" leaf is asserted in-comment to be incapable of CHA fan-out; a crate that defines its own trait Fn falsifies it
+rust	R285	askable	the named-fn-by-value edge lost a KNOWN effect, not a hedge — R271's row described only half the mechanism
+rust	R301	askable	a SCOPED policy's function match is a PREFIX match, so a rule written for one function silently also binds its longer-named siblings — it defeated two independe
+rust	R302	askable	the coverage gate's FIRST-EVER real verdict — 128 calibrated entries are newly uncovered, reproduced on BOTH hosts, and the manifest must NOT be refreshed to ma
+rust	R304	askable	the same fix keyed its counters on a BARE IDENT with no scope, so a DIFFERENT entity's discarded call satisfied the test — and a use spelled in MACRO TOKENS is 
+rust	R311	askable	the coverage-gate fixture pins calibrated crates with "*", so a MAJOR upstream release silently moves the ledger's REVIEWED-PURITY claim onto a version nobody r
+rust	R312	askable	the native_tls_crate rule is DEAD IN PRODUCTION — classify() is asked the RESOLVED package name while the coverage gate feeds it the CALIBRATED_CRATES identifie
+rust	R313	askable	the postgres ceiling I recorded was TOKIO-postgres's version, lifted by my own regex from a comment about a different crate
+rust	R315	askable	three calibrated crates CITE a reviewed version in their own rule comments and have no ceiling enforcing it — and my sweep for such citations missed all three
+rust	R320	askable	rand/rand_core renamed OsRng to SysRng and moved it into getrandom, leaving the OsRng clause in both rule blocks matching nothing
+rust	R321	askable	terminal_colorsaurus 1.0.3 added a PURE accessor with the same trailing segment as its effectful free function, and the suffix rule charges Ipc to both
+rust	R333	askable	the FALLIBLE draw verbs try_next_u32/try_next_u64 are unmatched — the natural API on rand 0.10's SysRng reads PURE
+rust	R334	askable	the ENTROPY SOURCE passed as an ARGUMENT is invisible — StdRng::try_from_rng(&mut SysRng) reads pure, and so does the old from_rng(&mut OsRng)
+rust	R335	askable	redis's whole SENTINEL lookup surface read PURE at redis 1.6.0 — the crate's OWN reviewed ceiling, so the exemption applied and nothing disclosed
+rust	R337	askable	the native-tls Identity WRAPPERS read pure — a call taking only BYTES writes a keychain file on macOS, in reqwest and lettre
+rust	R338	askable	a calibrated crate that builds a native-tls connector INTERNALLY discloses its transport effect but not the Fs cert-store read — redis, tungstenite, ureq, minre
+rust	R342	askable	resp.text().await read PURE — the response BODY is drained off the socket and only send() was charged
+rust	R345	askable	.as_ref() was missing from the element-preserving adapter list, so R185's fix did not cover the idiom most Rust actually writes
+rust	R346	askable	the element-preserving adapter list is an ALLOWLIST and carried four names — sixteen ordinary spellings between a collection and its closure were silent
+rust	R370	askable	note_use_collision has NO NOTION OF #[cfg] — it fires on ordinary legal SHADOWING, and the union then charges a shadowed binding as a real call edge
+rust	R371	askable	R140 is filed CLOSED and source order still decides the same question one SPELLING over — let f = Alias::assoc; f(..) never consults the union
+rust	R372	askable	collect_decls' uses map decides EDGES through record_return and type_path, and R140 handed it a THROWAWAY — the comment licensing that is false
+rust	R374	askable	R140's three over-charge controls CANNOT FAIL — they probe a route the fix does not touch, through a resolution path two filed rows say returns nothing
+rust	R375	askable	use_alts carries ALIAS_ALT_SEP-JOINED values and the consumer concatenates with format! where alias_join is required — and the rationale that justified the comp
+rust	R377	askable	fixture_effects answered "pure" for a function that IS NOT IN THE REPORT, so a purity assertion over a misspelled or module-qualified name could not fail
+rust	R378	askable	use super::X inside an INLINE MODULE never resolved through the parent's map, so every call through it read SILENT-PURE — and R140's union had been masking it
+rust	R379	askable	the AS-EFF-008 MASKING GUARD's own allowlist is short, so a benign sibling literal CERTIFIES a DNS lookup of a caller-supplied host — allow Net <lit> returns ex
+rust	R380	askable	resolve_recv_traits' MethodCall arm peels NOTHING, so opt.as_ref().unwrap().go() on a trait-object field is SILENT while the binder spelling charges
+rust	R388	askable	the format-hole parser knew TWO of the NINE std::fmt traits, so six formatter impls were silently dropped
+rust	R399	askable	the sentence R379 WITHDREW as false survives verbatim on both sibling guards — and both are live gate bypasses
+rust	R400	askable	super::super::X strips N levels and resolves against ONE — HEAD is worse than a miss, it is confidently wrong
+rust	R422	askable	str_locals was never block-scoped, so a nested-block SHADOW published a FALSE destination and dropped the disclosure — and R416 WIDENED it to the dominant path 
+rust	R438	askable	a MIXED #[cfg] alias arm set PICKS the external arm and PUBLISHES its literal — allow Fs <lit> certifies a program that does something else in its other configu
+rust	R440	askable	a #[cfg] alias arm set that classifies to NOTHING and resolves to NOTHING leaves the call with no trace — no charge, no edge, no disclosure — because R105's bra
+rust	R446	askable	a container's ELEMENT reached through an ACCESSOR RECEIVER resolves to NOTHING on both routes — v.get(0).unwrap().run() over a Vec<Box<dyn Doer>> reads silent-p
+rust	R447	askable	an element-yielding accessor is walked as a BUILDER STEP, so the OUTER method is attributed to the RECEIVER's own type — c.get("x").run() reports the caller ['E
+rust	R448	askable	cmd_unverified looked reason classes up by BARE e.func in a map keyed by entry_key (the hash when present), so on EVERY REAL REPORT the hole predicate ran with 
+rust	R451	askable	the builder-chain walk collapses a DELEGATION onto the delegator — where the delegating method shares its name with the step's declaring type, the walk forms th
+rust	R452	askable	a typed call whose Type::method resolves to NO UNIT — absent, or ambiguous across a tail2 collision — is dropped with NO Unknown, NO unresolved, NO unknownWhy
+rust	R453	askable	a TEST WAS PINNING A CARDINAL SIN — two_different_definitions_sharing_a_tail_are_still_an_ambiguity asserted that caller(p) { a::Bar::go(p) } must be ABSENT, ov
+rust	R454	askable	a map's CONCRETE value was never an element — elem_trait_leaves has had a map arm since R46 and elem_type never did, so HashMap<String, Box<dyn Doer>> charged a
+rust	R457	askable	a PRODUCTION source file named *_test.rs is excluded wholesale as a test-module on the FILENAME alone — regex-cli/cmd/compile_test.rs, the real source of the re
+rust	R458	askable	a GENERIC-typed receiver resolves onto the crate's SOLE concrete impl and certifies purity — dropping an Unknown hedge over a type parameter a CONSUMER supplies
+rust	R460	askable	a spawn whose Command arrives as a RECEIVER — parameter, field or conversion — has no Command::new in the function for the masking guard to fire on, so a benign
+rust	R474	askable	a MACRO INVOCATION WITH NO LOCAL DEFINITION is dropped with no Unknown, no coverage entry and no invisible — the expansion could do anything and the report says
+rust	R476	askable	R243's rust half is WORSE than R458 was — with the trait bound on the impl block rather than the struct, a generic FIELD receiver is silent at EVERY implementor
+rust	R536	askable	is_element_yielding_accessor WAS FIVE NAMES OF A FAMILY OF TWENTY-FIVE, and the element-preserving list was missing the same twenty. if let Some(g) = v.pop() re
+rust	R538	askable	A TUPLE-DESTRUCTURING LOOP OVER A CONTAINER OF TRAIT OBJECTS IS SILENTLY PURE — resolve_elem_tuple has a CONCRETE route and no DISPATCH counterpart. for (g, _) 
+rust	R541	askable	(*b).emit() OVER A Box<dyn Sink> IS SILENTLY PURE — the deref arm had no dispatch twin. b.emit() charges, (*b).go() over Box<G> charges, (*b).emit() over Box<dy
+rust	R557	askable	A static OR const ITEM USED AS A METHOD RECEIVER RESOLVES NOTHING AT ALL — the caller is ABSENT from functions[] and pure exits 0. NOT dyn-specific, and not abo
+rust	R564	askable	A PURITY CLAIM DECIDED BY THE SPELLING OF A PARAMETER NAME — an Upper-initial binding read as a unit-struct literal. fn p_upper(Z: &dyn Q) { Z.fetch() } → ABSEN
+rust	R569	askable	AN UNANNOTATED let BOUND TO A REFERENCE LOSES THE RECEIVER — let s = &C1; s.fetch() reads ABSENT, and so does let c = Client{..}; let r = &c; r.fetch().
+rust	R582	askable	AN UNANNOTATED let COLLECTION BUILT FROM A dyn PARAMETER LOSES THE ELEMENT'S DISPATCH ENTIRELY — no row, no Unknown, no unresolved, no invisible, over a body th
+rust	R590	askable	A REAL FUNCTION ROW DISPLACES THE SYNTHETIC interfaceUnion ROW ON THE SAME KEY, SO THE UNION'S EFFECTS ARE DROPPED THE MOMENT THE BODY IS ANALYSED. Found while 
+rust	R608	askable	A CONSUMER DISPATCHING ON A CHAINED DEPENDENCY'S ABSTRACTION WITH AN EMPTY IMPLEMENTOR UNION READ SILENTLY PURE — rust's half of R533/⟨0.39⟩ (the clause once dr
+rust	R628	askable	R609 PUBLISHES A PURE UNION ROW FOR A TRAIT WITH ZERO REAL IMPLEMENTORS whenever a same-LEAF foreign or std trait is implemented in the crate — breaking the exa
+rust	R631	askable	R569 CHANGED PASS B WITHOUT BUMPING THE CACHE REV, so a warm --incremental cache serves the pre-fix silence — the exact class R569 closes. cf8782d adds an Expr:
+rust	R652	askable	A LOCAL TRAIT WITH ZERO IMPLEMENTORS PUBLISHED A §2 PURITY CLAIM, because trait_impls is LEAF-KEYED with no locality test — impl <other path>::<same leaf> for Y
+rust	R659	askable	163 ROWS LOST A CONCRETE EFFECT ACROSS THE MONTH, AND 162 OF THEM FLIP A REAL SCOPED GATE FROM exit 1 TO exit 0 OR 2. Found by the gate-flip census (R662), not 
+rust	R679	askable	R659's *GENUINE RESIDUAL* IS NOT ONE — all 12 lost-effect rows are CORRECT, and both causes name those crates in their own commit messages. The census said 7; i
+rust	R680	askable	THE *UNCONDITIONAL* ESCAPE ROUTES ARE EXEMPT FROM R173's POSITIONAL ? FILTER, so a mem::forget / ManuallyDrop::new or a FIELD/INDEX/DEREF STORE lying AFTER a ? 
+rust	R690	askable	A GENERIC-BOUND RECEIVER WHOSE TRAIT IS DECLARED IN A CHAINED DEPENDENCY SILENTLY DROPS THE EFFECT OF THE IMPLEMENTOR THIS CRATE SUPPLIES — <T: dep::Tr>, impl d
+rust	R693	askable	A RECEIVER WHOSE TRAIT IS DECLARED IN A CHAINED DEPENDENCY READ PURE WHENEVER THIS CRATE SUPPLIED THE IMPLEMENTOR — AND READ Unknown WHEN IT DID NOT. SUPPLYING 
+rust	R694	askable	A TRAIT-MEMBER CALL IN AN EXTENSION TRAIT'S DEFAULT BODY PUBLISHED NO dispatchesOn KEY AT ALL, so ⟨0.39⟩ obligation 3's join had NOTHING TO JOIN — and a real Ra
+rust	R709	askable	THE UNCONDITIONAL ESCAPE ROUTES ARE NOW POSITIONAL — a route certifies an escape only against the ?s it has already PASSED. Closes R680's cardinal sin and R209(
+rust	R710	askable	owned_drops' FIELD-LEAF EXTRACTION DOES NOT CONSULT type_borrows, so a BORROWED field is read as an OWNED one and constructing the struct FABRICATES the field t
+rust	R718	askable	A BORROWED FIELD NO LONGER FABRICATES ITS TYPE'S DROP GLUE — the FIELD half of R168. Closes R710, and the enumeration found EIGHT fabricating shapes where the r
+rust	R722	askable	AN ALL-CAPS TYPE NAME IS A TYPE AGAIN — and the UpperCamel rule existed in THREE COPIES with THREE DIFFERENT CLAUSES. Closes R719.
+rust	R748	askable	A CALL NAMING THE ENCLOSING impl's OWN TYPE REFUSES ON tail2 AMBIGUITY AND DISCLOSES NOTHING — crate::Tx::grab(self) inside impl Gen for crate::Tx is ABSENT fro
+rust	R749	askable	unique_glob — a FILE'S OWN glob — applied to a ROOTED path is never a legitimate rustc resolution, and dropping it withdraws 32 UNJOINABLE dependency-flavoured 
+rust	R750	askable	THE RESIDUAL OF R748(ii) — 446 CONTESTED CALL LINES THAT GENUINELY CANNOT BE RESOLVED, WHERE THE REFUSAL EMITS NO Unknown. 228 need an inherent-vs-trait fact th
+rust	R751	askable	STRIPPING self::/super:: DESTROYS THE MODULE QUALIFIER THAT WOULD HAVE SETTLED THE RESOLUTION, COLLAPSING THE PATH BELOW THE LENGTH tail2 CAN KEY — AND A GLOB R
+swift	R96	askable	a closure-typed FIELD is resolved from whatever default the scan saw, contradicting a PUBLISHED guarantee
+swift	R97	askable	type information is dropped by 22 of 23 binder arms — only one calls dealias
+swift	R98	askable	a binder that SHADOWS its receiver's name loses the effect in its own initializer
+swift	R117	askable	an ANNOTATED closure parameter's type outlives its closure
+swift	R118	askable	the VariableDecl .skipChildren rewrite stopped walking node.attributes
+swift	R124	askable	vars is not in ShadowSave, so every raw vars[…] = in a scoped visitor leaks
+swift	R125	askable	_BTree.forEach lost its callback:body disclosure somewhere in the unpushed wave
+swift	R126	askable	an opaque callback inside a closure inside a NESTED FUNC reads silent-pure
+swift	R132	askable	Kingfisher#MemoryStorage.Backend.isCached resolves to the WRONG nested Backend
+swift	R178	askable	a stored optional closure invoked through if let c = cb { c() } or cb.map { $0() } is ABSENT — cb?() discloses
+swift	R215	askable	an UNANNOTATED let-copy of a container drops the element index entirely — for NOMINAL elements too, not just closures
+swift	R228	askable	a bare identifier ARGUMENT was resolved against a same-named FREE FUNCTION, discharging a callback deferral nobody made
+swift	R255	askable	a MODULE-SCOPE function with the same name as a member of self claimed the call, and the caller went ABSENT
+swift	R265	askable	R255's member-first reorder ignores ACCESS CONTROL and file/module visibility, so a private member claims a call Swift binds to the module-scope function
+swift	R279	askable	R267's identifier misclassification also OVER-CHARGED — a pure member's caller charged the shadowed global's Fs over a program that deletes nothing
+swift	R280	askable	a locally-bound ANNOTATED CLOSURE VARIABLE loses its Unknown disclosure the moment its enclosing function has a CALL SITE
+swift	R348	askable	lazy — the ONE element-preserving adapter Swift spells as a PROPERTY — sat in the adapter list inside a function-CALL guard it can never satisfy
+swift	R351	askable	arrayElem and arrayElemNested describe ONE binding and were not written in lockstep — a REGRESSION AGAINST THE PUBLISHED v0.35.0
+swift	R358	askable	a nested rebind stopped shadowing a global of the same name — a FABRICATION introduced by R351
+swift	R381	askable	R379's GATE BYPASS, in the second engine — the Net establishing tables omit every DNS RESOLVER and NSURLConnection, which the sibling κ tables classify as Net
+swift	R390	askable	NetService/NetServiceBrowser never charge LocalNetwork, and the R385 fix's own comment asserts they do
+swift	R394	askable	shellOut(to:at:) reports the WORKING DIRECTORY as the command
+swift	R420	askable	URL(string:) publishes a URL STRING as a filesystem path, and the protected-folder class is silently lost
+swift	R429	askable	a #if-duplicated typealias BINDING is resolved by SOURCE ORDER — the losing arm's effect is dropped and a scoped deny Fs is decided by which arm was written fir
+swift	R436	askable	URL.append(path:) was exempted by an inert-call set BORROWED from another type family — allow Fs exits 0 over a caller-controlled path
+swift	R534	askable	A PROTOCOL-TYPED *OPTIONAL PARAMETER* DISPATCHED BY OPTIONAL-CHAINING IS SILENTLY PURE — the function vanishes from functions[] entirely. func viaOptionalParam(
+swift	R537	askable	THE SAME ACCESSOR-FAMILY HOLE AS R536, AND IT IS NOT R534. hs.first?.emitN(), hs.last?., v.popLast()?., v.removeFirst()., hs.dropFirst().first?., d.values.first
+swift	R555	askable	A GUARD WRITTEN TO EXCLUDE LOCAL ABSTRACTIONS IS VACUOUS FOR NEARLY EVERY ABSTRACTION IT WAS WRITTEN FOR — it tests a set that protocols are DELIBERATELY kept o
+swift	R563	askable	A GENERIC PARAMETER USED AS A *TYPE* RECEIVER OVER A LOCAL PROTOCOL LOSES THE EFFECT ENTIRELY — FIVE SPELLINGS SILENTLY ABSENT, deny Net EXIT 0, OVER A CONFORME
+swift	R565	askable	⟨0.39⟩ KEYS BY MODULE, §2 CHAINING KEYS BY PACKAGE, AND FOR A CONVENTIONAL SPM PACKAGE THOSE NAMESPACES NEVER INTERSECT — SO THE ENTIRE CHAIN IS A NO-OP AND NOT
+swift	R567	askable	THE DISPATCH KEY TAKES THE OUTER BASE'S TYPE FOR A MEMBER-CHAIN RECEIVER, AND A BARE-LEAF KEY CANNOT MATCH A PRODUCER'S ARITY-SUFFIXED OVERLOAD — swift's R549, 
+swift	R572	askable	AN OVERLOADED CONFORMER MEMBER PLUS A PROTOCOL-EXTENSION DEFAULT DROPS EVERY CONFORMER'S EFFECTS SILENTLY — a CARDINAL SIN, and it is R543's ALAMOFIRE HALF, 8 h
+swift	R584	askable	THE CLASS HALF OF TYPE-RECEIVER DISPATCH IS SILENT — every PROTOCOL spelling resolves and every CLASS spelling is ABSENT from functions[], over a body that exec
+swift	R585	askable	A METATYPE RECEIVER RESOLVES ONLY WHEN IT IS A FUNCTION OR INITIALIZER PARAMETER — every other binder of a metatype is dropped, in the CLASS half AND in R563's 
+swift	R592	askable	⟨0.39⟩ OBLIGATION-1 AND OBLIGATION-2 KEYS ARE ATTRIBUTED TO THE SCANNED PACKAGE'S OWN C TARGETS. Driver.foreignOwnerModule names the owner of a foreign abstract
+swift	R593	askable	foreignOwnerModule COUNTS A DUPLICATED IMPORT AS TWO CANDIDATES, so a file with exactly ONE distinct candidate publishes no ⟨0.39⟩ key at all. fileImports is a 
+swift	R603	askable	⟨0.39⟩ OBLIGATION 2's OWNER VOTE COUNTED MODULES WHERE THE THING IT ASSIGNS IS A PACKAGE. abstractionOwnerPkg took Set(files.compactMap { foreignOwnerModule($0)
+swift	R651	askable	A CONSUMER THAT WRITES AN extension ON A DEPENDENCY TYPE SILENCES EVERY MEMBER CALL ON THAT TYPE. Extending a dependency type is completely idiomatic Swift, and
+swift	R656	askable	A CONSUMER THAT WRITES AN extension ON A DEPENDENCY TYPE SILENCED EVERY MEMBER CALL ON THAT TYPE — INCLUDING AN EMPTY extension Chan { }. Closes R651.
+swift	R657	askable	A RETROACTIVE CONFORMANCE ON A DEPENDENCY TYPE TRADES THE DEPENDENCY'S REAL EFFECT FOR Unknown, so a plain deny Env stays exit 0 over a real environment read.
+swift	R698	askable	<T: DepProto> AND some DepProto DROP THE CONSUMER'S OWN IMPLEMENTOR — the direct sibling of rust R690, one engine over. The EXISTENTIAL spelling (any DepProto /
+swift	R699	askable	A METATYPE BINDER WHOSE TYPE IS DEP-DECLARED IS TOTAL SILENCE — functions: [], analyzed.count 1. R585 fixed nine metatype binders for LOCAL types and the dep-ty
+swift	R704	askable	R699 IS NOT ONE BINDER — THE DEP-DECLARED AXIS DEFEATS ALL TEN METATYPE BINDERS, BOTH HALVES, TWENTY ARMS, INCLUDING THE FUNCTION PARAMETER R585's OWN TABLE LIS
+swift	R705	askable	R698 CLOSED — BUT NOT THE WAY THAT ROW IMPLIED, AND THE WRONG FIX WAS IMPLEMENTED AND MEASURED RED BEFORE BEING ABANDONED. The real defect is the OTHER conjunct
+swift	R720	askable	A DEFERRED CALLBACK NAME WITH NO PARAMETER POSITION MADE CALLBACK-FLOW'S DISCHARGE TEST VACUOUS, so ONE CALL SITE DELETED THE DISCLOSURE. Closes R280, open sinc
+swift	R721	askable	A FN-TYPED PARAMETER OF A NESTED FUNCTION, OR OF A CLOSURE WHOSE BINDER IS NOT ITSELF FN-TYPED, IS IN NO INDEX AT ALL — so invoking it is silently dropped.
+swift	R725	askable	A FN-TYPED PARAMETER OF A NESTED func OR OF A CLOSURE REACHED NO INVOCATION-SITE AUTHORITY, so invoking it read SILENT-PURE. Closes R721 — and adds the third ar
+ts	R82	askable	the ⟨0.35⟩ CHA-completeness fix introduced two cardinal sins of its own
+ts	R91	askable	--allow-js silently discards the whole tsconfig.json, not just its include
+ts	R93	askable	a process destructured from globalThis loses its Env effect entirely
+ts	R95	askable	a fetch destructured from globalThis loses its Net effect — R93's sibling, different code path
+ts	R103	askable	an externally-writable callable SLOT resolves to whatever default the scan saw — the whole report reads functions: []
+ts	R110	askable	performance.now() is Clock under lib.dom and SILENT under @types/node — R109's split, opposite direction
+ts	R111	askable	performance.mark/measure/eventLoopUtilization/timerify read the clock and are silent in BOTH arms
+ts	R113	askable	localStorage.x = secret — the INDEX-SIGNATURE write — persists to disk and is pure in BOTH arms
+ts	R114	askable	process.uptime() and os.uptime() are monotonic clocks reviewed pure BY NAME
+ts	R115	askable	{...instance} charges a class PROTOTYPE getter that never runs — a fabrication that FAILS a gate
+ts	R116	askable	Object.assign(target, src) invokes the TARGET's setters and charges nothing
+ts	R120	askable	the structural-literal arm is narrower than its own comment claims
+ts	R136	askable	a WebSocket SUBCLASS with no explicit constructor reads PURE under lib.dom
+ts	R137	askable	two member-precise κ rules delete the BLIND-PACKAGE disclosure for the whole of undici-types
+ts	R138	askable	a relatively-imported project shim under its own package.json is charged Net
+ts	R154	askable	a policy ALIAS line disarms the ⟨0.30⟩ fail-closed INCOMPLETE verdict
+ts	R239	askable	the globalThis. qualifier defeated FIVE text-keyed arms at once, three of them silently
+ts	R240	askable	s[k] = v never resolved a setter unless the key was a SYNTACTIC string literal — 19 of 27 spellings silent
+ts	R245	askable	a UNION-typed receiver charged whichever accessor arm the checker listed FIRST — the same program answers differently depending on the order of the union's arms
+ts	R251	askable	Reflect.get(t, k) has NO ARM AT ALL, so an effectful getter reached through it is silent in every spelling
+ts	R252	askable	Object.entries / Object.values / JSON.stringify over an OBJECT LITERAL with an effectful getter are all silent — and R115's comment asserts the opposite is corr
+ts	R263	askable	an unnameable-owner MEMBER dispatch is kinded callback: (class indirect) where SPEC §4 ⟨0.24⟩ names that reclassification and REJECTS it — the exact mirror of R
+ts	R281	askable	globalThis./window./self. structuredClone was silent in BOTH directions — the BARE-GLOBAL table the qualifier fix never reached
+ts	R282	askable	recordAccessorHit never consulted classOverrides for ANY accessor
+ts	R284	askable	an unnameable-owner MEMBER dispatch was kinded callback: at THREE sites, and R263 named one
+ts	R412	askable	inverting NET_ESTABLISHING into a use-verb DENYLIST is NOT a drop-in — it over-charges on an OPEN-ENDED set, and the measurement says why
+ts	R512	askable	a STRUCTURAL implementor of a FOREIGN abstraction publishes no interfaceUnion entry — registerStructuralImpl filters to projectFiles, so const x: ForeignIface =
+ts	R521	askable	CLOSED — candor-ts fc5007e. THIS ROW'S OWN REFUTATION MISREAD THE INDEX (corrected 2026-09-28, Fable review, verified at source by the coordinator before rewrit
+ts	R531b	askable	an arrow or function expression RETURNED FROM AN IIFE OR FACTORY and stored in a const is silent at its call site — the same isArrowFunction waiver as R531, on 
+ts	R531	askable	a call to a function-valued member of an UNTYPED object literal was SILENT — the caller vanished from functions[] entirely. const u = { roll: (n) => Math.random
+ts	R558	askable	AN INTERFACE MEMBER PASSED AS A FIRST-CLASS VALUE EVAPORATES — the function is ABSENT from functions[] and pure EXITS 0 over a body that writes to disk. [n].map
+ts	R560	askable	A κ WHOLE-MODULE RULE FIRES ON A CALL WHOSE ONLY LINK TO THE PACKAGE IS ITS TYPE — dropping the real effect AND fabricating a different one. Both directions at 
+ts	R696	askable	THE CANDOR_DEPS JOIN WAS GATED if (!eff && crossDeps.size > 0 …), and kappa's WHOLE-MODULE rules make eff truthy for EVERY MEMBER of a covered package — so the 
+ts	R697	askable	THE UNANSWERABLE-KEY DISCLOSURE FUNNEL WAS GATED if (!eff && !inheritedFromDep …), so where the chained report carried NO entry for the key, the Unknown[dispatc
