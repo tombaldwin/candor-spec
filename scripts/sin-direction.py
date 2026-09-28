@@ -24,6 +24,20 @@ at the end of its STATUS cell:
                     test: a gate like `deny Fs f` exits 0 over code that really performs it.
     DIR=NOTSILENT   anything else: over-disclosure, fabrication/over-charge, a precision gap that
                     hedges with `Unknown`, or an instrument/process/spec row. NOT a sin.
+LIVE, NOT CONDITIONAL. `DIR=SILENT` means the engine is silent AT HEAD over code somebody can
+construct today. A hazard that is proven in mechanism but cannot fire until some other change lands
+is `DIR=NOTSILENT`, with the condition named in the row. R764 is the case that forced the rule: the
+disclosure-deletion was measured end to end — all four disclosure channels vanish, including the
+`--gate-json` coverage block a SARIF gate reads — but at HEAD the producer never publishes the entry
+that triggers it, so candor-ts under-reports nothing today. Counting it would overstate what the
+shipped engines get wrong, which is the one thing this number exists to state accurately. The row
+still carries the full measurement and gates the change that would make it live.
+
+The mirror of that rule: RARE IS STILL LIVE. R769 reaches 0 full instances across 8,844 foreign
+interfaces in two installed dependency trees, and is still `DIR=SILENT`, because the shape is
+constructible at HEAD and its gate exits 0 over code that provably writes a file. Reach prices the
+fix; it does not decide the direction.
+
     DIR=UNSETTLED   not established either way — typically a row asserting a missed join without
                     an EXECUTED gate result. Counted separately and never folded into either side.
 
