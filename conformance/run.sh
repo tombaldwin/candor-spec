@@ -81,6 +81,20 @@ SW_DIR="${CANDOR_SWIFT:-$HERE/../../candor-swift}"
 # is which, so a startup-only check is blind to precisely the case that bites. Recording the HEAD SHA as
 # well as the porcelain matters for the same reason — a `git commit` mid-run leaves the tree CLEAN, so a
 # porcelain-only comparison reads the most disruptive version of this as no change at all.
+# WHICH UNITS VIOLATE, NOT HOW MANY. Shared by PARTs 81 and 82, so it lives in the setup: part.sh runs
+# the setup plus ONE part's slice, and a helper defined inside PART 81 is invisible to a PART 82 run. Added 2026-09-29 after a release reviewer showed that the count:1->2
+# cells R782 moved would still read count:2 under a regression that wired a decorator to the WRONG unit
+# (`makesThing`, `X.constructor` — 174f3cb's fabrication, which the R782 fix exists to avoid), so the
+# cross-engine suite was weaker than candor-ts's own tests, which assert by name. Position suffixes
+# (`<decorator>@28`) are normalised to `@N` so a whitespace edit to a fixture does not move the cell.
+ckgatefns() { python3 -c '
+import json, re, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception as exc:
+    sys.exit("     INSTRUMENT: cannot read " + sys.argv[1] + " (" + str(exc) + ")")
+print(json.dumps(sorted(re.sub(r"@\d+", "@N", v.get("fn", "?")) for v in (d.get("violations") or []))))
+' "$1"; }
 engine_state() {
   _st=""
   for _e in candor-rust candor-java candor-ts candor-swift; do
@@ -15737,7 +15751,8 @@ echo "PART 80 — a ≥⟨0.33⟩ report keeps the ⟨0.33⟩ cross-policy sente
 #   ctrl-named-untouched  `@Entity("users") class Controlled {}` where `Entity` is a NAMED, LOCAL factory
 #                         with its own `fs.readFileSync` — the shape precedent already covers. Asserts the
 #                         SAME expected value pre- and post-fix (`src.ctl.Entity` carries `Fs`, `deny Fs`
-#                         exits 1): already caught before this fix existed, unmoved by it. Measured
+#                         exits 1): already caught before this fix existed, unmoved by it. [SUPERSEDED 2026-09-29: R782 moved
+#                         its GATE cell count:1 -> count:2 on purpose; see the R782/R785 note below.] Measured
 #                         byte-identical (report AND gate-json) between the two binaries, not merely
 #                         value-equal.
 #   ctrl-pure-anon        THE OVER-CHARGE CONTROL: `@((_t,_k,_d)=>{ 1+1; }) class PureThing {}` — an
@@ -15862,6 +15877,8 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p81 ctrl-named-untouched-gate "$p81_named_gate"  'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p81 ctrl-pure-anon            "$p81_pure"        'no-fs'
   p81 ctrl-pure-anon-gate       "$p81_pure_gate"   'ok|count:0|-'
+  p81 defect-anon-direct-fns    "$(ckgatefns "$P81/defect.gate.json")"    '["src.e.<decorator>@N", "src.e.<module>"]'
+  p81 ctrl-named-untouched-fns  "$(ckgatefns "$P81/ctrlnamed.gate.json")" '["src.ctl.<module>", "src.ctl.Entity"]'
 
   # SOUNDNESS R782/R785 — the CROSS-LAYER gate, the product's flagship shape. A decorator exported from
   # `infra` and applied to a `domain` class runs on import, so `deny Fs src.domain` must see it. A prefix
@@ -15889,6 +15906,7 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p81 ctrl-crosslayer-infra-gate  "$(ck81gate "$P81/layerinfra.gate.json")" 'notok|count:1|["AS-EFF-006"]'
   p81 ctrl-crosslayer-plain-gate  "$(ck81gate "$P81/layerplain.gate.json")" 'notok|count:1|["AS-EFF-006"]'
   p81 ctrl-crosslayer-pure-gate   "$(ck81gate "$P81/layerpure.gate.json")"  'ok|count:0|-'
+  p81 defect-crosslayer-deco-fns  "$(ckgatefns "$P81/layer.gate.json")"     '["src.domain.account.<module>"]'
 else
   P81_OUT="$P81_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
 "
@@ -15908,27 +15926,16 @@ rm -rf "$P81"
 # were ALREADY at their wanted values on that same pre-fix binary (the ctrl-named report and gate-json were
 # measured BYTE-IDENTICAL between the two binaries, not merely value-equal), so the controls are not what
 # moved.
-# SOUNDNESS R782/R785 WILL MOVE A CELL HERE, AND IT IS FLAGGED RATHER THAN PRE-WRITTEN.
-# R782: class-definition-time work (a decorator APPLICATION, a decorator ARGUMENT, a `static {}` block)
-# is minted as a ROOT unit and never wired from the unit that EVALUATES the class. Measured
-# consequences: `deny Fs <module>` exits 0 over a module that writes on import; a named function
-# containing `@Deco class Y {}` reads PURE while writing on every call; and a LAYER gate
-# (`deny Fs src.domain`) goes green across a layer boundary, which is the README's headline use.
-# ⟨0.14⟩ (SPEC.md:1522-1528) already rules such code in scope, so this is a fix and not a question.
-#
-# WHAT IT DOES TO THIS PART: `ctrl-named-untouched-gate` wants `count:1` on a BLANKET `deny Fs`, and a
-# correct fix makes it `count:2` — `<module>` inherits the effect from the local effectful `Entity`. So
-# that cell currently PINS THE ABSENCE, as a side effect of counting globally rather than by intent.
-#
-# WHY THE NEW CELL IS NOT ADDED HERE YET, which is this part's own standard and not an omission: every
-# cell above was FALSIFIED AGAINST THE PRE-FIX BINARY (see the note below — two RED cells on candor-ts
-# `fbb9ea2`, with the controls proven byte-identical across the two binaries so they were not what
-# moved). A cell cannot be falsified before the fix it pins exists, and a cell added green-on-arrival to
-# the family's most important instrument is exactly the shape this register keeps finding in its own
-# gates. So the fix lands WITH its cell and its falsification in one pass, and the cell to add is the
-# CROSS-LAYER gate — an `infra` module exporting an effectful decorator applied to a `domain` class,
-# `deny Fs src.domain` — because the prefix scope over the decorator's OWN module already catches it and
-# would not discriminate. Use `P81_XFAIL` (`shape:arm:row`) if the cell must land before the engine.
+# SOUNDNESS R782/R785 (candor-ts `d8f5d25`): class-definition-time work — a decorator APPLICATION, a decorator
+# ARGUMENT, a `static {}` block — is now wired from the unit that EVALUATES the class. ⟨0.14⟩ (SPEC.md:1524)
+# rules the module-level case; the in-function case is §4's defining rule plus ordinary execution. So four
+# cells moved count:1 -> count:2 on purpose (here `defect-anon-direct-gate` and `ctrl-named-untouched-gate`;
+# in PART 82 `defect-shape1-argliteral-gate` and `defect-shape2-argclosure-gate`), each now paired with a
+# `-fns` cell that names the violating units, because a count alone would also read 2 under a regression
+# wiring the decorator to the wrong unit. The CROSS-LAYER cell above was falsified against candor-ts
+# `fc5007e` (red) and `d8f5d25` (green) with its three controls sha256-identical across both binaries.
+# NOT YET PINNED CROSS-ENGINE, and said so rather than implied: the in-function case (`mk()` reading pure)
+# and `static {}` blocks are covered only by candor-ts's own tests; R815 names the unmeasured siblings.
 echo "PART 81 — an anonymous decorator expression is charged to a minted unit, never dropped silent (candor-ts; SPEC §4)"
 printf '%s' "$P81_OUT"
 [ "$P81_BAD" = 0 ] && echo "  -> MATCH — an anonymous decorator's own effect is charged to a position-keyed unit and fails \`deny Fs\`, the named-factory path already covering the same shape is untouched, and a genuinely pure anonymous decorator gains no fabricated effect"
@@ -16118,6 +16125,8 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p82_shape1_gate=$(ck82gate "$P82/shape1.gate.json")
   p82_shape2=$(ck82 "$P82/shape2.json" "<decorator-arg>")
   p82_shape2_gate=$(ck82gate "$P82/shape2.gate.json")
+  p82_shape1_fns=$(ckgatefns "$P82/shape1.gate.json")
+  p82_shape2_fns=$(ckgatefns "$P82/shape2.gate.json")
   p82_shape3=$(ck82nofs "$P82/shape3.json")
   p82_shape3_gate=$(ck82gate "$P82/shape3.gate.json")
   p82_ctrllit=$(ck82nofs "$P82/ctrllit.json")
@@ -16129,6 +16138,8 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p82 defect-shape1-argliteral-gate "$p82_shape1_gate" 'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p82 defect-shape2-argclosure      "$p82_shape2"      '["Fs"]|["/etc/hosts"]'
   p82 defect-shape2-argclosure-gate "$p82_shape2_gate" 'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
+  p82 defect-shape1-argliteral-fns  "$p82_shape1_fns"  '["src.e.<decorator-arg>@N", "src.e.<module>"]'
+  p82 defect-shape2-argclosure-fns  "$p82_shape2_fns"  '["src.e.<decorator-arg>@N", "src.e.<module>"]'
   p82 shape3-external-open          "$p82_shape3"      'no-fs'
   p82 shape3-external-open-gate     "$p82_shape3_gate" 'ok|count:0|-'
   p82 ctrl-arg-literal              "$p82_ctrllit"     'no-fs'

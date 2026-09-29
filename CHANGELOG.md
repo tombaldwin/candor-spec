@@ -332,7 +332,7 @@ Run it after any patch-cycle commit that adds a section here.
   dispatching on `tower_service#Service::call`, every one `inferred: []`, while `tower-service` publishes
   zero union entries — R533's NARROW case, live.
 
-- **R533 (the ⟨0.40⟩ candidate) is PRICED on java, and it comes in at one third of the precedent that
+- **R533 (open in java and swift; licensed by §4's defining rule at `SPEC.md:4299` — no ⟨0.40⟩ rung exists) is PRICED on java, and it comes in at one third of the precedent that
   was declined.** Nine chained JVM library pairs, 48,116 analyzed functions, chained via `CANDOR_DEPS`
   and differenced with `bin/corpus-ab.py`: the broad form costs **0.87% of analyzed functions with ZERO
   effect losses**, against the **2.60%** in-crate hedge ⟨0.39⟩ declined and the **2.1%** this same form
@@ -356,7 +356,24 @@ Run it after any patch-cycle commit that adds a section here.
   documented as a named miss (§7 item 7), and java and swift document nothing. candor-rust DOES
   (`README.md:181`) and is not in the row; ts flags and owes nothing.
 
-Register: 459 rows, 56 open.
+- **The cardinal-sin count is now a gated command** — `scripts/sin-direction.py` (R771). Every OPEN row
+  declares `DIR=SILENT`, `DIR=NOTSILENT` or `DIR=UNSETTLED` at the end of its status cell, and
+  `doc-gates.sh` fails when one does not; the count had previously cost two failed automated attempts
+  (which read 19 and 11) and a manual read of 126 rows (48). `doc-gates.sh` now also counts the gates it
+  ran instead of printing a literal (R772), and `scripts/porting-queue.py` (R777) lists closed classes
+  nobody recorded asking of the other engines.
+- **Conformance, PART 81/82 (candor-ts R782/R785, `d8f5d25`)**: four gate cells move count:1 -> count:2
+  on purpose, because `<module>` now inherits class-definition-time effects; each is paired with a `-fns`
+  cell naming the violating units, and a CROSS-LAYER cell (`deny Fs src.domain` over a decorator exported
+  from `infra`) is added, falsified red on `fc5007e` and green on `d8f5d25`. The shared helper
+  `ckgatefns` lives in the suite's setup so `part.sh` can run either part alone.
+- **Rows R756–R816** filed or closed this cycle: the LIST-vs-RULE sweep across all four engines (R786–R809),
+  its fixes (R786–R789 swift, R794/R795/R799 java, R800/R801/R782/R785 ts, R806–R809 rust), and the
+  residue the fixes named (R810–R816).
+- `scripts/sha-citations.py`: its selftest fixture repo no longer inherits the user's global git signing
+  config, which had made its commits fail silently and the shallow-clone case run against an empty repo.
+
+Register at this writing: 713 rows, 150 open — run `scripts/soundness-status.py` rather than quote this.
 
 ## [0.39.2] — 2026-09-22
 
