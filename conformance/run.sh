@@ -15857,11 +15857,38 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p81_pure_gate=$(ck81gate "$P81/ctrlpure.gate.json")
 
   p81 defect-anon-direct        "$p81_defect"      '["Fs"]|["/etc/hosts"]'
-  p81 defect-anon-direct-gate   "$p81_defect_gate" 'notok|count:1|["AS-EFF-006"]'
+  p81 defect-anon-direct-gate   "$p81_defect_gate" 'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p81 ctrl-named-untouched      "$p81_named"       '["Fs"]|["/etc/hosts"]'
-  p81 ctrl-named-untouched-gate "$p81_named_gate"  'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-named-untouched-gate "$p81_named_gate"  'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p81 ctrl-pure-anon            "$p81_pure"        'no-fs'
   p81 ctrl-pure-anon-gate       "$p81_pure_gate"   'ok|count:0|-'
+
+  # SOUNDNESS R782/R785 — the CROSS-LAYER gate, the product's flagship shape. A decorator exported from
+  # `infra` and applied to a `domain` class runs on import, so `deny Fs src.domain` must see it. A prefix
+  # scope over the decorator's OWN module already catches it and would not discriminate, which is why the
+  # scope here is the OTHER layer. FALSIFIED AGAINST candor-ts `fc5007e` (pre-fix): the defect cell read
+  # `ok|count:0|-` there and `notok|count:1` after; the three controls were byte-identical (sha256) across
+  # both binaries, so they are not what moved. The four cells above that went count:1 -> count:2 moved
+  # because `<module>` now inherits class-definition-time effects, which is the fix, not a regression.
+  mkdir -p "$P81/layer/src/infra" "$P81/layer/src/domain" "$P81/layerplain/src/infra" "$P81/layerplain/src/domain" "$P81/layerpure/src/infra" "$P81/layerpure/src/domain"
+  printf 'deny Fs src.domain\n' > "$P81/layer/deny-fs-domain.policy"
+  printf 'deny Fs src.infra\n'  > "$P81/layer/deny-fs-infra.policy"
+  printf 'import fs from "node:fs";\nexport function Audited(_t: any) { fs.readFileSync("/etc/hosts"); }\n' > "$P81/layer/src/infra/audit.ts"
+  printf 'import { Audited } from "../infra/audit";\n@Audited\nexport class Account {}\n' > "$P81/layer/src/domain/account.ts"
+  printf 'deny Fs src.domain\n' > "$P81/layerplain/deny-fs-domain.policy"
+  printf 'import fs from "node:fs";\nexport function Audited(_t: any) { fs.readFileSync("/etc/hosts"); }\n' > "$P81/layerplain/src/infra/audit.ts"
+  printf 'import { Audited } from "../infra/audit";\nAudited(null);\nexport class Account {}\n' > "$P81/layerplain/src/domain/account.ts"
+  printf 'deny Fs src.domain\n' > "$P81/layerpure/deny-fs-domain.policy"
+  printf 'export function Audited(_t: any) { const x = 1 + 1; return x; }\n' > "$P81/layerpure/src/infra/audit.ts"
+  printf 'import { Audited } from "../infra/audit";\n@Audited\nexport class Account {}\n' > "$P81/layerpure/src/domain/account.ts"
+  node "$TS_DIR/scan.mjs" "$P81/layer"      --policy "$P81/layer/deny-fs-domain.policy"      --gate-json "$P81/layer.gate.json"      >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P81/layer"      --policy "$P81/layer/deny-fs-infra.policy"       --gate-json "$P81/layerinfra.gate.json" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P81/layerplain" --policy "$P81/layerplain/deny-fs-domain.policy" --gate-json "$P81/layerplain.gate.json" >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P81/layerpure"  --policy "$P81/layerpure/deny-fs-domain.policy"  --gate-json "$P81/layerpure.gate.json"  >/dev/null 2>&1
+  p81 defect-crosslayer-deco-gate "$(ck81gate "$P81/layer.gate.json")"      'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-crosslayer-infra-gate  "$(ck81gate "$P81/layerinfra.gate.json")" 'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-crosslayer-plain-gate  "$(ck81gate "$P81/layerplain.gate.json")" 'notok|count:1|["AS-EFF-006"]'
+  p81 ctrl-crosslayer-pure-gate   "$(ck81gate "$P81/layerpure.gate.json")"  'ok|count:0|-'
 else
   P81_OUT="$P81_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked)
 "
@@ -16099,9 +16126,9 @@ if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
   p82_ctrlpure_gate=$(ck82gate "$P82/ctrlpure.gate.json")
 
   p82 defect-shape1-argliteral      "$p82_shape1"      '["Fs"]|["/etc/hosts"]'
-  p82 defect-shape1-argliteral-gate "$p82_shape1_gate" 'notok|count:1|["AS-EFF-006"]'
+  p82 defect-shape1-argliteral-gate "$p82_shape1_gate" 'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p82 defect-shape2-argclosure      "$p82_shape2"      '["Fs"]|["/etc/hosts"]'
-  p82 defect-shape2-argclosure-gate "$p82_shape2_gate" 'notok|count:1|["AS-EFF-006"]'
+  p82 defect-shape2-argclosure-gate "$p82_shape2_gate" 'notok|count:2|["AS-EFF-006", "AS-EFF-006"]'
   p82 shape3-external-open          "$p82_shape3"      'no-fs'
   p82 shape3-external-open-gate     "$p82_shape3_gate" 'ok|count:0|-'
   p82 ctrl-arg-literal              "$p82_ctrllit"     'no-fs'

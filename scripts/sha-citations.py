@@ -443,12 +443,23 @@ def selftest():
         _src = _p / "src"
         _src.mkdir()
         subprocess.run(["git", "init", "-q", str(_src)], capture_output=True)
-        for _k, _v in (("user.email", "t@e"), ("user.name", "t")):
+        # HERMETIC: this throwaway fixture repo must not inherit the user's GLOBAL git config. Measured
+        # 2026-09-29: a global `commit.gpgsign=true` whose signing program had gone missing made both
+        # fixture commits fail SILENTLY (output captured, exit ignored), so the "shallow" clone was of an
+        # EMPTY repo and this case failed for a reason that had nothing to do with `_is_shallow`. Signing
+        # is switched off for THIS temporary repo only, and a fixture commit that fails is now reported
+        # as an unrun calibration rather than left to masquerade as a verdict.
+        for _k, _v in (("user.email", "t@e"), ("user.name", "t"), ("commit.gpgsign", "false")):
             subprocess.run(["git", "-C", str(_src), "config", _k, _v], capture_output=True)
+        _fixture_ok = True
         for _i in (1, 2):
             (_src / "f").write_text(str(_i))
             subprocess.run(["git", "-C", str(_src), "add", "f"], capture_output=True)
-            subprocess.run(["git", "-C", str(_src), "commit", "-qm", f"c{_i}"], capture_output=True)
+            _cm = subprocess.run(["git", "-C", str(_src), "commit", "-qm", f"c{_i}"], capture_output=True)
+            _fixture_ok = _fixture_ok and _cm.returncode == 0
+        if not _fixture_ok:
+            bad.append("the fixture repo could not be COMMITTED to — the shallow/deep cases below did NOT "
+                       "measure anything, and an unrun calibration case is not a passing one")
         _deep, _shal = _p / "deep" / "candor-rust", _p / "shal" / "candor-rust"
         _deep.parent.mkdir(); _shal.parent.mkdir()
         _c1 = subprocess.run(["git", "clone", "-q", str(_src), str(_deep)], capture_output=True)
