@@ -372,8 +372,16 @@ Run it after any patch-cycle commit that adds a section here.
   residue the fixes named (R810–R816).
 - `scripts/sha-citations.py`: its selftest fixture repo no longer inherits the user's global git signing
   config, which had made its commits fail silently and the shallow-clone case run against an empty repo.
+- **Rows R817–R830, from the v0.39.3 release reviews.** R817/R818 are spec text gaps (no bind/listen
+  sentence; ⟨0.39⟩ mis-cited as the zero-implementor licence, which is §4's `:4299`). R718's regression
+  (an owned value carrying a borrow lost its drop charge) was found by a release reviewer and fixed in
+  candor-rust `8246316`. R794's java fix regressed zero-argument query terminals against 0.39.2; the
+  follow-ups R819 (`49d61cd`) and R824 (`5f695f9`) closed what they measured, R822/R823 were shown
+  disclosed, and **R825** records that the model under all three fails OPEN — being restructured, not
+  patched a fourth time. R826/R827 are two swift regressions against 0.39.2 found by the panel;
+  R828–R830 are pre-existing rust-scan silences it measured in both arms.
 
-Register at this writing: 713 rows, 150 open — run `scripts/soundness-status.py` rather than quote this.
+Register at this writing: 727 rows, 162 open — run `scripts/soundness-status.py` rather than quote this.
 
 ## [0.39.2] — 2026-09-22
 
