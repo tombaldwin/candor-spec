@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.39.3] — 2026-09-30
+
 - **R584 FIXED (candor-swift `1edf1ee`/`c40ffc5`)** — the class half of type-receiver dispatch. The ruling:
   a class hierarchy is NOT a protocol conformer set, so the generic/metatype spelling resolves to exactly
   what the LITERAL spelling of the same call resolves to — no ≤12 cap, no hedge, because the literal has
