@@ -25,6 +25,24 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ REVISED after an adversarial review, before any engine ports it.** The review was right on
+  every count it made, and two were measured rather than argued. **`returns` is no longer widened to
+  protocol values**: handed `returns` naming a protocol, the SHIPPED candor-swift v0.39.3 consumer joins the
+  default alone and drops its disclosure (`deny Env Unknown` 1 → 0 over an implementor that reads `Env`), so a
+  protocol-valued result now has its own key, `returnsProtocol`. **The miss rule is scoped to JOINS on a
+  guessed owner** and measured as written with a probe build over the nine-entry swift chained corpus: 2
+  sites, 0 gate flips. Four consumer rules are now stated where the first draft left them implicit: a walk
+  reads an absent member as "may be inherited" and a path through an unkeyed type is a MISS; an unknown
+  kind is an open kind, whose overrides come from the ⟨0.39⟩ route and never from `types` alone; two copies
+  of one report union, and a distrusted copy is a miss that never erases a trusted one; a malformed surface
+  may be refused. The non-additivity note now says a half-implementation is NOT bounded by today in rust
+  (typing a hop without the miss rule silences a member miss), that the withdrawal moves every gate reading
+  the disclosure, and that a wrong `holds` under it is silent. PART 95 grows from 29 to 40 arms: `g1` is now
+  a true HIT (a wrong `holds` whose target has the member) and `r1`–`r4` assert the kept guess with `deny Fs`;
+  new arms for the walk, unknown and withheld kinds, two copies, a partial `adds`, a computed getter, a
+  protocol value, kind accuracy, foreign spelling and wrapper refusals; `o3` accepts the refusal it permits;
+  `u1` compares effects and gate exits instead of whole rows; and the withhold arms demand a witness, so they
+  no longer pass by absence. Every new arm that needs a producer surface is a declared xfail on R843.
 - **⟨0.40⟩ AUTHORED — declared types and the dependency's own hierarchy, for RESOLUTION (SOUNDNESS R843),
   with its PART 95.** Written before any engine ports it; the floor stays 0.39 and no engine declares 0.40
   yet. §2 gains three `typeSurface` keys beside ⟨0.23⟩'s `returns`: `holds` (a static, property, field or

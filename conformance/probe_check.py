@@ -195,10 +195,10 @@ COVERED = {
         "breaks": r"DEP-OVERRIDE: [1-9]\d* cell\(s\) wrong",
     },
     # PART 95 (SOUNDNESS R843). The fault empties `Client.fetch` and `SubO.m` (c5_factory on both engines,
-    # c1_convention and r7b_returns_open on swift — all green today), turns the stale/nothing doctors into the
-    # identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer), and injects
-    # the short `types` key a see-what-you-can producer would emit (w1/w2, the classifier-must-fire proof).
-    # Every substitution moves an expected rc; none lands on an xfailed cell, which could not redden.
+    # c1_convention and r7b_returns_open on swift — all green today) and turns the stale/nothing doctors into
+    # the identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer). Every
+    # substitution moves an expected rc; none lands on an xfailed cell, which could not redden. The w arms'
+    # classifier-must-fire proof moved to `--selftest` when they became xfails (they now demand a witness).
     "gen_type_surface.py": {
         "args":   [],
         "holds":  r"TYPE-SURFACE: OK — every control holds",

@@ -12,8 +12,9 @@ Swift's convention guess types `Wrong.shared` as a `Wrong` and charges `[Fs]`; `
 `deny Env Unknown` both exit 0 (SOUNDNESS R831). Rust discloses the hop as `Unknown` (R856/R857) and so
 never charges the `Env` either. No report carries the fact that would settle it — the DECLARED type of
 the hop — and ⟨0.40⟩ adds it: `typeSurface.holds` (a member/static/top-level value -> its declared type),
-`typeSurface.types` (every declared type's KIND and complete direct supertypes, as a MANIFEST) and
-`typeSurface.adds` (conformances the package adds to FOREIGN types).
+`typeSurface.returnsProtocol` (a function returning exactly one protocol), `typeSurface.types` (every
+declared type's KIND and complete direct supertypes, as a MANIFEST) and `typeSurface.adds` (conformances
+the package adds to FOREIGN types).
 
 THE RUNG IS PURE RESOLUTION, and this part is written to that shape:
   * a hit ADDS the resolved target and KEEPS whatever the consumer already charged (removing a guessed
@@ -26,57 +27,58 @@ THE RUNG IS PURE RESOLUTION, and this part is written to that shape:
 
 THE ARMS. Positive arms (r*) need the PRODUCER to publish the surface and the CONSUMER to read it, so
 they are END-TO-END: a real producer scan of the dependency, a real chained consumer scan, and the
-engine's own gate. Degraded arms (o*, u1, g1) DOCTOR the producer's own report — strip, malform, re-
-version or empty it — so the consumer's answer is measured over a surface it must not trust, with the
-consumer's source byte-identical. Producer arms (p*, w*) read the dependency report alone.
+engine's own gate. Degraded arms (o*, u1, g1, c6) DOCTOR the producer's own report — strip, malform, re-
+version, empty, withhold one key, rewrite one value, or chain a second copy beside it — with the consumer's
+source byte-identical. A doctor that must WRITE a value writes the producer's own value with its last
+segment swapped, never a spelling of ours. Producer arms (p*, w*) read the dependency report alone.
 
-  r1_static     `Wrong.shared.ping()`, `shared: Other`                 -> Env      (R831; rust R856)
-  r2_bound      `let s = Wrong.shared; s.ping()`                       -> Env      (R617)
-  r3_property   `n.parent.ping()`, `parent: Other`                     -> Env      (rust R857)
-  r4_inherited  `Holder4.shared.tok4()`, `shared: Mid4`, `Mid4: Grand4` -> Env     (walk `supers`)
+  r1_static     `Wrong.shared.ping()`, `shared: Other`                 -> Env, and swift keeps its Fs guess
+  r2_bound      `let s = Wrong.shared; s.ping()`                       -> as r1 (R617)
+  r3_property   `n.parent.ping()`, `parent: Other`                     -> as r1 (rust R857)
+  r4_inherited  `Holder4.shared.tok4()`, `shared: Mid4`, `Mid4: Grand4` -> Env (the walk on absence)
   r5_refined    `(t: any PSub).pTok()`, `PSub: PBase`, pTok on PBase   -> Env      (R859/R865; rust R858)
-  r6_proto_ret  `mkP().run()`, `mkP() -> any PSvc`                     -> Env      (R864; ⟨0.39⟩ union)
+  r6_proto_ret  `mkP().run()`, `mkP() -> any PSvc` (`returnsProtocol`) -> Env; rust `Box<dyn>` discloses
   r7a_holds_open `HolderO.shared.m()`, `shared: BaseO = SubO()`        -> Env      (override union)
   r7b_returns_open `let b = mkO(); b.m()`, `mkO() -> BaseO`            -> Env      (passes since R867)
   r8_adds       `Tok().pTok()`, Tok in a THIRD package, `extension Tok: PBase` in dep -> Env (`adds`)
+  r9_walk       `HolderW.shared.tokw()`, `T9: PA, PM`, PM's default more specific -> Env (swift)
+  r10_holds_proto `SvcHolder.svc.run()`, `svc: any PSvc`              -> Env; rust `&dyn` may disclose
+  r11_computed  `Wrong3.computed.ping()`, a computed `static var computed: Other` -> Env (swift)
 
   c1_convention `Client.shared.fetch()`, `shared: Client` (the convention RIGHT)   -> Env     (R826)
   c2_final/c2_value/c2_enum/c2_open   a right-typed singleton whose `m` reads Fs, while an UNRELATED
-                `SubO.m`/`SubB.n` reads Env -> `deny Env` 0: the override union must add nothing it
-                cannot reach (c2_open: `OpenB`'s subclass overrides `n`, never `m`)
-  c3_collision  `Dep.Client.shared.fetch()` in a file importing BOTH `Dep` and `DepB`, each declaring
-                `Client` — DepB's reads Fs and Dep's Env -> `deny Env` 1: union, never pick
-  c4_cross      r1's consumer text BYTE-IDENTICAL, over a dependency where `shared: Wrong` (the
-                convention right) -> `deny Env` 0. The one-variable cross of r1: only the declared type
-                moves, so r1's answer is decided by the declared type and nothing else
+                member reads Env -> `deny Env` 0: the override union must add nothing it cannot reach
+  c3_collision  `Dep.Client.shared.fetch()` in a file importing BOTH `Dep` and `DepB` -> union or disclose
+  c4_cross      r1's consumer text BYTE-IDENTICAL, over a dependency where `shared: Wrong` -> `deny Env` 0
   c5_factory    `Client.make().fetch()` — ⟨0.23⟩'s `returns` (R832), pinned unchanged -> Env
+  c6_disagree   r1 over TWO trusted copies of the dependency, one rewriting `Wrong.shared` to `Node` ->
+                both targets joined: `deny Env` 1
 
-  o1_old        r1 over the dependency report with `typeSurface.{holds,types,adds}` STRIPPED -> the
-                additive hedge: `deny Env Unknown` 1
-  o1b_old_right c1 over the stripped report -> `deny Env` 1 (the guess KEPT) AND `deny Unknown` 1 (ADDED)
-  o2_member_miss `Wrong.shared.quiet()`, `Other.quiet` PURE so absent from the report -> a holds HIT
-                then a member MISS: `deny Unknown` 1 (§2 ⟨0.23⟩ "a miss on the entry lookup that
-                follows a hit")
-  o3_malformed  r1 over a report whose `holds`/`types`/`adds` are the wrong JSON type -> as o1
-                (a refusal, exit 2, is also accepted — it fails closed)
-  o4_stale      r1 over a report whose `candor.version` no longer matches the consumer -> as o1 (§2.1)
-  o5_nothing    r1 over a report that judged nothing (`functions` [], `analyzed.count` 0) but still
-                carries the surface -> as o1 (PART 26's coverage door; the surface must not reopen it)
-  u1_bound      `Wrong2.shared2.q()`, `shared2: Quiet`, a type with ONLY pure members. The consumer row
-                must be BYTE-IDENTICAL over a report that publishes `holds` for `shared2` and one that
-                does not (a bounded producer may omit it), and must disclose (`deny Unknown` 1)
-  g1_keep_guess c1 over a report whose `holds` for `Client.shared` is REWRITTEN to name `Other` (a WRONG
-                declared type) -> `deny Env` 1: the guess `Client.fetch` is kept. A consumer that SWAPS
-                the guess for the surface's answer fails here — the replacement is rung B, not this one
+  o1_old        r1 over the report with the ⟨0.40⟩ keys STRIPPED -> `deny Env Unknown` 1 (swift: Fs kept)
+  o1b_old_right c1 over the stripped report -> `deny Env` 1 AND `deny Unknown` 1
+  o2_member_miss `Wrong.shared.quiet()`, `Other.quiet` PURE -> a hit then a member MISS: `deny Unknown` 1
+  o3_malformed  r1 over a report whose keys are the wrong JSON type -> as o1, or a refusal (exit 2)
+  o4_stale      r1 over a report whose `candor.version` no longer matches -> disclose, and no Env from it
+  o5_nothing    r1 over a report that judged nothing but carries the surface -> disclose
+  o6_walk_unkeyed r9 with PM's `types` key WITHHELD -> the path through PM is a miss: disclose
+  o7_target_unkeyed r7a with BaseO's `types` key WITHHELD -> an unknown kind is open: Env or Unknown
+  o8_sub_unkeyed r7a with SubO's `types` key WITHHELD -> overrides come from the ⟨0.39⟩ route: Env or Unknown
+  o9_stale_beside r1 over a trusted copy AND a stale copy -> the resolution stands AND the stale copy discloses
+  o10_adds_partial r8 with Tok's `adds` entry WITHHELD -> `adds` is never complete: disclose
+  u1_bound      `Wrong2.shared2.q()`, `shared2: Quiet` (only pure members), with and without its `holds`
+                key -> the same EFFECTS and the same GATE EXITS (never compared on reason strings)
+  g1_keep_guess c1 over a report whose `holds` for `Client.shared` names `Decoy`, which HAS a `fetch` (Fs)
+                -> a true HIT on a WRONG type: `deny Fs` 1 (the hit joined) AND `deny Env` 1 (the guess kept)
 
-  p1_holds      the producer publishes `holds` for `Wrong.shared` naming `Other`, and lists `holds` in
-                `resolves`
-  p2_types      the producer publishes `types` for `Mid4` with `Grand4` among its supers, and for
-                `PSub` with kind `protocol` and `PBase` among its supers
-  w1_macro      swift: `@AddP public final class MacT {}`, where `AddP` is an attached EXTENSION macro
-                adding a conformance the parser cannot expand -> `types` MUST NOT carry `MacT`
-  w2_macro      rust: `hide!(Y)` expanding to `impl Hidden for Y`, and `#[derive(Opaque)] struct Z` ->
-                `types` MUST NOT carry `Y` or `Z` (a MANIFEST key is complete or absent, never short)
+  p1_holds      `holds` for Wrong.shared -> Other; swift also a computed getter and a protocol value
+  p2_types      every listed type's KIND (open/class/final/value/protocol) and required supers; Quiet,
+                a type with only pure members, keyed (`types` is never bounded)
+  p3_foreign    `adds` keyed in Base's namespace; SubThing's Base-owned supertype in Base's namespace
+  p4_wrappers   `Other?`, `any PA & PSvc`, `Option<Other>` NOT published (and `holds` present at all)
+  w1_macro      swift: an attached extension macro declared in ANOTHER package -> MacT omitted, witness
+                PlainT keyed
+  w2_macro      rust: `hide!(Y)`, `impl_q!()` (Q unnamed), `#[derive(Opaque)]`, `#[opaque_attr]` -> Y, Q,
+                Z, W, Hidden, Hidden2 omitted; non-vacuity from the main dependency's `types`
 
 THE CARRIER. Every consumer function also calls the dependency's free `carrier()` (Net). `deny Net` is
 asserted on every gate cell: it proves the chained report reached THIS gate run and that the scope names
@@ -105,6 +107,10 @@ SPEC_CLAUSES = [
     ("§2 ⟨0.40⟩", "A CONSUMER USES THE SURFACE TO ADD A RESOLUTION, NEVER TO REMOVE ONE"),
     ("§2 ⟨0.40⟩", "`types` is a MANIFEST"),
     ("§2 ⟨0.40⟩", "every miss keeps the guess and ADDS `Unknown`"),
+    ("§2 ⟨0.40⟩", "the walk reads absence as \"may be inherited\""),
+    ("§2 ⟨0.40⟩", "an unknown kind is an open kind"),
+    ("§2 ⟨0.40⟩", "two copies union; a distrusted copy is a miss"),
+    ("§2 ⟨0.40⟩", "It is a separate key and MUST NOT be folded into `returns`"),
     ("§4 ⟨0.39⟩", "\"Implementor\" in this clause includes a SUBCLASS that overrides a class's member."),
     ("§2 ⟨0.23⟩", "This holds for a miss on `returns` AND for a miss on the entry lookup that follows a `returns` hit"),
     ("§4 ⟨0.39⟩", "A mechanism that makes reports better must not make silence cheaper."),
@@ -238,10 +244,49 @@ public final class Wrong2 {{
     public static let shared2: Quiet = Quiet()
     public func q() {{ {f} }}
 }}
+public final class Decoy {{
+    public init() {{}}
+    public func fetch() {{ {f} }}
+}}
+public protocol PA {{}}
+extension PA {{
+    public func tokw() {{ {f} }}
+}}
+public protocol PM: PA {{}}
+extension PM {{
+    public func tokw() {{ {e} }}
+}}
+public final class T9: PA, PM {{
+    public init() {{}}
+}}
+public final class HolderW {{
+    public static let shared: T9 = T9()
+}}
+public final class SvcHolder {{
+    public static let svc: any PSvc = SvcImpl()
+}}
+public final class Wrong3 {{
+    public static var computed: Other {{ Other() }}
+    public func ping() {{ {f} }}
+}}
+public class ClsK {{
+    public init() {{}}
+}}
+public final class SubThing: BaseThing {{
+    public override init() {{ super.init() }}
+}}
+public final class Wraps {{
+    public static let maybe: Other? = nil
+    public static let comp: any PA & PSvc = Both()
+}}
+public final class Both: PA, PSvc {{
+    public init() {{}}
+    public func run() {{}}
+}}
 '''
 
 
-SW_BASE = 'public struct Tok {\n    public init() {}\n}\n'
+SW_BASE = 'public struct Tok {\n    public init() {}\n}\nopen class BaseThing {\n    public init() {}\n}\n'
 SW_DEPB = ('import Foundation\npublic final class Client {\n    public static let shared: Client = Client()\n'
            '    public init() {}\n    public func fetch() { %s }\n}\n' % FS["swift"])
 
@@ -263,6 +308,9 @@ public func c2_open() { carrier(); OpenB.shared.m() }
 public func c5_factory() { carrier(); Client.make().fetch() }
 public func o2_member_miss() { carrier(); Wrong.shared.quiet() }
 public func u1_bound() { carrier(); Wrong2.shared2.q() }
+public func r9_walk() { carrier(); HolderW.shared.tokw() }
+public func r10_holds_proto() { carrier(); SvcHolder.svc.run() }
+public func r11_computed() { carrier(); Wrong3.computed.ping() }
 '''
 SW_APP_B = '''import Dep
 import DepB
@@ -277,12 +325,16 @@ SW_MANIFEST = ('// swift-tools-version:5.9\nimport PackageDescription\n'
                'let package = Package(name: "%(mod)s", products: [.library(name: "%(mod)s", targets: ["%(mod)s"])], '
                'dependencies: [%(deps)s], targets: [.target(name: "%(mod)s", dependencies: [%(prods)s])])\n')
 
-# w1: an attached EXTENSION macro adds `PMac` to `MacT`. The plugin is never built — the scan is a parse,
-# and the question is what the PRODUCER publishes for a type whose conformances it cannot see. `PlainT`
-# is the sibling the producer CAN close, so a `types` that omits MacT is distinguishable from no `types`.
-SW_W1 = '''public protocol PMac {}
+# w1: an attached EXTENSION macro, declared in ANOTHER package (`MacLib`), adds `PMac` to `MacT`. The
+# plugin is never built — the scan is a parse — and the producer of `MacDep` cannot even see the macro's
+# `conformances:` list, which lives in MacLib. `PlainT` is the WITNESS: an attached macro extends only the
+# declaration it is attached to, so PlainT's supertypes ARE closable, and a producer that publishes no
+# `types` at all fails here rather than passing by absence.
+SW_W1_LIB = '''public protocol PMac {}
 @attached(extension, conformances: PMac)
 public macro AddP() = #externalMacro(module: "MacImpl", type: "AddPMacro")
+'''
+SW_W1 = '''import MacLib
 @AddP
 public final class MacT { public init() {} }
 public final class PlainT: PMac { public init() {} }
@@ -355,12 +407,16 @@ impl Quiet {{
     pub fn q(&self) {{}}
 }}
 pub static SHARED2: Quiet = Quiet;
+pub static SVC: &(dyn PSvc + Sync) = &SvcImpl;
+pub struct SubThing;
+impl base::BaseTr for SubThing {{}}
+pub static OPT: Option<Other> = None;
 '''
 
 
-RS_BASE = 'pub struct Tok;\nimpl Tok {\n    pub fn new() -> Tok { Tok }\n}\n'
+RS_BASE = 'pub struct Tok;\nimpl Tok {\n    pub fn new() -> Tok { Tok }\n}\npub trait BaseTr {}\n'
 RS_DEPB = 'pub struct Client;\nimpl Client {\n    pub fn fetch(&self) { %s }\n}\npub static CLIENT: Client = Client;\n' % FS["rust"]
-RS_APP = '''use dep::{Grand4, Node, PBase};
+RS_APP = '''use dep::{Grand4, Node, PBase, PSvc};
 #[allow(unused_imports)]
 use depb::Client;
 pub fn r1_static() { dep::carrier(); dep::SHARED.ping() }
@@ -376,10 +432,15 @@ pub fn c5_factory() { dep::carrier(); dep::Client::make().fetch() }
 pub fn o2_member_miss() { dep::carrier(); dep::SHARED.quiet() }
 pub fn u1_bound() { dep::carrier(); dep::SHARED2.q() }
 pub fn r8_adds() { dep::carrier(); base::Tok.p_tok() }
+pub fn r10_holds_proto() { dep::carrier(); dep::SVC.run() }
 '''
 
-# w2: a `macro_rules!` expansion declares a trait AND implements it for `Y`; `Z` derives an unknown trait.
-# `Plain` is the sibling whose supertypes ARE visible. Never built — `Opaque` has no proc macro.
+# w2: four expansions the producer may not see through. `hide!(Y)` declares a trait AND implements it for
+# the type NAMED in its arguments; `impl_q!()` implements a trait for `Q`, which its invocation never
+# names; `#[derive(Opaque)]` and the attribute macro `#[opaque_attr]` are proc macros whose output is
+# invisible. `Plain` is NOT a witness here: a proc macro may emit an `impl` for any type in the crate, so a
+# producer that withholds every type in this crate is conformant. Non-vacuity comes from the MAIN
+# dependency instead — the producer must publish `types` there (p2) or this arm is not evidence.
 RS_W2 = '''pub trait Visible {}
 macro_rules! hide {
     ($t:ident) => {
@@ -387,12 +448,22 @@ macro_rules! hide {
         impl Hidden for $t {}
     };
 }
+macro_rules! impl_q {
+    () => {
+        pub trait Hidden2 {}
+        impl Hidden2 for Q {}
+    };
+}
 pub struct Y;
 impl Visible for Y {}
 hide!(Y);
+pub struct Q;
+impl_q!();
 #[derive(Opaque)]
 pub struct Z;
 impl Visible for Z {}
+#[opaque_attr]
+pub struct W;
 pub struct Plain;
 impl Visible for Plain {}
 '''
@@ -441,13 +512,19 @@ def render(lang, root, variant):
 
 
 def render_w(lang, root):
+    """Returns (scan order, the package whose report is judged)."""
     if lang == "swift":
-        _w(os.path.join(root, "Package.swift"), SW_MANIFEST % dict(mod="MacDep", deps="", prods=""))
-        _w(os.path.join(root, "Sources", "MacDep", "mac.swift"), SW_W1)
-    else:
-        _w(os.path.join(root, "Cargo.toml"), '[package]\nname="macdep"\nversion="0.0.0"\nedition="2021"\n')
-        _w(os.path.join(root, "src", "lib.rs"), RS_W2)
-    return root
+        lib, dep = os.path.join(root, "maclib"), os.path.join(root, "macdep")
+        _w(os.path.join(lib, "Package.swift"), SW_MANIFEST % dict(mod="MacLib", deps="", prods=""))
+        _w(os.path.join(lib, "Sources", "MacLib", "lib.swift"), SW_W1_LIB)
+        _w(os.path.join(dep, "Package.swift"),
+           SW_MANIFEST % dict(mod="MacDep", deps='.package(path: "../maclib")',
+                              prods='.product(name: "MacLib", package: "maclib")'))
+        _w(os.path.join(dep, "Sources", "MacDep", "mac.swift"), SW_W1)
+        return [lib, dep], dep
+    _w(os.path.join(root, "Cargo.toml"), '[package]\nname="macdep"\nversion="0.0.0"\nedition="2021"\n')
+    _w(os.path.join(root, "src", "lib.rs"), RS_W2)
+    return [root], root
 
 
 def build_proof(lang, app):
@@ -465,51 +542,78 @@ def build_proof(lang, app):
 
 
 # =====================================================================================================
-# THE ARMS. (id, dependency variant, doctor, consumer fn, want) where `want` maps a policy's effect text
-# to the exit code(s) a conformant engine gives it; a per-engine override replaces the whole want. Every
-# consumer arm ALSO asserts the carrier, `deny Net` = 1 (see the header).
+# THE ARMS. (id, dependency variant, deps spec, consumer fn, want) where `want` maps a policy's effect
+# text to the exit code(s) a conformant engine gives it; a per-engine form {engine: want} replaces it
+# whole. Every consumer arm ALSO asserts the carrier, `deny Net` = 1, unless NO_CARRIER says why not.
+#
+# `deps spec` is None (the producer's report as written), a DOCTOR name (the producer's own report,
+# mutated — see `doctor`), "u1" (the bound-equivalence pair), or one of the TWO-COPY specs ("beside_stale",
+# "disagree"), which chain a second copy of the dependency's report beside the first.
 # =====================================================================================================
 ENV1 = {"deny Env": {1}}
 ENV0 = {"deny Env": {0}}
 DISCLOSE = {"deny Env Unknown": {1}}
+# THE GUESS IS KEPT. Where swift's consumer charges a guessed target today (the convention owner's own
+# `Fs` member), a hit must ADD the declared target and keep that charge — `deny Fs` = 1 beside `deny Env`
+# = 1. A consumer that SWAPS the guess for the declared type passes `deny Env` and fails `deny Fs`.
+KEEP = {"deny Env": {1}, "deny Fs": {1}}
 ARMS = [
-    # id                 variant  doctor        fn                 want / {engine: want}
-    ("r1_static",        "main",  None,        "r1_static",        ENV1),
-    ("r2_bound",         "main",  None,        "r2_bound",         ENV1),
-    ("r3_property",      "main",  None,        "r3_property",      ENV1),
-    ("r4_inherited",     "main",  None,        "r4_inherited",     ENV1),
-    ("r5_refined",       "main",  None,        "r5_refined",       ENV1),
-    ("r6_proto_ret",     "main",  None,        "r6_proto_ret",     {"swift": ENV1, "rust": DISCLOSE}),
-    ("r7a_holds_open",   "main",  None,        "r7a_holds_open",   ENV1),
-    ("r7b_returns_open", "main",  None,        "r7b_returns_open", ENV1),
-    ("r8_adds",          "main",  None,        "r8_adds",          ENV1),
-    ("c1_convention",    "main",  None,        "c1_convention",    ENV1),
-    ("c2_final",         "main",  None,        "c2_final",         ENV0),
-    ("c2_value",         "main",  None,        "c2_value",         ENV0),
-    ("c2_enum",          "main",  None,        "c2_enum",          ENV0),
-    ("c2_open",          "main",  None,        "c2_open",          ENV0),
-    ("c3_collision",     "main",  None,        "c3_collision",     DISCLOSE),
-    ("c4_cross",         "cross", None,        "r1_static",        ENV0),
-    ("c5_factory",       "main",  None,        "c5_factory",       ENV1),
-    ("o1_old",           "main",  "strip",     "r1_static",        DISCLOSE),
-    ("o1b_old_right",    "main",  "strip",     "c1_convention",    {"deny Env": {1}, "deny Unknown": {1}}),
-    ("o2_member_miss",   "main",  None,        "o2_member_miss",   {"deny Unknown": {1}}),
-    ("o3_malformed",     "main",  "malformed", "r1_static",        {"deny Env Unknown": {1, 2}}),
-    ("o4_stale",         "main",  "stale",     "r1_static",        {"deny Env Unknown": {1}, "deny Env": {0}}),
-    ("o5_nothing",       "main",  "nothing",   "r1_static",        DISCLOSE),
-    ("u1_bound",         "main",  "u1",        "u1_bound",         {"deny Unknown": {1}}),
-    ("g1_keep_guess",    "main",  "wrongholds", "c1_convention",   ENV1),
+    # id                   variant  deps spec            fn                 want / {engine: want}
+    ("r1_static",          "main",  None,                "r1_static",        {"swift": KEEP, "rust": ENV1}),
+    ("r2_bound",           "main",  None,                "r2_bound",         {"swift": KEEP, "rust": ENV1}),
+    ("r3_property",        "main",  None,                "r3_property",      {"swift": KEEP, "rust": ENV1}),
+    ("r4_inherited",       "main",  None,                "r4_inherited",     {"swift": KEEP, "rust": ENV1}),
+    ("r5_refined",         "main",  None,                "r5_refined",       ENV1),
+    ("r6_proto_ret",       "main",  None,                "r6_proto_ret",     {"swift": ENV1, "rust": DISCLOSE}),
+    ("r7a_holds_open",     "main",  None,                "r7a_holds_open",   ENV1),
+    ("r7b_returns_open",   "main",  None,                "r7b_returns_open", ENV1),
+    ("r8_adds",            "main",  None,                "r8_adds",          ENV1),
+    ("r9_walk",            "main",  None,                "r9_walk",          ENV1),
+    ("r10_holds_proto",    "main",  None,                "r10_holds_proto",  {"swift": ENV1, "rust": DISCLOSE}),
+    ("r11_computed",       "main",  None,                "r11_computed",     ENV1),
+    ("c1_convention",      "main",  None,                "c1_convention",    ENV1),
+    ("c2_final",           "main",  None,                "c2_final",         ENV0),
+    ("c2_value",           "main",  None,                "c2_value",         ENV0),
+    ("c2_enum",            "main",  None,                "c2_enum",          ENV0),
+    ("c2_open",            "main",  None,                "c2_open",          ENV0),
+    ("c3_collision",       "main",  None,                "c3_collision",     DISCLOSE),
+    ("c4_cross",           "cross", None,                "r1_static",        ENV0),
+    ("c5_factory",         "main",  None,                "c5_factory",       ENV1),
+    ("c6_disagree",        "main",  "disagree",          "r1_static",        ENV1),
+    ("o1_old",             "main",  "strip",             "r1_static",        {"swift": {"deny Env Unknown": {1}, "deny Fs": {1}}, "rust": DISCLOSE}),
+    ("o1b_old_right",      "main",  "strip",             "c1_convention",    {"deny Env": {1}, "deny Unknown": {1}}),
+    ("o2_member_miss",     "main",  None,                "o2_member_miss",   {"swift": {"deny Unknown": {1}, "deny Fs": {1}}, "rust": {"deny Unknown": {1}}}),
+    ("o3_malformed",       "main",  "malformed",         "r1_static",        {"deny Env Unknown": {1, 2}}),
+    ("o4_stale",           "main",  "stale",             "r1_static",        {"deny Env Unknown": {1}, "deny Env": {0}}),
+    ("o5_nothing",         "main",  "nothing",           "r1_static",        DISCLOSE),
+    ("o6_walk_unkeyed",    "main",  "drop_types:PM",     "r9_walk",          DISCLOSE),
+    ("o7_target_unkeyed",  "main",  "drop_types:BaseO",  "r7a_holds_open",   DISCLOSE),
+    ("o8_sub_unkeyed",     "main",  "drop_types:SubO",   "r7a_holds_open",   DISCLOSE),
+    ("o9_stale_beside",    "main",  "beside_stale",      "r1_static",        {"deny Env": {1}, "deny Env Unknown": {1}}),
+    ("o10_adds_partial",   "main",  "drop_adds:Tok",     "r8_adds",          DISCLOSE),
+    ("u1_bound",           "main",  "u1",                "u1_bound",         {"deny Unknown": {1}}),
+    ("g1_keep_guess",      "main",  "wrongholds",        "c1_convention",    {"deny Env": {1}, "deny Fs": {1}}),
 ]
 # Producer-side arms — judged on the dependency report alone, never on a gate.
-PRODUCER_ARMS = ("p1_holds", "p2_types", "w1_macro", "w2_macro")
+PRODUCER_ARMS = ("p1_holds", "p2_types", "p3_foreign", "p4_wrappers", "w1_macro", "w2_macro")
 
 # (arm, engine) -> why the arm cannot be written in that engine. Each is a DECLARED N/A, not a skip.
+_NO_CLASS = "Rust has no class inheritance — a `static` of a concrete type has exactly one body per method (PART 94's N/A)"
+_NO_GUESS = ("Rust makes no singleton-convention guess — `dep::CLIENT` is a static ITEM typed only by this "
+             "rung, which is r1's shape")
 ARM_NA = {
-    ("r7a_holds_open", "rust"): "Rust has no class inheritance — a `static` of a concrete type has exactly one body per method (PART 94's N/A)",
-    ("r7b_returns_open", "rust"): "as r7a_holds_open",
-    ("c1_convention", "rust"): "Rust makes no singleton-convention guess — `dep::CLIENT` is a static ITEM typed only by this rung, which is r1's shape",
+    ("r7a_holds_open", "rust"): _NO_CLASS,
+    ("r7b_returns_open", "rust"): _NO_CLASS,
+    ("o7_target_unkeyed", "rust"): _NO_CLASS,
+    ("o8_sub_unkeyed", "rust"): _NO_CLASS,
+    ("r9_walk", "rust"): ("Rust has no specialisation: two in-scope trait defaults for one method name are a "
+                          "compile error, and a subtrait cannot override its supertrait's default, so a walk "
+                          "that hits one ancestor cannot be short a MORE SPECIFIC one"),
+    ("o6_walk_unkeyed", "rust"): "as r9_walk",
+    ("r11_computed", "rust"): "Rust has no computed properties — a getter is a function, which is ⟨0.23⟩'s `returns`",
+    ("c1_convention", "rust"): _NO_GUESS,
     ("o1b_old_right", "rust"): "as c1_convention — there is no guess to keep",
-    ("g1_keep_guess", "rust"): "as c1_convention — there is no guess for a wrong `holds` to displace",
+    ("g1_keep_guess", "rust"): "as c1_convention — there is no guess for a hit to displace",
     ("c2_value", "rust"): "rust's c2_final is already a value type (a struct) — Rust has no reference classes",
     ("c2_open", "rust"): "Rust has no open classes",
     ("w1_macro", "rust"): "w2_macro is rust's withhold arm",
@@ -518,15 +622,16 @@ ARM_NA = {
 
 WHY = {
     "r": "RESOLUTION: the declared type (or the dependency's own hierarchy) names the real target, and the "
-         "consumer must reach it",
-    "c": "CONTROL: an unrelated or unreachable `Env` must not be charged, and a collision must union or "
-         "disclose — never pick",
+         "consumer must reach it — keeping, beside it, whatever it already charged",
+    "c": "CONTROL: an unrelated or unreachable `Env` must not be charged; a collision or a disagreement "
+         "must union or disclose — never pick",
     "o": "DEGRADED: no trustworthy surface answers this hop, so the consumer keeps what it had and ADDS "
          "`Unknown`",
-    "u": "BOUND EQUIVALENCE: a bounded and an unbounded producer must give the consumer the same row",
-    "g": "KEEP THE GUESS: a hit ADDS a target, it never displaces one — the displacement is rung B",
-    "p": "PRODUCER: the surface the consumer needs must be on the wire",
-    "w": "WITHHOLD: a `types` key is complete or absent — a type whose supertypes a macro may extend is "
+    "u": "BOUND EQUIVALENCE: a bounded and an unbounded producer must give the consumer the same effects "
+         "and the same gate exits",
+    "g": "KEEP THE GUESS: a HIT adds a target, it never displaces one — the displacement is rung B",
+    "p": "PRODUCER: the surface the consumer needs must be on the wire, spelled and kinded as SPEC states",
+    "w": "WITHHOLD: a `types` key is complete or absent — a type an unseen expansion may extend is "
          "omitted, never listed short",
 }
 
@@ -535,39 +640,58 @@ WHY = {
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
     ('r1_static', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r1_static', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r2_bound', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r2_bound', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r3_property', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r3_property', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r4_inherited', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r4_inherited', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r5_refined', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r8_adds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (SILENT today in both engines: `deny Env` and `deny Env Unknown` 0 over executed Env)',
+    ('c6_disagree', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('o9_stale_beside', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the trusted copy resolves nothing yet, so there is no resolution for the stale copy to leave standing)',
+    ('o10_adds_partial', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('u1_bound', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('p1_holds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p2_types', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p3_foreign', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p4_wrappers', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('w2_macro', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('r1_static', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r2_bound', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r3_property', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r4_inherited', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r5_refined', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r6_proto_ret', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r7a_holds_open', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r8_adds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r8_adds', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('o1_old', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the convention guess is kept SILENTLY)',
-    ('o1b_old_right', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the convention guess is kept SILENTLY)',
-    ('o2_member_miss', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the convention guess is kept SILENTLY)',
-    ('o3_malformed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the convention guess is kept SILENTLY)',
-    ('u1_bound', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (no `holds` to vary — the equivalence cannot be constructed)',
-    ('u1_bound', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (no `holds` to vary — the equivalence cannot be constructed)',
-    ('g1_keep_guess', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (no `holds` to rewrite — the arm cannot be constructed)',
-    ('p1_holds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('p1_holds', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('p2_types', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('p2_types', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r8_adds', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (SILENT today in both engines: `deny Env` and `deny Env Unknown` 0 over executed Env)',
+    ('r9_walk', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r10_holds_proto', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('r11_computed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('c6_disagree', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('o1_old', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the guess is kept SILENTLY)',
+    ('o1b_old_right', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the guess is kept SILENTLY)',
+    ('o2_member_miss', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the guess is kept SILENTLY)',
+    ('o3_malformed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the guess is kept SILENTLY)',
+    ('o6_walk_unkeyed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('o7_target_unkeyed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('o8_sub_unkeyed', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('o9_stale_beside', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the trusted copy resolves nothing yet, so there is no resolution for the stale copy to leave standing)',
+    ('o10_adds_partial', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('u1_bound', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('g1_keep_guess', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('p1_holds', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p2_types', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p3_foreign', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('p4_wrappers', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
+    ('w1_macro', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
 }
 
 
 # A distrusted (o4) or judged-nothing (o5) dependency report takes `carrier()` down with it — §2.1
 # downgrades EVERY inherited effect to `Unknown` — so `deny Net` cannot be the carrier there. Neither arm
 # needs one for its `1` cells (a gate that FIRES has proved its scope bound), and o4's `deny Env` = 0 is
-# carried by its own `deny Env Unknown` = 1 on the same scope, which cannot fire on a scope that binds
-# nothing.
+# carried by its own `deny Env Unknown` = 1 on the same scope. o3 MAY be refused outright (exit 2, SPEC
+# §2 ⟨0.40⟩), so its carrier accepts 2 as well as 1.
 NO_CARRIER = ("o4_stale", "o5_nothing")
+REFUSABLE = ("o3_malformed",)
 
 
 def want_for(arm, lang):
@@ -576,14 +700,15 @@ def want_for(arm, lang):
         w = w[lang]
     w = dict(w)
     if arm[0] not in NO_CARRIER:
-        w["deny Net"] = {1}
+        w["deny Net"] = {1, 2} if arm[0] in REFUSABLE else {1}
     return w
 
 
 # =====================================================================================================
 # KEY LOOKUP, spelling-agnostic. The ⟨0.23⟩ spelling rule fixes keys in the OWNING package's namespace,
 # which differs by engine (`Dep#Wrong.shared`, `dep#SHARED`). The part never spells a key itself: it
-# finds the producer's own key by its last segment(s), so it cannot invent a spelling (⟨0.39⟩ obl. 2).
+# finds the producer's own key by its last segment(s), and a value it must WRITE (a doctor) is the
+# producer's own value with its last segment substituted — never a spelling of ours (⟨0.39⟩ obl. 2).
 # =====================================================================================================
 def _segs(key):
     tail = str(key).split("#", 1)[-1]
@@ -605,6 +730,11 @@ def leaf_of(v):
     return sg[-1] if sg else None
 
 
+def relabel(v, leaf):
+    """The producer's own spelling of a sibling type: `v` with its last segment replaced by `leaf`."""
+    return v[: len(v) - len(leaf_of(v))] + leaf
+
+
 SHARED = {"swift": ("shared", "Wrong"), "rust": ("SHARED", None)}
 SHARED2 = {"swift": ("shared2", "Wrong2"), "rust": ("SHARED2", None)}
 CLIENT = {"swift": ("shared", "Client"), "rust": ("CLIENT", None)}
@@ -619,12 +749,18 @@ def surface(rep):
 # THE DOCTORS. Each takes the producer's own dependency report and returns (doctored, None) or
 # (None, why-not-constructible). The consumer's source never moves.
 # =====================================================================================================
-RUNG_KEYS = ("holds", "types", "adds")
+RUNG_KEYS = ("holds", "types", "adds", "returnsProtocol")
 
 
 def doctor(rep, kind, lang):
     d = copy.deepcopy(rep)
     ts = surface(d)
+    if FAULT and kind in ("stale", "nothing"):
+        # The fault makes these two doctors the IDENTITY, so the arm reads the undoctored report — which
+        # proves the doctored document, not something else, is what reached the consumer (swift reddens
+        # PRE-PORT; after a port the undoctored report RESOLVES r1 and this calibration goes vacuous —
+        # the porting commit must re-calibrate o4/o5, see run.sh's CALIBRATED note).
+        return d, None
     if kind == "strip":
         for k in RUNG_KEYS:
             ts.pop(k, None)
@@ -638,11 +774,7 @@ def doctor(rep, kind, lang):
         ts = dict(ts)
         ts.update({"holds": 42, "types": [], "adds": "x"})
         d["typeSurface"] = ts
-        d["resolves"] = sorted(set(d.get("resolves") or []) | set(RUNG_KEYS))
-        return d, None
-    if FAULT and kind in ("stale", "nothing"):
-        # The fault makes these two doctors the IDENTITY, so the arm reads the undoctored report — which
-        # proves the doctored document, not something else, is what reached the consumer (swift reddens).
+        d["resolves"] = sorted(set(d.get("resolves") or []) | {"holds", "types", "adds"})
         return d, None
     if kind == "stale":
         d.setdefault("candor", {})["version"] = "part95-stale-0.0.0"
@@ -651,14 +783,32 @@ def doctor(rep, kind, lang):
         d["functions"] = []
         d["analyzed"] = {"count": 0, "digest": "cbf29ce484222325"}
         return d, None
-    if kind == "wrongholds":
+    if kind.startswith("drop_types:") or kind.startswith("drop_adds:"):
+        field, leaf = kind.split(":")
+        field = field[len("drop_"):]
+        table = ts.get(field)
+        k = find_key(table, leaf)
+        if not k:
+            return None, "the producer publishes no `%s` entry for %s to withhold" % (field, leaf)
+        table = dict(table)
+        del table[k]
+        ts = dict(ts)
+        ts[field] = table
+        d["typeSurface"] = ts
+        return d, None
+    if kind in ("wrongholds", "disagree"):
         holds = ts.get("holds")
-        k_client = find_key(holds, *CLIENT[lang])
         k_wrong = find_key(holds, *SHARED[lang])
-        if not (k_client and k_wrong):
-            return None, "the producer publishes no `holds` for Client.shared and Wrong.shared"
+        if kind == "wrongholds":
+            k_site = find_key(holds, *CLIENT[lang])
+            target = "Decoy"            # HAS a `fetch` (Fs): the rewritten key is a HIT, not a member miss
+        else:
+            k_site = k_wrong
+            target = "Node"             # HAS a `ping` (Fs): the second copy disagrees and still hits
+        if not (k_site and k_wrong):
+            return None, "the producer publishes no `holds` for the site to rewrite"
         holds = dict(holds)
-        holds[k_client] = holds[k_wrong]     # names `Other`, which has no `fetch`
+        holds[k_site] = relabel(holds[k_wrong], target)
         ts = dict(ts)
         ts["holds"] = holds
         d["typeSurface"] = ts
@@ -685,8 +835,7 @@ def u1_pair(rep, lang):
     leaf1, own1 = SHARED[lang]
     k_new = k1.replace(own1, own2) if own1 else k1
     k_new = k_new[: len(k_new) - len(leaf1)] + leaf2
-    v = holds[k1]
-    with_["typeSurface"]["holds"][k_new] = v[: len(v) - len(leaf_of(v))] + "Quiet"
+    with_["typeSurface"]["holds"][k_new] = relabel(holds[k1], "Quiet")
     return (with_, without), None
 
 
@@ -695,64 +844,134 @@ def u1_pair(rep, lang):
 # =====================================================================================================
 def judge_p1(rep, lang):
     holds = surface(rep).get("holds")
-    k = find_key(holds, *SHARED[lang])
-    if not k:
-        return False, "no `holds` entry for Wrong.shared (holds=%s)" % ("absent" if holds is None else "present")
-    if leaf_of(holds[k]) != "Other":
-        return False, "`holds[%s]` = %r — the declared type is Other" % (k, holds[k])
+    if not isinstance(holds, dict):
+        return False, "no `holds` published"
+    want = [(SHARED[lang], "Other")]
+    if lang == "swift":
+        # a COMPUTED property's getter type, and a value of exactly one protocol (`any PSvc`)
+        want += [(("computed", "Wrong3"), "Other"), (("svc", "SvcHolder"), "PSvc")]
+    bad = []
+    for (leaf, owner), ty in want:
+        k = find_key(holds, leaf, owner)
+        if not k:
+            bad.append("no entry for %s.%s" % (owner or "", leaf))
+        elif leaf_of(holds[k]) != ty:
+            bad.append("`holds[%s]` = %r — the declared type is %s" % (k, holds[k], ty))
     if "holds" not in (rep.get("resolves") or []):
-        return False, "`holds` published but not listed in `resolves`"
-    return True, "holds[%s] = %s" % (k, holds[k])
+        bad.append("`holds` not listed in `resolves`")
+    return (not bad), ("; ".join(bad) if bad else "%d entries as declared" % len(want))
 
 
 def _sup_leaves(entry):
     return {leaf_of(s) for s in (entry.get("supers") or [])} if isinstance(entry, dict) else set()
 
 
+# Each type's REQUIRED kind, and supertypes that must be among its `supers`. Quiet has ONLY pure members:
+# its presence is the `types`-is-never-bounded check.
+KINDS = {
+    "swift": {"Mid4": ("open", {"Grand4"}), "BaseO": ("open", set()), "SubO": ("final", {"BaseO"}),
+              "Client": ("final", set()), "ClsK": ("class", set()), "Val": ("value", set()),
+              "En": ("value", set()), "PSub": ("protocol", {"PBase"}), "PM": ("protocol", {"PA"}),
+              "T9": ("final", {"PA", "PM"}), "Quiet": ("final", set())},
+    "rust": {"Mid4": ("value", {"Grand4"}), "Grand4": ("protocol", set()), "PSub": ("protocol", {"PBase"}),
+             "En": ("value", set()), "SvcImpl": ("value", {"PSvc"}), "Quiet": ("value", set())},
+}
+
+
 def judge_p2(rep, lang):
     types = surface(rep).get("types")
     if not isinstance(types, dict):
         return False, "no `types` manifest"
-    mid, psub = find_key(types, "Mid4"), find_key(types, "PSub")
     bad = []
-    if not mid or "Grand4" not in _sup_leaves(types[mid]):
-        bad.append("Mid4 must list Grand4 among its supers (%s)" % (types.get(mid) if mid else "absent"))
-    if not psub or types[psub].get("kind") != "protocol" or "PBase" not in _sup_leaves(types[psub]):
-        bad.append("PSub must be kind protocol with PBase among its supers (%s)"
-                   % (types.get(psub) if psub else "absent"))
+    for name, (kind, sups) in sorted(KINDS[lang].items()):
+        k = find_key(types, name)
+        if not k:
+            bad.append("%s absent" % name)
+            continue
+        e = types[k]
+        if not isinstance(e, dict) or e.get("kind") != kind:
+            bad.append("%s kind %r want %s" % (name, e.get("kind") if isinstance(e, dict) else e, kind))
+        if not sups <= _sup_leaves(e):
+            bad.append("%s supers %s lacks %s" % (name, sorted(_sup_leaves(e)), sorted(sups - _sup_leaves(e))))
     if "types" not in (rep.get("resolves") or []):
         bad.append("`types` not listed in `resolves`")
-    return (not bad), ("; ".join(bad) if bad else "Mid4 -> %s, PSub -> %s" % (types[mid], types[psub]))
+    return (not bad), ("; ".join(bad) if bad else "%d kinds and supers as declared" % len(KINDS[lang]))
 
 
-WITHHELD = {"swift": ("MacT",), "rust": ("Y", "Z", "Hidden")}
-WITNESS = {"swift": "PlainT", "rust": "Plain"}
+def judge_p3(rep, base_pkg, lang):
+    """A supertype or extended type owned by ANOTHER package keeps that package's spelling."""
+    ts = surface(rep)
+    pre = "%s#" % base_pkg
+    bad = []
+    adds = ts.get("adds")
+    k = find_key(adds, "Tok")
+    if not k:
+        bad.append("no `adds` entry for Tok")
+    else:
+        if not k.startswith(pre):
+            bad.append("`adds` key %r is not spelled in %s's namespace" % (k, base_pkg))
+        if "PBase" not in {leaf_of(x) for x in (adds[k] or [])}:
+            bad.append("`adds[%s]` lacks PBase" % k)
+    types = ts.get("types")
+    k = find_key(types, "SubThing")
+    sup = "BaseThing" if lang == "swift" else "BaseTr"
+    if not k:
+        bad.append("no `types` entry for SubThing")
+    else:
+        hits = [x for x in (types[k] or {}).get("supers") or [] if leaf_of(x) == sup]
+        if not hits or not all(x.startswith(pre) for x in hits):
+            bad.append("SubThing's %s supertype %s is not spelled in %s's namespace" % (sup, hits, base_pkg))
+    return (not bad), ("; ".join(bad) if bad else "Tok and SubThing's supertype keep %s's spelling" % base_pkg)
+
+
+WRAPPED = {"swift": [("maybe", "Wraps"), ("comp", "Wraps")], "rust": [("OPT", None)]}
+
+
+def judge_p4(rep, lang):
+    """A wrapper is still a wrapper: `Other?`, `any PA & PSvc`, `Option<Other>` MUST NOT publish."""
+    holds = surface(rep).get("holds")
+    if not isinstance(holds, dict):
+        return False, "no `holds` published — the refusal cannot be told from absence (VACUOUS)"
+    leaked = [k for leaf, own in WRAPPED[lang] for k in [find_key(holds, leaf, own)] if k]
+    if leaked:
+        return False, "`holds` publishes a wrapped value: %s" % ["%s=%s" % (k, holds[k]) for k in leaked]
+    return True, "no wrapped value published"
+
+
+WITHHELD = {"swift": ("MacT",), "rust": ("Y", "Z", "W", "Q", "Hidden", "Hidden2")}
 
 
 def inject_short(rep, lang):
-    """THE CLASSIFIER-MUST-FIRE FAULT: a producer that emits what it CAN see — a short key for each type a
-    macro may extend. The w arm must go red over this."""
+    """THE CLASSIFIER-MUST-FIRE FAULT: a producer that emits what it CAN see — a short key for each type an
+    unseen expansion may extend. The w arm must go red over this."""
     d = copy.deepcopy(rep)
     ts = d.setdefault("typeSurface", {})
     types = ts.setdefault("types", {})
     pkg = (d.get("package") or "MacDep")
     for name in WITHHELD[lang]:
         types["%s#%s" % (pkg, name)] = {"kind": "value" if lang == "rust" else "final", "supers": []}
+    if lang == "swift":
+        types["%s#PlainT" % pkg] = {"kind": "final", "supers": []}
     return d
 
 
-def judge_w(rep, lang):
+def judge_w(rep, lang, main_rep):
     types = surface(rep).get("types")
     if types is not None and not isinstance(types, dict):
         return False, "`types` is not an object"
     leaked = [n for n in WITHHELD[lang] if find_key(types or {}, n)]
     if leaked:
-        return False, "`types` carries %s — a type a macro may extend must be OMITTED, never listed short" % leaked
-    if not types:
-        return True, "no `types` published — conformant by absence (VACUOUS until the producer ports)"
-    wit = find_key(types, WITNESS[lang])
-    return True, "withheld %s; witness %s %s" % (list(WITHHELD[lang]),
-                                                  WITNESS[lang], "present" if wit else "ABSENT (note)")
+        return False, "`types` carries %s — a type an unseen expansion may extend must be OMITTED" % leaked
+    if lang == "swift":
+        # An attached macro extends only its own declaration, so PlainT IS closable and MUST be keyed.
+        if not find_key(types or {}, "PlainT"):
+            return False, "the witness PlainT is absent — omission cannot be told from publishing nothing"
+        return True, "MacT withheld, witness PlainT published"
+    # rust: a proc macro may emit an `impl` for ANY type in its crate, so withholding everything here is
+    # conformant; non-vacuity comes from the main dependency publishing `types` at all.
+    if not isinstance(surface(main_rep).get("types"), dict):
+        return False, "the producer publishes no `types` anywhere — omission cannot be told from absence"
+    return True, "every macro-touched type withheld; the producer publishes `types` elsewhere"
 
 
 # =====================================================================================================
@@ -761,6 +980,22 @@ def judge_w(rep, lang):
 def judge_gates(want, got):
     bad = ["`%s` exit %s want %s" % (p, got.get(p), "/".join(map(str, sorted(w))))
            for p, w in sorted(want.items()) if got.get(p) not in w]
+    return not bad, bad
+
+
+def judge_u1(row_a, got_a, row_b, got_b, want):
+    """THE EQUIVALENCE IS ON EFFECTS AND GATE EXITS, never on whole rows: an `unknownWhy` reason string may
+    legitimately differ (a member miss and an absent key can name different reasons) and must not read as a
+    broken equivalence."""
+    eff_a, eff_b = sorted(row_a.get("inferred") or []), sorted(row_b.get("inferred") or [])
+    bad = []
+    if eff_a != eff_b:
+        bad.append("the effects DIFFER: with=%s without=%s" % (eff_a, eff_b))
+    if got_a != got_b:
+        bad.append("the gate exits DIFFER: with=%s without=%s" % (got_a, got_b))
+    for tag, got in (("with", got_a), ("without", got_b)):
+        ok, b = judge_gates(want, got)
+        bad += ["%s: %s" % (tag, x) for x in b]
     return not bad, bad
 
 
@@ -784,10 +1019,31 @@ def selftest():
                 ok, _ = judge_gates(want, flipped)
                 assert not ok, (arm[0], lang, p, "a flipped exit still passes")
                 n += 1
-    assert judge_w({"typeSurface": {"types": {"MacDep#MacT": {"kind": "final", "supers": []}}}}, "swift")[0] is False
-    assert judge_w(inject_short({"package": "macdep"}, "rust"), "rust")[0] is False
-    assert judge_p1({"typeSurface": {"holds": {"Dep#Wrong.shared": "Dep#Wrong"}}, "resolves": ["holds"]}, "swift")[0] is False
-    print("selftest: OK — %d flipped cells all fail, the producer judges reject a short key and a wrong type" % n)
+    w = {"deny Unknown": {1}, "deny Net": {1}}
+    g = {"deny Unknown": 1, "deny Net": 1}
+    assert judge_u1({"inferred": ["Fs", "Unknown"], "unknownWhy": ["a"]}, g,
+                    {"inferred": ["Unknown", "Fs"], "unknownWhy": ["b"]}, g, w)[0], "u1: a reason string failed it"
+    assert not judge_u1({"inferred": ["Fs", "Unknown"]}, g, {"inferred": ["Unknown"]}, g, w)[0], "u1: effects"
+    assert not judge_u1({"inferred": ["Fs"]}, g, {"inferred": ["Fs"]}, dict(g, **{"deny Unknown": 0}), w)[0]
+    main_ok = {"typeSurface": {"types": {"dep#Mid4": {"kind": "value", "supers": []}}}}
+    assert judge_w(inject_short({"package": "macdep"}, "rust"), "rust", main_ok)[0] is False
+    assert judge_w({"package": "macdep"}, "rust", {})[0] is False, "w2 vacuity"
+    assert judge_w({"typeSurface": {"types": {}}}, "swift", {})[0] is False, "w1 witness"
+    assert judge_w(inject_short({"package": "MacDep"}, "swift"), "swift", {})[0] is False
+    assert judge_w({"typeSurface": {"types": {"MacDep#PlainT": {"kind": "final", "supers": []}}}}, "swift", {})[0]
+    assert judge_p1({"typeSurface": {"holds": {"dep#SHARED": "dep#Wrong"}}, "resolves": ["holds"]}, "rust")[0] is False
+    assert judge_p1({"typeSurface": {"holds": {"dep#SHARED": "dep#Other"}}, "resolves": ["holds"]}, "rust")[0]
+    t = {k: {"kind": v[0], "supers": ["dep#%s" % x for x in v[1]]} for k, v in KINDS["rust"].items()}
+    assert judge_p2({"typeSurface": {"types": t}, "resolves": ["types"]}, "rust")[0]
+    t["Mid4"] = {"kind": "protocol", "supers": ["dep#Grand4"]}
+    assert judge_p2({"typeSurface": {"types": t}, "resolves": ["types"]}, "rust")[0] is False, "p2 kind"
+    assert judge_p4({"typeSurface": {"holds": {"dep#OPT": "dep#Other"}}}, "rust")[0] is False
+    assert judge_p3({"typeSurface": {"adds": {"dep#Tok": ["dep#PBase"]},
+                                     "types": {"dep#SubThing": {"supers": ["base#BaseTr"]}}}}, "base", "rust")[0] is False
+    assert judge_p3({"typeSurface": {"adds": {"base#Tok": ["dep#PBase"]},
+                                     "types": {"dep#SubThing": {"supers": ["base#BaseTr"]}}}}, "base", "rust")[0]
+    print("selftest: OK — %d flipped cells all fail; the u1, w, p1, p2, p3 and p4 judges each fail their "
+          "seeded poison and pass their clean input" % n)
     return 0
 
 
@@ -808,11 +1064,11 @@ def gate(scanner, pkgdir, deps, policy_path):
 
 
 def scan_chain(scanner, order):
-    """Scan base, then dep chained on base, then depb. Returns {name: report path} or raises."""
+    """Scan each package in order, each chained on every report before it. Returns {name: report path}."""
     reps = {}
     for d in order:
         name = os.path.basename(d)
-        chain = [reps["base"]] if name == "dep" else []
+        chain = [reps["base"]] if name == "dep" else ([reps[k] for k in reps] if name == "macdep" else [])
         r = scanner.scan(d, deps=chain)
         if not r.produced:
             raise RuntimeError("%s: dependency scan produced no report (rc=%d) %s" % (name, r.rc, r.note))
@@ -843,108 +1099,136 @@ def run_engine(lang, ws):
 
     app, reps = fixtures["main"]
     dep_rep = json.load(open(reps["dep"]))
+    base_pkg = json.load(open(reps["base"])).get("package") or "base"
     if CAL == "surface":
-        # CALIBRATION ONLY: a HAND-SPELLED `holds`, so the arms that need a published surface (u1, g1) can
-        # be shown to construct and evaluate before any producer ports. Never used in a scored run.
-        sp = {"swift": {"Dep#Wrong.shared": "Dep#Other", "Dep#Client.shared": "Dep#Client"},
-              "rust": {"dep#SHARED": "dep#Other", "dep#CLIENT": "dep#Client"}}[lang]
-        dep_rep.setdefault("typeSurface", {})["holds"] = sp
+        # CALIBRATION ONLY: a HAND-SPELLED surface, so the arms that need one (u1, g1, c6, o6-o8, o10) can be
+        # shown to construct and evaluate before any producer ports. Never used in a scored run.
+        sp = {"swift": {"holds": {"Dep#Wrong.shared": "Dep#Other", "Dep#Client.shared": "Dep#Client"},
+                        "types": {"Dep#PM": {"kind": "protocol", "supers": ["Dep#PA"]},
+                                  "Dep#BaseO": {"kind": "open", "supers": []},
+                                  "Dep#SubO": {"kind": "final", "supers": ["Dep#BaseO"]}},
+                        "adds": {"Base#Tok": ["Dep#PBase"]}},
+              "rust": {"holds": {"dep#SHARED": "dep#Other", "dep#CLIENT": "dep#Client"},
+                       "adds": {"base#Tok": ["dep#PBase"]}}}[lang]
+        dep_rep.setdefault("typeSurface", {}).update(sp)
     scratch = os.path.join(ws, lang, "doctored")
     os.makedirs(scratch, exist_ok=True)
 
     # Producer arms.
-    for pid, judge in (("p1_holds", judge_p1), ("p2_types", judge_p2)):
-        results[pid] = judge(dep_rep, lang)
+    results["p1_holds"] = judge_p1(dep_rep, lang)
+    results["p2_types"] = judge_p2(dep_rep, lang)
+    results["p3_foreign"] = judge_p3(dep_rep, base_pkg, lang)
+    results["p4_wrappers"] = judge_p4(dep_rep, lang)
     wid = "w1_macro" if lang == "swift" else "w2_macro"
-    wroot = render_w(lang, os.path.join(ws, lang, "withhold"))
-    wr = scanner.scan(wroot)
-    if not wr.produced:
-        return None, None, "withhold fixture: producer wrote no report (rc=%d) %s" % (wr.rc, wr.note)
-    wrep = json.load(open(wr.report))
+    worder, wjudged = render_w(lang, os.path.join(ws, lang, "withhold"))
+    try:
+        wreps = scan_chain(scanner, worder)
+    except RuntimeError as e:
+        return None, None, "withhold fixture: %s" % e
+    wrep = json.load(open(wreps[os.path.basename(wjudged)]))
     if FAULT:
         wrep = inject_short(wrep, lang)
-    results[wid] = judge_w(wrep, lang)
+    results[wid] = judge_w(wrep, lang, dep_rep)
 
-    def consumer_rows(dep_path, variant="main"):
-        a, rp = fixtures[variant]
-        deps = [rp["base"], dep_path, rp["depb"]]
+    pol_dir = os.path.join(ws, lang, "pol")
+    os.makedirs(pol_dir, exist_ok=True)
+    # The consumer's own spelling of every function, read ONCE from the undoctored scan — so an arm whose
+    # consumer REFUSES (o3 may) can still be gated on the right scope.
+    fn_names = {}
+
+    def consumer_rows(deps, variant="main"):
+        a = fixtures[variant][0]
         r = scanner.scan(a, deps=deps)
         if not r.produced:
-            return None, deps, "consumer scan produced no report (rc=%d) %s" % (r.rc, r.note)
+            return None, "consumer scan produced no report (rc=%d) %s" % (r.rc, r.note), r.rc
         rep = json.load(open(r.report))
         if not ((rep.get("analyzed") or {}).get("count") or 0):
-            return None, deps, "analyzed.count is 0 — a hollow report judges nothing"
-        return {f.get("fn", "").replace("::", ".").split(".")[-1]: f for f in rep.get("functions") or []}, deps, None
+            return None, "analyzed.count is 0 — a hollow report judges nothing", r.rc
+        return {f.get("fn", "").replace("::", ".").split(".")[-1]: f for f in rep.get("functions") or []}, None, r.rc
+
+    rows0, err0, _ = consumer_rows([reps["base"], reps["dep"], reps["depb"]])
+    if err0:
+        return None, None, "main consumer scan: " + err0
+    fn_names.update({k: v["fn"] for k, v in rows0.items()})
 
     cache = {}
 
     def deps_for(arm):
+        """-> (list of CANDOR_DEPS report paths | (with, without) for u1, None) or (None, why)."""
         variant, kind = arm[1], arm[2]
+        rp = fixtures[variant][1]
         key = (variant, kind)
         if key in cache:
             return cache[key]
+        out = None
         if kind is None:
-            path = fixtures[variant][1]["dep"]
+            out = [rp["base"], rp["dep"], rp["depb"]]
         elif kind == "u1":
             pair, why = u1_pair(dep_rep, lang)
             if why:
                 cache[key] = (None, why)
                 return cache[key]
-            path = (_dump(os.path.join(scratch, "u1_with.json"), pair[0]),
-                    _dump(os.path.join(scratch, "u1_without.json"), pair[1]))
+            out = tuple([rp["base"], _dump(os.path.join(scratch, "u1_%s.json" % t), d), rp["depb"]]
+                        for t, d in zip(("with", "without"), pair))
+        elif kind == "beside_stale":
+            d, _ = doctor(dep_rep, "stale", lang)
+            out = [rp["base"], _dump(os.path.join(scratch, "dep.json"), dep_rep),
+                   _dump(os.path.join(scratch, "dep.stale-copy.json"), d), rp["depb"]]
+        elif kind == "disagree":
+            d, why = doctor(dep_rep, "disagree", lang)
+            if why:
+                cache[key] = (None, why)
+                return cache[key]
+            out = [rp["base"], _dump(os.path.join(scratch, "dep.json"), dep_rep),
+                   _dump(os.path.join(scratch, "dep.disagreeing-copy.json"), d), rp["depb"]]
         else:
             d, why = doctor(dep_rep, kind, lang)
             if why:
                 cache[key] = (None, why)
                 return cache[key]
-            path = _dump(os.path.join(scratch, "dep.%s.json" % kind), d)
-        cache[key] = (path, None)
+            out = [rp["base"], _dump(os.path.join(scratch, "dep.%s.json" % kind.replace(":", "-")), d), rp["depb"]]
+        cache[key] = (out, None)
         return cache[key]
 
-    pol_dir = os.path.join(ws, lang, "pol")
-    os.makedirs(pol_dir, exist_ok=True)
-
-    def gates_for(arm, dep_path, tag=""):
-        rows, deps, err = consumer_rows(dep_path, arm[1])
+    def gates_for(arm, deps, tag=""):
+        rows, err, rc = consumer_rows(deps, arm[1])
+        row = None
         if err:
-            return None, None, err
-        row = rows.get(arm[3])
-        if row is None:
-            return None, None, "ABSENT from functions[] — the carrier alone makes it effectful"
+            if not (arm[0] in REFUSABLE and rc == 2):
+                return None, None, err
+        else:
+            row = rows.get(arm[3])
+            if row is None:
+                return None, None, "ABSENT from functions[] — the carrier alone makes it effectful"
+        fn = row["fn"] if row else fn_names.get(arm[3])
         got = {}
         for i, pol in enumerate(sorted(want_for(arm, lang))):
             pp = os.path.join(pol_dir, "%s%s_%d.policy" % (arm[0], tag, i))
             with open(pp, "w") as f:
-                f.write("%s %s\n" % (pol, row["fn"]))
+                f.write("%s %s\n" % (pol, fn))
             got[pol] = gate(scanner, fixtures[arm[1]][0], deps, pp)
-        return row, got, None
+        return row or {"inferred": ["<REFUSED exit 2>"]}, got, None
 
     for arm in ARMS:
         aid = arm[0]
         if (aid, lang) in ARM_NA:
             continue
-        path, why = deps_for(arm)
+        deps, why = deps_for(arm)
         if why:
             results[aid] = (False, "NOT CONSTRUCTIBLE: " + why)
             continue
         want = want_for(arm, lang)
         if arm[2] == "u1":
-            row_a, got_a, err_a = gates_for(arm, path[0], "_with")
-            row_b, got_b, err_b = gates_for(arm, path[1], "_without")
+            row_a, got_a, err_a = gates_for(arm, deps[0], "_with")
+            row_b, got_b, err_b = gates_for(arm, deps[1], "_without")
             if err_a or err_b:
                 results[aid] = (False, err_a or err_b)
                 continue
-            strip = lambda r: {k: v for k, v in r.items() if k not in ("hash",)}
-            same = json.dumps(strip(row_a), sort_keys=True) == json.dumps(strip(row_b), sort_keys=True)
-            ok_a, bad_a = judge_gates(want, got_a)
-            ok_b, bad_b = judge_gates(want, got_b)
-            bad = ([] if same else ["the row DIFFERS: with=%s without=%s" % (row_a.get("inferred"), row_b.get("inferred"))]) \
-                + ["with: " + b for b in bad_a] + ["without: " + b for b in bad_b]
-            results[aid] = (not bad, "inferred=%s %s" % (sorted(row_a.get("inferred") or []),
-                                                         "identical" if same else "DIFFERENT")
-                            + ("" if not bad else " — " + "; ".join(bad)))
+            ok, bad = judge_u1(row_a, got_a, row_b, got_b, want)
+            results[aid] = (ok, "inferred=%s gates=%s" % (sorted(row_a.get("inferred") or []), got_a)
+                            + ("" if ok else " — " + "; ".join(bad)))
             continue
-        row, got, err = gates_for(arm, path)
+        row, got, err = gates_for(arm, deps)
         if err:
             results[aid] = (False, err)
             continue
@@ -980,7 +1264,7 @@ def main():
     if FAULT:
         print("PROBE: CANDOR_PROBE_FAULT is set — `Client.fetch` and `SubO.m` are emptied (c5_factory, c1_convention,")
         print("       r7b_returns_open), the stale/nothing doctors become the identity (o4, o5), and a short `types`")
-        print("       key is injected for every macro-extended type (w1/w2). Every one of those cells must go red.")
+        print("       key is injected for every type an unseen expansion may extend (w1/w2).")
     if CAL:
         print("CALIBRATION: CANDOR_PART95_CAL=%s" % CAL)
     ws = tempfile.mkdtemp(prefix="candor-part95-")
@@ -1000,18 +1284,18 @@ def main():
         for aid in all_arm_ids():
             key = (aid, lang)
             if key in ARM_NA:
-                print("  n/a   %-17s %-6s %s" % (aid, lang, ARM_NA[key]))
+                print("  n/a   %-19s %-6s %s" % (aid, lang, ARM_NA[key]))
                 continue
             ok, detail = res[aid]
             if ok and key in XFAIL:
-                print("  XFAIL ARM PASSED  %-17s %-6s — expectation is STALE: %s" % (aid, lang, XFAIL[key]))
+                print("  XFAIL ARM PASSED  %-19s %-6s — expectation is STALE: %s" % (aid, lang, XFAIL[key]))
                 stale += 1
             elif ok:
-                print("  OK    %-17s %-6s %s" % (aid, lang, detail))
+                print("  OK    %-19s %-6s %s" % (aid, lang, detail))
             elif key in XFAIL:
-                print("  xfail %-17s %-6s %s  [%s]" % (aid, lang, detail, XFAIL[key]))
+                print("  xfail %-19s %-6s %s  [%s]" % (aid, lang, detail, XFAIL[key]))
             else:
-                print("  FAIL  %-17s %-6s %s  [%s]" % (aid, lang, detail, WHY[aid[0]]))
+                print("  FAIL  %-19s %-6s %s  [%s]" % (aid, lang, detail, WHY[aid[0]]))
                 bad += 1
     for e, why in sorted(NA.items()):
         print("  %-6s -> N/A (declared): %s" % (e, why))

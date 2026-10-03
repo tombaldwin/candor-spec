@@ -3392,64 +3392,88 @@
       "unenforced": "UNENFORCED as a DEBT with a named remedy. **PART 10 pins the SHAPE of a dotted `dispatch:` detail — that it is `owner.member` and does not start or end with a dot — and cannot pin its TRUTH**, because no fixture asks whether the named owner actually declares the member. That gap is exactly what this sentence exists to close in prose, and it is why the sentence was needed at all: an engine satisfied every shape check while naming a type that has nothing to do with the call. The row that would close it is a fixture where a type conforms to a protocol declaring NO operator, the caller does ordinary arithmetic, and the assertion is that the emitted detail is either dot-free or names a declarer — candor-swift's [[R444]] repro is that fixture, six lines, and it currently FAILS in that engine. Deliberately not added with this clause: PART 10 drives the Rust scanner only, so the arm needs a swift leg first, and building one to pin a defect that engine has not yet fixed would land a red part rather than a control. **No verdict moves on this clause by construction** — §6.2 maps every `dispatch:*` to the `dispatch` class, dotted or not, and ⟨0.24⟩ already states the dot-free detail is free text that is NOT conformance-compared. What changes is which string an engine is ENTITLED to write."
     },
     {
-      "sha": "ee1811c960d88684",
-      "at": "Contents",
-      "excerpt": "**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.**",
-      "unenforced": "THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩. What it asserts is what an UPGRADE does — a verdict that moves BETWEEN two engine versions on identical bytes — and no conformance row can hold that, because every row measures ONE build. Identical classification to the ⟨0.30⟩–⟨0.39⟩ paragraphs already in this ledger, and the recorded remedy is unchanged: the row that would close it needs the suite to hold a PREVIOUS floor's engine beside HEAD's. The two half-implementations it names as WORSE than today are each exercised by PART 95 (g1_keep_guess for a hit that swaps the guess out, r7a_holds_open for a class target joined without its overrides); the flip directions themselves are what this entry leaves unenforced."
-    },
-    {
-      "sha": "c6d68ee39b3a2bb7",
-      "at": "2. The report",
-      "excerpt": "⟨0.40⟩ **Declared types and the dependency's own hierarchy — `typeSurface.holds`, `typeSurface.types`, `typeSurface.adds`, for RESOLUTION ONLY**",
-      "part": "PART 95 (r1_static r2_bound r3_property r4_inherited r5_refined r8_adds — the three measured gaps, one arm or more each; java/ts N/A declared in the part)"
-    },
-    {
       "sha": "7452c3ab15f1c654",
       "at": "2. The report",
       "excerpt": "- a conformance the dependency **adds to a type it does not own**",
       "part": "PART 95 (r8_adds — executed Env, measured `deny Env` and `deny Env Unknown` 0 in both engines; xfail on R843)"
     },
     {
-      "sha": "b390505ce0da9768",
-      "at": "2. The report",
-      "excerpt": "**A ⟨0.40⟩ PRODUCER PUBLISHES THREE KEYS BESIDE `returns`, AND LISTS EACH ONE IT COMPUTES IN `resolves`.**",
-      "part": "PART 95 (p1_holds: the `holds` entry, its declared-type value, and `holds` in `resolves`; p2_types: `types` kinds and supers, and `types` in `resolves`; r6_proto_ret for the one-protocol widening and rust's `Box<dyn>` refusal). `adds` has no producer-side arm of its own — it is exercised end-to-end by r8_adds, and a producer arm should be added when the first engine publishes it."
-    },
-    {
-      "sha": "6a143b8269875c91",
-      "at": "2. The report",
-      "excerpt": "- `types` — `{ \"<pkg>#<type qual>\": { \"kind\": …, \"supers\": [ … ] }, … }` for EVERY type the package declares.",
-      "part": "PART 95 (p2_types — Mid4's inherited supertype and PSub's protocol kind; w1_macro / w2_macro for completeness)"
-    },
-    {
-      "sha": "b77ec376f225a610",
-      "at": "2. The report",
-      "excerpt": "**`types` is a MANIFEST: a key's `supers` is complete, or the key is absent.**",
-      "part": "PART 95 (w1_macro — a swift attached extension macro; w2_macro — a rust macro_rules!-generated impl and an unknown derive. Producer-side, shaped as PART 30 conjunct B; calibrated by injecting the short key a see-what-you-can producer would emit, which reddens both)"
-    },
-    {
-      "sha": "bb5464acfe52fcf4",
-      "at": "2. The report",
-      "excerpt": "**A CONSUMER USES THE SURFACE TO ADD A RESOLUTION, NEVER TO REMOVE ONE.**",
-      "part": "PART 95 (g1_keep_guess — a WRONG `holds` must not displace the guess; r1..r8 for the hit; c2_* / c4_cross as the fabrication controls). The MAY-withdrawal paragraph after the three rules is a permission and no row can fail it."
-    },
-    {
-      "sha": "f4cf4d887c2c86d2",
-      "at": "2. The report",
-      "excerpt": "- **a class target takes its overrides.**",
-      "part": "PART 95 (r7a_holds_open — `holds` naming a non-final class whose subclass overrides the member; r7b_returns_open — the `returns` route, green since R867; c2_open — the control where the subclass overrides a DIFFERENT member)"
-    },
-    {
-      "sha": "3a09ac37267397ed",
-      "at": "2. The report",
-      "excerpt": "- **every miss keeps the guess and ADDS `Unknown`.**",
-      "part": "PART 95 (o1_old, o1b_old_right — an older producer; o2_member_miss — a hit then a member miss; o3_malformed; o4_stale; o5_nothing; u1_bound — the bounded/unbounded equivalence)"
-    },
-    {
       "sha": "4a78b8e044907aa6",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "**\"Implementor\" in this clause includes a SUBCLASS that overrides a class's member.**",
       "part": "PART 94 (o1_typed o2_chain o3_bound — a chained dependency's own subclass override; k1..k3 the non-overriding controls). Re-used by PART 95 r7a_holds_open / r7b_returns_open for a receiver typed by a declaration."
+    },
+    {
+      "sha": "37867ff847a1c7e0",
+      "at": "Contents",
+      "excerpt": "**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.**",
+      "unenforced": "RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩. It asserts what an UPGRADE does — a verdict that moves BETWEEN two engine versions on identical bytes — and every row measures ONE build, so no row holds it (the ⟨0.30⟩–⟨0.39⟩ classification, unchanged). Two of its claims are nevertheless MEASURED rather than argued: the producer-half additivity rests on a shipped-consumer experiment (candor-swift v0.39.3 reading a protocol-valued `returns` went `deny Env Unknown` 1 → 0, which is why `returnsProtocol` is a separate key), and each half-implementation it names as worse than today has a PART 95 arm (o2_member_miss and u1_bound for rust's typed-hop-without-miss-rule; g1_keep_guess and the deny Fs cells of r1–r4 for a swap; r7a/o7/o8 for overrides; o6 for a short walk; o9 for an erased trusted copy)."
+    },
+    {
+      "sha": "7b619d65eb15e79d",
+      "at": "2. The report",
+      "excerpt": "⟨0.40⟩ **Declared types and the dependency's own hierarchy — `typeSurface.holds`, `returnsProtocol`, `types` and `adds`, for RESOLUTION ONLY**",
+      "part": "PART 95 (r1_static r2_bound r3_property r4_inherited r5_refined r8_adds — the three measured gaps; java/ts N/A declared in the part). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "5cc88c93f1dff21b",
+      "at": "2. The report",
+      "excerpt": "**A ⟨0.40⟩ PRODUCER PUBLISHES FOUR KEYS BESIDE `returns`, AND LISTS EACH ONE IT COMPUTES IN `resolves`.**",
+      "part": "PART 95 (p1_holds — values, a computed getter, a protocol value, `holds` in `resolves`; p3_foreign — another package's spelling kept; p4_wrappers — `Other?`, `any PA & PSvc`, `Option<Other>` refused). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "59b37d540687472c",
+      "at": "2. The report",
+      "excerpt": "- `returnsProtocol` — `{ \"<pkg>#<fn qual>\": \"<pkg>#<protocol qual>\", … }`",
+      "part": "PART 95 (r6_proto_ret — `mkP() -> any PSvc` resolved through ⟨0.39⟩'s union; rust's `Box<dyn>` refused and disclosed). The separate-key MUST is grounded on a measurement no row can repeat — a SHIPPED consumer (candor-swift v0.39.3) reading the folded spelling went silent — recorded in the clause; PART 95 runs only current builds. RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "45013bf46371d57e",
+      "at": "2. The report",
+      "excerpt": "- `types` — `{ \"<pkg>#<type qual>\": { \"kind\": …, \"supers\": [ … ] }, … }` for EVERY type the package declares.",
+      "part": "PART 95 (p2_types — kind accuracy across open/class/final/value/protocol, required supers, and Quiet keyed though it has only pure members; p3_foreign — a Base-owned supertype in Base's spelling). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "2f781f7036dd0ae5",
+      "at": "2. The report",
+      "excerpt": "**`types` is a MANIFEST: a key's `supers` is complete, or the key is absent.**",
+      "part": "PART 95 (w1_macro — an attached extension macro declared in ANOTHER package, with the witness PlainT required; w2_macro — named and unnamed macro_rules! impls, an unknown derive and an attribute proc macro; p2_types for the never-bounded clause; o10_adds_partial for `adds` never complete). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "11982c7bb42259f3",
+      "at": "2. The report",
+      "excerpt": "**A CONSUMER USES THE SURFACE TO ADD A RESOLUTION, NEVER TO REMOVE ONE.**",
+      "part": "PART 95 (g1_keep_guess — a WRONG `holds` whose target HAS the member, so the arm is a true hit: deny Fs 1 proves the hit joined, deny Env 1 that the guess was kept; the deny Fs cells of r1–r4 on swift). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "65ba52bb451818bc",
+      "at": "2. The report",
+      "excerpt": "- **the walk reads absence as \"may be inherited\".**",
+      "part": "PART 95 (r4_inherited — the walk on absence; r9_walk — `T9: PA, PM`, PM's default the more specific; o6_walk_unkeyed — PM's `types` key withheld must disclose). The accepted fabrication (a declared pure override charged its ancestor's effects) has no row: it is a stated cost, removable only by rung B's member manifest."
+    },
+    {
+      "sha": "e0e49f37631fde92",
+      "at": "2. The report",
+      "excerpt": "- **an unknown kind is an open kind.**",
+      "part": "PART 95 (r7a_holds_open — enumerable subtypes, Env demanded; o7_target_unkeyed — the target's kind withheld; o8_sub_unkeyed — the overriding subclass's key withheld, so overrides must come from the ⟨0.39⟩ route; r7b_returns_open — the ⟨0.23⟩ route, green since R867)"
+    },
+    {
+      "sha": "555f4df09745a961",
+      "at": "2. The report",
+      "excerpt": "- **two copies union; a distrusted copy is a miss.**",
+      "part": "PART 95 (c6_disagree — two trusted copies disagreeing on one `holds` key; o9_stale_beside — a stale copy beside a trusted one must disclose AND leave the resolution standing). The `types`-disagreement-reads-as-absent sentence has no arm of its own; its consumer behaviour is o6/o7's."
+    },
+    {
+      "sha": "521d7df9474a704a",
+      "at": "2. The report",
+      "excerpt": "- **every miss keeps the guess and ADDS `Unknown`.**",
+      "part": "PART 95 (o1_old, o1b_old_right — an older producer; o2_member_miss — a hit then a member miss; o3_malformed — or a refusal; o4_stale; o5_nothing; u1_bound — the bounded/unbounded equivalence on effects and gate exits). The reach figure in the paragraph (2 sites, 0 flips) is a corpus measurement with a probe build, recorded in the clause; no row repeats it. RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
+    },
+    {
+      "sha": "5dda3968a020cff7",
+      "at": "2. The report",
+      "excerpt": "A disclosure the consumer already makes for an untyped dependency hop — candor-scan's `dispatch:untyped cross-package receiver` — MAY be withdrawn",
+      "unenforced": "A PERMISSION plus the statement of what it costs. No row can fail a MAY; what rows CAN hold is the conditions on it, and they are held elsewhere in PART 95 — o2_member_miss and u1_bound (a member miss may not withdraw), o6_walk_unkeyed (a path through an unkeyed type may not), and p1_holds, which checks the producer's declared VALUE because the withdrawal has no guess to fall back on when that value is wrong."
     }
   ]
 }

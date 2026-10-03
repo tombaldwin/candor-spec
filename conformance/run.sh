@@ -2834,14 +2834,16 @@ echo "PART 94 — a chained dependency's own subclass overrides reach the consum
 # `shared` is DECLARED `Other` (swift's convention guess charges Wrong.ping's Fs while the program runs
 # Other.ping's Env — R831), a member INHERITED inside the dependency, and a conformance the dependency ADDS
 # to a type another package owns (`Tok().pTok()`: SILENT in both engines today). ⟨0.40⟩ publishes
-# `typeSurface.holds` / `types` / `adds`, and the consumer uses them to ADD a resolution, never to remove
-# one: a hit is unioned with the guess, a class target takes its visible overrides, and every miss keeps
-# the guess and ADDS `Unknown`.
+# `typeSurface.holds` / `returnsProtocol` / `types` / `adds`, and the consumer uses them to ADD a
+# resolution, never to remove one: a hit is unioned with the guess, a walk reads absence as "may be
+# inherited" and a path through an unkeyed type is a miss, an unknown kind is open, two copies union, and
+# every join on a guessed owner with no trusted surface keeps the guess and ADDS `Unknown`.
 #
 # Positive arms are END-TO-END (a real producer, a real chained consumer, the engine's own gate);
-# degraded arms DOCTOR the producer's own report (strip, malform, re-version, empty, rewrite) with the
-# consumer source byte-identical; producer arms read the dependency report alone. `deny Net` — the
-# dependency's `carrier()` — fires on every consumer cell that can carry it.
+# degraded arms DOCTOR the producer's own report (strip, malform, re-version, empty, withhold a key,
+# rewrite a value, chain a second copy) with the consumer source byte-identical; producer arms read the
+# dependency report alone. `deny Net` — the dependency's `carrier()` — fires on every consumer cell that
+# can carry it.
 [ -f "$HERE/gen_type_surface.py" ] || { echo "FAIL: gen_type_surface.py is missing"; exit 2; }
 echo
 echo "[95] a hop typed by a DECLARATION in a chained dependency reaches its real target — and a missing surface hedges, never certifies"
@@ -2851,12 +2853,13 @@ P95_OK=0
   [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
   python3 "$HERE/gen_type_surface.py"
 ) || { P95_OK=1; rc=1; }
-[ "$P95_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on an r arm is a declared hop not reaching its target; a ✘ on c2_final c2_value c2_enum c2_open c4_cross is a resolution FABRICATING an unreachable Env; a ✘ on c3_collision is a collision PICKED silently; a ✘ on c1_convention c5_factory r7b_returns_open means a hop that resolves today stopped resolving; a ✘ on an o arm, u1_bound or g1_keep_guess is a guess kept SILENTLY or swapped out; a ✘ on w1_macro w2_macro is a SHORT types key"
-echo "PART 95 — declared types for resolution: holds / types / adds (SPEC §2 ⟨0.40⟩; SOUNDNESS R843)"
+[ "$P95_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on an r arm is a declared hop not reaching its target (or, on a deny Fs cell, a guess SWAPPED out); a ✘ on c2_final c2_value c2_enum c2_open c4_cross is a resolution FABRICATING an unreachable Env; a ✘ on c3_collision c6_disagree is a collision or a disagreement PICKED; a ✘ on c1_convention c5_factory r7b_returns_open means a hop that resolves today stopped resolving; a ✘ on an o arm, u1_bound or g1_keep_guess is a guess kept SILENTLY or swapped out; a ✘ on a p arm or w1_macro w2_macro is the producer's surface wrong, short or absent"
+echo "PART 95 — declared types for resolution: holds / returnsProtocol / types / adds (SPEC §2 ⟨0.40⟩; SOUNDNESS R843)"
 # ENGINES: rust swift; java: N/A — bytecode carries every call site's static receiver type, so no dependency hop is guessed; ts: N/A — the consumer asks the TypeScript checker, which reads the dependency's own .d.ts
 # CONTROLS: c1_convention c2_final c2_value c2_enum c2_open c3_collision c4_cross c5_factory — c2 and c4 are fabrication guards (a right-typed singleton whose `m` reads Fs while an UNRELATED member reads Env, and r1's consumer text BYTE-IDENTICAL over a dependency that moved only the declared type), so `deny Env` must stay 0; c3 is a two-package `Client` collision that must union or disclose, never pick; c1 and c5 are hops that resolve today (the convention right, ⟨0.23⟩'s `returns`) and must keep resolving. java and ts are not run at all.
-# NOTE: rust xfails r1–r5, r8, u1, p1, p2; swift xfails r1–r7a, r8, o1, o1b, o2, o3, u1, g1, p1, p2 — all on R843 (no engine publishes or reads the surface). u1/g1 xfail as NOT CONSTRUCTIBLE until a producer publishes `holds`. r8_adds is SILENT in both engines today (`deny Env` and `deny Env Unknown` 0, executed Env). rust's c2/c4/c3 controls are VACUOUS today — rust charges nothing through a dependency static, so no fixture fault can redden them until rust resolves the hop.
-# CALIBRATED: CANDOR_PROBE_FAULT=1 empties Client.fetch and SubO.m, makes the stale/nothing doctors the identity, and injects a short `types` key for every macro-extended type — 9 cells go red across both engines (c5 ×2, c1, c3, r7b, o4, o5 on swift; w1, w2), exit 1. CANDOR_PART95_CAL=controls puts Env into the bodies the controls must not charge: all five swift controls go red, and four xfails PASS by the wrong route, which exercises the stale-xfail path. CANDOR_PART95_CAL=surface injects a hand-spelled `holds`, and u1/g1 construct and evaluate. `--selftest` flips every gate cell of every arm and requires the judge to fail it.
+# NOTE: every arm that needs a producer surface is a DECLARED xfail on R843 in both engines today — r1–r11 except swift r7b and rust r6/r10, c6, the doctored o6–o10, u1, g1, every p arm and both w arms (the w arms now require a witness or the main report's `types`, so they no longer pass by absence). swift additionally xfails o1, o1b, o2, o3 (the guess kept SILENTLY). r8_adds is SILENT in both engines today (`deny Env` and `deny Env Unknown` 0, executed Env).
+# NOTE: RUST'S PORTING COMMIT MUST RE-CALIBRATE. rust's c2/c3/c4 controls and its o1–o5 cells pass today ONLY because rust discloses every dependency hop and charges nothing through it, so no fixture fault can redden them yet. The commit that makes rust resolve the hop must re-run CANDOR_PART95_CAL=controls and CANDOR_PROBE_FAULT and show those cells go red. Likewise o4/o5's fault (the doctor made the identity) goes VACUOUS once a producer publishes `holds`, because the undoctored report then resolves r1 — re-calibrate them in the same commit. o5 cannot tell a trusted surface from an ignored one (its report has no entries for either to reach); o4 can, through its `deny Env` = 0 cell.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 empties Client.fetch and SubO.m and makes the stale/nothing doctors the identity — 7 cells go red (c5 on both engines; swift c1, c3, r7b, o4, o5), exit 1. CANDOR_PART95_CAL=controls puts Env into the bodies the controls must not charge: all five swift controls go red, and five xfails PASS by the wrong route, which exercises the stale-xfail path. CANDOR_PART95_CAL=surface injects a hand-spelled holds/types/adds, and every doctored arm (u1, g1, c6, o6, o7, o8, o10) constructs and evaluates. `--selftest` flips every gate cell of every arm (120) and seeds poison into the u1, w, p1, p2, p3 and p4 judges — including the short `types` key a see-what-you-can producer would emit, which the w judges must reject.
 
 
 # ====================================================================================================
