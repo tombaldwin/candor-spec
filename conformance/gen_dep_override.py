@@ -122,9 +122,6 @@ XFAIL = {
     ("o1_typed", "java"):  "R867",
     ("o2_chain", "java"):  "R867",
     ("o3_bound", "java"):  "R867",
-    ("o1_typed", "swift"): "R867",
-    ("o2_chain", "swift"): "R867",
-    ("o3_bound", "swift"): "R867",
 }
 
 
