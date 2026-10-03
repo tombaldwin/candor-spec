@@ -126,6 +126,21 @@ separate rung, 0.40, and folded back in before either was released — a rung is
 version, and minting a second one against an unreleased first buys nothing and skips a number no engine
 would ever have declared.*
 
+**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is AUTHORED, and
+no engine declares it yet; it binds candor-scan and candor-swift, and java and ts declare it NOT
+APPLICABLE (§2). Its three `typeSurface` keys are optional and a consumer that ignores them is unaffected,
+so the PRODUCER half is additive. The CONSUMER half is not. Upward, fail-closed: a declared type that
+resolves a hop ADDS its target's effects, so `deny <Effect> <fn>` can go 0 → 1 where a guess was wrong
+(swift, R831) or a hop was only disclosed (rust, R856/R857); and a hop into a dependency that no trusted
+surface answers now ADDS `Unknown` beside the guess it keeps, so `deny <Effect> Unknown` can go 0 → 1 over
+an older producer. Downward, and only because the clause PERMITS it: a consumer MAY withdraw its own
+untyped-hop `Unknown` where a published declared type resolves the hop, so a `deny Unknown` written
+against that disclosure can go 1 → 0. **What the rung never does is REMOVE a charge**: a hit adds, a
+guess is kept, and excluding a guessed candidate is a later rung. That is also what bounds a
+half-implementation — an engine that reads the keys but skips the miss rule is no worse than today, and
+the two half-implementations that ARE worse (a hit that SWAPS the guess out, a class target joined
+without its overrides) each have a PART 95 arm that fails them.
+
 **⟨0.36⟩ IS NOT ADDITIVE EITHER, AND UNLIKE EVERY RUNG BEFORE IT, IT FLIPS BOTH WAYS.** It adds no
 field and removes none; what moves is which `unknownWhy` detail §4 permits for one source shape. §4
 gains *TWO SAME-NAMED LOCAL DEFINITIONS MEANS TWO DISTINCT DEFINITIONS*: several bodies published under
@@ -501,6 +516,103 @@ them. Three rules, each from a defect that shipped and was reverted:
 An empty surface omits the field, so a report with nothing to say is **byte-identical** to a pre-rung one
 and a 0.22 consumer is unaffected. `typeSurface.implements` was designed alongside `returns` and dropped:
 the `interfaceUnion` entry above already carries the implementer set it would have published.
+
+⟨0.40⟩ **Declared types and the dependency's own hierarchy — `typeSurface.holds`, `typeSurface.types`,
+`typeSurface.adds`, for RESOLUTION ONLY** (SOUNDNESS R843; pinned by conformance PART 95). `returns`
+answers one hop: a call's result. A consumer that types receivers FROM SOURCE meets three more that no
+report answers, and each was measured silent or disclosed-only at HEAD:
+
+- a hop through a **declared value** — a static, a stored or computed property, a field, a top-level
+  item: `Wrong.shared.ping()` where `shared` is declared `Other`. candor-swift's naming convention reads
+  `Wrong.shared` as a `Wrong` and charges `Wrong.ping`'s `Fs`, while the program runs `Other.ping`'s
+  `Env` — `deny Env` and `deny Env Unknown` both exit 0 (R831, R617). candor-scan discloses the same hop
+  as `Unknown` and can go no further (R856, R857);
+- a member the type **inherits** inside the dependency — a superclass method, a supertrait or
+  protocol-extension default (R858, R859, R865) — which no consumer can find without the dependency's
+  own supertype edges;
+- a conformance the dependency **adds to a type it does not own** (`extension Tok: PBase`, `impl PBase for
+  base::Tok`): `Tok().pTok()` in a consumer reads `[]` in BOTH engines today, `deny Env` and `deny Env
+  Unknown` 0, over a call that executes the dependency's `PBase.pTok` (measured on PART 95 `r8_adds`).
+
+java and ts are **NOT APPLICABLE** and declare it: java reads every call site's static receiver type from
+bytecode, and candor-ts asks the type checker, which reads the dependency's own `.d.ts`. Neither has a
+consumer that guesses a dependency type, so this rung has nothing to resolve there. It binds candor-scan
+and candor-swift.
+
+**A ⟨0.40⟩ PRODUCER PUBLISHES THREE KEYS BESIDE `returns`, AND LISTS EACH ONE IT COMPUTES IN `resolves`.**
+Keys and values take ⟨0.23⟩'s spelling rule unchanged — fully qualified in the OWNING package's namespace,
+the namespace that package's entry hashes use, a supertype or declared type owned by ANOTHER package
+qualified in ITS namespace (⟨0.39⟩ obligation 2), an ambiguous qualification withheld — and ⟨0.23⟩'s
+plain-nominal rule, with one widening: a value of exactly ONE protocol (`any P`, `some P`, Rust's
+return-position `impl Tr`) publishes `P`, whose `types` kind says it is a protocol. A wrapper is still a
+wrapper: `Box<dyn Tr>`, `Arc<dyn Tr>`, `Option<T>`, a protocol composition `any P & Q` MUST NOT publish
+the payload.
+
+- `holds` — `{ "<pkg>#<owner qual><member>": "<pkg>#<type qual>", … }` maps a static, a property, a field
+  or a top-level value item to the type it is DECLARED to hold (for a computed property, its getter's
+  declared type). It MAY be bounded as candor-scan bounds `returns`, to declared types with at least one
+  non-pure member: under the miss rule below, a key bounded out and a key present followed by a member
+  miss give the consumer byte-identical output (PART 95 `u1_bound` pins that equivalence).
+- `types` — `{ "<pkg>#<type qual>": { "kind": …, "supers": [ … ] }, … }` for EVERY type the package
+  declares. `kind` is one of `protocol` (a Swift protocol, a Rust trait), `final` (a class nothing can
+  subclass), `class` (a class only its own package can subclass — Swift's non-`open` public class), `open`
+  (a class any package can subclass), `value` (a struct, an enum, a Rust union). `supers` is the type's
+  COMPLETE list of direct supertypes: its declared superclass and conformances, the supertraits of a
+  trait, and every conformance or `impl` the same package adds by extension, including a conditional or
+  blanket one where it holds for that type. A supertype from the language's standard library or a
+  platform SDK MAY be left out, because members reached through it are classified rather than joined (the
+  builtin frontier, §2 chaining); every supertype declared in a PACKAGE MUST be listed.
+- `adds` — `{ "<owner pkg>#<foreign type qual>": [ <supertype>, … ], … }` maps a type owned by ANOTHER
+  package to the supertypes this package adds to it by extension. Additions to a standard-library or
+  platform type have no owning package to qualify under and are not expressible here; a consumer meets
+  them exactly as it does today.
+
+**`types` is a MANIFEST: a key's `supers` is complete, or the key is absent.** A type whose supertypes the
+producer cannot close MUST be OMITTED, never listed short — one carrying an attached macro that may add a
+conformance (Swift `@attached(extension, …)`), a `#[derive]` of a trait the producer does not know, an
+`impl` generated by a `macro_rules!` expansion, or a conditional-compilation arm the producer does not
+union (⟨0.38⟩). The reason is the one direction this rung can fail silently in: a short `supers` makes a
+walk HIT an ancestor while missing a sibling that contributes to the same member — a protocol-extension
+default on the omitted conformance, an implementor dropped from a ⟨0.39⟩ union — and that loss is
+invisible on the consumer side, where a short list and a correct one are the same bytes. So the omission
+is pinned at the PRODUCER (PART 95 `w1_macro`, `w2_macro`), as PART 30 pins a sidecar's. `types` MUST NOT
+be bounded the way `holds` may be: a walk stops at an unkeyed node. `holds` and `adds` are not manifests;
+an absent `holds` key is a miss, and `adds` is never read as complete.
+
+**A CONSUMER USES THE SURFACE TO ADD A RESOLUTION, NEVER TO REMOVE ONE.** Three rules, and the third is the
+one a half-implementation breaks:
+
+- **a hit ADDS.** A `holds` or `returns` hit naming `T` joins `T`'s member — or, where `T` does not declare
+  it, the member on every supertype in `T`'s `types` closure that does, unioned — and that join is
+  UNIONED with whatever the consumer already charged for the site. A guess the consumer made (a naming
+  convention, a leaf match, a step assumed to return its receiver) is KEPT beside the resolved target:
+  removing a guessed candidate on the strength of a declared type is an EXCLUSION, a separate later rung,
+  and this clause does not license it (PART 95 `g1_keep_guess`). The join applies every surface the
+  ordinary chained join applies (⟨0.23⟩'s third rule).
+- **a class target takes its overrides.** Where `T`'s kind is `open` or `class`, the join MUST also union
+  the overrides of every subtype of `T` visible to the consumer — those `types` names through their
+  `supers`, and the consumer's own — exactly as a typed receiver of `T` takes them under ⟨0.39⟩ (§4); a
+  consumer that cannot enumerate them MUST ADD `Unknown` instead. A declared type is the STATIC type; the
+  value it holds may be any subtype, so a join on `T`'s own body alone is the R867 silence reached by a new
+  route (PART 95 `r7a_holds_open`). Kind `protocol` dispatches through ⟨0.39⟩'s union. Only `final` and
+  `value` join exactly.
+- **every miss keeps the guess and ADDS `Unknown`.** Where a consumer types a hop into a CHAINED
+  dependency without a trusted surface answering it — the producer predates ⟨0.40⟩ or does not list the
+  key in `resolves`; the value is malformed (read as ABSENT for that key, never as an empty `supers` and
+  never as `final`; a consumer MAY instead refuse the report with exit 2); the report is stale (§2.1) or
+  judged nothing (⟨0.21⟩), whose surface is no more trusted than its entries; or a hit is followed by a
+  member miss, which ⟨0.23⟩'s miss rule already covers for `returns` and which binds `holds` word for word
+  — the consumer MUST keep whatever it already charged for the site and ADD `Unknown`. A consumer that
+  makes no guess there discloses, as ⟨0.23⟩ requires. **A guess kept silently is the defect this rung
+  exists to close**, so an older producer earns a hedge, never a certification (PART 95 `o1_old` …
+  `o5_nothing`). Measured on the nine-entry swift chained corpus before this clause was written: the hedge
+  reaches 2 sites, both already `Unknown` for another reason, and flips 0 gates.
+
+A disclosure the consumer already makes for an untyped dependency hop — candor-scan's `dispatch:untyped
+cross-package receiver` — MAY be withdrawn where, and only where, a trusted `holds`, `returns` or `types`
+entry resolves that hop and the resolved join HITS. That is the one place this rung REMOVES anything, and
+its bar is the removing direction's: every withdrawn `Unknown` traced to a published declared type whose
+join carries the real effect.
 
 **Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§"Versioning
 policy" — an ecosystem-specific effect surface led by the motivated engine, e.g. the candor-swift
@@ -4438,6 +4550,13 @@ correct by its own lights and the field meaningless across them. A consumer MUST
    carrying that key.** ⟨0.25⟩'s ambiguous-key union rule already specifies how multiple contributors
    combine; this adds no new resolution rule, only a new contributor.
 
+**"Implementor" in this clause includes a SUBCLASS that overrides a class's member.** The bounded-CHA
+paragraph above, which this clause answers, lists "a JVM interface/supertype, a Swift protocol/class" among
+the abstractions, so the visible overrides of a class receiver's member are implementors of it and join the
+union like any other — a chained dependency's own subclasses included (SOUNDNESS R867, PART 94). This
+names an obligation the clause already made; it adds none. ⟨0.40⟩ (§2) relies on it for a receiver typed
+by a DECLARATION rather than a parameter.
+
 **`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in "until a floor rung
 pins it". This is that rung: it is REQUIRED, and its absence is a non-conformance.
 
@@ -5649,6 +5768,19 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.40 (AUTHORED 2026-10-03, declared by no engine yet; binds rust + swift, java and ts declared NOT
+  APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS BOTH WAYS, the downward way only by permission. §2
+  gains three `typeSurface` keys beside ⟨0.23⟩'s `returns`: **`holds`** (a static, property, field or
+  top-level value → its DECLARED type), **`types`** (every declared type's KIND — protocol, final, class,
+  open, value — and its COMPLETE direct supertypes, as a MANIFEST: complete or absent, a type a macro may
+  extend OMITTED) and **`adds`** (conformances a package adds to a type another package owns). The
+  consumer uses them to ADD a resolution and never to remove one: a hit is unioned with the guess it would
+  have made, a class target takes its visible overrides (⟨0.39⟩, now stated to include subclass
+  overrides), and every miss — an older producer, a malformed, stale or judged-nothing report, a hit
+  followed by a member miss — keeps the guess and ADDS `Unknown`. Closes the design gap behind R831/R617
+  (swift's convention guess charging the wrong type, `deny Env` and `deny Env Unknown` both 0) and lets
+  rust resolve the hops R856/R857 could only disclose; the `adds` case was measured SILENT in both
+  engines. Pinned by PART 95, whose resolution arms are DECLARED xfails on R843 for both engines.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave

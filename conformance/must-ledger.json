@@ -3390,6 +3390,66 @@
       "at": "6.2 The policy DSL (normative)",
       "excerpt": "**AN ENGINE MUST NOT NAME AN OWNER IT HAS NOT VERIFIED DECLARES THE MEMBER.**",
       "unenforced": "UNENFORCED as a DEBT with a named remedy. **PART 10 pins the SHAPE of a dotted `dispatch:` detail — that it is `owner.member` and does not start or end with a dot — and cannot pin its TRUTH**, because no fixture asks whether the named owner actually declares the member. That gap is exactly what this sentence exists to close in prose, and it is why the sentence was needed at all: an engine satisfied every shape check while naming a type that has nothing to do with the call. The row that would close it is a fixture where a type conforms to a protocol declaring NO operator, the caller does ordinary arithmetic, and the assertion is that the emitted detail is either dot-free or names a declarer — candor-swift's [[R444]] repro is that fixture, six lines, and it currently FAILS in that engine. Deliberately not added with this clause: PART 10 drives the Rust scanner only, so the arm needs a swift leg first, and building one to pin a defect that engine has not yet fixed would land a red part rather than a control. **No verdict moves on this clause by construction** — §6.2 maps every `dispatch:*` to the `dispatch` class, dotted or not, and ⟨0.24⟩ already states the dot-free detail is free text that is NOT conformance-compared. What changes is which string an engine is ENTITLED to write."
+    },
+    {
+      "sha": "ee1811c960d88684",
+      "at": "Contents",
+      "excerpt": "**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.**",
+      "unenforced": "THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩. What it asserts is what an UPGRADE does — a verdict that moves BETWEEN two engine versions on identical bytes — and no conformance row can hold that, because every row measures ONE build. Identical classification to the ⟨0.30⟩–⟨0.39⟩ paragraphs already in this ledger, and the recorded remedy is unchanged: the row that would close it needs the suite to hold a PREVIOUS floor's engine beside HEAD's. The two half-implementations it names as WORSE than today are each exercised by PART 95 (g1_keep_guess for a hit that swaps the guess out, r7a_holds_open for a class target joined without its overrides); the flip directions themselves are what this entry leaves unenforced."
+    },
+    {
+      "sha": "c6d68ee39b3a2bb7",
+      "at": "2. The report",
+      "excerpt": "⟨0.40⟩ **Declared types and the dependency's own hierarchy — `typeSurface.holds`, `typeSurface.types`, `typeSurface.adds`, for RESOLUTION ONLY**",
+      "part": "PART 95 (r1_static r2_bound r3_property r4_inherited r5_refined r8_adds — the three measured gaps, one arm or more each; java/ts N/A declared in the part)"
+    },
+    {
+      "sha": "7452c3ab15f1c654",
+      "at": "2. The report",
+      "excerpt": "- a conformance the dependency **adds to a type it does not own**",
+      "part": "PART 95 (r8_adds — executed Env, measured `deny Env` and `deny Env Unknown` 0 in both engines; xfail on R843)"
+    },
+    {
+      "sha": "b390505ce0da9768",
+      "at": "2. The report",
+      "excerpt": "**A ⟨0.40⟩ PRODUCER PUBLISHES THREE KEYS BESIDE `returns`, AND LISTS EACH ONE IT COMPUTES IN `resolves`.**",
+      "part": "PART 95 (p1_holds: the `holds` entry, its declared-type value, and `holds` in `resolves`; p2_types: `types` kinds and supers, and `types` in `resolves`; r6_proto_ret for the one-protocol widening and rust's `Box<dyn>` refusal). `adds` has no producer-side arm of its own — it is exercised end-to-end by r8_adds, and a producer arm should be added when the first engine publishes it."
+    },
+    {
+      "sha": "6a143b8269875c91",
+      "at": "2. The report",
+      "excerpt": "- `types` — `{ \"<pkg>#<type qual>\": { \"kind\": …, \"supers\": [ … ] }, … }` for EVERY type the package declares.",
+      "part": "PART 95 (p2_types — Mid4's inherited supertype and PSub's protocol kind; w1_macro / w2_macro for completeness)"
+    },
+    {
+      "sha": "b77ec376f225a610",
+      "at": "2. The report",
+      "excerpt": "**`types` is a MANIFEST: a key's `supers` is complete, or the key is absent.**",
+      "part": "PART 95 (w1_macro — a swift attached extension macro; w2_macro — a rust macro_rules!-generated impl and an unknown derive. Producer-side, shaped as PART 30 conjunct B; calibrated by injecting the short key a see-what-you-can producer would emit, which reddens both)"
+    },
+    {
+      "sha": "bb5464acfe52fcf4",
+      "at": "2. The report",
+      "excerpt": "**A CONSUMER USES THE SURFACE TO ADD A RESOLUTION, NEVER TO REMOVE ONE.**",
+      "part": "PART 95 (g1_keep_guess — a WRONG `holds` must not displace the guess; r1..r8 for the hit; c2_* / c4_cross as the fabrication controls). The MAY-withdrawal paragraph after the three rules is a permission and no row can fail it."
+    },
+    {
+      "sha": "f4cf4d887c2c86d2",
+      "at": "2. The report",
+      "excerpt": "- **a class target takes its overrides.**",
+      "part": "PART 95 (r7a_holds_open — `holds` naming a non-final class whose subclass overrides the member; r7b_returns_open — the `returns` route, green since R867; c2_open — the control where the subclass overrides a DIFFERENT member)"
+    },
+    {
+      "sha": "3a09ac37267397ed",
+      "at": "2. The report",
+      "excerpt": "- **every miss keeps the guess and ADDS `Unknown`.**",
+      "part": "PART 95 (o1_old, o1b_old_right — an older producer; o2_member_miss — a hit then a member miss; o3_malformed; o4_stale; o5_nothing; u1_bound — the bounded/unbounded equivalence)"
+    },
+    {
+      "sha": "4a78b8e044907aa6",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "**\"Implementor\" in this clause includes a SUBCLASS that overrides a class's member.**",
+      "part": "PART 94 (o1_typed o2_chain o3_bound — a chained dependency's own subclass override; k1..k3 the non-overriding controls). Re-used by PART 95 r7a_holds_open / r7b_returns_open for a receiver typed by a declaration."
     }
   ]
 }

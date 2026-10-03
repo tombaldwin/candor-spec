@@ -2828,6 +2828,36 @@ echo "PART 94 — a chained dependency's own subclass overrides reach the consum
 # NOTE: java, ts and swift xfail all three o arms on R867 (executed). Each line retires when its engine fixes the row, and a PASSING xfail is a FAILURE.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders SubO's override of m with NO effect, so the w reference arms go red on all three engines (9 cells, exit 1). Separately measured by hand: re-pointing k1_typed at the one-package fixture reds it on all three, and declaring an xfail on a passing control prints XFAIL ARM PASSED and exits 1.
 
+# PART 95 — DECLARED TYPES AND THE DEPENDENCY'S OWN HIERARCHY, FOR RESOLUTION, SPEC §2 ⟨0.40⟩. SOUNDNESS R843.
+#
+# A consumer that types receivers FROM SOURCE meets hops no report answers: `Wrong.shared.ping()` where
+# `shared` is DECLARED `Other` (swift's convention guess charges Wrong.ping's Fs while the program runs
+# Other.ping's Env — R831), a member INHERITED inside the dependency, and a conformance the dependency ADDS
+# to a type another package owns (`Tok().pTok()`: SILENT in both engines today). ⟨0.40⟩ publishes
+# `typeSurface.holds` / `types` / `adds`, and the consumer uses them to ADD a resolution, never to remove
+# one: a hit is unioned with the guess, a class target takes its visible overrides, and every miss keeps
+# the guess and ADDS `Unknown`.
+#
+# Positive arms are END-TO-END (a real producer, a real chained consumer, the engine's own gate);
+# degraded arms DOCTOR the producer's own report (strip, malform, re-version, empty, rewrite) with the
+# consumer source byte-identical; producer arms read the dependency report alone. `deny Net` — the
+# dependency's `carrier()` — fires on every consumer cell that can carry it.
+[ -f "$HERE/gen_type_surface.py" ] || { echo "FAIL: gen_type_surface.py is missing"; exit 2; }
+echo
+echo "[95] a hop typed by a DECLARATION in a chained dependency reaches its real target — and a missing surface hedges, never certifies"
+P95_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_type_surface.py"
+) || { P95_OK=1; rc=1; }
+[ "$P95_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on an r arm is a declared hop not reaching its target; a ✘ on c2_final c2_value c2_enum c2_open c4_cross is a resolution FABRICATING an unreachable Env; a ✘ on c3_collision is a collision PICKED silently; a ✘ on c1_convention c5_factory r7b_returns_open means a hop that resolves today stopped resolving; a ✘ on an o arm, u1_bound or g1_keep_guess is a guess kept SILENTLY or swapped out; a ✘ on w1_macro w2_macro is a SHORT types key"
+echo "PART 95 — declared types for resolution: holds / types / adds (SPEC §2 ⟨0.40⟩; SOUNDNESS R843)"
+# ENGINES: rust swift; java: N/A — bytecode carries every call site's static receiver type, so no dependency hop is guessed; ts: N/A — the consumer asks the TypeScript checker, which reads the dependency's own .d.ts
+# CONTROLS: c1_convention c2_final c2_value c2_enum c2_open c3_collision c4_cross c5_factory — c2 and c4 are fabrication guards (a right-typed singleton whose `m` reads Fs while an UNRELATED member reads Env, and r1's consumer text BYTE-IDENTICAL over a dependency that moved only the declared type), so `deny Env` must stay 0; c3 is a two-package `Client` collision that must union or disclose, never pick; c1 and c5 are hops that resolve today (the convention right, ⟨0.23⟩'s `returns`) and must keep resolving. java and ts are not run at all.
+# NOTE: rust xfails r1–r5, r8, u1, p1, p2; swift xfails r1–r7a, r8, o1, o1b, o2, o3, u1, g1, p1, p2 — all on R843 (no engine publishes or reads the surface). u1/g1 xfail as NOT CONSTRUCTIBLE until a producer publishes `holds`. r8_adds is SILENT in both engines today (`deny Env` and `deny Env Unknown` 0, executed Env). rust's c2/c4/c3 controls are VACUOUS today — rust charges nothing through a dependency static, so no fixture fault can redden them until rust resolves the hop.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 empties Client.fetch and SubO.m, makes the stale/nothing doctors the identity, and injects a short `types` key for every macro-extended type — 9 cells go red across both engines (c5 ×2, c1, c3, r7b, o4, o5 on swift; w1, w2), exit 1. CANDOR_PART95_CAL=controls puts Env into the bodies the controls must not charge: all five swift controls go red, and four xfails PASS by the wrong route, which exercises the stale-xfail path. CANDOR_PART95_CAL=surface injects a hand-spelled `holds`, and u1/g1 construct and evaluate. `--selftest` flips every gate cell of every arm and requires the judge to fail it.
+
 
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the

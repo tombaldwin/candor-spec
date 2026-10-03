@@ -194,13 +194,23 @@ COVERED = {
         "holds":  r"DEP-OVERRIDE: OK — every engine's reference carries the override",
         "breaks": r"DEP-OVERRIDE: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 95 (SOUNDNESS R843). The fault empties `Client.fetch` and `SubO.m` (c5_factory on both engines,
+    # c1_convention and r7b_returns_open on swift — all green today), turns the stale/nothing doctors into the
+    # identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer), and injects
+    # the short `types` key a see-what-you-can producer would emit (w1/w2, the classifier-must-fire proof).
+    # Every substitution moves an expected rc; none lands on an xfailed cell, which could not redden.
+    "gen_type_surface.py": {
+        "args":   [],
+        "holds":  r"TYPE-SURFACE: OK — every control holds",
+        "breaks": r"TYPE-SURFACE: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 15
+COVERED_FLOOR = 16
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

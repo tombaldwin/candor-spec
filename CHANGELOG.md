@@ -25,6 +25,25 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ AUTHORED — declared types and the dependency's own hierarchy, for RESOLUTION (SOUNDNESS R843),
+  with its PART 95.** Written before any engine ports it; the floor stays 0.39 and no engine declares 0.40
+  yet. §2 gains three `typeSurface` keys beside ⟨0.23⟩'s `returns`: `holds` (a static, property, field or
+  top-level value → its DECLARED type), `types` (every declared type's kind — protocol, final, class, open,
+  value — and its COMPLETE direct supertypes, as a MANIFEST: complete or absent, a type a macro may extend
+  omitted) and `adds` (conformances a package adds to a type another package owns). A consumer uses them to
+  ADD a resolution and never to remove one: a hit is unioned with the guess it would have made, a class
+  target takes its visible overrides, and every miss — an older producer, a malformed, stale or
+  judged-nothing report, a hit followed by a member miss — keeps the guess and ADDS `Unknown`. Binds
+  candor-scan and candor-swift; java and ts are declared NOT APPLICABLE (bytecode; the type checker).
+  **NON-ADDITIVE, and it flips both ways — the downward way only by permission** (a consumer MAY withdraw
+  its own untyped-hop `Unknown` where a declared type now resolves the hop). §4 ⟨0.39⟩ gains one sentence
+  naming what PART 94 already relied on: a subclass override is an "implementor". PART 95 runs rust and
+  swift end-to-end with the engines' own gates, `deny Net` as the carrier on every cell: 22 arms (resolution,
+  controls, degraded/old-producer, a bound-equivalence arm, a keep-the-guess arm, producer and withhold
+  arms), the resolution arms DECLARED xfails on R843 in both engines, every control green today. Measured
+  while writing it: `r8_adds` — a dependency's `extension Tok: PBase` reached from `Tok().pTok()` — is
+  SILENT in BOTH engines today (`deny Env` and `deny Env Unknown` 0, executed `Env`). Probe-covered
+  (floor 15 → 16).
 - **PART 94 — a chained dependency's own subclass overrides, three-way (java, ts, swift), pinning
   SOUNDNESS R867 against SPEC §4 ⟨0.39⟩.** `viaTyped(b: BaseO) { b.m() }`, where the dependency's own
   `SubO` overrides `m` with `Env`: chained, all three engines read `[Fs]` and `deny Env` / `deny Env
