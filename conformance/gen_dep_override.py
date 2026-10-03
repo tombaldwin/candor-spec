@@ -119,9 +119,6 @@ WHY = {
 
 # An expectation keyed by (arm, engine), never by arm alone — one engine will fix this first.
 XFAIL = {
-    ("o1_typed", "java"):  "R867",
-    ("o2_chain", "java"):  "R867",
-    ("o3_bound", "java"):  "R867",
 }
 
 
