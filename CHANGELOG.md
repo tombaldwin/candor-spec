@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ REVISED A SECOND TIME, on a second review that found six new items — the first one introduced by
+  the previous revision.** "An unknown kind is an open kind" went SILENT in rust for a protocol target: Rust's
+  override set is empty by construction, so `holds` naming `&dyn Sink` with `Sink`'s `types` key missing
+  joined the trait's DEFAULT body alone, and rust could then withdraw its disclosure over an implementor's
+  override. The rule is now **an unknown kind is never exact**: a `returnsProtocol` target is always a
+  protocol, and an unknown-kind `holds` target unions what ⟨0.39⟩'s route yields and ADDS `Unknown`. A
+  type whose supertypes cannot be closed now keeps its `kind` and drops only `supers`, so a derive-bearing
+  rust crate still publishes `kind: value`. The miss rule binds LOOKUPS — hit or miss — on a guessed owner,
+  its owner list is non-exhaustive and names R861's builder chain, and the builtin exemption needs a KNOWN
+  receiver type; re-measured with misses included over the swift corpus: 58 rows changed, all already
+  `Unknown`, 0 unscoped gate flips, one row gaining a reason class. A `types` key present in one copy and
+  absent in the other is read as absent. PART 95 grows from 40 to 48 arms — `r12_holds_dyn` and
+  `r13_returns_impl` (rust's first `returnsProtocol` fixture), `r14`/`o13` for a guessed lookup that
+  misses, `o11`/`o12` for an unknown protocol kind, `c7_types_one_copy`, and `p5_returns_protocol`, which
+  pins that `returns` never names a protocol — and `c6`, `c7`, `o9` now run in both load orders. A new
+  calibration (`CAL=guess`) shows the swift `deny Fs` cells on `r1`–`r4` are satisfied by the guess alone.
 - **⟨0.40⟩ REVISED after an adversarial review, before any engine ports it.** The review was right on
   every count it made, and two were measured rather than argued. **`returns` is no longer widened to
   protocol values**: handed `returns` naming a protocol, the SHIPPED candor-swift v0.39.3 consumer joins the

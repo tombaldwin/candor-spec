@@ -135,7 +135,7 @@ v0.39.3 consumer, which joins a `returns` value exactly (`deny Env Unknown` 1 �
 that reads `Env`), so `returns` is left exactly as ⟨0.23⟩ wrote it. The CONSUMER half is not additive.
 Upward, fail-closed: a declared type that resolves a hop ADDS its target's effects, so `deny <Effect>
 <fn>` can go 0 → 1 where a guess was wrong (swift, R831) or a hop was only disclosed (rust, R856/R857);
-and a join on a guessed owner that no trusted surface answers now ADDS `Unknown`, so `deny <Effect>
+and a lookup on a guessed owner that no trusted surface answers — hit or miss — now ADDS `Unknown`, so `deny <Effect>
 Unknown` can go 0 → 1 over an older producer. Downward, and only because the clause PERMITS it: a consumer
 MAY withdraw its own untyped-hop `Unknown` where a published declared type resolves the hop, and that
 moves EVERY gate reading the disclosure — `deny Unknown`, `deny <Effect> Unknown` for any effect the
@@ -150,8 +150,10 @@ being UNTYPED, so a consumer that types the hop from `holds` and skips the miss 
 by a member miss from today's `Unknown` into silence (PART 95 `o2_member_miss`, `u1_bound`). The other
 half-implementations that are worse each have an arm that fails them: a hit that SWAPS the guess out
 (`g1_keep_guess`, and `deny Fs` on `r1`–`r4`), a class target joined without its overrides
-(`r7a_holds_open`, `o7_target_unkeyed`, `o8_sub_unkeyed`), a walk that settles for the ancestor it reached
-(`o6_walk_unkeyed`), and a trusted copy erased by a distrusted one (`o9_stale_beside`).
+(`r7a_holds_open`, `o7_target_unkeyed`, `o8_sub_unkeyed`), a protocol of unknown kind joined to its
+default body alone (`o11_proto_unkeyed` — the rust silence this revision was reviewed for), a walk that
+settles for the ancestor it reached (`o6_walk_unkeyed`), a short closure taken from one of two copies
+(`c7_types_one_copy`), and a trusted copy erased by a distrusted one (`o9_stale_beside`, both load orders).
 
 **⟨0.36⟩ IS NOT ADDITIVE EITHER, AND UNLIKE EVERY RUNG BEFORE IT, IT FLIPS BOTH WAYS.** It adds no
 field and removes none; what moves is which `unknownWhy` detail §4 permits for one source shape. §4
@@ -559,6 +561,10 @@ plain-nominal rule. A Rust reference `&T` is the value's own spelling (method ca
 publishes `T`. A wrapper is still a wrapper: `Option<T>`, `Box<dyn Tr>`, `Arc<dyn Tr>`, Swift's `T?`, a
 protocol composition `any P & Q` MUST NOT publish the payload (PART 95 `p4_wrappers`).
 
+"Exactly ONE protocol" ignores marker protocols that carry no members — Rust's auto traits and lifetimes
+(`dyn Tr + Send + Sync + 'static`, `impl Tr + Send`) and Swift's `Sendable` — so each of those is still
+one protocol; a composition of two protocols that carry members is not.
+
 - `holds` — `{ "<pkg>#<owner qual><member>": "<pkg>#<type qual>", … }` maps a static, a property, a field
   or a top-level value item to the type it is DECLARED to hold — for a computed property, its getter's
   declared type; for a value of exactly ONE protocol (`any P`, `some P`, `&dyn Tr`), the protocol, whose
@@ -582,14 +588,20 @@ protocol composition `any P & Q` MUST NOT publish the payload (PART 95 `p4_wrapp
   blanket one where it holds for that type. A supertype from the language's standard library or a
   platform SDK MAY be left out, because members reached through it are classified rather than joined (the
   builtin frontier, §2 chaining); every supertype declared in a PACKAGE MUST be listed (PART 95
-  `p2_types`, `p3_foreign`).
+  `p2_types`, `p3_foreign`). Where the producer knows a type's kind but cannot close its supertypes, the
+  key carries `kind` and NO `supers`; where it cannot tell the kind either (a type declared differently
+  under two configuration arms), the key is absent.
 - `adds` — `{ "<owner pkg>#<foreign type qual>": [ <supertype>, … ], … }` maps a type owned by ANOTHER
   package to the supertypes this package adds to it by extension. Additions to a standard-library or
   platform type have no owning package to qualify under and are not expressible here; a consumer meets
   them exactly as it does today.
 
-**`types` is a MANIFEST: a key's `supers` is complete, or the key is absent.** A type whose supertypes the
-producer cannot close MUST be OMITTED, never listed short. A type is closable only where every expansion
+**`types` is a MANIFEST: a key's `supers` is complete, or it is absent.** A type whose supertypes the
+producer cannot close MUST carry no `supers`, never a short one; it MAY keep its `kind`, which none of the
+expansions below can change. That keeps the cost bounded: a struct whose crate carries a `#[derive]` still
+publishes `kind: value`, so a `holds` naming it still joins exactly, and only a WALK through it becomes a
+miss. (How many rust types lose `supers` this way has not been measured; it bounds what `r4`-style walks
+can resolve in a derive-heavy crate, never what they disclose.) A type is closable only where every expansion
 that could add a supertype to it is visible to the producer: an attached macro (Swift
 `@attached(extension, …)`, declared in this package or another), a `#[derive]` or attribute proc macro, a
 `macro_rules!` expansion — whether or not its invocation names the type — or a conditional-compilation arm
@@ -618,46 +630,71 @@ half-implementation breaks:
   every supertype in `T`'s `supers`, unioning what each path reaches. Where `T` in fact declares a pure
   override, the ancestors' effects are charged to a body that never runs: a FABRICATION this rung accepts
   as the sound direction, removable only by a member manifest, which is rung B (PART 95 `r4_inherited`,
-  `r9_walk`). **A path that reaches a type with no `types` key is a MISS** — the walk cannot know what that
-  type contributes — and the consumer ADDS `Unknown` beside whatever the other paths reached (PART 95
-  `o6_walk_unkeyed`: `T9: PA, PM` with `PM`'s key withheld must not settle for `PA`'s less specific
-  default).
-- **an unknown kind is an open kind.** A `holds`, `returns` or `returnsProtocol` target with no `types`
-  key is joined as if its kind were `open` (PART 95 `o7_target_unkeyed`). Where the kind is `open` or
-  `class`, the join MUST also union the overrides of every subtype of `T` visible to the consumer, exactly
-  as a typed receiver of `T` takes them under ⟨0.39⟩ (§4); a consumer that cannot enumerate them MUST ADD
-  `Unknown` instead. A declared type is the STATIC type, and the value may be any subtype, so a join on
-  `T`'s own body alone is the R867 silence reached by a new route (PART 95 `r7a_holds_open`, which
-  demands the `Env` outright because its fixture's subtypes ARE enumerable). **The subtypes come from the
+  `r9_walk`). **A path that reaches a type with no `types` key, or one whose key carries no `supers`, is a
+  MISS** — the walk cannot know what that type contributes — and the consumer ADDS `Unknown` beside
+  whatever the other paths reached (PART 95 `o6_walk_unkeyed`: `T9: PA, PM` with `PM`'s key withheld must
+  not settle for `PA`'s less specific default). A path that ends at a keyed type with complete `supers` and
+  no member contributes nothing and is not a miss — the manifest says there is nothing further — but where
+  NO path reaches the member at all, that is ⟨0.23⟩'s member miss and the consumer ADDS `Unknown`.
+- **an unknown kind is never an exact kind.** A `returnsProtocol` target is a protocol by definition and
+  dispatches through ⟨0.39⟩'s union whatever `types` says (PART 95 `o12_retproto_unkeyed`). A ⟨0.23⟩
+  `returns` target keeps ⟨0.23⟩'s and ⟨0.39⟩'s meaning unchanged: `returns` is plain nominal and never names
+  a protocol, so it is joined as a typed receiver of `T` is. A `holds` target whose kind is UNKNOWN — no
+  `types` key, a key read as absent under the copy rule below, a malformed one, or a producer that does not
+  list `types` in `resolves` — may be a protocol, an open class or a value, so the consumer joins `T`'s
+  member, unions whatever ⟨0.39⟩'s route yields for `T` (its implementors if `T` is a protocol, its
+  overrides if a class), and ADDS `Unknown`. **It MUST NOT take Rust's empty override set**: that set is
+  empty only for a type KNOWN to be `value`, and a `holds` naming `&dyn Sink` whose key is missing would
+  otherwise be joined to `Sink`'s DEFAULT body alone, miss every implementor's override, and let rust
+  withdraw its untyped-hop `Unknown` — `deny Env` and `deny Env Unknown` both 0 over an implementor that
+  reads `Env` (the program is PART 95 `r12_holds_dyn`, executed; the report with `Sink`'s key withheld is
+  `o11_proto_unkeyed`). Where the kind IS known: `protocol` dispatches
+  through ⟨0.39⟩'s union (`r12_holds_dyn`, `r13_returns_impl`); `open` or `class` MUST also union the
+  overrides of every subtype of `T` visible to the consumer, exactly as a typed receiver of `T` takes them
+  under ⟨0.39⟩ (§4), and a consumer that cannot enumerate them MUST ADD `Unknown` instead. A declared type
+  is the STATIC type, and the value may be any subtype, so a join on `T`'s own body alone is the R867
+  silence reached by a new route (PART 95 `r7a_holds_open`, which demands the `Env` outright because its
+  fixture's subtypes ARE enumerable; `o7_target_unkeyed` withholds the kind). **The subtypes come from the
   route ⟨0.39⟩ already uses for a typed receiver, never from `types` alone**: `types` may omit a type, and
   an omission must leave a subtype unanswered, never absent (the ⟨0.26⟩ sidecar rule) — so `types` may ADD
-  subtypes to that route's set and never subtract one (PART 95 `o8_sub_unkeyed`). Kind `protocol`
-  dispatches through ⟨0.39⟩'s union. Only `final` and `value` join exactly, and in a language whose
-  nominal types have no subtypes (Rust) the override set is empty by construction.
+  subtypes to that route's set and never subtract one (PART 95 `o8_sub_unkeyed`). Only a known `final` or
+  `value` joins exactly, and in a language whose nominal types have no subtypes (Rust) a known `value` has
+  no overrides by construction.
 - **two copies union; a distrusted copy is a miss.** Where two chained reports for one package key the same
   `holds` or `returnsProtocol` entry differently, the consumer joins BOTH targets (§2 rule 1's
-  order-independent union; PART 95 `c6_disagree`). Where they key the same `types` entry differently, that
-  key is not a manifest and is read as ABSENT. A copy that is stale (§2.1), judged nothing (⟨0.21⟩) or
+  order-independent union; PART 95 `c6_disagree`, scored in BOTH load orders). Where they key the same
+  `types` entry differently — a different kind, a different `supers`, or the key PRESENT in one copy and
+  ABSENT in the other, which is the SHORT-closure case and the one silent direction — that key is not a
+  manifest and is read as ABSENT (PART 95 `c7_types_one_copy`, both orders). A copy that is stale (§2.1), judged nothing (⟨0.21⟩) or
   malformed contributes a MISS — it ADDS `Unknown` — and never outranks or erases what a trusted copy
-  resolves (§2 rule 1, TRUST LEVELS DO NOT RANK; PART 95 `o9_stale_beside`).
-- **every miss keeps the guess and ADDS `Unknown`.** Where a consumer JOINS a chained dependency's entry on
-  an owner it GUESSED — a naming convention, a leaf or module-level fallback, a binding laundered from one
-  — and no trusted surface answers that hop, the consumer MUST keep the join and ADD `Unknown`. That covers
-  a producer that predates ⟨0.40⟩ or does not list the key in `resolves`; a malformed value (read as
-  ABSENT for that key, never as an empty `supers` and never as `final`; a consumer MAY instead refuse the
-  report with exit 2, which PART 95 `o3_malformed` accepts); a stale or judged-nothing report, whose
-  surface is no more trusted than its entries; and a hit followed by a member miss, which ⟨0.23⟩'s miss
-  rule already covers for `returns` and which binds `holds` word for word. A consumer that makes no guess
-  there discloses, as ⟨0.23⟩ requires. **A guess kept silently is the defect this rung exists to close**,
-  so an older producer earns a hedge, never a certification (PART 95 `o1_old` … `o5_nothing`). The rule
-  binds JOINS: a hop the engine already discloses, and a member the engine classifies from its builtin
-  table rather than joining (a dependency value of type `URLSession`, `String`), are outside it and stay
-  as they are today. Measured on the rule as written here, over the nine-entry swift chained corpus with
-  the dependency reports held fixed and one candor-swift binary (HEAD `3c4d252` plus a probe marking every
-  join on a guessed owner — convention, module-qualified, the release floor's owner, a laundered binding):
-  4 marks, 2 sites, both in KingfisherWebP and both already `Unknown`; `inferred` CHANGED 0, so **0 gate
-  flips**. candor-scan's only guessed join is the builder-chain walk of SOUNDNESS R861, whose reach is
-  unmeasured.
+  resolves (§2 rule 1, TRUST LEVELS DO NOT RANK; PART 95 `o9_stale_beside`, both orders: a consumer
+  where the first copy loaded wins passes one order and goes silent in the other).
+- **every miss keeps the guess and ADDS `Unknown`.** Where a consumer LOOKS UP a chained dependency's entry
+  — whether the lookup hits or MISSES — on an owner it did not read from its own source or from a trusted
+  surface, and no trusted surface answers that hop, the consumer MUST keep whatever it charged and ADD
+  `Unknown`. A guessed owner includes, and is not limited to: a naming convention (`X.shared` is an `X`), a
+  leaf or module-level fallback, a binding laundered from either, and a step assumed to return its
+  receiver's type (SOUNDNESS R861's builder-chain walk). A lookup that MISSES on a guessed owner is not a
+  purity claim: the guess may be the wrong type (PART 95 `o13_lookup_miss_old`, where `Wrong.quiet2` is
+  pure and the declared `Other.quiet2` reads `Env`). The rule covers a producer that predates ⟨0.40⟩ or does
+  not list the key in `resolves`; a malformed value (read as ABSENT for that key, never as an empty
+  `supers` and never as `final`; a consumer MAY instead refuse the report with exit 2, which PART 95
+  `o3_malformed` accepts); a stale or judged-nothing report, whose surface is no more trusted than its
+  entries; and a hit followed by a member miss, which ⟨0.23⟩'s miss rule already covers for `returns` and
+  which binds `holds` word for word. A consumer that makes no guess there discloses, as ⟨0.23⟩ requires.
+  **A guess kept silently is the defect this rung exists to close**, so an older producer earns a hedge,
+  never a certification (PART 95 `o1_old` … `o5_nothing`, `o13_lookup_miss_old`). A hop the engine already
+  discloses is outside the rule, and so is a member the engine classifies from its builtin table — but
+  ONLY where the receiver's type is KNOWN, typed in the consumer's source or answered by a trusted surface.
+  On a guessed owner the receiver's type is itself the guess, so a dependency member whose name merely
+  matches a builtin does not escape the rule. Measured on the rule as written here, over the nine-entry
+  swift chained corpus with the dependency reports held fixed and one candor-swift binary (HEAD `3c4d252`
+  plus a probe marking every lookup on a guessed owner, hit or miss, in a file importing a chained
+  package): 80 marks across 6 entries, 58 rows changed, every one of them ALREADY `Unknown` (`inferred`
+  CHANGED 0), so unscoped `deny <Effect> Unknown` flips 0 gates; ONE row gains a reason class it lacked
+  (`swift-nio-ssl`'s `encodeALPNIdentifier`, from `callback` alone to `callback` + `dispatch`), so a
+  reason-scoped `Unknown[dispatch]` gate over that one function would flip. Hits alone were 2 sites, both
+  in KingfisherWebP. candor-scan's guessed lookups — the R861 walk — are unmeasured.
 
 A disclosure the consumer already makes for an untyped dependency hop — candor-scan's `dispatch:untyped
 cross-package receiver` — MAY be withdrawn where, and only where, a trusted `holds`, `returns`,
@@ -5833,10 +5870,12 @@ declare it via the envelope's `spec`.
   absent, a type an unseen expansion may extend OMITTED) and **`adds`** (conformances added to a type
   another package owns). The consumer uses them to ADD a resolution and never to remove one: a hit is
   unioned with the guess it would have made; a walk reads an absent member as "may be inherited" and a
-  path through an unkeyed type is a miss; an unknown kind is an open kind, whose overrides come from the
-  ⟨0.39⟩ route and never from `types` alone; two copies union and a distrusted copy is a miss; and every
-  JOIN on a guessed owner with no trusted surface keeps the guess and ADDS `Unknown` (measured on the
-  swift corpus: 2 sites, 0 gate flips). §4 ⟨0.39⟩ gains one sentence: a subclass override is an
+  path through an unkeyed type is a miss; an unknown kind is never exact (a `returnsProtocol` target is
+  always a protocol, and an unknown-kind `holds` target never takes Rust's empty override set), with
+  overrides from the ⟨0.39⟩ route and never from `types` alone; two copies union, a `types` key in one copy
+  only is read as absent, and a distrusted copy is a miss; and every LOOKUP — hit or miss — on a guessed
+  owner with no trusted surface keeps the guess and ADDS `Unknown` (measured on the swift corpus: 58 rows,
+  all already `Unknown`, 0 unscoped gate flips, one row gaining a reason class). §4 ⟨0.39⟩ gains one sentence: a subclass override is an
   "implementor". Closes the design gap behind R831/R617 and lets rust resolve the hops R856/R857 could
   only disclose; the `adds` case was measured SILENT in both engines. Pinned by PART 95, whose
   resolution, degraded and producer arms are DECLARED xfails on R843 for both engines.
