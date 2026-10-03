@@ -561,9 +561,11 @@ plain-nominal rule. A Rust reference `&T` is the value's own spelling (method ca
 publishes `T`. A wrapper is still a wrapper: `Option<T>`, `Box<dyn Tr>`, `Arc<dyn Tr>`, Swift's `T?`, a
 protocol composition `any P & Q` MUST NOT publish the payload (PART 95 `p4_wrappers`).
 
-"Exactly ONE protocol" ignores marker protocols that carry no members — Rust's auto traits and lifetimes
-(`dyn Tr + Send + Sync + 'static`, `impl Tr + Send`) and Swift's `Sendable` — so each of those is still
-one protocol; a composition of two protocols that carry members is not.
+"Exactly ONE protocol" ignores the NAMED markers and nothing else — Rust's auto traits (`Send`, `Sync`,
+`Unpin` and the other compiler-defined auto traits), lifetime bounds (`'static`), and Swift's `Sendable` —
+so `dyn Tr + Send + Sync + 'static`, `impl Tr + Send` and `any P & Sendable` are each one protocol. A
+protocol with no requirements is NOT a marker on that account: a Swift protocol whose members live in its
+extensions carries members, so `any P & Q` with such a `Q` is a composition and is not published.
 
 - `holds` — `{ "<pkg>#<owner qual><member>": "<pkg>#<type qual>", … }` maps a static, a property, a field
   or a top-level value item to the type it is DECLARED to hold — for a computed property, its getter's
@@ -588,17 +590,27 @@ one protocol; a composition of two protocols that carry members is not.
   blanket one where it holds for that type. A supertype from the language's standard library or a
   platform SDK MAY be left out, because members reached through it are classified rather than joined (the
   builtin frontier, §2 chaining); every supertype declared in a PACKAGE MUST be listed (PART 95
-  `p2_types`, `p3_foreign`). Where the producer knows a type's kind but cannot close its supertypes, the
-  key carries `kind` and NO `supers`; where it cannot tell the kind either (a type declared differently
-  under two configuration arms), the key is absent.
+  `p2_types`, `p3_foreign`). That omission has an edge, stated rather than hidden: a dependency that
+  EXTENDS a platform protocol with an effectful member (`extension Collection { func save() { … } }`) and
+  leaves the platform protocol out of `supers` gives a walk no path to that member, which today falls to
+  ⟨0.23⟩'s member miss and is DISCLOSED, never silent. Where the producer knows a type's kind but cannot
+  close its supertypes, the key carries `kind` and NO `supers` — a KIND-ONLY key; where it cannot tell the
+  kind either (a type declared differently under two configuration arms, or an item an attribute macro may
+  replace), the key is absent. `kind` takes only the five values above: an UNRECOGNISED value (Swift's
+  `actor` is the real case) is an UNKNOWN kind, never an exact one.
 - `adds` — `{ "<owner pkg>#<foreign type qual>": [ <supertype>, … ], … }` maps a type owned by ANOTHER
   package to the supertypes this package adds to it by extension. Additions to a standard-library or
   platform type have no owning package to qualify under and are not expressible here; a consumer meets
   them exactly as it does today.
 
 **`types` is a MANIFEST: a key's `supers` is complete, or it is absent.** A type whose supertypes the
-producer cannot close MUST carry no `supers`, never a short one; it MAY keep its `kind`, which none of the
-expansions below can change. That keeps the cost bounded: a struct whose crate carries a `#[derive]` still
+producer cannot close MUST carry no `supers`, never a short one. It MAY keep its `kind` where the only
+unseen expansions are ones that ADD to an item and never replace it — a `#[derive]`, a Swift extension
+macro, a `macro_rules!` impl. **A Rust attribute macro REPLACES the item it annotates, so a type under one
+has no knowable kind and its key is absent.** **A consumer MUST NOT read a missing `supers` as an empty
+list** (a serde `#[serde(default)]`, a Swift `?? []`): a kind-only key is not "complete, no supertypes",
+and reading it so settles a walk short — SOUNDNESS R860's defect in the new shape (PART 95
+`o14_kind_only`). That keeps the cost bounded: a struct whose crate carries a `#[derive]` still
 publishes `kind: value`, so a `holds` naming it still joins exactly, and only a WALK through it becomes a
 miss. (How many rust types lose `supers` this way has not been measured; it bounds what `r4`-style walks
 can resolve in a derive-heavy crate, never what they disclose.) A type is closable only where every expansion
@@ -630,10 +642,12 @@ half-implementation breaks:
   every supertype in `T`'s `supers`, unioning what each path reaches. Where `T` in fact declares a pure
   override, the ancestors' effects are charged to a body that never runs: a FABRICATION this rung accepts
   as the sound direction, removable only by a member manifest, which is rung B (PART 95 `r4_inherited`,
-  `r9_walk`). **A path that reaches a type with no `types` key, or one whose key carries no `supers`, is a
+  `r9_walk`). **A path that reaches a type with no `types` key, or a KIND-ONLY key with no `supers`, is a
   MISS** — the walk cannot know what that type contributes — and the consumer ADDS `Unknown` beside
   whatever the other paths reached (PART 95 `o6_walk_unkeyed`: `T9: PA, PM` with `PM`'s key withheld must
-  not settle for `PA`'s less specific default). A path that ends at a keyed type with complete `supers` and
+  not settle for `PA`'s less specific default; `o14_kind_only`: `T2: PA2, PM2` with `PM2` cut down to its
+  kind must not settle for `PA2`'s default while `PQ2`'s, one hop past `PM2`, is the one that runs). A path
+  that ends at a keyed type with complete `supers` and
   no member contributes nothing and is not a miss — the manifest says there is nothing further — but where
   NO path reaches the member at all, that is ⟨0.23⟩'s member miss and the consumer ADDS `Unknown`.
 - **an unknown kind is never an exact kind.** A `returnsProtocol` target is a protocol by definition and
@@ -664,7 +678,9 @@ half-implementation breaks:
   `holds` or `returnsProtocol` entry differently, the consumer joins BOTH targets (§2 rule 1's
   order-independent union; PART 95 `c6_disagree`, scored in BOTH load orders). Where they key the same
   `types` entry differently — a different kind, a different `supers`, or the key PRESENT in one copy and
-  ABSENT in the other, which is the SHORT-closure case and the one silent direction — that key is not a
+  ABSENT in the other, or FULL in one and KIND-ONLY in the other (a merge that takes `supers` from
+  whichever copy closes the type rebuilds the short closure; PART 95 `c7b_kind_only_one_copy`), which are
+  the SHORT-closure cases and the one silent direction — that key is not a
   manifest and is read as ABSENT (PART 95 `c7_types_one_copy`, both orders). A copy that is stale (§2.1), judged nothing (⟨0.21⟩) or
   malformed contributes a MISS — it ADDS `Unknown` — and never outranks or erases what a trusted copy
   resolves (§2 rule 1, TRUST LEVELS DO NOT RANK; PART 95 `o9_stale_beside`, both orders: a consumer

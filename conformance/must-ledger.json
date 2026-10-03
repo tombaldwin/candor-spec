@@ -3428,16 +3428,16 @@
       "part": "PART 95 (r6_proto_ret — `mkP() -> any PSvc` resolved through ⟨0.39⟩'s union; rust's `Box<dyn>` refused and disclosed). The separate-key MUST is grounded on a measurement no row can repeat — a SHIPPED consumer (candor-swift v0.39.3) reading the folded spelling went silent — recorded in the clause; PART 95 runs only current builds. RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
     },
     {
-      "sha": "fd805b0eda78ab33",
+      "sha": "a227cf0619cecc8f",
       "at": "2. The report",
       "excerpt": "- `types` — `{ \"<pkg>#<type qual>\": { \"kind\": …, \"supers\": [ … ] }, … }` for EVERY type the package declares.",
-      "part": "PART 95 (p2_types — kind accuracy across open/class/final/value/protocol, required supers, and Quiet keyed though it has only pure members; p3_foreign — a Base-owned supertype in Base's spelling). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: a type whose kind is known but whose supertypes are not closable keeps `kind` and drops `supers`; w1/w2 accept a kind-only key and reject any `supers` on a withheld type."
+      "part": "PART 95 (p2_types — kind accuracy across open/class/final/value/protocol, required supers, and Quiet keyed though it has only pure members; p3_foreign — a Base-owned supertype in Base's spelling). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: a type whose kind is known but whose supertypes are not closable keeps `kind` and drops `supers`; w1/w2 accept a kind-only key and reject any `supers` on a withheld type. THIRD REVIEW: a KIND-ONLY key is named; an unrecognised kind (Swift `actor`) is unknown, never exact; an item an attribute macro may replace has no key; the platform-protocol-extension edge is stated (a member miss, disclosed)."
     },
     {
-      "sha": "f41f9b6841d0fec7",
+      "sha": "c7ed71894f5b7ab8",
       "at": "2. The report",
       "excerpt": "**`types` is a MANIFEST: a key's `supers` is complete, or it is absent.**",
-      "part": "PART 95 (w1_macro — an attached extension macro declared in ANOTHER package, with the witness PlainT required; w2_macro — named and unnamed macro_rules! impls, an unknown derive and an attribute proc macro; p2_types for the never-bounded clause; o10_adds_partial for `adds` never complete). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: the manifest is now on `supers`, not the whole key — kind may stay, which bounds the derive-crate cost (unmeasured, stated in the clause)."
+      "part": "PART 95 (w1_macro — an attached extension macro declared in ANOTHER package, with the witness PlainT required; w2_macro — named and unnamed macro_rules! impls, an unknown derive and an attribute proc macro; p2_types for the never-bounded clause; o10_adds_partial for `adds` never complete). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: the manifest is now on `supers`, not the whole key — kind may stay, which bounds the derive-crate cost (unmeasured, stated in the clause). THIRD REVIEW: kind may stay only under ADDING expansions (derive, extension macro, macro_rules! impl) — a Rust attribute macro replaces its item; and a consumer MUST NOT read a missing `supers` as [] — o14_kind_only (T2: PA2, PM2 with PM2 cut to its kind; executed: PQ2's default runs, Env)."
     },
     {
       "sha": "11982c7bb42259f3",
@@ -3446,10 +3446,10 @@
       "part": "PART 95 (g1_keep_guess — a WRONG `holds` whose target HAS the member, so the arm is a true hit: deny Fs 1 proves the hit joined, deny Env 1 that the guess was kept; the deny Fs cells of r1–r4 on swift). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
     },
     {
-      "sha": "d73b78fdff60725e",
+      "sha": "2ad556cfeabeb7fb",
       "at": "2. The report",
       "excerpt": "- **the walk reads absence as \"may be inherited\".**",
-      "part": "PART 95 (r4_inherited — the walk on absence; r9_walk — `T9: PA, PM`, PM's default the more specific; o6_walk_unkeyed — PM's `types` key withheld must disclose). The accepted fabrication (a declared pure override charged its ancestor's effects) has no row: it is a stated cost, removable only by rung B's member manifest. SECOND REVIEW: a key with no `supers` is a miss like an absent one; an exhausted path is not a miss, but no path reaching the member is ⟨0.23⟩'s member miss."
+      "part": "PART 95 (r4_inherited — the walk on absence; r9_walk — `T9: PA, PM`, PM's default the more specific; o6_walk_unkeyed — PM's `types` key withheld must disclose). The accepted fabrication (a declared pure override charged its ancestor's effects) has no row: it is a stated cost, removable only by rung B's member manifest. SECOND REVIEW: a key with no `supers` is a miss like an absent one; an exhausted path is not a miss, but no path reaching the member is ⟨0.23⟩'s member miss. THIRD REVIEW: a KIND-ONLY key on a path is a miss (o14_kind_only)."
     },
     {
       "sha": "56bafa348e6dec29",
@@ -3458,10 +3458,10 @@
       "part": "PART 95 (r7a_holds_open — enumerable subtypes, Env demanded; o7_target_unkeyed — the target's kind withheld; o8_sub_unkeyed — the overriding subclass's key withheld, so overrides must come from the ⟨0.39⟩ route; r7b_returns_open — the ⟨0.23⟩ route, green since R867) SECOND REVIEW (reworded from 'an unknown kind is an open kind', which went SILENT in rust for a protocol target): o11_proto_unkeyed — `&dyn Sink` with Sink's key withheld must disclose; o12_retproto_unkeyed — a `returnsProtocol` target is a protocol whatever `types` says; r12_holds_dyn and r13_returns_impl, executed."
     },
     {
-      "sha": "298cc5b6587f597c",
+      "sha": "364a97b7dba214ff",
       "at": "2. The report",
       "excerpt": "- **two copies union; a distrusted copy is a miss.**",
-      "part": "PART 95 (c6_disagree — two trusted copies disagreeing on one `holds` key; o9_stale_beside — a stale copy beside a trusted one must disclose AND leave the resolution standing). The `types`-disagreement-reads-as-absent sentence has no arm of its own; its consumer behaviour is o6/o7's. SECOND REVIEW: c6, o9 and the new c7_types_one_copy (a `types` key in ONE copy only — the short-closure case) are scored in BOTH load orders."
+      "part": "PART 95 (c6_disagree — two trusted copies disagreeing on one `holds` key; o9_stale_beside — a stale copy beside a trusted one must disclose AND leave the resolution standing). The `types`-disagreement-reads-as-absent sentence has no arm of its own; its consumer behaviour is o6/o7's. SECOND REVIEW: c6, o9 and the new c7_types_one_copy (a `types` key in ONE copy only — the short-closure case) are scored in BOTH load orders. THIRD REVIEW: a key FULL in one copy and KIND-ONLY in the other differs too (c7b_kind_only_one_copy, both orders)."
     },
     {
       "sha": "ad9da015ad5d84bc",

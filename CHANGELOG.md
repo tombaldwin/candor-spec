@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ third review: GO for porting on one condition, now met.** The second revision's KIND-ONLY `types`
+  key (kind kept, `supers` dropped) had no arm, and a consumer that parses a missing `supers` as `[]` reads
+  it as "complete, no supertypes" — SOUNDNESS R860's defect in the new shape. §2 now says a consumer MUST
+  NOT, and PART 95 gains `r15_kind_only` / `o14_kind_only` (`T2: PA2, PM2`, `PM2: PQ2`; executed: `PQ2`'s
+  default runs, `Env`; with `PM2` cut to its kind a `[]`-defaulting consumer reads `[Fs]` and both gates
+  exit 0) and `c7b_kind_only_one_copy` (full in one copy, kind-only in the other, both load orders). Wording
+  only, otherwise: an unrecognised `kind` (Swift `actor`) is unknown; a kind may stay only under expansions
+  that ADD to an item, because a Rust attribute macro replaces its item; the "one protocol" markers are the
+  named ones, not any requirement-less protocol; and a platform protocol the dependency extends with an
+  effectful member, left out of `supers`, falls to a disclosed member miss. 51 arms, 58 declared xfails.
 - **⟨0.40⟩ REVISED A SECOND TIME, on a second review that found six new items — the first one introduced by
   the previous revision.** "An unknown kind is an open kind" went SILENT in rust for a protocol target: Rust's
   override set is empty by construction, so `holds` naming `&dyn Sink` with `Sink`'s `types` key missing

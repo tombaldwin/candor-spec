@@ -47,6 +47,8 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   r12_holds_dyn rust `SINK: &(dyn Sink + Sync) = &Loud`, Sink's DEFAULT reads Fs, Loud's override Env -> Env
   r13_returns_impl rust `mk_impl() -> impl Sink` (`returnsProtocol`) -> Env
   r14_lookup_miss `Wrong.shared.quiet2()`: `Wrong.quiet2` PURE, the declared `Other.quiet2` reads Env -> Env
+  r15_kind_only `HolderK.shared.m2()`, `T2: PA2, PM2`, `PM2: PQ2`, PQ2's default (Env) more specific than
+                PA2's (Fs) -> Env (swift; executed)
 
   c1_convention `Client.shared.fetch()`, `shared: Client` (the convention RIGHT)   -> Env     (R826)
   c2_final/c2_value/c2_enum/c2_open   a right-typed singleton whose `m` reads Fs, while an UNRELATED
@@ -58,6 +60,8 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
                 both targets joined: `deny Env` 1 — in BOTH load orders
   c7_types_one_copy r9 over two copies, PM's `types` key in ONE only (the short-closure case) -> disclose,
                 both orders
+  c7b_kind_only_one_copy r9 over two copies, PM's key FULL in one and KIND-ONLY in the other -> disclose,
+                both orders (a merge taking `supers` from whichever copy closes the type rebuilds the short closure)
 
   o1_old        r1 over the report with the ⟨0.40⟩ keys STRIPPED -> `deny Env Unknown` 1 (swift: Fs kept)
   o1b_old_right c1 over the stripped report -> `deny Env` 1 AND `deny Unknown` 1
@@ -76,6 +80,8 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   o12_retproto_unkeyed rust r13 / swift r6 with the protocol's key WITHHELD -> a `returnsProtocol` target
                 is a protocol anyway: Env
   o13_lookup_miss_old r14 over the stripped report -> a guessed-owner lookup that MISSES discloses
+  o14_kind_only r15 with PM2's key cut down to its KIND (no `supers`) -> the PM2 path is a miss: disclose.
+                A consumer that defaults a missing `supers` to `[]` reads `[Fs]` and fails both cells
   u1_bound      `Wrong2.shared2.q()`, `shared2: Quiet` (only pure members), with and without its `holds`
                 key -> the same EFFECTS and the same GATE EXITS (never compared on reason strings)
   g1_keep_guess c1 over a report whose `holds` for `Client.shared` names `Decoy`, which HAS a `fetch` (Fs)
@@ -123,6 +129,7 @@ SPEC_CLAUSES = [
     ("§2 ⟨0.40⟩", "the walk reads absence as \"may be inherited\""),
     ("§2 ⟨0.40⟩", "an unknown kind is never an exact kind"),
     ("§2 ⟨0.40⟩", "It MUST NOT take Rust's empty override set"),
+    ("§2 ⟨0.40⟩", "A consumer MUST NOT read a missing `supers` as an empty list"),
     ("§2 ⟨0.40⟩", "two copies union; a distrusted copy is a miss"),
     ("§2 ⟨0.40⟩", "It is a separate key and MUST NOT be folded into `returns`"),
     ("§4 ⟨0.39⟩", "\"Implementor\" in this clause includes a SUBCLASS that overrides a class's member."),
@@ -286,6 +293,21 @@ public final class T9: PA, PM {{
 public final class HolderW {{
     public static let shared: T9 = T9()
 }}
+public protocol PA2 {{}}
+extension PA2 {{
+    public func m2() {{ {f} }}
+}}
+public protocol PQ2: PA2 {{}}
+extension PQ2 {{
+    public func m2() {{ {e} }}
+}}
+public protocol PM2: PQ2 {{}}
+public final class T2: PA2, PM2 {{
+    public init() {{}}
+}}
+public final class HolderK {{
+    public static let shared: T2 = T2()
+}}
 public final class SvcHolder {{
     public static let svc: any PSvc = SvcImpl()
 }}
@@ -336,6 +358,7 @@ public func r9_walk() { carrier(); HolderW.shared.tokw() }
 public func r10_holds_proto() { carrier(); SvcHolder.svc.run() }
 public func r11_computed() { carrier(); Wrong3.computed.ping() }
 public func r14_lookup_miss() { carrier(); Wrong.shared.quiet2() }
+public func r15_kind_only() { carrier(); HolderK.shared.m2() }
 '''
 SW_APP_B = '''import Dep
 import DepB
@@ -617,6 +640,7 @@ ARMS = [
     ("r12_holds_dyn",      "main",  None,                "r12_holds_dyn",    ENV1),
     ("r13_returns_impl",   "main",  None,                "r13_returns_impl", ENV1),
     ("r14_lookup_miss",    "main",  None,                "r14_lookup_miss",  ENV1),
+    ("r15_kind_only",      "main",  None,                "r15_kind_only",    ENV1),
     ("c1_convention",      "main",  None,                "c1_convention",    ENV1),
     ("c2_final",           "main",  None,                "c2_final",         ENV0),
     ("c2_value",           "main",  None,                "c2_value",         ENV0),
@@ -627,6 +651,7 @@ ARMS = [
     ("c5_factory",         "main",  None,                "c5_factory",       ENV1),
     ("c6_disagree",        "main",  "disagree",          "r1_static",        ENV1),
     ("c7_types_one_copy",  "main",  "one_copy_types:PM", "r9_walk",          DISCLOSE),
+    ("c7b_kind_only_one_copy", "main", "one_copy_kindonly:PM", "r9_walk",     DISCLOSE),
     ("o1_old",             "main",  "strip",             "r1_static",        {"swift": {"deny Env Unknown": {1}, "deny Fs": {1}}, "rust": DISCLOSE}),
     ("o1b_old_right",      "main",  "strip",             "c1_convention",    {"deny Env": {1}, "deny Unknown": {1}}),
     ("o2_member_miss",     "main",  None,                "o2_member_miss",   {"swift": {"deny Unknown": {1}, "deny Fs": {1}}, "rust": {"deny Unknown": {1}}}),
@@ -643,6 +668,7 @@ ARMS = [
     ("o12_retproto_unkeyed", "main", {"rust": "drop_types:Sink", "swift": "drop_types:PSvc"},
                                                          {"rust": "r13_returns_impl", "swift": "r6_proto_ret"}, ENV1),
     ("o13_lookup_miss_old", "main", "strip",             "r14_lookup_miss",  DISCLOSE),
+    ("o14_kind_only",      "main",  "kindonly:PM2",      "r15_kind_only",    DISCLOSE),
     ("u1_bound",           "main",  "u1",                "u1_bound",         {"deny Unknown": {1}}),
     ("g1_keep_guess",      "main",  "wrongholds",        "c1_convention",    {"deny Env": {1}, "deny Fs": {1}}),
 ]
@@ -671,6 +697,9 @@ ARM_NA = {
     ("w1_macro", "rust"): "w2_macro is rust's withhold arm",
     ("r12_holds_dyn", "swift"): "swift's r10_holds_proto is this shape (`any PSvc`, whose extension default the implementor overrides)",
     ("r13_returns_impl", "swift"): "swift's r6_proto_ret is this shape (`-> any PSvc`)",
+    ("r15_kind_only", "rust"): "as r9_walk — in Rust a `[]`-defaulted `supers` can only cost a member miss, which already discloses",
+    ("o14_kind_only", "rust"): "as r15_kind_only",
+    ("c7b_kind_only_one_copy", "rust"): "as r9_walk",
     ("c7_types_one_copy", "rust"): "as r9_walk — the walk it shortens cannot be short a more specific default in Rust",
     ("w2_macro", "swift"): "w1_macro is swift's withhold arm",
 }
@@ -694,6 +723,9 @@ WHY = {
 # scripts/xfail-register-agree.py reads it with ast.literal_eval and skips any table it cannot evaluate,
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
+    ('r15_kind_only', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
+    ('o14_kind_only', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
+    ('c7b_kind_only_one_copy', 'swift'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
     ('r10_holds_proto', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r12_holds_dyn', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
     ('r13_returns_impl', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
@@ -857,6 +889,21 @@ def doctor(rep, kind, lang):
     if kind == "nothing":
         d["functions"] = []
         d["analyzed"] = {"count": 0, "digest": "cbf29ce484222325"}
+        return d, None
+    if kind.startswith("kindonly:"):
+        # A KIND-ONLY key: `kind` kept, `supers` dropped — the shape a producer emits for a type whose
+        # supertypes it cannot close. A consumer that defaults a missing `supers` to `[]` reads it as
+        # "complete, no supertypes" and settles the walk short (R860's bug in the new state).
+        leaf = kind.split(":", 1)[1]
+        table = ts.get("types")
+        k = find_key(table, leaf)
+        if not k or not isinstance(table[k], dict) or "kind" not in table[k]:
+            return None, "the producer publishes no `types` entry (with a kind) for %s to strip" % leaf
+        table = dict(table)
+        table[k] = {"kind": table[k]["kind"]}
+        ts = dict(ts)
+        ts["types"] = table
+        d["typeSurface"] = ts
         return d, None
     if kind.startswith("drop_types:") or kind.startswith("drop_adds:"):
         field, leaf = kind.split(":")
@@ -1151,6 +1198,12 @@ def selftest():
                                      "types": {"dep#SubThing": {"supers": ["base#BaseTr"]}}}}, "base", "rust")[0] is False
     assert judge_p3({"typeSurface": {"adds": {"base#Tok": ["dep#PBase"]},
                                      "types": {"dep#SubThing": {"supers": ["base#BaseTr"]}}}}, "base", "rust")[0]
+    full = {"typeSurface": {"types": {"Dep#PM2": {"kind": "protocol", "supers": ["Dep#PQ2"]}}}}
+    ko, _ = doctor(full, "kindonly:PM2", "swift")
+    assert ko["typeSurface"]["types"]["Dep#PM2"] == {"kind": "protocol"}, "kind-only doctor"
+    # a consumer defaulting the missing `supers` to [] reads [Fs]: both o14 cells go 0 and must fail
+    o14 = [a for a in ARMS if a[0] == "o14_kind_only"][0]
+    assert not judge_gates(want_for(o14, "swift"), {"deny Env Unknown": 0, "deny Net": 1})[0]
     print("selftest: OK — %d flipped cells all fail; the u1, w, p1, p2, p3, p4 and p5 judges each fail their "
           "seeded poison and pass their clean input" % n)
     return 0
@@ -1216,7 +1269,11 @@ def run_engine(lang, ws):
                         "types": {"Dep#PM": {"kind": "protocol", "supers": ["Dep#PA"]},
                                   "Dep#BaseO": {"kind": "open", "supers": []},
                                   "Dep#SubO": {"kind": "final", "supers": ["Dep#BaseO"]},
-                                  "Dep#PSvc": {"kind": "protocol", "supers": []}},
+                                  "Dep#PSvc": {"kind": "protocol", "supers": []},
+                                  "Dep#PM2": {"kind": "protocol", "supers": ["Dep#PQ2"]},
+                                  "Dep#PQ2": {"kind": "protocol", "supers": ["Dep#PA2"]},
+                                  "Dep#PA2": {"kind": "protocol", "supers": []},
+                                  "Dep#T2": {"kind": "final", "supers": ["Dep#PA2", "Dep#PM2"]}},
                         "adds": {"Base#Tok": ["Dep#PBase"]}},
               "rust": {"holds": {"dep#SHARED": "dep#Other", "dep#CLIENT": "dep#Client"},
                        "types": {"dep#Sink": {"kind": "protocol", "supers": []}},
@@ -1282,11 +1339,12 @@ def run_engine(lang, ws):
                 return cache[key]
             out = tuple([rp["base"], _dump(os.path.join(scratch, "u1_%s.json" % t), d), rp["depb"]]
                         for t, d in zip(("with", "without"), pair))
-        elif kind in ("beside_stale", "disagree") or kind.startswith("one_copy_types:"):
+        elif kind in ("beside_stale", "disagree") or kind.startswith("one_copy_"):
             # TWO COPIES, IN BOTH LOAD ORDERS: a consumer where the first copy wins passes one order and
             # goes silent in the other, so the arm is scored on both (SPEC §2 rule 1, order-independence).
             sub = {"beside_stale": "stale", "disagree": "disagree"}.get(kind) \
-                or "drop_types:" + kind.split(":", 1)[1]
+                or (("kindonly:" if kind.startswith("one_copy_kindonly:") else "drop_types:")
+                    + kind.split(":", 1)[1])
             d, why = doctor(dep_rep, sub, lang)
             if why:
                 cache[key] = (None, why)
