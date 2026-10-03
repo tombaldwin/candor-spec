@@ -2795,6 +2795,39 @@ echo "PART 93 — receiver-spelling invariance (SPEC §4 ⟨0.35⟩ disjunction;
 # NOTE: java, ts and swift pass all six arms. rust xfails three — R562 (field, return) and R561 (closure)
 # are closed for a LOCAL abstraction and open for a FOREIGN one, which is what this part measured first.
 
+# PART 94 — A CHAINED DEPENDENCY'S OWN SUBCLASS OVERRIDES, THREE-WAY, SPEC §4 ⟨0.39⟩. SOUNDNESS R867.
+#
+# `viaTyped(b: BaseO) { b.m() }` in the consumer, where the dependency declares `BaseO.m` (Fs) AND its
+# own subclass `SubO` overriding `m` with Env. Chained, java, ts and swift read `[Fs]` and `deny Env` and
+# `deny Env Unknown` both exit 0 over a program that, executed with a `SubO`, reads the environment. The
+# SAME source scanned as ONE package reads `[Env, Fs]` in all three — so chaining DELETES an effect the
+# engine's own unchained analysis attributes, which ⟨0.39⟩ forbids in so many words ("A mechanism that
+# makes reports better must not make silence cheaper").
+#
+# WHY ⟨0.39⟩ BINDS A CLASS RECEIVER and not only a protocol/interface: the clause's "every implementor
+# visible to the consumer" answers the bounded-CHA paragraph above it, whose abstraction list names "a
+# JVM interface/supertype, a Swift protocol/class". The part asserts the PROPERTY at the consumer and
+# names no wire route, because §2's `interfaceUnion` text is worded for interfaces/protocols only.
+#
+# Gate exits, not rows: `deny Env` must FIRE (a hedge does not "carry the effects"), and `deny Fs` fires
+# on EVERY cell as the carrier that proves the chain reached the consumer and the scope names the row.
+[ -f "$HERE/gen_dep_override.py" ] || { echo "FAIL: gen_dep_override.py is missing"; exit 2; }
+echo
+echo "[94] a chained consumer carries the overrides in its dependency's own subclasses"
+P94_OK=0
+(
+  export CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_dep_override.py"
+) || { P94_OK=1; rc=1; }
+[ "$P94_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on o1_typed/o2_chain/o3_bound is the dependency override going silent; a ✘ on k1_typed/k2_chain/k3_bound is the union FABRICATING or HEDGING over a subclass that does not override; a ✘ on w1_typed/w2_chain/w3_bound means the one-package reference stopped carrying the override, and the comparison can no longer be read"
+echo "PART 94 — a chained dependency's own subclass overrides reach the consumer (SPEC §4 ⟨0.39⟩; SOUNDNESS R867)"
+# ENGINES: java ts swift; rust: N/A by language — Rust has no class inheritance, a method on a concrete type has exactly one body, and dynamic dispatch exists only through a trait, which PART 92 pins
+# CONTROLS: k1_typed k2_chain k3_bound w1_typed w2_chain w3_bound — the k arms are the same consumer over a dependency whose SubO does NOT override m (its Env sits in a sibling method), so `deny Env` and `deny Env Unknown` must stay 0, which fails on an engine that unions every subclass's effects or hedges on any non-final dependency class. The w arms are the same source as ONE package, which every engine answers with Env today, so an o-arm xfail measures what chaining deletes rather than what the engine cannot see. `deny Fs` fires on every cell as the carrier.
+# NOTE: java, ts and swift xfail all three o arms on R867 (executed). Each line retires when its engine fixes the row, and a PASSING xfail is a FAILURE.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders SubO's override of m with NO effect, so the w reference arms go red on all three engines (9 cells, exit 1). Separately measured by hand: re-pointing k1_typed at the one-package fixture reds it on all three, and declaring an xfail on a passing control prints XFAIL ARM PASSED and exits 1.
+
 
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the

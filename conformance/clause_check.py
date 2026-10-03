@@ -63,6 +63,7 @@ GENERATORS = [
     "gen_sink_surface.py",
     "gen_key_shapes.py",
     "gen_chained_dispatch.py",
+    "gen_dep_override.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

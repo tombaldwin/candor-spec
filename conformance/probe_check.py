@@ -185,13 +185,22 @@ COVERED = {
         "holds":  r"RECEIVER-SPELLING: OK — every engine answers the same",
         "breaks": r"RECEIVER-SPELLING: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 94 (SOUNDNESS R867). The fault renders SubO's override of `m` with NO effect, so the w*
+    # ONE-PACKAGE REFERENCE arms — which every engine passes clean — cannot carry Env and go red on all
+    # three engines. At the FIXTURE, not the comparison. Substituting into the o* arms would be vacuous
+    # in the gen_binding_union sense: they are expected to fail AND xfailed on every engine.
+    "gen_dep_override.py": {
+        "args":   [],
+        "holds":  r"DEP-OVERRIDE: OK — every engine's reference carries the override",
+        "breaks": r"DEP-OVERRIDE: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 14
+COVERED_FLOOR = 15
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

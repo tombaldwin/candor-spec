@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 94 — a chained dependency's own subclass overrides, three-way (java, ts, swift), pinning
+  SOUNDNESS R867 against SPEC §4 ⟨0.39⟩.** `viaTyped(b: BaseO) { b.m() }`, where the dependency's own
+  `SubO` overrides `m` with `Env`: chained, all three engines read `[Fs]` and `deny Env` / `deny Env
+  Unknown` both exit 0 — while the SAME source scanned as one package reads `[Env, Fs]` in all three. So
+  chaining deletes an effect the engine's own unchained analysis attributes. No new MUST: ⟨0.39⟩'s
+  "every implementor visible to the consumer" answers the bounded-CHA paragraph, whose abstraction list
+  already names "a JVM interface/supertype, a Swift protocol/class". Three positive arms (typed
+  parameter, factory result, factory-bound local) are declared xfails on R867 for all three engines; the
+  controls — a `SubO` that does NOT override `m` (both gates must stay 0) and the one-package reference
+  (both must fire) — pass everywhere, with `deny Fs` asserted on every cell as the carrier. rust is a
+  declared N/A (no class inheritance). Probe-covered (floor 14 → 15): the fault empties the override, and
+  all nine reference cells go red.
+
 ## [0.39.3] — 2026-09-30
 
 - **R584 FIXED (candor-swift `1edf1ee`/`c40ffc5`)** — the class half of type-receiver dispatch. The ruling:
