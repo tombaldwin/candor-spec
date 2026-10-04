@@ -127,7 +127,8 @@ version, and minting a second one against an unreleased first buys nothing and s
 would ever have declared.*
 
 **⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is IMPLEMENTED by
-candor-swift (`2a3ddc6`, which passes every PART 95 swift arm) and DECLARED by no engine: as with ⟨0.38⟩,
+candor-swift (`2a3ddc6`) and candor-scan (`f7f4c08`, which does not yet implement the Rust permission's
+`Deref` rows), and DECLARED by no engine: as with ⟨0.38⟩,
 the `spec` declaration moves at the floor-bump commit, not at the port. It binds candor-scan and
 candor-swift, and java and ts declare it NOT APPLICABLE (§2). **The PRODUCER half is additive only because a protocol-valued result has its own key.**
 `holds`, `returnsProtocol`, `types` and `adds` are new, so a consumer that ignores them is unaffected —
@@ -591,14 +592,21 @@ extensions carries members, so `any P & Q` with such a `Q` is a composition and 
   blanket one where it holds for that type. A supertype from the language's standard library or a
   platform SDK MAY be left out, because members reached through it are classified rather than joined (the
   builtin frontier, §2 chaining); every supertype declared in a PACKAGE MUST be listed (PART 95
-  `p2_types`, `p3_foreign`). That omission has an edge, stated rather than hidden: a dependency that
-  EXTENDS a platform protocol with an effectful member (`extension Collection { func save() { … } }`) and
-  leaves the platform protocol out of `supers` gives a walk no path to that member, which today falls to
-  ⟨0.23⟩'s member miss and is DISCLOSED, never silent. Where the producer knows a type's kind but cannot
+  `p2_types`, `p3_foreign`). **The omission stops where the dependency itself
+  adds members: a platform protocol or type that the producing package EXTENDS with a member it publishes
+  (`extension Equatable { func eqLeak() { … } }`) MUST be listed in the `supers` of every type it declares
+  that conforms to it, spelled where that package's own entries spell the extension (`Dep#Equatable`), so
+  a walk reaches `Dep#Equatable.eqLeak`.** *An earlier draft said such a member "falls to a member miss and
+  is DISCLOSED, never silent". Measured 2026-10-04 that was false for a receiver typed from source: on
+  candor-swift v0.39.3 and on `2a3ddc6` alike, `e.eqLeak()` with `e: EqT` and `EqT: Equatable` reads `[]` and
+  `deny Env Unknown` passes over a body that reads the environment (PART 95 `r17_platform_ext`).* Where the producer knows a type's kind but cannot
   close its supertypes, the key carries `kind` and NO `supers` — a KIND-ONLY key; where it cannot tell the
   kind either (a type declared differently under two configuration arms, or an item an attribute macro may
   replace), the key is absent. `kind` takes only the five values above: an UNRECOGNISED value (Swift's
-  `actor` is the real case) is an UNKNOWN kind, never an exact one.
+  `actor` is the real case) is an UNKNOWN kind, never an exact one. **Rust adds a sixth field, `deref`:** a
+  closed key whose type has a VISIBLE `impl Deref` carries `"deref": "<pkg>#<Target qual>"`, and a closed key
+  without one asserts there is none. A `Deref` is not a supertype, but it is how a Rust receiver reaches
+  members it does not declare, so a closure that omits it is short (PART 95 `p6_deref`, `r16_deref`).
 - `adds` — `{ "<owner pkg>#<foreign type qual>": [ <supertype>, … ], … }` maps a type owned by ANOTHER
   package to the supertypes this package adds to it by extension. Additions to a standard-library or
   platform type have no owning package to qualify under and are not expressible here; a consumer meets
@@ -615,10 +623,17 @@ and reading it so settles a walk short — SOUNDNESS R860's defect in the new sh
 publishes `kind: value`, so a `holds` naming it still joins exactly, and only a WALK through it becomes a
 miss. (How many rust types lose `supers` this way has not been measured; it bounds what `r4`-style walks
 can resolve in a derive-heavy crate, never what they disclose.) A type is closable only where every expansion
-that could add a supertype to it is visible to the producer: an attached macro (Swift
-`@attached(extension, …)`, declared in this package or another), a `#[derive]` or attribute proc macro, a
-`macro_rules!` expansion — whether or not its invocation names the type — or a conditional-compilation arm
-the producer does not union (⟨0.38⟩). The reason is the one direction this rung can fail silently in: a
+that could add a supertype or a member-forwarding edge to it is visible to the producer: an attached macro
+(Swift `@attached(extension, …)`, declared in this package or another), a `#[derive]` or attribute proc
+macro, a `macro_rules!` expansion — whether or not its invocation names the type — or a
+conditional-compilation arm the producer does not union (⟨0.38⟩). **An expansion whose output the producer
+KNOWS is visible, and the list fails safe**: the standard library's derives (`Debug`, `Clone`, `Copy`,
+`PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash`, `Default`) and serde's `Serialize`/`Deserialize` each add
+exactly one `impl` of the named trait for the annotated type, never a `Deref` and never a member, so they
+do not unclose it (the serde impl is listed; a standard trait is a platform supertype). Any other derive
+— `derive_more::Deref` exists — unclosed. **A Swift type that declares `subscript(dynamicMember:)`
+forwards members no manifest lists, so it is never closed: its key is kind-only** (PART 95
+`o16_dyn_member`). The reason is the one direction this rung can fail silently in: a
 short `supers` makes a walk HIT an ancestor while missing a sibling that contributes to the same member —
 a more specific protocol-extension default on the omitted conformance, an implementor dropped from a
 ⟨0.39⟩ union — and that loss is invisible on the consumer side, where a short list and a correct one are
@@ -649,8 +664,42 @@ half-implementation breaks:
   not settle for `PA`'s less specific default; `o14_kind_only`: `T2: PA2, PM2` with `PM2` cut down to its
   kind must not settle for `PA2`'s default while `PQ2`'s, one hop past `PM2`, is the one that runs). A path
   that ends at a keyed type with complete `supers` and
-  no member contributes nothing and is not a miss — the manifest says there is nothing further — but where
-  NO path reaches the member at all, that is ⟨0.23⟩'s member miss and the consumer ADDS `Unknown`.
+  no member contributes nothing and is not a miss — the manifest says there is nothing further. Where NO
+  path reaches the member at all: for a hop resolved by `holds`, `returns` or `returnsProtocol` that is
+  ⟨0.23⟩'s member miss and the consumer ADDS `Unknown`; for a receiver typed from the consumer's OWN SOURCE,
+  a walk whose every node is keyed and closed is the producer's purity claim (§2 rule 3 — the three-row
+  rule is met, because every node the member could live on was answered), and every structural miss on the
+  way still ADDS `Unknown`. That purity reading is sound only because the closure lists every
+  member-forwarding edge: the platform protocols the package extends, Rust's `deref`, and Swift's
+  dynamic-member types kept kind-only.
+
+**A LANGUAGE-SCOPED PERMISSION FOR RUST — and only for a receiver typed from the consumer's own source.**
+In Rust a type's members come from three places only: its inherent impls, a trait whose method is in scope
+at the call, and a `Deref` target's members. So a Rust consumer MAY replace the structural-miss rule above,
+for a source-typed receiver, with these three, and read a lookup that none of them answers as the
+producer's purity claim:
+
+- **a chained trait in scope** — imported, glob-imported, re-exported or named as a bound — that carries
+  the member MUST be joined through ⟨0.39⟩'s union, or the consumer MUST ADD `Unknown`;
+- **a visible `Deref` is FOLLOWED**: where the receiver's key carries `deref`, the member is looked up on the
+  target, recursively, and charged (PART 95 `r16_deref`: `w.leak()` on a `WrapD` whose `Deref` targets
+  `InnerD` must charge `InnerD::leak`'s `Env`);
+- **anything else on the `Deref` chain discloses**: where the receiver, or any type the chain reaches, has
+  no `types` key, a KIND-ONLY key, or a `deref` the consumer cannot follow, the consumer MUST ADD `Unknown`
+  (PART 95 `o15_deref_macro`: `WrapM`'s `Deref` comes out of a `macro_rules!`, and `w.leak()` must
+  disclose). A closed key with no `deref` and no member, and no chained trait in scope, keeps the purity
+  reading (PART 95 `c8_closed_pure`, which pins that cost at zero).
+
+The permission exists because the default prices out of reach on real code: candor-scan `f7f4c08`, which
+implements the rung, marked **58,570** structural misses on source-typed receivers over its 409-entry
+chained corpus with a reach probe. How many of them the three rows above would still disclose has NOT been
+measured; the rust lane measures it when it implements them. It does NOT license the deviation `f7f4c08` shipped, which
+dropped the structural-miss `Unknown` without the three conditions: executed, `w.leak()` through a
+`macro_rules!`-generated `Deref` read `['Net']`, `deny Env` and `deny Env Unknown` both 0, and so did the same
+call through a hand-written `Deref` the producer saw and published nothing about — on `ad30e26` too, so the
+port is no worse, but the hole stands until the three rows above are implemented. **Swift has no such
+permission**: a member a Swift protocol extension adds is available wherever the module is imported, with
+no import of the protocol, so the structural-miss rule is the only fence.
 - **an unknown kind is never an exact kind.** A `returnsProtocol` target is a protocol by definition and
   dispatches through ⟨0.39⟩'s union whatever `types` says (PART 95 `o12_retproto_unkeyed`). A ⟨0.23⟩
   `returns` target keeps ⟨0.23⟩'s and ⟨0.39⟩'s meaning unchanged: `returns` is plain nominal and never names
@@ -5878,7 +5927,7 @@ field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a remov
 declare it via the envelope's `spec`.
 
 - **0.40 (AUTHORED 2026-10-03 and revised through three adversarial reviews; IMPLEMENTED by candor-swift
-  `2a3ddc6`, declared by no engine until the floor bump; binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
+  `2a3ddc6` and candor-scan `f7f4c08`, declared by no engine until the floor bump; binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, the downward way only by permission. §2 gains four `typeSurface` keys beside ⟨0.23⟩'s
   `returns`: **`holds`** (a static, property, field or top-level value → its DECLARED type, a protocol
   included), **`returnsProtocol`** (a function whose result is exactly one protocol — kept OUT of `returns`

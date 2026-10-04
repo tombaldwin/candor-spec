@@ -3404,10 +3404,10 @@
       "part": "PART 94 (o1_typed o2_chain o3_bound — a chained dependency's own subclass override; k1..k3 the non-overriding controls). Re-used by PART 95 r7a_holds_open / r7b_returns_open for a receiver typed by a declaration."
     },
     {
-      "sha": "cd1b4cc0c49f4351",
+      "sha": "e3f270572cd1f019",
       "at": "Contents",
       "excerpt": "**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.**",
-      "unenforced": "RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩. It asserts what an UPGRADE does — a verdict that moves BETWEEN two engine versions on identical bytes — and every row measures ONE build, so no row holds it (the ⟨0.30⟩–⟨0.39⟩ classification, unchanged). Two of its claims are nevertheless MEASURED rather than argued: the producer-half additivity rests on a shipped-consumer experiment (candor-swift v0.39.3 reading a protocol-valued `returns` went `deny Env Unknown` 1 → 0, which is why `returnsProtocol` is a separate key), and each half-implementation it names as worse than today has a PART 95 arm (o2_member_miss and u1_bound for rust's typed-hop-without-miss-rule; g1_keep_guess and the deny Fs cells of r1–r4 for a swap; r7a/o7/o8 for overrides; o6 for a short walk; o9 for an erased trusted copy). SECOND REVIEW 2026-10-03: the list of worse half-implementations now names o11_proto_unkeyed (a protocol of unknown kind joined to its default alone — the rust silence) and c7_types_one_copy, and o9 is scored in both load orders. RE-ANCHORED 2026-10-04: the opening now says ⟨0.40⟩ is IMPLEMENTED by candor-swift (2a3ddc6) and declared by none until the floor bump (the ⟨0.38⟩ precedent)."
+      "unenforced": "RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩. It asserts what an UPGRADE does — a verdict that moves BETWEEN two engine versions on identical bytes — and every row measures ONE build, so no row holds it (the ⟨0.30⟩–⟨0.39⟩ classification, unchanged). Two of its claims are nevertheless MEASURED rather than argued: the producer-half additivity rests on a shipped-consumer experiment (candor-swift v0.39.3 reading a protocol-valued `returns` went `deny Env Unknown` 1 → 0, which is why `returnsProtocol` is a separate key), and each half-implementation it names as worse than today has a PART 95 arm (o2_member_miss and u1_bound for rust's typed-hop-without-miss-rule; g1_keep_guess and the deny Fs cells of r1–r4 for a swap; r7a/o7/o8 for overrides; o6 for a short walk; o9 for an erased trusted copy). SECOND REVIEW 2026-10-03: the list of worse half-implementations now names o11_proto_unkeyed (a protocol of unknown kind joined to its default alone — the rust silence) and c7_types_one_copy, and o9 is scored in both load orders. RE-ANCHORED 2026-10-04: the opening now says ⟨0.40⟩ is IMPLEMENTED by candor-swift (2a3ddc6) and declared by none until the floor bump (the ⟨0.38⟩ precedent). FOURTH REVIEW 2026-10-04 (after the rust port f7f4c08): names candor-scan f7f4c08 as implementing it, without the Rust permission's Deref rows."
     },
     {
       "sha": "7b619d65eb15e79d",
@@ -3428,16 +3428,16 @@
       "part": "PART 95 (r6_proto_ret — `mkP() -> any PSvc` resolved through ⟨0.39⟩'s union; rust's `Box<dyn>` refused and disclosed). The separate-key MUST is grounded on a measurement no row can repeat — a SHIPPED consumer (candor-swift v0.39.3) reading the folded spelling went silent — recorded in the clause; PART 95 runs only current builds. RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
     },
     {
-      "sha": "a227cf0619cecc8f",
+      "sha": "af4baa3be95b04d6",
       "at": "2. The report",
       "excerpt": "- `types` — `{ \"<pkg>#<type qual>\": { \"kind\": …, \"supers\": [ … ] }, … }` for EVERY type the package declares.",
-      "part": "PART 95 (p2_types — kind accuracy across open/class/final/value/protocol, required supers, and Quiet keyed though it has only pure members; p3_foreign — a Base-owned supertype in Base's spelling). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: a type whose kind is known but whose supertypes are not closable keeps `kind` and drops `supers`; w1/w2 accept a kind-only key and reject any `supers` on a withheld type. THIRD REVIEW: a KIND-ONLY key is named; an unrecognised kind (Swift `actor`) is unknown, never exact; an item an attribute macro may replace has no key; the platform-protocol-extension edge is stated (a member miss, disclosed)."
+      "part": "PART 95 (p2_types — kind accuracy across open/class/final/value/protocol, required supers, and Quiet keyed though it has only pure members; p3_foreign — a Base-owned supertype in Base's spelling). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: a type whose kind is known but whose supertypes are not closable keeps `kind` and drops `supers`; w1/w2 accept a kind-only key and reject any `supers` on a withheld type. THIRD REVIEW: a KIND-ONLY key is named; an unrecognised kind (Swift `actor`) is unknown, never exact; an item an attribute macro may replace has no key; the platform-protocol-extension edge is stated (a member miss, disclosed). FOURTH REVIEW 2026-10-04 (after the rust port f7f4c08): a platform protocol the package EXTENDS with a member MUST be listed (r17_platform_ext; the earlier 'falls to a member miss and is disclosed' was measured FALSE for source-typed receivers on swift v0.39.3 and 2a3ddc6); Rust's `deref` field (p6_deref, r16_deref)."
     },
     {
-      "sha": "c7ed71894f5b7ab8",
+      "sha": "4ced5ad8a68982ac",
       "at": "2. The report",
       "excerpt": "**`types` is a MANIFEST: a key's `supers` is complete, or it is absent.**",
-      "part": "PART 95 (w1_macro — an attached extension macro declared in ANOTHER package, with the witness PlainT required; w2_macro — named and unnamed macro_rules! impls, an unknown derive and an attribute proc macro; p2_types for the never-bounded clause; o10_adds_partial for `adds` never complete). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: the manifest is now on `supers`, not the whole key — kind may stay, which bounds the derive-crate cost (unmeasured, stated in the clause). THIRD REVIEW: kind may stay only under ADDING expansions (derive, extension macro, macro_rules! impl) — a Rust attribute macro replaces its item; and a consumer MUST NOT read a missing `supers` as [] — o14_kind_only (T2: PA2, PM2 with PM2 cut to its kind; executed: PQ2's default runs, Env)."
+      "part": "PART 95 (w1_macro — an attached extension macro declared in ANOTHER package, with the witness PlainT required; w2_macro — named and unnamed macro_rules! impls, an unknown derive and an attribute proc macro; p2_types for the never-bounded clause; o10_adds_partial for `adds` never complete). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded).  SECOND REVIEW: the manifest is now on `supers`, not the whole key — kind may stay, which bounds the derive-crate cost (unmeasured, stated in the clause). THIRD REVIEW: kind may stay only under ADDING expansions (derive, extension macro, macro_rules! impl) — a Rust attribute macro replaces its item; and a consumer MUST NOT read a missing `supers` as [] — o14_kind_only (T2: PA2, PM2 with PM2 cut to its kind; executed: PQ2's default runs, Env). FOURTH REVIEW 2026-10-04 (after the rust port f7f4c08): closability covers member-forwarding edges; known derives (std, serde) are visible and fail safe — any other derive unclosed; a @dynamicMemberLookup Swift type is never closed (o16_dyn_member)."
     },
     {
       "sha": "11982c7bb42259f3",
@@ -3446,10 +3446,10 @@
       "part": "PART 95 (g1_keep_guess — a WRONG `holds` whose target HAS the member, so the arm is a true hit: deny Fs 1 proves the hit joined, deny Env 1 that the guess was kept; the deny Fs cells of r1–r4 on swift). RE-ANCHORED 2026-10-03 by the adversarial-review pass on ⟨0.40⟩ (the clause was revised, not merely re-worded). "
     },
     {
-      "sha": "2ad556cfeabeb7fb",
+      "sha": "10679108513d5d3e",
       "at": "2. The report",
       "excerpt": "- **the walk reads absence as \"may be inherited\".**",
-      "part": "PART 95 (r4_inherited — the walk on absence; r9_walk — `T9: PA, PM`, PM's default the more specific; o6_walk_unkeyed — PM's `types` key withheld must disclose). The accepted fabrication (a declared pure override charged its ancestor's effects) has no row: it is a stated cost, removable only by rung B's member manifest. SECOND REVIEW: a key with no `supers` is a miss like an absent one; an exhausted path is not a miss, but no path reaching the member is ⟨0.23⟩'s member miss. THIRD REVIEW: a KIND-ONLY key on a path is a miss (o14_kind_only)."
+      "part": "PART 95 (r4_inherited — the walk on absence; r9_walk — `T9: PA, PM`, PM's default the more specific; o6_walk_unkeyed — PM's `types` key withheld must disclose). The accepted fabrication (a declared pure override charged its ancestor's effects) has no row: it is a stated cost, removable only by rung B's member manifest. SECOND REVIEW: a key with no `supers` is a miss like an absent one; an exhausted path is not a miss, but no path reaching the member is ⟨0.23⟩'s member miss. THIRD REVIEW: a KIND-ONLY key on a path is a miss (o14_kind_only). FOURTH REVIEW 2026-10-04 (after the rust port f7f4c08): an exhausted closed walk is ⟨0.23⟩'s member miss for a surface-resolved hop and the producer's purity claim for a source-typed receiver (c8_closed_pure); structural misses still add Unknown."
     },
     {
       "sha": "56bafa348e6dec29",
@@ -3474,6 +3474,36 @@
       "at": "2. The report",
       "excerpt": "A disclosure the consumer already makes for an untyped dependency hop — candor-scan's `dispatch:untyped cross-package receiver` — MAY be withdrawn",
       "unenforced": "A PERMISSION plus the statement of what it costs. No row can fail a MAY; what rows CAN hold is the conditions on it, and they are held elsewhere in PART 95 — o2_member_miss and u1_bound (a member miss may not withdraw), o6_walk_unkeyed (a path through an unkeyed type may not), and p1_holds, which checks the producer's declared VALUE because the withdrawal has no guess to fall back on when that value is wrong."
+    },
+    {
+      "sha": "b5b99011a874811c",
+      "at": "2. The report",
+      "excerpt": "**A LANGUAGE-SCOPED PERMISSION FOR RUST — and only for a receiver typed from the consumer's own source.**",
+      "part": "PART 95 (r16_deref — a visible Deref followed to Env; o15_deref_macro — a macro_rules! Deref must disclose; c8_closed_pure — a closed type with no Deref and no member stays clean, the cost pin). The trait-in-scope row is pinned by PART 92/94's union arms and PART 93's spellings; no PART 95 arm of its own."
+    },
+    {
+      "sha": "4cbbb89c76ce0d20",
+      "at": "2. The report",
+      "excerpt": "- **a chained trait in scope** — imported, glob-imported, re-exported or named as a bound — that carries the member",
+      "part": "PART 92 (the ⟨0.39⟩ union this row defers to) and PART 93 (the receiver spellings, including a bound). No PART 95 arm: the reviewer's d2–d12 fixture shapes (bound, dyn, glob, re-export, underscore import, blanket impl) are the arm set to add when the rust lane implements the permission."
+    },
+    {
+      "sha": "4f45dd37c2c13beb",
+      "at": "2. The report",
+      "excerpt": "- **a visible `Deref` is FOLLOWED**",
+      "part": "PART 95 (r16_deref; p6_deref for the producer's `deref` field)"
+    },
+    {
+      "sha": "9fe3cd41ad0515b6",
+      "at": "2. The report",
+      "excerpt": "- **anything else on the `Deref` chain discloses**",
+      "part": "PART 95 (o15_deref_macro — WrapM's Deref from a macro_rules!; c8_closed_pure — the closed, Deref-free control)"
+    },
+    {
+      "sha": "d830e6afb57630d4",
+      "at": "2. The report",
+      "excerpt": "The permission exists because the default prices out of reach on real code",
+      "unenforced": "A COST AND DEVIATION RECORD: what f7f4c08 measured (58,570 reach marks over 409 entries) and what it shipped (the structural-miss Unknown dropped without the permission's rows, executed silent on d1/d15). It binds the authors' reasoning, not a build; the behaviour it describes is pinned by r16_deref and o15_deref_macro."
     }
   ]
 }

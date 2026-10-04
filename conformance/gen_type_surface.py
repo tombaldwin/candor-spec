@@ -47,6 +47,8 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   r12_holds_dyn rust `SINK: &(dyn Sink + Sync) = &Loud`, Sink's DEFAULT reads Fs, Loud's override Env -> Env
   r13_returns_impl rust `mk_impl() -> impl Sink` (`returnsProtocol`) -> Env
   r14_lookup_miss `Wrong.shared.quiet2()`: `Wrong.quiet2` PURE, the declared `Other.quiet2` reads Env -> Env
+  r16_deref     rust `w.leak()`, `w: &dep::WrapD`, a VISIBLE `impl Deref<Target = InnerD>` -> Env (the `deref`
+                field resolves it)
   r15_kind_only `HolderK.shared.m2()`, `T2: PA2, PM2`, `PM2: PQ2`, PQ2's default (Env) more specific than
                 PA2's (Fs) -> Env (swift; executed). `HolderK` DECLARES its own `m2` (Fs) on purpose: without
                 it the singleton-convention lookup MISSES and swift's untyped-receiver disclosure supplies the
@@ -85,6 +87,14 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   o12_retproto_unkeyed rust r13 / swift r6 with the protocol's key WITHHELD -> a `returnsProtocol` target
                 is a protocol anyway: Env
   o13_lookup_miss_old r14 over the stripped report -> a guessed-owner lookup that MISSES discloses
+  o15_deref_macro rust `w.leak()`, `w: &depb::WrapM`, whose `Deref` comes out of a `macro_rules!` -> disclose
+                (d15: silent on rust f7f4c08 and ad30e26, `deny Env` and `deny Env Unknown` 0, executed Env)
+  r17_platform_ext swift `e.eqLeak()`, `EqT: Equatable`, and the DEPENDENCY's `extension Equatable { func
+                eqLeak() }` reads Env -> Env (silent on v0.39.3 and 2a3ddc6; executed)
+  o16_dyn_member swift `_ = w.leakv` on a `@dynamicMemberLookup` DynW forwarding to InnerS's computed
+                `leakv` (Env) -> disclose (silent on v0.39.3 and 2a3ddc6; executed)
+  c8_closed_pure rust `q.q()` on a CLOSED `dep::Quiet` with no `Deref` and a pure `q` -> `deny Unknown` 0: the
+                rust permission's cost pin (swift N/A — it keeps the default rule)
   o14_kind_only r15 with PM2's key cut down to its KIND (no `supers`) -> the PM2 path is a miss: disclose.
                 A consumer that defaults a missing `supers` to `[]` reads `[Fs]` and fails both cells
   u1_bound      `Wrong2.shared2.q()`, `shared2: Quiet` (only pure members), with and without its `holds`
@@ -97,6 +107,7 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
                 a type with only pure members, keyed (`types` is never bounded)
   p3_foreign    `adds` keyed in Base's namespace; SubThing's Base-owned supertype in Base's namespace
   p4_wrappers   `Other?`, `any PA & PSvc`, `Option<Other>` NOT published (and `holds` present at all)
+  p6_deref      rust: WrapD keyed CLOSED with `deref` -> InnerD; Quiet carries none; WrapM (macro Deref) unclosed
   p5_returns_protocol `returns` NEVER names a protocol result (mkP / mk_impl), `returnsProtocol` does,
                 and a `Box<dyn>` factory is in neither — the only guard a shipped ⟨0.23⟩ consumer has
   w1_macro      swift: an attached extension macro declared in ANOTHER package -> MacT omitted, witness
@@ -135,6 +146,7 @@ SPEC_CLAUSES = [
     ("§2 ⟨0.40⟩", "an unknown kind is never an exact kind"),
     ("§2 ⟨0.40⟩", "It MUST NOT take Rust's empty override set"),
     ("§2 ⟨0.40⟩", "A consumer MUST NOT read a missing `supers` as an empty list"),
+    ("§2 ⟨0.40⟩", "A LANGUAGE-SCOPED PERMISSION FOR RUST"),
     ("§2 ⟨0.40⟩", "two copies union; a distrusted copy is a miss"),
     ("§2 ⟨0.40⟩", "It is a separate key and MUST NOT be folded into `returns`"),
     ("§4 ⟨0.39⟩", "\"Implementor\" in this clause includes a SUBCLASS that overrides a class's member."),
@@ -317,6 +329,22 @@ public final class HolderK {{
 public final class SvcHolder {{
     public static let svc: any PSvc = SvcImpl()
 }}
+extension Equatable {{
+    public func eqLeak() {{ {e} }}
+}}
+public struct EqT: Equatable {{
+    public init() {{}}
+}}
+public struct InnerS {{
+    public init() {{}}
+    public var leakv: Int {{ {e}; return 1 }}
+}}
+@dynamicMemberLookup
+public struct DynW {{
+    public init() {{}}
+    var inner = InnerS()
+    public subscript<T>(dynamicMember kp: KeyPath<InnerS, T>) -> T {{ inner[keyPath: kp] }}
+}}
 public final class Wrong3 {{
     public static var computed: Other {{ Other() }}
     public func ping() {{ {f} }}
@@ -365,6 +393,9 @@ public func r10_holds_proto() { carrier(); SvcHolder.svc.run() }
 public func r11_computed() { carrier(); Wrong3.computed.ping() }
 public func r14_lookup_miss() { carrier(); Wrong.shared.quiet2() }
 public func r15_kind_only() { carrier(); HolderK.shared.m2() }
+public func c8_closed_pure(_ q: Quiet) { carrier(); q.q() }
+public func r17_platform_ext(_ e: EqT) { carrier(); e.eqLeak() }
+public func o16_dyn_member(_ w: DynW) { carrier(); _ = w.leakv }
 '''
 SW_APP_B = '''import Dep
 import DepB
@@ -458,7 +489,7 @@ impl Bait {{
 }}
 pub struct Quiet;
 impl Quiet {{
-    pub fn q(&self) {{}}
+    pub fn q(&self) {{ {cal} }}
 }}
 pub static SHARED2: Quiet = Quiet;
 pub static SVC: &(dyn PSvc + Sync) = &SvcImpl;
@@ -480,11 +511,26 @@ impl Other {{
 impl Wrong {{
     pub fn quiet2(&self) {{}}
 }}
+pub struct InnerD;
+impl InnerD {{
+    pub fn leak(&self) {{ {e} }}
+}}
+pub struct WrapD(pub InnerD);
+impl std::ops::Deref for WrapD {{
+    type Target = InnerD;
+    fn deref(&self) -> &InnerD {{ &self.0 }}
+}}
 '''
 
 
 RS_BASE = 'pub struct Tok;\nimpl Tok {\n    pub fn new() -> Tok { Tok }\n}\npub trait BaseTr {}\n'
-RS_DEPB = 'pub struct Client;\nimpl Client {\n    pub fn fetch(&self) { %s }\n}\npub static CLIENT: Client = Client;\n' % FS["rust"]
+RS_DEPB = ('pub struct Client;\nimpl Client {\n    pub fn fetch(&self) { %s }\n}\npub static CLIENT: Client = Client;\n' % FS["rust"]
+           # d15: `WrapM`'s Deref comes out of a `macro_rules!`, so the producer cannot close WrapM — the
+           # consumer's `w.leak()` forwards to `InnerM::leak` (Env) through an edge no report shows.
+           + 'pub struct InnerM;\nimpl InnerM {\n    pub fn leak(&self) { %s }\n}\n' % ENV["rust"]
+           + 'macro_rules! mk_deref {\n    ($t:ident, $u:ident) => {\n        impl std::ops::Deref for $t {\n'
+             '            type Target = $u;\n            fn deref(&self) -> &$u { &self.0 }\n        }\n    };\n}\n'
+           + 'pub struct WrapM(pub InnerM);\nmk_deref!(WrapM, InnerM);\n')
 RS_APP = '''use dep::{Grand4, Node, PBase, PSvc, Sink};
 #[allow(unused_imports)]
 use depb::Client;
@@ -505,6 +551,9 @@ pub fn r10_holds_proto() { dep::carrier(); dep::SVC.run() }
 pub fn r12_holds_dyn() { dep::carrier(); dep::SINK.emit() }
 pub fn r13_returns_impl() { dep::carrier(); dep::mk_impl().emit() }
 pub fn r14_lookup_miss() { dep::carrier(); dep::SHARED.quiet2() }
+pub fn r16_deref(w: &dep::WrapD) { dep::carrier(); w.leak() }
+pub fn o15_deref_macro(w: &depb::WrapM) { dep::carrier(); w.leak() }
+pub fn c8_closed_pure(q: &dep::Quiet) { dep::carrier(); q.q() }
 '''
 
 # w2: four expansions the producer may not see through. `hide!(Y)` declares a trait AND implements it for
@@ -647,6 +696,8 @@ ARMS = [
     ("r13_returns_impl",   "main",  None,                "r13_returns_impl", ENV1),
     ("r14_lookup_miss",    "main",  None,                "r14_lookup_miss",  ENV1),
     ("r15_kind_only",      "main",  None,                "r15_kind_only",    {"swift": KEEP, "rust": ENV1}),
+    ("r16_deref",          "main",  None,                "r16_deref",        ENV1),
+    ("r17_platform_ext",   "main",  None,                "r17_platform_ext", ENV1),
     ("c1_convention",      "main",  None,                "c1_convention",    ENV1),
     ("c2_final",           "main",  None,                "c2_final",         ENV0),
     ("c2_value",           "main",  None,                "c2_value",         ENV0),
@@ -658,6 +709,7 @@ ARMS = [
     ("c6_disagree",        "main",  "disagree",          "r1_static",        ENV1),
     ("c7_types_one_copy",  "main",  "one_copy_types:PM", "r9_walk",          DISCLOSE),
     ("c7b_kind_only_one_copy", "main", "one_copy_kindonly:PM2", "r15_kind_only", DISCLOSE),
+    ("c8_closed_pure",     "main",  None,                "c8_closed_pure",   {"deny Unknown": {0}, "deny Env": {0}}),
     ("o1_old",             "main",  "strip",             "r1_static",        {"swift": {"deny Env Unknown": {1}, "deny Fs": {1}}, "rust": DISCLOSE}),
     ("o1b_old_right",      "main",  "strip",             "c1_convention",    {"deny Env": {1}, "deny Unknown": {1}}),
     ("o2_member_miss",     "main",  None,                "o2_member_miss",   {"swift": {"deny Unknown": {1}, "deny Fs": {1}}, "rust": {"deny Unknown": {1}}}),
@@ -675,11 +727,13 @@ ARMS = [
                                                          {"rust": "r13_returns_impl", "swift": "r6_proto_ret"}, ENV1),
     ("o13_lookup_miss_old", "main", "strip",             "r14_lookup_miss",  DISCLOSE),
     ("o14_kind_only",      "main",  "kindonly:PM2",      "r15_kind_only",    DISCLOSE),
+    ("o15_deref_macro",    "main",  None,                "o15_deref_macro",  DISCLOSE),
+    ("o16_dyn_member",     "main",  None,                "o16_dyn_member",   DISCLOSE),
     ("u1_bound",           "main",  "u1",                "u1_bound",         {"deny Unknown": {1}}),
     ("g1_keep_guess",      "main",  "wrongholds",        "c1_convention",    {"deny Env": {1}, "deny Fs": {1}}),
 ]
 # Producer-side arms — judged on the dependency report alone, never on a gate.
-PRODUCER_ARMS = ("p1_holds", "p2_types", "p3_foreign", "p4_wrappers", "p5_returns_protocol", "w1_macro", "w2_macro")
+PRODUCER_ARMS = ("p1_holds", "p2_types", "p3_foreign", "p4_wrappers", "p5_returns_protocol", "p6_deref", "w1_macro", "w2_macro")
 
 # (arm, engine) -> why the arm cannot be written in that engine. Each is a DECLARED N/A, not a skip.
 _NO_CLASS = "Rust has no class inheritance — a `static` of a concrete type has exactly one body per method (PART 94's N/A)"
@@ -703,6 +757,13 @@ ARM_NA = {
     ("w1_macro", "rust"): "w2_macro is rust's withhold arm",
     ("r12_holds_dyn", "swift"): "swift's r10_holds_proto is this shape (`any PSvc`, whose extension default the implementor overrides)",
     ("r13_returns_impl", "swift"): "swift's r6_proto_ret is this shape (`-> any PSvc`)",
+    ("r16_deref", "swift"): "Swift has no `Deref`; its implicit forwarding is `@dynamicMemberLookup`, which the DEFAULT rule covers (see SPEC §2 ⟨0.40⟩) — untested",
+    ("o15_deref_macro", "swift"): "as r16_deref",
+    ("r17_platform_ext", "rust"): "a Rust trait method needs its trait in scope — the permission's first row, not a supertype walk",
+    ("o16_dyn_member", "rust"): "Rust has no dynamic member lookup; its forwarding edge is `Deref` (r16, o15)",
+    ("p6_deref", "swift"): "as r16_deref — `deref` is a Rust-only field",
+    ("c8_closed_pure", "swift"): ("the RUST permission's cost pin; Swift keeps the default rule, under which a member no closed path "
+                                  "reaches is a member miss, because a platform-protocol extension member needs no import"),
     ("r15_kind_only", "rust"): "as r9_walk — in Rust a `[]`-defaulted `supers` can only cost a member miss, which already discloses",
     ("o14_kind_only", "rust"): "as r15_kind_only",
     ("c7b_kind_only_one_copy", "rust"): "as r9_walk",
@@ -729,6 +790,11 @@ WHY = {
 # scripts/xfail-register-agree.py reads it with ast.literal_eval and skips any table it cannot evaluate,
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
+    ('r16_deref', 'rust'): "SOUNDNESS R843 — the RUST PERMISSION's Deref row is unimplemented: `w.leak()` through a visible `impl Deref` reads `['Net']` on f7f4c08 (and ad30e26)",
+    ('o15_deref_macro', 'rust'): "SOUNDNESS R843 — the RUST PERMISSION's disclosure row is unimplemented: `w.leak()` through a macro_rules!-generated Deref is SILENT on f7f4c08 (and ad30e26), executed Env",
+    ('p6_deref', 'rust'): 'SOUNDNESS R843 — the producer publishes no `deref` field yet',
+    ('r17_platform_ext', 'swift'): 'SOUNDNESS R843 — a platform protocol the dependency extends with a member is not in `supers`: SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
+    ('o16_dyn_member', 'swift'): 'SOUNDNESS R843 — a @dynamicMemberLookup type is published CLOSED (`supers: []`): SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
 }
 
 
@@ -1034,6 +1100,29 @@ def judge_p5(rep, lang):
     return (not bad), ("; ".join(bad) if bad else "protocol results in `returnsProtocol` only")
 
 
+def judge_p6(rep, depb_rep, lang):
+    """Rust: a VISIBLE `impl Deref` is published as `deref` on a CLOSED key, so the consumer can follow it;
+    a macro-generated one leaves its type unclosed (no `supers`, no `deref`)."""
+    types = surface(rep).get("types")
+    if not isinstance(types, dict):
+        return False, "no `types` manifest"
+    bad = []
+    k = find_key(types, "WrapD")
+    e = types.get(k) if k else None
+    if not isinstance(e, dict) or "supers" not in e:
+        bad.append("WrapD is not keyed closed (%s)" % e)
+    elif leaf_of(e.get("deref") or "") != "InnerD":
+        bad.append("WrapD's `deref` is %r — want InnerD" % e.get("deref"))
+    k = find_key(types, "Quiet")
+    if k and isinstance(types[k], dict) and types[k].get("deref"):
+        bad.append("Quiet carries a `deref` it does not have")
+    bt = surface(depb_rep).get("types") or {}
+    k = find_key(bt, "WrapM")
+    if k and isinstance(bt[k], dict) and ("supers" in bt[k] or "deref" in bt[k]):
+        bad.append("WrapM is published CLOSED (%s) though its Deref comes from a macro_rules!" % bt[k])
+    return (not bad), ("; ".join(bad) if bad else "WrapD -> InnerD; WrapM unclosed")
+
+
 WITHHELD = {"swift": ("MacT",), "rust": ("Y", "Z", "W", "Q", "Hidden", "Hidden2")}
 
 
@@ -1236,6 +1325,8 @@ def run_engine(lang, ws):
     results["p3_foreign"] = judge_p3(dep_rep, base_pkg, lang)
     results["p4_wrappers"] = judge_p4(dep_rep, lang)
     results["p5_returns_protocol"] = judge_p5(dep_rep, lang)
+    if lang == "rust":
+        results["p6_deref"] = judge_p6(dep_rep, json.load(open(reps["depb"])), lang)
     wid = "w1_macro" if lang == "swift" else "w2_macro"
     worder, wjudged = render_w(lang, os.path.join(ws, lang, "withhold"))
     try:

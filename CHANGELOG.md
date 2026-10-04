@@ -25,6 +25,23 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ fourth pass, after the rust port (`f7f4c08`): a LANGUAGE-SCOPED PERMISSION FOR RUST replaces the
+  deviation the port shipped.** `f7f4c08` dropped the structural-miss `Unknown` for source-typed receivers
+  (complying as worded marked 58,570 lookups), and a reviewer showed it silent: `w.leak()` through a
+  `Deref` — whether `macro_rules!`-generated or hand-written and visible — reads `['Net']`, `deny Env` and
+  `deny Env Unknown` both 0, over a body that reads the environment (re-executed here; `ad30e26` is the same).
+  The structural-miss rule stays the default. A Rust consumer MAY, for a source-typed receiver only, use
+  three rows instead: a chained trait carrying the member in scope joins or discloses; a visible `Deref`
+  is FOLLOWED through a new `types` field, `deref`; anything else on the `Deref` chain that is unkeyed or
+  kind-only discloses. Known derives (the std set, serde's) are visible and fail safe; any other derive
+  unclosed. PART 95 gains `r16_deref`, `o15_deref_macro` and `p6_deref` (rust xfails on R843) and
+  `c8_closed_pure`, the cost pin, which passes. **Swift gets no permission, and two swift silences
+  surfaced while deciding that:** a platform protocol the dependency extends with a member, and a
+  `@dynamicMemberLookup` type, both read `[]` on swift v0.39.3 and `2a3ddc6` over an executed `Env`. The
+  clause now requires the former in `supers` and the latter kept kind-only, and states that an exhausted
+  closed walk is a purity claim only for a source-typed receiver. The earlier sentence saying the
+  platform-extension case "falls to a member miss and is DISCLOSED" was false and is withdrawn in place.
+  PART 95: 57 arms, 5 declared xfails (both earlier xfail sets were retired by the ports); its notes now describe both ports and rust's calibration.
 - **PART 95: two arms the swift port proved VACUOUS now bite, and PART 18 runs on its own.** The candor-swift
   ⟨0.40⟩ port (`2a3ddc6`) calibrated its own consumer and found `o14_kind_only` and `c7b_kind_only_one_copy`
   passing under the exact bugs they exist for: `HolderK` declared no `m2`, so the singleton-convention
