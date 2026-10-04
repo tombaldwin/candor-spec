@@ -48,7 +48,11 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   r13_returns_impl rust `mk_impl() -> impl Sink` (`returnsProtocol`) -> Env
   r14_lookup_miss `Wrong.shared.quiet2()`: `Wrong.quiet2` PURE, the declared `Other.quiet2` reads Env -> Env
   r15_kind_only `HolderK.shared.m2()`, `T2: PA2, PM2`, `PM2: PQ2`, PQ2's default (Env) more specific than
-                PA2's (Fs) -> Env (swift; executed)
+                PA2's (Fs) -> Env (swift; executed). `HolderK` DECLARES its own `m2` (Fs) on purpose: without
+                it the singleton-convention lookup MISSES and swift's untyped-receiver disclosure supplies the
+                `Unknown` whatever the walk does, which made o14 and c7b VACUOUS (measured by the swift port's
+                calibration: both passed under the `?? []` mutant). With it the guess HITS, the guess is kept
+                (`deny Fs` 1), and only the walk can supply the `Env` or the `Unknown`
 
   c1_convention `Client.shared.fetch()`, `shared: Client` (the convention RIGHT)   -> Env     (R826)
   c2_final/c2_value/c2_enum/c2_open   a right-typed singleton whose `m` reads Fs, while an UNRELATED
@@ -60,8 +64,9 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
                 both targets joined: `deny Env` 1 — in BOTH load orders
   c7_types_one_copy r9 over two copies, PM's `types` key in ONE only (the short-closure case) -> disclose,
                 both orders
-  c7b_kind_only_one_copy r9 over two copies, PM's key FULL in one and KIND-ONLY in the other -> disclose,
-                both orders (a merge taking `supers` from whichever copy closes the type rebuilds the short closure)
+  c7b_kind_only_one_copy r15 over two copies, PM2's key FULL in one and KIND-ONLY in the other -> disclose,
+                both orders (a merge taking `supers` from whichever copy closes the type rebuilds the short
+                closure). On r15/PM2, not r9/PM: PM DECLARES `tokw` itself, so PM's key never decides r9's walk
 
   o1_old        r1 over the report with the ⟨0.40⟩ keys STRIPPED -> `deny Env Unknown` 1 (swift: Fs kept)
   o1b_old_right c1 over the stripped report -> `deny Env` 1 AND `deny Unknown` 1
@@ -307,6 +312,7 @@ public final class T2: PA2, PM2 {{
 }}
 public final class HolderK {{
     public static let shared: T2 = T2()
+    public func m2() {{ {f} }}
 }}
 public final class SvcHolder {{
     public static let svc: any PSvc = SvcImpl()
@@ -640,7 +646,7 @@ ARMS = [
     ("r12_holds_dyn",      "main",  None,                "r12_holds_dyn",    ENV1),
     ("r13_returns_impl",   "main",  None,                "r13_returns_impl", ENV1),
     ("r14_lookup_miss",    "main",  None,                "r14_lookup_miss",  ENV1),
-    ("r15_kind_only",      "main",  None,                "r15_kind_only",    ENV1),
+    ("r15_kind_only",      "main",  None,                "r15_kind_only",    {"swift": KEEP, "rust": ENV1}),
     ("c1_convention",      "main",  None,                "c1_convention",    ENV1),
     ("c2_final",           "main",  None,                "c2_final",         ENV0),
     ("c2_value",           "main",  None,                "c2_value",         ENV0),
@@ -651,7 +657,7 @@ ARMS = [
     ("c5_factory",         "main",  None,                "c5_factory",       ENV1),
     ("c6_disagree",        "main",  "disagree",          "r1_static",        ENV1),
     ("c7_types_one_copy",  "main",  "one_copy_types:PM", "r9_walk",          DISCLOSE),
-    ("c7b_kind_only_one_copy", "main", "one_copy_kindonly:PM", "r9_walk",     DISCLOSE),
+    ("c7b_kind_only_one_copy", "main", "one_copy_kindonly:PM2", "r15_kind_only", DISCLOSE),
     ("o1_old",             "main",  "strip",             "r1_static",        {"swift": {"deny Env Unknown": {1}, "deny Fs": {1}}, "rust": DISCLOSE}),
     ("o1b_old_right",      "main",  "strip",             "c1_convention",    {"deny Env": {1}, "deny Unknown": {1}}),
     ("o2_member_miss",     "main",  None,                "o2_member_miss",   {"swift": {"deny Unknown": {1}, "deny Fs": {1}}, "rust": {"deny Unknown": {1}}}),

@@ -126,9 +126,10 @@ separate rung, 0.40, and folded back in before either was released — a rung is
 version, and minting a second one against an unreleased first buys nothing and skips a number no engine
 would ever have declared.*
 
-**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is AUTHORED, and
-no engine declares it yet; it binds candor-scan and candor-swift, and java and ts declare it NOT
-APPLICABLE (§2). **The PRODUCER half is additive only because a protocol-valued result has its own key.**
+**⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is IMPLEMENTED by
+candor-swift (`2a3ddc6`, which passes every PART 95 swift arm) and DECLARED by no engine: as with ⟨0.38⟩,
+the `spec` declaration moves at the floor-bump commit, not at the port. It binds candor-scan and
+candor-swift, and java and ts declare it NOT APPLICABLE (§2). **The PRODUCER half is additive only because a protocol-valued result has its own key.**
 `holds`, `returnsProtocol`, `types` and `adds` are new, so a consumer that ignores them is unaffected —
 but folding a protocol result into ⟨0.23⟩'s `returns` was measured to SILENCE the shipped candor-swift
 v0.39.3 consumer, which joins a `returns` value exactly (`deny Env Unknown` 1 → 0 over an implementor
@@ -5876,8 +5877,8 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
-- **0.40 (AUTHORED 2026-10-03, revised the same day after an adversarial review; declared by no engine
-  yet; binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
+- **0.40 (AUTHORED 2026-10-03 and revised through three adversarial reviews; IMPLEMENTED by candor-swift
+  `2a3ddc6`, declared by no engine until the floor bump; binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, the downward way only by permission. §2 gains four `typeSurface` keys beside ⟨0.23⟩'s
   `returns`: **`holds`** (a static, property, field or top-level value → its DECLARED type, a protocol
   included), **`returnsProtocol`** (a function whose result is exactly one protocol — kept OUT of `returns`

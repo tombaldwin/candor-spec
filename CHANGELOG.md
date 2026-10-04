@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 95: two arms the swift port proved VACUOUS now bite, and PART 18 runs on its own.** The candor-swift
+  ⟨0.40⟩ port (`2a3ddc6`) calibrated its own consumer and found `o14_kind_only` and `c7b_kind_only_one_copy`
+  passing under the exact bugs they exist for: `HolderK` declared no `m2`, so the singleton-convention
+  lookup MISSED and the untyped-receiver disclosure supplied the `Unknown` whatever the walk did; and `c7b`
+  sat on `r9`, whose `PM` declares the member itself. Now `HolderK.m2` reads `Fs` (the guess hits and is
+  kept, so `r15` also asserts `deny Fs`) and `c7b` runs on `r15`/`PM2`. Re-measured here on `2a3ddc6` and two
+  mutants built in scratch worktrees: the `?? []` mutant reddens `o14` (`deny Env Unknown` 0); that mutant
+  plus first-copy-wins reddens `c7b` in load order 2; HEAD passes both. On the old fixture both arms passed
+  under both mutants. The PART 95 notes and calibration lines now describe the ported swift (the fault
+  reddens 9 cells: rust `c5` and swift `r7a`, `r7b`, `c1`, `c5`, `o1b`, `o4`, `g1`, `w1`), and SPEC says
+  ⟨0.40⟩ is IMPLEMENTED by swift and declared by none until the floor bump. **`part.sh 18` died with
+  `P18_OK: unbound variable`:** PART 18's body had no `[18]` opening header, so `part.sh`'s boundary rule
+  handed the body to slice 16 and extracted only the verdict lines; it now has one, and declares the four
+  engines it runs.
 - **⟨0.40⟩ third review: GO for porting on one condition, now met.** The second revision's KIND-ONLY `types`
   key (kind kept, `supers` dropped) had no arm, and a consumer that parses a missing `supers` as `[]` reads
   it as "complete, no supertypes" — SOUNDNESS R860's defect in the new shape. §2 now says a consumer MUST
