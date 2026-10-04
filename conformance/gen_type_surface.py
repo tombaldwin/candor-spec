@@ -95,6 +95,11 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
                 `leakv` (Env) -> disclose (silent on v0.39.3 and 2a3ddc6; executed)
   c8_closed_pure rust `q.q()` on a CLOSED `dep::Quiet` with no `Deref` and a pure `q` -> `deny Unknown` 0: the
                 rust permission's cost pin (swift N/A — it keeps the default rule)
+  t1_bound … t7_blanket  rust: the permission's FIRST ROW — a member reached only through a chained trait the
+                consumer brings into scope: a bound (`<T: SubS>`), `&dyn SubS`, `impl SubS`, a re-exporting glob
+                (`use depb::prelude::*`), `use … as _`, a plain glob (`use depb::*`) and a blanket impl called on
+                a PRIMITIVE receiver (`x: &u8; x.bl()`, R887) -> joined or disclosed (`deny Env Unknown` 1). depb
+                is unclosable, so no walk can settle them (the reviewer's d2-d12)
   o14_kind_only r15 with PM2's key cut down to its KIND (no `supers`) -> the PM2 path is a miss: disclose.
                 A consumer that defaults a missing `supers` to `[]` reads `[Fs]` and fails both cells
   u1_bound      `Wrong2.shared2.q()`, `shared2: Quiet` (only pure members), with and without its `holds`
@@ -530,7 +535,15 @@ RS_DEPB = ('pub struct Client;\nimpl Client {\n    pub fn fetch(&self) { %s }\n}
            + 'pub struct InnerM;\nimpl InnerM {\n    pub fn leak(&self) { %s }\n}\n' % ENV["rust"]
            + 'macro_rules! mk_deref {\n    ($t:ident, $u:ident) => {\n        impl std::ops::Deref for $t {\n'
              '            type Target = $u;\n            fn deref(&self) -> &$u { &self.0 }\n        }\n    };\n}\n'
-           + 'pub struct WrapM(pub InnerM);\nmk_deref!(WrapM, InnerM);\n')
+           + 'pub struct WrapM(pub InnerM);\nmk_deref!(WrapM, InnerM);\n'
+           # THE TRAIT-IN-SCOPE ARMS (the reviewer's d2-d12, R887): every member below reaches its `Env` only
+           # through a trait the CONSUMER brings into scope. depb is unclosable (the macro above), so a walk
+           # cannot settle these — the permission's first row must join or disclose.
+           + 'pub trait GrandS {\n    fn g(&self) { %s }\n}\npub trait SubS: GrandS {}\npub struct InnerS;\n'
+             'impl GrandS for InnerS {}\nimpl SubS for InnerS {}\n'
+             'pub trait ExtS {\n    fn e(&self) { %s }\n}\nimpl ExtS for InnerS {}\n'
+             'pub mod prelude {\n    pub use crate::ExtS;\n}\n'
+             'pub trait Bl {\n    fn bl(&self) { %s }\n}\nimpl<T: ?Sized> Bl for T {}\n' % (ENV["rust"], ENV["rust"], ENV["rust"]))
 RS_APP = '''use dep::{Grand4, Node, PBase, PSvc, Sink};
 #[allow(unused_imports)]
 use depb::Client;
@@ -554,6 +567,13 @@ pub fn r14_lookup_miss() { dep::carrier(); dep::SHARED.quiet2() }
 pub fn r16_deref(w: &dep::WrapD) { dep::carrier(); w.leak() }
 pub fn o15_deref_macro(w: &depb::WrapM) { dep::carrier(); w.leak() }
 pub fn c8_closed_pure(q: &dep::Quiet) { dep::carrier(); q.q() }
+pub fn t1_bound<T: depb::SubS>(t: &T) { dep::carrier(); t.g() }
+pub fn t2_dyn(t: &dyn depb::SubS) { dep::carrier(); t.g() }
+pub fn t3_impl_arg(t: impl depb::SubS) { dep::carrier(); t.g() }
+pub mod tg { use depb::prelude::*; pub fn t4_glob_reexport(i: &depb::InnerS) { dep::carrier(); i.e() } }
+pub mod tu { use depb::prelude::ExtS as _; pub fn t5_underscore(i: &depb::InnerS) { dep::carrier(); i.e() } }
+pub mod tk { use depb::*; pub fn t6_glob(i: &InnerS) { dep::carrier(); i.g() } }
+pub mod tb { use depb::Bl; pub fn t7_blanket(x: &u8) { dep::carrier(); x.bl() } }
 '''
 
 # w2: four expansions the producer may not see through. `hide!(Y)` declares a trait AND implements it for
@@ -728,6 +748,16 @@ ARMS = [
     ("o13_lookup_miss_old", "main", "strip",             "r14_lookup_miss",  DISCLOSE),
     ("o14_kind_only",      "main",  "kindonly:PM2",      "r15_kind_only",    DISCLOSE),
     ("o15_deref_macro",    "main",  None,                "o15_deref_macro",  DISCLOSE),
+    # THE TRAIT-IN-SCOPE SET (the rust permission's first row): a member reached only through a chained
+    # trait the consumer brings into scope — a bound, `dyn`, `impl` arg, a re-exporting glob, `as _`, a plain
+    # glob, and a blanket impl on a PRIMITIVE receiver (R887) — must be joined or disclosed, never read pure.
+    ("t1_bound",           "main",  None,                "t1_bound",         DISCLOSE),
+    ("t2_dyn",             "main",  None,                "t2_dyn",           DISCLOSE),
+    ("t3_impl_arg",        "main",  None,                "t3_impl_arg",      DISCLOSE),
+    ("t4_glob_reexport",   "main",  None,                "t4_glob_reexport", DISCLOSE),
+    ("t5_underscore",      "main",  None,                "t5_underscore",    DISCLOSE),
+    ("t6_glob",            "main",  None,                "t6_glob",          DISCLOSE),
+    ("t7_blanket",         "main",  None,                "t7_blanket",       DISCLOSE),
     ("o16_dyn_member",     "main",  None,                "o16_dyn_member",   DISCLOSE),
     ("u1_bound",           "main",  "u1",                "u1_bound",         {"deny Unknown": {1}}),
     ("g1_keep_guess",      "main",  "wrongholds",        "c1_convention",    {"deny Env": {1}, "deny Fs": {1}}),
@@ -762,6 +792,9 @@ ARM_NA = {
     ("r17_platform_ext", "rust"): "a Rust trait method needs its trait in scope — the permission's first row, not a supertype walk",
     ("o16_dyn_member", "rust"): "Rust has no dynamic member lookup; its forwarding edge is `Deref` (r16, o15)",
     ("p6_deref", "swift"): "as r16_deref — `deref` is a Rust-only field",
+    **{(t, "swift"): ("the RUST permission's first row — a Swift protocol-extension member needs no import of "
+                      "the protocol, so Swift keeps the default rule (r17_platform_ext)")
+       for t in ("t1_bound", "t2_dyn", "t3_impl_arg", "t4_glob_reexport", "t5_underscore", "t6_glob", "t7_blanket")},
     ("c8_closed_pure", "swift"): ("the RUST permission's cost pin; Swift keeps the default rule, under which a member no closed path "
                                   "reaches is a member miss, because a platform-protocol extension member needs no import"),
     ("r15_kind_only", "rust"): "as r9_walk — in Rust a `[]`-defaulted `supers` can only cost a member miss, which already discloses",
@@ -778,6 +811,8 @@ WHY = {
          "must union or disclose — never pick",
     "o": "DEGRADED: no trustworthy surface answers this hop, so the consumer keeps what it had and ADDS "
          "`Unknown`",
+    "t": "TRAIT IN SCOPE (the rust permission's first row): a chained trait the consumer brings into scope "
+         "carries the member, so it must be joined or disclosed — never read pure",
     "u": "BOUND EQUIVALENCE: a bounded and an unbounded producer must give the consumer the same effects "
          "and the same gate exits",
     "g": "KEEP THE GUESS: a HIT adds a target, it never displaces one — the displacement is rung B",
@@ -790,9 +825,6 @@ WHY = {
 # scripts/xfail-register-agree.py reads it with ast.literal_eval and skips any table it cannot evaluate,
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
-    ('r16_deref', 'rust'): "SOUNDNESS R843 — the RUST PERMISSION's Deref row is unimplemented: `w.leak()` through a visible `impl Deref` reads `['Net']` on f7f4c08 (and ad30e26)",
-    ('o15_deref_macro', 'rust'): "SOUNDNESS R843 — the RUST PERMISSION's disclosure row is unimplemented: `w.leak()` through a macro_rules!-generated Deref is SILENT on f7f4c08 (and ad30e26), executed Env",
-    ('p6_deref', 'rust'): 'SOUNDNESS R843 — the producer publishes no `deref` field yet',
     ('r17_platform_ext', 'swift'): 'SOUNDNESS R843 — a platform protocol the dependency extends with a member is not in `supers`: SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
     ('o16_dyn_member', 'swift'): 'SOUNDNESS R843 — a @dynamicMemberLookup type is published CLOSED (`supers: []`): SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
 }
