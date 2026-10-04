@@ -825,8 +825,6 @@ WHY = {
 # scripts/xfail-register-agree.py reads it with ast.literal_eval and skips any table it cannot evaluate,
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
-    ('r17_platform_ext', 'swift'): 'SOUNDNESS R843 — a platform protocol the dependency extends with a member is not in `supers`: SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
-    ('o16_dyn_member', 'swift'): 'SOUNDNESS R843 — a @dynamicMemberLookup type is published CLOSED (`supers: []`): SILENT on swift v0.39.3 and 2a3ddc6, executed Env',
 }
 
 
