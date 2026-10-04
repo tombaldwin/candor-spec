@@ -729,28 +729,6 @@ WHY = {
 # scripts/xfail-register-agree.py reads it with ast.literal_eval and skips any table it cannot evaluate,
 # so a note built from a variable would make every line below invisible to the register check.
 XFAIL = {
-    ('r10_holds_proto', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r12_holds_dyn', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r13_returns_impl', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r14_lookup_miss', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('o11_proto_unkeyed', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
-    ('o12_retproto_unkeyed', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
-    ('p5_returns_protocol', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
-    ('r1_static', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r2_bound', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r3_property', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r4_inherited', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r5_refined', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet',
-    ('r8_adds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (SILENT today in both engines: `deny Env` and `deny Env Unknown` 0 over executed Env)',
-    ('c6_disagree', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
-    ('o9_stale_beside', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the trusted copy resolves nothing yet, so there is no resolution for the stale copy to leave standing)',
-    ('o10_adds_partial', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
-    ('u1_bound', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (not constructible until the producer publishes the surface it mutates)',
-    ('p1_holds', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
-    ('p2_types', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
-    ('p3_foreign', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
-    ('p4_wrappers', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
-    ('w2_macro', 'rust'): 'SOUNDNESS R843 — no engine publishes or reads `holds`/`types`/`adds` yet (the producer publishes no `holds`/`types`/`adds`)',
 }
 
 
