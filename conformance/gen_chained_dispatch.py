@@ -437,7 +437,7 @@ XFAIL = {
     # table rather than deleting it: java and swift are still open, and a PASSING xfail is what
     # announced this one, exactly as it announced each of ⟨0.39⟩'s four.
     # ("c9_consumer_zero_union", "rust"):  "R533",
-    ("c9_consumer_zero_union", "java"):  "R533",
+    # ("c9_consumer_zero_union", "java"):  "R533",   # retired 2026-10-06, candor-java `2a658d6` (R533 + R919, both halves)
     ("c9_consumer_zero_union", "swift"): "R533",
 
     # RETIRED 2026-09-20, candor-ts `ee844f0` — the FOURTH and last engine. **⟨0.39⟩ IS NOW PORTED IN ALL
