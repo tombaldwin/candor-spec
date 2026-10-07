@@ -25,6 +25,24 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ gains a second half, binding ALL FOUR engines: the AS-EFF-005 baseline guard no longer exempts
+  a function absent from the baseline.** Its prior is `baseline[key] ?? ∅`, so a new function performing a
+  real effect fires (exit 1, never 2), a new pure function passes, and a new `Unknown`-only function stays
+  advisory but is now NAMED in the note. Every 005 row of the `--gate-json` verdict carries ⟨0.12⟩'s
+  `origin` (`existing`/`new`/`unknown`), so a consumer can tell a regression from new code the baseline was
+  not updated for; the ⟨0.16⟩ callgraph sidecar now decides only that label, and its "degrades to
+  report-only" branch is superseded in place. candor-scan's per-crate `--out` prefix counts a crate with no
+  file under a present prefix as absent. Decided by Tom after a field report (a whole package merged under
+  a green gate). Measured: all four engines exit 0 with `violations: []` on a baseline of `keep` (`Fs`)
+  plus a new `fresh` (`Net`) today. Key identity is engine-natural and not normalised: on candor-java's own
+  source one inserted lambda adds 7 firings beside 4 the old rule already raised, and one added overload
+  turns a green gate red — so `origin:"new"` means *absent under this key*. The remedy names
+  `candor diff <report> <baseline>` (current first) and then the engine's own record command; the
+  dispatcher gains no `snapshot` verb. No flip at upgrade: a different-build baseline already exits 2.
+  Folded into the unreleased ⟨0.40⟩ rather than minted as ⟨0.41⟩, on the ⟨0.39⟩ precedent. Pinned by the
+  new PART 15d and PART 15b's `absent` arm (0 → 1), DECLARED xfails on SOUNDNESS R932 (and R933,
+  candor-scan's prefix) for every engine; calibrated against a ported scratch copy of candor-ts. R811
+  closes when candor-rust's dylint lint ports.
 - **⟨0.40⟩ fourth pass, after the rust port (`f7f4c08`): a LANGUAGE-SCOPED PERMISSION FOR RUST replaces the
   deviation the port shipped.** `f7f4c08` dropped the structural-miss `Unknown` for source-typed receivers
   (complying as worded marked 58,570 lookups), and a reviewer showed it silent: `w.leak()` through a

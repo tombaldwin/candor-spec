@@ -126,6 +126,14 @@ separate rung, 0.40, and folded back in before either was released — a rung is
 version, and minting a second one against an unreleased first buys nothing and skips a number no engine
 would ever have declared.*
 
+**⟨0.40⟩ ALSO ENDS THE BASELINE GUARD'S NEW-CODE EXEMPTION, AND THAT HALF BINDS ALL FOUR ENGINES.** A
+function absent from a present baseline is compared against ∅ (§3, *baseline guard*): if it performs a real
+effect, AS-EFF-005 fires, exit 1, with `origin:"new"` (or `"unknown"` without the sidecar) on the verdict
+row. It flips ONE way, 0 → 1, and on day one it flips nothing: a different-build baseline already exits 2,
+so an upgrader re-records first. Pinned by PART 15d and the PART 15b `absent` arm, DECLARED xfails on R932
+(and R933, candor-scan's per-crate prefix) for every engine until it ports. This half is NOT among the
+"java and ts NOT APPLICABLE" exclusions below — those name the type-surface half only.
+
 **⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is IMPLEMENTED by
 candor-swift (`2a3ddc6`) and candor-scan (`f7f4c08`, which does not yet implement the Rust permission's
 `Deref` rows), and DECLARED by no engine: as with ⟨0.38⟩,
@@ -2430,7 +2438,9 @@ An implementation SHOULD support:
   therefore ∅ and which now performs ANY effect is a GAIN violation — the formerly-pure→effectful
   transition is the sharpest supply-chain shape and must not read as exempt "new code". Without the
   sidecar, existence degrades to report-only (a formerly-pure fn reads as new — the pre-⟨0.16⟩
-  semantics); a PRESENT-but-corrupt sidecar fails closed like a corrupt baseline (a broken sidecar
+  semantics) *— ⟨0.40⟩ SUPERSEDED, see the next paragraph: no function is exempt for reading as new,
+  so the sidecar no longer decides whether the guard FIRES, only how a firing is LABELLED*; a
+  PRESENT-but-corrupt sidecar fails closed like a corrupt baseline (a broken sidecar
   must not silently narrow the guard). This is the `gains` `origin` existence rule (§3.1 ⟨0.12⟩)
   applied to the scan-time ratchet. **The ratchet (exit 1) fires only on gaining a REAL boundary
   effect**; a gain of `Unknown` ALONE — the §4 trust marker, not an effect (`pure` policies already
@@ -2440,6 +2450,72 @@ An implementation SHOULD support:
   anonymous class's positional `$N` differs across versions) — so ratcheting on it would break CI on
   innocuous bumps. A gain that includes any real effect still fails; the disclosure of the Unknown-gain
   keeps the "say what changed" ethos without the false alarm.
+
+  ⟨0.40⟩ **A FUNCTION ABSENT FROM THE BASELINE IS COMPARED AGAINST NOTHING — IT IS NOT EXEMPT.** For
+  every function the run analysed, the baseline effect set is `prior(key) = baseline[key] ?? ∅`, where
+  `key` is the engine's own function key (below). So a function absent from a PRESENT baseline whose
+  `inferred` carries any name other than `Unknown` is an AS-EFF-005 gain: the gate exits **1** (never 2 —
+  the comparison was made), and the violation names the function and those effects. A new PURE function
+  gains nothing and passes. There is no flag. Until this rung every engine skipped an absent function as
+  "new code, reviewed normally" — and code review does not read effects, which is the whole reason the
+  ratchet exists. Measured on all four engines at their 2026-10-06 heads (candor-java `6c000a4`,
+  candor-scan `708ce46`, candor-ts `503f449`, candor-swift `519f62d`): a same-build baseline of `keep`
+  (`Fs`) and a tree adding `fresh` (`Net`) exits 0 with `violations: []` in all four, and candor-scan
+  prints *"baseline guard ✓ — no function gained an effect"* over it. The field report behind the rule
+  was a whole package merged into a JVM project under a green gate whose baseline lacked it.
+
+  - **What counts is `inferred` minus `Unknown`, and nothing else.** The §4 disclosure markers
+    (`invisible`, `incomplete`, `unknownWhy`, and every other non-`inferred` field) never make a gain. A
+    new function whose `inferred` is exactly `["Unknown"]` is NOT a violation — the ⟨0.16⟩ ruling above,
+    unchanged — but it MUST be **disclosed by name**, in the advisory note and separately from the
+    existing functions whose only gain is `Unknown` ("N new function(s) carry only Unknown: …"). Before
+    this rung such a function was not even mentioned. Under `unknown-ratchet` (§3.4) it fails like any
+    newly-introduced `Unknown`, because its prior is ∅ — a consequence of the rule, not an extension of it.
+  - **Every AS-EFF-005 entry of the `--gate-json` verdict (§3.3) MUST carry `origin`**, the ⟨0.12⟩ closed
+    vocabulary under the ⟨0.12⟩ existence rule: `"existing"` — in the baseline report or a node of its
+    callgraph sidecar; `"new"` — in neither, with the sidecar present and loaded; `"unknown"` — absent from
+    the baseline report with the sidecar absent or incomplete. This is what lets a consumer (the SARIF
+    reporter, a digest) tell a REGRESSION from NEW CODE THE BASELINE WAS NOT UPDATED FOR without
+    re-deriving existence. The sidecar is now load-bearing for the label alone: a formerly-pure function
+    turning effectful fires with or without it (`"existing"` with it, `"unknown"` without). A
+    present-but-corrupt sidecar still fails closed, exit 2, as above — nothing about that posture moves.
+  - **"Absent" means absent under the engine's natural key, and keys are NOT normalised across a
+    rename.** candor-java suffixes an overloaded method with its descriptor, so ADDING an overload renames
+    the existing method's key, and javac numbers lambdas `lambda$<method>$<N>` class-wide, so inserting one
+    renumbers every later one; candor-ts keys `Module.fn`, so renaming a file renames every unit in it;
+    candor-swift keys `<package>#<Type>.f`; candor-rust's dylint lint keys closures `{closure#N}`. A renamed key reads as
+    absent, so **`origin:"new"` means "absent under this key", not proof of new code**, and the violation's
+    message MUST say that the function is absent from the baseline rather than that it gained an effect.
+    *Measured on candor-java's own 39-file source (baseline 801 rows, 404 effectful): inserting one
+    lambda-bearing method at the top of the 122-lambda class `Candor` makes 45 keys absent, 7 of them
+    carrying a real effect — 7 new firings — beside 4 that ALREADY fire under the pre-⟨0.40⟩ rule, because a
+    renumbered lambda landing on a key whose baseline body was different is an "existing" gain; the same
+    edit in the 7-lambda class `Query` adds 0 firings and 6 new Unknown-only names to the note; adding one
+    pure overload of the effectful `armReportStream()` turns a green gate red (1 firing, 0 before).* So
+    the rule makes key-identity noise larger and does not create it, and the opposite direction is the
+    one it closes: under the old rule a renamed effectful function that ALSO gained an effect passed.
+  - **The remedy MUST name commands that exist**, and SHOULD lead with REVIEW rather than with
+    re-recording: `candor diff <this run's report> <the baseline>` (current FIRST, as §3.1 defines `diff`;
+    its rows carry `status:"new"`), then the engine's own baseline-recording command — the one it already
+    prints for a stale baseline (§2.1). The reflex under CI pressure is to re-record, and re-recording
+    re-blesses everything else that moved; the diff is how the operator sees what they are blessing. The
+    umbrella dispatcher has no `snapshot` verb and this clause does not add one.
+  - **A whole baseline FILE absent keeps its posture** — PART 15's `absent` cell: a note, the guard
+    inactive, exit 0 (and a `.candor/config`-declared baseline that is absent stays exit 2). Only a KEY
+    absent inside a present baseline is the new rule. **Where a baseline value is a per-package PREFIX**
+    (candor-scan's `--out` form, `<prefix>.<crate>.scan.json`), the baseline is PRESENT for the run when
+    any report file the prefix resolves to, for any package, exists; a package with no file under a
+    present prefix is a package absent from a present baseline, and every function in it is absent.
+    Measured on candor-scan `708ce46`: a workspace baseline recorded with member `a`, and a tree adding
+    member `b` with a `Net` function, prints *"baseline …b.scan.json does not exist — the regression guard
+    is not active"* and exits 0 — the field report's own shape in Rust, which key absence alone would
+    have left open.
+
+  **Upgrade cost: none on day one, by construction.** A baseline from a different build already exits 2
+  (§2.1), so an upgrader re-records first, and the re-recorded baseline contains every function the tree
+  has. The first flip is the first effectful function added AFTER that — which is the rung working. The
+  flip runs one way: 0 → 1, never 1 → 0. The same re-record also blesses whatever already escaped under
+  the old rule, so the upgrade is the moment to read `candor diff` against the PREVIOUS baseline once.
 - **policy**: enforce declared effect boundaries (e.g. "the `domain` layer must perform no `Net`/`Db`",
   "module `parse` must be pure"); flag any function that *transitively* violates one. The architectural
   invariant an agent can't see from a local edit.
@@ -4380,11 +4456,12 @@ gate  { "spec": "<version>", "ok": bool, "violations": [ { "rule", "fn", "effect
 in `violations` but MUST NOT set `ok` false). Each entry names the `rule` (an `AS-EFF-00x` code, §6), the
 `fn` it fired on, and `effects`, the specific effect set the violation concerns **per the rule's
 semantics**: the denied intersection for `AS-EFF-006` (a fn performing `{Clock, Fs}` under `deny Fs`
-reports `["Fs"]`, never its full set); the allow rule's effect for `AS-EFF-008`; the gained set (005); the
+reports `["Fs"]`, never its full set); the allow rule's effect for `AS-EFF-008`; the gained set (005 — and
+⟨0.40⟩ every 005 entry also carries `origin`, `"existing"`/`"new"`/`"unknown"`, §3); the
 ambient set (004); the undeclared set (001); the unused **declared** set for 002 (capabilities held but
 never used: the one code whose `effects` are declared, not performed); the taint-reached set (007); and
 `[]` where no effect set applies (`AS-EFF-009` layer-flow, `AS-EFF-003` unresolved). `detail` is an OPTIONAL human message.
-**Conformance pins `ok` and the `{rule, fn, effects}` set** (the same policy + code yields the same verdict
+**Conformance pins `ok` and the `{rule, fn, effects}` set** (⟨0.40⟩ plus `origin` on AS-EFF-005) (the same policy + code yields the same verdict
 in every engine); `detail` is engine-natural prose (like the function-name *value* elsewhere, §3.1) and is
 NOT pinned. The verdict is a re-emission of the gate the engine already ran, so it MUST agree with the process
 exit code (a non-empty gate-failing `violations` ⟺ exit 1), so a consumer can never see a verdict that
@@ -4450,7 +4527,7 @@ too); blank lines are ignored — the §6.2 lexical rules. The **key vocabulary*
 | `closed-world` | `CANDOR_CLOSED_WORLD` | boolean (`true`/`1`/`yes`, or a bare key) |
 | `taint` | `CANDOR_TAINT` | boolean — enables the §3 **risk** mode (AS-EFF-007; two names, one mode) |
 | `deps` | `CANDOR_DEPS` | whitespace-separated report paths (§2 chaining) |
-| `unknown-ratchet` | `CANDOR_UNKNOWN_RATCHET` | boolean — with a `baseline`, a **newly-introduced** `Unknown` fails AS-EFF-005 (default: Unknown-only gains are advisory) |
+| `unknown-ratchet` | `CANDOR_UNKNOWN_RATCHET` | boolean — with a `baseline`, a **newly-introduced** `Unknown` fails AS-EFF-005 (default: Unknown-only gains are advisory). ⟨0.40⟩ A function absent from the baseline has prior ∅, so its `Unknown` is newly introduced |
 | `engine` | — | ⟨0.27⟩ `[<impl>] <version>` — the engine build this repo's committed artifacts were produced with; a different build FAILS (exit 2). No env var: a pin an environment can override is not a pin |
 
 ⟨0.27⟩ **`engine [<impl>] <version>` — the engine↔baseline coupling, enforced rather than
@@ -5118,7 +5195,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-002` | declares a capability it never uses | conformance |
 | `AS-EFF-003` | makes unresolved calls; effect set not provably complete — cannot be certified | conformance |
 | `AS-EFF-004` | uses ambient authority directly | no-ambient |
-| `AS-EFF-005` | gained an effect versus the baseline | baseline guard |
+| `AS-EFF-005` | gained an effect versus the baseline — ⟨0.40⟩ including a function ABSENT from it, whose prior is ∅ (§3) | baseline guard |
 | `AS-EFF-006` | (transitively) performs an effect a declared policy forbids | policy |
 | `AS-EFF-007` | performs an injection-class effect on caller-derived input (**heuristic, advisory**) | risk |
 | `AS-EFF-008` | an allowlisted effect's literal surface (host / command / path / table) is visibly violating **or uncertifiable** — a value outside the allowlist, or a value the engine cannot see (fail-closed) | policy |
@@ -5813,7 +5890,8 @@ A **sound engine** conforms to candor-spec if it:
 2. computes a per-function **transitive** effect set;
 3. emits the §2 report schema;
 4. honours the §4 trust contract: unresolved ⇒ `Unknown`, never silent-pure;
-5. supports at least **audit**, **JSON**, and **baseline-guard** modes, driven through the **required
+5. supports at least **audit**, **JSON**, and **baseline-guard** modes (⟨0.40⟩ the guard compares a
+   function absent from the baseline against ∅, §3 — it exempts nothing), driven through the **required
    command-line surface** of §3.3: `--policy` (honouring `CANDOR_POLICY`), `--json` to stdout,
    `--version`/`-V` carrying the spec version, `--help`/`-h`, `--agents` (the embedded agent
    contract, item 11), for an engine declaring `spec ≥ 0.8`, `--gate-json` (the structured
@@ -5944,7 +6022,14 @@ declare it via the envelope's `spec`.
   all already `Unknown`, 0 unscoped gate flips, one row gaining a reason class). §4 ⟨0.39⟩ gains one sentence: a subclass override is an
   "implementor". Closes the design gap behind R831/R617 and lets rust resolve the hops R856/R857 could
   only disclose; the `adds` case was measured SILENT in both engines. Pinned by PART 95, whose
-  resolution, degraded and producer arms are DECLARED xfails on R843 for both engines.
+  resolution, degraded and producer arms are DECLARED xfails on R843 for both engines. **Second half,
+  binding ALL FOUR engines (2026-10-06): the baseline guard's new-code exemption ends** — §3's AS-EFF-005
+  prior is `baseline[key] ?? ∅`, so a function absent from a present baseline that performs a real effect
+  fires (exit 1); a new pure function passes; a new `Unknown`-only function is advisory but named; every
+  005 verdict row carries ⟨0.12⟩'s `origin`; the ⟨0.16⟩ sidecar decides only that label; candor-scan's
+  per-crate prefix counts a crate with no file under a present prefix as absent. One-way, 0 → 1, no flip at
+  upgrade (a different-build baseline already exits 2). Pinned by PART 15d and PART 15b's `absent` arm,
+  DECLARED xfails on R932/R933 for every engine.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave

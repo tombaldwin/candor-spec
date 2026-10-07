@@ -723,12 +723,6 @@
       "status": "pre-ledger"
     },
     {
-      "sha": "62889ab7d859f448",
-      "at": "3. Modes",
-      "excerpt": "- **baseline guard**: diff against a saved report and flag functions that *gained* an effect. ⟨0.16⟩ Existence",
-      "status": "pre-ledger"
-    },
-    {
       "sha": "ffaf2ed4088e32cd",
       "at": "3. Modes",
       "excerpt": "- **risk** (optional, **heuristic**): flag an effect whose argument derives from a function parameter (e.g. `f",
@@ -1824,12 +1818,6 @@
       "sha": "45aff77c2ca6c3e3",
       "at": "3.3.1 The query command-line grammar (REQUIRED f",
       "excerpt": "The grammar is **conditional on exposure**: §3.1 queries are SHOULD, so an engine need not expose every verb (",
-      "status": "pre-ledger"
-    },
-    {
-      "sha": "844f4de1955cd801",
-      "at": "3.3.1 The query command-line grammar (REQUIRED f",
-      "excerpt": "`ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear in ",
       "status": "pre-ledger"
     },
     {
@@ -3504,6 +3492,66 @@
       "at": "2. The report",
       "excerpt": "The permission exists because the default prices out of reach on real code",
       "unenforced": "A COST AND DEVIATION RECORD: what f7f4c08 measured (58,570 reach marks over 409 entries) and what it shipped (the structural-miss Unknown dropped without the permission's rows, executed silent on d1/d15). It binds the authors' reasoning, not a build; the behaviour it describes is pinned by r16_deref and o15_deref_macro."
+    },
+    {
+      "sha": "a3418804fa21ccea",
+      "at": "3. Modes",
+      "excerpt": "- **baseline guard**: diff against a saved report and flag functions that *gained* an effect. ⟨0.16⟩ Existence",
+      "part": "PART 15b (present/absent/corrupt — re-anchored at ⟨0.40⟩, which superseded the report-only degradation in place; the `absent` arm now wants 1)"
+    },
+    {
+      "sha": "873b203b8057c25e",
+      "at": "3.3.1 The query command-line grammar (REQUIRED f",
+      "excerpt": "`ok` is the CI verdict (true ⇔ the run gate-passes; advisory-only findings such as `AS-EFF-007` MAY appear in ",
+      "part": "PART 15d (n1/n4 — the ⟨0.40⟩ `origin` on AS-EFF-005 rows; the `{rule, fn, effects}` pin itself is unchanged and exercised by the gate parts as before)"
+    },
+    {
+      "sha": "a480c14f855a6795",
+      "at": "Contents",
+      "excerpt": "**⟨0.40⟩ ALSO ENDS THE BASELINE GUARD'S NEW-CODE EXEMPTION, AND THAT HALF BINDS ALL FOUR ENGINES.** A function",
+      "part": "PART 15d (the rung summary; the cells live there and in PART 15b `absent`)"
+    },
+    {
+      "sha": "8b9327caab8c9556",
+      "at": "3. Modes",
+      "excerpt": "⟨0.40⟩ **A FUNCTION ABSENT FROM THE BASELINE IS COMPARED AGAINST NOTHING — IT IS NOT EXEMPT.** For every funct",
+      "part": "PART 15d (n1_new_effectful fires, n2_new_pure passes)"
+    },
+    {
+      "sha": "17a81f90fddd67b1",
+      "at": "3. Modes",
+      "excerpt": "- **What counts is `inferred` minus `Unknown`, and nothing else.** The §4 disclosure markers (`invisible`, `in",
+      "part": "PART 15d (n3_new_unknown_only — exit 0, no [AS-EFF-005], named in the note)"
+    },
+    {
+      "sha": "59b0dd0b13398833",
+      "at": "3. Modes",
+      "excerpt": "- **Every AS-EFF-005 entry of the `--gate-json` verdict (§3.3) MUST carry `origin`**, the ⟨0.12⟩ closed vocabu",
+      "part": "PART 15d (n1 `new`, n4 `existing`)"
+    },
+    {
+      "sha": "68057b2f583cb2a3",
+      "at": "3. Modes",
+      "excerpt": "- **The remedy MUST name commands that exist**, and SHOULD lead with REVIEW rather than with re-recording: `ca",
+      "unenforced": "The remedy's WORDING is engine-natural prose, the same status as `detail` (§3.3: NOT pinned). What a row could pin is that the named commands EXIST, which is a property of the umbrella dispatcher and each engine's own CLI rather than of a verdict; a string match on `candor diff` in stderr would pin spelling, not existence. Recorded 2026-10-06 with the ⟨0.40⟩ absent-key clause, so the omission is a decision rather than a gap."
+    },
+    {
+      "sha": "32c835e897017821",
+      "at": "3. Modes",
+      "excerpt": "- **\"Absent\" means absent under the engine's natural key, and keys are NOT normalised across a rename.** cando",
+      "unenforced": "The keys are engine-NATURAL by design and the clause rules that they are NOT normalised, so there is no cross-engine value to differential; the measurable obligation in it — the message must say the function is ABSENT rather than that it gained — is prose, unpinned like `detail` (§3.3). The rename-noise measurement it carries was taken once, on candor-java's own source, and is evidence for the wording rather than a behaviour a row can hold."
+    },
+    {
+      "sha": "f70fa87878fb41e3",
+      "at": "3. Modes",
+      "excerpt": "- **A whole baseline FILE absent keeps its posture** — PART 15's `absent` cell: a note, the guard inactive, ex",
+      "part": "PART 15d (n5_new_crate — the per-crate prefix) and PART 15 (`absent` — a whole baseline file)"
+    },
+    {
+      "sha": "ab39ca87450f6416",
+      "at": "3. Modes",
+      "excerpt": "**Upgrade cost: none on day one, by construction.** A baseline from a different build already exits 2 (§2.1), ",
+      "part": "PART 15 (`doctored` — a different-build baseline exits 2 without evaluating, which is the whole argument)"
     }
   ]
 }

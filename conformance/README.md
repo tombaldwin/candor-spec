@@ -67,6 +67,13 @@ The `[n]` labels in the runner's output, in run order:
     configured-but-empty value → exit 2 (a declared ratchet naming no file is a broken gate, not an
     inactive one). Comparison *queries* disclose the mismatch and still answer. (The ts/swift/scan
     guard surfaces landed 2026-07-10; the item-5 MUST is satisfied, not narrowed.)
+    **15b** pins the ⟨0.16⟩ formerly-pure→effectful gain with the callgraph sidecar present, absent and
+    corrupt; ⟨0.40⟩ flips its `absent` arm 0 → 1 (the function is absent from the baseline report, so
+    its prior is ∅). **15d** pins ⟨0.40⟩'s absent-key rule: a NEW effectful function → exit 1 + a verdict
+    row with `origin:"new"`; a new PURE function → 0 (the control); a new `Unknown`-only function → 0 and
+    named in the note; an existing gain's row carries `origin:"existing"`; and (candor-scan) a workspace
+    crate with no file under a present `--out` prefix is absent too. Both are DECLARED xfails on R932/R933
+    for every engine until it ports, and a passing xfail is a failure.
 16. **Applied `deny Unknown` / `pure`-vs-`Unknown` / `forbid` layering** — the remaining §6/§6.2
     verdicts agree, including nested-scope segment matching.
 17. **Query CLI grammar** (§3.3.1) [TIER 2] — every engine drives a query the same way: the report

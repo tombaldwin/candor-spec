@@ -4167,7 +4167,11 @@ fi
 # exempt "new code" and ESCAPED. The fix keys existence on the baseline CALLGRAPH sidecar (which lists
 # pure leaves), exactly as `gains` `origin` (§3.1 ⟨0.12⟩) does. Per engine, three sub-cases:
 #   present  — sidecar beside the baseline, a baseline-pure fn now effectful → [AS-EFF-005] + exit 1
-#   absent   — sidecar removed → degrade to report-only existence (the pure fn reads as new) → exit 0
+#   absent   — sidecar removed → ⟨0.40⟩ STILL a gain, exit 1: the fn is absent from the baseline report,
+#              so its prior is ∅ (SPEC §3 baseline guard ⟨0.40⟩). Until ⟨0.40⟩ this arm asserted exit 0 —
+#              the report-only degradation in which the pure fn read as new and was exempt. Every engine
+#              still exits 0 here, DECLARED in P15B_XFAIL on R932; a PASSING xfail is a FAILURE, so each
+#              engine's port retires its own line in the same commit.
 #   corrupt  — sidecar present but unparseable → fail closed (exit 2), like a corrupt baseline; a broken
 #              sidecar must not silently narrow the guard back to report-only
 # Fixtures: a pure `calc` (omitted from the report, a callgraph node) + an effectful `keep` that calls
@@ -4177,7 +4181,8 @@ fi
 echo
 echo "[15b] CALLGRAPH-AWARE guard four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→effectful: present/absent/corrupt)"
 # ENGINES: rust java ts swift
-# CONTROLS: perow — the present/absent/corrupt arms pin the firing and the non-firing sides together
+# CONTROLS: perow — the present/absent arms must fire and the corrupt arm must REFUSE (exit 2, not 1), so a guard that fires on everything still fails corrupt
+# NOTE: the `absent` arm wants exit 1 under ⟨0.40⟩ and is a DECLARED xfail (P15B_XFAIL, R932) on all four engines until each ports — the xfail line prints the exit the engine actually gave
 PEW="$W/pe"; mkdir -p "$PEW/jb/q" "$PEW/ja/q" "$PEW/rb/src" "$PEW/ra/src" "$PEW/tb" "$PEW/ta" "$PEW/swb/pe" "$PEW/swa/pe"
 # java: pure calc + effectful keep; AFTER makes calc read a file
 printf 'package q;\npublic class P {\n static int calc(String s){ return s.length(); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); calc("z"); }\n}\n' > "$PEW/jb/q/P.java"
@@ -4204,8 +4209,10 @@ if [ -n "$SWBASE" ]; then
   PE_SWBASE="$PEW/sbase.pe.Swift.json"; [ -s "${PE_SWBASE%.json}.callgraph.json" ] || { echo "FAIL: swift ⟨0.16⟩ baseline sidecar"; exit 2; }
 fi
 PE_OK=0
-perow() { # $1 label  $2 basereport  --  after-scan-cmd...
-  local label=$1 base=$2; shift 2; shift  # drop the leading --
+# ⟨0.40⟩ (cell:engine:ROW). A PASSING xfail is a FAILURE — retire the line in the port's own commit.
+P15B_XFAIL="absent:java:R932 absent:rust:R932 absent:ts:R932 absent:swift:R932"
+perow() { # $1 label  $2 engine  $3 basereport  --  after-scan-cmd...
+  local label=$1 eng=$2 base=$3; shift 3; shift  # drop the leading --
   local after=("$@")
   local sidecar="${base%.json}.callgraph.json"
   [ -f "$sidecar" ] || { echo "     FAIL $label: no baseline sidecar at $sidecar"; return 1; }
@@ -4213,7 +4220,7 @@ perow() { # $1 label  $2 basereport  --  after-scan-cmd...
   # present — the pure→effectful transition must be a GAIN
   out=$(env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" 2>&1); p=$?
   printf '%s' "$out" | grep -q "\[AS-EFF-005\]" && seen=yes
-  # absent — degrade to report-only (the pure fn reads as new), exit 0
+  # absent — ⟨0.40⟩ the fn is absent from the baseline REPORT, so prior = ∅ and the gain still fires (exit 1)
   mv "$sidecar" "$sidecar.bak"
   env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" >/dev/null 2>&1; a=$?
   mv "$sidecar.bak" "$sidecar"
@@ -4222,15 +4229,23 @@ perow() { # $1 label  $2 basereport  --  after-scan-cmd...
   env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_BASELINE="$base" "${after[@]}" >/dev/null 2>&1; c=$?
   mv "$sidecar.keep" "$sidecar"
   echo "  $label present=$p(seen=$seen) absent=$a corrupt=$c"
-  [ "$p" = 1 ] && [ "$seen" = yes ] && [ "$a" = 0 ] && [ "$c" = 2 ] && return 0
-  echo "     FAIL $label: expected present=1+[AS-EFF-005] absent=0 corrupt=2"; return 1
+  local xrow absent_ok=no
+  xrow="$(printf '%s\n' $P15B_XFAIL | grep "^absent:$eng:" || true)"
+  if [ "$a" = 1 ]; then
+    if [ -n "$xrow" ]; then echo "     FAIL $label: XFAIL PASSED — absent=1 but P15B_XFAIL declares ${xrow##*:}; the engine ported ⟨0.40⟩, RETIRE the line"; return 1; fi
+    absent_ok=yes
+  elif [ -n "$xrow" ]; then
+    echo "     xfail $label absent=$a — declared, owned by ${xrow##*:} (⟨0.40⟩ wants 1)"; absent_ok=yes
+  fi
+  [ "$p" = 1 ] && [ "$seen" = yes ] && [ "$absent_ok" = yes ] && [ "$c" = 2 ] && return 0
+  echo "     FAIL $label: expected present=1+[AS-EFF-005] absent=1 (⟨0.40⟩) corrupt=2"; return 1
 }
-perow "candor-java " "$PEW/jbase.json" -- java -jar "$JAR" "$PEW/jac" || PE_OK=1
-perow "candor-scan " "$PEW/rbase.pe.scan.json" -- "$SCAN" "$PEW/ra" || PE_OK=1
-[ -n "$TS_OK" ] && { perow "candor-ts   " "$PEW/tbase.json" -- node "$TS_DIR/scan.mjs" "$PEW/ta/pe.ts" "$PEW/t_pe_out" || PE_OK=1; }
-[ -n "$PE_SWBASE" ] && { perow "candor-swift" "$PE_SWBASE" -- "$SW_BIN" "$PEW/swa/pe" --out "$PEW/s_pe_out" || PE_OK=1; }
+perow "candor-java " java "$PEW/jbase.json" -- java -jar "$JAR" "$PEW/jac" || PE_OK=1
+perow "candor-scan " rust "$PEW/rbase.pe.scan.json" -- "$SCAN" "$PEW/ra" || PE_OK=1
+[ -n "$TS_OK" ] && { perow "candor-ts   " ts "$PEW/tbase.json" -- node "$TS_DIR/scan.mjs" "$PEW/ta/pe.ts" "$PEW/t_pe_out" || PE_OK=1; }
+[ -n "$PE_SWBASE" ] && { perow "candor-swift" swift "$PE_SWBASE" -- "$SW_BIN" "$PEW/swa/pe" --out "$PEW/s_pe_out" || PE_OK=1; }
 if [ "$PE_OK" = 0 ]; then
-  echo "  -> MATCH — every engine keys existence on the baseline callgraph: pure→effectful is caught, absent degrades, corrupt fails closed"
+  echo "  -> MATCH — pure→effectful is caught with the sidecar, ⟨0.40⟩ without it (or declared xfail R932), and a corrupt sidecar fails closed"
 else
   echo "  -> DIVERGE — see FAIL rows"; rc=1
 fi
@@ -4297,6 +4312,205 @@ peurow "candor-scan " "$PUW/rbase.pe.scan.json" -- "$SCAN" "$PUW/rau" || PU_OK=1
 [ -n "$PU_SWBASE" ] && [ -f "${PU_SWBASE%.json}.callgraph.json" ] && { peurow "candor-swift" "$PU_SWBASE" -- "$SW_BIN" "$PUW/swau/pe" --out "$PUW/su_out" || PU_OK=1; }
 if [ "$PU_OK" = 0 ]; then
   echo "  -> MATCH — an Unknown-only gain is advisory (exit 0 + note), never a CI-breaking regression, in every engine"
+else
+  echo "  -> DIVERGE — see FAIL rows"; rc=1
+fi
+
+# ====================================================================================================
+# PART 15d — ⟨0.40⟩ A FUNCTION ABSENT FROM THE BASELINE IS COMPARED AGAINST ∅ (SPEC §3 baseline guard ⟨0.40⟩).  [TIER 1]
+# Until ⟨0.40⟩ every engine skipped a function absent from the baseline as "new code, reviewed normally".
+# Measured 2026-10-06 on all four heads: a baseline of `keep` (Fs) and a tree ADDING `fresh` (Net) exits 0,
+# `violations: []` — the field report was a whole package merged under a green gate. SOUNDNESS R932.
+# Per engine, one same-build baseline (keep → Fs, sidecar-writing form) and four AFTER trees:
+#   n1_new_effectful    + fresh (Net)           → exit 1, [AS-EFF-005], verdict row {fn: fresh, effects:[Net], origin:"new"}
+#   n2_new_pure         + tidy  (pure)          → exit 0, no [AS-EFF-005]                         ← CONTROL
+#   n3_new_unknown_only + opaquenew (Unknown)   → exit 0, no [AS-EFF-005], a note line naming opaquenew AND Unknown
+#   n4_existing_origin  keep gains Net          → exit 1, verdict row {fn: keep, effects:[Net], origin:"existing"}
+#   n5_new_crate (candor-scan only) a workspace member with NO file under a PRESENT `--out` prefix is a
+#                       package absent from a present baseline (SOUNDNESS R933)  → exit 1, row {fn: fresh}
+# Each cell FIRST proves its fixture reached the engine (the AFTER report must carry fresh=Net, opaquenew=
+# [Unknown] only, keep=Net, and no effectful tidy) — a fixture that did not reach is a HARNESS fault and
+# fails loudly, never an xfail. Not-yet-ported engines are DECLARED in P15D_XFAIL as (cell:engine:ROW); a
+# PASSING xfail is a FAILURE, so each port reddens this part until it retires its own lines.
+# ====================================================================================================
+echo
+echo "[15d] ⟨0.40⟩ ABSENT-FROM-BASELINE guard four-way  (SPEC §3 baseline guard ⟨0.40⟩ — new effectful fires, new pure passes, new Unknown named)"
+# ENGINES: rust java ts swift
+# CONTROLS: n2_new_pure — a new PURE function must still pass (exit 0, no [AS-EFF-005]), so an engine that charges every absent key — or fires on the sidecar diff rather than on `inferred` — fails it
+# NOTE: n2_new_pure passes on every engine TODAY for the wrong reason — nothing absent fires yet — so it is a control only once an engine ports; it was calibrated against a ported candor-ts in a scratch copy (see CALIBRATED). n5_new_crate is candor-scan only — java, ts and swift take ONE baseline file per run, so a new package is absent KEYS inside a present file, which n1 already pins.
+# CALIBRATED: on a scratch copy of candor-ts 503f449 given a ~10-line port of the clause (prior ∅, `origin`, the named Unknown-only note), ts n1, n3, n4 and 15b's ts `absent` each printed XFAIL PASSED (exit 1); with those four xfail lines removed the run passed (exit 0). A second copy that ALSO fires on every absent key, pure ones included, reddened ts n2_new_pure (exit 1, want 0) and nothing else. CANDOR_PROBE_FAULT=1 gives n2's `tidy` a Net call, and the n2 fixture-reach check goes red on all four engines, which is the harness proving it reads the AFTER report.
+P15D_XFAIL="n1_new_effectful:java:R932 n1_new_effectful:rust:R932 n1_new_effectful:ts:R932 n1_new_effectful:swift:R932
+n3_new_unknown_only:java:R932 n3_new_unknown_only:rust:R932 n3_new_unknown_only:ts:R932 n3_new_unknown_only:swift:R932
+n4_existing_origin:java:R932 n4_existing_origin:rust:R932 n4_existing_origin:ts:R932 n4_existing_origin:swift:R932
+n5_new_crate:rust:R933"
+NFW="$W/nf"; rm -rf "$NFW"; mkdir -p "$NFW"
+# CANDOR_PROBE_FAULT=1 gives the n2 fixture's `tidy` a Net call — written out per engine, never by substitution
+NF_FAULT=""; [ "${CANDOR_PROBE_FAULT:-}" = 1 ] && NF_FAULT=1
+NF_CELLS="$NFW/cells.tsv"; : > "$NF_CELLS"
+nf_name() { case $1 in
+  n1) echo n1_new_effectful;; n2) echo n2_new_pure;; n3) echo n3_new_unknown_only;; n4) echo n4_existing_origin;;
+esac; }
+nf_cell() { # $1 engine  $2 cell  $3 report  $4 gatejson  -- cmd...
+  local eng=$1 cell=$2 rep=$3 gj=$4; shift 4; shift
+  local out="$NFW/$eng.$cell.out" x
+  env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_UNKNOWN_RATCHET CANDOR_BASELINE="$NF_BASE" "$@" > "$out" 2>&1; x=$?
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$eng" "$cell" "$x" "$out" "$gj" "$rep" >> "$NF_CELLS"
+}
+# --- java (class q.G) ---
+for c in base n1 n2 n3 n4; do mkdir -p "$NFW/j_$c/q"; done
+NFJ_KEEP=' static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); }'
+printf 'package q;\npublic class G {\n%s\n}\n' "$NFJ_KEEP" > "$NFW/j_base/q/G.java"
+printf 'package q;\npublic class G {\n%s\n static void fresh() throws Exception { new java.net.Socket("h", 80); }\n}\n' "$NFJ_KEEP" > "$NFW/j_n1/q/G.java"
+NFJ_TIDY='a + 1'; [ -n "$NF_FAULT" ] && NFJ_TIDY='new java.net.Socket("h", 80).getPort()'
+printf 'package q;\npublic class G {\n%s\n static int tidy(int a) throws Exception { return %s; }\n}\n' "$NFJ_KEEP" "$NFJ_TIDY" > "$NFW/j_n2/q/G.java"
+printf 'package q;\npublic class G {\n%s\n static int opaquenew(String s) throws Exception { return (int) String.class.getMethod("length").invoke(s); }\n}\n' "$NFJ_KEEP" > "$NFW/j_n3/q/G.java"
+printf 'package q;\npublic class G {\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); new java.net.Socket("h", 80); }\n}\n' > "$NFW/j_n4/q/G.java"
+for c in base n1 n2 n3 n4; do javac -d "$NFW/j_${c}c" "$NFW/j_$c/q/G.java" 2>/dev/null || { echo "FAIL: javac on the 15d $c fixture"; exit 2; }; done
+java -jar "$JAR" "$NFW/j_basec" --json "$NFW/jbase.json" >/dev/null 2>&1; [ -s "$NFW/jbase.callgraph.json" ] || { echo "FAIL: java 15d baseline scan wrote no sidecar"; exit 2; }
+NF_BASE="$NFW/jbase.json"
+for c in n1 n2 n3 n4; do
+  cell=$(nf_name "$c")
+  nf_cell java "$cell" "$NFW/j_$c.json" "$NFW/j_$c.gate.json" -- java -jar "$JAR" "$NFW/j_${c}c" --json "$NFW/j_$c.json" --gate-json "$NFW/j_$c.gate.json"
+done
+# --- candor-scan (crate nf) ---
+NFR_KEEP='pub fn keep() { let _ = std::fs::read("/x"); }'
+for c in base n1 n2 n3 n4; do mkdir -p "$NFW/r_$c/src"; printf '[package]\nname = "nf"\nversion = "0.0.0"\nedition = "2021"\n' > "$NFW/r_$c/Cargo.toml"; done
+printf '%s\n' "$NFR_KEEP" > "$NFW/r_base/src/lib.rs"
+printf '%s\npub fn fresh() { let _ = std::net::TcpStream::connect("h:80"); }\n' "$NFR_KEEP" > "$NFW/r_n1/src/lib.rs"
+NFR_TIDY='a + 1'; [ -n "$NF_FAULT" ] && NFR_TIDY='let _ = std::net::TcpStream::connect("h:80"); a'
+printf '%s\npub fn tidy(a: u32) -> u32 { %s }\n' "$NFR_KEEP" "$NFR_TIDY" > "$NFW/r_n2/src/lib.rs"
+printf '%s\npub fn helper() -> usize { 0 }\npub fn opaquenew() -> usize { let g: fn() -> usize = helper; g() }\n' "$NFR_KEEP" > "$NFW/r_n3/src/lib.rs"
+printf 'pub fn keep() { let _ = std::fs::read("/x"); let _ = std::net::TcpStream::connect("h:80"); }\n' > "$NFW/r_n4/src/lib.rs"
+"$SCAN" "$NFW/r_base" --out "$NFW/rbase" >/dev/null 2>&1; [ -s "$NFW/rbase.nf.scan.callgraph.json" ] || { echo "FAIL: scan 15d baseline wrote no sidecar"; exit 2; }
+NF_BASE="$NFW/rbase.nf.scan.json"
+for c in n1 n2 n3 n4; do
+  cell=$(nf_name "$c")
+  nf_cell rust "$cell" "$NFW/r_$c.nf.scan.json" "$NFW/r_$c.gate.json" -- "$SCAN" "$NFW/r_$c" --out "$NFW/r_$c" --gate-json "$NFW/r_$c.gate.json"
+done
+# n5: a workspace baseline recorded with member `a` alone; the AFTER tree adds member `b`. The PREFIX resolves
+# a file for `a`, so the baseline is present for this run, and `b` — with no file under it — is absent.
+mkdir -p "$NFW/ws_base/a/src" "$NFW/ws_n5/a/src" "$NFW/ws_n5/b/src"
+printf '[workspace]\nmembers = ["a"]\nresolver = "2"\n' > "$NFW/ws_base/Cargo.toml"
+printf '[workspace]\nmembers = ["a", "b"]\nresolver = "2"\n' > "$NFW/ws_n5/Cargo.toml"
+for d in ws_base ws_n5; do printf '[package]\nname = "a"\nversion = "0.0.0"\nedition = "2021"\n' > "$NFW/$d/a/Cargo.toml"; printf '%s\n' "$NFR_KEEP" > "$NFW/$d/a/src/lib.rs"; done
+printf '[package]\nname = "b"\nversion = "0.0.0"\nedition = "2021"\n' > "$NFW/ws_n5/b/Cargo.toml"
+printf 'pub fn fresh() { let _ = std::net::TcpStream::connect("h:80"); }\n' > "$NFW/ws_n5/b/src/lib.rs"
+"$SCAN" "$NFW/ws_base" --out "$NFW/wsbase" >/dev/null 2>&1; [ -s "$NFW/wsbase.a.scan.json" ] || { echo "FAIL: scan 15d workspace baseline"; exit 2; }
+[ -e "$NFW/wsbase.b.scan.json" ] && { echo "FAIL: 15d workspace baseline already has a file for b — n5 would not test a NEW crate"; exit 2; }
+NF_BASE="$NFW/wsbase"
+nf_cell rust n5_new_crate "$NFW/ws_n5o.b.scan.json" "$NFW/ws_n5.gate.json" -- "$SCAN" "$NFW/ws_n5" --out "$NFW/ws_n5o" --gate-json "$NFW/ws_n5.gate.json"
+# --- candor-ts (module nf) ---
+if [ -n "$TS_OK" ]; then
+  for c in base n1 n2 n3 n4; do mkdir -p "$NFW/t_$c"; done
+  NFT_HEAD='import * as fsm from "node:fs";\nimport * as netm from "node:net";\nexport function keep(): string { return fsm.readFileSync("/x", "utf8"); }'
+  printf "$NFT_HEAD\n" > "$NFW/t_base/nf.ts"
+  printf "$NFT_HEAD\nexport function fresh(): void { netm.connect(80, \"h\"); }\n" > "$NFW/t_n1/nf.ts"
+  NFT_TIDY='a + 1'; [ -n "$NF_FAULT" ] && NFT_TIDY='(netm.connect(80, "h"), a)'
+  printf "$NFT_HEAD\nexport function tidy(a: number): number { return %s; }\n" "$NFT_TIDY" > "$NFW/t_n2/nf.ts"
+  printf "$NFT_HEAD\nexport function opaquenew(): number { const f: Function = (globalThis as any).x; return f(); }\n" > "$NFW/t_n3/nf.ts"
+  printf 'import * as fsm from "node:fs";\nimport * as netm from "node:net";\nexport function keep(): string { netm.connect(80, "h"); return fsm.readFileSync("/x", "utf8"); }\n' > "$NFW/t_n4/nf.ts"
+  node "$TS_DIR/scan.mjs" "$NFW/t_base/nf.ts" "$NFW/tbase" >/dev/null 2>&1; [ -s "$NFW/tbase.callgraph.json" ] || { echo "FAIL: ts 15d baseline wrote no sidecar"; exit 2; }
+  NF_BASE="$NFW/tbase.json"
+  for c in n1 n2 n3 n4; do
+    cell=$(nf_name "$c")
+    nf_cell ts "$cell" "$NFW/t_${c}o.json" "$NFW/t_$c.gate.json" -- node "$TS_DIR/scan.mjs" "$NFW/t_$c/nf.ts" "$NFW/t_${c}o" --gate-json "$NFW/t_$c.gate.json"
+  done
+fi
+# --- candor-swift (package nf — the leaf directory) ---
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  for c in base n1 n2 n3 n4; do mkdir -p "$NFW/s_$c/nf"; done
+  NFS_KEEP='func keep() { _ = FileManager.default.contents(atPath: "/x") }'
+  printf 'import Foundation\n%s\n' "$NFS_KEEP" > "$NFW/s_base/nf/a.swift"
+  printf 'import Foundation\nimport Network\n%s\nfunc fresh() { _ = NWConnection(host: "h", port: 80, using: .tcp) }\n' "$NFS_KEEP" > "$NFW/s_n1/nf/a.swift"
+  NFS_TIDY='a + 1'; [ -n "$NF_FAULT" ] && NFS_TIDY='_ = NWConnection(host: "h", port: 80, using: .tcp); return a'
+  printf 'import Foundation\nimport Network\n%s\nfunc tidy(_ a: Int) -> Int { %s }\n' "$NFS_KEEP" "$NFS_TIDY" > "$NFW/s_n2/nf/a.swift"
+  printf 'import Foundation\n%s\nfunc opaquenew(_ f: () -> Void) { f() }\n' "$NFS_KEEP" > "$NFW/s_n3/nf/a.swift"
+  printf 'import Foundation\nimport Network\nfunc keep() { _ = FileManager.default.contents(atPath: "/x"); _ = NWConnection(host: "h", port: 80, using: .tcp) }\n' > "$NFW/s_n4/nf/a.swift"
+  "$SW_BIN" "$NFW/s_base/nf" --out "$NFW/sbase" >/dev/null 2>&1; [ -s "$NFW/sbase.nf.Swift.callgraph.json" ] || { echo "FAIL: swift 15d baseline wrote no sidecar"; exit 2; }
+  NF_BASE="$NFW/sbase.nf.Swift.json"
+  for c in n1 n2 n3 n4; do
+    cell=$(nf_name "$c")
+    nf_cell swift "$cell" "$NFW/s_${c}o.nf.Swift.json" "$NFW/s_$c.gate.json" -- "$SW_BIN" "$NFW/s_$c/nf" --out "$NFW/s_${c}o" --gate-json "$NFW/s_$c.gate.json"
+  done
+fi
+P15D_OK=0
+P15D_XFAIL="$P15D_XFAIL" python3 - "$NF_CELLS" <<'PY' || P15D_OK=1
+import json, os, re, sys
+xfail = {}
+for tok in os.environ["P15D_XFAIL"].split():
+    cell, eng, row = tok.split(":")
+    xfail[(cell, eng)] = row
+def leaf(fn, name):
+    return re.search(r'(^|[.:#])' + re.escape(name) + r'$', fn) is not None
+def report_rows(path):
+    try:
+        return {f["fn"]: f.get("inferred", []) for f in json.load(open(path))["functions"]}
+    except Exception:
+        return None
+def find(rows, name):
+    return [inf for fn, inf in rows.items() if leaf(fn, name)]
+def gate_rows(path, name):
+    try:
+        g = json.load(open(path))
+    except Exception:
+        return None
+    return [v for v in g.get("violations", []) if v.get("rule") == "AS-EFF-005" and leaf(v.get("fn", ""), name)]
+ok = True; seen = set()
+for line in open(sys.argv[1]):
+    eng, cell, x, outp, gj, rep = line.rstrip("\n").split("\t")
+    x = int(x); out = open(outp).read(); seen.add((cell, eng))
+    rows = report_rows(rep)
+    # 1. did the fixture reach the engine? A miss here is a HARNESS fault, never an xfail.
+    reach = None
+    if rows is None: reach = f"no AFTER report at {rep}"
+    elif cell in ("n1_new_effectful", "n5_new_crate"):
+        if not any("Net" in i for i in find(rows, "fresh")): reach = "fresh does not carry Net in the AFTER report"
+    elif cell == "n2_new_pure":
+        if any([e for e in i if e != "Unknown"] for i in find(rows, "tidy")): reach = "tidy carries a real effect — the n2 fixture is not pure"
+    elif cell == "n3_new_unknown_only":
+        if not any(set(i) == {"Unknown"} for i in find(rows, "opaquenew")): reach = f"opaquenew is not Unknown-only in the AFTER report ({find(rows, 'opaquenew')})"
+    elif cell == "n4_existing_origin":
+        if not any("Net" in i for i in find(rows, "keep")): reach = "keep does not carry Net in the AFTER report"
+    if reach:
+        print(f"  FAIL {eng:5s} {cell}: HARNESS — {reach}"); ok = False; continue
+    fired = "[AS-EFF-005]" in out
+    why = []
+    if cell in ("n1_new_effectful", "n5_new_crate"):
+        if x != 1: why.append(f"exit {x}, want 1")
+        if not fired: why.append("no [AS-EFF-005] line")
+        g = gate_rows(gj, "fresh")
+        if not g: why.append("no AS-EFF-005 verdict row for fresh")
+        elif sorted(g[0].get("effects", [])) != ["Net"]: why.append(f"effects {g[0].get('effects')}, want ['Net']")
+        elif cell == "n1_new_effectful" and g[0].get("origin") != "new": why.append(f"origin {g[0].get('origin')!r}, want 'new'")
+    elif cell == "n2_new_pure":
+        if x != 0: why.append(f"exit {x}, want 0")
+        if fired: why.append("[AS-EFF-005] fired on a new PURE function")
+    elif cell == "n3_new_unknown_only":
+        if x != 0: why.append(f"exit {x}, want 0 (Unknown-only stays advisory)")
+        if fired: why.append("[AS-EFF-005] fired on an Unknown-only function")
+        if not any("opaquenew" in l and "Unknown" in l for l in out.splitlines()): why.append("no note line naming opaquenew and Unknown")
+    elif cell == "n4_existing_origin":
+        if x != 1: why.append(f"exit {x}, want 1")
+        g = gate_rows(gj, "keep")
+        if not g: why.append("no AS-EFF-005 verdict row for keep")
+        elif g[0].get("origin") != "existing": why.append(f"origin {g[0].get('origin')!r}, want 'existing'")
+    row = xfail.get((cell, eng))
+    if not why and row:
+        print(f"  FAIL {eng:5s} {cell}: XFAIL PASSED — declared in P15D_XFAIL as {row} but the cell agrees; the engine ported ⟨0.40⟩, RETIRE the line"); ok = False
+    elif not why:
+        print(f"  ok   {eng:5s} {cell}")
+    elif row:
+        print(f"  xfail {eng:5s} {cell} — declared, owned by {row}: {'; '.join(why)}")
+    else:
+        print(f"  FAIL {eng:5s} {cell}: {'; '.join(why)}"); ok = False
+# a declared xfail for a cell that never ran is a stale line, not a pass
+for (cell, eng), row in xfail.items():
+    if (cell, eng) not in seen and eng in {e for _, e in seen}:
+        print(f"  FAIL {eng:5s} {cell}: P15D_XFAIL declares {row} for a cell this run never executed — stale line"); ok = False
+sys.exit(0 if ok else 1)
+PY
+if [ "$P15D_OK" = 0 ]; then
+  echo "  -> MATCH — a new pure function passes everywhere; the absent-key gain, the named Unknown-only note and the verdict's origin are pinned (declared xfails on R932/R933 until each engine ports)"
 else
   echo "  -> DIVERGE — see FAIL rows"; rc=1
 fi
