@@ -49,8 +49,9 @@ benign literal, carry that literal in `f`'s `hosts` — otherwise an exit 1 on c
 surface failing, not the accept, and an exit 0 on b/d could not have happened at all. `deny Net` must also
 exit 1 on every cell, so the gate is shown able to fail on the bytes it is scoring.
 
-XFAILs are keyed (arm, engine) and cite R817. A PASSING xfail is a FAILURE here — the engine that ports
-the clause reddens this part and retires its own line in the same commit.
+XFAILs are keyed (arm, engine) and cite R817 or R949. A PASSING xfail is a FAILURE here — the engine that
+ports the clause reddens this part and retires its own line in the same commit. All eleven were retired at
+the 2026-10-07 join (every engine ported), so the table is empty.
 
 CALIBRATED: CANDOR_PROBE_FAULT=1 writes the c_accept AND f_rtresolve cells with the benign connect ALONE
 (`z_benign` — no accept, no resolution), so the arms that MUST fail now cannot: java and swift go red on
@@ -103,27 +104,10 @@ ARMS = [
 
 # (arm, engine) -> why. Measured 2026-10-07 on candor-rust 708ce46, candor-java 6c000a4, candor-ts
 # 503f449, candor-swift 519f62d (the engine trees' HEADs when this part was written).
-XFAIL = {
-    ("c_accept", "rust"):    "R817 — `accept`/`incoming` read as use-verbs; the benign literal certifies a server",
-    ("c_accept", "ts"):      "R817 (R781's listen half) — node `listen` is not establishing; the benign literal certifies a server",
-    ("a_litbind", "java"):   "R817 — the bind address is published into `hosts` (it does fail closed, via `incomplete`)",
-    ("b_rtbind", "java"):    "R817 — every bind is hedged `incomplete`, so a bind over a resolved address is uncertifiable",
-    ("d_ephemeral", "java"): "R817 — every bind is hedged `incomplete`, AND `send(DatagramPacket)` takes no locator from a literal packet address",
-    # swift was reported conformant before this part ran; it is, on the Network.framework spellings
-    # (`NWListener` fails closed, `requiredLocalEndpoint` is withheld). The NIO bootstraps are not.
-    ("a_litbind", "swift"):  "R817 — NIO `bind(host:port:)` is read as a destination: hosts=['10.0.0.5:9'] COMPLETE, `allow Net 10.0.0.5` exits 0",
-    # R949 — a bind or resolver handed a COMPUTED NAME resolves it, and that resolution is unseen.
-    ("e_rtname", "rust"):    "R949 — `UdpSocket::bind(h: &str)` resolves `h` and marks nothing; the benign literal certifies it",
-    ("e_rtname", "ts"):      "R949 — `dgram.bind(0, h)` resolves `h` and marks nothing; the benign literal certifies it",
-    # Withdrawal of this line was briefed on the strength of a java measurement; swift's NIO `bind(to:)`
-    # over a `SocketAddress` parameter was measured separately and is STILL marked (Bootstrap `bind` is
-    # an establishing member whatever its argument), so it stays — the over-charge, fail-closed.
-    ("b_rtbind", "swift"):   "R817 — NIO `bind(to: SocketAddress)` is establishing, so a bind over a resolved address is uncertifiable",
-    # g_litdiscard: both FAIL CLOSED (rc 1) — the literal resolution is marked `incomplete` rather than
-    # published, a precision gap (⟨0.37⟩ "DETERMINED" IS A PROPERTY OF THE VALUE), not a silence.
-    ("g_litdiscard", "rust"): "R949 — a literal `to_socket_addrs` is marked `incomplete` instead of publishing the name (fails closed)",
-    ("g_litdiscard", "java"): "R949 — a literal `getByName` resolved and discarded is marked `incomplete` instead of publishing the name (fails closed)",
-}
+# Retired at the 2026-10-07 join: every engine ported R817 and R949 (java 89ca454 + d57a600; rust
+# 23bc8af + a0d4d8e + b9547fa; ts 6d20f06 + ef48606; swift ab87646). A four-way rehearsal on those trees
+# with this dict empty passed. A new entry must name its row, and a PASSING xfail is a failure.
+XFAIL = {}
 
 TS_IMPORTS = ('import * as netm from "node:net";\nimport * as dgram from "node:dgram";\n'
               'import * as dns from "node:dns";\n')

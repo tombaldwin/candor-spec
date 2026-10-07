@@ -87,13 +87,18 @@ SW_DIR="${CANDOR_SWIFT:-$HERE/../../candor-swift}"
 # (`makesThing`, `X.constructor` — 174f3cb's fabrication, which the R782 fix exists to avoid), so the
 # cross-engine suite was weaker than candor-ts's own tests, which assert by name. Position suffixes
 # (`<decorator>@28`) are normalised to `@N` so a whitespace edit to a fixture does not move the cell.
+# AND THE OTHER POSITION SPELLING, 2026-10-07 (SOUNDNESS R944): candor-ts now keys a nameless unit by
+# anchor path + ordinal — `<decorator>@<enclosing/named/decls>#<k>`, stable under edits above it, which
+# ⟨0.40⟩'s AS-EFF-005 needed (an offset key renamed by a comment line is ABSENT from the baseline and
+# fires). Both spellings name a POSITION, not the unit's identity across engines, so both normalise to
+# `@N`; the character class is the one candor-ts's anchor path is built from (names, `$`, `~`, `/`).
 ckgatefns() { python3 -c '
 import json, re, sys
 try:
     d = json.load(open(sys.argv[1]))
 except Exception as exc:
     sys.exit("     INSTRUMENT: cannot read " + sys.argv[1] + " (" + str(exc) + ")")
-print(json.dumps(sorted(re.sub(r"@\d+", "@N", v.get("fn", "?")) for v in (d.get("violations") or []))))
+print(json.dumps(sorted(re.sub(r"@(?:\d+|[A-Za-z0-9_$~/]+#\d+)", "@N", v.get("fn", "?")) for v in (d.get("violations") or []))))
 ' "$1"; }
 engine_state() {
   _st=""
@@ -4220,7 +4225,7 @@ echo
 echo "[15b] CALLGRAPH-AWARE guard four-way  (SPEC §7 item 5 ⟨0.16⟩ — pure→effectful: present/absent/corrupt)"
 # ENGINES: rust java ts swift
 # CONTROLS: perow — the present/absent arms must fire and the corrupt arm must REFUSE (exit 2, not 1), so a guard that fires on everything still fails corrupt
-# NOTE: the `absent` arm wants exit 1 under ⟨0.40⟩ and is a DECLARED xfail (P15B_XFAIL, R932) on all four engines until each ports — the xfail line prints the exit the engine actually gave
+# NOTE: the `absent` arm wants exit 1 under ⟨0.40⟩. It was a DECLARED xfail (P15B_XFAIL, R932) on all four engines until each ported; all four had by the 2026-10-07 join, so P15B_XFAIL is empty and any red here is a regression
 PEW="$W/pe"; mkdir -p "$PEW/jb/q" "$PEW/ja/q" "$PEW/rb/src" "$PEW/ra/src" "$PEW/tb" "$PEW/ta" "$PEW/swb/pe" "$PEW/swa/pe"
 # java: pure calc + effectful keep; AFTER makes calc read a file
 printf 'package q;\npublic class P {\n static int calc(String s){ return s.length(); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); calc("z"); }\n}\n' > "$PEW/jb/q/P.java"
@@ -4248,7 +4253,9 @@ if [ -n "$SWBASE" ]; then
 fi
 PE_OK=0
 # ⟨0.40⟩ (cell:engine:ROW). A PASSING xfail is a FAILURE — retire the line in the port's own commit.
-P15B_XFAIL="absent:java:R932 absent:rust:R932 absent:ts:R932 absent:swift:R932"
+# All four engines ported ⟨0.40⟩ at the 2026-10-07 join (java f86ac36, rust cda4555, ts 59ddfa6,
+# swift cd14f9d): no line is declared.
+P15B_XFAIL=""
 perow() { # $1 label  $2 engine  $3 basereport  --  after-scan-cmd...
   local label=$1 eng=$2 base=$3; shift 3; shift  # drop the leading --
   local after=("$@")
@@ -4375,12 +4382,11 @@ echo
 echo "[15d] ⟨0.40⟩ ABSENT-FROM-BASELINE guard four-way  (SPEC §3 baseline guard ⟨0.40⟩ — new effectful fires, new pure passes, new Unknown named)"
 # ENGINES: rust java ts swift
 # CONTROLS: n2_new_pure — a new PURE function must still pass (exit 0, no [AS-EFF-005]), so an engine that charges every absent key — or fires on the sidecar diff rather than on `inferred` — fails it
-# NOTE: n2_new_pure passes on every engine TODAY for the wrong reason — nothing absent fires yet — so it is a control only once an engine ports; it was calibrated against a ported candor-ts in a scratch copy (see CALIBRATED). n5_new_crate is candor-scan only — java, ts and swift take ONE baseline file per run, so a new package is absent KEYS inside a present file, which n1 already pins.
+# NOTE: n2_new_pure passed on every engine BEFORE the port for the wrong reason — nothing absent fired — so it is a control only on a ported engine, which all four are since the 2026-10-07 join; it was calibrated against a ported candor-ts in a scratch copy (see CALIBRATED). n5_new_crate is candor-scan only — java, ts and swift take ONE baseline file per run, so a new package is absent KEYS inside a present file, which n1 already pins.
 # CALIBRATED: on a scratch copy of candor-ts 503f449 given a ~10-line port of the clause (prior ∅, `origin`, the named Unknown-only note), ts n1, n3, n4 and 15b's ts `absent` each printed XFAIL PASSED (exit 1); with those four xfail lines removed the run passed (exit 0). A second copy that ALSO fires on every absent key, pure ones included, reddened ts n2_new_pure (exit 1, want 0) and nothing else. CANDOR_PROBE_FAULT=1 gives n2's `tidy` a Net call, and the n2 fixture-reach check goes red on all four engines, which is the harness proving it reads the AFTER report.
-P15D_XFAIL="n1_new_effectful:java:R932 n1_new_effectful:rust:R932 n1_new_effectful:ts:R932 n1_new_effectful:swift:R932
-n3_new_unknown_only:java:R932 n3_new_unknown_only:rust:R932 n3_new_unknown_only:ts:R932 n3_new_unknown_only:swift:R932
-n4_existing_origin:java:R932 n4_existing_origin:rust:R932 n4_existing_origin:ts:R932 n4_existing_origin:swift:R932
-n5_new_crate:rust:R933"
+# All four engines ported ⟨0.40⟩ at the 2026-10-07 join (java f86ac36, rust cda4555 incl. R933 n5,
+# ts 59ddfa6, swift cd14f9d): no line is declared.
+P15D_XFAIL=""
 NFW="$W/nf"; rm -rf "$NFW"; mkdir -p "$NFW"
 # CANDOR_PROBE_FAULT=1 gives the n2 fixture's `tidy` a Net call — written out per engine, never by substitution
 NF_FAULT=""; [ "${CANDOR_PROBE_FAULT:-}" = 1 ] && NF_FAULT=1
