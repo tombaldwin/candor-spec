@@ -128,7 +128,16 @@ _DECLARED_OPEN = re.compile(
 # this row said would decide it**`. The outcome cell is the later word, so an explicit closure at ITS
 # head suppresses the status-cell shortcut above. Without this the fix trades 24 false closures for a
 # handful of false OPENs, which is the same error pointing the other way.
+# AND THE ENGINE PREFIX MUST BE ADMITTED HERE TOO, 2026-10-07 — THE SIXTH DEFECT OF THIS SHAPE. The
+# 2026-09-25 fix taught `_DECLARED_OPEN` the `<engine> — ` prefix and left this pattern anchored to the
+# bare head, so `rust — **CLOSED — candor-rust `f515840`…` in the STATUS cell was not a closure head, the
+# outcome cell's filing-time `**OPEN.**` then matched `_DECLARED_OPEN`, and the row sat on the
+# shipping-defect list though its own status said it was closed. Measured on the register at f77dff1:
+# exactly R542, R561, R562, R568 and R570 move from `open`, and nothing else moves. The same bound
+# applies (a short prefix ending in a dash, the word IMMEDIATELY after it), and `_SAYS_OPEN_TOO` still
+# keeps a cell that also says OPEN/REOPENED on the list — both directions are selftest rows.
 _DECLARED_RESOLVED = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
+                                r'(?:[A-Za-z][^|]{0,70}?[\u2014-]{1,2}\s*(?:\*\*|__)?\s*)?'
                                 r'(?:RESOLVED|CLOSED|FIXED|WITHDRAWN|RETRACTED|SUPERSEDED)\b')
 # A CLOSURE WITH A DECLARED OPEN REMAINDER IS NOT A CLOSURE, AND IT IS NOT FULLY OPEN EITHER. Eleven
 # rows head their status cell `PARTLY CLOSED` / `HALF CLOSED` / `FIRST HALF FIXED` and then name what is
@@ -518,6 +527,16 @@ def selftest():
          " class | Not fixed. |", "closed-with-fix"),
         ("| R903 rust: a thing | 2026-09-27 | **CLOSED — the fixture spells it deadbee** |"
          " class | Not fixed. |", "resolved-no-fix"),
+        # THE ENGINE-PREFIXED CLOSURE HEAD, 2026-10-07 — `_DECLARED_RESOLVED`'s twin of the 2026-09-25
+        # `_DECLARED_OPEN` fix. R542/R561/R562/R568/R570 head their status cell `rust — **CLOSED — …`
+        # while the outcome cell still opens with its filing-time `**OPEN.**`; without the prefix the
+        # stale outcome head won and all five sat on the shipping-defect list.
+        ("| R904 rust: a thing | 2026-09-27 | rust — **CLOSED — `abc1234`** |"
+         " class | **OPEN.** Filed before the fix. |", "closed-with-fix"),
+        # …AND THE NEAR-MISS THAT MUST NOT MOVE: a prefixed closure head whose cell ALSO says it was
+        # reopened is not a closure (`_SAYS_OPEN_TOO`), whatever its head says.
+        ("| R905 rust: a thing | 2026-09-27 | rust — **CLOSED — `abc1234`; REOPENED 2026-10-01 on a"
+         " second spelling** | class | **OPEN.** |", "open"),
     ]
     # SOUNDNESS R641 — the SHARED recogniser's own table, run here so neither tool can drift from
     # the other's idea of what a row is. It is the same list `check_soundness_tables.py --selftest`
