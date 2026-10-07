@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 87's `java-pure-inherited` over-charge control is amended (SOUNDNESS R965).** It used to require a
+  `protected` field-bound callback to stay unhedged. That held java LESS disclosed than ts, swift and rust on
+  the identical shape, and it left a chained consumer's subclass able to reassign the field silently (executed).
+  For that shape only, the cell now accepts a `callback:` `Unknown` BESIDE a binding that still resolves.
+  Java's call-graph sidecar must edge `Sub.fire` to the stored lambda and not to the unrelated `Repaint`, and
+  the cell never accepts `Fs`. The private `instance`/`static` controls keep the strict rule. Calibrated with two
+  candor-java mutants: hedge-every-field reddens the private controls, and hedge-replacing-the-edge reddens the
+  amended cell. SOUNDNESS gains R975, the field-keyed join, as a designed precision rung that is not built yet.
+  R939 and R965 are closed (candor-java `c4a6926`, merged `2d428c9`; `f99e790`).
+
 - **The 2026-10-07 join: every engine ported ⟨0.40⟩'s second and third halves, and every declared xfail on
   them is retired.** `conformance/run.sh` P15B_XFAIL and P15D_XFAIL are empty (java `f86ac36`, candor-scan
   `cda4555` incl. R933's `n5_new_crate`, ts `59ddfa6`, swift `cd14f9d`) and PART 96's XFAIL table is empty

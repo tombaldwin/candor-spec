@@ -17142,7 +17142,7 @@ fi
 
 # PART 87 — A NON-EMPTY CANDIDATE SET IS NOT A COMPLETE ONE (SPEC §4 ⟨0.35⟩)                    [TIER 1]
 # ENGINES: java ts swift; rust: MEASURED exempt by CONSTRUCTION (SOUNDNESS R72) — collector.rs:1771-1786 resolves local-trait dispatch by iterating EVERY visible impl and pushing an edge for each, a union rather than a pick, so adding an unrelated implementor cannot flip a disclosure into silence, and `impl Fn` is impossible on stable so the defining toggle cannot be built at all. Three executed attempts, all negative. NOT an unported MUST
-# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited java-pure-argstore ts-pure sw-pure sw-calib sw-proto-zero sw-proto-one — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; `java-pure-*`, `ts-pure` and `sw-pure` are the OVER-CHARGE controls, one per shape per engine, each proving a PURE implementor through that shape's identical path gains no Fs and is not blanket-hedged into Unknown either; `sw-calib` is the CALIBRATION that proves branch (b) fires at all on candor-swift, without which its branch-(a) arms are evidence about nothing; `sw-proto-zero`/`sw-proto-one` are the §2 control that fails if an inherited Unknown ever gains an `unknownWhy` (SPEC.md:1381) or if the reason disappears from the source that owes it
+# CONTROLS: zero java-pure-instance java-pure-static java-pure-inherited java-pure-argstore ts-pure sw-pure sw-calib sw-proto-zero sw-proto-one — the `zero` arm is the control for the `one` arm, the only variable between them being one pure unrelated conformer, so a green pair proves the engine did not simply start disclosing everything; `java-pure-*`, `ts-pure` and `sw-pure` are the OVER-CHARGE controls, one per shape per engine, each proving a PURE implementor through that shape's identical path gains no Fs and is not blanket-hedged into Unknown either (java-pure-inherited alone, since SOUNDNESS R965, accepts a `callback:` Unknown BESIDE a still-resolved edge, proven from the call-graph sidecar, because its protected field is reassignable by a foreign subclass — never Fs, and the private instance/static controls keep the strict rule); `sw-calib` is the CALIBRATION that proves branch (b) fires at all on candor-swift, without which its branch-(a) arms are evidence about nothing; `sw-proto-zero`/`sw-proto-one` are the §2 control that fails if an inherited Unknown ever gains an `unknownWhy` (SPEC.md:1381) or if the reason disappears from the source that owes it
 # FALSIFIED AGAINST THE PUBLISHED 0.34.0 ARTIFACTS, which are frozen and cannot drift: java's
 # one-implementor arm reports the caller ABSENT from functions[] (exit 0, `deny Unknown` green) where the
 # zero-implementor arm reports Unknown + unresolved:true + `callback:java.lang.Runnable.run`. The row goes
@@ -17523,6 +17523,22 @@ JEOF
       echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): NO REPORT WRITTEN — the engine did not run, which is an instrument failure, not a verdict about the fix"
       P87_OK=1; continue
     fi
+    # SOUNDNESS R965 — THE `inherited` CELL WAS AMENDED 2026-10-07, AND THIS IS WHY. It used to require the
+    # PROTECTED field below to stay unhedged. But `Base` is public and non-final, so a subclass in ANOTHER
+    # package — a chained consumer — may reassign `task`, and the binding then describes only the default:
+    # executed on candor-java, a consumer subclass reassigning a dependency's `protected Runnable task` to a
+    # file-writing lambda left its callers ABSENT, `deny Unknown` exit 0 over a file written twice. The cell
+    # held java LESS disclosed than the other three engines on this exact shape: candor-ts hedges a
+    # protected class-field slot (`openCallSlot`, `callback:this.task`; executed on this fixture: `Sub.fire`
+    # ['Unknown'], unresolved:true), candor-swift hedges every `var` closure property
+    # (`closurePropertyInvocation`), candor-rust marks `(self.hook)()` `callback:unresolved call` — their
+    # own controls pass only because their fixtures are not reassignable closure FIELDS. So for `inherited`
+    # ONLY, `Unknown` is accepted when it is (i) the only member of `inferred` — never `Fs`, (ii) explained
+    # by `callback:` reasons alone, and (iii) BESIDE a binding that still resolves: java's call-graph sidecar
+    # must show `Sub.fire` edged to the stored lambda and not to the unrelated `Repaint`. The PRIVATE
+    # `instance`/`static` controls keep the strict rule — a private field's write set IS the scan's — so a
+    # fix that hedges EVERY field-held lambda still goes red there. The sin arms are untouched: the
+    # `inherited`/`one` arm above must still carry `Fs`, which is the edge being followed.
     p87pure_rc="$(python3 -c "
 import json,sys
 d=json.load(open('$d/rep.json'))
@@ -17536,7 +17552,19 @@ f=[x for x in fns if x.get('fn','').endswith('$pcaller')]
 inf=(f[0].get('inferred') if f else []) or []
 unresolved=(f[0].get('unresolved') if f else False)
 if 'Fs' in inf: sys.exit(1)
-if 'Unknown' in inf and unresolved is True: sys.exit(2)
+if 'Unknown' in inf and unresolved is True:
+    # SOUNDNESS R965 — THE INHERITED SHAPE MAY DISCLOSE, AND ONLY IT. See the comment above the reader.
+    if '$shape' != 'inherited': sys.exit(2)
+    why=f[0].get('unknownWhy') or []
+    if set(inf) != {'Unknown'} or not why or not all(w.startswith('callback:') for w in why): sys.exit(2)
+    # BESIDE THE RESOLVED EDGE, NEVER INSTEAD OF IT: the binding must still resolve to the stored lambda
+    # (and only to it — not to the unrelated Repaint), read from the engine's own §2.2 call-graph sidecar.
+    try: cg=json.load(open('$d/rep.callgraph.json'))
+    except Exception: sys.exit(5)
+    e=cg.get('app.Sub.fire')
+    if not isinstance(e,list): sys.exit(5)
+    if not any('lambda' in x for x in e) or any('Repaint' in x for x in e): sys.exit(6)
+    sys.exit(7)
 sys.exit(0)" 2>"$d/reader.err"; echo $?)"
     case "$p87pure_rc" in
       0) echo "  OK  OVER-CHARGE CONTROL ($shape) — a PURE lambda through the same shape gains no Fs, and is not blanket-hedged into Unknown either" ;;
@@ -17544,6 +17572,9 @@ sys.exit(0)" 2>"$d/reader.err"; echo $?)"
       2) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a pure lambda was tagged Unknown+unresolved:true — the fix hedges everywhere instead of resolving; it never fabricates Fs, but it destroys precision the same disjunction that lets it pass this row was never meant to excuse"; P87_OK=1 ;;
       3) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): the report has NO \`functions\` key — malformed, not pure"; P87_OK=1 ;;
       4) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): the report does not mention Repaint, so it is not about this fixture — the control adjudicated nothing"; P87_OK=1 ;;
+      5) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): a \`callback:\` hedge, but no readable call-graph sidecar to prove the binding still RESOLVED beside it — an instrument failure, not a pass"; P87_OK=1 ;;
+      6) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): hedged, but the dispatch no longer resolves to the stored lambda alone (sidecar edges: $(python3 -c "import json;print(json.load(open('$d/rep.callgraph.json')).get('app.Sub.fire'))" 2>/dev/null)) — the hedge REPLACED the binding instead of standing beside it"; P87_OK=1 ;;
+      7) echo "  OK  OVER-CHARGE CONTROL ($shape) — a PURE lambda gains no Fs; the protected field is DISCLOSED \`callback:\` beside the still-resolved edge (SOUNDNESS R965: a foreign subclass may reassign it)" ;;
       *) echo "  -> DIVERGE — OVER-CHARGE CONTROL ($shape field): could not judge the pure-lambda report (rc=$p87pure_rc) $(head -1 "$d/reader.err" 2>/dev/null) — an unreadable report is an INSTRUMENT failure, not a fabrication finding"; P87_OK=1 ;;
     esac
   done
