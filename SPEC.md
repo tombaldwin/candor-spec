@@ -134,6 +134,18 @@ so an upgrader re-records first. Pinned by PART 15d and the PART 15b `absent` ar
 (and R933, candor-scan's per-crate prefix) for every engine until it ports. This half is NOT among the
 "java and ts NOT APPLICABLE" exclusions below — those name the type-surface half only.
 
+**⟨0.40⟩ ALSO SETTLES BIND/LISTEN FOR `Net`, AND THAT HALF BINDS ALL FOUR ENGINES AND FLIPS BOTH WAYS.**
+§2 gains *A BIND OR LISTEN ADDRESS IS WHERE THE PROCESS LISTENS, NEVER A DESTINATION IT REACHES*, *A
+UNIT THAT ACCEPTS A CONNECTION … ITS `Net` SURFACE IS INCOMPLETE* and *A RESOLUTION OF A COMPUTED NAME IS A
+`Net` REACH*. Upward, fail-closed: `allow Net <host>` can go 0 → 1 over a unit that accepts beside a benign
+literal (candor-scan, candor-ts), over a bind handed a runtime name (candor-scan, candor-ts), and over a
+literal NIO bind that was certified as its own destination (candor-swift). Downward, and correctly: `allow Net
+<host>` can go 1 → 0 over a unit that binds an already-resolved address and never accepts, where the
+engine was hedging the bind (candor-java, and candor-swift's NIO `bind(to:)`) — the outbound calls beside it still carry their own
+locators, so nothing unseen is certified. On the wire, a bind address leaves `hosts` (candor-java). This
+half was folded into ⟨0.40⟩ for the reason the baseline-guard half was: the rung is unreleased. Pinned by
+PART 96, DECLARED xfails on SOUNDNESS R817 and R949.
+
 **⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is IMPLEMENTED by
 candor-swift (`2a3ddc6`) and candor-scan (`f7f4c08`, which does not yet implement the Rust permission's
 `Deref` rows), and DECLARED by no engine: as with ⟨0.38⟩,
@@ -2037,6 +2049,67 @@ which may under-approximate and still claim conformance, because failing closed 
 this sentence the paragraph reads as licensing exactly what the part fails, which is the
 clause-says-more-than-the-row shape the MUST-ledger exists to catch — which is how
 those two defects were found, on the part's FIRST execution.
+
+⟨0.40⟩ **A BIND OR LISTEN ADDRESS IS WHERE THE PROCESS LISTENS, NEVER A DESTINATION IT REACHES.** `hosts`
+names the endpoints a call talks to (above), and the address handed to a bind or a listen —
+`UdpSocket::bind("10.0.0.5:9")`, `new DatagramSocket(new InetSocketAddress("10.0.0.5", 9))`,
+`socket.bind(9, "10.0.0.5")`, NIO's `bind(host:port:)` — is the process's OWN address. **It MUST NOT enter
+`hosts`**: read from that position, a literal names a destination the program never reaches, and
+`allow Net 10.0.0.5` then certifies it. That is the ⟨0.29⟩ positional rule above, applied to the one `Net`
+position that names no peer — a FABRICATED destination, which that rule already calls worse than reading none.
+**This governs an ADDRESS, not a NAME.** A literal host NAME handed to a bind (`bind("svc.example:9")`,
+`new InetSocketAddress("svc.example", 9)`) is resolved before the process binds, and that resolution reaches the
+name under the resolution clause below — so the name enters `hosts`, as the resolution's locator and not the
+bind's. A literal IP address resolves nothing and stays out. (Measured by the java R949 lane: the two
+sentences otherwise conflict for exactly this spelling, and no PART 96 arm uses one.)
+**A bind marks nothing.** Its literal address is not an unseen destination, and neither is an address
+the program has already resolved, so a bind over either MUST NOT by itself put `Net` into `incomplete`. A socket that only SENDS — an ephemeral client bound to port 0 —
+reaches its peers through its own `send_to`/`send`/`connect`, and those calls carry the locator under the
+rules above, marking `incomplete` when it is computed; hedging the bind as well makes every such client
+uncertifiable while adding nothing a gate could use. A bind with nothing beside it still fails `allow Net`
+closed, because its literal surface is empty and SEMANTICS §6 reads `lits_Net(f) = ∅` as `masked_Net` —
+for that reason, and not because the bind was marked.
+
+⟨0.40⟩ **A RESOLUTION OF A COMPUTED NAME IS A `Net` REACH WHOSE LOCATOR IS THE NAME, WHATEVER THE RESULT IS
+USED FOR.** Resolving a name sends it to a name server, so a program that resolves a caller-chosen name has
+reached the network with a destination no literal shows — the explicit resolver's exfiltration channel, and
+the same channel by another spelling when a bind is handed a STRING: `UdpSocket::bind(h)` with `h: &str`,
+`dgram.bind(port, h)`, NIO's `bind(host: h, port:)` and `new InetSocketAddress(h, port)` all resolve `h`
+before anything is bound. **A resolver call (`InetAddress.getByName`, `dns.lookup`, `getaddrinfo`,
+`to_socket_addrs`) or a bind handed a runtime name MUST put `Net` into the unit's `incomplete`**, so
+`allow Net <host>` fails closed over it. **A LITERAL name resolved enters `hosts`** even when the result is
+discarded — it was reached — so an allowlist that does not name it fails on it. **A bind over an
+already-resolved value** — a `SocketAddr`, an `InetAddress`/`SocketAddress`, an IP tuple, a port alone —
+resolves nothing and **marks nothing**, which is the bind rule above.
+
+⟨0.40⟩ **A UNIT THAT ACCEPTS A CONNECTION TALKS TO PEERS NO LITERAL CAN NAME, SO ITS `Net` SURFACE IS
+INCOMPLETE.** A Rust `accept`/`incoming`, a JVM `ServerSocket.accept` or channel `accept`, a node server's
+`listen` (which hands every arriving connection to its handler), an `NWListener`, and any server bootstrap
+whose bind begins accepting connections **MUST put `Net` into the unit's `incomplete`, and `allow Net
+<host>` over that unit MUST fail closed** (AS-EFF-008, SEMANTICS §6 `masked_Net`). The accept is the call
+that FIXES the peer, as `connect` fixes it for a client: whatever is later written to the accepted
+connection goes to an endpoint chosen by whoever connected. Without the mark, one benign sibling literal
+(`connect("ok.example:80")`) makes the surface read complete and `allow Net ok.example` certifies a server
+that writes to anyone — the masked-literal evasion by the server's spelling. A DATAGRAM reply's peer is
+fixed at the reply's own `send_to`, which the rules above already cover, so a datagram receive is not an
+accept for this clause.
+
+**Measured before it was written, on the engine trees of 2026-10-07, and the drift ran in both
+directions.** candor-scan and candor-ts certified `allow Net ok.example` over an accept: rust reads
+`accept`/`incoming` as use-verbs, and node's `listen` is outside ts's establishing set (SOUNDNESS R781's
+listen half). candor-java published a literal bind address into `hosts` and marked every bind
+`incomplete`, so it fabricated a destination and could not certify a bind that never accepts. Its
+ephemeral UDP client stays uncertifiable for a second reason the bind rule does not reach:
+`DatagramSocket.send` takes no locator from a packet whose address is a literal (`InetAddress.getByName(
+"10.9.9.9")`), which ⟨0.37⟩'s *"DETERMINED" IS A PROPERTY OF THE VALUE* already makes a precision defect.
+candor-swift was conformant on its Network.framework spellings and read NIO's `bind(host:port:)` as a
+destination — `hosts: ["10.0.0.5:9"]`, complete, `allow Net 10.0.0.5` exit 0. Until this clause the
+family cited "⟨0.29⟩'s rule that a listen address must never enter `hosts`" in engine source and in the
+register, and no such sentence existed. The resolution clause was measured the same day: every engine
+fails closed on an explicit resolver over a runtime name, java and swift on a bind handed one, and candor-scan
+and candor-ts certify `allow Net ok.example` over `UdpSocket::bind(h)` / `dgram.bind(0, h)`; a literal name
+resolved and discarded is published by ts and swift and marked `incomplete` without its name by rust and java.
+Pinned by PART 96, whose open cells are DECLARED xfails on SOUNDNESS R817 and R949.
 
 Two engines extracting different tables from the same SQL would split the policy verdict, so the SQL
 extraction is pinned token-for-token; the cross-impl vector battery
@@ -6029,7 +6102,15 @@ declare it via the envelope's `spec`.
   005 verdict row carries ⟨0.12⟩'s `origin`; the ⟨0.16⟩ sidecar decides only that label; candor-scan's
   per-crate prefix counts a crate with no file under a present prefix as absent. One-way, 0 → 1, no flip at
   upgrade (a different-build baseline already exits 2). Pinned by PART 15d and PART 15b's `absent` arm,
-  DECLARED xfails on R932/R933 for every engine.
+  DECLARED xfails on R932/R933 for every engine. **Third half, binding ALL FOUR engines (2026-10-07): bind/listen
+  for `Net`** — a bind or listen address never enters `hosts`, a bind marks nothing (an ephemeral client's
+  `send_to` carries its own locator), and a unit that ACCEPTS carries `incomplete: ["Net"]` so `allow Net`
+  fails closed over it; and a resolution of a COMPUTED name — a resolver call, or a bind handed a runtime
+  string — is a `Net` reach whose locator is unseen, so it carries `incomplete`, while a literal name
+  resolved enters `hosts` and a bind over an already-resolved address marks nothing. Flips both ways: 0 → 1
+  over an accept beside a benign literal (rust, ts), over a bind handed a runtime name (rust, ts) and over a
+  literal NIO bind (swift); 1 → 0 over a bind over a resolved address where the engine hedged it (java,
+  swift NIO). Pinned by PART 96, DECLARED xfails on R817 and R949.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave

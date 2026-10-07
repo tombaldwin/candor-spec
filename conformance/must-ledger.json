@@ -3552,6 +3552,36 @@
       "at": "3. Modes",
       "excerpt": "**Upgrade cost: none on day one, by construction.** A baseline from a different build already exits 2 (§2.1), ",
       "part": "PART 15 (`doctored` — a different-build baseline exits 2 without evaluating, which is the whole argument)"
+    },
+    {
+      "sha": "de4de9787027a304",
+      "at": "Contents",
+      "excerpt": "**⟨0.40⟩ ALSO SETTLES BIND/LISTEN FOR `Net`, AND THAT HALF BINDS ALL FOUR ENGINES AND FLIPS BOTH WAYS.** §2 ga",
+      "unenforced": "RE-ANCHORED 2026-10-07 when the R949 review added the resolution clause to this narrative. THE PER-RUNG ADDITIVITY NARRATIVE, carrying ⟨0.40⟩'s bind/listen half. It asserts what an UPGRADE does — a verdict moving BETWEEN two engine versions on identical bytes, 0 → 1 over an accept, a bind handed a runtime name or a literal NIO bind, and 1 → 0 over a hedged bind over a resolved address — and every row measures ONE build, so no row can hold it. Identical classification to the ⟨0.30⟩–⟨0.40⟩ narrative paragraphs already in this ledger. The BEHAVIOUR it summarises is pinned by PART 96."
+    },
+    {
+      "sha": "cf2b9ba333bf3439",
+      "at": "2. The report",
+      "excerpt": "⟨0.40⟩ **A BIND OR LISTEN ADDRESS IS WHERE THE PROCESS LISTENS, NEVER A DESTINATION IT REACHES.** `hosts` name",
+      "part": "PART 96 (a_litbind — no `hosts` entry names the literal bind address AND `allow Net <it>` exits 1, asserted separately; b_rtbind — a bind over an already-RESOLVED address marks nothing, one variable from e_rtname; d_ephemeral — an ephemeral bind beside a literal send certifies). RE-ANCHORED 2026-10-07: the R949 review narrowed 'literal or computed' to 'literal or already resolved'. RE-ANCHORED AGAIN 2026-10-07 (sha was 6aaaf47fcdf5ba0c): added 'This governs an ADDRESS, not a NAME' — a literal host NAME handed to a bind enters `hosts` as the resolution's locator. That NAME half is NOT exercised: every PART 96 arm binds an IP literal; a hostname-bind arm is owed."
+    },
+    {
+      "sha": "01c9fe7213e78973",
+      "at": "2. The report",
+      "excerpt": "⟨0.40⟩ **A UNIT THAT ACCEPTS A CONNECTION TALKS TO PEERS NO LITERAL CAN NAME, SO ITS `Net` SURFACE IS INCOMPLE",
+      "part": "PART 96 (c_accept — an accept beside a benign literal connect: `allow Net <benign>` exits 1, with the benign literal shown in `hosts` first so the exit cannot be the empty-surface case). The datagram-receive exclusion in the same paragraph is a scope statement with no row: d_ephemeral never receives."
+    },
+    {
+      "sha": "a60d66979c94900c",
+      "at": "2. The report",
+      "excerpt": "**Measured before it was written, on the engine trees of 2026-10-07, and the drift ran in both directions.** c",
+      "unenforced": "A MEASUREMENT RECORD of the engine trees of 2026-10-07 (candor-rust 708ce46, candor-java 6c000a4, candor-ts 503f449, candor-swift 519f62d), not an obligation a build can meet or fail — the same classification the ⟨0.37⟩/⟨0.38⟩ measurement paragraphs carry. RE-ANCHORED when the R949 resolution measurements were added. The obligations it measures are PART 96's arms, and the per-engine state it records is that part's (arm, engine) xfail table on R817 and R949, which retires line by line as each engine ports."
+    },
+    {
+      "sha": "fd67a8ec1407cef6",
+      "at": "2. The report",
+      "excerpt": "⟨0.40⟩ **A RESOLUTION OF A COMPUTED NAME IS A `Net` REACH WHOSE LOCATOR IS THE NAME, WHATEVER THE RESULT IS US",
+      "part": "PART 96 (e_rtname — a bind handed a runtime string beside a benign literal: `allow Net <benign>` exits 1; f_rtresolve — an explicit resolver over a runtime name: exits 1; g_litdiscard — a literal name resolved and discarded is in `hosts` and the allow exits 1; b_rtbind — a bind over an already-resolved value marks nothing). SOUNDNESS R949."
     }
   ]
 }

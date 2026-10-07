@@ -2863,6 +2863,44 @@ echo "PART 95 — declared types for resolution: holds / returnsProtocol / types
 # CALIBRATED (on rust f7f4c08 and swift 2a3ddc6): CANDOR_PROBE_FAULT=1 empties Client.fetch and SubO.m, makes the stale/nothing doctors the identity, and injects the short `types` key for the w arms — 11 cells go red: rust c5, o4, w2, and swift r7a, r7b, c1, c5, o1b, o4, g1, w1 (swift c3 is disclosed by the member-miss rule and o5 is vacuous once a producer publishes `holds`). CANDOR_PART95_CAL=controls puts Env into the bodies the controls must not charge: rust c2_final, c2_enum, c4_cross, c8_closed_pure (and u1_bound, whose pure-only Quiet the calibration makes effectful) and all five swift controls go red. CANDOR_PART95_CAL=guess empties the GUESSED targets of r1–r4: swift r1–r4 and o1 go red on `deny Fs`, so the kept-guess cells are satisfied by the guess alone. CANDOR_PART95_CAL=surface injects a hand-spelled holds/types/adds. `--selftest` flips every gate cell of every arm (160) and seeds poison into the u1, w, p1, p2, p3, p4 and p5 judges, including the short `types` key a see-what-you-can producer would emit.
 
 
+# PART 96 — BIND/LISTEN AND NAME RESOLUTION FOR `Net`, FOUR-WAY, SPEC §2 ⟨0.40⟩. SOUNDNESS R817, R949.
+#
+# A bind or listen address is where the process LISTENS, never a destination it reaches: it must not
+# enter `hosts`, and a bind marks nothing (an ephemeral client's `send_to` carries its own locator). A
+# unit that ACCEPTS talks to peers no literal can name, so its Net surface is `incomplete` and `allow
+# Net <host>` fails closed over it. Before this part the family cited "⟨0.29⟩'s rule that a listen
+# address must never enter `hosts`" and SPEC had no such sentence; on its first execution the part
+# found the drift running BOTH ways — rust and ts certify a server beside a benign literal, java
+# publishes the bind address and hedges every bind, and swift's NIO `bind(host:port:)` is read as a
+# destination (`allow Net 10.0.0.5` exit 0 over a socket bound to it). Every one is a DECLARED xfail.
+#
+# A REVIEW CORRECTED THE BIND SENTENCE (R949): a bind handed a runtime STRING resolves it, so it is a
+# Net reach with an unseen locator, like an explicit resolver. b_rtbind is now a bind over an
+# already-RESOLVED address (one variable from e_rtname, which hands the same bind a string); f_rtresolve
+# is the explicit resolver; g_litdiscard pins that a literal name resolved and discarded is published.
+#
+# FIXTURE REACH IS CHECKED FIRST and a miss is a HARNESS FAULT, never an xfail: a report, `f` carrying
+# Net, the benign literal in `hosts`, and `deny Net` exiting 1 on the same bytes. The reach check
+# earned its keep on the part's first run — rust's `if let Ok(s) = UdpSocket::bind(…)` spelling of
+# d_ephemeral never surfaced the `send_to` at all (SOUNDNESS R946), and it was reported as a harness
+# fault instead of being scored as an over-charge.
+[ -f "$HERE/gen_bind_listen.py" ] || { echo "FAIL: gen_bind_listen.py is missing"; exit 2; }
+echo
+echo "[96] a bind/listen address is never a destination, a bind marks nothing, and an accept fails \`allow Net\` closed"
+P96_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_bind_listen.py"
+) || { P96_OK=1; rc=1; }
+[ "$P96_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on a_litbind is a bind address published as a destination or certified; a ✘ on c_accept is a server certified by a benign literal; a ✘ on e_rtname or f_rtresolve is a resolution of a runtime name certified by a benign literal; a ✘ on g_litdiscard is a resolved literal name left out of hosts; a ✘ on b_rtbind or d_ephemeral is a bind OVER-CHARGED, which fails closed but makes ordinary clients uncertifiable; a HARNESS line is a fixture that never reached its engine and is not a verdict"
+echo "PART 96 — a bind/listen address is never a destination, a unit that accepts and a resolution of a computed name have an incomplete Net surface (SPEC §2 ⟨0.40⟩; SOUNDNESS R817, R949)"
+# ENGINES: rust java ts swift
+# CONTROLS: b_rtbind d_ephemeral — b_rtbind (a bind over an already-resolved runtime address, beside a benign literal) and d_ephemeral (an ephemeral bind plus a send to a literal) MUST certify, so a fix cannot pass c_accept or e_rtname by marking every bind — java and swift's NIO `bind(to:)` fail b_rtbind today, which is the over-charge this clause forbids
+# NOTE: xfails are keyed (arm, engine) — on R817: rust c_accept, ts c_accept, java a_litbind/b_rtbind/d_ephemeral, swift a_litbind/b_rtbind (NIO)\; on R949: rust e_rtname, ts e_rtname, rust g_litdiscard, java g_litdiscard (both fail closed, without the name). A PASSING xfail is a FAILURE. swift was reported conformant before this part ran — it is, on the Network.framework spellings only
+# CALIBRATED: CANDOR_PROBE_FAULT=1 writes the c_accept and f_rtresolve cells with the benign connect alone — java and swift go red on c_accept and all four on f_rtresolve (6 cells, exit 1). The first fault tried — b_rtbind's body — moved no verdict, because the engines right about c_accept are the ones that over-charge a runtime bind. The stale-xfail path was calibrated by declaring rust b_rtbind (passing) as an xfail: XFAIL ARM PASSED, exit 1. The reach check was calibrated by the R946 spelling: HARNESS, exit 1
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

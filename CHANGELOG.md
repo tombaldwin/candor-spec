@@ -25,6 +25,25 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.40⟩ gains a third half, binding ALL FOUR engines: bind/listen for `Net` (SOUNDNESS R817).** §2 now
+  says what the family had been citing as "⟨0.29⟩'s rule" with no sentence behind it: a bind or listen
+  address is where the process listens, never a destination, so it MUST NOT enter `hosts`; a bind marks
+  nothing (an ephemeral client's own `send_to`/`connect` carries its locator); and a unit that ACCEPTS — a
+  Rust `accept`/`incoming`, `ServerSocket.accept`, a node server's `listen`, an `NWListener`, a server
+  bootstrap — MUST put `Net` into `incomplete`, so `allow Net <host>` fails closed over it. A review then
+  corrected the bind sentence (SOUNDNESS R949): only a LITERAL or already-RESOLVED bind address marks
+  nothing, because a bind handed a runtime STRING (`UdpSocket::bind(h)`, `dgram.bind(0, h)`, NIO
+  `bind(host: h)`, `new InetSocketAddress(h, 0)`) resolves it — and a resolution of a computed name, by a
+  resolver call or a bind, is a `Net` reach whose locator is unseen and MUST carry `incomplete`; a literal
+  name resolved enters `hosts` even when discarded. Flips both ways: 0 → 1 over an accept or a bind handed a
+  runtime name beside a benign literal (candor-scan, candor-ts) and over a literal NIO bind read as a
+  destination (candor-swift, `allow Net 10.0.0.5` exit 0 today); 1 → 0 over a bind over a resolved address
+  where the engine hedged it (candor-java; candor-swift's NIO `bind(to:)`). Pinned by the new PART 96 —
+  seven arms per engine, fixture reach checked first and a miss scored as a harness fault, never an xfail —
+  with eleven DECLARED xfails (seven on R817, four on R949). The review's premise that candor-swift was conformant held
+  for its Network.framework spellings only. The part's reach check also caught SOUNDNESS R946 (candor-scan
+  drops a `send_to` under `if let Ok(s) = UdpSocket::bind(…)`, so a benign literal certifies a send to a
+  caller-chosen address). Folded into the unreleased ⟨0.40⟩, as the baseline-guard half was.
 - **⟨0.40⟩ gains a second half, binding ALL FOUR engines: the AS-EFF-005 baseline guard no longer exempts
   a function absent from the baseline.** Its prior is `baseline[key] ?? ∅`, so a new function performing a
   real effect fires (exit 1, never 2), a new pure function passes, and a new `Unknown`-only function stays

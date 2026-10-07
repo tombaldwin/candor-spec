@@ -204,13 +204,24 @@ COVERED = {
         "holds":  r"TYPE-SURFACE: OK — every control holds",
         "breaks": r"TYPE-SURFACE: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 96 (SOUNDNESS R817/R949). The fault writes the c_accept AND f_rtresolve cells with the benign
+    # connect ALONE, so the arms that MUST fail closed cannot: java and swift go red on c_accept (rust and ts
+    # are xfailed there and cannot mask it) and all four on f_rtresolve — six cells, every engine reached. THE FIRST FAULT TRIED WAS VACUOUS, in a new way:
+    # b_rtbind's body (a bind that never accepts) moved no verdict, because the two engines right about
+    # c_accept are exactly the two that over-charge a runtime bind. A sibling arm's body is a fault only
+    # for an engine that gets the sibling right.
+    "gen_bind_listen.py": {
+        "args":   [],
+        "holds":  r"BIND/LISTEN: OK — every conformant cell holds",
+        "breaks": r"BIND/LISTEN: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 16
+COVERED_FLOOR = 17
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
