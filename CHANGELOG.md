@@ -199,6 +199,21 @@ Run it after any patch-cycle commit that adds a section here.
   declared N/A (no class inheritance). Probe-covered (floor 14 → 15): the fault empties the override, and
   all nine reference cells go red.
 
+- **SOUNDNESS: the release's monotone-against-v0.39.3 blockers, filed and closed (R976–R989, R960).** Checking
+  0.40.0 against v0.39.3 unit by unit found rows whose gate went 1 → 0 because a resolution removed an
+  `Unknown` that had been standing in front of a PRE-EXISTING silence. Each one was resolved or re-hedged
+  with a true reason before the cut. **Closed by resolution:** swift R976 (`Optional<T>`/`Array<T>`/
+  `Dictionary<K, V>` spellings, swift-nio `channelRead`) and R983 (`extension Outer.Inner` members, nio
+  `AddressFamily`) — candor-swift `05a2dc9`, `f811933`; rust-scan R977 (nested feature arms inside a cfg-off
+  item, redis), R978 (`type A = Arc<T>` aliases, moka), R979 (generic accessor returning a type parameter,
+  mongodb), R980 (`Pin::new(x).poll`, reqwest), R984 (UFCS `Trait::m(&local)`, value-bag), R987, R988, R989
+  and R960 (clang-sys `link!`) — candor-rust `58ebaa8`, `e695f27`, `daf9666`, `4840023`. **Re-hedged, still
+  open as disclosed:** R981, R985, R986 (candor-rust `daf9666`, `4840023`, `583055f`); R982 is closed for
+  external targets and open for crate-local ones. The audits' other pre-existing findings are filed as
+  R990–R1008: eleven swift silences (the R976 census's nine absences, implicit member syntax, a metatype
+  binding), the rust `macro_rules!`-generated fn, and the disclosure, fabrication and unsettled rows beside
+  them. Open cardinal sins 38 → 50.
+
 ## [0.39.3] — 2026-09-30
 
 - **R584 FIXED (candor-swift `1edf1ee`/`c40ffc5`)** — the class half of type-receiver dispatch. The ruling:
