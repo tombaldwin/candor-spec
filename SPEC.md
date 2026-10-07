@@ -17,7 +17,7 @@ report is interchangeable across languages — for an AI agent, a human, or a CI
 - [8. Changelog](#8-changelog)
 - [Appendix — Implementing 0.8: the checklist](#appendix--implementing-08-the-checklist)
 
-**Version 0.39** — all code engines declare `0.39`; the floor is conformance-pinned. How versions
+**Version 0.40** — all code engines declare `0.40`; the floor is conformance-pinned. How versions
 move (the ladder, the floor, who may lead a rung) is stated once, in **[Versioning policy](#versioning-policy)**
 below. The ⟨0.23⟩/⟨0.22⟩/⟨0.21⟩/⟨0.20⟩/⟨0.19⟩/⟨0.12⟩/⟨0.11⟩/⟨0.10⟩/⟨0.9⟩/⟨0.8⟩ markers through this document tag each surface with the rung that
 introduced it; the [changelog](#8-changelog) lists every rung's contents. Each rung through ⟨0.29⟩ is additive over the last,
@@ -147,9 +147,9 @@ half was folded into ⟨0.40⟩ for the reason the baseline-guard half was: the 
 PART 96, DECLARED xfails on SOUNDNESS R817 and R949.
 
 **⟨0.40⟩ IS NOT ADDITIVE, AND IT FLIPS BOTH WAYS — ONE OF THEM ONLY BY PERMISSION.** It is IMPLEMENTED by
-candor-swift (`2a3ddc6`) and candor-scan (`f7f4c08`, which does not yet implement the Rust permission's
-`Deref` rows), and DECLARED by no engine: as with ⟨0.38⟩,
-the `spec` declaration moves at the floor-bump commit, not at the port. It binds candor-scan and
+candor-swift (`2a3ddc6`) and candor-scan (`f7f4c08`, with the Rust permission's `Deref` rows in
+`61dfea3`), and DECLARED by every engine from the floor bump of 2026-10-07: as with ⟨0.38⟩,
+the `spec` declaration moved at the floor-bump commit, not at the port. It binds candor-scan and
 candor-swift, and java and ts declare it NOT APPLICABLE (§2). **The PRODUCER half is additive only because a protocol-valued result has its own key.**
 `holds`, `returnsProtocol`, `types` and `adds` are new, so a consumer that ignores them is unaffected —
 but folding a protocol result into ⟨0.23⟩'s `returns` was measured to SILENCE the shipped candor-swift
@@ -485,7 +485,7 @@ one file per package, named so multiple reports don't collide (the Rust impl use
 
 ```json
 {
-  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.39" },
+  "candor":    { "version": "<engine build id>", "toolchain": "<channel>", "spec":    "0.40" },
   "resolves":  ["fs", "incomplete"],                             // §2.1 ⟨0.27⟩ optional refinements this producer computes
   "functions": [ /* the entries below */ ]
 }
@@ -2195,7 +2195,7 @@ implementation MAY fall back to that sidecar for provenance.
 `extensions`, naming the optional per-function refinement surfaces the engine actually resolves:
 
 ```json
-{ "candor": { "version": "…", "toolchain": "…", "spec": "0.39" },
+{ "candor": { "version": "…", "toolchain": "…", "spec": "0.40" },
   "resolves": ["fs", "incomplete"],
   "functions": [ … ] }
 ```
@@ -3208,7 +3208,7 @@ a different sink.
 **(2) THE FAIL-CLOSED REPORT IS A MANIFEST-CARRYING EMPTY UNDER ⟨0.21⟩ ROW 1** — the shape a ⟨0.24⟩ consumer
 already reads as *nothing was judged, no purity licence*:
 
-    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.39" },
+    { "candor":     { "version": "…", "toolchain": "…", "spec": "0.40" },
       "functions":  [],
       "analyzed":   { "count": 0 },
       "unanalyzed": [ { "path": "<what the run could not analyze>", "reason": "<why>" } ] }
@@ -6101,7 +6101,7 @@ field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a remov
 declare it via the envelope's `spec`.
 
 - **0.40 (AUTHORED 2026-10-03 and revised through three adversarial reviews; IMPLEMENTED by candor-swift
-  `2a3ddc6` and candor-scan `f7f4c08`, declared by no engine until the floor bump; binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
+  `2a3ddc6` and candor-scan `f7f4c08`, declared by all four engines from the floor bump, 2026-10-07, first released as 0.40.0; the type-surface half binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, the downward way only by permission. §2 gains four `typeSurface` keys beside ⟨0.23⟩'s
   `returns`: **`holds`** (a static, property, field or top-level value → its DECLARED type, a protocol
   included), **`returnsProtocol`** (a function whose result is exactly one protocol — kept OUT of `returns`
@@ -6118,7 +6118,8 @@ declare it via the envelope's `spec`.
   all already `Unknown`, 0 unscoped gate flips, one row gaining a reason class). §4 ⟨0.39⟩ gains one sentence: a subclass override is an
   "implementor". Closes the design gap behind R831/R617 and lets rust resolve the hops R856/R857 could
   only disclose; the `adds` case was measured SILENT in both engines. Pinned by PART 95, whose
-  resolution, degraded and producer arms are DECLARED xfails on R843 for both engines. **Second half,
+  resolution, degraded and producer arms were DECLARED xfails on R843 for both engines, all retired
+  before the floor bump. **Second half,
   binding ALL FOUR engines (2026-10-06): the baseline guard's new-code exemption ends** — §3's AS-EFF-005
   prior is `baseline[key] ?? ∅`, so a function absent from a present baseline that performs a real effect
   fires (exit 1); a new pure function passes; a new `Unknown`-only function is advisory but named; every

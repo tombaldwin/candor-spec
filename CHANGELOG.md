@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **The floor moves to 0.40.** Every engine declares `0.40` (`bin/spec-bump.sh`); SPEC.md's Contents banner,
+  its three envelope fences, README and AGENTS move with it, and the MUST ledger's banner entry is
+  re-anchored. The ⟨0.40⟩ narrative and its §8 entry stop saying "declared by no engine" and say the
+  type-surface xfails (R843) and the Rust `Deref` rows (candor-scan `61dfea3`) landed before the bump; the
+  additivity entry is re-anchored with its classification re-read and unchanged.
+
 - **PART 87's `java-pure-inherited` over-charge control is amended (SOUNDNESS R965).** It used to require a
   `protected` field-bound callback to stay unhedged. That held java LESS disclosed than ts, swift and rust on
   the identical shape, and it left a chained consumer's subclass able to reassign the field silently (executed).
