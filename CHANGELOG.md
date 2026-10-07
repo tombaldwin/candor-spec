@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.0] — 2026-10-07
+
 - **The floor moves to 0.40.** Every engine declares `0.40` (`bin/spec-bump.sh`); SPEC.md's Contents banner,
   its three envelope fences, README and AGENTS move with it, and the MUST ledger's banner entry is
   re-anchored. The ⟨0.40⟩ narrative and its §8 entry stop saying "declared by no engine" and say the
