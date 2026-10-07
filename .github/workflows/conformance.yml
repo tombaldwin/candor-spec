@@ -139,7 +139,11 @@ jobs:
   cross-impl-differential:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 30 → 45 (2026-10-07). A passing run is ~25 min and slow runners are ~1.3x UNIFORMLY slower, so 30 cut
+    # off half the runs; the cost is probe_check.py (~350 s: 16 generators x clean+fault arms, serial),
+    # NOT PART 22 (3.6 s — a header-to-header timing blamed it). Moving probe_check to its own job is the
+    # real fix; this is the margin until then.
+    timeout-minutes: 45
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
@@ -227,7 +231,9 @@ jobs:
   four-engine-differential:
     if: github.event_name != 'schedule'
     runs-on: macos-15
-    timeout-minutes: 40
+    # 40 → 60 (2026-10-07): ~36 min before ⟨0.40⟩'s PARTs 15d/96 landed, then cancelled at 39.5 min on the
+    # join commit (local four-way on the same trees: OK). Still a hard limit — the swift CI-hang lesson stands.
+    timeout-minutes: 60
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
