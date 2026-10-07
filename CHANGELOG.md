@@ -25,6 +25,18 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **The 2026-10-07 join: every engine ported ⟨0.40⟩'s second and third halves, and every declared xfail on
+  them is retired.** `conformance/run.sh` P15B_XFAIL and P15D_XFAIL are empty (java `f86ac36`, candor-scan
+  `cda4555` incl. R933's `n5_new_crate`, ts `59ddfa6`, swift `cd14f9d`) and PART 96's XFAIL table is empty
+  (java `89ca454`+`d57a600`, candor-scan `23bc8af`+`a0d4d8e`+`b9547fa`, ts `6d20f06`+`ef48606`, swift
+  `ab87646`). `ckgatefns` normalises candor-ts's new stable unit keys (`<kind>@<anchor path>#<k>`, SOUNDNESS
+  R944) to `@N` beside the old offset form. §3.1 names the policy subject on both gate routes — a
+  function's report entry, including any interface union merged into it (SOUNDNESS R682; no new
+  obligation, the input the byte-equality MUST already fixes); §2 records candor-scan's extension key
+  `declaration: true` (SOUNDNESS R894). `scripts/soundness-status.py` reads an engine-prefixed CLOSED head
+  (`rust — **CLOSED — …`) as a closure, symmetric with the 2026-09-25 OPEN fix: R542, R561, R562, R568 and
+  R570 leave the shipping-defect list and nothing else moves.
+
 - **⟨0.40⟩ gains a third half, binding ALL FOUR engines: bind/listen for `Net` (SOUNDNESS R817).** §2 now
   says what the family had been citing as "⟨0.29⟩'s rule" with no sentence behind it: a bind or listen
   address is where the process listens, never a destination, so it MUST NOT enter `hosts`; a bind marks

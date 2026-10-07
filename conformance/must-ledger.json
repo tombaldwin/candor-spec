@@ -3582,6 +3582,12 @@
       "at": "2. The report",
       "excerpt": "⟨0.40⟩ **A RESOLUTION OF A COMPUTED NAME IS A `Net` REACH WHOSE LOCATOR IS THE NAME, WHATEVER THE RESULT IS US",
       "part": "PART 96 (e_rtname — a bind handed a runtime string beside a benign literal: `allow Net <benign>` exits 1; f_rtresolve — an explicit resolver over a runtime name: exits 1; g_litdiscard — a literal name resolved and discarded is in `hosts` and the allow exits 1; b_rtbind — a bind over an already-resolved value marks nothing). SOUNDNESS R949."
+    },
+    {
+      "sha": "0d38cf347905e917",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "⟨0.40⟩ **A function's report entry, including any interface union merged into it, is the policy subject on BOT",
+      "unenforced": "EXERCISED IN ONE ENGINE, FOUR-WAY CELL OWED. candor-java GateReportVerbTest.aUnionMergedIntoABodilessEntryIsJudgedAlikeByBothRoutes (candor-java d21be89, merged f03946e) byte-compares the --gate-json of `scan --policy` and of `gate --report` over the report that same scan wrote, for a union merged into a real bodiless abstract entry, with a mutation control (the pre-fix route differs). No conformance PART holds it: the byte-equality MUST it names is pinned per engine by the gate --report parts, but no PART fixture produces a union MERGED INTO A REAL ENTRY, the shape candor-java's writer was measured producing; whether candor-scan, candor-ts or candor-swift ever merge a union into a real entry under one hash was NOT measured when this entry was written, so the four-way answer is unknown rather than vacuous. The owed cell is a PART 92/94-style fixture whose dependency declares a capability on an abstract member AND has an implementor, gated on both routes and byte-compared, four-way. SOUNDNESS R682."
     }
   ]
 }

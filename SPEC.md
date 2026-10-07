@@ -1737,6 +1737,17 @@ already carry.
 recognize. An engine MAY add extension fields (e.g. a mode marker on an observed-fleet report);
 the fields this document defines are the interchange contract, not a closed schema.
 
+⟨0.40⟩ *An extension key recorded so it is not invented twice: `"declaration": true` (candor-scan, SOUNDNESS
+R894).* candor-scan publishes a unit for each `pub` FOREIGN-FUNCTION DECLARATION of a package
+(`extern "C" { pub fn creat(..); }`) — a name with no body, answered `Unknown` with `unknownWhy:
+["native:extern fn"]`, as the same call is answered in-crate — and marks it `"declaration": true`, omitted
+when false. A consumer that does not recognise the key ignores it under the rule above, exactly as a
+pre-⟨0.23⟩ consumer ignores `interfaceUnion: true`. candor-scan reads it for one decision: a chained report
+whose EVERY unit carries it grants no coverage (a `-sys` crate of declarations plus `pub use` re-exports
+must keep its re-exports `invisible`), which the row's shape cannot decide because a crate of foreign-call
+wrappers looks identical. No other engine emits it and none is required to; an engine with the same need
+should use this spelling rather than a second one.
+
 Each entry:
 
 ```json
@@ -2819,6 +2830,18 @@ exactly three refusals" already presupposed this scoping without stating it
 engine over 25 rows and two corpora (a 970-function report against 13 policies, up to 113 violations, plus
 a fixture making the scoped arms non-vacuous). Anything less than byte-equality lets the two routes drift
 into two gates.
+
+⟨0.40⟩ **A function's report entry, including any interface union merged into it, is the policy subject on
+BOTH routes** (SOUNDNESS R682). This adds no obligation; it names the input the byte-equality MUST above
+already fixes, for the one case where an engine had the routes reading different inputs. An engine that
+merges a §4 union into a REAL entry under the same hash when it WRITES the report — candor-java does, for a
+bodiless abstract member whose class declares a capability — MUST gate that merged entry on `scan --policy`
+as well, because `gate --report` reads `S` and `D` "from the report as given" and so judges the merged
+entry. Measured on candor-java: over 60 census jars (SOUNDNESS R682) 137 violations on the gate route
+only, zero on the scan route only, all AS-EFF-006 and all 137 abstract declarations (`javap`); and on a
+minimal fixture at `6c000a4`, `deny Fs p.A.m` exited 0 on the scan and 1 on `gate --report` over the
+report that same scan wrote. The scan route MUST NOT
+recompute the merge either: the entries it gates are the entries it writes.
 
 ⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never
 evaluated.** Reaching equivalence required the refusals below, each found by measurement and each
@@ -6102,7 +6125,7 @@ declare it via the envelope's `spec`.
   005 verdict row carries ⟨0.12⟩'s `origin`; the ⟨0.16⟩ sidecar decides only that label; candor-scan's
   per-crate prefix counts a crate with no file under a present prefix as absent. One-way, 0 → 1, no flip at
   upgrade (a different-build baseline already exits 2). Pinned by PART 15d and PART 15b's `absent` arm,
-  DECLARED xfails on R932/R933 for every engine. **Third half, binding ALL FOUR engines (2026-10-07): bind/listen
+  DECLARED xfails on R932/R933 for every engine, all retired at the 2026-10-07 join (every engine ported). **Third half, binding ALL FOUR engines (2026-10-07): bind/listen
   for `Net`** — a bind or listen address never enters `hosts`, a bind marks nothing (an ephemeral client's
   `send_to` carries its own locator), and a unit that ACCEPTS carries `incomplete: ["Net"]` so `allow Net`
   fails closed over it; and a resolution of a COMPUTED name — a resolver call, or a bind handed a runtime
@@ -6110,7 +6133,10 @@ declare it via the envelope's `spec`.
   resolved enters `hosts` and a bind over an already-resolved address marks nothing. Flips both ways: 0 → 1
   over an accept beside a benign literal (rust, ts), over a bind handed a runtime name (rust, ts) and over a
   literal NIO bind (swift); 1 → 0 over a bind over a resolved address where the engine hedged it (java,
-  swift NIO). Pinned by PART 96, DECLARED xfails on R817 and R949.
+  swift NIO). Pinned by PART 96, DECLARED xfails on R817 and R949, all eleven retired at the 2026-10-07
+  join. §3.1 also names the policy subject (SOUNDNESS R682): a function's report entry, including any
+  interface union merged into it, on BOTH routes — no new obligation, the byte-equality MUST's input; and
+  §2 records candor-scan's extension key `declaration: true` (SOUNDNESS R894).
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave
