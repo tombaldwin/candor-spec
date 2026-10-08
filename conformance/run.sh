@@ -3039,7 +3039,31 @@ cat > "$W/macrohidden/Cargo.toml" <<'TOML'
 name = "macrohidden"
 version = "0.1.0"
 TOML
+# The macro is defined in ANOTHER FILE (`#[macro_use] mod mac;`). Since candor-rust R1004 (0.40.1) a macro
+# defined in the SAME file as its item-position invocation is EXPANDED and its free fns are real units, so a
+# same-file fixture no longer exercises `macro:` — the kind is still owed for every expansion the engine
+# declines, and a cross-file definition is one it declines. `macroexpanded` below pins the resolution side.
+cat > "$W/macrohidden/src/mac.rs" <<'RS'
+macro_rules! m {
+    () => { pub fn spawn(p: &str) -> bool { std::process::Command::new(p).status().is_ok() } };
+}
+RS
 cat > "$W/macrohidden/src/lib.rs" <<'RS'
+#[macro_use]
+mod mac;
+mod hidden {
+    m!();
+}
+use crate::hidden::spawn;
+pub fn go(p: &str) -> bool { spawn(p) }
+RS
+"$SCAN" "$W/macrohidden" --json > "$W/macrohidden.json" 2>/dev/null || true
+# R1004 — THE RESOLUTION SIDE: the same body behind a SAME-FILE `macro_rules!` is expanded, so the caller
+# must carry the real `Exec` (a `macro:` hedge here would be the pre-0.40.1 answer, an over-disclosure where
+# a resolution exists).
+mkdir -p "$W/macroexpanded/src"
+printf '[package]\nname = "macroexpanded"\nversion = "0.1.0"\n' > "$W/macroexpanded/Cargo.toml"
+cat > "$W/macroexpanded/src/lib.rs" <<'RS'
 mod hidden {
     macro_rules! m {
         () => { pub fn spawn(p: &str) -> bool { std::process::Command::new(p).status().is_ok() } };
@@ -3049,7 +3073,7 @@ mod hidden {
 use crate::hidden::spawn;
 pub fn go(p: &str) -> bool { spawn(p) }
 RS
-"$SCAN" "$W/macrohidden" --json > "$W/macrohidden.json" 2>/dev/null || true
+"$SCAN" "$W/macroexpanded" --json > "$W/macroexpanded.json" 2>/dev/null || true
 # THE UNION FIXTURES — the discriminator nothing else in this suite has. One definition, two `#[cfg]`
 # arms, and the arms carry DIFFERENT effects (Fs vs Exec), so the three failure shapes are separable in
 # the caller's own row: the UNION is `['Exec','Fs']`, a PICK is a single concrete effect (one
@@ -3216,6 +3240,14 @@ else:
     else:
         print(f"  rust(macro): `go` carries {[w for w in _mw if w.startswith('macro:')]!r} — ⟨0.39⟩'s "
               "sixth kind is produced by a purpose-built input, not merely permitted")
+    _xp = _mp.replace("macrohidden.json", "macroexpanded.json")
+    _xf = [f for f in (json.load(open(_xp)).get("functions") or [])
+           if (f.get("fn") or "").endswith("::go") or (f.get("fn") or "") == "go"] if os.path.exists(_xp) else []
+    if not any("Exec" in (f.get("inferred") or []) for f in _xf):
+        print(f"  DIVERGE [rust(macro-expanded)] a same-file `macro_rules!` body is not resolved: `go` reads "
+              f"{[f.get('inferred') for f in _xf]!r}, want Exec (R1004)"); fails += 1
+    else:
+        print("  rust(macro-expanded): `go` carries Exec — a same-file macro body is expanded (R1004)")
 
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
