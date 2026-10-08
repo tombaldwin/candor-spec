@@ -6847,7 +6847,7 @@ vd_doc() { python3 -c "$VD_PY" "$@"; }
 # retire the line in the port's own commit.
 # candor-scan 396f182, candor-ts a742c85 and candor-java c3a8afc (branch java-zeromatch) implement it;
 # each passes (c5)-(c7) and has NO line here, so this part is green only once all three are merged.
-VD_ZMA_XFAIL="c5:swift:R952 c5:agents:R952"
+VD_ZMA_XFAIL="c5:agents:R952"
 # $1 label  $2 engine key (VD_ZMA_XFAIL)  $3 a scope that binds an effectful unit on this fixture  $4 the
 # console's noun ("function"/"unit")  — then the scan command, TARGET INCLUDED. Prints its own verdict
 # line; returns non-zero on any failure.
