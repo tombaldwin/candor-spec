@@ -3039,13 +3039,19 @@ cat > "$W/macrohidden/Cargo.toml" <<'TOML'
 name = "macrohidden"
 version = "0.1.0"
 TOML
-# The macro is defined in ANOTHER FILE (`#[macro_use] mod mac;`). Since candor-rust R1004 (0.40.1) a macro
-# defined in the SAME file as its item-position invocation is EXPANDED and its free fns are real units, so a
-# same-file fixture no longer exercises `macro:` — the kind is still owed for every expansion the engine
-# declines, and a cross-file definition is one it declines. `macroexpanded` below pins the resolution side.
+# The macro is defined in ANOTHER FILE as two `#[cfg]` TWINS with different bodies. Since candor-rust
+# R1004 (0.40.1) a `macro_rules!` with ONE definition is EXPANDED wherever in the crate it is defined, and
+# its free fns are real units — so a single-definition fixture no longer exercises `macro:`. A name defined
+# twice with different bodies is one the engine declines (which twin is live is a configuration question),
+# and the kind is still owed there. `macroexpanded` / `macroxfile` below pin the resolution side.
 cat > "$W/macrohidden/src/mac.rs" <<'RS'
+#[cfg(unix)]
 macro_rules! m {
     () => { pub fn spawn(p: &str) -> bool { std::process::Command::new(p).status().is_ok() } };
+}
+#[cfg(not(unix))]
+macro_rules! m {
+    () => { pub fn spawn(p: &str) -> bool { std::fs::write(p, b"x").is_ok() } };
 }
 RS
 cat > "$W/macrohidden/src/lib.rs" <<'RS'
@@ -3074,6 +3080,24 @@ use crate::hidden::spawn;
 pub fn go(p: &str) -> bool { spawn(p) }
 RS
 "$SCAN" "$W/macroexpanded" --json > "$W/macroexpanded.json" 2>/dev/null || true
+# R1004 cross-file — ONE definition in another file is expanded too.
+mkdir -p "$W/macroxfile/src"
+printf '[package]\nname = "macroxfile"\nversion = "0.1.0"\n' > "$W/macroxfile/Cargo.toml"
+cat > "$W/macroxfile/src/mac.rs" <<'RS'
+macro_rules! m {
+    () => { pub fn spawn(p: &str) -> bool { std::process::Command::new(p).status().is_ok() } };
+}
+RS
+cat > "$W/macroxfile/src/lib.rs" <<'RS'
+#[macro_use]
+mod mac;
+mod hidden {
+    m!();
+}
+use crate::hidden::spawn;
+pub fn go(p: &str) -> bool { spawn(p) }
+RS
+"$SCAN" "$W/macroxfile" --json > "$W/macroxfile.json" 2>/dev/null || true
 # THE UNION FIXTURES — the discriminator nothing else in this suite has. One definition, two `#[cfg]`
 # arms, and the arms carry DIFFERENT effects (Fs vs Exec), so the three failure shapes are separable in
 # the caller's own row: the UNION is `['Exec','Fs']`, a PICK is a single concrete effect (one
@@ -3240,14 +3264,15 @@ else:
     else:
         print(f"  rust(macro): `go` carries {[w for w in _mw if w.startswith('macro:')]!r} — ⟨0.39⟩'s "
               "sixth kind is produced by a purpose-built input, not merely permitted")
-    _xp = _mp.replace("macrohidden.json", "macroexpanded.json")
-    _xf = [f for f in (json.load(open(_xp)).get("functions") or [])
-           if (f.get("fn") or "").endswith("::go") or (f.get("fn") or "") == "go"] if os.path.exists(_xp) else []
-    if not any("Exec" in (f.get("inferred") or []) for f in _xf):
-        print(f"  DIVERGE [rust(macro-expanded)] a same-file `macro_rules!` body is not resolved: `go` reads "
-              f"{[f.get('inferred') for f in _xf]!r}, want Exec (R1004)"); fails += 1
-    else:
-        print("  rust(macro-expanded): `go` carries Exec — a same-file macro body is expanded (R1004)")
+    for _xn, _xd in (("macroexpanded", "a same-file"), ("macroxfile", "a cross-file single-definition")):
+        _xp = _mp.replace("macrohidden.json", _xn + ".json")
+        _xf = [f for f in (json.load(open(_xp)).get("functions") or [])
+               if (f.get("fn") or "").endswith("::go") or (f.get("fn") or "") == "go"] if os.path.exists(_xp) else []
+        if not any("Exec" in (f.get("inferred") or []) for f in _xf):
+            print(f"  DIVERGE [rust({_xn})] {_xd} `macro_rules!` body is not resolved: `go` reads "
+                  f"{[f.get('inferred') for f in _xf]!r}, want Exec (R1004)"); fails += 1
+        else:
+            print(f"  rust({_xn}): `go` carries Exec — {_xd} macro body is expanded (R1004)")
 
 if "ambiguous" not in seen.get("rust(vocab)", set()):
     print("  DIVERGE [rust(vocab)] the purpose-built ambiguity fixture produced NO `ambiguous:` reason — "
@@ -6809,6 +6834,7 @@ echo "[36] VERDICT-DOCUMENT CELLS  (SPEC §3.1/§4 ⟨0.27⟩ — composed shape
 # ENGINES: rust java ts swift
 # CONTROLS: vd_probe — cells assert the composed verdict document at the sink over passing AND refusing arms; an absent ts/swift prints NOT CHECKED rather than passing silently. vd_zma — (c6) a scoped `allow` that BINDS and (c7) a scopeless one must exit 1 with NO zeroMatch, so (c5) cannot pass on an engine that discloses every `allow` or whose `allow` never gates
 # NOTE: (c5) is a DECLARED xfail (VD_ZMA_XFAIL, cell:engine:ROW) on R952 for swift and agents only — rust (396f182), ts (a742c85) and java (c3a8afc) pass and carry no line. Only the disclosure half is xfailable; exit/ok stay hard. A PASSING xfail is a FAILURE, so each engine's port retires its own line
+# CALIBRATED (c8)/(c9), 2026-10-08: pointing the agents arm at candor-agents f72850a (pre-b425c0b, R1030 unfixed) FAILS (c8) — exit 0 with no zeroMatch — and passes (c9); candor-agents 85decc6 and java/rust/ts/swift main pass both. (c9) is the either-endpoint floor every engine already honoured.
 # CALIBRATED: 2026-10-08, by hand, the cells extracted verbatim into a harness over the same fixtures. candor-scan v0.40.0 as published (`cargo install --version 0.40.0`, pre-396f182) FAILS (c5) on both disclosure halves and passes (c6)/(c7); candor-scan main 15ef1d1 (carries 396f182), candor-ts a742c85 and candor-java c3a8afc pass all three; java 8cd68e2 and ts main fail (c5) only. Declaring c5:rust:R952 against 15ef1d1 prints XFAIL PASSED and exits 1. Re-pointing (c6)'s scope at zzz.nomatch2 reds (c6) on all five engines (exit 0 — the rule no longer gates)
 VD_OK=0
 VDW="$W/vd"; mkdir -p "$VDW"
@@ -6883,8 +6909,23 @@ vd_zma() {
   err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c7.policy" --gate-json "$G.c7.json" 2>&1 >/dev/null); rc=$?
   { [ "$rc" = 1 ] && vd_doc "$G.c7.json" viol nozm >/dev/null; } || { echo "     FAIL $label (c7): a SCOPELESS \`allow\` must gate (exit 1) with NO \`zeroMatch\` (exit $rc) — it binds every unit by construction"; bad=1; }
   case "$err" in *"matched NO $noun"*) echo "     FAIL $label (c7): a SCOPELESS \`allow\` was reported as zero-match — it binds everything"; bad=1;; esac
+  # (c8)/(c9) — SOUNDNESS R1030, `forbid`: SPEC §4 counts a `forbid` as BOUND when EITHER endpoint matches
+  # (unlike `only`, measured on `from` alone). (c8) neither endpoint binds → disclosed, verdict untouched;
+  # (c9) only `to` binds → NOT a zero-match (a shared policy may name a layer absent from this tree), so an
+  # engine that discloses every one-sided miss fails (c9) and one that never enrolls `forbid` fails (c8).
+  local fmiss="forbid zzz.nomatch -> zzz.other"
+  printf '%s\n' "$fmiss"                          > "$G.c8.policy"
+  printf 'forbid zzz.nomatch -> %s\n' "$bscope"   > "$G.c9.policy"
+  rm -f "$G.c8.json"
+  err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c8.policy" --gate-json "$G.c8.json" 2>&1 >/dev/null); rc=$?
+  { [ "$rc" = 0 ] && vd_doc "$G.c8.json" okt "zm:$fmiss" >/dev/null; } || { echo "     FAIL $label (c8): a \`forbid\` neither of whose endpoints binds must leave the verdict alone AND carry \`zeroMatch: [\"$fmiss\"]\` (exit $rc) — R1030"; bad=1; }
+  case "$err" in *"matched NO $noun"*) : ;; *) echo "     FAIL $label (c8): no \"matched NO $noun\" line on stderr for a \`forbid\` that binds nothing (R1030)"; bad=1;; esac
+  rm -f "$G.c9.json"
+  err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c9.policy" --gate-json "$G.c9.json" 2>&1 >/dev/null); rc=$?
+  { [ "$rc" = 0 ] && vd_doc "$G.c9.json" okt nozm >/dev/null; } || { echo "     FAIL $label (c9): \`forbid zzz.nomatch -> $bscope\` binds through its \`to\` endpoint — exit 0, ok, and NO \`zeroMatch\` (exit $rc; SPEC §4: a \`forbid\` counts a match on either endpoint)"; bad=1; }
+  case "$err" in *"matched NO $noun"*) echo "     FAIL $label (c9): a \`forbid\` bound through its \`to\` endpoint was reported as zero-match"; bad=1;; esac
   local c5say=disclosed; [ -n "$xrow" ] && c5say="xfail(${xrow##*:})"
-  [ "$bad" = 0 ] && { echo "  $label allow-zeroMatch: scoped-miss=$c5say binding=quiet scopeless=exempt"; return 0; }
+  [ "$bad" = 0 ] && { echo "  $label allow-zeroMatch: scoped-miss=$c5say binding=quiet scopeless=exempt; forbid: both-miss=disclosed one-side=quiet"; return 0; }
   return 1
 }
 
