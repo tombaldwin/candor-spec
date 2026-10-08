@@ -25,6 +25,23 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Conformance PART 10 and PART 36 follow two engine fixes (SOUNDNESS R1004, R1030).** PART 10: candor-rust now
+  expands every `macro_rules!` with ONE definition wherever in the crate it is defined, so `macrohidden` moves to a
+  cross-file definition written as two `#[cfg]` twins with different bodies — the shape the engine still declines and
+  must hedge `macro:` — and a new `macroxfile` cell pins the cross-file single-definition expansion (`go` carries
+  `Exec`). PART 36 gains the `forbid` arm of the zero-match pin: (c8) a `forbid` NEITHER of whose endpoints binds is
+  disclosed (`zeroMatch` + the console line, verdict untouched); (c9) one bound through `to` alone is NOT a zero-match.
+  Calibrated against candor-agents before its fix: (c8) fails, (c9) passes. Pins only; no SPEC.md text changes.
+- **Register: the v042 soundness wave filed (SOUNDNESS).** CLOSED with their fix commits: R1023, R1024 (wider than
+  filed), R1025 (mechanism corrected: the alias's own generics), R1028, R1030 (premise corrected: a `forbid` is a
+  zero-match only when NEITHER endpoint binds), R246, R241 (as a hedge), R905, R1009, R1010, and the new R1031, R1032,
+  R1033, R1035–R1039, R1045–R1047, R1049. PARTLY CLOSED and kept open for a residual the spec lane measured and EXECUTED
+  as silent: R1004 (a macro-generated IMPL called by path), R934 (a divergent shared callee), R935 (an
+  interface-declared property; an array holding the object), and the new R1034 (fabrication closed; a non-path impl
+  with no colliding free fn is still reached by no call), R1044 (a generic type's member return) and R1048 (a labelled
+  generic argument). R706 and R548 relabelled as non-gating `invisible` disclosure gaps; R958 and R974 (a) keep
+  `DIR=SILENT` with the reason in the row. Open cardinal sins 25 → 20 (`scripts/sin-direction.py`).
+
 - **Conformance PART 36 gains the `allow` arm of the zero-match pin (SOUNDNESS R952).** SPEC §4 ⟨0.27⟩
   covers *a rule whose SCOPE matches no function* without naming a form, but every cell posed `deny`, and
   measured all five engines enrolled only deny-shaped rules: `allow Net in zzz.nomatch h` exited 0 with no
