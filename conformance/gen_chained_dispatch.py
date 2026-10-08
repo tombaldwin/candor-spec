@@ -434,11 +434,11 @@ XFAIL = {
 
     # RETIRED 2026-09-25, candor-rust `e4808bf` — the FIRST engine to close it. rust now reads
     # `['Unknown'], unresolved: true, unknownWhy: ['dispatch:Backend.size']` on this arm. Keep the
-    # table rather than deleting it: java and swift are still open, and a PASSING xfail is what
+    # table rather than deleting it: a PASSING xfail is what
     # announced this one, exactly as it announced each of ⟨0.39⟩'s four.
     # ("c9_consumer_zero_union", "rust"):  "R533",
     # ("c9_consumer_zero_union", "java"):  "R533",   # retired 2026-10-06, candor-java `2a658d6` (R533 + R919, both halves)
-    ("c9_consumer_zero_union", "swift"): "R533",
+    # ("c9_consumer_zero_union", "swift"): "R533",   # retired 2026-10-08, candor-swift `f01a417` (R706: an attested protocol with no declared subtype discloses dispatch:P.m) — R533 is now closed four-way
 
     # RETIRED 2026-09-20, candor-ts `ee844f0` — the FOURTH and last engine. **⟨0.39⟩ IS NOW PORTED IN ALL
     # FOUR AND THIS TABLE IS EMPTY**, which is the state it was built to reach: every line was retired by
