@@ -3588,6 +3588,12 @@
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "⟨0.40⟩ **A function's report entry, including any interface union merged into it, is the policy subject on BOT",
       "unenforced": "EXERCISED IN ONE ENGINE, FOUR-WAY CELL OWED. candor-java GateReportVerbTest.aUnionMergedIntoABodilessEntryIsJudgedAlikeByBothRoutes (candor-java d21be89, merged f03946e) byte-compares the --gate-json of `scan --policy` and of `gate --report` over the report that same scan wrote, for a union merged into a real bodiless abstract entry, with a mutation control (the pre-fix route differs). No conformance PART holds it: the byte-equality MUST it names is pinned per engine by the gate --report parts, but no PART fixture produces a union MERGED INTO A REAL ENTRY, the shape candor-java's writer was measured producing; whether candor-scan, candor-ts or candor-swift ever merge a union into a real entry under one hash was NOT measured when this entry was written, so the four-way answer is unknown rather than vacuous. The owed cell is a PART 92/94-style fixture whose dependency declares a capability on an abstract member AND has an implementor, gated on both routes and byte-compared, four-way. SOUNDNESS R682."
+    },
+    {
+      "sha": "e511fdb7eec6c002",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "**The union binds the arms an engine CANNOT decide; it does not bind an arm the engine can decide false from t",
+      "unenforced": "A SCOPING CLARIFICATION of the ⟨0.36⟩/⟨0.38⟩ union, added 2026-10-08 (SOUNDNESS R982) with no rung: it narrows where the union is OWED and adds no obligation an engine can newly fail. No conformance PART holds the default-feature half — PART 10 and PART 89 drive `cfg(unix)`/`#if` arms the manifest cannot decide, and no fixture declares a `[features]` table — so the practice it states is pinned only in candor-rust's own suite (R140's inactive-declared-feature `use`, R977's compiled-out-item union, R982's renamed crate-local residual, each with an executed fixture). Whether swift has a manifest-decidable arm (a `.define` in Package.swift gating `#if`) was not measured when this entry was written; java and ts are excluded from the union for the reasons in the Scope bullets above. The owed cell, if the clause ever needs one: a PART 89 rust arm whose crate declares a non-default feature, asserting the feature-off arm is NOT unioned at top level and IS unioned inside an item compiled out of the default build."
     }
   ]
 }

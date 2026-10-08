@@ -31,7 +31,19 @@ Run it after any patch-cycle commit that adds a section here.
   disclosure. New cells (c5) scoped `allow` binding nothing → `zeroMatch` + the console line, verdict
   untouched; (c6) the same rule binding `entry` → fires, undisclosed; (c7) a scopeless `allow` → exempt.
   Scan route only (`gate --report` refuses every `allow`). candor-scan, candor-ts and candor-java pass
-  (their R952 fixes); swift and agents carry declared (c5) xfails on R952. No SPEC.md text changes — a pin, not a rung.
+  (their R952 fixes); swift (`56fe1a5`) and agents (`f72850a`) followed and their (c5) xfails are retired, so the
+  part is green on all five with no declared xfail. No SPEC.md text changes — a pin, not a rung.
+- **Register: the post-0.40.0 soundness wave filed (SOUNDNESS).** CLOSED with their fix commits: R952 (five engines),
+  R959, R962, R963, R893 (residual → R1023), R982 (renamed residual fixed; the ungated shape resolved as no
+  population), R803, R780, R815, R778, R873, R956, R966, R936, R990–R1000, R791, R792, R773, R533 (now four-way) and
+  the new R1011. PARTLY CLOSED and kept open for a measured residual: R1004 (cross-file macro, bare call), R905 (platform
+  generics beyond NSCache), R974 (a), R706 (a dependency that judged nothing). New: R1009, R1010, R1016, R1023–R1028,
+  R1030. Open cardinal sins 50 → 25 (`scripts/sin-direction.py`). PART 10 now pins `macro:` on a cross-file
+  `macro_rules!` and R1004's same-file expansion as a resolution (`macroexpanded`).
+- **SPEC §4 clarification, not a rung: the configuration-arm union binds only arms the engine cannot decide.** An arm
+  decidable false from the manifest's default features (a declared, non-default Cargo feature) is outside the build
+  the engine describes and is not unioned; inside an item the default build compiles out, nested arms still union.
+  Writes down the R140/R977/R982 practice; no engine's behaviour changes.
 
 ## [0.40.0] — 2026-10-07
 

@@ -5079,6 +5079,19 @@ as it has restatements, and fixing the one you found is not fixing it.
   the two engines this clause binds: the arm is chosen by the SCANNER's resolution mode, not by
   anything written in the tree, so a reader of the source cannot see which arm won.
 
+**The union binds the arms an engine CANNOT decide; it does not bind an arm the engine can decide false
+from the package manifest's DEFAULT features.** A clarification of existing practice, not a rung
+(SOUNDNESS R140, R977, R982). Where an arm's predicate is decidable from the manifest — in Rust, a
+`feature` the manifest declares and its default set does not enable — the build an engine describes is
+the default build, the arm is not in it, and dropping that arm describes the build rather than picking
+one: no configuration of that build reaches it. The union is for predicates the manifest cannot settle
+(target platform, a `cfg` the manifest does not declare), where every arm is a build somebody can make.
+Inside an item the default build compiles OUT but the engine analyses anyway there is no default build to
+describe, so that item's nested arms union (R977). Code that compiles only under a non-default feature
+set — an ungated call to a name bound only under an inactive feature — describes a build the default does
+not contain; resolving it would mean choosing a different feature set, which is the operator's decision,
+not an arm this clause makes the engine union (R982).
+
 **This clause was RULED on 2026-09-12 and the ruling's own premise — that the engines already did this,
 so it confirmed `main` — was measured FALSE:** rust unioned on the definition route and HEDGED on the
 alias route (one program answered two ways depending on whether its alias crossed a module boundary),
