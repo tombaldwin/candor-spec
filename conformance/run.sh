@@ -6783,11 +6783,33 @@ fi
 #        is satisfied by an engine that writes a refusal to stdout unconditionally;
 #   (c3) a firing scopeless rule must exit 1 with NO `zeroMatch` key — else (c1) is satisfied by an
 #        engine that emits `zeroMatch` for every rule, and the fixture is proven to actually bind.
+#
+# (c5)-(c7) THE `allow` ARM OF (c) — SOUNDNESS R952. §4's clause is headed "a rule whose SCOPE matches no
+# function", naming no rule form, and `allow <E> [in <scope>] <value>…` has a scope; but every cell above
+# poses `deny`, and measured on 2026-10-08 ALL FIVE engines enrolled only deny-shaped rules in the
+# zero-match count: `allow Net in zzz.nomatch h` exited 0 with `ok: true`, no stderr line and no
+# `zeroMatch` key (candor-scan v0.40.0, candor-java/candor-swift v0.38.2, candor-ts and candor-agents at
+# their 0.40.0 mains). An `allow` is a CERTIFICATION, so one that binds nothing is the worse typo: the
+# operator believes a surface was checked. No SPEC text changes — the clause already covers the form —
+# so this is a pin, not a rung. Three rows, each differing from its neighbour in ONE thing:
+#   (c5) a SCOPED `allow` that binds nothing → exit 0, `ok: true` (verdict UNTOUCHED, never xfailed),
+#        `zeroMatch: [raw]` verbatim AND the console's "matched NO function" line (the PART 32 wording,
+#        so the two channels agree) — the disclosure half is the declared-xfail half;
+#   (c6) the SAME rule scoped to a function that exists (`entry`) and a host it does not reach → exit 1
+#        AS-EFF-008, NO `zeroMatch`, no console line: the vacuity floor proving the scope spelling binds
+#        on this fixture and the allow gates at all, so (c5)'s silence is about binding, not parsing;
+#   (c7) a SCOPELESS `allow` → exit 1, NO `zeroMatch`: an absent scope is the whole unit (§3.3), so it
+#        binds by construction and is exempt exactly as a scopeless `deny` is (PART 32 row (c)).
+# SCAN ROUTE ONLY, by the spec rather than by omission: `gate --report` REFUSES every `allow` uniformly
+# (§3.1's answerability list, measured exit 2 four-way), and a refusal document never carries
+# `zeroMatch` — so there is no (c4)-style gate-route cell for this arm, and none is owed.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 echo
 echo "[36] VERDICT-DOCUMENT CELLS  (SPEC §3.1/§4 ⟨0.27⟩ — composed shape, stream sink, zeroMatch)"
 # ENGINES: rust java ts swift
-# CONTROLS: vd_probe — cells assert the composed verdict document at the sink over passing AND refusing arms; an absent ts/swift prints NOT CHECKED rather than passing silently
+# CONTROLS: vd_probe — cells assert the composed verdict document at the sink over passing AND refusing arms; an absent ts/swift prints NOT CHECKED rather than passing silently. vd_zma — (c6) a scoped `allow` that BINDS and (c7) a scopeless one must exit 1 with NO zeroMatch, so (c5) cannot pass on an engine that discloses every `allow` or whose `allow` never gates
+# NOTE: (c5) is a DECLARED xfail (VD_ZMA_XFAIL, cell:engine:ROW) on R952 for swift and agents only — rust (396f182), ts (a742c85) and java (c3a8afc) pass and carry no line. Only the disclosure half is xfailable; exit/ok stay hard. A PASSING xfail is a FAILURE, so each engine's port retires its own line
+# CALIBRATED: 2026-10-08, by hand, the cells extracted verbatim into a harness over the same fixtures. candor-scan v0.40.0 as published (`cargo install --version 0.40.0`, pre-396f182) FAILS (c5) on both disclosure halves and passes (c6)/(c7); candor-scan main 15ef1d1 (carries 396f182), candor-ts a742c85 and candor-java c3a8afc pass all three; java 8cd68e2 and ts main fail (c5) only. Declaring c5:rust:R952 against 15ef1d1 prints XFAIL PASSED and exits 1. Re-pointing (c6)'s scope at zzz.nomatch2 reds (c6) on all five engines (exit 0 — the rule no longer gates)
 VD_OK=0
 VDW="$W/vd"; mkdir -p "$VDW"
 printf 'deny Clock\ndeny Frobnicate\n' > "$VDW/bad.policy"    # one honourable no-match line + one bad token
@@ -6819,6 +6841,52 @@ for want in sys.argv[2:]:
 for b in bad: print(f"  {b}")
 sys.exit(1 if bad else 0)'
 vd_doc() { python3 -c "$VD_PY" "$@"; }
+
+# (c5)-(c7) — SOUNDNESS R952. Declared xfails as cell:engine:ROW; only (c5)'s DISCLOSURE half can be
+# xfailed — its exit/ok, and all of (c6)/(c7), are hard on every engine. A PASSING xfail is a FAILURE:
+# retire the line in the port's own commit.
+# candor-scan 396f182, candor-ts a742c85 and candor-java c3a8afc (branch java-zeromatch) implement it;
+# each passes (c5)-(c7) and has NO line here, so this part is green only once all three are merged.
+VD_ZMA_XFAIL="c5:swift:R952 c5:agents:R952"
+# $1 label  $2 engine key (VD_ZMA_XFAIL)  $3 a scope that binds an effectful unit on this fixture  $4 the
+# console's noun ("function"/"unit")  — then the scan command, TARGET INCLUDED. Prints its own verdict
+# line; returns non-zero on any failure.
+vd_zma() {
+  local label=$1 eng=$2 bscope=$3 noun=$4; shift 4
+  local cmd=( "$@" ) bad=0 rc err why="" xrow
+  local G="$VDW/zma${label// /}"
+  local miss="allow Net in zzz.nomatch h"
+  printf '%s\n' "$miss"                         > "$G.c5.policy"
+  printf 'allow Net in %s zzz.example\n' "$bscope" > "$G.c6.policy"
+  printf 'allow Net zzz.example\n'                > "$G.c7.policy"
+  # (c5) binds nothing → verdict untouched (hard), disclosed on both channels (xfailable)
+  rm -f "$G.c5.json"
+  err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c5.policy" --gate-json "$G.c5.json" 2>&1 >/dev/null); rc=$?
+  { [ "$rc" = 0 ] && vd_doc "$G.c5.json" okt >/dev/null; } || { echo "     FAIL $label (c5): a scoped \`allow\` that binds nothing must leave the verdict alone — exit $rc / ok not true (the disclosure must never become a verdict)"; bad=1; }
+  vd_doc "$G.c5.json" "zm:$miss" >/dev/null || why="no \`zeroMatch: [\"$miss\"]\` in the verdict document"
+  case "$err" in *"matched NO $noun"*) : ;; *) why="${why:+$why; }no \"matched NO $noun\" line on stderr";; esac
+  xrow="$(printf '%s\n' $VD_ZMA_XFAIL | grep "^c5:$eng:" || true)"
+  if [ -z "$why" ]; then
+    [ -n "$xrow" ] && { echo "     FAIL $label (c5): XFAIL PASSED — VD_ZMA_XFAIL declares ${xrow##*:} but the scoped \`allow\` IS disclosed; the engine ported R952, RETIRE the line"; bad=1; }
+  elif [ -n "$xrow" ]; then
+    echo "     xfail $label (c5) — declared, owned by ${xrow##*:}: $why"
+  else
+    echo "     FAIL $label (c5): a scoped \`allow\` whose scope binds nothing was scored as satisfied in silence — $why (SPEC §4 ⟨0.27⟩; an allowlist that certified nothing is a gate that cannot fail)"; bad=1
+  fi
+  # (c6) the floor: the same form scoped to a unit that exists → it gates, and is not disclosed
+  rm -f "$G.c6.json"
+  err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c6.policy" --gate-json "$G.c6.json" 2>&1 >/dev/null); rc=$?
+  { [ "$rc" = 1 ] && vd_doc "$G.c6.json" viol nozm >/dev/null; } || { echo "     FAIL $label (c6): \`allow Net in $bscope zzz.example\` must BIND and fire AS-EFF-008 with NO \`zeroMatch\` (exit $rc) — without this floor (c5) passes on an engine whose \`allow\` never gates or that discloses every \`allow\`"; bad=1; }
+  case "$err" in *"matched NO $noun"*) echo "     FAIL $label (c6): an \`allow\` that BINDS was reported as zero-match"; bad=1;; esac
+  # (c7) a scopeless `allow` binds every unit by construction → exempt, and still gates
+  rm -f "$G.c7.json"
+  err=$(env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_BASELINE "${cmd[@]}" --policy "$G.c7.policy" --gate-json "$G.c7.json" 2>&1 >/dev/null); rc=$?
+  { [ "$rc" = 1 ] && vd_doc "$G.c7.json" viol nozm >/dev/null; } || { echo "     FAIL $label (c7): a SCOPELESS \`allow\` must gate (exit 1) with NO \`zeroMatch\` (exit $rc) — it binds every unit by construction"; bad=1; }
+  case "$err" in *"matched NO $noun"*) echo "     FAIL $label (c7): a SCOPELESS \`allow\` was reported as zero-match — it binds everything"; bad=1;; esac
+  local c5say=disclosed; [ -n "$xrow" ] && c5say="xfail(${xrow##*:})"
+  [ "$bad" = 0 ] && { echo "  $label allow-zeroMatch: scoped-miss=$c5say binding=quiet scopeless=exempt"; return 0; }
+  return 1
+}
 
 # ── fixtures: a BEFORE (Fs) and AFTER (Fs+Net) per engine, baselines recorded in-run ──────────────
 mkdir -p "$VDW/jb/q" "$VDW/ja/q" "$VDW/rb/src" "$VDW/ra/src" "$VDW/tb" "$VDW/ta" "$VDW/swb/gd" "$VDW/swa/gd"
@@ -7254,17 +7322,21 @@ vd_gate_probe() {
 VD_GATE=( java -jar "$JAR" gate )
 VD_BAD=( java -jar "$JAR" "$VDW/no-such-target-java" )
 vd_probe "candor-java " "$VDW/jbase.json" "deny Fs" java -jar "$JAR" "$VDW/jac" || VD_OK=1
+vd_zma "candor-java " java entry function java -jar "$JAR" "$VDW/jac" || VD_OK=1
 VD_GATE=( "$QUERY" gate )
 VD_BAD=( "$SCAN" "$VDW/no-such-target-rust" )
 vd_probe "candor-scan " "$VDW/rbase.json" "deny Fs" "$SCAN" "$VDW/ra" || VD_OK=1
+vd_zma "candor-scan " rust entry function "$SCAN" "$VDW/ra" || VD_OK=1
 [ -n "$TS_OK" ] || echo "  · candor-ts NOT CHECKED (engine absent, or its smoke scan failed) — PART 36 covers the engines named below, not four by default"
 [ -n "$TS_OK" ] && { VD_GATE=( node "$TS_DIR/query.mjs" gate )
 VD_BAD=( node "$TS_DIR/scan.mjs" "$VDW/no-such-target-ts" )
-vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1; }
+vd_probe "candor-ts   " "$VDW/tbase.json" "deny Fs" node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_out" || VD_OK=1
+vd_zma "candor-ts   " ts entry function node "$TS_DIR/scan.mjs" "$VDW/ta/vd.ts" "$VDW/t_zma_out" || VD_OK=1; }
 { [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; } || echo "  · candor-swift NOT CHECKED (engine absent — the documented CI shape on ubuntu) — PART 36 covers the engines named below"
 [ -n "$SW_OK" ] && [ -x "$SW_BIN" ] && { VD_GATE=( "$SW_BIN" gate )
 VD_BAD=( "$SW_BIN" "$VDW/no-such-target-swift" )
-vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1; }
+vd_probe "candor-swift" "$VDW/sbase.gd.Swift.json" "deny Fs" "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_out" || VD_OK=1
+vd_zma "candor-swift" swift entry function "$SW_BIN" "$VDW/swa/gd" --out "$VDW/s_zma_out" || VD_OK=1; }
 
 # candor-agents: groups (b) and (c) — it has no AS-EFF-005 baseline producer, so group (a)'s composed
 # state is unreachable there by construction (said here so absence reads as N/A, not as a skipped row).
@@ -7357,6 +7429,8 @@ PYRUN
   rm -f "$VDW/ag.c3.json"
   env -u CANDOR_POLICY -u CANDOR_CONFIG "${AGCMD[@]}" --policy "$VDW/ag.fire.policy" --gate-json "$VDW/ag.c3.json" >/dev/null 2>&1; agrc=$?
   { [ "$agrc" = 1 ] && vd_doc "$VDW/ag.c3.json" viol nozm; } || { echo "     FAIL candor-agents (c3): a firing run must carry NO \`zeroMatch\` key (exit $agrc)"; AG_OKROW=1; }
+  # (c5)-(c7) the `allow` arm (R952) — a fleet's units are agents, so the binding scope is one
+  vd_zma "candor-agents" agents researcher unit "${AGCMD[@]}" || AG_OKROW=1
   # ⟨0.28⟩ THE DUPLICATE-SINK RUNG, ON THE FIFTH ENGINE. It was implemented here on the same day as the
   # other four and pinned on none of them-but-four: `vd_probe` carries (b18)/(b20)/(b21)/(b22) and is
   # invoked only for java/rust/ts/swift, while this engine has its own hand-written row list. Five commit

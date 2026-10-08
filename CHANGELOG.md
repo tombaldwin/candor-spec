@@ -25,6 +25,14 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Conformance PART 36 gains the `allow` arm of the zero-match pin (SOUNDNESS R952).** SPEC §4 ⟨0.27⟩
+  covers *a rule whose SCOPE matches no function* without naming a form, but every cell posed `deny`, and
+  measured all five engines enrolled only deny-shaped rules: `allow Net in zzz.nomatch h` exited 0 with no
+  disclosure. New cells (c5) scoped `allow` binding nothing → `zeroMatch` + the console line, verdict
+  untouched; (c6) the same rule binding `entry` → fires, undisclosed; (c7) a scopeless `allow` → exempt.
+  Scan route only (`gate --report` refuses every `allow`). candor-scan, candor-ts and candor-java pass
+  (their R952 fixes); swift and agents carry declared (c5) xfails on R952. No SPEC.md text changes — a pin, not a rung.
+
 ## [0.40.0] — 2026-10-07
 
 - **The floor moves to 0.40.** Every engine declares `0.40` (`bin/spec-bump.sh`); SPEC.md's Contents banner,
