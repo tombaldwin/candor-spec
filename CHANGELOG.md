@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.1] — 2026-10-08
+
 - **Conformance PART 10 and PART 36 follow two engine fixes (SOUNDNESS R1004, R1030).** PART 10: candor-rust now
   expands every `macro_rules!` with ONE definition wherever in the crate it is defined, so `macrohidden` moves to a
   cross-file definition written as two `#[cfg]` twins with different bodies — the shape the engine still declines and
