@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.3] — 2026-10-09
+
 - **Conformance PART 92: swift's `c10_unchained_direct` xfail is retired, and the run no longer leaves its workspace
   behind.** candor-swift `31e200a` (SOUNDNESS R1066) attributes `invisible` to a direct dispatch on a receiver that a
   blind dependency's own sources declare, which closes the two-blind-import half of R548 that the xfail pinned. Each
