@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.2] — 2026-10-09
+
 - **Register: filed the v043 soundness wave (SOUNDNESS).** CLOSED with their fix commits: R1004 (the impl that a
   local macro generates; the trait-impl path spelling is hedged `macro:`), R1034 (typed receivers of a non-path impl),
   R1027 (redirect-module reasons ordered most specific first; the published v0.40.1 printed 2–4 distinct reports per
