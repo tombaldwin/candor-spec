@@ -66,6 +66,8 @@ GENERATORS = [
     "gen_dep_override.py",
     "gen_type_surface.py",
     "gen_bind_listen.py",
+    "gen_model_verdict.py",
+    "gen_route_equality.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

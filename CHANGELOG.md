@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Conformance PART 97: each engine's `gate --report` verdict is judged against the reference model**
+  (LEAN-CHECKER-PLAN.md Phase 0, `conformance/gen_model_verdict.py`). Arm A: 1254 reachable `(S, D)` leaves
+  (|S|, |D| <= 2) x 100 policies per engine (`pure`, `deny e`, `deny e Unknown` bare / all six / each class),
+  asserting the violating fn set, the violation count, and exit 1 iff the model rejects anything, never 2.
+  Arm B: the report->(S,D) projection — the three ⟨0.24⟩ repair rows as a multi-function report with
+  `calls`, a reasonless direct `Unknown`, and an inherited `Unknown` with no `calls` that must be refused.
+  Arm C: §6.2's class map, one leaf per raw token, including `indirect:x` (a class name, so `unresolved`).
+  Green four-way on current mains; four in-suite controls and a `probe_check.py` fault; calibrated by hand
+  against two one-line faults in a throwaway candor-ts worktree (the shared `evaluatePolicy`, and the
+  report route's projection).
+- **Conformance PART 98: `scan --policy` and `gate --report` are byte-equal over class-scoped,
+  layer-scoped and inherited-`Unknown` rules** (`conformance/gen_route_equality.py`), four-way, 17 policies
+  per engine over an idiomatic fixture, with floors requiring a class-scoped hit on an inherited `Unknown`.
+  Extends PART 27 R6's three unscoped policies; the R682 merged-union cell remains OWED.
+- `lean/README.md` and the PART 23 header no longer say PART 23 runs engines; PART 97 does.
+
 ## [0.40.3] — 2026-10-09
 
 - **Conformance PART 92: swift's `c10_unchained_direct` xfail is retired, and the run no longer leaves its workspace

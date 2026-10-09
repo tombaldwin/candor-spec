@@ -2906,6 +2906,87 @@ echo "PART 96 — a bind/listen address is never a destination, a unit that acce
 # NOTE: xfails are keyed (arm, engine) — on R817: rust c_accept, ts c_accept, java a_litbind/b_rtbind/d_ephemeral, swift a_litbind/b_rtbind (NIO)\; on R949: rust e_rtname, ts e_rtname, rust g_litdiscard, java g_litdiscard (both fail closed, without the name). A PASSING xfail is a FAILURE. swift was reported conformant before this part ran — it is, on the Network.framework spellings only
 # CALIBRATED: CANDOR_PROBE_FAULT=1 writes the c_accept and f_rtresolve cells with the benign connect alone — java and swift go red on c_accept and all four on f_rtresolve (6 cells, exit 1). The first fault tried — b_rtbind's body — moved no verdict, because the engines right about c_accept are the ones that over-charge a runtime bind. The stale-xfail path was calibrated by declaring rust b_rtbind (passing) as an xfail: XFAIL ARM PASSED, exit 1. The reach check was calibrated by the R946 spelling: HARNESS, exit 1
 
+
+# PART 97 — EACH ENGINE'S `gate --report` VERDICT AGREES WITH THE REFERENCE MODEL. LEAN-CHECKER-PLAN.md Phase 0.
+#
+# PART 23 proves the model monotone and judges no engine. This feeds every engine signatures the model
+# has already judged, through the route SPEC §3.1 makes a pure function of the report and the policy.
+# Arm A: one leaf per REACHABLE signature with |S|<=2, |D|<=2 (1254 of 1474 — lean/ `emitRows`' slice),
+# 100 policies per engine (pure, deny e, deny e Unknown bare / [all six] / [each class]); per run the
+# violating fn SET equals the model's REJECT set, |violations| equals its count, exit is 1 iff > 0, never
+# 2. Arm B: the report->(S,D) PROJECTION arm A bypasses — the three ⟨0.24⟩ repair rows as a multi-function
+# report WITH `calls`, a reasonless direct Unknown (fires [unresolved], not [dispatch]), and an inherited
+# Unknown with no `calls` (class-scoped deny REFUSED, bare fires). Arm C: the §6.2 class map, one leaf per
+# raw token, including `indirect:x` (a class NAME, so the token is `unresolved`).
+#
+# THE ORACLE is reference/policy_model.py, not the Lean emitter: no Lean toolchain runs in this suite, and
+# lean.yml's 147,400-row differential is what keeps the two transcriptions equal.
+#
+# WHAT IT CANNOT SEE: an absent or fabricated effect (the analysis), scope matching (the gen_policy_match.py POLICY-MATCHING differential owns it), and
+# a REPORT-WRITING defect on the scan route — PART 98's question.
+#
+# CALIBRATED in the suite on every run (gen_model_verdict.py's own controls): the model with `Db ⊑ₑ Net`
+# reinstated diverges on all 9 `deny Net*` policies; one flipped expected verdict moves exactly one row;
+# an engine's own --gate-json with one violation deleted is caught; a zero-function report trips the floor.
+# CALIBRATED by hand against a real engine, 2026-10-09, in a THROWAWAY candor-ts worktree (never the main
+# tree): (1) policy.mjs `evaluatePolicy`, the `pure` branch made to count `Unknown` (the 2026-07-09
+# defect) -> arm A DIVERGE on `pure`, 21 rows (every D-only signature), ts only. The SAME build moved
+# `scan --policy pure` over an idiomatic callback fixture 0 -> 1 with the route documents still byte-equal:
+# the evaluator is shared by both routes, so this part reaches the scan route's predicate too, and PART 98
+# cannot see this fault. (2) query.mjs's `gate` verb handing `evaluatePolicy` the entries with `calls`
+# emptied on inherited-Unknown rows -> arm B DIVERGE (`b_reasoned_only` read `unresolved` — the measured
+# pre-⟨0.24⟩ ts shape), arm A unmoved; PART 98 DIVERGE on 8 of 17 policies.
+[ -f "$HERE/gen_model_verdict.py" ] || { echo "FAIL: gen_model_verdict.py is missing"; exit 2; }
+[ -f "$HERE/../reference/policy_model.py" ] || { echo "FAIL: reference/policy_model.py is missing — PART 97 has no oracle"; exit 2; }
+echo
+echo "[97] each engine's gate --report verdict equals the reference model's, lattice + projection + class map"
+P97_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_model_verdict.py"
+) || { P97_OK=1; rc=1; }
+[ "$P97_OK" = 0 ] || echo "  -> DIVERGE — an A line is a verdict on a leaf signature the model judged differently; a B line is the report->(S,D) projection (CONTRIBUTES, the class fixpoint over \`calls\`, answerability); a C line is a raw token projected to the wrong class; a CONTROL FAIL means the comparator could not say DIVERGE and the green above is not evidence"
+echo "PART 97 — each engine's gate --report verdict equals the reference model's (SPEC §4.0, §3.1 ⟨0.24⟩, §6.2; LEAN-CHECKER-PLAN.md Phase 0)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_model_verdict.py runs four controls every time (model-side Db-refines-Net seed, one flipped expected row, a deleted violation in a real --gate-json, a zero-function report) and fails the part if any does not diverge
+
+
+# PART 98 — ROUTE EQUALITY OVER THE PROJECTION: `scan --policy` == `gate --report` on the report that scan
+# wrote, for class-scoped, layer-scoped and inherited-Unknown rules (SPEC §3.1 ⟨0.24⟩ byte-equality, ⟨0.40⟩).
+#
+# PART 27 R6 pins the byte-equality four-way over THREE unscoped policies on a fixture with no `Unknown`.
+# This extends it to where the two routes compute differently: the scan route projects from its in-memory
+# analysis, the report route from the written `inferred`/`unknownWhy`/`calls`. 17 policies per engine over
+# an idiomatic fixture with direct and INHERITED `Unknown` of two classes (three on java), a layer, and an
+# inherited Fs. Floors: an exit 1 and an exit 0 per engine; a class-scoped rule firing on an entry with NO
+# direct Unknown (the report route's class fixpoint ran); a class-scoped rule rejecting strictly fewer
+# functions than bare Unknown.
+#
+# WHAT IT CANNOT SEE, measured: a fault in the evaluator BOTH routes share (PART 97's calibration (1):
+# both routes moved, documents stayed byte-equal). Not covered here and still OWED (must-ledger, R682): a
+# union MERGED INTO A REAL ENTRY — none of these fixtures produces one.
+#
+# CALIBRATED in the suite: a deleted violation reads NOT byte-equal; the scan's report with `calls`
+# stripped from inherited entries (callgraph sidecar left in place, which §3.1 forbids the route to read)
+# re-gates to a different document. By hand: PART 97's calibration (2), a report-route-only fault in
+# candor-ts, turns this part red on 8 of 17 policies, including an exit 0 -> 1 flip on `Unknown[unresolved]`.
+[ -f "$HERE/gen_route_equality.py" ] || { echo "FAIL: gen_route_equality.py is missing"; exit 2; }
+echo
+echo "[98] scan --policy and gate --report agree byte-for-byte over the report that scan wrote, class- and layer-scoped"
+P98_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_route_equality.py"
+) || { P98_OK=1; rc=1; }
+[ "$P98_OK" = 0 ] || echo "  -> DIVERGE — a NOT byte-equal line is a report that does not carry what the scan gated on, or a route that reads a different input; a VACUOUS line is a fixture that stopped exercising the projection"
+echo "PART 98 — scan --policy and gate --report are byte-equal over class-scoped, layer-scoped and inherited-Unknown rules (SPEC §3.1 ⟨0.24⟩, ⟨0.40⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_route_equality.py runs two controls every time (a deleted violation, and the scan's own report with `calls` stripped from inherited entries) and fails the part if either reads byte-equal
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
@@ -5547,15 +5628,14 @@ fi
 # violations the hypothetical INTRODUCES), so the code-implements-spec direction stayed with the
 # differential PARTs above.
 #
-# ⟨0.24⟩ THAT GAP IS BEING CLOSED: SPEC §3.1 now specifies `gate --report <locator> --policy <file>`,
-# which applies a policy to a GIVEN report with no scan. When engines ship it, this PART extends from "the
-# model is internally monotone" to "each ENGINE agrees with the model" — feed each one a signature the
-# model has already judged and compare verdicts. Do NOT extend it naively: a review found that PAPER3's
-# `pure` (Def 32) rejected a disclosed signature where the contract and all four engines pass it, so the
-# first differential row would have flagged four CONFORMING engines. The model was amended. The same
-# review found Defs 33/34/35 (`forbid`, `allow`, `unknown-ratchet`) also describe verbs that do not exist
-# as modelled — those rows must NOT be added until the definitions are reconciled, or this PART will
-# manufacture divergences out of the theory.
+# ⟨0.24⟩ THAT GAP IS CLOSED BY PART 97, NOT HERE. SPEC §3.1's `gate --report` applies a policy to a GIVEN
+# report with no scan, and PART 97 (gen_model_verdict.py) feeds each engine 1254 signatures this model has
+# already judged and compares verdicts. This PART still runs no engine. Do NOT add rows to either naively:
+# a review found PAPER3's `pure` (Def 32) rejected a disclosed signature where the contract and all four
+# engines pass it, so the first differential row would have flagged four CONFORMING engines (the model was
+# amended), and Defs 33/34/35 (`forbid`, `allow`, `unknown-ratchet`) describe verbs that do not exist as
+# modelled — `unknown_ratchet` below is still the PRE-amendment Def 35 (LEAN-CHECKER-PLAN.md §1), so the
+# "every shipped verb" line this PART prints includes one verb that was never shipped in that form.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 P23_OK=0
 REF="$HERE/../reference/policy_model.py"

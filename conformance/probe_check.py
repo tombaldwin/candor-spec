@@ -215,13 +215,28 @@ COVERED = {
         "holds":  r"BIND/LISTEN: OK — every conformant cell holds",
         "breaks": r"BIND/LISTEN: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 97 (LEAN-CHECKER-PLAN.md Phase 0). The fault deletes one violation from the first FIRING run's
+    # real --gate-json before it is judged — an engine answer turned into a silent pass. One engine keeps
+    # the probe short; the part's own four controls run in both arms and must stay green in the clean one.
+    "gen_model_verdict.py": {
+        "args":   ["--engine", "rust"],
+        "holds":  r"MODEL VERDICT: OK — \d+ engine\(s\) agree",
+        "breaks": r"MODEL VERDICT: [1-9]\d* run\(s\) wrong",
+    },
+    # PART 98. The fault deletes one violation from the first firing REPORT-route document before the
+    # byte comparison.
+    "gen_route_equality.py": {
+        "args":   ["--engine", "rust"],
+        "holds":  r"ROUTE EQUALITY: OK — \d+ engine\(s\)",
+        "breaks": r"ROUTE EQUALITY: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 17
+COVERED_FLOOR = 19
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

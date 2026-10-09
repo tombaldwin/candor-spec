@@ -212,7 +212,8 @@ below; the Boolean structure is free", and monotonicity is what Lemma 2 needs.
 The theory↔spec↔code chain has machinery in two places and none in the third:
 
 - `conformance/clause_check.py` — a property must quote a real **spec** clause;
-- `conformance/` PART 23 — the engines are run against `reference/policy_model.py`;
+- `conformance/` PART 97 — the engines' `gate --report` verdicts are run against `reference/policy_model.py`
+  (PART 23 checks only the model's own Lemma 2 and runs no engine);
 - **nothing** relates the spec text to the **paper** text.
 
 And `policy_model.py` is itself a hand transcription — an unverified, trusted artifact. Both documents

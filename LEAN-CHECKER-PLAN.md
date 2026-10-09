@@ -1,6 +1,8 @@
 # A per-report verdict checker compiled from the Lean model — plan
 
-Status: PLAN, revised 2026-10-09 after a review (§6 lists what changed and what was refused). Written against
+Status: revised 2026-10-09 after a review (§6 lists what changed and what was refused). **Phase 0 is BUILT as
+conformance PART 97 (`gen_model_verdict.py`) and Phase 0b as PART 98 (`gen_route_equality.py`), four-way green;
+Phase 1's `lean/README.md:215` and PART 23 header fixes are done. Everything else is a plan.** Written against
 candor-spec `5e14689`. PAPER3 is not in any repo; it is cited at
 `~/Library/Mobile Documents/com~apple~CloudDocs/candor-paper/PAPER3.md` (`P3:` below).
 
