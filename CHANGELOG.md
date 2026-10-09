@@ -25,6 +25,28 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Conformance PART 92: swift's `c10_unchained_direct` xfail is retired, and the run no longer leaves its workspace
+  behind.** candor-swift `31e200a` (SOUNDNESS R1066) attributes `invisible` to a direct dispatch on a receiver that a
+  blind dependency's own sources declare, which closes the two-blind-import half of R548 that the xfail pinned. Each
+  PART 92 run built a ~830 MB four-engine fixture workspace in `$TMPDIR` and never removed it (94 copies, ~78 GB, had
+  piled up by 2026-10-09); it is now removed at exit, and `CANDOR_KEEP_PART92_WS=1` keeps it for debugging.
+- **Register: filed the v044 soundness wave (SOUNDNESS).** CLOSED with their fix commits, each re-measured by the
+  spec lane on the pushed mains against the published 0.40.2 where the row says so: R529c (two body-local structs
+  sharing a name across functions), R1056 (a `Vec<T>`/`String` receiver reaching an `impl for [T]`/`str`, and generic
+  `impl<T> for [T]`), R1044 (a nested local generic instantiation), R935 (the environment in a container; the two
+  residuals the lane left unexecuted were executed here and are disclosed), R1061 (a NestJS token bound through a
+  `const`), R1052 (three leaf over-charges, fixed at the leaf), R548 (the two-import half), and R1066, which is
+  RECLASSIFIED: its unchained producer made a downstream consumer silent, so it was a cardinal sin rather than an
+  `invisible`-only gap. R1034 records its root (the merged-sibling hedge, now judged after propagation; a first cut
+  silenced single-file scans and was fixed before merge), and R119 records the removal of its pinned over-report. New
+  and closed: R1067, R1068, R1069, R1070 (a fabrication), R1072, R1073 (an over-hedge), R1074, R1075, R1077 (as a
+  disclosure), R1081 and R1082. New and OPEN, `DIR=SILENT`, for a residual the spec lane EXECUTED as silent on both the
+  pushed main and 0.40.2: R1071 (a dependency's extension of a platform PROTOCOL, reached from a stdlib receiver, is
+  absent even with the dependency's report chained) and R1080 (a `Vec` typed only by a pushed variable, or called
+  before its first push). New, not a silence: R1078. R843 is relabelled `DIR=NOTSILENT`: its member half is closed and
+  its free half carries `invisible` (the R548/R706 precedent). R1065 is partly resolved by R1072 where dependency
+  sources are readable. Open cardinal sins 16 → 12 (`scripts/sin-direction.py`); open rows 158 → 153.
+
 ## [0.40.2] — 2026-10-09
 
 - **Register: filed the v043 soundness wave (SOUNDNESS).** CLOSED with their fix commits: R1004 (the impl that a
