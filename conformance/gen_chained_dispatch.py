@@ -406,7 +406,7 @@ XFAIL = {
     # which names `dyn_sig_traits` and nothing else. Keep the arm: it is now a four-way regression pin,
     # and its `dispatch` control is what makes the one variable legible.
 
-    ("c10_unchained_direct", "swift"): "R548",
+    # ("c10_unchained_direct", "swift"): "R548",   # retired 2026-10-09, candor-swift 31e200a (R1066 (b): source-proven dependency ownership attributes invisible to a member call on a dependency-declared receiver)
 
     # SOUNDNESS R607 — c13's four-way answer, and rust is the only engine that does not COMPLETE.
     # java carries `['Net']` (which is R595's fix, confirmed four-way by this arm rather than by three
@@ -1359,8 +1359,13 @@ def run_engine(name, ws):
 
 
 def main():
-    import tempfile
+    import tempfile, atexit
     ws = tempfile.mkdtemp(prefix="candor-part92-")
+    # Each run builds four engines' fixture packages here — ~830 MB — and nothing removed it: 94 copies
+    # (~78 GB) had piled up in $TMPDIR by 2026-10-09, the disk hazard candor/CLAUDE.md warns fakes
+    # verdicts. Removed at exit on every path; CANDOR_KEEP_PART92_WS=1 keeps it for debugging.
+    if not os.environ.get("CANDOR_KEEP_PART92_WS"):
+        atexit.register(shutil.rmtree, ws, True)
     print("=" * 100)
     print("CHAINED-DISPATCH UNION differential ⟨0.39⟩ — a consumer carries every implementor it can see")
     print("  fixture : THREE packages — iface (dispatches) · effimpl (a FOREIGN effectful impl) · app;")
