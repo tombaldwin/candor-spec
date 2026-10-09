@@ -25,6 +25,22 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Register: filed the v043 soundness wave (SOUNDNESS).** CLOSED with their fix commits: R1004 (the impl that a
+  local macro generates; the trait-impl path spelling is hedged `macro:`), R1034 (typed receivers of a non-path impl),
+  R1027 (redirect-module reasons ordered most specific first; the published v0.40.1 printed 2–4 distinct reports per
+  crate over eight runs, differing only in `unknownWhy`, and HEAD printed one), R934 (the divergent half; the residual's
+  premise was wrong), R1016, R958 (intra-project assertions closed, the DI arm moved to R1061, and the dependency arm
+  is `invisible` rather than a silence), and R1048 (witness arguments aligned by label). New rows closed in the same
+  wave: R1050, R1051, R1055, R1060 and R1062 (premise corrected: the type-root leak, not the `@types/node` version).
+  R492 is PARTLY CLOSED by candor-java's generated framework table and moves to `DIR=UNSETTLED`: the measured
+  silences are closed, and the residue (version-divergent charges, members added by unsurveyed versions) was not
+  executed. Kept OPEN for a residual that the spec lane EXECUTED as silent on the pushed mains: R529c (two body-local
+  twins sharing a name), R935 (a `Map` holding the environment), R1044 (a nested generic instantiation), and the new
+  R1056 (a `Vec<T>` receiver reaching an `impl for [T]`) and R1061 (a NestJS token bound through a `const`). Also new
+  and open, not a silence: R1052 (leaf over-charges amplified by the table), R1065 (a dependency's generic type,
+  disclosed and awaiting a wire rung) and R1066 (an `invisible`-only coverage gap). Open cardinal sins 20 → 16
+  (`scripts/sin-direction.py`).
+
 ## [0.40.1] — 2026-10-08
 
 - **Conformance PART 10 and PART 36 follow two engine fixes (SOUNDNESS R1004, R1030).** PART 10: candor-rust now
