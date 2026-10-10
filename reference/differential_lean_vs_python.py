@@ -26,7 +26,8 @@ this script recomputes each row with `policy_model.py` and fails on any disagree
 carries `Exec.lean`'s bridge lemmas, so its Bool answers are the PROVED ones — a disagreement is
 therefore evidence against the Python, not a coin toss between two guesses.
 
-WHAT IT CANNOT CHECK, said plainly: both files are transcriptions of a paper that is not in this repo.
+WHAT IT CANNOT CHECK, said plainly: both files are transcriptions of a paper that is not in this repo
+(its Definitions are, as MODEL-DEFINITIONS.md, but this script does not read them).
 Agreement here means the two readings match; it cannot mean either matches PAPER3. Model↔paper drift
 stays a human check, and this closes the transcription↔transcription half of it.
 

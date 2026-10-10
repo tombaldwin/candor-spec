@@ -18,9 +18,12 @@ name: lean-model
 # which is the same defect as a property that cannot fail.
 #
 # WHAT IT CANNOT CHECK, stated so the green tick is not read as more than it is: the PAPER is not in this
-# repo (it is deliberately local-only), so CI can prove the model still type-checks and that its theorems
-# still hold — it cannot prove the transcription still MATCHES the paper. Model↔paper drift remains a
-# human check, and that is the residual this workflow does not close.
+# repo (it stays local-only), but its numbered DEFINITIONS are — MODEL-DEFINITIONS.md, a verbatim extract
+# with PAPER3 line ranges (Tom's ruling, 2026-10-10; definitions only, no lemmas, theorems or proofs). CI
+# can prove the model still type-checks and that its theorems still hold; doc-gates' `model_citations`
+# proves every cited DEFINITION exists in the extract. Neither proves the transcription still MEANS what the
+# extracted text says, and the cited RESULTS (Lemma 2, Theorem 1, …) are still only in the manuscript.
+# Model↔paper drift remains a human check, and that is the residual this workflow does not close.
 
 on:
   push:

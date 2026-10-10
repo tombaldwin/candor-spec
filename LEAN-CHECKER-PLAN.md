@@ -3,8 +3,14 @@
 Status: revised 2026-10-09 after a review (§6 lists what changed and what was refused). **Phase 0 is BUILT as
 conformance PART 97 (`gen_model_verdict.py`) and Phase 0b as PART 98 (`gen_route_equality.py`), four-way green;
 Phase 1's `lean/README.md:215` and PART 23 header fixes are done. Everything else is a plan.** Written against
-candor-spec `5e14689`. PAPER3 is not in any repo; it is cited at
-`~/Library/Mobile Documents/com~apple~CloudDocs/candor-paper/PAPER3.md` (`P3:` below).
+candor-spec `5e14689`. PAPER3 itself is not in any repo; it is cited at
+`~/Library/Mobile Documents/com~apple~CloudDocs/candor-paper/PAPER3.md` (`P3:` below, by line). Its
+**Definitions** — all of §6–§7 plus every Definition `lean/`, `reference/` and this plan cite, and the
+P3:741-748 amendment note — are in `MODEL-DEFINITIONS.md` (Tom's ruling, 2026-10-10: definitions only),
+each headed by its PAPER3 line range, so a `P3:` line inside a definition can be mapped to diffable text.
+Ranges outside the definitions (Proposition 5 at P3:780-822, P3:795-805, P3:801-802) are not extracted
+and remain manuscript-only. Some `P3:` ranges below are off by one against that snapshot (Definition 35
+is P3:736-739 there, cited below as 735-738); the extract's own line comments are authoritative.
 
 ## 0. What this would establish, and what it cannot
 
@@ -70,6 +76,10 @@ projection into that evaluator — which is why Phase 0 has a route-equality sib
    growing the baseline can only remove rejections. P3's sentence *"it is not upward-closed in `D` for a
    function already disclosed at baseline"* puts the non-monotonicity on the wrong argument. Phase 1 makes
    the model say this and amends the sentence.
+6. **PAPER3 Corollary 3 (P3:818-820) still cites the pre-amendment ratchet.** Its parenthetical — *"For
+   `unknown-ratchet` the hypothesis is vacuous at the baseline itself, where `D_b ⊄ D_b` is false"* — is
+   written against the old `Reject ⇔ D ⊄ D_b`, which amended Definition 35 no longer has. Found while
+   extracting `MODEL-DEFINITIONS.md` (2026-10-10). Phase 1's PAPER3 amendment should fix it alongside item 5.
 
 ## 2. Inputs the checker needs, per verb, and whether today's wire is sufficient
 
@@ -239,7 +249,7 @@ fault in the shared evaluator (both routes move together) — that is Phase 0's.
 - add AS-EFF-005's effect-gain predicate (`S_c ⊄ S_b`, `Unknown` excluded) as its own verb;
 - write a definition for `only`;
 - fix the three SEMANTICS rows (§1 item 3);
-- prove §1 item 5 (upward-closed in `D` for every fixed `D_b`, anti-monotone in `D_b`) and amend P3:801-802;
+- prove §1 item 5 (upward-closed in `D` for every fixed `D_b`, anti-monotone in `D_b`) and amend P3:801-802 (and Corollary 3's parenthetical, §1 item 6);
 - **fix `lean/README.md:215`**, which says PART 23 runs the engines against `policy_model.py` — PART 23 runs
   no engine; and **fix the PART 23 header** in `conformance/run.sh`, which still says no engine can be fed a
   signature.
@@ -346,9 +356,12 @@ Decided by evidence, inside the phases:
 - **The `unknownWhy` class map is per-token engine data.** Arm C pins the canonical tokens; Phase 2(b)
   needs every token each engine emits, and that list is not closed — the catch-all exists for this reason.
 
-**For Tom — one question.** May PAPER3.md, or its §6–§7 definitions, be committed to candor-spec? Every
-model citation in this plan points at a file nobody can diff, and Phase 1 amends it. The rest of the first
-draft's list is not a question for him: the single-gate idea is undecided above and has no measurement to
+**For Tom — answered 2026-10-10.** *May PAPER3.md, or its §6–§7 definitions, be committed to
+candor-spec?* — *"Just the defs in the spec pls."* The Definitions are now `MODEL-DEFINITIONS.md` (all of
+§6–§7's, plus every earlier one cited here and in `lean/`/`reference/`); results, remarks, proofs and prose
+stay local. P3:801-802 sits in Proposition 5's rescoping note, which is not extracted, so Phase 1's
+amendment of it lands in the manuscript only; an amended Definition 35 would also need a re-extract. The
+rest of the first draft's list is not a question for him: the single-gate idea is undecided above and has no measurement to
 decide it; the wire-growth items are gaps (a)–(e), of which (e) is already on his queue
 (`/Users/tom/git/candor/BACKLOG.md:6926`); and the site question waits until Phase 3a exists.
 

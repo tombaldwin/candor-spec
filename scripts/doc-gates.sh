@@ -139,6 +139,12 @@ run "sin_direction"       python3 scripts/sin-direction.py
 run "sin_direction_selftest" python3 scripts/sin-direction.py --selftest
 run "xfail_register_agree" python3 scripts/xfail-register-agree.py
 run "xfail_agree_selftest" python3 scripts/xfail-register-agree.py --selftest
+# MODEL CITATIONS, added 2026-10-10. `lean/`, `reference/` and LEAN-CHECKER-PLAN.md cite PAPER3 by item
+# number; on Tom's ruling that day its DEFINITIONS (not the paper) live here as MODEL-DEFINITIONS.md. This
+# fails when a citation names an item the extract does not carry, so the cited text stays diffable. The
+# selftest seeds an absent citation against the real extract and requires the gate to catch it.
+run "model_citations"      python3 scripts/model-citations.py
+run "model_citations_selftest" python3 scripts/model-citations.py --selftest
 
 if [ $fail -ne 0 ]; then
   echo "doc-gates: FAILED — see above. Do not push."

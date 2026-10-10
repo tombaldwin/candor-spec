@@ -4,6 +4,15 @@ A Lean 4 transcription of PAPER3's disclosure lattice and policy layer. **Scope 
 stated here rather than implied**, because an artifact that looks complete and is not would be the same
 defect this exists to remove.
 
+**Where the cited text is.** Every "Def *n*", "Lemma *n*", "Prop *n*", "Remark *n*" and "Escape *n*" below
+names an item of PAPER3, an unpublished manuscript kept outside this repo. Its **Definitions** — every one
+cited here, and all of §6–§7 — are extracted verbatim, with PAPER3 line ranges, into
+[`../MODEL-DEFINITIONS.md`](../MODEL-DEFINITIONS.md) (Tom's ruling, 2026-10-10: the definitions, not the
+paper). `scripts/model-citations.py` fails doc-gates if a *Definition* cited here is missing from that file.
+**Lemmas, Theorem 1, Propositions, Corollaries, Remarks, Escapes and all proofs are not extracted**, so a
+row below citing one of those — or a claim about a PAPER3 *proof* — is checkable only against the
+manuscript.
+
 ## What it covers today
 
 | PAPER3 | here | status |

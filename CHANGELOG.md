@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`MODEL-DEFINITIONS.md`: the formal model's numbered definitions, in the repo** (Tom's ruling,
+  2026-10-10: the definitions, not the paper). A verbatim extract of the unpublished PAPER3's Definitions
+  only — all of §6–§7's, plus every one `lean/`, `reference/` and `LEAN-CHECKER-PLAN.md` cite (32), and the
+  Definitions 33–35 amendment note — each headed by its PAPER3 line range; no results, remarks, proofs or
+  prose. Those files now point at it, and doc-gate `model_citations` (`scripts/model-citations.py`, with a
+  selftest) fails if a Definition citation names one the extract lacks.
 - **Conformance PART 97: each engine's `gate --report` verdict is judged against the reference model**
   (LEAN-CHECKER-PLAN.md Phase 0, `conformance/gen_model_verdict.py`). Arm A: 1254 reachable `(S, D)` leaves
   (|S|, |D| <= 2) x 100 policies per engine (`pure`, `deny e`, `deny e Unknown` bare / all six / each class),

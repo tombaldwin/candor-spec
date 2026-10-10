@@ -1,6 +1,9 @@
 """The POLICY LAYER of candor's formal model, executable.
 
-This transcribes PAPER3's Definitions 4-7, 30-32, 35 and 36, and Lemma 2. It deliberately does NOT
+This transcribes PAPER3's Definitions 4-7, 30-32, 35 and 36, and Lemma 2. The Definitions' text, as
+amended, is in MODEL-DEFINITIONS.md at the repo root — a verbatim extract of the (unpublished) PAPER3's
+definitions only, kept so this transcription can be diffed against what it transcribes; Lemma 2 is not
+in it. It deliberately does NOT
 transcribe Definitions 33 (`forbid`) and 34 (`allow`): a 2026-07-27 review established that both describe
 verbs the deployment does not have — `forbid` is a call-graph dependency rule with no effect predicate, and
 `allow` is a fail-closed literal-surface certification whose carrier is outside this lattice. PAPER3's

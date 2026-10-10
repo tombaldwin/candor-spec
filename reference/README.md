@@ -1,7 +1,10 @@
 # `reference/` — the formal model, executable
 
 `policy_model.py` is PAPER3 (the formal reference, cited as `candormodel`) Definitions 4–7 and 30–36
-plus Lemma 2, as code. It exists because those definitions are the one part of the system the paper
+plus Lemma 2, as code. PAPER3 is an unpublished manuscript outside this repo; the text of every
+Definition cited here is extracted verbatim into [`../MODEL-DEFINITIONS.md`](../MODEL-DEFINITIONS.md)
+(Tom's ruling, 2026-10-10: definitions only), which is the file to diff a transcription against. Lemma 2
+and the other results are not extracted and still cite the manuscript. It exists because those definitions are the one part of the system the paper
 claims as **proved**, and nothing connected them to the engines: the model lived in prose, the engines
 in four languages, and the only thing between them was a differential suite comparing engines **to each
 other**.
