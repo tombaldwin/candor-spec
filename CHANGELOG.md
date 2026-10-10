@@ -25,6 +25,21 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §6.2 `only` rule 4: the implicit `A -> A` is the set `from` BINDS (SOUNDNESS R1103 (b), decided).** Tom
+  kept the prefix reading: `only model -> util` permits `model.go` → `modelx.exfil` because `model` binds `modelx`,
+  and the anchored `from` (`only model:: -> util` / `only model. -> util`) is the way to bind `model` alone. The
+  item's "not settled here" note is replaced by that rule; zero verdict movement, no engine change. The two declined
+  alternatives are recorded in the clause. **SPEC.md changed** (clarification of pinned four-way behaviour — a
+  patch). R1103 is closed. Not pinned: PART 49b prints the sibling verdict without asserting it; the debt is
+  recorded on rule 4's must-ledger entry. SEMANTICS.md AS-EFF-011's note updated to match.
+- **Register, v046 wave.** R1097 CLOSED as a disclosure, resolved when the overriding jar is chained (candor-java
+  `08ea428`; residuals `AppenderBase.start()` and protected members stated; the cost is a jackson `getMessage`
+  over-disclosure, 996 of 1,145 newly-`Unknown` rows). Filed closed from candor-swift `71d15d7`: R1101 (two scan
+  crashes), R1102 (refusal marker went to the default prefix over `--out`; the first framing was wrong — the
+  marker is a ⟨0.32⟩ MUST), R1104 (unfetched dependency read silently pure, now `invisible`), R1105/R1106 (a read
+  charged a property's observers and setter). R974 gains its benefit census: population ≈ 0, no rung, (a) stays a
+  documented §4 named miss with direction SILENT. New R1098 (rust, UNSETTLED, unexecuted): inotify's
+  `WatchDescriptor::eq` has no edge to `FdGuard::eq`, so its `invisible: [libc]` is lost.
 - **SPEC §6.2 Scope matching names BOTH exact-segment forms (closes SOUNDNESS R681).** The paragraph said a
   listed `only` permitted scope was "the one exception" to the last-segment prefix; the trailing-separator
   anchor (`app::` / `app.`), implemented four-way since a 2026-08-23 field report and pinned by PART 64, is

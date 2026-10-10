@@ -10455,7 +10455,10 @@ fi
 #   wide     model.wide  → utilities.exfil   `util` matches only by PREFIX  → AS-EFF-011 charged
 #   exact    model.exact → util.helper       exact segment                  → not charged
 #   sibling  model.sibling → modelx.exfil     `modelx` matches `from` only by PREFIX — RECORDED, NOT PINNED:
-#            the implicit `A -> A` uses `from`'s general matcher four-way, which is R1103 (b), open.
+#            the implicit `A -> A` uses `from`'s general matcher four-way, which R1103 (b) DECIDED on
+#            2026-10-10 is the rule (the self-permission is the set `from` binds), so the expected verdict
+#            is NOT charged. Pinning it, with the anchored `from` arm as its mirror, is the debt
+#            must-ledger.json records against rule 4.
 # CONTROL: the same tree under `only model -> util utilities modelx` must exit 0 — the charge on `wide` is the
 # match rule, not the edge or the walk.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────

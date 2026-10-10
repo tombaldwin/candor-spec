@@ -5632,14 +5632,16 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
      constrains more. ⟨2026-10-10, SOUNDNESS R1103⟩ *All four engines have matched a permitted scope this
      way since ⟨0.29⟩, each citing the same measured escape (`only model -> util` passing `model.go` →
      `utilities_untrusted.exfil`), while this list said nothing — so the Scope-matching rule, read
-     literally, permitted the escape. Pinned four-way by conformance PART 49b.* **OPEN (R1103 (b), with
-     Tom):** the implicit `A -> A` of rule 1 is evaluated with `from`'s general matcher, so `only model ->
-     util` permits `model.go` → `modelx.exfil` in all four engines. That is a layering-gate false green,
-     not an effect under-report: `modelx.exfil`'s own effects are reported, and `deny` and `forbid model ->
-     modelx` fire on it. The remedy available today is the anchored `from` of the Scope-matching rule's
-     form (1): `only model:: -> util` charges that call in all four engines. Whether the implicit
-     permission covers the units `A` BINDS (prefix, today) or the units `A` NAMES (exact) is not settled
-     here.
+     literally, permitted the escape. Pinned four-way by conformance PART 49b.* **The implicit `A -> A` of
+     rule 1 is exactly the set of units `from` BINDS**, matched by `from`'s general rule, last-segment
+     prefix included — so `only model -> util` permits `model.go` → `modelx.exfil`, because `model` binds
+     `modelx`. To bind `model` and not `modelx`, anchor `from` with the Scope-matching rule's form (1):
+     `only model:: -> util` (`only model. -> util`) charges that call in all four engines. ⟨2026-10-10,
+     SOUNDNESS R1103 (b), decided⟩ *The alternatives were declined: matching the implicit permission by
+     exact segment makes a unit that `from` binds only by prefix self-fire on its own internal calls
+     (`Type` binding `TypeBuilder`), and permitting a callee only on the segment run its caller matched
+     adds a third matcher. Neither is an effect question — `modelx.exfil`'s own effects are reported, and
+     `deny` and `forbid model -> modelx` fire on it.*
 
   **`only` is UNANSWERABLE from a report**, on the same §3.1 rule as `forbid` and for a stricter reason:
   `forbid` asks whether one named crossing is present, while `only` asks whether EVERY reached scope is on

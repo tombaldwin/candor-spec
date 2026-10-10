@@ -2683,11 +2683,11 @@
       "part": "PART 49"
     },
     {
-      "sha": "36a882f691db8a69",
+      "sha": "43453bb873df1389",
       "at": "6.2 The policy DSL (normative)",
       "excerpt": "4. **A LISTED permitted scope matches by EXACT segment run.** A scope after the arrow matches a callee iff its",
       "part": "PART 49b",
-      "note": "RE-CONFIRMED 2026-10-10: only the OPEN R1103 (b) note at the end of the item was reworded (a layering-gate false green; the anchored `from` remedy). The rule PART 49b executes is unchanged."
+      "note": "RE-CONFIRMED 2026-10-10 (SOUNDNESS R1103 (b) decided): the item's trailing OPEN note became the decided reading — the implicit `A -> A` is exactly the set `from` BINDS, prefix included, and the anchored `from` (`only model:: -> util`) is the way to bind `model` without `modelx`. The listed-scope rule PART 49b asserts is unchanged. SPLIT: the decided sentence is NOT asserted — PART 49b runs the `model.sibling -> modelx.exfil` cell and PRINTS its verdict (uncharged four-way at the heads R1103 records) without failing on it, and no part runs the anchored-`from` remedy four-way (PART 64 exercises form (1) on a rust `forbid` fixture only). Recorded as a debt: the row that closes it pins `sibling` uncharged under `only model -> util` and charged under the anchored `from`, per engine, with a fault that flips one."
     },
     {
       "sha": "f415a9f27bb1c575",

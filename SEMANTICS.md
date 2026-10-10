@@ -235,7 +235,7 @@ is AS-EFF-003 disclosure. A ⟨0.21⟩ `Net[dest…]` filter (SPEC.md:5905-5910)
 
 **AS-EFF-011 is the ⟨0.29⟩ `only` rule** (SPEC.md:5588-5632), the fail-safe dual of AS-EFF-009: `forbid`
 names what `A` must not reach, `only` names everything it may. `A → A` is implicit; the walk stops at a
-permitted scope and descends through `A`; zero-match is measured on `A` alone; a LISTED scope matches by exact segment while `A` keeps the general prefix rule (SOUNDNESS R1103, whose part (b) asks whether the implicit `A → A` should too). Like AS-EFF-009 it reads the
+permitted scope and descends through `A`; zero-match is measured on `A` alone; a LISTED scope matches by exact segment while `A` keeps the general prefix rule (SOUNDNESS R1103; its part (b) was decided 2026-10-10: the implicit `A → A` is exactly the set `A` binds, prefix included, which is the `scope_A` this row already uses). Like AS-EFF-009 it reads the
 call graph, not the effect lattice, and it is **unanswerable from a report** — §3.1 requires `gate --report`
 to refuse it (SPEC.md:5625-5629), because a green would be a completeness claim. This row is the definition
 the formal model (`reference/`, `lean/`, PAPER3) does not carry: PAPER3 predates ⟨0.29⟩, and `only`, like
