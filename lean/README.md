@@ -142,10 +142,14 @@ and only a ratchet can. Each is mechanised as incomparability + a gate relaxing 
 still fires. Transcribing them surfaced two problems, both the same root cause: **Definition 2's amendment
 (`Db ⋢ₑ Net`) did not propagate into §8.**
 
-- **Proposition 6's proof is dead as written.** It reads "Under that order `({Db},∅) ≤ ({Net},∅)`, since
-  every element of `{Db}` refines an element of `{Net}`" — false under the amended Definition 2, which says
-  `Db ⋢ₑ Net` in as many words. `prop6_llm` proves the proposition survives on the surviving refinement
-  pair; `prop6_db_witness_is_dead` proves the witness in its proof does not.
+- **Proposition 6's proof was dead as written, and PAPER3 has since re-witnessed it.** It read "Under that
+  order `({Db},∅) ≤ ({Net},∅)`, since every element of `{Db}` refines an element of `{Net}`" — false under
+  the amended Definition 2, which says `Db ⋢ₑ Net` in as many words. The current manuscript (P3:891-902,
+  PAPER3 is not in this repo and `MODEL-DEFINITIONS.md` carries no proofs) instantiates on
+  `({Llm, Net},∅) ≤ ({Net},∅)` with `deny Llm` firing on the first and not the second, carries an
+  *Amended* note recording the old `Db` witness, and observes that both signatures are reachable. That is
+  `prop6_llm`'s statement exactly, including the reachability conjuncts; `prop6_db_witness_is_dead`
+  stays as the proof that the replaced witness does not go through.
 - **Escape 2 has no realizable instance in the shipped vocabulary**, and it takes both halves to see why.
   With `Db` the move is no longer H-sound — an observed `Db` is not covered by a declared `Net`, so H
   catches it and it is not an escape. With `Llm`, the only surviving refinement, engines *co-emit* `Llm` and

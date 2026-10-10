@@ -5633,9 +5633,14 @@ fi
 # already judged and compares verdicts. This PART still runs no engine. Do NOT add rows to either naively:
 # a review found PAPER3's `pure` (Def 32) rejected a disclosed signature where the contract and all four
 # engines pass it, so the first differential row would have flagged four CONFORMING engines (the model was
-# amended), and Defs 33/34/35 (`forbid`, `allow`, `unknown-ratchet`) describe verbs that do not exist as
-# modelled — `unknown_ratchet` below is still the PRE-amendment Def 35 (LEAN-CHECKER-PLAN.md §1), so the
-# "every shipped verb" line this PART prints includes one verb that was never shipped in that form.
+# amended), and Defs 33/34 (`forbid`, `allow`) — and the ⟨0.29⟩ `only`, which PAPER3 does not define — are
+# call-graph or literal-surface rules outside the `(S,D)` lattice, which §3.1 requires `gate --report` to
+# REFUSE. ⟨2026-10-10⟩ The model's `unknown_ratchet` is now the AMENDED Def 35 (`D_b = ∅ ∧ D ≠ ∅`), beside
+# AS-EFF-005's effect gain and ⟨0.40⟩'s absent-function prior ∅; until then it was the pre-amendment
+# `D ⊄ D_b` and this PART's "every shipped verb" line covered a verb never shipped in that form. The
+# baseline-relative verbs are checked per FIXED baseline (upward-closed in (S,D)) and ANTI-monotone in the
+# baseline — the corrected form of P3:801-802, which put the non-monotonicity on D. They have no
+# `gate --report` route (the baseline guard is scan-time, SPEC §3), so PART 97 carries no rows for them.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 P23_OK=0
 REF="$HERE/../reference/policy_model.py"
@@ -5689,6 +5694,9 @@ if [ -f "$REF" ]; then
     P23_OK=1
   fi
   echo "$P23_OUT" | grep -q "NOT upward-closed" || { echo "  FAIL: the known-bad rule is no longer demonstrated — the check has stopped discriminating"; P23_OK=1; }
+  # The ratchet's corrected monotonicity statement must be PRINTED, not merely not-failed: a selftest that
+  # dropped the check would otherwise leave the MATCH line below claiming it.
+  echo "$P23_OUT" | grep -q "unknown-ratchet anti-monotone in D_b, and NOT monotone in it" || { echo "  FAIL: the ratchet's baseline anti-monotonicity was not checked (or its calibration found nothing)"; P23_OK=1; }
 else
   echo "  FAIL: reference/policy_model.py is missing — the theory-vs-spec check cannot run"
   P23_OK=1
@@ -5696,9 +5704,9 @@ fi
 
 echo "PART 23 — the model's own lemma still holds (PAPER3 Lemma 2, over the full lattice)"
 # ENGINES: none — checks reference/policy_model.py against SPEC §1 and PAPER3 Lemma 2; no engine binary runs
-# CONTROLS: P23_EXPECT upward-closed — the derived lattice floor and the known-bad absence-keyed rule that must STILL be rejected prove the check discriminates
+# CONTROLS: P23_EXPECT upward-closed — the derived lattice floor and the known-bad absence-keyed rule that must STILL be rejected prove the check discriminates; the ratchet line is grepped only when its calibration (the opposite, MONOTONE-in-D_b question) found a counterexample
 if [ "$P23_OK" = 0 ]; then
-  echo "  -> MATCH — every shipped verb's rejection set is upward-closed, and the absence-keyed rule still is not"
+  echo "  -> MATCH — every shipped verb's rejection set is upward-closed in (S,D) (the baseline guard's per fixed baseline, and anti-monotone in it), and the absence-keyed rule still is not"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi

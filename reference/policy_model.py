@@ -4,13 +4,20 @@ This transcribes PAPER3's Definitions 4-7, 30-32, 35 and 36, and Lemma 2. The De
 amended, is in MODEL-DEFINITIONS.md at the repo root — a verbatim extract of the (unpublished) PAPER3's
 definitions only, kept so this transcription can be diffed against what it transcribes; Lemma 2 is not
 in it. It deliberately does NOT
-transcribe Definitions 33 (`forbid`) and 34 (`allow`): a 2026-07-27 review established that both describe
-verbs the deployment does not have — `forbid` is a call-graph dependency rule with no effect predicate, and
-`allow` is a fail-closed literal-surface certification whose carrier is outside this lattice. PAPER3's
-Proposition 5 has been rescoped accordingly, and a differential built on this file MUST NOT add rows for
-them, nor for `deny E[dest...]`, nor for the `unknown-ratchet` (whose shipped form grandfathers a function
-already disclosed at baseline, so Definition 35 as written rejects where every engine passes). Adding those
-rows manufactures divergences out of the theory rather than finding them in the code.
+transcribe Definitions 33 (`forbid`) and 34 (`allow`), nor the ⟨0.29⟩ `only` rule (AS-EFF-011, which PAPER3
+does not define): a 2026-07-27 review established that `forbid` is a call-graph dependency rule with no
+effect predicate, and `allow` is a fail-closed literal-surface certification whose carrier is outside this
+lattice; `only` is a call-graph rule like `forbid` (SPEC §6.2 ⟨0.29⟩), so its carrier is the edge set too —
+its definition is in SEMANTICS.md §6, not here. PAPER3's Proposition 5 has been rescoped accordingly.
+
+Definition 35 (`unknown-ratchet`) IS transcribed, in its AMENDED form (`Reject ⇔ D_b = ∅ ∧ D ≠ ∅`), beside
+AS-EFF-005's effect-gain predicate and the baseline guard that composes them — see `unknown_ratchet`. Until
+2026-10-10 this file carried the PRE-amendment `D ⊄ D_b`, and PART 23 printed "every shipped verb" over it.
+The amended form is shipped four-way, but it is still NOT a row a `gate --report` differential may add: the
+baseline guard is a scan-time mode with no report-only route (SPEC §3 baseline guard; §3.4 says the ratchet
+flag is per-engine tested, not conformance-pinned). Nor may such a differential add `deny E[dest...]`, `forbid`,
+`allow` or `only` rows — SPEC §3.1 requires that route to REFUSE the last three. Adding them manufactures
+divergences out of the theory rather than finding them in the code.
 
 Originally described as a transcription of PAPER3 Definitions 4-7 and
 30-36, and of Lemma 2. It exists because those definitions are the one part of the system the paper
@@ -34,8 +41,10 @@ alone — the part that is small, pure, total, and provable.
 NOT ONLY A HAND TRANSCRIPTION ANY MORE. `lean/` states the same definitions in Lean 4 and proves the
 properties the two amendments claim; `differential_lean_vs_python.py` (run by `lean/check.sh`, and in CI)
 recomputes every row of the Lean model's emitted decision table with THIS file and fails on any
-disagreement — 147 400 rows, every verb, the whole vocabulary. Edit a definition here and that check is
-what will tell you whether the two readings still match.
+disagreement — 147 400 rows, every verb LEAN carries (`pure`, `deny`, `deny e Unknown[C]`), the whole
+vocabulary. Edit one of those definitions here and that check is what will tell you whether the two
+readings still match. The baseline-guard verbs (`effect_gain`, `unknown_ratchet`, `baseline_guard`) are in
+THIS file only: no Lean statement and no Lean↔Python row covers them, so `selftest` is their only check.
 """
 
 from itertools import combinations, chain
@@ -185,10 +194,87 @@ def pure():
     return lambda sig: bool(sig.S)
 
 
-def unknown_ratchet(baseline_D):
-    """Definition 35. Against a FIXED baseline: `Reject(S,D) ⇔ D ⊄ D_b`."""
+# ---------------------------------------------------------------------------------------------
+# The BASELINE GUARD — AS-EFF-005 and Definition 35 (amended). Each takes the function's baseline value as
+# its argument and returns a predicate over the CURRENT signature, so Lemma 2 is asserted per fixed
+# baseline exactly as Definition 29 asserts it per fixed `f`.
+#
+# ⟨0.40⟩ (SPEC §3 baseline guard, "A FUNCTION ABSENT FROM THE BASELINE IS COMPARED AGAINST NOTHING"): the
+# baseline value of a function the baseline does not contain is `prior(key) = baseline[key] ?? ∅`. That is
+# `ABSENT` below, and it is ∅ in BOTH components — not an exemption. Before ⟨0.40⟩ every engine skipped an
+# absent function, which no predicate of this shape can express (it is a scope exclusion, not a `Reject`).
+
+ABSENT = None
+
+
+def _prior(baseline):
+    """⟨0.40⟩ `prior(key) = baseline[key] ?? ∅`."""
+    return frozenset() if baseline is ABSENT else frozenset(baseline)
+
+
+def effect_gain(baseline_S):
+    """AS-EFF-005, the baseline guard's effect-gain predicate: `Reject(S,D) ⇔ S ⊄ S_b`.
+
+    SPEC §3 baseline guard: *"What counts is `inferred` minus `Unknown`, and nothing else"* — so this reads
+    `S` only. `D` never makes a gain here: an `Unknown`-ONLY gain is DISCLOSED as advisory, exit unchanged
+    (the ⟨0.16⟩ ruling), which is the reason `D` is absent from the predicate rather than an oversight.
+    Plain set inclusion on NAMES, not `⊑ₑ`: the engines diff `inferred` name sets, so gaining `Llm` beside a
+    baseline `Net` is a gain. Upward-closed in `S` for every fixed `S_b`, anti-monotone in `S_b`.
+    """
+    b = _prior(baseline_S)
+    return lambda sig: not (sig.S <= b)
+
+
+def unknown_ratchet_as_written_before_amendment(baseline_D):
+    """PAPER3 Def 35 BEFORE the amendment: `Reject(S,D) ⇔ D ⊄ D_b`. **NOT the shipped flag.**
+
+    Kept as an exhibit, like `pure_as_defined_in_paper3_def32`, so the counterexample to it stays executable
+    (`selftest`, and the amendment note at P3:741-748): `D_b = {dispatch}`, `D = {dispatch, reflect}` is a
+    rejection here and a pass in every engine, because every engine computes the gain over `inferred` NAMES,
+    where `Unknown` is one token and a grown reason set is no gain at all — read at the 0.40.4 heads:
+    candor-java `Policy.java:186-200`, candor-rust `candor-scan/src/gate.rs:458-476`, candor-ts
+    `scan.mjs:15825-15841`, candor-swift `Baseline.swift:285-299` (each: `gained = inferred − prior`, then the
+    ratchet branch only when the gain is `Unknown` alone). That is a reading of the code, not an engine run.
+    """
     b = frozenset(baseline_D)
     return lambda sig: not (sig.D <= b)
+
+
+def unknown_ratchet(baseline_D):
+    """Definition 35 AS AMENDED (P3:736-739): `Reject(S,D) ⇔ D_b = ∅ ∧ D ≠ ∅`.
+
+    A function with no `Unknown` at baseline that acquires one is rejected; a function already disclosed at
+    baseline is GRANDFATHERED however its reason set grows. With ⟨0.40⟩'s `prior = ∅` for an absent function
+    (`baseline_D = ABSENT`), a NEW function carrying `Unknown` is rejected — SPEC §3: *"Under
+    `unknown-ratchet` (§3.4) it fails like any newly-introduced `Unknown`, because its prior is ∅ — a
+    consequence of the rule, not an extension of it."*
+
+    THE MONOTONICITY STATEMENT, corrected (LEAN-CHECKER-PLAN.md §1 item 5). For every FIXED `D_b` the
+    rejection set is UPWARD-CLOSED in `D` — for `D_b ≠ ∅` it is empty, for `D_b = ∅` it is `D ≠ ∅` — so the
+    ratchet satisfies Lemma 2 like every other verb here. What it is NOT is monotone in the BASELINE: it is
+    ANTI-monotone in `D_b` (growing the baseline can only remove rejections). PAPER3 P3:801-802 puts the
+    non-monotonicity on `D` ("not upward-closed in `D` for a function already disclosed at baseline"); that
+    is the wrong argument. `selftest` checks both directions over the full reason vocabulary.
+
+    This is the flag's predicate alone. It is OFF by default, and the shipped guard is `baseline_guard`.
+    """
+    b = _prior(baseline_D)
+    return lambda sig: not b and bool(sig.D)
+
+
+def baseline_guard(baseline, ratchet=False):
+    """The scan-time baseline guard as SPEC §3 + §3.4 specify it, for one function.
+
+    `baseline` is the function's baseline `Sig`, or `ABSENT` (⟨0.40⟩: prior ∅). Without the flag only an
+    effect gain rejects; an `Unknown`-only gain is advisory (⟨0.16⟩ default). With `unknown-ratchet` a
+    newly-introduced `Unknown` also rejects. The engines evaluate the ratchet only on an `Unknown`-ONLY gain
+    (the four sites cited on the exhibit above), but a gain that also
+    carries a real effect is already rejected by `effect_gain`, so the disjunction is the same predicate.
+    """
+    bS = ABSENT if baseline is ABSENT else baseline.S
+    bD = ABSENT if baseline is ABSENT else baseline.D
+    gain, rat = effect_gain(bS), unknown_ratchet(bD)
+    return (lambda sig: gain(sig) or rat(sig)) if ratchet else gain
 
 
 # ---------------------------------------------------------------------------------------------
@@ -227,7 +313,7 @@ def check_upward_closed(reject, points) -> list:
 
 
 def full_lattice():
-    """Every point of `L = 𝒫(E) × 𝒫(R)` for the REAL vocabulary — 2^9 × 2^6 = 32768 signatures."""
+    """Every point of `L = 𝒫(E) × 𝒫(R)` for the REAL vocabulary — 2^|E| × 2^|R| (2^11 × 2^6 = 131072)."""
     return _lattice(E, R)
 
 
@@ -364,6 +450,99 @@ def repair_is_upward_closed():
     return check_upward_closed(deny_unknown("Net", {"unresolved"}), full_lattice())
 
 
+def _powerset(xs):
+    return [frozenset(c) for c in chain.from_iterable(combinations(xs, k) for k in range(len(xs) + 1))]
+
+
+def check_antimonotone_in_baseline(verb, baselines, step, points) -> list:
+    """`B ⊆ B' ∧ Reject_{B'}(x) ⇒ Reject_B(x)`: growing the baseline can only REMOVE rejections.
+
+    Checked against covers of the BASELINE (`step` yields each one-element enlargement), which is complete
+    by the same induction as `check_upward_closed`. Returns counterexamples `(B, B', x)`."""
+    out = []
+    for B in baselines:
+        small = verb(B)
+        for B2 in step(B):
+            big = verb(B2)
+            out += [(B, B2, x) for x in points if big(x) and not small(x)]
+    return out
+
+
+def _selftest_baseline_guard() -> int:
+    """Definition 35 as amended, AS-EFF-005, and ⟨0.40⟩'s absent-function prior — LEAN-CHECKER-PLAN §1 item 5.
+
+    The claim checked: for EVERY fixed `D_b ⊆ R` the ratchet's rejection set is upward-closed in `(S,D)`,
+    and it is ANTI-monotone in `D_b`. Complete over the reason axis: all 2^|R| baselines, every point of
+    `𝒫(R)` for `D`. On the effect axis the predicate reads no `S` (see its body), and the points carry
+    `S = ∅` and `S = E` with every single-effect cover — that is a reading plus a spot check, not a proof
+    over 𝒫(E), and is said so here rather than implied by the word "complete".
+    """
+    rc = 0
+    all_Db = _powerset(R)
+    slice_pts = [Sig(s, d) for s in (frozenset(), frozenset(E)) for d in all_Db]
+    up = [(Db, ce) for Db in all_Db for ce in check_upward_closed(unknown_ratchet(Db), slice_pts)]
+    grow_R = lambda B: (B | {r} for r in R if r not in B)
+    anti = check_antimonotone_in_baseline(unknown_ratchet, all_Db, grow_R, slice_pts)
+    # CALIBRATION: the same checker, asked the OPPOSITE question (is it monotone, i.e. does growing the
+    # baseline only ADD rejections?), must find a counterexample — or the anti-monotone check is vacuous.
+    shrink_check = check_antimonotone_in_baseline(lambda B: (lambda x: not unknown_ratchet(B)(x)),
+                                                  all_Db, grow_R, slice_pts)
+    if up:
+        print(f"  FAIL  unknown-ratchet not upward-closed in D for D_b={set(up[0][0])}: {up[0][1]}"); rc = 1
+    else:
+        print(f"  OK    unknown-ratchet upward-closed in (S,D) for EVERY fixed D_b ({len(all_Db)} baselines)")
+    if anti:
+        B, B2, x = anti[0]
+        print(f"  FAIL  unknown-ratchet not anti-monotone in D_b: {set(B)} ⊆ {set(B2)} but Reject_{set(B2)}{x}")
+        rc = 1
+    elif not shrink_check:
+        print("  FAIL  the anti-monotone check cannot fail: it also finds the ratchet MONOTONE in D_b"); rc = 1
+    else:
+        B, B2, x = shrink_check[0]
+        print(f"  OK    unknown-ratchet anti-monotone in D_b, and NOT monotone in it: Reject_{set(B) or '∅'}{x}")
+        print(f"        but not Reject_{set(B2)}{x} — growing the baseline removes rejections, never adds them")
+
+    # AS-EFF-005: anti-monotone in S_b. A SAMPLE, not a proof: every S_b of size ≤ 1 and every one-effect
+    # enlargement, against every S ∈ 𝒫(E) (D = ∅; the predicate reads no D).
+    small_Sb = [frozenset()] + [frozenset({e}) for e in E]
+    grow_E = lambda B: (B | {e} for e in E if e not in B)
+    s_pts = [Sig(s, ()) for s in _powerset(E)]
+    anti_g = check_antimonotone_in_baseline(effect_gain, small_Sb, grow_E, s_pts)
+    if anti_g:
+        print(f"  FAIL  AS-EFF-005 effect gain not anti-monotone in S_b: {anti_g[0]}"); rc = 1
+    else:
+        print(f"  OK    AS-EFF-005 effect gain anti-monotone in S_b (sample: {len(small_Sb)} baselines of size ≤ 1)")
+
+    # THE EXECUTED COUNTEREXAMPLE TO THE OLD READING (P3:741-748's form), and ⟨0.40⟩'s worked rows. Each row:
+    # (name, baseline Sig or ABSENT, current Sig, ratchet flag, want_reject).
+    old = unknown_ratchet_as_written_before_amendment({"dispatch"})(Sig((), ("dispatch", "reflect")))
+    new = unknown_ratchet({"dispatch"})(Sig((), ("dispatch", "reflect")))
+    if old and not new:
+        print("  OK    Def 35 amended: D_b={dispatch}, D={dispatch,reflect} — the pre-amendment `D ⊄ D_b`")
+        print("        REJECTS; the amended predicate PASSES (grandfathered), as every engine's name-set gain")
+        print("        does (P3:741-748; the four engine sites are cited on the exhibit, read not run here)")
+    else:
+        print(f"  FAIL  Def 35 counterexample row: pre-amendment={old}, amended={new} (want True, False)"); rc = 1
+    rows = [
+        ("absent fn, ({Net},∅)",                     ABSENT,                  Sig({"Net"}),             False, True),
+        ("absent fn, pure (∅,∅)",                    ABSENT,                  Sig(),                    False, False),
+        ("absent fn, pure (∅,∅), ratchet",           ABSENT,                  Sig(),                    True,  False),
+        ("absent fn, (∅,{dispatch}), flag off",      ABSENT,                  Sig((), {"dispatch"}),    False, False),
+        ("absent fn, (∅,{dispatch}), ratchet",       ABSENT,                  Sig((), {"dispatch"}),    True,  True),
+        ("(∅,∅) -> (∅,{dispatch}), flag off",        Sig(),                   Sig((), {"dispatch"}),    False, False),
+        ("(∅,∅) -> (∅,{dispatch}), ratchet",         Sig(),                   Sig((), {"dispatch"}),    True,  True),
+        ("({Fs},{dispatch}) -> +reflect, ratchet",   Sig({"Fs"}, {"dispatch"}), Sig({"Fs"}, {"dispatch", "reflect"}), True, False),
+        ("({Net},∅) -> ({Llm,Net},∅)",               Sig({"Net"}),            Sig({"Llm", "Net"}),      False, True),
+        ("({Fs,Net},∅) -> ({Net},{dispatch}), ratchet", Sig({"Fs", "Net"}),   Sig({"Net"}, {"dispatch"}), True, True),
+    ]
+    for name, base, cur, flag, want in rows:
+        got = baseline_guard(base, ratchet=flag)(cur)
+        print(f"  {'OK  ' if got == want else 'FAIL'}  baseline guard, {name:44} -> "
+              f"{'REJECT' if got else 'pass'}")
+        rc |= 0 if got == want else 1
+    return rc
+
+
 def selftest() -> int:
     pts = full_lattice()
     verbs = {
@@ -372,8 +551,13 @@ def selftest() -> int:
         "deny Net Unknown[dispatch]": deny_unknown("Net", {"dispatch"}),
         "deny Fs Unknown[reflect,unresolved]": deny_unknown("Fs", {"reflect", "unresolved"}),
         "pure": pure(),
-        "unknown-ratchet(∅)": unknown_ratchet(()),
-        "unknown-ratchet({dispatch})": unknown_ratchet({"dispatch"}),
+        # The baseline guard, per FIXED baseline (Definition 29's per-`f` reading, one level up). `ABSENT` is
+        # ⟨0.40⟩'s prior ∅ for a function the baseline does not contain.
+        "AS-EFF-005 effect gain, baseline ABSENT": effect_gain(ABSENT),
+        "AS-EFF-005 effect gain, S_b={Fs}": effect_gain({"Fs"}),
+        "unknown-ratchet (Def 35 amended), baseline ABSENT": unknown_ratchet(ABSENT),
+        "unknown-ratchet (Def 35 amended), D_b={dispatch}": unknown_ratchet({"dispatch"}),
+        "baseline guard + unknown-ratchet, baseline ({Fs},∅)": baseline_guard(Sig({"Fs"}), ratchet=True),
     }
     rc = 0
     print(f"Lemma 2 over the FULL lattice: {len(pts)} signatures, "
@@ -399,6 +583,8 @@ def selftest() -> int:
     assert deny_unknown("Net")(Sig((), {"dispatch"})), \
         "Definition 31: bare `deny e Unknown` is C = R, so any reason fires it"
     print("  OK    Definitions 2, 4, 30, 31 worked examples (incl. `Db` NOT refining `Net`)")
+
+    rc |= _selftest_baseline_guard()
 
     ce = monotonicity_counterexample()
     if not ce:

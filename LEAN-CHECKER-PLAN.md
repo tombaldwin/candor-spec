@@ -2,7 +2,8 @@
 
 Status: revised 2026-10-09 after a review (§6 lists what changed and what was refused). **Phase 0 is BUILT as
 conformance PART 97 (`gen_model_verdict.py`) and Phase 0b as PART 98 (`gen_route_equality.py`), four-way green;
-Phase 1's `lean/README.md:215` and PART 23 header fixes are done. Everything else is a plan.** Written against
+Phase 1 is DONE in the repo except its two Lean-side items and the manuscript edits (Phase 1's
+"Status, 2026-10-10" below says which, and why). Everything else is a plan.** Written against
 candor-spec `5e14689`. PAPER3 itself is not in any repo; it is cited at
 `~/Library/Mobile Documents/com~apple~CloudDocs/candor-paper/PAPER3.md` (`P3:` below, by line). Its
 **Definitions** — all of §6–§7 plus every Definition `lean/`, `reference/` and this plan cite, and the
@@ -75,11 +76,13 @@ projection into that evaluator — which is why Phase 0 has a route-equality sib
    is the empty set, which is upward-closed; for `D_b = ∅` it is `D ≠ ∅`). It is **anti-monotone in `D_b`**:
    growing the baseline can only remove rejections. P3's sentence *"it is not upward-closed in `D` for a
    function already disclosed at baseline"* puts the non-monotonicity on the wrong argument. Phase 1 makes
-   the model say this and amends the sentence.
+   the model say this and amends the sentence. *(2026-10-10: the model says it and PART 23 checks it; the
+   sentence's replacement is under Phase 1's status, for the manuscript.)*
 6. **PAPER3 Corollary 3 (P3:818-820) still cites the pre-amendment ratchet.** Its parenthetical — *"For
    `unknown-ratchet` the hypothesis is vacuous at the baseline itself, where `D_b ⊄ D_b` is false"* — is
    written against the old `Reject ⇔ D ⊄ D_b`, which amended Definition 35 no longer has. Found while
    extracting `MODEL-DEFINITIONS.md` (2026-10-10). Phase 1's PAPER3 amendment should fix it alongside item 5.
+   *(Replacement text recorded under Phase 1's status.)*
 
 ## 2. Inputs the checker needs, per verb, and whether today's wire is sufficient
 
@@ -259,6 +262,68 @@ Checking this means **reading SPEC's clause beside each definition**, not counti
 "shipped verb" list contains no unshipped verb. Each amended definition comes with one executed
 counterexample to its old reading that all four engines pass, in the form P3:744-747 already uses.
 *Cost:* small in code; the judgement is in reading.
+
+*Status, 2026-10-10 (lane `specagent-phase1`).*
+
+- **Done — the ratchet, AS-EFF-005, ⟨0.40⟩.** `reference/policy_model.py` now has `unknown_ratchet`
+  (amended Def 35, `D_b = ∅ ∧ D ≠ ∅`), `effect_gain` (AS-EFF-005, `S ⊄ S_b`), `baseline_guard` (the two
+  composed under the flag, default off), and `ABSENT` = ⟨0.40⟩'s prior ∅. Each reads SPEC beside it: the
+  guard is SPEC.md:2519-2557 (gain over `inferred` minus `Unknown`, `Unknown`-only advisory, absent ⇒ ∅) and
+  the flag SPEC.md:4626, 4693-4701. The four engines were READ at the 0.40.4 heads (java `Policy.java:186-200`,
+  rust `candor-scan/src/gate.rs:458-476`, ts `scan.mjs:15825-15841`, swift `Baseline.swift:285-299`): each
+  computes `inferred − prior` over names, and enters the ratchet branch only on an `Unknown`-only gain —
+  which is the disjunction `effect_gain ∨ unknown_ratchet`, since a real gain already rejects.
+- **Done — §1 item 5, checked rather than proved.** The selftest checks the ratchet upward-closed in
+  `(S, D)` for EVERY `D_b ⊆ R` (all 64) and anti-monotone in `D_b`, complete over the reason axis; on the
+  effect axis the predicate reads no `S`, so the points carry only `S = ∅`/`S = E` and their covers. A
+  calibration asks the same checker the opposite question (monotone in `D_b`?) and requires a
+  counterexample; PART 23 greps for it. Planted faults: the pre-amendment body, `bool(b) and D ≠ ∅` and
+  `not b or D ≠ ∅` each fail the selftest (2, 6 and 3 FAIL lines; the last needed a pure-absent-under-ratchet
+  row that was added for it). AS-EFF-005's anti-monotonicity in `S_b` is a SAMPLE (baselines of size ≤ 1).
+- **Done — the counterexample to the old reading** is a selftest row: `D_b = {dispatch}`,
+  `D = {dispatch, reflect}`, pre-amendment rejects, amended passes. **The "all four engines pass" half is a
+  READING of the code sites above, not an engine run** — no conformance PART pins the flag (SPEC.md:4700-4701)
+  and this lane runs no ad-hoc engine fixtures. P3:744-747 states it was executed; that is the record.
+- **`only` — decided NOT a model verb.** Its carrier is the call graph, like amended Definition 33's
+  `forbid` (SPEC.md:5588-5632: `A → A` implicit, the walk stops at a permitted scope and descends through
+  `A`), so it has no `(S, D)` predicate to transcribe and §3.1 refuses it on `gate --report`. Its definition
+  is written as SEMANTICS.md §6's AS-EFF-011 row and paragraph; Phase 2(a)'s edge carrier is where it would
+  enter a model. *Lead, not filed:* candor-java matches a PERMITTED scope by exact segment
+  (`Policy.java` `scopeMatchesPermitted`, "fail-OPEN here") where every other rule matches by prefix; the
+  SPEC `only` clause states no such rule. Not checked in the other three engines.
+- **Done — SEMANTICS.md.** §6's AS-EFF-005, -006 and -008 rows corrected with SPEC line cites; AS-EFF-011
+  added (the table said "exactly these predicates" and lacked it); §1's `𝔼` lacked `Llm` (height 11 → 12).
+- **Done — `lean/README.md` §8** and the matching `Escapes.lean` comments: P3:891-902 now re-witnesses
+  Proposition 6 on `({Llm, Net},∅)`, which is `prop6_llm`'s statement. Comment-only Lean change.
+- **NOT done — the Lean side.** `lean/` never carried the ratchet (its emitter and `differential_lean_vs_python.py`
+  cover `pure`/`deny`/`deny_unknown` only), so nothing in it was stale on this point and the Lean↔Python
+  differential is unaffected. Stating item 5 as a Lean theorem is left open: no Lean toolchain on this
+  machine (`~/.elan` absent), and an unbuilt proof committed for CI to discover is the wrong order.
+- **NOT done — the manuscript.** PAPER3 is outside every repo; the corrections are recorded below for
+  whoever edits it, and `MODEL-DEFINITIONS.md` is unchanged (a verbatim extract; Definition 35's text is
+  already the amended one).
+
+*Corrections for PAPER3 (manuscript only; line numbers against the 2026-08-04 file).*
+
+1. **P3:801-803, Proposition 5's ratchet bullet.** *"The ratchet's grandfathering means it is not
+   upward-closed in `D` for a function already disclosed at baseline"* is false under the amended
+   Definition 35: for `D_b ≠ ∅` the rejection set is empty, which is upward-closed. Proposed: *"The ratchet
+   is upward-closed in `(S,D)` for every fixed baseline — for `D_b = ∅` it is `ψ_R`, otherwise empty — and
+   anti-monotone in `D_b`: growing the baseline can only remove rejections. Its guarantee is a presence-level
+   one, weaker than Definition 35 formerly asserted."* A consequence worth stating: per fixed baseline the
+   ratchet IS `φ∨ψ`-shaped (`ψ_R` or the empty union), so Proposition 5's list of verbs "outside `L`" need
+   not include it; what lies outside `L` is the baseline, not the predicate.
+2. **P3:809, the closing sentence of that remark.** *"The ratchet row in particular would flag every
+   conforming implementation"* is true of the pre-amendment definition only. Under the amended one the ratchet
+   is excluded from a `gate --report` differential because it has no report-only route (SPEC.md:2519, 4700-4701),
+   not because the model disagrees.
+3. **P3:818-819, Corollary 3's parenthetical.** *"where `D_b ⊄ D_b` is false"* cites the pre-amendment
+   predicate. Proposed: *"(For `unknown-ratchet`, whose predicate is indexed by the baseline, the hypothesis
+   is vacuous at the baseline itself — `D_b = ∅ ∧ D_b ≠ ∅` is false — so the corollary says nothing about the
+   ratchet; its own guarantee is per-fixed-baseline upward-closure and anti-monotonicity in `D_b`.)"*
+4. **AS-EFF-005 and `only` are absent from PAPER3.** The effect-gain predicate `S ⊄ S_b` (with ⟨0.40⟩'s
+   prior ∅) is the guard the ratchet extends, and `only` (⟨0.29⟩) postdates the manuscript's §6. Adding them
+   would need a re-extract of `MODEL-DEFINITIONS.md`.
 
 ### Phase 2: extend the Lean model to the full policy language
 

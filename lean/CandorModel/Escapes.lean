@@ -14,10 +14,11 @@
   TWO FINDINGS FELL OUT OF TRANSCRIBING THIS, both the same root cause: Definition 2's amendment
   (`Db ⋢ₑ Net`) did not propagate into §8.
 
-    · **Proposition 6's proof is dead as written.** It reads "Under that order `({Db},∅) ≤ ({Net},∅)`, since
+    · **Proposition 6's proof was dead as written.** It read "Under that order `({Db},∅) ≤ ({Net},∅)`, since
       every element of `{Db}` refines an element of `{Net}`." Under the amended Definition 2 that first step
       is false — `Db ⋢ₑ Net` is stated there explicitly. The PROPOSITION survives, on the surviving
-      refinement pair; the witness in its proof does not. Both are below.
+      refinement pair; the witness in its proof does not. Both are below. PAPER3 has since been amended to
+      the `({Llm, Net},∅)` witness `prop6_llm` uses (P3:891-902, manuscript only).
 
     · **Escape 2 has no realizable instance in the shipped vocabulary**, and needs both halves to see why.
       With `Db`: the move is no longer H-sound, because an observed `Db` is not covered by a declared `Net`
@@ -81,9 +82,10 @@ theorem prop6_llm :
     rw [he] at hr
     cases hr
 
-/-- **AND THE PROOF AS WRITTEN NO LONGER GOES THROUGH.** PAPER3's Proposition 6 instantiates on `Db`, whose
+/-- **AND THE PROOF AS FIRST WRITTEN DID NOT GO THROUGH.** PAPER3's Proposition 6 instantiated on `Db`, whose
     first step needs `Db ⊑ₑ Net` — removed by Definition 2's amendment, which says so in as many words.
-    `{Db}` is not Hoare-below `{Net}`, so the witness is dead even though the proposition is not.
+    `{Db}` is not Hoare-below `{Net}`, so the witness is dead even though the proposition is not. (The
+    manuscript now uses the `{Llm, Net}` witness above and records the `Db` one as amended, P3:891-902.)
 
     Fourth instance of the same pattern in this project's record: a corrected assertion outliving its
     correction in a second location, and the second location is a *proof* this time. -/

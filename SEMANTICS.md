@@ -14,7 +14,12 @@ The model is language-agnostic; §9 maps it onto an implementation (the Rust imp
 
 Fix a finite **effect vocabulary**
 
-> 𝔼 = { Net, Fs, Db, Exec, Env, Clock, Ipc, Log, Rand, Clipboard }.
+> 𝔼 = { Net, Llm, Fs, Db, Exec, Env, Clock, Ipc, Log, Rand, Clipboard }   (SPEC.md:406-416).
+
+`Llm` (⟨0.13⟩) refines `Net` (SPEC.md:433): a model-provider call is an outbound request, and every
+engine emits `Net` beside it, so `Llm ∈ I(f) ⇒ Net ∈ I(f)` on every reachable report. *⟨2026-10-10⟩ This
+line listed ten effects and omitted `Llm` from ⟨0.13⟩ until the Phase 1 model reconciliation
+(LEAN-CHECKER-PLAN.md) — the same omission SPEC §6.2's `allow` clause recorded about itself at ⟨0.24⟩.*
 
 Adjoin a distinguished element **Unknown ∉ 𝔼** meaning *"this effect set may be incomplete: some
 dispatch could not be resolved."* `Unknown` is **not** an effect (you can never hold a capability for
@@ -24,7 +29,7 @@ The analysis works over the **powerset lattice**
 
 > 𝓛 = ( 𝒫(𝔼 ∪ {Unknown}), ⊆ ),  join ⊔ = ∪,  meet ⊓ = ∩,  ⊥ = ∅,  ⊤ = 𝔼 ∪ {Unknown}.
 
-𝓛 is finite, of height |𝔼| + 1 = 11. "More effects / more uncertainty" is *higher* in the order; a
+𝓛 is finite, of height |𝔼| + 1 = 12. "More effects / more uncertainty" is *higher* in the order; a
 **sound** result *over-approximates* (sits above) the truth.
 
 ## 2. Programs
@@ -192,16 +197,51 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-002** | `declared(f) \ I(f) ≠ ∅` | declares a capability it never uses |
 | **AS-EFF-003** | `Unknown ∈ I(f)` | effect set not provably complete; cannot certify |
 | **AS-EFF-004** | `D(f) ∩ Ambient ≠ ∅` | reaches for ambient authority *directly* (vs. receiving it) |
-| **AS-EFF-005** | `I(f) \ B(f) ≠ ∅` | an existing function gained an effect vs. the baseline |
-| **AS-EFF-006** | `I(f) ∩ Forbidden(r) ≠ ∅` for a policy rule `r` whose scope matches `f` | transitively performs an effect a declared boundary forbids |
+| **AS-EFF-005** | `(I(f) \ {Unknown}) \ B(f) ≠ ∅`, with `B(f) = baseline[f] ?? ∅` — so for **every** analysed `f`, including one absent from the baseline (⟨0.40⟩); with the opt-in `unknown-ratchet`, also `Unknown ∈ I(f) ∧ Unknown ∉ B(f)` | a function gained a real effect vs. the baseline — or, under the ratchet, newly acquired `Unknown` |
+| **AS-EFF-006** | for a policy rule `r` whose scope matches `f`: `(I(f) \ {Unknown}) ∩ Forbidden(r) ≠ ∅`, or `Unknown ∈ Forbidden(r)` and `Rc(f) ∩ C(r) ≠ ∅`, where `C(r)` is the rule's reason-class filter (bare `Unknown` = every class) and `Rc(f)` is `f`'s **transitive** reason-class set | transitively performs an effect a declared boundary forbids, or carries a blind spot of a class it forbids |
 | **AS-EFF-007** | *(heuristic, not a set predicate)* `f` has an effect *site* whose argument syntactically derives from a parameter of `f` | performs an injection-class effect on caller-derived input — advisory |
-| **AS-EFF-008** | for an allowlist rule `r` on effect `e ∈ {Net, Exec, Fs, Db}` whose scope matches `f`: `e ∈ I(f)` and the surface is not certified — `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) **or** `masked_e(f)` (the surface is incomplete: some reached value of `e` is not a visible literal — including the opaque `lits_e(f) = ∅` case) | reaches a literal (host / command / path / table) outside the declared allowlist, or a value that cannot be certified — **fail-closed** |
+| **AS-EFF-008** | for an allowlist rule `r` on effect `e ∈ {Net, Exec, Fs, Db, Llm}` (`Llm` rides `Net`'s host literal) whose scope matches `f`: `e ∈ I(f)` and the surface is not certified — `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) **or** `masked_e(f)` (the surface is incomplete: some reached value of `e` is not a visible literal — including the opaque `lits_e(f) = ∅` case) | reaches a literal (host / command / path / table) outside the declared allowlist, or a value that cannot be certified — **fail-closed** |
 | **AS-EFF-009** | for a layering rule `r = forbid A → B`, `scope_A(f)` and `f` transitively calls some `g` with `scope_B(g)` | a function in layer `A` depends on layer `B`, violating a declared dependency direction |
 | **AS-EFF-010** | for a boundary effect `e` and layer function `layer(f)` (SPEC §6.1): `∃f. e ∈ D(f) ∧ layer(f) = ℓ` where `ℓ ∉ layers_e(B)` — `e` appears in a layer it did not occupy in the baseline | a boundary effect leaked into a new layer versus the baseline — the containment ratchet (SPEC §6.1) |
+| **AS-EFF-011** | for a permission rule `r = only A → B₁…Bₖ`, `scope_A(f)` and some `g` with `¬scope_A(g) ∧ ⋀ᵢ ¬scope_{Bᵢ}(g)` is reachable from `f` over the call graph by a path whose intermediate nodes all satisfy `scope_A ∧ ⋀ᵢ ¬scope_{Bᵢ}` (the walk descends through `A` and stops at any permitted scope) | a function in layer `A` reaches a scope the rule does not list |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
-it is AS-EFF-003's concern. AS-EFF-005 fires only for functions present in `B` (regressions in
-existing code), never for new functions. The two baseline-reading predicates (AS-EFF-005's `B(f)`,
+it is AS-EFF-003's concern.
+
+**AS-EFF-005 compares every analysed function, and `Unknown` alone is not a gain.** *⟨2026-10-10⟩ This
+paragraph said AS-EFF-005 "fires only for functions present in `B` … never for new functions", and the row
+above read `I(f) \ B(f)`. Both were stale against ⟨0.40⟩ and ⟨0.16⟩; corrected against SPEC.md:*
+- **A function absent from the baseline has prior ∅** (SPEC.md:2538-2543): its real effects are a gain,
+  exit 1. A new pure function gains nothing. "Absent" means absent under the engine's own key, which is not
+  normalised across a rename (SPEC.md:2566), so `origin: "new"` is a label, not proof of new code.
+- **What counts is `I(f)` minus `Unknown`** (SPEC.md:2551-2552). A gain of `Unknown` alone is disclosed as an
+  advisory note, exit unchanged (SPEC.md:2529-2537), and a NEW function whose `I(f)` is exactly `{Unknown}`
+  is named separately in that note (SPEC.md:2553-2557).
+- **`unknown-ratchet`** (SPEC.md:4626, 4693-4701; opt-in, default off) turns a newly-acquired `Unknown`
+  (`Unknown ∈ I(f)`, `Unknown ∉ B(f)`, so an absent function counts) into an AS-EFF-005 failure, and
+  GRANDFATHERS a function already carrying `Unknown` at baseline however its reasons change. Over the
+  model's pair `(S, D)` (PAPER3's `D` is the reason set, not this document's own-body `D(f)`) that is PAPER3 Definition 35 as amended, `Reject ⇔ D_b = ∅ ∧ D ≠ ∅`, executable as
+  `reference/policy_model.py`'s `unknown_ratchet`: upward-closed in `(S, D)` for every fixed baseline, and
+  anti-monotone in the baseline.
+
+**AS-EFF-006 is reason-scoped, so it does not read the flat `I(f)` alone.** *⟨2026-10-10⟩ The row read
+`I(f) ∩ Forbidden(r) ≠ ∅`, which is right only for a rule naming no `Unknown` filter.* SPEC §4.0's verb table
+(SPEC.md:4792-4795) and §6.2 (SPEC.md:5657, 5872-5880) split it: a concrete effect fires on membership; the
+`Unknown` part fires only when `f`'s reason classes — resolved **transitively** by the gate, not read off the
+direct `unknownWhy` (SPEC.md:5872-5875) — meet the filter, and bare `Unknown` / `Unknown[*]` is every class.
+`pure` forbids every effect and **never** fires on `Unknown` alone (SPEC.md:4792, 5890-5895): `D ≠ ∅` there
+is AS-EFF-003 disclosure. A ⟨0.21⟩ `Net[dest…]` filter (SPEC.md:5905-5910) reads the destination class of
+`f`'s `Net` hosts, a carrier outside `I(f)`, and is not expressed by this row.
+
+**AS-EFF-011 is the ⟨0.29⟩ `only` rule** (SPEC.md:5588-5632), the fail-safe dual of AS-EFF-009: `forbid`
+names what `A` must not reach, `only` names everything it may. `A → A` is implicit; the walk stops at a
+permitted scope and descends through `A`; zero-match is measured on `A` alone. Like AS-EFF-009 it reads the
+call graph, not the effect lattice, and it is **unanswerable from a report** — §3.1 requires `gate --report`
+to refuse it (SPEC.md:5625-5629), because a green would be a completeness claim. This row is the definition
+the formal model (`reference/`, `lean/`, PAPER3) does not carry: PAPER3 predates ⟨0.29⟩, and `only`, like
+amended Definition 33's `forbid`, has the edge set as its carrier rather than `(S, D)`.
+
+The two baseline-reading predicates (AS-EFF-005's `B(f)`,
 AS-EFF-010's `layers_e(B)`) carry §2.1's **version-trust precondition**: a baseline whose producing
 version differs from the running engine, or that carries no provenance, is invalid gate input — the
 guard fails closed *without evaluating the predicate* (SPEC §2.1).
@@ -213,8 +253,8 @@ perform `Net`), yet is **not** ambient-flagged by AS-EFF-004 (it never reached f
 itself — its callee did). Conflating `D` and `Inh` would break exactly this distinction.
 
 **AS-EFF-008 reads a *literal surface* `lits_e(f)` plus its completeness marker**, not the effect
-lattice. Four effects carry a surface: `Net` hosts (`host[:port]`), `Exec` commands (the program name),
-`Fs` paths, and `Db` tables (the table-position identifiers of SQL string literals, plus
+lattice. Five effects carry a surface (SPEC.md:5581-5585): `Net` hosts (`host[:port]`), `Llm` (⟨0.13⟩,
+riding `Net`'s host literal), `Exec` commands (the program name), `Fs` paths, and `Db` tables (the table-position identifiers of SQL string literals, plus
 declaratively-routed tables an ORM mapping makes visible). Each is the *transitive* propagated union of
 the literals statically visible in `f` and its callees, across crate boundaries when a sibling report
 carries them. Alongside the literals an engine tracks **completeness**: `masked_e(f)` holds when `f` or

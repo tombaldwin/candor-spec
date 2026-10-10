@@ -25,6 +25,21 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Model reconciled with the shipped baseline guard (LEAN-CHECKER-PLAN Phase 1; no SPEC.md change, no
+  engine change).** `reference/policy_model.py` carried the PRE-amendment Definition 35 (`D ⊄ D_b`), which
+  rejects a grandfathered function every engine passes, and PART 23 printed "every shipped verb" over it.
+  It now carries amended Def 35 (`D_b = ∅ ∧ D ≠ ∅`), AS-EFF-005's effect gain (`S ⊄ S_b`), the composed
+  baseline guard with ⟨0.40⟩'s absent-function prior ∅ and the ⟨0.16⟩ `Unknown`-only-advisory default,
+  and the old reading as an exhibit. Its selftest checks the ratchet upward-closed in `(S,D)` for every
+  fixed baseline and ANTI-monotone in `D_b` (with a calibration that it is not monotone), and PART 23
+  states and greps for that corrected property. PART 97's rows and verdicts are unchanged (it uses only
+  `pure`/`deny`/`deny_unknown`). `only` (AS-EFF-011) is defined in SEMANTICS.md §6 rather than the model:
+  its carrier is the call graph. SEMANTICS.md §6's AS-EFF-005 (still exempted new functions), -006 (no
+  reason scoping) and -008 (four effects, not five) rows corrected against SPEC.md with line cites, and §1's
+  vocabulary gains `Llm`. `lean/README.md` §8 now records that PAPER3 re-witnesses Proposition 6 on
+  `({Llm, Net},∅)`. The PAPER3 corrections (P3:801-803, P3:809, Corollary 3's parenthetical) are recorded in
+  the plan for the manuscript; `MODEL-DEFINITIONS.md` is unchanged.
+
 ## [0.40.4] — 2026-10-10
 
 - **Register: filed the v045 soundness wave (SOUNDNESS).** CLOSED with their fix commits on the pushed mains (rust

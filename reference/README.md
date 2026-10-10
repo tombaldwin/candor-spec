@@ -63,12 +63,31 @@ code.** Nothing goes red, no monotonicity breaks, and the differential reports c
 violating. Before treating any disagreement as an engine defect, check which side the contract and the
 conformance suite are on.
 
-**Do not add rows for `forbid`, `allow`, `deny E[dest…]` or the `unknown-ratchet`.** A review established
-that Definitions 33–35 describe verbs the deployment does not have (`forbid` is a call-graph rule with no
-effect predicate; `allow` is a fail-closed literal-surface certification; the shipped ratchet grandfathers
-a function already disclosed at baseline, so Definition 35 rejects where every engine passes). Proposition 5
-has been rescoped to the `L`-carried verbs. Those rows would manufacture divergences out of the theory
-rather than find them in the code.
+**Do not add `gate --report` differential rows for `forbid`, `allow`, `only`, `deny E[dest…]`, AS-EFF-005
+or the `unknown-ratchet`.** `forbid` (amended Definition 33) and the ⟨0.29⟩ `only` are call-graph rules with
+no effect predicate, and `allow` (amended Definition 34) is a fail-closed literal-surface certification;
+SPEC §3.1 requires that route to REFUSE all three (exit 2). Proposition 5 has been rescoped to the
+`L`-carried verbs. Those rows would manufacture divergences out of the theory rather than find them in the
+code.
+
+**The baseline guard IS in the model now, and still has no report-only route.** ⟨2026-10-10, Phase 1 of
+`LEAN-CHECKER-PLAN.md`⟩ `policy_model.py` carried the PRE-amendment Definition 35 (`D ⊄ D_b`), which
+rejects `D_b = {dispatch}`, `D = {dispatch, reflect}` where every engine passes — so PART 23 printed "every
+shipped verb's rejection set is upward-closed" over a verb never shipped in that form. It now carries:
+
+- `unknown_ratchet(D_b)` — Definition 35 as amended: `Reject ⇔ D_b = ∅ ∧ D ≠ ∅`;
+- `effect_gain(S_b)` — AS-EFF-005: `Reject ⇔ S ⊄ S_b` (`Unknown` is not in `S`, so an `Unknown`-only gain
+  never rejects — the ⟨0.16⟩ advisory default);
+- `baseline_guard(baseline, ratchet)` — the two composed, with `ABSENT` as ⟨0.40⟩'s prior ∅ for a function
+  the baseline does not contain;
+- the pre-amendment reading kept as an exhibit (`unknown_ratchet_as_written_before_amendment`), so the
+  counterexample row stays executable.
+
+The selftest checks each per FIXED baseline over the full lattice (upward-closed in `(S, D)`), and checks
+the ratchet ANTI-monotone in `D_b` over all 2⁶ baselines — with a calibration that the same checker finds
+it NOT monotone — which is the corrected form of PAPER3 P3:801-802 (that sentence puts the
+non-monotonicity on `D`). These verbs are judged by no engine here: the baseline guard is a scan-time mode
+(SPEC §3), and the ratchet flag is per-engine tested, not conformance-pinned (SPEC §3.4).
 
 Two obligations the differential itself carries, both learned the same day: keep the model's `E` in step
 with SPEC §1's vocabulary (it was missing `Ipc` and `Clipboard`, which would have crashed on the first
