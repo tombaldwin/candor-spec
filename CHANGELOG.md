@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.4] — 2026-10-10
+
 - **Register: filed the v045 soundness wave (SOUNDNESS).** CLOSED with their fix commits on the pushed mains (rust
   `0b3c67b`, java `0ed15e1`, ts `b1b9e2c`, swift `5ccbf4c`): R1080 (a `Vec` element fixed by any exact push in the
   block, before or after the call; the spec lane re-executed both residual shapes, absent on published 0.40.3 and
