@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.5] — 2026-10-11
+
 - **Register, swift audit of R1105/R1106.** Filed from candor-swift `234830a` (merged `5e66006`): R1099 (CLOSED, a
   regression of R1105 — the getter view was per binding, not per qualified name), R1100 (CLOSED, `$model.flag`
   projected bindings edged nowhere), R1107 (CLOSED, implicit-self `m()` did not dispatch to subclass overrides),
