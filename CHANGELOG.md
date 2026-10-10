@@ -25,6 +25,27 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Register: filed the v045 soundness wave (SOUNDNESS).** CLOSED with their fix commits on the pushed mains (rust
+  `0b3c67b`, java `0ed15e1`, ts `b1b9e2c`, swift `5ccbf4c`): R1080 (a `Vec` element fixed by any exact push in the
+  block, before or after the call; the spec lane re-executed both residual shapes, absent on published 0.40.3 and
+  charged at `0b3c67b`), R1071 (a platform-PROTOCOL extension member on a stdlib receiver, through conformances
+  derived from the SDK interfaces; wider than the row, since the in-package case was absent too), and R935, which was
+  RE-OPENED and widened (20 of 46 executed environment shapes absent on 0.40.3) and closed again, with the location
+  model rebuilt as one value-flow graph. R1078's fan-out half is closed (a fabrication) and its name-rule half
+  DECLINED (it would drop Kafka `Net`). New and closed: R1083 (as a disclosure), R1084, R1085, R1089, R1090 (an
+  over-charge), R1092, R1093, R1094 (the published jar's derived JDK indexes depended on the JDK that built it),
+  R1095 (a disclosure floor for an untyped receiver; the spec lane re-executed two shapes), R1096 (κ table override
+  union) and **R1086, a REGRESSION SHIPPED IN v0.40.3 by R1081's fix** (a guessed operand type refused a real
+  operator overload: executed 1 on v0.40.2, 0 on v0.40.3). New and OPEN, `DIR=SILENT`: **R1097**, R1096's
+  cross-jar residual, executed by the spec lane on ktor's `OutgoingContent.getContentLength()` over
+  `LocalFileContent` (absent on both binaries over a file stat). The example the queue named for it, spring-rabbit's
+  `RabbitMessagingTemplate.receive()`, is disclosed (`dispatch:` `Unknown`), not silent. R1081, R1073 (the fence now
+  has a unit fixture), R814 and R1082 carry notes. Open cardinal sins 12 → 11 (`scripts/sin-direction.py`); open
+  rows 153 → 151.
+- **`LEAN-CHECKER-PLAN.md`: a plan for a per-report verdict checker compiled from the Lean model.** Phases smallest
+  first, each with an acceptance property and the control that shows its instrument can fail; re-aimed after review
+  at the report→(S,D) projection, where every filed verdict-logic defect lived, plus a route-equality sibling.
+  Phase 0 is built as PART 97 and Phase 0b as PART 98 (below); the rest is a plan.
 - **`MODEL-DEFINITIONS.md`: the formal model's numbered definitions, in the repo** (Tom's ruling,
   2026-10-10: the definitions, not the paper). A verbatim extract of the unpublished PAPER3's Definitions
   only — all of §6–§7's, plus every one `lean/`, `reference/` and `LEAN-CHECKER-PLAN.md` cite (32), and the
