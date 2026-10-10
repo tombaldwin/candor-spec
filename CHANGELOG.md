@@ -25,6 +25,13 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §6.2 Scope matching names BOTH exact-segment forms (closes SOUNDNESS R681).** The paragraph said a
+  listed `only` permitted scope was "the one exception" to the last-segment prefix; the trailing-separator
+  anchor (`app::` / `app.`), implemented four-way since a 2026-08-23 field report and pinned by PART 64, is
+  the other, and had no clause at all — PART 64 cited a "SPEC §6.2" sentence that did not exist. Both are
+  now stated; PART 64's citation resolves. R1103 (b) re-worded: a layering-gate false green, not an effect
+  under-report; the anchored `from` (`only model:: -> util`) is the working remedy, executed four-way; the
+  BINDS-vs-NAMES question is with Tom.
 - **`only`: a LISTED permitted scope matches by EXACT segment (SPEC §6.2 `only` rule 4, SOUNDNESS R1103,
   conformance PART 49b).** SPEC stated no matching rule for a permitted scope, so the general rule — last
   segment a prefix — read literally let `only model -> util` pass a call into `utilities`. All four engines

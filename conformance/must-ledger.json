@@ -2295,9 +2295,9 @@
       "status": "pre-ledger"
     },
     {
-      "sha": "1dc0fcc42d069f68",
-      "part": "PART 49b",
-      "note": "RE-CONFIRMED 2026-10-10 after the paragraph gained its last sentence (a LISTED `only` permitted scope is the one exception, matched by exact segment — SOUNDNESS R1103). PART 49b executes that exception four-way. The general prefix rule was pre-ledger and remains exercised by the gen_policy_match.py policy-matching differential; it is unchanged."
+      "sha": "04067e40f0c54d96",
+      "part": "PART 64, PART 49b",
+      "note": "RE-CONFIRMED 2026-10-10 (SOUNDNESS R681 closed): the paragraph now names both exact-segment forms — (1) the trailing-separator anchor, executed by PART 64 on a rust fixture (java/ts/swift carry the same matcher, unexercised there), and (2) an `only` rule's listed permitted scope, executed four-way by PART 49b. The general prefix rule is unchanged and stays exercised by the gen_policy_match.py policy-matching differential."
     },
     {
       "sha": "f658c81f89927701",
@@ -2683,10 +2683,11 @@
       "part": "PART 49"
     },
     {
-      "sha": "6baf98292685286f",
+      "sha": "36a882f691db8a69",
       "at": "6.2 The policy DSL (normative)",
       "excerpt": "4. **A LISTED permitted scope matches by EXACT segment run.** A scope after the arrow matches a callee iff its",
-      "part": "PART 49b"
+      "part": "PART 49b",
+      "note": "RE-CONFIRMED 2026-10-10: only the OPEN R1103 (b) note at the end of the item was reworded (a layering-gate false green; the anchored `from` remedy). The rule PART 49b executes is unchanged."
     },
     {
       "sha": "f415a9f27bb1c575",

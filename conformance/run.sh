@@ -12809,7 +12809,10 @@ printf '%b' "$P63_OUT"
 [ "$P63_BAD" = 1 ] && { echo "  -> DIVERGE — see the row above"; rc=1; }
 true
 
-# PART 64 — A TRAILING SEPARATOR ANCHORS A SCOPE TO AN EXACT SEGMENT (SPEC §6.2) [TIER 1]
+# PART 64 — A TRAILING SEPARATOR ANCHORS A SCOPE TO AN EXACT SEGMENT (SPEC §6.2 Scope matching, form (1)) [TIER 1]
+#
+# ⟨2026-10-10, SOUNDNESS R681⟩ This header cited "SPEC §6.2" from the day it was written, and §6.2 had no
+# such clause — only the prefix rule. The Scope-matching paragraph now names both exact-segment forms.
 #
 # A policy scope matches its LAST segment by PREFIX — deliberate and documented, so `domain` matches
 # `domain_service`. REPORTED FROM THE FIELD and reproduced four-way: `forbid aws -> app` fired 14 times
@@ -12860,7 +12863,7 @@ p64_row "rust " "dep::" "$p64_dep_exact" "$SCAN" "$P64" --out "$P64/r" --policy 
 rm -rf "$P64"
 # ENGINES: rust; java ts swift: NOT EXERCISED HERE — they carry the identical matcher and were fixed in the same commit, but this fixture is Rust source so only candor-scan can read it, and a four-way row would need four language fixtures. Asserting rust and saying the others are unasked beats a row that implies coverage it does not have
 # CONTROLS: p64_dep_exact — an exact scope that DOES exist must still fire, or an engine failing every `::` scope passes the other three rows
-echo "PART 64 — a trailing separator anchors a scope to an exact segment (SPEC §6.2)"
+echo "PART 64 — a trailing separator anchors a scope to an exact segment (SPEC §6.2 Scope matching, form (1))"
 printf '%b' "$P64_OUT"
 [ "$P64_BAD" = 0 ] && echo "  -> MATCH — prefix still matches, and a trailing separator anchors without disabling the scope"
 [ "$P64_BAD" = 1 ] && { echo "  -> DIVERGE — see the rows above"; rc=1; }

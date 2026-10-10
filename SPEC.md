@@ -5632,11 +5632,14 @@ forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
      constrains more. ⟨2026-10-10, SOUNDNESS R1103⟩ *All four engines have matched a permitted scope this
      way since ⟨0.29⟩, each citing the same measured escape (`only model -> util` passing `model.go` →
      `utilities_untrusted.exfil`), while this list said nothing — so the Scope-matching rule, read
-     literally, permitted the escape. Pinned four-way by conformance PART 49b.* **OPEN (R1103 (b)):** the
-     implicit `A -> A` of rule 1 is evaluated with `from`'s general matcher, so `only model -> util`
-     permits `model.go` → `modelx.exfil` in all four engines — the same widening on the one permitted
-     scope this rule does not cover. Whether `modelx` is inside `A` is the general rule's question
-     (`domain` matches `domain_logic` by design), and it is not settled here.
+     literally, permitted the escape. Pinned four-way by conformance PART 49b.* **OPEN (R1103 (b), with
+     Tom):** the implicit `A -> A` of rule 1 is evaluated with `from`'s general matcher, so `only model ->
+     util` permits `model.go` → `modelx.exfil` in all four engines. That is a layering-gate false green,
+     not an effect under-report: `modelx.exfil`'s own effects are reported, and `deny` and `forbid model ->
+     modelx` fire on it. The remedy available today is the anchored `from` of the Scope-matching rule's
+     form (1): `only model:: -> util` charges that call in all four engines. Whether the implicit
+     permission covers the units `A` BINDS (prefix, today) or the units `A` NAMES (exact) is not settled
+     here.
 
   **`only` is UNANSWERABLE from a report**, on the same §3.1 rule as `forbid` and for a stricter reason:
   `forbid` asks whether one named crossing is present, while `only` asks whether EVERY reached scope is on
@@ -5972,8 +5975,17 @@ exactly and the **last** segment is a **prefix** of its name-segment. So scope `
 `subdomain` or `not_my_domain` (substring, not a segment boundary); scope `net::client` matches
 `crate::net::client_pool::get` but not `crate::network::client` (intermediate segments are exact, not
 prefixes). An **absent/empty scope means the whole compilation unit** (matches every function).
-The one exception is a LISTED permitted scope of an `only` rule, which matches by exact segment run
-(the `only` clause's rule 4).
+**Two forms match by EXACT segment run instead**, withdrawing the last-segment prefix: (1) a scope
+written with a **trailing path separator** — `app::` or `app.` (trailing whitespace ignored) — matches
+only a name-segment equal to `app`, so `forbid aws -> app::` does not bite `application_name` while bare
+`app` keeps the prefix rule; it applies wherever this rule does, including an `only` rule's `from`
+(`only model:: -> util`); and (2) a LISTED permitted scope of an `only` rule (the `only` clause's rule 4).
+Form (1) is pinned by PART 64 (a rust fixture; java `Policy.java:1979-1998`, ts `policy.mjs:721-744` and
+swift `CandorCore/Policy.swift:786-800` implement the same matcher as rust `candor-classify/src/policy.rs:853-872`
+and are not exercised there), form (2) by PART 49b. ⟨2026-10-10, SOUNDNESS R681⟩ *Form (1) shipped
+four-way after a 2026-08-23 field report and was pinned by PART 64 with no clause here, so an
+implementation written from this document alone would rebuild the prefix-only matcher the form exists
+to escape — the reporter's remedy had been to delete the rule.*
 
 **Literal matching** (`allow`) is **per effect**: a `Net` host matches by hostname with the port ignored
 (`api.stripe.com` allows `api.stripe.com:443`); an `Exec` command matches by basename
