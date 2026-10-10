@@ -2295,10 +2295,9 @@
       "status": "pre-ledger"
     },
     {
-      "sha": "afb2b186718da00f",
-      "at": "6.2 The policy DSL (normative)",
-      "excerpt": "**Scope matching** (`<scope>` against a function's fully-qualified name) is **by path segment, not substring**",
-      "status": "pre-ledger"
+      "sha": "1dc0fcc42d069f68",
+      "part": "PART 49b",
+      "note": "RE-CONFIRMED 2026-10-10 after the paragraph gained its last sentence (a LISTED `only` permitted scope is the one exception, matched by exact segment — SOUNDNESS R1103). PART 49b executes that exception four-way. The general prefix rule was pre-ledger and remains exercised by the gen_policy_match.py policy-matching differential; it is unchanged."
     },
     {
       "sha": "f658c81f89927701",
@@ -2678,10 +2677,16 @@
       "part": "PART 49"
     },
     {
-      "sha": "a0db581c62351a2d",
+      "sha": "2248c51c1783cd1d",
       "at": "6.2 The policy DSL (normative)",
-      "excerpt": "⟨0.29⟩ `only` — the permission form",
+      "excerpt": "Four rules an implementation MUST follow, each of which could plausibly have gone the other way:",
       "part": "PART 49"
+    },
+    {
+      "sha": "6baf98292685286f",
+      "at": "6.2 The policy DSL (normative)",
+      "excerpt": "4. **A LISTED permitted scope matches by EXACT segment run.** A scope after the arrow matches a callee iff its",
+      "part": "PART 49b"
     },
     {
       "sha": "f415a9f27bb1c575",

@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`only`: a LISTED permitted scope matches by EXACT segment (SPEC §6.2 `only` rule 4, SOUNDNESS R1103,
+  conformance PART 49b).** SPEC stated no matching rule for a permitted scope, so the general rule — last
+  segment a prefix — read literally let `only model -> util` pass a call into `utilities`. All four engines
+  already matched exactly, each citing that escape; the clause now says so and PART 49b pins it four-way
+  (executed at the 0.40.4 heads; a probe fault reddens all four). **SPEC.md changed.** Open as R1103 (b),
+  not decided here: the implicit `A -> A` still uses the prefix matcher four-way, so `model` permits
+  `modelx`, which SPEC's own reading puts inside `A`.
+- **`unknown-ratchet` is conformance-pinned four-way (PART 15e, SPEC §3.4 sentence updated).** Scan route
+  (no `gate --report` baseline route exists): a new or formerly-pure `Unknown` fails under the flag; a
+  function already `Unknown` at baseline is grandfathered as its direct reason classes grow (dispatch →
+  dispatch+reflect on java, dispatch+callback on rust/ts/swift — the counterexample to the pre-amendment
+  Def 35); a new pure function passes; unset, the same tree passes. All four engines pass every cell; a
+  probe fault (baseline `held` renamed) reddens 8 cells.
 - **Model reconciled with the shipped baseline guard (LEAN-CHECKER-PLAN Phase 1; no SPEC.md change, no
   engine change).** `reference/policy_model.py` carried the PRE-amendment Definition 35 (`D ⊄ D_b`), which
   rejects a grandfathered function every engine passes, and PART 23 printed "every shipped verb" over it.

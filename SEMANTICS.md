@@ -203,7 +203,7 @@ The diagnostics are exactly these predicates:
 | **AS-EFF-008** | for an allowlist rule `r` on effect `e ∈ {Net, Exec, Fs, Db, Llm}` (`Llm` rides `Net`'s host literal) whose scope matches `f`: `e ∈ I(f)` and the surface is not certified — `lits_e(f) \ Allow(r) ≠ ∅` (a *visible* literal outside the allowlist) **or** `masked_e(f)` (the surface is incomplete: some reached value of `e` is not a visible literal — including the opaque `lits_e(f) = ∅` case) | reaches a literal (host / command / path / table) outside the declared allowlist, or a value that cannot be certified — **fail-closed** |
 | **AS-EFF-009** | for a layering rule `r = forbid A → B`, `scope_A(f)` and `f` transitively calls some `g` with `scope_B(g)` | a function in layer `A` depends on layer `B`, violating a declared dependency direction |
 | **AS-EFF-010** | for a boundary effect `e` and layer function `layer(f)` (SPEC §6.1): `∃f. e ∈ D(f) ∧ layer(f) = ℓ` where `ℓ ∉ layers_e(B)` — `e` appears in a layer it did not occupy in the baseline | a boundary effect leaked into a new layer versus the baseline — the containment ratchet (SPEC §6.1) |
-| **AS-EFF-011** | for a permission rule `r = only A → B₁…Bₖ`, `scope_A(f)` and some `g` with `¬scope_A(g) ∧ ⋀ᵢ ¬scope_{Bᵢ}(g)` is reachable from `f` over the call graph by a path whose intermediate nodes all satisfy `scope_A ∧ ⋀ᵢ ¬scope_{Bᵢ}` (the walk descends through `A` and stops at any permitted scope) | a function in layer `A` reaches a scope the rule does not list |
+| **AS-EFF-011** | for a permission rule `r = only A → B₁…Bₖ`, `scope_A(f)` and some `g` with `¬scope_A(g) ∧ ⋀ᵢ ¬exact_{Bᵢ}(g)` is reachable from `f` over the call graph by a path whose intermediate nodes all satisfy `scope_A ∧ ⋀ᵢ ¬exact_{Bᵢ}` (the walk descends through `A` and stops at any permitted scope; `exact_B` is the scope match with every segment exact, SPEC §6.2 `only` rule 4) | a function in layer `A` reaches a scope the rule does not list |
 
 `Unknown` is excluded from AS-EFF-001 deliberately — an unresolved call is not a *declarable* effect;
 it is AS-EFF-003's concern.
@@ -235,7 +235,7 @@ is AS-EFF-003 disclosure. A ⟨0.21⟩ `Net[dest…]` filter (SPEC.md:5905-5910)
 
 **AS-EFF-011 is the ⟨0.29⟩ `only` rule** (SPEC.md:5588-5632), the fail-safe dual of AS-EFF-009: `forbid`
 names what `A` must not reach, `only` names everything it may. `A → A` is implicit; the walk stops at a
-permitted scope and descends through `A`; zero-match is measured on `A` alone. Like AS-EFF-009 it reads the
+permitted scope and descends through `A`; zero-match is measured on `A` alone; a LISTED scope matches by exact segment while `A` keeps the general prefix rule (SOUNDNESS R1103, whose part (b) asks whether the implicit `A → A` should too). Like AS-EFF-009 it reads the
 call graph, not the effect lattice, and it is **unanswerable from a report** — §3.1 requires `gate --report`
 to refuse it (SPEC.md:5625-5629), because a green would be a completeness claim. This row is the definition
 the formal model (`reference/`, `lean/`, PAPER3) does not carry: PAPER3 predates ⟨0.29⟩, and `only`, like

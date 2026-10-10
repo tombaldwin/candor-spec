@@ -4698,6 +4698,211 @@ else
 fi
 
 # ====================================================================================================
+# PART 15e — the OPT-IN `unknown-ratchet` (SPEC §3.4, SPEC §3 baseline guard), four-way, on the SCAN route.  [TIER 1]
+# Until 2026-10-10 no PART exercised the flag: SPEC §3.4 called it "per-engine tested rather than
+# conformance-differential-pinned", and `reference/policy_model.py` carried the PRE-amendment Definition 35
+# (`D ⊄ D_b`), which REJECTS a grandfathered function whose reason set grows. The rows are the model's
+# worked rows (`policy_model._selftest_baseline_guard`), each run as a real baseline + after tree with
+# CANDOR_UNKNOWN_RATCHET set (env PRESENCE is on, four-way). `gate --report` has no baseline route, so this
+# is the scan route only. One same-build baseline per engine: keep (Fs), held (a DIRECT `dispatch`
+# Unknown — a call through an interface/protocol/trait object with no implementor in scope), calc (pure).
+#   u1_new_unknown      + opaquenew, Unknown-only, ABSENT from the baseline → exit 1, AS-EFF-005 row
+#                       {fn: opaquenew, effects: [Unknown]}      model: ABSENT, (∅,{r}), ratchet → REJECT
+#   u2_pure_to_unknown  calc (baseline-pure) gains a dispatch call  → exit 1, row for calc
+#                                                                   model: (∅,∅) → (∅,{dispatch}) → REJECT
+#   u3_grandfathered    held gains a SECOND reason class (java: reflect; rust/ts/swift: a callback) →
+#                       exit 0, no [AS-EFF-005]   model: D_b={dispatch}, D={dispatch,X} → PASS. THE
+#                       COUNTEREXAMPLE ROW: the pre-amendment `D ⊄ D_b` rejects here.
+#   u4_new_pure         + tidy, pure, absent    → exit 0           model: ABSENT, (∅,∅), ratchet → pass
+#   u5_flag_off         u1's tree WITHOUT the flag → exit 0 (the ⟨0.16⟩ advisory default)
+# Each cell first proves the fixture REACHED the engine from the AFTER report (opaquenew Unknown-only, calc
+# Unknown, held's DIRECT `unknownWhy` carrying two classes incl. dispatch, tidy pure) — a miss is a HARNESS
+# fault, never an xfail — and the baseline itself is checked (held Unknown with `dispatch` only).
+# ====================================================================================================
+echo
+echo "[15e] unknown-ratchet four-way  (SPEC §3.4 + §3 baseline guard — a NEW Unknown fails, a disclosed one is grandfathered)"
+# ENGINES: rust java ts swift
+# CONTROLS: u4_new_pure u5_flag_off — u4 must pass under the flag, so an engine charging every absent key fails it; u5 is u1's tree without the flag and must pass, so the flag (not the tree) is what u1 measures
+# CALIBRATED: CANDOR_PROBE_FAULT=1 records the baseline with `held` RENAMED (held0), so `held` is absent and its Unknown is newly introduced: u3_grandfathered must go red on all four engines (and u4, whose tree also carries held). Measured 2026-10-10 at java c5ef58f, rust 4ade9e2, ts 79819c1, swift eaf145a: all four pass every cell; with the fault, u3 and u4 go red on all four (8 cells, exit 1).
+P15E_XFAIL=""
+URW="$W/ur"; rm -rf "$URW"; mkdir -p "$URW"
+UR_FAULT=""; [ "${CANDOR_PROBE_FAULT:-}" = 1 ] && UR_FAULT=1
+UR_CELLS="$URW/cells.tsv"; : > "$UR_CELLS"
+ur_cell() { # $1 engine  $2 cell  $3 report  $4 gatejson  $5 flag(1|0)  -- cmd...
+  local eng=$1 cell=$2 rep=$3 gj=$4 flag=$5; shift 5; shift
+  local out="$URW/$eng.$cell.out" x
+  if [ "$flag" = 1 ]; then
+    env -u CANDOR_POLICY -u CANDOR_CONFIG CANDOR_UNKNOWN_RATCHET=1 CANDOR_BASELINE="$UR_BASE" "$@" > "$out" 2>&1; x=$?
+  else
+    env -u CANDOR_POLICY -u CANDOR_CONFIG -u CANDOR_UNKNOWN_RATCHET CANDOR_BASELINE="$UR_BASE" "$@" > "$out" 2>&1; x=$?
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$eng" "$cell" "$x" "$out" "$gj" "$rep" "$UR_BASE" >> "$UR_CELLS"
+}
+# u1..u5 → (tree, flag). u5 reuses u1's tree.
+ur_tree() { case $1 in u5) echo u1;; *) echo "$1";; esac; }
+ur_flag() { case $1 in u5) echo 0;; *) echo 1;; esac; }
+ur_name() { case $1 in
+  u1) echo u1_new_unknown;; u2) echo u2_pure_to_unknown;; u3) echo u3_grandfathered;; u4) echo u4_new_pure;; u5) echo u5_flag_off;;
+esac; }
+UR_HELD_BASE=held; [ -n "$UR_FAULT" ] && UR_HELD_BASE=held0
+# --- java (class q.G; Sink has no implementor, so k.put is a `dispatch` Unknown) ---
+URJ_KEEP=' interface Sink { void put(String s); }\n static void keep() throws Exception { java.nio.file.Files.readString(java.nio.file.Path.of("/x")); }'
+URJ_HELD=' static int held(Sink k, String s) throws Exception { k.put("x"); return 0; }'
+URJ_HELD2=' static int held(Sink k, String s) throws Exception { k.put("x"); return (int) String.class.getMethod("length").invoke(s); }'
+URJ_CALC=' static int calc(Sink k) { return 1; }'
+for c in base u1 u2 u3 u4; do mkdir -p "$URW/j_$c/q"; done
+printf "package q;\npublic class G {\n$URJ_KEEP\n${URJ_HELD/held(/$UR_HELD_BASE(}\n$URJ_CALC\n}\n" > "$URW/j_base/q/G.java"
+printf "package q;\npublic class G {\n$URJ_KEEP\n$URJ_HELD\n$URJ_CALC\n static int opaquenew(Sink k) { k.put(\"y\"); return 0; }\n}\n" > "$URW/j_u1/q/G.java"
+printf "package q;\npublic class G {\n$URJ_KEEP\n$URJ_HELD\n static int calc(Sink k) { k.put(\"z\"); return 1; }\n}\n" > "$URW/j_u2/q/G.java"
+printf "package q;\npublic class G {\n$URJ_KEEP\n$URJ_HELD2\n$URJ_CALC\n}\n" > "$URW/j_u3/q/G.java"
+printf "package q;\npublic class G {\n$URJ_KEEP\n$URJ_HELD\n$URJ_CALC\n static int tidy(int a) { return a + 1; }\n}\n" > "$URW/j_u4/q/G.java"
+for c in base u1 u2 u3 u4; do javac -d "$URW/j_${c}c" "$URW/j_$c/q/G.java" 2>/dev/null || { echo "FAIL: javac on the 15e $c fixture"; exit 2; }; done
+java -jar "$JAR" "$URW/j_basec" --json "$URW/jbase.json" >/dev/null 2>&1; [ -s "$URW/jbase.callgraph.json" ] || { echo "FAIL: java 15e baseline wrote no sidecar"; exit 2; }
+UR_BASE="$URW/jbase.json"
+for c in u1 u2 u3 u4 u5; do
+  t=$(ur_tree "$c")
+  ur_cell java "$(ur_name "$c")" "$URW/j_$c.json" "$URW/j_$c.gate.json" "$(ur_flag "$c")" -- java -jar "$JAR" "$URW/j_${t}c" --json "$URW/j_$c.json" --gate-json "$URW/j_$c.gate.json"
+done
+# --- candor-scan (crate ur; `&dyn Sink` with no impl is a `dispatch` Unknown, a fn pointer a callback) ---
+URR_HEAD='pub trait Sink { fn put(&self, s: &str); }\npub fn helper() -> usize { 0 }\npub fn keep() { let _ = std::fs::read("/x"); }'
+URR_HELD='pub fn held(k: &dyn Sink) -> usize { k.put("x"); 0 }'
+URR_HELD2='pub fn held(k: &dyn Sink) -> usize { k.put("x"); let g: fn() -> usize = helper; g() }'
+URR_CALC='pub fn calc(_k: &dyn Sink) -> usize { 1 }'
+for c in base u1 u2 u3 u4; do mkdir -p "$URW/r_$c/src"; printf '[package]\nname = "ur"\nversion = "0.0.0"\nedition = "2021"\n' > "$URW/r_$c/Cargo.toml"; done
+printf "$URR_HEAD\n${URR_HELD/held(/$UR_HELD_BASE(}\n$URR_CALC\n" > "$URW/r_base/src/lib.rs"
+printf "$URR_HEAD\n$URR_HELD\n$URR_CALC\npub fn opaquenew(k: &dyn Sink) -> usize { k.put(\"y\"); 0 }\n" > "$URW/r_u1/src/lib.rs"
+printf "$URR_HEAD\n$URR_HELD\npub fn calc(k: &dyn Sink) -> usize { k.put(\"z\"); 1 }\n" > "$URW/r_u2/src/lib.rs"
+printf "$URR_HEAD\n$URR_HELD2\n$URR_CALC\n" > "$URW/r_u3/src/lib.rs"
+printf "$URR_HEAD\n$URR_HELD\n$URR_CALC\npub fn tidy(a: u32) -> u32 { a + 1 }\n" > "$URW/r_u4/src/lib.rs"
+"$SCAN" "$URW/r_base" --out "$URW/rbase" >/dev/null 2>&1; [ -s "$URW/rbase.ur.scan.callgraph.json" ] || { echo "FAIL: scan 15e baseline wrote no sidecar"; exit 2; }
+UR_BASE="$URW/rbase.ur.scan.json"
+for c in u1 u2 u3 u4 u5; do
+  t=$(ur_tree "$c")
+  ur_cell rust "$(ur_name "$c")" "$URW/r_$c.ur.scan.json" "$URW/r_$c.gate.json" "$(ur_flag "$c")" -- "$SCAN" "$URW/r_$t" --out "$URW/r_$c" --gate-json "$URW/r_$c.gate.json"
+done
+# --- candor-ts (module ur) ---
+if [ -n "$TS_OK" ]; then
+  URT_HEAD='import * as fsm from "node:fs";\nexport interface Sink { put(s: string): void; }\nexport function keep(): string { return fsm.readFileSync("/x", "utf8"); }'
+  URT_HELD='export function held(k: Sink): number { k.put("x"); return 0; }'
+  URT_HELD2='export function held(k: Sink): number { k.put("x"); const f: Function = (globalThis as any).x; return f(); }'
+  URT_CALC='export function calc(k: Sink): number { return 1; }'
+  for c in base u1 u2 u3 u4; do mkdir -p "$URW/t_$c"; done
+  printf "$URT_HEAD\n${URT_HELD/held(/$UR_HELD_BASE(}\n$URT_CALC\n" > "$URW/t_base/ur.ts"
+  printf "$URT_HEAD\n$URT_HELD\n$URT_CALC\nexport function opaquenew(k: Sink): number { k.put(\"y\"); return 0; }\n" > "$URW/t_u1/ur.ts"
+  printf "$URT_HEAD\n$URT_HELD\nexport function calc(k: Sink): number { k.put(\"z\"); return 1; }\n" > "$URW/t_u2/ur.ts"
+  printf "$URT_HEAD\n$URT_HELD2\n$URT_CALC\n" > "$URW/t_u3/ur.ts"
+  printf "$URT_HEAD\n$URT_HELD\n$URT_CALC\nexport function tidy(a: number): number { return a + 1; }\n" > "$URW/t_u4/ur.ts"
+  node "$TS_DIR/scan.mjs" "$URW/t_base/ur.ts" "$URW/tbase" >/dev/null 2>&1; [ -s "$URW/tbase.callgraph.json" ] || { echo "FAIL: ts 15e baseline wrote no sidecar"; exit 2; }
+  UR_BASE="$URW/tbase.json"
+  for c in u1 u2 u3 u4 u5; do
+    t=$(ur_tree "$c")
+    ur_cell ts "$(ur_name "$c")" "$URW/t_${c}o.json" "$URW/t_$c.gate.json" "$(ur_flag "$c")" -- node "$TS_DIR/scan.mjs" "$URW/t_$t/ur.ts" "$URW/t_${c}o" --gate-json "$URW/t_$c.gate.json"
+  done
+fi
+# --- candor-swift (package ur — the leaf directory) ---
+if [ -n "$SW_OK" ] && [ -x "$SW_BIN" ]; then
+  URS_HEAD='import Foundation\nprotocol Sink { func put(_ s: String) }\nfunc keep() { _ = FileManager.default.contents(atPath: "/x") }'
+  URS_HELD='func held(_ k: any Sink, _ f: () -> Void) { k.put("x") }'
+  URS_HELD2='func held(_ k: any Sink, _ f: () -> Void) { k.put("x"); f() }'
+  URS_CALC='func calc(_ k: any Sink) -> Int { 1 }'
+  for c in base u1 u2 u3 u4; do mkdir -p "$URW/s_$c/ur"; done
+  printf "$URS_HEAD\n${URS_HELD/held(/$UR_HELD_BASE(}\n$URS_CALC\n" > "$URW/s_base/ur/a.swift"
+  printf "$URS_HEAD\n$URS_HELD\n$URS_CALC\nfunc opaquenew(_ k: any Sink) { k.put(\"y\") }\n" > "$URW/s_u1/ur/a.swift"
+  printf "$URS_HEAD\n$URS_HELD\nfunc calc(_ k: any Sink) -> Int { k.put(\"z\"); return 1 }\n" > "$URW/s_u2/ur/a.swift"
+  printf "$URS_HEAD\n$URS_HELD2\n$URS_CALC\n" > "$URW/s_u3/ur/a.swift"
+  printf "$URS_HEAD\n$URS_HELD\n$URS_CALC\nfunc tidy(_ a: Int) -> Int { a + 1 }\n" > "$URW/s_u4/ur/a.swift"
+  "$SW_BIN" "$URW/s_base/ur" --out "$URW/sbase" >/dev/null 2>&1; [ -s "$URW/sbase.ur.Swift.callgraph.json" ] || { echo "FAIL: swift 15e baseline wrote no sidecar"; exit 2; }
+  UR_BASE="$URW/sbase.ur.Swift.json"
+  for c in u1 u2 u3 u4 u5; do
+    t=$(ur_tree "$c")
+    ur_cell swift "$(ur_name "$c")" "$URW/s_${c}o.ur.Swift.json" "$URW/s_$c.gate.json" "$(ur_flag "$c")" -- "$SW_BIN" "$URW/s_$t/ur" --out "$URW/s_${c}o" --gate-json "$URW/s_$c.gate.json"
+  done
+fi
+P15E_OK=0
+P15E_XFAIL="$P15E_XFAIL" UR_FAULT="$UR_FAULT" python3 - "$UR_CELLS" <<'PY' || P15E_OK=1
+import json, os, re, sys
+xfail = {}
+for tok in os.environ["P15E_XFAIL"].split():
+    cell, eng, row = tok.split(":")
+    xfail[(cell, eng)] = row
+fault = bool(os.environ.get("UR_FAULT"))
+def leaf(fn, name):
+    return re.search(r'(^|[.:#])' + re.escape(name) + r'(\(.*\))?$', fn) is not None
+def entries(path):
+    try:
+        return json.load(open(path))["functions"]
+    except Exception:
+        return None
+def find(ents, name):
+    return [f for f in ents if leaf(f.get("fn", ""), name)]
+def classes(f):
+    return {w.split(":", 1)[0] for w in (f.get("unknownWhy") or [])}
+def gate_rows(path, name):
+    try:
+        g = json.load(open(path))
+    except Exception:
+        return None
+    return [v for v in g.get("violations", []) if v.get("rule") == "AS-EFF-005" and leaf(v.get("fn", ""), name)]
+ok = True; seen = set(); base_checked = set()
+for line in open(sys.argv[1]):
+    eng, cell, x, outp, gj, rep, basep = line.rstrip("\n").split("\t")
+    x = int(x); out = open(outp).read(); seen.add((cell, eng))
+    # 0. the BASELINE must hold what the rows assume: held Unknown with `dispatch` alone (skipped under the
+    #    calibration fault, which renames it on purpose).
+    if eng not in base_checked:
+        base_checked.add(eng)
+        b = entries(basep)
+        h = find(b or [], "held")
+        if b is None:
+            print(f"  FAIL {eng:5s} baseline: HARNESS — unreadable {basep}"); ok = False; continue
+        if not fault and not (h and "Unknown" in h[0].get("inferred", []) and classes(h[0]) == {"dispatch"}):
+            print(f"  FAIL {eng:5s} baseline: HARNESS — held is not Unknown with dispatch alone ({[(f.get('inferred'), f.get('unknownWhy')) for f in h]})"); ok = False; continue
+    ents = entries(rep)
+    reach = None
+    if ents is None: reach = f"no AFTER report at {rep}"
+    elif cell in ("u1_new_unknown", "u5_flag_off"):
+        if not any(f.get("inferred") == ["Unknown"] for f in find(ents, "opaquenew")): reach = "opaquenew is not Unknown-only in the AFTER report"
+    elif cell == "u2_pure_to_unknown":
+        if not any(f.get("inferred") == ["Unknown"] for f in find(ents, "calc")): reach = "calc does not carry Unknown alone in the AFTER report"
+    elif cell == "u3_grandfathered":
+        h = find(ents, "held")
+        if not (h and "dispatch" in classes(h[0]) and len(classes(h[0])) >= 2): reach = f"held's direct unknownWhy did not GROW past dispatch ({[f.get('unknownWhy') for f in h]})"
+    elif cell == "u4_new_pure":
+        if any([e for e in f.get("inferred", []) if e != "Unknown"] or f.get("inferred") for f in find(ents, "tidy")): reach = "tidy is not pure in the AFTER report"
+    if reach:
+        print(f"  FAIL {eng:5s} {cell}: HARNESS — {reach}"); ok = False; continue
+    fired = "[AS-EFF-005]" in out
+    why = []
+    if cell in ("u1_new_unknown", "u2_pure_to_unknown"):
+        name = "opaquenew" if cell == "u1_new_unknown" else "calc"
+        if x != 1: why.append(f"exit {x}, want 1")
+        g = gate_rows(gj, name)
+        if not g: why.append(f"no AS-EFF-005 verdict row for {name}")
+        elif g[0].get("effects") != ["Unknown"]: why.append(f"effects {g[0].get('effects')}, want ['Unknown']")
+    else:
+        if x != 0: why.append(f"exit {x}, want 0")
+        if fired: why.append("[AS-EFF-005] fired")
+    row = xfail.get((cell, eng))
+    if not why and row:
+        print(f"  FAIL {eng:5s} {cell}: XFAIL PASSED — declared as {row} but the cell agrees; RETIRE the line"); ok = False
+    elif not why:
+        print(f"  ok   {eng:5s} {cell}")
+    elif row:
+        print(f"  xfail {eng:5s} {cell} — declared, owned by {row}: {'; '.join(why)}")
+    else:
+        print(f"  FAIL {eng:5s} {cell}: {'; '.join(why)}"); ok = False
+for (cell, eng), row in xfail.items():
+    if (cell, eng) not in seen and eng in {e for _, e in seen}:
+        print(f"  FAIL {eng:5s} {cell}: P15E_XFAIL declares {row} for a cell this run never executed — stale line"); ok = False
+sys.exit(0 if ok else 1)
+PY
+if [ "$P15E_OK" = 0 ]; then
+  echo "  -> MATCH — under unknown-ratchet a new or formerly-pure Unknown fails, a disclosed function is grandfathered as its reasons grow, and a new pure function passes"
+else
+  echo "  -> DIVERGE — see FAIL rows"; rc=1
+fi
+
+# ====================================================================================================
 # PART 16 — applied `deny Unknown` + `pure`-vs-Unknown + applied `forbid A->B` (AS-EFF-009 at LAYER   [TIER 1]
 # granularity, incl. NESTED scopes). Previously only the §6.2 GRAMMAR of these rules was differentialed
 # (PART 4 parses them); the applied verdict was pinned for deny/allow only. Per engine:
@@ -10236,6 +10441,101 @@ echo "PART 49 — the \`only\` permission form (SPEC §6.2 ⟨0.29⟩)"
 if [ "$P49_OK" = 0 ]; then
   echo "  -> MATCH — every engine ASKED charges what the permission list omits, stops at a permitted"
   echo "     scope, discloses a rule whose \`from\` binds nothing, and refuses the form on a report route"
+else
+  echo "  -> DIVERGE — see FAIL lines"; rc=1
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+# PART 49b — A LISTED `only` PERMITTED SCOPE MATCHES BY EXACT SEGMENT (SPEC §6.2 `only` rule 4, R1103)  [TIER 1]
+#
+# The general Scope-matching rule makes a scope's LAST segment a prefix (`util` matches `utilities`). That
+# is fail-closed for every rule that forbids and fail-OPEN for a permission, so all four engines have
+# matched an `only` rule's listed scopes by exact segment since ⟨0.29⟩ — while SPEC said nothing until
+# 2026-10-10 (R1103). One tree per engine, `only model -> util`:
+#   wide     model.wide  → utilities.exfil   `util` matches only by PREFIX  → AS-EFF-011 charged
+#   exact    model.exact → util.helper       exact segment                  → not charged
+#   sibling  model.sibling → modelx.exfil     `modelx` matches `from` only by PREFIX — RECORDED, NOT PINNED:
+#            the implicit `A -> A` uses `from`'s general matcher four-way, which is R1103 (b), open.
+# CONTROL: the same tree under `only model -> util utilities modelx` must exit 0 — the charge on `wide` is the
+# match rule, not the edge or the walk.
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
+echo
+echo "[49b] a LISTED \`only\` permitted scope matches by EXACT segment  (SPEC §6.2 \`only\` rule 4, R1103)"
+# ENGINES: rust java ts swift
+# CONTROLS: xctl — the same tree with every reached scope listed exactly must exit 0 with no AS-EFF-011, so a charge on `wide` under util.pol is the matcher and not an engine that fires on the edge itself
+# CALIBRATED: CANDOR_PROBE_FAULT=1 lists `utilities` in util.pol, which is the prefix-matcher's reading made explicit; `wide` must then go uncharged and the part red on all four engines. Measured 2026-10-10 at java c5ef58f, rust 4ade9e2, ts 79819c1, swift eaf145a: 4 cells red, exit 1; without it, all four pass.
+P49B_OK=0
+OB="$W/only49b"; rm -rf "$OB"; mkdir -p "$OB"
+OB_CELLS="$OB/cells.tsv"; : > "$OB_CELLS"
+ob_pol() { # $1 dir ; $2 from ; $3 util ; $4 utilities ; $5 modelx — the scope spellings per engine
+  if [ "${CANDOR_PROBE_FAULT:-}" = 1 ]; then printf 'only %s -> %s %s\n' "$2" "$3" "$4" > "$1/util.pol"
+  else printf 'only %s -> %s\n' "$2" "$3" > "$1/util.pol"; fi
+  printf 'only %s -> %s %s %s\n' "$2" "$3" "$4" "$5" > "$1/all.pol"
+}
+ob_row() { # $1 engine ; $2 rc(util) ; $3 out(util) ; $4 rc(all) ; $5 out(all)
+  printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$4" "$OB/$1.util.out" >> "$OB_CELLS"
+  printf '%s' "$3" > "$OB/$1.util.out"; printf '%s' "$5" > "$OB/$1.all.out"
+}
+if [ -x "$SCAN" ]; then
+  mkdir -p "$OB/rs/src"; printf '[package]\nname="ob"\nversion="0.0.0"\nedition="2021"\n' > "$OB/rs/Cargo.toml"
+  printf 'pub mod model {\n  pub fn exact() -> u32 { crate::util::helper() }\n  pub fn wide() -> u32 { crate::utilities::exfil() }\n  pub fn sibling() -> u32 { crate::modelx::exfil() }\n}\npub mod util { pub fn helper() -> u32 { 1 } }\npub mod utilities { pub fn exfil() -> u32 { let _ = std::fs::read("/tmp/x"); 2 } }\npub mod modelx { pub fn exfil() -> u32 { let _ = std::fs::read("/tmp/y"); 3 } }\n' > "$OB/rs/src/lib.rs"
+  ob_pol "$OB/rs" model util utilities modelx
+  o1="$( cd "$OB/rs" && "$SCAN" . --out r --policy util.pol 2>&1 )"; x1=$?
+  octl="$( cd "$OB/rs" && "$SCAN" . --out r2 --policy all.pol 2>&1 )"; xctl=$?
+  ob_row rust "$x1" "$o1" "$xctl" "$octl"
+fi
+if [ -n "$TS_PRESENT" ]; then
+  mkdir -p "$OB/ts/src"; printf '{"name":"ob","version":"0.0.0"}\n' > "$OB/ts/package.json"
+  printf 'import * as fsm from "node:fs";\nexport namespace model {\n  export function exact(): number { return util.helper(); }\n  export function wide(): number { return utilities.exfil(); }\n  export function sibling(): number { return modelx.exfil(); }\n}\nexport namespace util { export function helper(): number { return 1; } }\nexport namespace utilities { export function exfil(): number { fsm.readFileSync("/tmp/x"); return 2; } }\nexport namespace modelx { export function exfil(): number { fsm.readFileSync("/tmp/y"); return 3; } }\n' > "$OB/ts/src/a.ts"
+  ob_pol "$OB/ts" model util utilities modelx
+  o1="$( cd "$TS_DIR" && node scan.mjs "$OB/ts" --out "$OB/ts/r" --policy "$OB/ts/util.pol" 2>&1 )"; x1=$?
+  octl="$( cd "$TS_DIR" && node scan.mjs "$OB/ts" --out "$OB/ts/r2" --policy "$OB/ts/all.pol" 2>&1 )"; xctl=$?
+  ob_row ts "$x1" "$o1" "$xctl" "$octl"
+fi
+mkdir -p "$OB/java/src/model" "$OB/java/src/util" "$OB/java/src/utilities" "$OB/java/src/modelx"
+printf 'package model;\npublic class M {\n  public static int exact() { return util.U.helper(); }\n  public static int wide() { return utilities.X.exfil(); }\n  public static int sibling() { return modelx.Y.exfil(); }\n}\n' > "$OB/java/src/model/M.java"
+printf 'package util;\npublic class U { public static int helper() { return 1; } }\n' > "$OB/java/src/util/U.java"
+printf 'package utilities;\npublic class X { public static int exfil() { try { java.nio.file.Files.readAllBytes(java.nio.file.Path.of("/tmp/x")); } catch (Exception e) {} return 2; } }\n' > "$OB/java/src/utilities/X.java"
+printf 'package modelx;\npublic class Y { public static int exfil() { try { java.nio.file.Files.readAllBytes(java.nio.file.Path.of("/tmp/y")); } catch (Exception e) {} return 3; } }\n' > "$OB/java/src/modelx/Y.java"
+javac -d "$OB/java/classes" $(find "$OB/java/src" -name '*.java') 2>/dev/null || { echo "FAIL: javac on the 49b fixture"; exit 2; }
+ob_pol "$OB/java" model util utilities modelx
+o1="$(java -jar "$JAR" "$OB/java/classes" --policy "$OB/java/util.pol" 2>&1)"; x1=$?
+octl="$(java -jar "$JAR" "$OB/java/classes" --policy "$OB/java/all.pol" 2>&1)"; xctl=$?
+ob_row java "$x1" "$o1" "$xctl" "$octl"
+if [ -n "$SW_PRESENT" ]; then
+  mkdir -p "$OB/sw/Sources/S"
+  printf '// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: "S", targets: [.target(name: "S")])\n' > "$OB/sw/Package.swift"
+  printf 'import Foundation\nenum model {\n  static func exact() -> Int { return util.helper() }\n  static func wide() -> Int { return utilities.exfil() }\n  static func sibling() -> Int { return modelx.exfil() }\n}\nenum util { static func helper() -> Int { return 1 } }\nenum utilities { static func exfil() -> Int { _ = FileManager.default.contents(atPath: "/tmp/x"); return 2 } }\nenum modelx { static func exfil() -> Int { _ = FileManager.default.contents(atPath: "/tmp/y"); return 3 } }\n' > "$OB/sw/Sources/S/a.swift"
+  ob_pol "$OB/sw" model util utilities modelx
+  o1="$( cd "$OB/sw" && "$SW_BIN" . --out r --policy util.pol 2>&1 )"; x1=$?
+  octl="$( cd "$OB/sw" && "$SW_BIN" . --out r2 --policy all.pol 2>&1 )"; xctl=$?
+  ob_row swift "$x1" "$o1" "$xctl" "$octl"
+fi
+python3 - "$OB_CELLS" "$OB" <<'PY' || P49B_OK=1
+import re, sys
+ok = True; n = 0
+def charged(out, fn):
+    return [l for l in out.splitlines() if "[AS-EFF-011]" in l and re.search(r'`[^`]*\b' + fn + r'`\s+reaches', l)]
+for line in open(sys.argv[1]):
+    eng, x1, x2, _ = line.rstrip("\n").split("\t"); n += 1
+    u = open(f"{sys.argv[2]}/{eng}.util.out").read(); a = open(f"{sys.argv[2]}/{eng}.all.out").read()
+    why = []
+    if not charged(u, "wide"): why.append("model.wide → utilities.exfil NOT charged under `only model -> util` (prefix-permitted)")
+    if charged(u, "exact"): why.append("model.exact → util.helper charged (an exact permitted scope)")
+    if x1 != "1": why.append(f"util.pol exit {x1}, want 1")
+    if x2 != "0" or "[AS-EFF-011]" in a: why.append(f"CONTROL all.pol exit {x2} / AS-EFF-011 present — want 0 and none")
+    sib = "charged" if charged(u, "sibling") else "NOT charged"
+    if why:
+        print(f"  FAIL {eng:5s}: {'; '.join(why)}"); ok = False
+    else:
+        print(f"  ok   {eng:5s} wide charged, exact not, control exit 0   (recorded, unpinned: sibling → modelx {sib} — R1103 (b))")
+if n == 0:
+    print("  FAIL: no engine ran — the part measured nothing"); ok = False
+sys.exit(0 if ok else 1)
+PY
+echo "PART 49b — a listed \`only\` permitted scope matches by exact segment (SPEC §6.2 \`only\` rule 4, R1103)"
+if [ "$P49B_OK" = 0 ]; then
+  echo "  -> MATCH — every engine ASKED charges a callee its permitted scope matches only by prefix, and passes the exact one"
 else
   echo "  -> DIVERGE — see FAIL lines"; rc=1
 fi

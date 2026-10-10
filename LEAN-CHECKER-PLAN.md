@@ -288,9 +288,9 @@ counterexample to its old reading that all four engines pass, in the form P3:744
   `forbid` (SPEC.md:5588-5632: `A → A` implicit, the walk stops at a permitted scope and descends through
   `A`), so it has no `(S, D)` predicate to transcribe and §3.1 refuses it on `gate --report`. Its definition
   is written as SEMANTICS.md §6's AS-EFF-011 row and paragraph; Phase 2(a)'s edge carrier is where it would
-  enter a model. *Lead, not filed:* candor-java matches a PERMITTED scope by exact segment
-  (`Policy.java` `scopeMatchesPermitted`, "fail-OPEN here") where every other rule matches by prefix; the
-  SPEC `only` clause states no such rule. Not checked in the other three engines.
+  enter a model. A lead found here — candor-java matches a PERMITTED scope by exact segment where SPEC
+  stated no such rule — was followed up four-way the same day as SOUNDNESS R1103 (all four engines do it;
+  SPEC §6.2 `only` rule 4 now says so; PART 49b pins it).
 - **Done — SEMANTICS.md.** §6's AS-EFF-005, -006 and -008 rows corrected with SPEC line cites; AS-EFF-011
   added (the table said "exactly these predicates" and lacked it); §1's `𝔼` lacked `Llm` (height 11 → 12).
 - **Done — `lean/README.md` §8** and the matching `Escapes.lean` comments: P3:891-902 now re-witnesses
