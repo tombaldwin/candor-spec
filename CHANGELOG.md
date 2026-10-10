@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Register, swift audit of R1105/R1106.** Filed from candor-swift `234830a` (merged `5e66006`): R1099 (CLOSED, a
+  regression of R1105 — the getter view was per binding, not per qualified name), R1100 (CLOSED, `$model.flag`
+  projected bindings edged nowhere), R1107 (CLOSED, implicit-self `m()` did not dispatch to subclass overrides),
+  and R1108 (OPEN, UNSETTLED: 71 `interfaceUnion` removals the independent audit could not adjudicate). R1105/R1106
+  gain the audit result: 2,190/2,212 getter-view and 1,090/1,095 field-shadow removals confirmed, 17 'unexplained'
+  invisible losses explained.
 - **`scripts/soundness-status.py`: a status cell with an OPEN lettered/numbered part is no longer `closed-with-fix` (SOUNDNESS R1103).** `(a) **CLOSED** `sha` … (b) **OPEN, with Tom**` has no closure head, so the closure word and sha won. Any `(x)`/`x)` part label followed by OPEN / REOPENED / STILL OPEN now files the row `partly-closed` (or `open` with no closure word), in either order. Selftest gains the as-found, reversed, numbered and fully-closed-control cases (3 fail on the old logic). One live row moved: R748 `closed-with-fix` to `partly-closed`.
 - **SPEC §6.2 `only` rule 4: the implicit `A -> A` is the set `from` BINDS (SOUNDNESS R1103 (b), decided).** Tom
   kept the prefix reading: `only model -> util` permits `model.go` → `modelx.exfil` because `model` binds `modelx`,
