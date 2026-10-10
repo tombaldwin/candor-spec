@@ -186,6 +186,16 @@ def _body_closure(body):
         return m
     return None
 
+# SOUNDNESS R1103 (found by the register lane) — A LETTERED/NUMBERED PART THAT IS OPEN. A status cell
+# `(a) **CLOSED** `abc1234` … (b) **OPEN, with Tom**` has no closure HEAD (the cell starts with a part
+# label, which neither `_DECLARED_RESOLVED` nor `_DECLARED_OPEN` admits), so inference took over, saw the
+# closure word and the sha, and filed the row `closed-with-fix` while half of it was owed. ANY part whose
+# label is followed by OPEN / REOPENED / STILL OPEN makes the row not-closed, whatever the order or the
+# label spelling: `(a)`, `(2)`, `a)`, `2)`. The label must be immediately followed by the word so prose
+# like "(see (b) open question)" does not fire. Status cell only; a cell that ALSO carries a closure word
+# is `partly-closed` (a fix landed and something is owed), otherwise `open`.
+_PART_OPEN = re.compile(r'(?:^|[\s;,.:*_>])(?:\(\w{1,2}\)|\b\w{1,2}\))\s*(?:\*\*|__)?\s*'
+                        r'(?:STILL\s+OPEN|REOPENED|OPEN)\b')
 _DECLARED_PARTLY = re.compile(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
                               r'(?:PARTLY|PARTIALLY|HALF|\w+\s+HALF)\b[^|]{0,28}?(?:CLOSED|FIXED)', re.I)
 # SOUNDNESS R553 — A DECLARATION OF NON-CLOSURE AT THE HEAD OF THE CELL, which is a status claim, as
@@ -245,6 +255,8 @@ def bucket(line, outcome=None):
     _decided = bool(re.match(r'^\s*(?:\*\*|__)?\s*(?:\u26a0\s*)?'
                              r'(?:RESOLVED|RETRACTED|WITHDRAWN|REFUTED|SUPERSEDED)\b', _head)) \
         and not FIXSHA.search(_head[:110])
+    if _PART_OPEN.search(status):
+        return "partly-closed" if CLOSURE.search(_NEGATED_CLOSURE.sub(" ", status)) else "open"
     if not resolved_head:
         if _DECLARED_OPEN.match(status) or _DECLARED_OPEN.match(oc):
             return "open"
@@ -527,6 +539,16 @@ def selftest():
          " class | Not fixed. |", "closed-with-fix"),
         ("| R903 rust: a thing | 2026-09-27 | **CLOSED — the fixture spells it deadbee** |"
          " class | Not fixed. |", "resolved-no-fix"),
+        # R1103's shape: the cell opens with a PART LABEL, so no closure/open head matches, and the
+        # closure word + sha used to win. Three rows: as found, reversed order, and a fully-closed control.
+        ("| R908 rust: a thing | 2026-10-09 | (a) **CLOSED** candor-rust `abc1234`; (b) **OPEN, with Tom** |"
+         " class | Not fixed. |", "partly-closed"),
+        ("| R909 rust: a thing | 2026-10-09 | (a) **OPEN, with Tom**; (b) **CLOSED** candor-rust `abc1234` |"
+         " class | Not fixed. |", "partly-closed"),
+        ("| R910 rust: a thing | 2026-10-09 | 1) CLOSED candor-rust `abc1234`; 2) REOPENED on a second spelling |"
+         " class | Not fixed. |", "partly-closed"),
+        ("| R911 rust: a thing | 2026-10-09 | (a) **CLOSED** candor-rust `abc1234`; (b) **CLOSED** candor-rust `abc1234` |"
+         " class | Not fixed. |", "closed-with-fix"),
         # THE ENGINE-PREFIXED CLOSURE HEAD, 2026-10-07 — `_DECLARED_RESOLVED`'s twin of the 2026-09-25
         # `_DECLARED_OPEN` fix. R542/R561/R562/R568/R570 head their status cell `rust — **CLOSED — …`
         # while the outcome cell still opens with its filing-time `**OPEN.**`; without the prefix the

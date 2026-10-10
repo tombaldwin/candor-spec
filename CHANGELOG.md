@@ -25,6 +25,7 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`scripts/soundness-status.py`: a status cell with an OPEN lettered/numbered part is no longer `closed-with-fix` (SOUNDNESS R1103).** `(a) **CLOSED** `sha` … (b) **OPEN, with Tom**` has no closure head, so the closure word and sha won. Any `(x)`/`x)` part label followed by OPEN / REOPENED / STILL OPEN now files the row `partly-closed` (or `open` with no closure word), in either order. Selftest gains the as-found, reversed, numbered and fully-closed-control cases (3 fail on the old logic). One live row moved: R748 `closed-with-fix` to `partly-closed`.
 - **SPEC §6.2 `only` rule 4: the implicit `A -> A` is the set `from` BINDS (SOUNDNESS R1103 (b), decided).** Tom
   kept the prefix reading: `only model -> util` permits `model.go` → `modelx.exfil` because `model` binds `modelx`,
   and the anchored `from` (`only model:: -> util` / `only model. -> util`) is the way to bind `model` alone. The
