@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Register: the rust drop-glue hand-off rows are CLOSED or filed against candor-rust `afd77fa`** (branches rustagent-v049, merged `7c1ee54`, and rustagent-v048 `d3273c2`, merged `afd77fa`). CLOSED: R1120 (reference-return fabrication, `fa17c07`), R323 (`4ee0cbb`), R200 caller half (`8a951e9`) and callee half as R1121 (`8242414`, wrapped params; generic and `impl Into` residuals open), R198 try_fold (`7913336`) and collect (`b176f8f`), R1111, R201 and R209 (all `d3273c2`). FILED: R1122-R1124 (silent), R1125, R1127, R1128 (not silent), R1126 (unsettled, needs a SPEC section 4 check). R200's mechanism is corrected: the call's position decides. Decision record: the 2026-10-11 restructure deferral rested on a liveness premise the analysis lane measured false; per-row fixes were decidable, the restructure stays deferred, and the census measured reach, not payoff (6 grid + 6 fixture cells). New scan drop gate `soundness/run_handoff.sh` (120 cells): published 0.40.6 had 23 silent cells, the merged build 6, all registered. A/B vs 0.40.6: v049 over 1,201 Drop crates +0/-3/~102; v048 over 3,233 crates +297/-0/~842; union +297/-3/~944. Open sins 8 to 5.
+
 ## [0.40.6] — 2026-10-11
 
 - **Register: the drop-glue per-row set is CLOSED in candor-rust `cf75a6b`** (R297, R195, R300, R829, R1116, R1118; R1119 closed as premise wrong, no change). Corpus A/B vs published 0.40.5 over 3,230 crates: ADDED 298, REMOVED 0, bucket 3 = 0, 70 rows gain a concrete effect, 0 dropped edges (seeded). Open cardinal sins 14 -> 8.
