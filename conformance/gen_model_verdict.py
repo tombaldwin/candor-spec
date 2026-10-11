@@ -38,8 +38,9 @@ Four arms:
           `deny E Unknown[unresolved]` and must NOT fire `deny E Unknown[dispatch]` (SPEC §6.2: it
           CONTRIBUTES `unresolved`, and §3.1: "the rule fires and the answer is certain").
        B3 an INHERITED `Unknown` (`direct: []`), no reason, NO `calls`: a class-scoped deny is
-          UNANSWERABLE and MUST be refused (exit 2, SPEC §3.1 ⟨0.24⟩ answerability); bare `deny E Unknown`
-          fires from the entry alone (exit 1); `deny E` is untouched (exit 0).
+          UNANSWERABLE and MUST be refused (exit 2, SPEC §3.1 ⟨0.24⟩ answerability) — including a list
+          naming all six classes (⟨0.40⟩, answered as written); bare `deny E Unknown` and `Unknown[*]` fire
+          from the entry alone (exit 1); `deny E` is untouched (exit 0).
   C  THE CLASS MAP, pinned as its own row: one leaf per raw `unknownWhy` token, gated under each of the
      six classes. The oracle is SPEC §6.2's table read as data (prefix -> class, catch-all `unresolved`).
      `indirect:x` is IN the row on purpose: `indirect` is a CLASS name, not a token prefix, so the raw
@@ -58,8 +59,8 @@ Four arms:
           naming the fn (another part of the rule fires from the entry alone), PASS -> exit 0. Under the
           FULL filter `Net[known-telemetry,known-partner,unknown-host]` the model refuses as SPEC's text
           does, although every completion would fire (Lean `refuse_overbroad_when_filter_full`); all four
-          engines refuse there too — a wording gap in §3.1, recorded in the plan. Those cells pin the
-          LITERAL text PENDING AN OWNER RULING; the pin is not the decision.
+          engines refuse there too. Those cells pin the RULED text (SPEC §3.1 ⟨0.40⟩, "a filter is
+          answered as written", the owner's ruling of 2026-10-11); arm B3 pins the `Unknown` twin.
 
 WHAT IT CANNOT SEE (stated so the green is not read as more): an ABSENT effect — the cardinal sin — and a
 fabricated one (LEAN-CHECKER-PLAN.md §0); scope matching (gen_policy_match.py, the POLICY-MATCHING differential, owns it); every
@@ -117,6 +118,7 @@ SPEC_CLAUSES = [
     ("§3.1 ⟨0.24⟩", "**A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.**"),
     ("§3.1 ⟨0.24⟩", "`netClass` is emitted for every `Net`-bearing entry and is floored at `unknown-host`"),
     ("§3.1 ⟨0.24⟩", "per-(rule, function) for the scoped case, so a scoped rule whose own matches carry their evidence still evaluates"),
+    ("§3.1 ⟨0.40⟩", "a class list spelled out in the policy is a **proper filter even when it names every class in"),
 ]
 
 E = list(M.E)
@@ -365,12 +367,11 @@ D2_LEAVES = [
     ("net_disp_absent", {"inferred": ["Net", "Unknown"], "unknownWhy": [TOKEN["dispatch"]]}),
     ("fs_absent",       {"inferred": ["Fs"]}),
 ]
-# THE FULL-FILTER CELLS (C == NC) PIN SPEC §3.1's LITERAL TEXT, PENDING AN OWNER RULING — NOT A DECISION.
-# Over a `Net` entry with no `netClass`, `Net[known-telemetry,known-partner,unknown-host]` is refused (exit 2)
-# because the clause refuses whenever the entry alone does not fire, although every completion would fire
-# (the vocabulary is closed; Lean `refuse_overbroad_when_filter_full`). If the owner rules that the heading's
-# test governs ("refuse only when the absent datum could change the answer"), these cells flip to exit 1 and
-# `policy_model.answer_absent` changes with them. LEAN-CHECKER-PLAN.md Phase 2 status, "wording gap".
+# THE FULL-FILTER CELLS (C == NC) PIN THE RULED TEXT (SPEC §3.1 ⟨0.40⟩ "A FILTER IS ANSWERED AS WRITTEN",
+# the owner's ruling of 2026-10-11). Over a `Net` entry with no `netClass`,
+# `Net[known-telemetry,known-partner,unknown-host]` is a proper filter and is refused (exit 2), although every
+# completion would fire (Lean `refuse_overbroad_when_filter_full`); `Net[*]` is answered. Answering when every
+# completion agrees was considered and deferred to a future rung (it ties the answer to vocabulary closure).
 D2_POLICIES = [(_rule(x, C)[0], _rule(x, C)[1])
                for C in (["unknown-host"], ["known-telemetry", "known-partner"], NC, "*")
                for x in (None, "Fs", "Llm", "Unknown", "Unknown[dispatch]")]
@@ -506,7 +507,10 @@ def main():
                 for p in judge(rc, doc, want):
                     bbad.append(f"B1/B2 deny Net Unknown[{c}]: {p}" + (f" [stderr: {err.strip()[:160]}]" if rc == 2 else ""))
             locq = G.write_report(ws, eng, envelope(B3))
+            # ⟨0.40⟩ ruled (§3.1 "a filter is answered as written"): a list naming every class is a PROPER
+            # filter and is refused like a singleton; `*` is the all-classes spelling and is answered.
             for text, want_rc in (("deny Net Unknown[dispatch]", 2), ("deny Net Unknown[unresolved]", 2),
+                                  (f"deny Unknown[{','.join(R)}]", 2), ("deny Unknown[*]", 1),
                                   ("deny Net Unknown", 1), ("deny Net", 0)):
                 rc, doc, err = run_gate(eng, locq, text, ws, "b3" + text.replace(" ", "_"))
                 if rc != want_rc:

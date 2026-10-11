@@ -2895,6 +2895,21 @@ and monotone denial is what makes that safe.** A class-scoped `deny` is not unan
 - only if it does NOT yet fire, and the missing datum could still make it fire, is the question genuinely
   unanswerable. **Refuse that.**
 
+⟨0.40⟩ **A FILTER IS ANSWERED AS WRITTEN — ruled by the owner, 2026-10-11; a clarification, no verdict change
+(measured four-way).** "The classes determinable from the entry ALONE" are the classes the entry itself
+carries, and a class list spelled out in the policy is a **proper filter even when it names every class in
+the vocabulary**. So `deny Net[known-telemetry,known-partner,unknown-host]` over a `Net`-bearing entry with no
+`netClass`, and `deny Unknown[reflect,dispatch,indirect,native,unresolved,setup]` over an inherited `Unknown`
+whose `calls` is absent, are **refused** (exit 2) per (rule, function). **`*` — or the bare token — is the
+spelling for "all classes"**: it is not class-scoped, needs no datum, and is answered (`deny Net[*]` and
+`deny Unknown[*]` exit 1 over the same entries). Considered and **deferred to a future rung**: answering
+whenever every completion of the missing datum gives the same verdict. That reading would answer the
+spelled-out full list too — both vocabularies are closed, so every completion intersects it — but it ties
+the answer to the vocabulary's CLOSURE: a rung that adds a class would turn an answered rule into a refusal
+with no change to the policy or the report. Pinned by conformance PART 97 (arm D2's full-filter cells for
+`Net`, arm B3 for `Unknown`); the model states it as `answer_absent` / Lean `answerAbsentB`, and
+`refuse_overbroad_when_filter_full` records exactly what the deferred reading would change.
+
 Measured on candor-swift: `gate --report` refused the ⟨0.24⟩ CONTRIBUTES counterexample — a function whose
 DIRECT `Unknown` carries no reason, gated `deny E Unknown[unresolved]`. That refusal is **over-broad**: a
 reasonless direct `Unknown` contributes `unresolved` from the entry alone, with no transitive step, so the
@@ -5906,7 +5921,9 @@ by that callee's reason class (the `unknownWhy` a report emits stays per-functio
 resolves the transitive class). Filter forms:
 
 - bare **`Unknown`** and **`Unknown[*]`** mean **all classes** — a pre-0.18 `deny E Unknown` is byte-identical
-  (soundness-by-default; narrowing is opt-in).
+  (soundness-by-default; narrowing is opt-in). ⟨0.40⟩ A list that spells out every class is NOT a third
+  spelling of this: it is a proper filter, answered as written, and §3.1 refuses it where the class datum
+  is absent (the owner's ruling, 2026-10-11). Write `*` for "all classes".
 - **`Unknown[dynamic]`** is a built-in alias for every *genuine* class (`reflect,dispatch,indirect,native,unresolved`
   — excludes `setup`): the recommended usable strict gate.
 - ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's
@@ -5956,7 +5973,9 @@ the exfiltration risk, never under-reporting it. The destination class **propaga
 call graph exactly as the `Net` effect does. Filter forms mirror `Unknown[…]`:
 
 - bare **`Net`** and **`Net[*]`** mean **all destinations** — a pre-0.21 `deny Net` is byte-identical
-  (backward-compatible; narrowing is opt-in).
+  (backward-compatible; narrowing is opt-in). ⟨0.40⟩ `Net[known-telemetry,known-partner,unknown-host]` is
+  NOT a third spelling of this: it is a proper filter, answered as written, and §3.1 refuses it over an
+  entry with no `netClass` (the owner's ruling, 2026-10-11). Write `*` for "all destinations".
 - ⟨0.24⟩ **SUPERSEDED — an unrecognised class token is now a POLICY ERROR (exit 2), see §6.2's
   unrecognised-token rule.** This bullet is kept only to name what it used to say, because a review found it
   still reading as normative 130 lines below the rule that replaced it, which makes it a **licence to

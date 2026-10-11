@@ -76,10 +76,11 @@ ever judged one token at a time.
   every completion of the missing datum; a refusal could fire; and the refusal is **minimal exactly when the
   filter omits a class** (`refuse_minimal_when_filter_proper`). With all three classes listed, SPEC's text
   still refuses although every non-empty completion fires, because the vocabulary is closed
-  (`refuse_overbroad_when_filter_full`) — a
-  wording gap in §3.1 (its heading says *refuse only when the absent datum could change the answer*). All
-  four engines follow the text, measured; the model does too, so PART 97 arm D pins it — the literal text,
-  pending an owner ruling, not a decision.
+  (`refuse_overbroad_when_filter_full`). **Ruled 2026-10-11 (SPEC §3.1 ⟨0.40⟩, "a filter is answered as
+  written"):** a spelled-out list naming every class is a PROPER filter and is refused; `*` is the
+  all-classes spelling and is answered. Answering whenever every completion agrees was deferred to a future
+  rung because it ties the answer to vocabulary closure — this theorem is exactly what that rung would change.
+  All four engines, the model, and PART 97 arm D follow the ruled text.
 
 Executed: `emitNetRows` adds 312,354 nine-column rows (`deny_rule` over present `N`, `deny_rule_absent`
 with the three-valued answer) and the differential compares each with `policy_model.deny_rule` /

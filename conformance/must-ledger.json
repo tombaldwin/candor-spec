@@ -843,6 +843,12 @@
       "part": "PART 97 — RE-CONFIRMED 2026-10-11 when the ⟨0.40⟩ present-and-empty clarification was added (no verdict change). Both halves are exercised four-way by PART 97: the `Net` half by arm D2 (a `Net` entry with the `netClass` key absent, and with `netClass: []`, under scoped `deny Net[…]` rules must exit 2 unless another part of the rule fires from the entry alone — `net_absent`/`net_empty` cells), and the `Unknown` half by arm B3 (an inherited `Unknown` with no `calls` refuses every class-scoped filter while bare `Unknown` fires). Previously pre-ledger."
     },
     {
+      "sha": "42fc9382519c1861",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "⟨0.40⟩ **A FILTER IS ANSWERED AS WRITTEN — ruled by the owner, 2026-10-11; a clarification, no verdict change ",
+      "part": "PART 97 — the owner's ruling of 2026-10-11, exercised four-way on both halves: arm D2's full-filter cells (`Net[known-telemetry,known-partner,unknown-host]` over a `Net` entry with no `netClass` or `netClass: []` must exit 2 unless another part of the rule fires; `Net[*]` over the same entries must answer) and arm B3 (`deny Unknown[<all six classes spelled out>]` over an inherited `Unknown` with no `calls` must exit 2, `deny Unknown[*]` must exit 1). The deferred alternative (answer when every completion agrees) is what Lean `refuse_overbroad_when_filter_full` states; no row asserts it, by design."
+    },
+    {
       "sha": "a7c4bc76dad5e405",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "⟨0.24⟩ **REFUSE ONLY WHEN THE ABSENT DATUM COULD CHANGE THE ANSWER — the refusal is MINIMAL, not coarse, and m",

@@ -375,7 +375,11 @@ differential is extended to the new verbs and seeded with a planted fault per ve
   hand, in a throwaway candor-ts worktree (removed): `classFilterExcludes`'s Net branch → `false` turned 30
   D1 rules red; disabling the absent-`netClass` refusal turned 63 D2 cells to exit 0 (the ⟨0.24⟩ fail-open,
   reproduced). Arms A–C unmoved by both. **No engine diverges from the model; no row filed.**
-- **Found — a wording gap in SPEC §3.1, not an engine defect.** Under the FULL filter
+- **Found — a wording gap in SPEC §3.1, not an engine defect. RULED 2026-10-11 (Tom): fix the TEXT, not the
+  engines** — SPEC §3.1 ⟨0.40⟩ "a filter is answered as written": a spelled-out list naming every class is a
+  proper filter and is refused; `*` is the all-classes spelling and is answered. Answering whenever every
+  completion agrees was considered and deferred to a future rung (it ties the answer to vocabulary closure).
+  Patch, no verdict change. The finding as first recorded, kept for the record: under the FULL filter
   `Net[known-telemetry,known-partner,unknown-host]`, a `Net` entry with no `netClass` is refused by the
   text (*"only if it does NOT yet fire, and the missing datum could still make it fire … Refuse that"*),
   although every value the missing datum could take fires the rule — the heading's test (*refuse only when
@@ -390,8 +394,8 @@ differential is extended to the new verbs and seeded with a planted fault per ve
   out>]` exits 2 where `deny Unknown[*]` over the same entry exits 1 — two spellings of one denied set, two
   verdicts. *(Corrected 2026-10-11 after review: the first version of this note gave the pair as `deny Net
   Unknown[…]`; that differs only over an entry WITHOUT `Net` — with `Net` the plain token fires and both exit
-  1.)* Not modelled: the reason-class half is Python-only. PART 97 arm D's full-filter D2 cells pin the
-  LITERAL text pending an owner ruling; the pin is not the decision.
+  1.)* Not modelled: the reason-class half is Python-only. PART 97 arm D's full-filter D2 cells, and arm
+  B3's `Unknown[<all six>]` / `Unknown[*]` pair, pin the RULED text.
   Cost of the gap: an exit 2 where an exit 1 is certain — fail-closed, so not a sin; whether to tighten the
   clause or the heading is a SPEC decision for the coordinator.
 - **`netClass: []` on a `Net` entry is read as ABSENT, not as ∅.** First recorded here as a modelling choice

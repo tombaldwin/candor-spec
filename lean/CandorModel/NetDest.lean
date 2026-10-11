@@ -21,8 +21,8 @@
     · the ⟨0.24⟩ ANSWERABILITY rule applied to an absent `netClass`: an answered verdict agrees with EVERY
       well-formed completion; a refusal could have fired; and the refusal is minimal EXACTLY when the filter
       omits some class — with the full filter, SPEC's text refuses a question every completion answers the
-      same way (`refuse_overbroad_when_filter_full`). That last one is a statement about SPEC's wording, not
-      an engine defect: all four engines refuse there, as the text says.
+      same way (`refuse_overbroad_when_filter_full`). That is the RULED reading (SPEC §3.1 ⟨0.40⟩, "a filter
+      is answered as written", 2026-10-11): a spelled-out full list is a proper filter; `*` is answered.
 -/
 import CandorModel.Exec
 
@@ -282,10 +282,11 @@ theorem refuse_minimal_when_filter_proper (effs : List Effect) (C : List NetClas
 /-- **…and OVER-BROAD when the filter names every class.** With `Net[known-telemetry,known-partner,
     unknown-host]` every non-empty completion fires the rule — the vocabulary is CLOSED, so any class a
     producer could write is listed (hypothesis `N ≠ []`, the classifier's `unknown-host` default) — yet the clause as
-    written refuses, because "the entry alone" determines no class. The heading's own test — *refuse only
-    when the absent datum could change the answer* — would answer it. All four engines follow the text
-    (exit 2, measured 2026-10-11), so this is a wording gap in SPEC §3.1, recorded, not an engine defect;
-    PART 97 arm D pins the literal text pending an owner ruling. -/
+    written refuses, because "the entry alone" determines no class. RULED 2026-10-11 (SPEC §3.1 ⟨0.40⟩, "a
+    filter is answered as written"): that refusal is the contract — a spelled-out full list is a proper
+    filter, `*` is the all-classes spelling. Answering when every completion agrees was deferred to a future
+    rung because it ties the answer to vocabulary closure; this theorem is what such a rung would change.
+    All four engines refuse (exit 2, measured 2026-10-11); PART 97 arm D pins it. -/
 theorem refuse_overbroad_when_filter_full (effs : List Effect) (unk : Option (List Reason))
     (S : List Effect) (D : List Reason)
     (h : answerAbsentB ⟨effs, some NetClass.all, unk⟩ S D = .refuse)

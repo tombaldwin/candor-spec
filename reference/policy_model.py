@@ -417,7 +417,7 @@ def _selftest_net_dest() -> int:
     else:
         print("  OK    §3.1 absent-netClass answer: every reject/pass holds under all well-formed completions;")
         print(f"        {minimal} refusals are minimal, {over} are over-broad — every over-broad one under the")
-        print("        FULL filter, where all completions fire (SPEC's text refuses; its heading's test would answer)")
+        print("        FULL filter, where all completions fire (refused as RULED, SPEC §3.1 ⟨0.40⟩; `*` is answered)")
     return rc
 
 
