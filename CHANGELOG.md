@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.6] — 2026-10-11
+
 - **Register: the drop-glue per-row set is CLOSED in candor-rust `cf75a6b`** (R297, R195, R300, R829, R1116, R1118; R1119 closed as premise wrong, no change). Corpus A/B vs published 0.40.5 over 3,230 crates: ADDED 298, REMOVED 0, bucket 3 = 0, 70 rows gain a concrete effect, 0 dropped edges (seeded). Open cardinal sins 14 -> 8.
 
 - **Model, Phase 2's first slice: the `Net` destination class** (LEAN-CHECKER-PLAN.md Phase 2(a)). New
@@ -37,7 +39,8 @@ Run it after any patch-cycle commit that adds a section here.
   whole rules over 369 leaves plus 120 absent-`netClass` cells, four-way, all agree; two in-suite model-side
   controls and two engine-side seeds (throwaway candor-ts worktree) shown to turn it red. Found: SPEC §3.1's
   text refuses `Net[<all three classes>]` over a `netClass`-less `Net` although every completion fires (the
-  vocabulary is closed) — a wording gap (fail-closed), recorded in the plan; the reason-class twin is
+  vocabulary is closed) — first recorded in the plan as a wording gap (fail-closed), then ruled the
+  intended reading (the §3.1 / §6.2 entry below); the reason-class twin is
   `deny Unknown[<all six>]` → exit 2 vs `deny Unknown[*]` → exit 1 over an inherited `Unknown` with no
   `calls` (corrected after review: the first note said `deny Net Unknown[…]`, which differs only on an entry
   without `Net`).
