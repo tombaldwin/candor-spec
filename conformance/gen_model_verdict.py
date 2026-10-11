@@ -57,8 +57,9 @@ Four arms:
           control, under 20 rules. The model's §3.1 answer per cell: REFUSE -> exit 2, REJECT -> exit 1
           naming the fn (another part of the rule fires from the entry alone), PASS -> exit 0. Under the
           FULL filter `Net[known-telemetry,known-partner,unknown-host]` the model refuses as SPEC's text
-          does, although every well-formed completion would fire (Lean `refuse_overbroad_when_filter_full`);
-          all four engines refuse there too — a wording gap in §3.1, recorded in the plan, not a divergence.
+          does, although every completion would fire (Lean `refuse_overbroad_when_filter_full`); all four
+          engines refuse there too — a wording gap in §3.1, recorded in the plan. Those cells pin the
+          LITERAL text PENDING AN OWNER RULING; the pin is not the decision.
 
 WHAT IT CANNOT SEE (stated so the green is not read as more): an ABSENT effect — the cardinal sin — and a
 fabricated one (LEAN-CHECKER-PLAN.md §0); scope matching (gen_policy_match.py, the POLICY-MATCHING differential, owns it); every
@@ -354,7 +355,8 @@ def d1_leaves():
 
 
 # D2: single-function reports whose entry carries `Net` with NO usable `netClass` — the key absent, or `[]`
-# (which contradicts the §3.1 floor and is read as absent by all four engines) — plus a non-Net control.
+# (SPEC §3.1: present-and-empty contradicts the producer floor and is read as ABSENT, never as ∅) — plus a
+# non-Net control.
 D2_LEAVES = [
     ("net_absent",      {"inferred": ["Net"]}),
     ("net_empty",       {"inferred": ["Net"], "netClass": []}),
@@ -363,6 +365,12 @@ D2_LEAVES = [
     ("net_disp_absent", {"inferred": ["Net", "Unknown"], "unknownWhy": [TOKEN["dispatch"]]}),
     ("fs_absent",       {"inferred": ["Fs"]}),
 ]
+# THE FULL-FILTER CELLS (C == NC) PIN SPEC §3.1's LITERAL TEXT, PENDING AN OWNER RULING — NOT A DECISION.
+# Over a `Net` entry with no `netClass`, `Net[known-telemetry,known-partner,unknown-host]` is refused (exit 2)
+# because the clause refuses whenever the entry alone does not fire, although every completion would fire
+# (the vocabulary is closed; Lean `refuse_overbroad_when_filter_full`). If the owner rules that the heading's
+# test governs ("refuse only when the absent datum could change the answer"), these cells flip to exit 1 and
+# `policy_model.answer_absent` changes with them. LEAN-CHECKER-PLAN.md Phase 2 status, "wording gap".
 D2_POLICIES = [(_rule(x, C)[0], _rule(x, C)[1])
                for C in (["unknown-host"], ["known-telemetry", "known-partner"], NC, "*")
                for x in (None, "Fs", "Llm", "Unknown", "Unknown[dispatch]")]

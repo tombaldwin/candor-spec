@@ -75,9 +75,11 @@ ever judged one token at a time.
   REFUSED when only the filtered `Net` part could still fire. Proved: an answered reject/pass holds under
   every completion of the missing datum; a refusal could fire; and the refusal is **minimal exactly when the
   filter omits a class** (`refuse_minimal_when_filter_proper`). With all three classes listed, SPEC's text
-  still refuses although every well-formed completion fires (`refuse_overbroad_when_filter_full`) — a
+  still refuses although every non-empty completion fires, because the vocabulary is closed
+  (`refuse_overbroad_when_filter_full`) — a
   wording gap in §3.1 (its heading says *refuse only when the absent datum could change the answer*). All
-  four engines follow the text, measured; the model does too, so PART 97 arm D pins it.
+  four engines follow the text, measured; the model does too, so PART 97 arm D pins it — the literal text,
+  pending an owner ruling, not a decision.
 
 Executed: `emitNetRows` adds 312,354 nine-column rows (`deny_rule` over present `N`, `deny_rule_absent`
 with the three-valued answer) and the differential compares each with `policy_model.deny_rule` /

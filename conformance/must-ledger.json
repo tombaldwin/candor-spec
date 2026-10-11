@@ -837,10 +837,10 @@
       "status": "pre-ledger"
     },
     {
-      "sha": "1ff9e2af6ac498df",
+      "sha": "5b7a741e864b41e8",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "- **A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.** Measured, and this one is a live ",
-      "status": "pre-ledger"
+      "part": "PART 97 — RE-CONFIRMED 2026-10-11 when the ⟨0.40⟩ present-and-empty clarification was added (no verdict change). Both halves are exercised four-way by PART 97: the `Net` half by arm D2 (a `Net` entry with the `netClass` key absent, and with `netClass: []`, under scoped `deny Net[…]` rules must exit 2 unless another part of the rule fires from the entry alone — `net_absent`/`net_empty` cells), and the `Unknown` half by arm B3 (an inherited `Unknown` with no `calls` refuses every class-scoped filter while bare `Unknown` fires). Previously pre-ledger."
     },
     {
       "sha": "a7c4bc76dad5e405",

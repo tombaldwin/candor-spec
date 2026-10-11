@@ -34,8 +34,15 @@ Run it after any patch-cycle commit that adds a section here.
   differential grows to 459,754 rows (five planted faults each caught). **Conformance PART 97 arm D**: 40
   whole rules over 369 leaves plus 120 absent-`netClass` cells, four-way, all agree; two in-suite model-side
   controls and two engine-side seeds (throwaway candor-ts worktree) shown to turn it red. Found: SPEC §3.1's
-  text refuses `Net[<all three classes>]` over a `netClass`-less `Net` although every completion fires — a
-  wording gap (fail-closed), recorded in the plan. No SPEC.md change.
+  text refuses `Net[<all three classes>]` over a `netClass`-less `Net` although every completion fires (the
+  vocabulary is closed) — a wording gap (fail-closed), recorded in the plan; the reason-class twin is
+  `deny Unknown[<all six>]` → exit 2 vs `deny Unknown[*]` → exit 1 over an inherited `Unknown` with no
+  `calls` (corrected after review: the first note said `deny Net Unknown[…]`, which differs only on an entry
+  without `Net`). PART 97 arm D pins the literal text pending an owner ruling.
+- **SPEC §3.1 clarification (no verdict change, measured four-way): a `netClass` present and EMPTY on a
+  `Net` entry contradicts the producer floor and is read as ABSENT, never as ∅.** Added at the
+  ABSENT-OPTIONAL-FIELD bullet with the four engines' sites; must-ledger updated; PART 97 D2 `net_empty`
+  pins it.
 
 ## [0.40.5] — 2026-10-11
 

@@ -378,17 +378,26 @@ differential is extended to the new verbs and seeded with a planted fault per ve
 - **Found — a wording gap in SPEC §3.1, not an engine defect.** Under the FULL filter
   `Net[known-telemetry,known-partner,unknown-host]`, a `Net` entry with no `netClass` is refused by the
   text (*"only if it does NOT yet fire, and the missing datum could still make it fire … Refuse that"*),
-  although the §3.1 floor guarantees a non-empty class set and every such set fires — the heading's test
-  (*refuse only when the absent datum could change the answer*) would answer exit 1. All four engines refuse
-  (measured). Proved as `refuse_overbroad_when_filter_full`. The same shape exists for `Unknown[all six]`
-  over an inherited `Unknown` with no `calls` ((W) guarantees a non-empty class set): measured four-way,
-  `deny Net Unknown[<all six spelled out>]` exits 2 where `deny Net Unknown[*]` over the same entry exits 1
-  — two spellings of one denied set, two verdicts. (Not modelled: the reason-class half is Python-only.)
+  although every value the missing datum could take fires the rule — the heading's test (*refuse only when
+  the absent datum could change the answer*) would answer exit 1. What makes every completion fire is the
+  CLOSED vocabulary: any destination class a producer could write is one of the three the filter lists, and
+  the classifier's fail-closed default (`unknown-host`) means a `Net`-bearing function's set is never empty.
+  It is NOT the §3.1 floor that guarantees it: the floor is a producer-side statement and `netClass` is
+  OPTIONAL on the wire (SPEC.md:1858, :5960), which is exactly why the gate refuses rather than assumes. All
+  four engines refuse (measured). Proved as `refuse_overbroad_when_filter_full` (its hypothesis `N ≠ []` is
+  that non-emptiness). The same shape exists for the reason classes over an inherited `Unknown` with no
+  `calls` ((W) makes the class set non-empty; R is closed): measured four-way, `deny Unknown[<all six spelled
+  out>]` exits 2 where `deny Unknown[*]` over the same entry exits 1 — two spellings of one denied set, two
+  verdicts. *(Corrected 2026-10-11 after review: the first version of this note gave the pair as `deny Net
+  Unknown[…]`; that differs only over an entry WITHOUT `Net` — with `Net` the plain token fires and both exit
+  1.)* Not modelled: the reason-class half is Python-only. PART 97 arm D's full-filter D2 cells pin the
+  LITERAL text pending an owner ruling; the pin is not the decision.
   Cost of the gap: an exit 2 where an exit 1 is certain — fail-closed, so not a sin; whether to tighten the
   clause or the heading is a SPEC decision for the coordinator.
-- **Modelling choice, stated:** a `Net` entry with `netClass: []` is projected as ABSENT, not as ∅. SPEC does
-  not say so in words; it contradicts the §3.1 floor, and reading it as ∅ is the measured fail-open. All four
-  engines refuse it (measured); D2 pins it.
+- **`netClass: []` on a `Net` entry is read as ABSENT, not as ∅.** First recorded here as a modelling choice
+  SPEC did not state; SPEC §3.1 now states it (the ABSENT-OPTIONAL-FIELD bullet, a clarification with no
+  verdict change), citing each engine's reading and the producers that never emit it. All four engines
+  refuse it (measured); PART 97 D2 `net_empty` pins it.
 - **NOT done — the rest of Phase 2.** (a)'s other carriers (edges for `forbid`/`only`, literal surfaces for
   `allow`, the baseline pair), all of (b) except what arm D's rule shape covers (the class map, CONTRIBUTES
   and the class fixpoint stay Python-only, in `gen_model_verdict.py`), and (c) beyond the `netClass` refusal.

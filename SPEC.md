@@ -2873,6 +2873,16 @@ the next time the domain grows; the count is gone and the members are what carry
   `deny Unknown[dispatch]` over an entry whose `Unknown` is inherited and whose `calls` is absent: the
   transitive class fixpoint is uncomputable, so every scoped filter tolerates while only bare `Unknown`
   fires.
+  ⟨0.40⟩ *Clarification, no verdict change (measured four-way, 2026-10-11):* **a `netClass` that is
+  PRESENT and EMPTY (`"netClass": []`) on a `Net`-bearing entry is read as ABSENT, never as ∅.** It
+  contradicts the producer floor below (every `Net`-bearing entry's set is floored at `unknown-host`), and
+  reading it as ∅ is the fail-open this bullet records, reached through a different spelling of the same
+  missing datum. No producer emits it — candor-rust skips an empty `net_class` when serialising
+  (`crates/candor-report/src/lib.rs:281`), candor-java writes the key only when non-empty (`Candor.java:3994`,
+  `Query.java:1043`) — and every gate already treats it as absent: candor-rust
+  (`crates/candor-query/src/gate.rs:868`), candor-java (`Policy.java:1234`, which never records an empty list),
+  candor-ts (`policy.mjs:809`, `:965`), candor-swift (`Answerability.swift:105`). Pinned by conformance
+  PART 97 arm D2 (`net_empty`).
 
 ⟨0.24⟩ **REFUSE ONLY WHEN THE ABSENT DATUM COULD CHANGE THE ANSWER — the refusal is MINIMAL, not coarse,
 and monotone denial is what makes that safe.** A class-scoped `deny` is not unanswerable merely because

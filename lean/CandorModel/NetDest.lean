@@ -94,7 +94,9 @@ theorem rule_mono_netFilter (effs : ESet) (unk : Option RSet) {C C' : NSet} (h :
   · exact Or.inr (Or.inr hu)
 
 /-- `netClass` well-formedness (SPEC §3.1: *"`netClass` is emitted for every `Net`-bearing entry and is
-    floored at `unknown-host`"*): a `Net`-bearing entry carries at least one class. -/
+    floored at `unknown-host`"*): a `Net`-bearing entry carries at least one class. A PRODUCER-side
+    property of a well-formed report: `netClass` is OPTIONAL on the wire (SPEC §2), so the gate may not
+    assume it — which is why an absent datum is refused rather than completed. -/
 def NetWF (x : NSig) : Prop := x.σ.S Effect.Net → ∃ c, x.N c
 
 /-- **`Net[known-telemetry,known-partner,unknown-host]` IS bare `Net`** on a reachable, well-formed entry. -/
@@ -185,8 +187,9 @@ theorem rejectRuleB_iff (ρ : RuleB) (S : List Effect) (D : List Reason) (N : Li
     already intersect the filter, the rule FIRES … only if it does NOT yet fire, and the missing datum could
     still make it fire, is the question genuinely unanswerable. Refuse that."* For `netClass` the entry
     alone determines no class, so the rule is answered by its OTHER parts or refused. All four engines read
-    `netClass: []` on a `Net` entry the same way as an absent key (measured 2026-10-11), which is the
-    fail-closed reading of the `unknown-host` floor; the projection, not this function, makes that choice. -/
+    `netClass: []` on a `Net` entry the same way as an absent key (measured 2026-10-11), and SPEC §3.1 now
+    says so (present-and-empty contradicts the producer floor; read as ABSENT, never as ∅); the projection,
+    not this function, makes that choice. -/
 
 inductive Answer where
   | reject | pass | refuse
@@ -277,10 +280,12 @@ theorem refuse_minimal_when_filter_proper (effs : List Effect) (C : List NetClas
     simp [hc]
 
 /-- **…and OVER-BROAD when the filter names every class.** With `Net[known-telemetry,known-partner,
-    unknown-host]` every well-formed completion (a non-empty class set) fires the rule, yet the clause as
+    unknown-host]` every non-empty completion fires the rule — the vocabulary is CLOSED, so any class a
+    producer could write is listed (hypothesis `N ≠ []`, the classifier's `unknown-host` default) — yet the clause as
     written refuses, because "the entry alone" determines no class. The heading's own test — *refuse only
     when the absent datum could change the answer* — would answer it. All four engines follow the text
-    (exit 2, measured 2026-10-11), so this is a wording gap in SPEC §3.1, recorded, not an engine defect. -/
+    (exit 2, measured 2026-10-11), so this is a wording gap in SPEC §3.1, recorded, not an engine defect;
+    PART 97 arm D pins the literal text pending an owner ruling. -/
 theorem refuse_overbroad_when_filter_full (effs : List Effect) (unk : Option (List Reason))
     (S : List Effect) (D : List Reason)
     (h : answerAbsentB ⟨effs, some NetClass.all, unk⟩ S D = .refuse)
