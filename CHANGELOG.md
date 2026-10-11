@@ -38,7 +38,17 @@ Run it after any patch-cycle commit that adds a section here.
   vocabulary is closed) — a wording gap (fail-closed), recorded in the plan; the reason-class twin is
   `deny Unknown[<all six>]` → exit 2 vs `deny Unknown[*]` → exit 1 over an inherited `Unknown` with no
   `calls` (corrected after review: the first note said `deny Net Unknown[…]`, which differs only on an entry
-  without `Net`). PART 97 arm D pins the literal text pending an owner ruling.
+  without `Net`).
+- **SPEC §3.1 / §6.2 ⟨0.40⟩: a filter is answered as written — the owner's ruling, 2026-10-11 (patch, no
+  verdict change, measured four-way).** A class list spelled out in the policy is a PROPER filter even when it
+  names every class, and is refused where its datum is absent; `*` (or the bare token) is the spelling for
+  "all classes" and is answered. Answering whenever every completion agrees was considered and deferred to a
+  future rung, because it ties the answer to the vocabulary's closure. PART 97 arm D2's full-filter cells and
+  a new arm B3 pair (`Unknown[<all six>]` → 2, `Unknown[*]` → 1) pin the ruled text; must-ledger updated.
+- **Register:** R1109 filed CLOSED (swift `06ee45b`), R1108 ADJUDICATED (70/71 right) and closed, R1098
+  CLOSED with its mechanism corrected (rust `4d10f02` + `e72cb19`); R1111, R1116, R1117, R1118 filed OPEN
+  SILENT and R1119 OPEN NOTSILENT; the 2026-10-11 drop-glue re-verification and the owner's per-row /
+  deferred decision appended to R195/R297/R300/R323/R829/R198/R200/R201/R209.
 - **SPEC §3.1 clarification (no verdict change, measured four-way): a `netClass` present and EMPTY on a
   `Net` entry contradicts the producer floor and is read as ABSENT, never as ∅.** Added at the
   ABSENT-OPTIONAL-FIELD bullet with the four engines' sites; must-ledger updated; PART 97 D2 `net_empty`
