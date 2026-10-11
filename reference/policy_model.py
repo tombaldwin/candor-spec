@@ -15,9 +15,11 @@ AS-EFF-005's effect-gain predicate and the baseline guard that composes them —
 2026-10-10 this file carried the PRE-amendment `D ⊄ D_b`, and PART 23 printed "every shipped verb" over it.
 The amended form is shipped four-way, but it is still NOT a row a `gate --report` differential may add: the
 baseline guard is a scan-time mode with no report-only route (SPEC §3 baseline guard; §3.4 says the ratchet
-flag is per-engine tested, not conformance-pinned). Nor may such a differential add `deny E[dest...]`, `forbid`,
-`allow` or `only` rows — SPEC §3.1 requires that route to REFUSE the last three. Adding them manufactures
-divergences out of the theory rather than finding them in the code.
+flag is per-engine tested, not conformance-pinned). Nor may such a differential add `forbid`, `allow` or
+`only` rows — SPEC §3.1 requires that route to REFUSE all three. Adding them manufactures divergences out of
+the theory rather than finding them in the code. `deny Net[dest…]` WAS on that list until 2026-10-11, when its
+carrier — the per-entry `netClass` — entered the model (`deny_rule`, `answer_absent`, Lean `NetDest.lean`): it
+is answerable on `gate --report` whenever `netClass` is present, and §3.1 says exactly when it is refused.
 
 Originally described as a transcription of PAPER3 Definitions 4-7 and
 30-36, and of Lemma 2. It exists because those definitions are the one part of the system the paper
@@ -41,8 +43,8 @@ alone — the part that is small, pure, total, and provable.
 NOT ONLY A HAND TRANSCRIPTION ANY MORE. `lean/` states the same definitions in Lean 4 and proves the
 properties the two amendments claim; `differential_lean_vs_python.py` (run by `lean/check.sh`, and in CI)
 recomputes every row of the Lean model's emitted decision table with THIS file and fails on any
-disagreement — 147 400 rows, every verb LEAN carries (`pure`, `deny`, `deny e Unknown[C]`), the whole
-vocabulary. Edit one of those definitions here and that check is what will tell you whether the two
+disagreement — every verb LEAN carries (`pure`, `deny`, `deny e Unknown[C]`, and since 2026-10-11 the
+whole-rule `deny` with a `Net[dest]` filter and its §3.1 absent-`netClass` answer), the whole vocabulary. Edit one of those definitions here and that check is what will tell you whether the two
 readings still match. The baseline-guard verbs (`effect_gain`, `unknown_ratchet`, `baseline_guard`) are in
 THIS file only: no Lean statement and no Lean↔Python row covers them, so `selftest` is their only check.
 """
@@ -275,6 +277,148 @@ def baseline_guard(baseline, ratchet=False):
     bD = ABSENT if baseline is ABSENT else baseline.D
     gain, rat = effect_gain(bS), unknown_ratchet(bD)
     return (lambda sig: gain(sig) or rat(sig)) if ratchet else gain
+
+
+# ---------------------------------------------------------------------------------------------
+# THE `Net` DESTINATION CLASS — the first carrier beyond `L` (LEAN-CHECKER-PLAN.md Phase 2(a)). Transcribed
+# in step with `lean/CandorModel/NetDest.lean`; `differential_lean_vs_python.py` compares every row.
+#
+# SPEC §6.2 ⟨0.21⟩: `deny Net[C]` denies the `Net` part only for a function whose `Net` reaches a host of a
+# listed class; a concrete effect in the same rule is unaffected; bare `Net` and `Net[*]` are all
+# destinations. The datum is the entry's `netClass` (SPEC §2), the TRANSITIVE destination surface, read as
+# given (§3.1). So a signature gains a third component `N ⊆ NC`, and `deny` is modelled as a whole RULE —
+# plain tokens ∨ a filtered `Net` part ∨ an `Unknown[C]` part — rather than one token at a time.
+
+NC = ("known-telemetry", "known-partner", "unknown-host")
+
+# An absent (or, as all four engines read it, EMPTY) `netClass` on the entry. Not ∅: reading it as ∅ is the
+# measured ⟨0.24⟩ fail-open (SPEC §3.1 — `deny Net[unknown-host]` exit 0 where bare `deny Net` exits 1).
+NET_ABSENT = None
+
+
+def deny_rule(effects=(), net=None, unknown=None):
+    """SPEC §6.2 `deny <tokens>` with a destination-class filter, scope aside. Returns `Reject(sig, N)`.
+
+    `effects` are the plain tokens (bare `Net`/`Net[*]` belongs here); `net` is the class list of ONE
+    `Net[C]` token (never together with a bare `Net`); `unknown` is `Unknown[C]` (`R` for bare `Unknown`).
+    Lean: `rejectRuleB`. Upward-closed in `(S, D, N)` (Lean `lemma2_rule`) and monotone in the filter
+    (`rule_mono_netFilter`)."""
+    effs = tuple(effects)
+    nets = None if net is None else frozenset(net)
+    unk = None if unknown is None else frozenset(unknown)
+    assert nets is None or "Net" not in effs, "`Net` and `Net[C]` are one token, not two"
+    assert nets is None or nets <= set(NC), f"unknown destination class {nets - set(NC)}"
+
+    def reject(sig, N):
+        if any(phi(e, sig) for e in effs):
+            return True
+        if nets is not None and phi("Net", sig) and bool(frozenset(N) & nets):
+            return True
+        return unk is not None and psi(unk, sig)
+    reject.parts = (effs, nets, unk)
+    return reject
+
+
+def answer_absent(rule, sig):
+    """SPEC §3.1 ⟨0.24⟩ answerability over an ABSENT `netClass`: `'reject' | 'pass' | 'refuse'`.
+
+    The entry alone determines no destination class, so the rule is answered by its OTHER parts or, when
+    only the filtered `Net` part could still fire, REFUSED (exit 2) — per (rule, function). Lean:
+    `answerAbsentB`, with `answerAbsent_reject_sound` / `_pass_sound` (an answer holds under every
+    completion), `answerAbsent_refuse_could_fire`, and the minimality pair: the refusal is minimal exactly
+    when the filter omits a class (`refuse_minimal_when_filter_proper`); with all three classes listed the
+    text refuses a question every well-formed completion answers alike (`refuse_overbroad_when_filter_full`)."""
+    effs, nets, unk = rule.parts
+    if any(phi(e, sig) for e in effs) or (unk is not None and psi(unk, sig)):
+        return "reject"
+    if nets and phi("Net", sig):
+        return "refuse"
+    return "pass"
+
+
+def net_wf(sig, N) -> bool:
+    """Reachable on the extended carrier: co-emission, AND `Net ∈ S ⇔ N ≠ ∅` (SPEC §3.1: `netClass` is
+    emitted for every `Net`-bearing entry and floored at `unknown-host`; an entry without `Net` has none)."""
+    return is_reachable(sig) and (("Net" in sig.S) == bool(N))
+
+
+def _selftest_net_dest() -> int:
+    """The destination-class rule: Lemma 2 on `(S, D, N)`, the filter axis, and §3.1's absent answer.
+
+    Complete on a SUB-VOCABULARY, said so: `S ⊆ {Clock, Fs, Llm, Net}` (the effects the rules name, plus one
+    they do not), every `D ⊆ R`, every `N ⊆ NC`. The predicate reads no other effect. The proof over the
+    whole vocabulary is Lean's `lemma2_rule`; this is the Python transcription's own regression guard."""
+    rc = 0
+    sub_E = ("Clock", "Fs", "Llm", "Net")
+    pts = [(Sig(s, d), n) for s in _powerset(sub_E) for d in _powerset(R) for n in _powerset(NC)]
+
+    def ncovers(x):
+        sig, N = x
+        for e in sub_E:
+            if e not in sig.S:
+                yield (Sig(sig.S | {e}, sig.D), N)
+        for r in R:
+            if r not in sig.D:
+                yield (Sig(sig.S, sig.D | {r}), N)
+        for c in NC:
+            if c not in N:
+                yield (sig, N | {c})
+    rules = {
+        "deny Net[unknown-host]": deny_rule(net=["unknown-host"]),
+        "deny Fs Net[known-partner,unknown-host] Unknown[dispatch]":
+            deny_rule(["Fs"], ["known-partner", "unknown-host"], ["dispatch"]),
+        "deny Llm Net[known-telemetry] Unknown": deny_rule(["Llm"], ["known-telemetry"], R),
+    }
+    for name, v in rules.items():
+        ce = [(x, y) for x in pts if v(*x) for y in ncovers(x) if not v(*y)]
+        print(f"  {'OK  ' if not ce else 'FAIL'}  Lemma 2 on (S,D,N), {name}"
+              + (f"   {ce[0]}" if ce else f" ({len(pts)} points)"))
+        rc |= 1 if ce else 0
+    # the filter axis: C ⊆ C' ⇒ Reject_C ⊆ Reject_C'
+    subs = [c for c in _powerset(NC) if c]
+    bad = [(C, C2, x) for C in subs for C2 in subs if C <= C2 for x in pts
+           if deny_rule(net=C)(*x) and not deny_rule(net=C2)(*x)]
+    print(f"  {'OK  ' if not bad else 'FAIL'}  widening a Net[C] filter only adds rejections"
+          + (f"   {bad[0]}" if bad else ""))
+    rc |= 1 if bad else 0
+    # the full filter is bare `Net` on well-formed points, and NOT off them (the fail-open's shape)
+    full, bare = deny_rule(net=NC), deny_rule(["Net"])
+    wf_split = [x for x in pts if net_wf(*x) and full(*x) != bare(*x)]
+    off_split = [x for x in pts if not net_wf(*x) and full(*x) != bare(*x)]
+    if wf_split or not off_split:
+        print(f"  FAIL  Net[all classes] vs bare Net: {len(wf_split)} well-formed splits, {len(off_split)} off"); rc = 1
+    else:
+        print(f"  OK    Net[all classes] ≡ bare Net on every well-formed point; they split on {len(off_split)} "
+              "ill-formed ones (Net with N = ∅)")
+    # §3.1 answer over an absent netClass, against every well-formed completion
+    wrong, over, minimal, over_rules = [], 0, 0, set()
+    for name, v in list(rules.items()) + [("deny Net[all]", full)]:
+        for sig in {x[0] for x in pts}:
+            if not is_reachable(sig):
+                continue
+            comps = [N for N in _powerset(NC) if net_wf(sig, N)]
+            outs = {v(sig, N) for N in comps}
+            a = answer_absent(v, sig)
+            if (a == "reject" and outs != {True}) or (a == "pass" and outs != {False}) \
+                    or (a == "refuse" and True not in outs):
+                wrong.append((name, sig, a, outs))
+            if a == "refuse":
+                if outs == {True}:
+                    over += 1
+                    over_rules.add(name)
+                else:
+                    minimal += 1
+    if wrong:
+        print(f"  FAIL  §3.1 absent-netClass answer contradicted by a completion: {wrong[0]}"); rc = 1
+    elif over_rules != {"deny Net[all]"}:
+        print(f"  FAIL  over-broad refusals outside the full filter: {sorted(over_rules)}"); rc = 1
+    elif not over or not minimal:
+        print(f"  FAIL  the absent-answer check is not discriminating: {minimal} minimal, {over} over-broad"); rc = 1
+    else:
+        print("  OK    §3.1 absent-netClass answer: every reject/pass holds under all well-formed completions;")
+        print(f"        {minimal} refusals are minimal, {over} are over-broad — every over-broad one under the")
+        print("        FULL filter, where all completions fire (SPEC's text refuses; its heading's test would answer)")
+    return rc
 
 
 # ---------------------------------------------------------------------------------------------
@@ -585,6 +729,7 @@ def selftest() -> int:
     print("  OK    Definitions 2, 4, 30, 31 worked examples (incl. `Db` NOT refining `Net`)")
 
     rc |= _selftest_baseline_guard()
+    rc |= _selftest_net_dest()
 
     ce = monotonicity_counterexample()
     if not ce:

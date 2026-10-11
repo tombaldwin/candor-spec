@@ -56,7 +56,8 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
         Blame.Witness.blame_names_the_site
         Frames.chargeTo_spec Frames.nearest_unique Frames.chargeTo_none_no_nearest
         Frames.mem_append_cases Frames.decomposes_of_allCovered Frames.allCovered_of_decomposes
-        Frames.charging_is_functional"
+        Frames.charging_is_functional
+        lemma2_rule rule_mono_netFilter fullFilter_iff_bare fullFilter_ne_bare_off_wf"
 #
 # TIER B — the BRIDGE lemmas, which are what make the emitted decision table the PROVED answer rather than
 # a second unverified transcription sitting beside the first. They state `Bool = true ↔ Prop`, so `simp`
@@ -64,7 +65,9 @@ TIER_A="no_fires_net_of_db fires_net_of_llm pure_passes_bare_unknown lemma2_deny
 # every non-trivial proof and NOT evidence of anything. What is forbidden here is `sorryAx` (a placeholder
 # that proves nothing) and `Classical.choice` (these arguments are constructive; needing choice would mean
 # something is being asserted rather than computed).
-TIER_B="reachableB_iff Effect.all_complete Reason.all_complete refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff"
+TIER_B="reachableB_iff Effect.all_complete Reason.all_complete refinesB_iff firesB_iff rejectDenyB_iff rejectPureB_iff
+        NetClass.all_complete rejectRuleB_iff answerAbsent_reject_sound answerAbsent_pass_sound
+        answerAbsent_refuse_could_fire refuse_minimal_when_filter_proper refuse_overbroad_when_filter_full"
 CORE_OK="propext|Quot.sound"
 
 axioms_of() { { echo "import CandorModel"; echo "open Candor"; for t in $1; do echo "#print axioms $t"; done; } > /tmp/candor-axioms.lean; lake env lean /tmp/candor-axioms.lean 2>&1; }

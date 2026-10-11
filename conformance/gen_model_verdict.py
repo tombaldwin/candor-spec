@@ -8,7 +8,7 @@ PART 23 proves the model (`reference/policy_model.py`) is internally monotone. I
 part feeds each engine signatures the model has ALREADY judged, through the one route SPEC §3.1 made a
 pure function of the report and the policy (`gate --report`), and compares the verdict.
 
-Three arms:
+Four arms:
 
   A  THE LATTICE. One synthetic report, one leaf function per REACHABLE signature with |S| <= 2 and
      |D| <= 2 — the same slice `lean/` `emitRows` emits (1474 signatures; 1254 reachable once `Llm`
@@ -46,6 +46,20 @@ Three arms:
      token `indirect:x` maps to `unresolved` — a generator that used it as the canonical `indirect` token
      (as the first plan draft did) would manufacture divergences out of the harness.
 
+  D  THE `Net` DESTINATION CLASS (LEAN-CHECKER-PLAN.md Phase 2(a); `policy_model.deny_rule` /
+     `answer_absent`, Lean `NetDest.lean`). The first carrier beyond `L`: the per-entry `netClass` set N.
+       D1 one report of 369 netClass-WELL-FORMED leaves (reachable |S| <= 2, D in {∅, {dispatch},
+          {native}}, N every non-empty class set when Net ∈ S, else the key absent) under 40 WHOLE rules:
+          `Net[C]` for each of the 7 non-empty class sets and `Net[*]`, each alone and with `Fs`, `Llm`,
+          bare `Unknown` and `Unknown[dispatch]` beside it. Same four assertions as arm A, never exit 2.
+       D2 single-function reports whose `Net` entry has NO usable `netClass` (key absent; `[]`, which
+          contradicts the §3.1 floor; with `Fs`, with `Llm`, with a reasoned `Unknown`) plus a non-Net
+          control, under 20 rules. The model's §3.1 answer per cell: REFUSE -> exit 2, REJECT -> exit 1
+          naming the fn (another part of the rule fires from the entry alone), PASS -> exit 0. Under the
+          FULL filter `Net[known-telemetry,known-partner,unknown-host]` the model refuses as SPEC's text
+          does, although every well-formed completion would fire (Lean `refuse_overbroad_when_filter_full`);
+          all four engines refuse there too — a wording gap in §3.1, recorded in the plan, not a divergence.
+
 WHAT IT CANNOT SEE (stated so the green is not read as more): an ABSENT effect — the cardinal sin — and a
 fabricated one (LEAN-CHECKER-PLAN.md §0); scope matching (gen_policy_match.py, the POLICY-MATCHING differential, owns it); every
 analysis-side, producer-side (the ⟨0.30⟩ peek) and consumer-side (integrations refusal->pass) defect. It
@@ -58,8 +72,13 @@ IT IS SHOWN ABLE TO FAIL ON EVERY RUN, not once by hand — the controls run ins
   diff-side   one row's expected verdict flipped: exactly that one row must diverge.
   document    an engine's own `--gate-json` with one violation removed must be caught.
   vacuity     a run over the same report truncated to zero functions must trip the vacuity floor.
+  arm D       the model with the destination filter IGNORED (`Net[C]` read as bare `Net`) must diverge on
+              D1, and the model reading an absent `netClass` as ∅ (the ⟨0.24⟩ fail-open SPEC §3.1 measured)
+              must diverge on D2.
 And once by hand against a real engine (recorded in run.sh's PART 97 header): a one-line fault in one
-engine's SHARED evaluator, built in a throwaway worktree, turns this part red.
+engine's SHARED evaluator, built in a throwaway worktree, turns this part red — for arm D, two ts seeds
+(2026-10-11): `classFilterExcludes`'s Net branch returning false moved 30 D1 rules, and the `netClass`-absent
+refusal disabled moved 63 D2 cells to exit 0; arms A-C unmoved by either.
 
 USAGE
     python3 gen_model_verdict.py            [--keep]
@@ -91,6 +110,12 @@ SPEC_CLAUSES = [
     ("§3.1 ⟨0.24⟩", "only if it does NOT yet fire, and the missing datum could still make it fire, is the question genuinely unanswerable. **Refuse that.**"),
     ("§6.2", "a raw reason matching no listed prefix maps to `unresolved`"),
     ("§6.2", "A conforming implementation must therefore ADD `unresolved` to the class set of any function carrying an `Unknown` with no reason"),
+    # arm D — the Net destination class (LEAN-CHECKER-PLAN.md Phase 2(a); lean/CandorModel/NetDest.lean)
+    ("§6.2 ⟨0.21⟩", "denies the `Net` part only for a function whose `Net` reaches a host of one of the listed classes; a concrete effect in the same rule is unaffected"),
+    ("§6.2 ⟨0.21⟩", "bare **`Net`** and **`Net[*]`** mean **all destinations**"),
+    ("§3.1 ⟨0.24⟩", "**A CLASS-SCOPED `deny` whose scoping datum is an ABSENT OPTIONAL FIELD.**"),
+    ("§3.1 ⟨0.24⟩", "`netClass` is emitted for every `Net`-bearing entry and is floored at `unknown-host`"),
+    ("§3.1 ⟨0.24⟩", "per-(rule, function) for the scoped case, so a scoped rule whose own matches carry their evidence still evaluates"),
 ]
 
 E = list(M.E)
@@ -270,6 +295,138 @@ def c_entries():
 
 
 # --------------------------------------------------------------------------------------------------------
+# D — the Net destination class (Phase 2(a)): the whole-rule `deny` with a `Net[C]` filter, over the
+# per-entry `netClass` carrier, and SPEC §3.1's answer when that carrier is absent.
+# --------------------------------------------------------------------------------------------------------
+
+NC = list(M.NC)
+NC_ABBR = {"known-telemetry": "tel", "known-partner": "par", "unknown-host": "uh"}
+D_SIGS_D = [(), ("dispatch",), ("native",)]          # D: none, the class Unknown[dispatch] names, one it does not
+
+
+def _rule(extra, C):
+    """(label, policy text, model rule). `extra` is a plain token or an Unknown part; `C` a class list or '*'."""
+    effs, unk = [], None
+    if extra in ("Fs", "Llm"):
+        effs = [extra]
+    elif extra == "Unknown":
+        unk = R
+    elif extra == "Unknown[dispatch]":
+        unk = ["dispatch"]
+    net_tok = "Net[*]" if C == "*" else f"Net[{','.join(C)}]"
+    pre = f"{extra} " if extra in ("Fs", "Llm") else ""
+    post = f" {extra}" if extra and extra.startswith("Unknown") else ""
+    text = f"deny {pre}{net_tok}{post}"
+    rule = M.deny_rule(effs + ["Net"], None, unk) if C == "*" else M.deny_rule(effs, C, unk)
+    # the model-side SEED (controls): the same rule with its destination filter IGNORED
+    rule.ignore_filter = M.deny_rule(effs + ["Net"], None, unk)
+    return text, rule
+
+
+def _nc_subsets():
+    return [list(c) for c in subsets(NC, 3) if c]
+
+
+D1_POLICIES = [(_rule(x, C)[0], _rule(x, C)[1]) for C in _nc_subsets() + ["*"]
+               for x in (None, "Fs", "Llm", "Unknown", "Unknown[dispatch]")]
+
+
+def d1_leaves():
+    """Every netClass-WELL-FORMED leaf (`policy_model.net_wf`): reachable S with |S| <= 2, D from D_SIGS_D,
+    and N every non-empty class set when Net ∈ S, else the key absent. Cached."""
+    if getattr(d1_leaves, "_c", None) is None:
+        out = []
+        for S in subsets(E, 2):
+            for D in D_SIGS_D:
+                sig = M.Sig(S, D)
+                if not M.is_reachable(sig):
+                    continue
+                for N in (_nc_subsets() if "Net" in S else [[]]):
+                    assert M.net_wf(sig, frozenset(N))
+                    f = entry(S, D)
+                    f["fn"] = fn_name(S, D) + "__n_" + ("_".join(NC_ABBR[c] for c in N) or "none")
+                    f["fn"] = f["fn"].replace("app.L.", "app.ND.")
+                    if N:
+                        f["netClass"] = list(N)
+                    out.append((f, (sig, frozenset(N))))
+        d1_leaves._c = out
+    return d1_leaves._c
+
+
+# D2: single-function reports whose entry carries `Net` with NO usable `netClass` — the key absent, or `[]`
+# (which contradicts the §3.1 floor and is read as absent by all four engines) — plus a non-Net control.
+D2_LEAVES = [
+    ("net_absent",      {"inferred": ["Net"]}),
+    ("net_empty",       {"inferred": ["Net"], "netClass": []}),
+    ("fs_net_absent",   {"inferred": ["Fs", "Net"]}),
+    ("llm_net_absent",  {"inferred": ["Llm", "Net"]}),
+    ("net_disp_absent", {"inferred": ["Net", "Unknown"], "unknownWhy": [TOKEN["dispatch"]]}),
+    ("fs_absent",       {"inferred": ["Fs"]}),
+]
+D2_POLICIES = [(_rule(x, C)[0], _rule(x, C)[1])
+               for C in (["unknown-host"], ["known-telemetry", "known-partner"], NC, "*")
+               for x in (None, "Fs", "Llm", "Unknown", "Unknown[dispatch]")]
+
+
+def _d2_entry(name, spec):
+    e = {"fn": f"app.NA.{name}", "inferred": list(spec["inferred"]), "direct": list(spec["inferred"])}
+    for k in ("netClass", "unknownWhy"):
+        if k in spec:
+            e[k] = spec[k]
+    return e
+
+
+def _d2_sig(spec):
+    D = [class_of(t) for t in spec.get("unknownWhy", [])]
+    return M.Sig([x for x in spec["inferred"] if x != "Unknown"], D)
+
+
+def d2_answer(key):
+    pol_i, name = key
+    return M.answer_absent(D2_POLICIES[pol_i][1], _d2_sig(dict(D2_LEAVES)[name]))
+
+
+def d2_judge(rc, doc, name, answer):
+    """One absent-netClass cell against the model's §3.1 answer: refuse -> exit 2; reject -> exit 1 naming
+    the fn; pass -> exit 0 with no violation."""
+    if answer == "refuse":
+        return [] if rc == 2 else [f"exit {rc}, model REFUSES (§3.1: the filter's datum is absent and only it could fire)"]
+    want = {f"app.NA.{name}"} if answer == "reject" else set()
+    return judge(rc, doc, want)
+
+
+def arm_d(eng, ws):
+    bad = []
+    leaves = d1_leaves()
+    loc = G.write_report(ws, eng, envelope([f for f, _ in leaves]))
+    d1 = []
+    n_fire = n_pass = 0
+    for i, (text, rule) in enumerate(D1_POLICIES):
+        want = {f["fn"] for f, (sig, N) in leaves if rule(sig, N)}
+        n_fire += len(want); n_pass += len(leaves) - len(want)
+        rc, doc, err = run_gate(eng, loc, text, ws, f"d1_{i}")
+        d1.append((rc, doc))
+        for p in judge(rc, doc, want):
+            bad.append(f"D1 {text}: {p}" + (f" [stderr: {err.strip()[:160]}]" if rc == 2 else ""))
+    if not n_fire or not n_pass:
+        bad.append(f"D1 VACUOUS: {n_fire} model rejections, {n_pass} passes — the filter is not being exercised")
+    d2 = {}
+    answers = set()
+    for name, spec in D2_LEAVES:
+        locn = G.write_report(ws, eng, envelope([_d2_entry(name, spec)]))
+        for i, (text, rule) in enumerate(D2_POLICIES):
+            a = d2_answer((i, name))
+            answers.add(a)
+            rc, doc, err = run_gate(eng, locn, text, ws, f"d2_{name}_{i}")
+            d2[(i, name)] = (rc, doc)
+            for p in d2_judge(rc, doc, name, a):
+                bad.append(f"D2 {name} `{text}`: {p}")
+    if answers != {"reject", "pass", "refuse"}:
+        bad.append(f"D2 VACUOUS: the model's answers over the absent cells were only {sorted(answers)}")
+    return bad, (d1, d2)
+
+
+# --------------------------------------------------------------------------------------------------------
 
 def main():
     argv = sys.argv[1:]
@@ -372,6 +529,17 @@ def main():
             rc_all |= 1 if cbad else 0
             wrong += len(cbad)
 
+            # ---- D: the Net destination class --------------------------------------------------------
+            dbad, d_cache = arm_d(eng, ws)
+            cache[(eng, "D")] = d_cache
+            print(f"  {eng:6s} D  Net destination class ({len(D1_POLICIES)} answerable rules over "
+                  f"{len(d1_leaves())} leaves; {len(D2_POLICIES)} x {len(D2_LEAVES)} absent-netClass cells): "
+                  + ("OK" if not dbad else "DIVERGE"))
+            for b in dbad:
+                print(f"    {eng:6s} D  {b}")
+            rc_all |= 1 if dbad else 0
+            wrong += len(dbad)
+
         # ---- CONTROLS: the comparator must be able to say DIVERGE, on every run -----------------------
         ctl_bad = []
         eng0 = engines[0]
@@ -409,6 +577,18 @@ def main():
         want_full = cache[(eng0, "deny Fs")][2]
         if not judge(rc0, doc0, want_full):
             ctl_bad.append("vacuity seed: an engine run over ZERO functions agreed with the model — the floor is blind")
+        # arm D, model-side: (i) the destination filter ignored — `Net[C]` read as bare `Net`, the shape of
+        # every narrowing a filter exists for — must diverge on the answerable runs; (ii) an absent
+        # `netClass` read as ∅ — the ⟨0.24⟩ fail-open SPEC §3.1 measured — must diverge on the absent cells.
+        d1c, d2c = cache[(eng0, "D")]
+        f1 = sum(1 for (lab, pred), (rc, doc) in zip(D1_POLICIES, d1c)
+                 if judge(rc, doc, {f["fn"] for f, (sig, N) in d1_leaves() if pred.ignore_filter(sig, N)}))
+        f2 = sum(1 for (key, (rc, doc)) in d2c.items()
+                 if d2_judge(rc, doc, key[1], "pass" if d2_answer(key) == "refuse" else d2_answer(key)))
+        if not f1:
+            ctl_bad.append("arm D model-side seed (Net[C] read as bare Net) produced NO divergence")
+        if not f2:
+            ctl_bad.append("arm D model-side seed (absent netClass read as ∅, the ⟨0.24⟩ fail-open) produced NO divergence")
         if ctl_bad:
             for c in ctl_bad:
                 print(f"  CONTROL FAIL: {c}")
@@ -416,7 +596,8 @@ def main():
             wrong += len(ctl_bad)
         else:
             print(f"  controls ({eng0}): model-side seed diverges on {hits} Net polic(ies); diff-side seed moves "
-                  f"exactly 1 row; a deleted violation is caught; a zero-function report trips the floor")
+                  f"exactly 1 row; a deleted violation is caught; a zero-function report trips the floor;")
+            print(f"    arm D: `Net[C]`-as-bare diverges on {f1} rule(s), absent-as-∅ on {f2} absent cell(s)")
         print(f"MODEL VERDICT: OK — {len(engines)} engine(s) agree with the model on every run"
               if not rc_all else f"MODEL VERDICT: {max(wrong, 1)} run(s) wrong")
     finally:

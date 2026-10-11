@@ -2917,10 +2917,13 @@ echo "PART 96 — a bind/listen address is never a destination, a unit that acce
 # 2. Arm B: the report->(S,D) PROJECTION arm A bypasses — the three ⟨0.24⟩ repair rows as a multi-function
 # report WITH `calls`, a reasonless direct Unknown (fires [unresolved], not [dispatch]), and an inherited
 # Unknown with no `calls` (class-scoped deny REFUSED, bare fires). Arm C: the §6.2 class map, one leaf per
-# raw token, including `indirect:x` (a class NAME, so the token is `unresolved`).
+# raw token, including `indirect:x` (a class NAME, so the token is `unresolved`). Arm D (Phase 2(a), added
+# 2026-10-11): the `Net` destination class — 40 whole `deny` rules (`Net[C]` for every non-empty C and `*`,
+# alone and beside `Fs`/`Llm`/`Unknown`/`Unknown[dispatch]`) over 369 netClass-well-formed leaves, and 120
+# absent-`netClass` cells judged against the model's §3.1 answer (refuse -> 2, reject -> 1, pass -> 0).
 #
 # THE ORACLE is reference/policy_model.py, not the Lean emitter: no Lean toolchain runs in this suite, and
-# lean.yml's 147,400-row differential is what keeps the two transcriptions equal.
+# lean.yml's Lean-vs-Python differential (`lean/check.sh`, 459,754 rows since arm D's NetDest rows) is what keeps the two transcriptions equal.
 #
 # WHAT IT CANNOT SEE: an absent or fabricated effect (the analysis), scope matching (the gen_policy_match.py POLICY-MATCHING differential owns it), and
 # a REPORT-WRITING defect on the scan route — PART 98's question.
@@ -2936,10 +2939,14 @@ echo "PART 96 — a bind/listen address is never a destination, a unit that acce
 # cannot see this fault. (2) query.mjs's `gate` verb handing `evaluatePolicy` the entries with `calls`
 # emptied on inherited-Unknown rows -> arm B DIVERGE (`b_reasoned_only` read `unresolved` — the measured
 # pre-⟨0.24⟩ ts shape), arm A unmoved; PART 98 DIVERGE on 8 of 17 policies.
+# Arm D, 2026-10-11, same discipline (throwaway candor-ts worktree at 3ca4b9a): (3) `classFilterExcludes`'s
+# Net branch made to return false (the destination filter ignored) -> 30 D1 rules DIVERGE, every proper
+# filter; (4) the absent-`netClass` refusal in `evaluatePolicy` disabled -> 63 D2 cells exit 0 where the
+# model refuses (the measured ⟨0.24⟩ fail-open, reproduced). Arms A-C unmoved by both.
 [ -f "$HERE/gen_model_verdict.py" ] || { echo "FAIL: gen_model_verdict.py is missing"; exit 2; }
 [ -f "$HERE/../reference/policy_model.py" ] || { echo "FAIL: reference/policy_model.py is missing — PART 97 has no oracle"; exit 2; }
 echo
-echo "[97] each engine's gate --report verdict equals the reference model's, lattice + projection + class map"
+echo "[97] each engine's gate --report verdict equals the reference model's, lattice + projection + class map + Net destination class"
 P97_OK=0
 (
   export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
@@ -2947,10 +2954,10 @@ P97_OK=0
   [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
   python3 "$HERE/gen_model_verdict.py"
 ) || { P97_OK=1; rc=1; }
-[ "$P97_OK" = 0 ] || echo "  -> DIVERGE — an A line is a verdict on a leaf signature the model judged differently; a B line is the report->(S,D) projection (CONTRIBUTES, the class fixpoint over \`calls\`, answerability); a C line is a raw token projected to the wrong class; a CONTROL FAIL means the comparator could not say DIVERGE and the green above is not evidence"
-echo "PART 97 — each engine's gate --report verdict equals the reference model's (SPEC §4.0, §3.1 ⟨0.24⟩, §6.2; LEAN-CHECKER-PLAN.md Phase 0)"
+[ "$P97_OK" = 0 ] || echo "  -> DIVERGE — an A line is a verdict on a leaf signature the model judged differently; a B line is the report->(S,D) projection (CONTRIBUTES, the class fixpoint over \`calls\`, answerability); a C line is a raw token projected to the wrong class; a D line is the Net destination-class rule (D1) or the §3.1 answer over an absent \`netClass\` (D2); a CONTROL FAIL means the comparator could not say DIVERGE and the green above is not evidence"
+echo "PART 97 — each engine's gate --report verdict equals the reference model's (SPEC §4.0, §3.1 ⟨0.24⟩, §6.2 incl. ⟨0.21⟩ Net[dest]; LEAN-CHECKER-PLAN.md Phase 0 + 2(a))"
 # ENGINES: rust java ts swift
-# CONTROLS: none — delegated: gen_model_verdict.py runs four controls every time (model-side Db-refines-Net seed, one flipped expected row, a deleted violation in a real --gate-json, a zero-function report) and fails the part if any does not diverge
+# CONTROLS: none — delegated: gen_model_verdict.py runs six controls every time (model-side Db-refines-Net seed, one flipped expected row, a deleted violation in a real --gate-json, a zero-function report, and for arm D the destination filter ignored and an absent netClass read as the empty set) and fails the part if any does not diverge
 
 
 # PART 98 — ROUTE EQUALITY OVER THE PROJECTION: `scan --policy` == `gate --report` on the report that scan

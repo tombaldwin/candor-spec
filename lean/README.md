@@ -53,6 +53,39 @@ manuscript.
 | **§8 Escapes 1–4** | `Escapes.escape1…escape4` | **four witnesses** |
 | Prop 6 (as PAPER3 states it) | `Escapes.prop6_llm`, `prop6_db_witness_is_dead` | **proved + a defect found** |
 | — (the reachability hypothesis is load-bearing) | `fires_ne_mem_off_reachable`, `llm_without_net_unreachable` | **proved** |
+| SPEC §6.2 ⟨0.21⟩ `deny … Net[dest…] …` (no PAPER3 Def) | `NetDest.lean` `rejectRule` over `NSig = (S, D, N)` | transcribed; **Lemma 2 on the extended carrier proved** (`lemma2_rule`), filter axis monotone (`rule_mono_netFilter`) |
+| — (`Net[all classes]` ≡ bare `Net`) | `fullFilter_iff_bare`, `fullFilter_ne_bare_off_wf` | **proved** on reachable, `netClass`-well-formed entries; the hypothesis shown load-bearing |
+| SPEC §3.1 ⟨0.24⟩ answerability over an absent `netClass` | `answerAbsentB` + `answerAbsent_*`, `refuse_minimal_when_filter_proper`, `refuse_overbroad_when_filter_full` | **proved**: answers hold under every completion; the refusal is minimal exactly when the filter omits a class |
+
+## The `Net` destination class — the first carrier beyond `L`
+
+LEAN-CHECKER-PLAN.md Phase 2(a). SPEC §6.2 ⟨0.21⟩ lets a `deny` narrow its `Net` part to destination
+classes (`known-telemetry`, `known-partner`, `unknown-host`), read from the entry's `netClass` — a datum the
+`(S, D)` lattice does not carry. `NetDest.lean` adds it as a third component `N` and models `deny` as a whole
+RULE (plain tokens ∨ a filtered `Net[C]` part ∨ an `Unknown[C]` part), since PART 97's lattice arm had only
+ever judged one token at a time.
+
+- **`lemma2_rule`** — every rule is upward-closed in `(S, D, N)`: a newly-reached destination class, like a
+  newly-determined effect, can only move a verdict toward red. Tier A, no axioms.
+- **`rule_mono_netFilter`** — widening `Net[C]` to `Net[C']` only adds rejections; `Net[*]` is the top.
+- **`fullFilter_iff_bare`** — on a reachable entry whose `Net` carries at least one class (SPEC §3.1's
+  *"floored at `unknown-host`"*), `Net[all three]` is bare `Net`; **`fullFilter_ne_bare_off_wf`** shows the
+  floor is load-bearing — a `Net` entry with `N = ∅` is exactly the ⟨0.24⟩ fail-open's shape.
+- **The §3.1 answer over an absent `netClass`** (`answerAbsentB`): answered by the rule's other parts, else
+  REFUSED when only the filtered `Net` part could still fire. Proved: an answered reject/pass holds under
+  every completion of the missing datum; a refusal could fire; and the refusal is **minimal exactly when the
+  filter omits a class** (`refuse_minimal_when_filter_proper`). With all three classes listed, SPEC's text
+  still refuses although every well-formed completion fires (`refuse_overbroad_when_filter_full`) — a
+  wording gap in §3.1 (its heading says *refuse only when the absent datum could change the answer*). All
+  four engines follow the text, measured; the model does too, so PART 97 arm D pins it.
+
+Executed: `emitNetRows` adds 312,354 nine-column rows (`deny_rule` over present `N`, `deny_rule_absent`
+with the three-valued answer) and the differential compares each with `policy_model.deny_rule` /
+`answer_absent` / `net_wf`. Five planted Python faults each fail it (2026-10-11): the filter ignored (13,300
+disagreements), absent read as ∅ (4,900), the `Net` conjunct dropped (66,822), refusing before the other
+parts are consulted (4,361), and the `unknown-host` floor dropped from well-formedness (5,698 reachability
+disagreements). Not modelled: the destination CLASSIFIER (which host is telemetry — producer-side), `netPartners`,
+and scope matching.
 
 ## Theorem 1, and the antecedent that carries it
 
@@ -294,9 +327,10 @@ executable that disagreed with the model would fail to compile.
 `reference/differential_lean_vs_python.py` recomputes every one with `policy_model.py`:
 
 ```
-rows compared : 147400     deny 16214 · deny_unknown 129712 · pure 1474
-vocabulary    : 11 effects, 6 reasons
-reachable     : 125400 / 147400  (22000 excluded by co-emission {'Llm': 'Net'})
+rows compared : 459754     deny 16214 · deny_unknown 129712 · pure 1474
+                           deny_rule 277648 · deny_rule_absent 34706   (NetDest.lean, since 2026-10-11)
+vocabulary    : 11 effects, 6 reasons, 3 destination classes
+reachable     : 125400 / 147400 pure/deny/deny_unknown rows  (22000 excluded by co-emission {'Llm': 'Net'})
 SPEC §4.0 `e ∈ S` vs PAPER3 `⊑` on deny: 220 differ over the full lattice, 0 over the reachable part
 DIFFERENTIAL: OK
 ```
@@ -325,7 +359,7 @@ whole point of `conformance/probe_check.py` one level down.
 `check.sh` does not simply forbid axioms, because the two groups earn different bars and one bar would
 weaken the strong one:
 
-- **Tier A** — the headline theorems in `Lattice.lean`. Pure `Prop`, proved by case analysis, depending on
+- **Tier A** — the headline theorems (`Lattice.lean` and the `Prop`-level results of every later file). Pure `Prop`, proved by case analysis, depending on
   **no axioms at all**, not even `propext`. A new axiom here means the argument changed shape.
 - **Tier B** — the bridge lemmas. They state `Bool = true ↔ Prop`, so `simp` and the `List` lemmas pull in
   `propext` and `Quot.sound`: Lean's own core axioms, present in almost every non-trivial proof and not
@@ -355,7 +389,7 @@ definition — it is underivable, and `cases` discharges it.
 ```sh
 cd lean && lake build          # builds and checks every proof
 lake exe emit                  # the decision table, one row per (verb, arg, C, S, D)
-bash check.sh                  # + no `sorry`, the two axiom tiers, and the 147k-row differential
+bash check.sh                  # + no `sorry`, the two axiom tiers, and the 460k-row differential
 ```
 
 `check.sh` is the one to run in review: a proof that silently depends on `sorryAx` type-checks and proves

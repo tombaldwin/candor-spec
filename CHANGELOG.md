@@ -25,6 +25,18 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Model, Phase 2's first slice: the `Net` destination class** (LEAN-CHECKER-PLAN.md Phase 2(a)). New
+  `lean/CandorModel/NetDest.lean` and its Python twin in `reference/policy_model.py` (`deny_rule`,
+  `answer_absent`, `net_wf`): the carrier `(S, D, N)` with `N` the entry's `netClass`, `deny` as a whole rule
+  (plain tokens, `Net[C]`, `Unknown[C]`), and SPEC §3.1's answer over an absent `netClass`. Proved: Lemma 2
+  on the extended carrier, the filter axis monotone, `Net[all]` ≡ bare `Net` on well-formed entries, and the
+  absent-`netClass` refusal sound and minimal exactly when the filter omits a class. The Lean↔Python
+  differential grows to 459,754 rows (five planted faults each caught). **Conformance PART 97 arm D**: 40
+  whole rules over 369 leaves plus 120 absent-`netClass` cells, four-way, all agree; two in-suite model-side
+  controls and two engine-side seeds (throwaway candor-ts worktree) shown to turn it red. Found: SPEC §3.1's
+  text refuses `Net[<all three classes>]` over a `netClass`-less `Net` although every completion fires — a
+  wording gap (fail-closed), recorded in the plan. No SPEC.md change.
+
 ## [0.40.5] — 2026-10-11
 
 - **Register, swift audit of R1105/R1106.** Filed from candor-swift `234830a` (merged `5e66006`): R1099 (CLOSED, a

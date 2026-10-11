@@ -3,7 +3,8 @@
 Status: revised 2026-10-09 after a review (§6 lists what changed and what was refused). **Phase 0 is BUILT as
 conformance PART 97 (`gen_model_verdict.py`) and Phase 0b as PART 98 (`gen_route_equality.py`), four-way green;
 Phase 1 is DONE in the repo except its two Lean-side items and the manuscript edits (Phase 1's
-"Status, 2026-10-10" below says which, and why). Everything else is a plan.** Written against
+"Status, 2026-10-10" below says which, and why). Phase 2's first slice — the `Net` destination class, in Lean,
+in Python and as PART 97 arm D — is DONE (Phase 2's "Status, 2026-10-11"). Everything else is a plan.** Written against
 candor-spec `5e14689`. PAPER3 itself is not in any repo; it is cited at
 `~/Library/Mobile Documents/com~apple~CloudDocs/candor-paper/PAPER3.md` (`P3:` below, by line). Its
 **Definitions** — all of §6–§7 plus every Definition `lean/`, `reference/` and this plan cite, and the
@@ -102,7 +103,7 @@ therefore not on the entry. It needs a class fixpoint over `calls` (`SPEC.md:287
 | `deny e` | `inferred`; scope-match on `fn` (§6.2 path-segment + nested-scope rule, `SPEC.md:5946-5950`) | **Yes.** The model fires on refinement (Def 30, `Exec.lean:101`) while SPEC fires on membership (`SPEC.md:4793`). They agree only on co-emitting reports (`lean/README.md:253-265`). The checker uses SPEC's membership and flags an `Llm`-without-`Net` entry in the report lint (§0). |
 | `deny e Unknown` (bare) | as above + `Unknown ∈ inferred` | **Yes** |
 | `deny e Unknown[C]` | the transitive class set: `unknownWhy` → class map (`SPEC.md` §6.2 table incl. catch-all `unresolved`, ⟨0.39⟩ `macro:`), ⟨0.24⟩ CONTRIBUTES (reasonless direct ⇒ `unresolved`), `calls` for inherited classes, the `dynamic`/`*` aliases (`:5879`) and config `unknown-alias` | **Partly.** Where `calls` is absent the fixpoint is uncomputable. The engine must refuse per (rule, fn) unless the entry alone already fires (`SPEC.md:2877-2888`). The checker inherits that refusal; it is not a gap the checker can close. |
-| `deny Net[dest…]` | `netClass` per entry (`:1858`), `netPartners` | **Partly.** An absent `netClass` must be refused (`SPEC.md:2869-2872`). Outside `L` (P3:803). |
+| `deny Net[dest…]` | `netClass` per entry (`:1858`), `netPartners` | **Partly.** An absent `netClass` must be refused (`SPEC.md:2869-2872`). Outside `L` (P3:803). *Modelled 2026-10-11 on the carrier `(S, D, N)` (`NetDest.lean`), pinned by PART 97 arm D.* |
 | `pure` | `inferred` | **Yes.** `D` does not participate (`SPEC.md:4792`). |
 | `allow E v…` (AS-EFF-008) | `hosts`/`cmds`/`paths`/`tables` + per-entry `incomplete` (`SPEC.md:1271-1288`) | **No, by ruling.** Refusal is uniform even where an engine emits the marker (`SPEC.md:2855-2864`). |
 | `forbid A -> B` | every call edge, including those into pure units | **No.** `calls` is effect-relevant only (`SPEC.md:2853-2854`); the sidecar is OPTIONAL and the route may not back-fill from it (`:2806-2808`). |
@@ -348,6 +349,54 @@ fixpoint is least (as `T_least` does for `S`), and alias expansion is monotone.
 verb has a Bool twin proved equal to its `Prop` definition (`lean/README.md:273-278`). The Lean-vs-Python
 differential is extended to the new verbs and seeded with a planted fault per verb that it must catch
 (`lean/README.md:302-307`). *Cost:* weeks rather than days; (b) and (c) are the bulk of it.
+
+*Status, 2026-10-11 (lane `specagent-phase2`) — the first slice: the `Net` destination class.*
+
+- **Which verbs a first slice could take, re-derived against §2's table rather than taken from the brief.**
+  Of the verbs PART 97 did not cover, three were proposed: `Net[dest]`, AS-EFF-008's incomplete surfaces,
+  and `zeroMatch`. Only `Net[dest]` is answerable on `gate --report`: `allow` is refused there uniformly by
+  ruling (SPEC.md:2855-2864), and `zeroMatch` needs the analysed name set, which the report does not carry
+  (the ⟨0.34⟩ carve-out). Both stay where §2 puts them. `Net[dest]` is also the one layer-(a) carrier that is
+  report-borne, so it is where a Lean proof and an engine differential can meet.
+- **Done — the model, both transcriptions, in step.** `lean/CandorModel/NetDest.lean` and
+  `reference/policy_model.py` (`deny_rule`, `answer_absent`, `net_wf`, `NC`). The carrier is
+  `(S, D, N)`, `N ⊆ {known-telemetry, known-partner, unknown-host}` = the entry's `netClass`; `deny` is a
+  whole RULE (plain tokens ∨ `Net[C]` ∨ `Unknown[C]`), so multi-token rules are covered for the first time.
+  Proved, tier A (no axioms): Lemma 2 on the extended carrier (`lemma2_rule`), the filter axis monotone
+  (`rule_mono_netFilter`), `Net[all]` ≡ bare `Net` on reachable well-formed entries and not off them. Tier B:
+  the Bool twin's bridge (`rejectRuleB_iff`), `NetClass.all_complete`, and five answerability theorems for §3.1
+  over an absent `netClass` (answers hold under every completion; a refusal could fire; the refusal is
+  minimal exactly when the filter omits a class).
+- **Done — the differential.** `emitNetRows` + `differential_lean_vs_python.py` arm 4: 312,354 new rows
+  (459,754 total), OK. Five planted Python faults each fail it (`lean/README.md`, the NetDest section).
+- **Done — PART 97 arm D, four-way, all agree.** D1: 40 whole rules over 369 well-formed leaves. D2: 120
+  absent-`netClass` cells against the model's three-valued §3.1 answer. In-suite controls: the model with the
+  filter ignored diverges on 30 rules; the model reading absence as ∅ diverges on 63 cells. Engine-side, by
+  hand, in a throwaway candor-ts worktree (removed): `classFilterExcludes`'s Net branch → `false` turned 30
+  D1 rules red; disabling the absent-`netClass` refusal turned 63 D2 cells to exit 0 (the ⟨0.24⟩ fail-open,
+  reproduced). Arms A–C unmoved by both. **No engine diverges from the model; no row filed.**
+- **Found — a wording gap in SPEC §3.1, not an engine defect.** Under the FULL filter
+  `Net[known-telemetry,known-partner,unknown-host]`, a `Net` entry with no `netClass` is refused by the
+  text (*"only if it does NOT yet fire, and the missing datum could still make it fire … Refuse that"*),
+  although the §3.1 floor guarantees a non-empty class set and every such set fires — the heading's test
+  (*refuse only when the absent datum could change the answer*) would answer exit 1. All four engines refuse
+  (measured). Proved as `refuse_overbroad_when_filter_full`. The same shape exists for `Unknown[all six]`
+  over an inherited `Unknown` with no `calls` ((W) guarantees a non-empty class set): measured four-way,
+  `deny Net Unknown[<all six spelled out>]` exits 2 where `deny Net Unknown[*]` over the same entry exits 1
+  — two spellings of one denied set, two verdicts. (Not modelled: the reason-class half is Python-only.)
+  Cost of the gap: an exit 2 where an exit 1 is certain — fail-closed, so not a sin; whether to tighten the
+  clause or the heading is a SPEC decision for the coordinator.
+- **Modelling choice, stated:** a `Net` entry with `netClass: []` is projected as ABSENT, not as ∅. SPEC does
+  not say so in words; it contradicts the §3.1 floor, and reading it as ∅ is the measured fail-open. All four
+  engines refuse it (measured); D2 pins it.
+- **NOT done — the rest of Phase 2.** (a)'s other carriers (edges for `forbid`/`only`, literal surfaces for
+  `allow`, the baseline pair), all of (b) except what arm D's rule shape covers (the class map, CONTRIBUTES
+  and the class fixpoint stay Python-only, in `gen_model_verdict.py`), and (c) beyond the `netClass` refusal.
+  The destination CLASSIFIER (which host is telemetry, `net-partner`) is producer-side and is
+  `gen_netclass.py`'s, not the model's.
+- **Toolchain.** elan 4.2.4 installed locally into `~/.elan` (`--no-modify-path`), toolchain
+  `leanprover/lean4:v4.32.2` from `lean/lean-toolchain`; `lean/check.sh` green locally (79 tier-A, 14 tier-B,
+  registry complete, differential OK) before commit. CI untouched.
 
 ### Phase 3: the checker binary and CI
 

@@ -99,9 +99,28 @@ def main():
     # trace from a helper rather than as the drift it is, and a confusing failure is one somebody explains
     # away. Check the thing you mean to check, in the words you mean to say it.
     parsed = []
-    seen_effects, seen_reasons = set(), set()
+    net_rows = []          # the 9-column destination-class rows (lean/CandorModel/NetDest.lean)
+    seen_effects, seen_reasons, seen_classes = set(), set(), set()
     for i, ln in enumerate(rows, 1):
         parts = ln.split("\t")
+        if parts[0] in ("deny_rule", "deny_rule_absent"):
+            if len(parts) != 9:
+                print(f"DIFFERENTIAL: row {i} has {len(parts)} columns, expected 9: {ln!r}", file=sys.stderr)
+                return 2
+            verb, es, ns, us, ss, ds, n_s, verdict_s, reach_s = parts
+            E_, S, D = parse_set(es), parse_set(ss), parse_set(ds)
+            NET = None if ns == "-" else parse_set(ns)
+            UNK = None if us == "-" else parse_set(us)
+            N = None if n_s == "?" else parse_set(n_s)
+            if (verb == "deny_rule_absent") != (N is None):
+                print(f"DIFFERENTIAL: row {i}: `?` (absent netClass) must appear on exactly the "
+                      f"deny_rule_absent rows: {ln!r}", file=sys.stderr)
+                return 2
+            seen_effects.update(E_); seen_effects.update(S)
+            seen_reasons.update(D); seen_reasons.update(UNK or ())
+            seen_classes.update(NET or ()); seen_classes.update(N or ())
+            net_rows.append((i, verb, E_, NET, UNK, S, D, N, verdict_s.strip(), reach_s.strip()))
+            continue
         if len(parts) != 7:
             print(f"DIFFERENTIAL: row {i} has {len(parts)} columns, expected 7: {ln!r}", file=sys.stderr)
             return 2
@@ -114,8 +133,8 @@ def main():
         seen_reasons.update(D)
         parsed.append((i, verb, arg, C, S, D, verdict_s, reach_s))
 
-    py_only = (set(pm.E) - seen_effects) | (set(pm.R) - seen_reasons)
-    lean_only = (seen_effects - set(pm.E)) | (seen_reasons - set(pm.R))
+    py_only = (set(pm.E) - seen_effects) | (set(pm.R) - seen_reasons) | (set(pm.NC) - seen_classes)
+    lean_only = (seen_effects - set(pm.E)) | (seen_reasons - set(pm.R)) | (seen_classes - set(pm.NC))
     if py_only or lean_only:
         if py_only:
             print(f"DIFFERENTIAL: policy_model names {sorted(py_only)}, which the Lean side never "
@@ -170,16 +189,64 @@ def main():
                 if lean_reach:
                     spec_reading_off_reachable.append((i, arg, S))
 
+    # ARM 4 — the Net destination-class rule (Phase 2(a)) and §3.1's answer over an absent `netClass`.
+    # Every row both ways; the reachability column here is `net_wf` (co-emission AND Net ∈ S ⇔ N ≠ ∅).
+    net_disagree, net_reach_disagree, n_net_wf = [], [], 0
+    answers = {}
+    for (i, verb, E_, NET, UNK, S, D, N, verdict_s, reach_s) in net_rows:
+        sig = pm.Sig(frozenset(S), frozenset(D))
+        rule = pm.deny_rule(E_, NET, UNK)
+        lean_reach = {"true": True, "false": False}[reach_s.lower()]
+        if verb == "deny_rule":
+            lean = {"true": True, "false": False}[verdict_s.lower()]
+            py = rule(sig, frozenset(N))
+            py_reach = pm.net_wf(sig, frozenset(N))
+            n_net_wf += 1 if lean_reach else 0
+        else:
+            lean, py = verdict_s, pm.answer_absent(rule, sig)
+            py_reach = pm.is_reachable(sig)
+            answers[lean] = answers.get(lean, 0) + 1
+        seen_verbs[verb] = seen_verbs.get(verb, 0) + 1
+        if py != lean:
+            net_disagree.append((i, verb, E_, NET, UNK, S, D, N, lean, py))
+        if py_reach != lean_reach:
+            net_reach_disagree.append((i, verb, S, N, lean_reach))
+
     print("DIFFERENTIAL — Lean model (proved) vs reference/policy_model.py (hand transcription)")
     print(f"  rows compared : {len(rows)}")
     for v, n in sorted(seen_verbs.items()):
         print(f"    {v:<14} {n}")
-    print(f"  vocabulary    : {len(seen_effects)} effects, {len(seen_reasons)} reasons "
-          f"(policy_model: {len(pm.E)}, {len(pm.R)})")
-    print(f"  reachable     : {n_reachable} / {len(rows)} "
-          f"({len(rows) - n_reachable} excluded by co-emission {dict(pm.CO_EMIT)})")
+    print(f"  vocabulary    : {len(seen_effects)} effects, {len(seen_reasons)} reasons, "
+          f"{len(seen_classes)} destination classes (policy_model: {len(pm.E)}, {len(pm.R)}, {len(pm.NC)})")
+    print(f"  Net dest rows : {len(net_rows)} ({n_net_wf} netClass-well-formed deny_rule rows; absent-netClass "
+          f"answers {dict(sorted(answers.items()))})")
+    print(f"  reachable     : {n_reachable} / {len(parsed)} pure/deny/deny_unknown rows "
+          f"({len(parsed) - n_reachable} excluded by co-emission {dict(pm.CO_EMIT)})")
     print(f"  SPEC §4.0 `e ∈ S` vs PAPER3 `⊑` on deny: {len(spec_reading_off)} differ over the full "
           f"lattice, {len(spec_reading_off_reachable)} over the reachable part")
+
+    if not net_rows or not answers.get("refuse") or not answers.get("reject") or not answers.get("pass"):
+        print("\n  VACUOUS: the Net destination-class arm emitted no rows, or the absent-netClass answers never "
+              "took all three values — the arm cannot tell a broken `answer_absent` from a correct one.")
+        return 1
+
+    if net_reach_disagree:
+        print(f"\n  NET WELL-FORMEDNESS DISAGREEMENTS: {len(net_reach_disagree)} — Lean's and policy_model's "
+              f"reading of `Net ∈ S ⇔ N ≠ ∅` (or of co-emission) have drifted apart.")
+        for r in net_reach_disagree[:10]:
+            print(f"    row {r[0]}: {r[1]} S={set(r[2]) or '∅'} N={r[3]} — Lean reachable={r[4]}")
+        return 1
+
+    if net_disagree:
+        print(f"\n  NET DESTINATION-CLASS DISAGREEMENTS: {len(net_disagree)}")
+        for (i, verb, E_, NET, UNK, S, D, N, lean, py) in net_disagree[:40]:
+            print(f"    row {i}: {verb} effs={set(E_) or '∅'} Net[{','.join(NET) if NET is not None else '-'}] "
+                  f"Unknown[{','.join(UNK) if UNK is not None else '-'}] on S={set(S) or '∅'} D={set(D) or '∅'} "
+                  f"N={'absent' if N is None else (set(N) or '∅')} — Lean {lean}, Python {py}")
+        if len(net_disagree) > 40:
+            print(f"    … and {len(net_disagree) - 40} more")
+        print("\nDIFFERENTIAL: FAILED. The Lean side is the proved one — read the Python first.")
+        return 1
 
     if reach_disagree:
         print(f"\n  REACHABILITY DISAGREEMENTS: {len(reach_disagree)} — Lean's `coemit` and "
