@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Register: the drop-glue per-row set is CLOSED in candor-rust `cf75a6b`** (R297, R195, R300, R829, R1116, R1118; R1119 closed as premise wrong, no change). Corpus A/B vs published 0.40.5 over 3,230 crates: ADDED 298, REMOVED 0, bucket 3 = 0, 70 rows gain a concrete effect, 0 dropped edges (seeded). Open cardinal sins 14 -> 8.
+
 - **Model, Phase 2's first slice: the `Net` destination class** (LEAN-CHECKER-PLAN.md Phase 2(a)). New
   `lean/CandorModel/NetDest.lean` and its Python twin in `reference/policy_model.py` (`deny_rule`,
   `answer_absent`, `net_wf`): the carrier `(S, D, N)` with `N` the entry's `netClass`, `deny` as a whole rule
