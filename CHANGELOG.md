@@ -23,6 +23,10 @@ that floor's existing release notes (never a new tag, never touching SPEC.md), s
 complete record of everything shipped while that floor held, not a snapshot frozen at the day it was cut.
 Run it after any patch-cycle commit that adds a section here.
 
+## Unreleased
+
+- **SOUNDNESS: rust v051 round filed (R1141-R1148) and R1130/R1131/R1136/R1137/R1139/R1140 closed** (candor-rust `b3f93a8`, `04d4555`, `4911cb3`, `a8103a3`, `9130d77`, merged as `0282a87`). Nested-fn parameter typing closes 52 real silences; six new rows record the residuals (R1142-R1147), and R1148 records the `ambiguous:` reason union as a disclosure-adding change.
+
 ## [0.40.7] — 2026-10-12
 
 - **CI: the `released-floor` job now runs the published engines against the suite they were RELEASED
