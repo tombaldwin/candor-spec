@@ -23,10 +23,18 @@ that floor's existing release notes (never a new tag, never touching SPEC.md), s
 complete record of everything shipped while that floor held, not a snapshot frozen at the day it was cut.
 Run it after any patch-cycle commit that adds a section here.
 
-## Unreleased
-
 ## [0.40.7] — 2026-10-12
 
+- **CI: the `released-floor` job now runs the published engines against the suite they were RELEASED
+  UNDER, not the last contract tag.** It pinned the suite with `git describe --tags`, and this repo is
+  tagged only per rung (`v0.40`), so every 0.40.x patch was floor-checked against the 0.40.0 suite and
+  failed on fixes that suite predates (run 38253719502: rust 0.40.6 on PART 10 `macrohidden`, expanded
+  since R1004 in 0.40.1). New `scripts/released-floor-suite.sh` picks the last first-parent commit at or
+  before the build's publish time and refuses unless that commit's newest CHANGELOG section is the
+  build's own; `--selftest` reproduces the `v0.40`/`v0.39`/`v0.38`/`v0.37` tags from publish times alone
+  and shows five refusals fire. The job also installs the exact versions it resolved, and
+  `workflow_dispatch` takes an optional `floor_suite` override for when the script refuses. The suite
+  itself is unchanged.
 - **Registers only: `SPEC.md` and the conformance suite are unchanged since 0.40.6** (spec stays 0.40). The
   entries below record the candor-rust v048–v050 rounds that 0.40.7 ships.
 - **Register: the rust drop-glue v050 round is CLOSED or filed against candor-rust `03a3adc`** (commits `3684f51`, `4944e21`, `f0b83fb`, `379176a`, `03a3adc` on `afd77fa`). CLOSED: R1122 (any shared borrow `&h` in a value position; residuals `Rc::downgrade(&rc)` and `bump(&mut h)`), R1123, R1124 (not specific to `impl Into`), R1125 (plain `Box::leak`, `into_raw` family), R1127 (only awaited async-block tails were fabrications), R1129 (except the generic callee row, permitted by SPEC section 4), R1134 (block-local const/static operands, both sides; the right form was a regression in `3684f51` fixed before merge). RESOLVED: R1126 (permitted; README gap closed). R1128 stays OPEN NOTSILENT: a refusal was tried and withdrawn after an independent MIR auditor found three silences in three passes. FILED OPEN: R1130, R1131, R1136, R1137, R1139, R1140 (silent), R1132, R1133, R1135 (not silent), R1138 (unsettled). Audit: 112 removals over three passes, all C1. A/B vs `afd77fa`: +34 / -2 / ~617 (the 2 audited); vs 0.40.6: +354 / -5 / ~1641. `run_handoff.sh`'s known-open list is now empty.
