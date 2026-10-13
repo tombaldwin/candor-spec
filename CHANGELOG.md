@@ -25,6 +25,7 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: rust v052 round filed (R1149-R1158) and R1142-R1146 closed** (candor-rust `7dc5fef`, `51260b6`, `0ef4c2d`). Use-map operator traits, block-scoped aliases, expression-position macro expansion, fn-level generics and macro-made or derived operator impls now form edges; three independent MIR-checked audit passes, A/B +18,717 / -11, bucket 3 = 0. Ten new rows (R1149 closed; R1150-R1158 open: seven SILENT, R1150 and R1158 not; R1151 blocks R1150).
 - **SOUNDNESS: rust v051 round filed (R1141-R1148) and R1130/R1131/R1136/R1137/R1139/R1140 closed** (candor-rust `b3f93a8`, `04d4555`, `4911cb3`, `a8103a3`, `9130d77`, merged as `0282a87`). Nested-fn parameter typing closes 52 real silences; six new rows record the residuals (R1142-R1147), and R1148 records the `ambiguous:` reason union as a disclosure-adding change.
 
 ## [0.40.7] — 2026-10-12
