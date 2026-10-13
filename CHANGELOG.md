@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: rust v053 round closed (R1150-R1157) and R1159-R1163 filed** (candor-rust `d6f20a0`, merging `rustagent-v053`). Independent MIR audit 0 regressions and 0 fabrications; A/B +5247 / -27. R1159 closed (cfg-duplicated dependency alias); R1160-R1162 open SILENT, R1163 open not silent. Open sins 9 to 5.
+
 ## [0.40.8] — 2026-10-13
 
 - **SOUNDNESS: rust v052 round filed (R1149-R1158) and R1142-R1146 closed** (candor-rust `7dc5fef`, `51260b6`, `0ef4c2d`). Use-map operator traits, block-scoped aliases, expression-position macro expansion, fn-level generics and macro-made or derived operator impls now form edges; three independent MIR-checked audit passes, A/B +18,717 / -11, bucket 3 = 0. Ten new rows (R1149 closed; R1150-R1158 open: seven SILENT, R1150 and R1158 not; R1151 blocks R1150).
