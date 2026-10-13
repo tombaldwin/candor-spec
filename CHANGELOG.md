@@ -25,6 +25,7 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: rust v054 round closed R1160-R1162 and R1164 filed** (candor-rust `ba3f23f`, `ec81547`, `4b93331`). A/B vs `d6f20a0` +532 / -0 / ~791, 0 losses; chained arm 0 losses over 119 pairs. R1164 open SILENT: a dependency's operator impl with a primitive self type reads absent.
 - **SOUNDNESS: rust v053 round closed (R1150-R1157) and R1159-R1163 filed** (candor-rust `d6f20a0`, merging `rustagent-v053`). Independent MIR audit 0 regressions and 0 fabrications; A/B +5247 / -27. R1159 closed (cfg-duplicated dependency alias); R1160-R1162 open SILENT, R1163 open not silent. Open sins 9 to 5.
 
 ## [0.40.8] — 2026-10-13
