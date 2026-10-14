@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.10] — 2026-10-14
+
 - **SOUNDNESS: rust v055/r1165/v057, swift r974, java r1166 rounds** (candor-rust `cf752db`, candor-swift `034d852`, candor-java `ab85818`). Closed R1164, R1117, R1165-R1169 and R974 (by disclosure; the resolving rung is Tom-deferred); R1170 resolved as a wrong premise. Filed R1171-R1179, five of them open SILENT (R1171, R1174, R1176, R1177, R1179).
 
 ## [0.40.9] — 2026-10-13
