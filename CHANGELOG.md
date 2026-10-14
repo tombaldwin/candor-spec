@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: rust v055/r1165/v057, swift r974, java r1166 rounds** (candor-rust `cf752db`, candor-swift `034d852`, candor-java `ab85818`). Closed R1164, R1117, R1165-R1169 and R974 (by disclosure; the resolving rung is Tom-deferred); R1170 resolved as a wrong premise. Filed R1171-R1179, five of them open SILENT (R1171, R1174, R1176, R1177, R1179).
+
 ## [0.40.9] — 2026-10-13
 
 - **SOUNDNESS: rust v054 round closed R1160-R1162 and R1164 filed** (candor-rust `ba3f23f`, `ec81547`, `4b93331`). A/B vs `d6f20a0` +532 / -0 / ~791, 0 losses; chained arm 0 losses over 119 pairs. R1164 open SILENT: a dependency's operator impl with a primitive self type reads absent.
