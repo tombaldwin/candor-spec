@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: v061/v062 rounds** (candor-rust `45b320f`, candor-java `441dd0e`). Closed R1180 (it was UNSETTLED; it was REAL), R1181, R1182, R1183 (bounded) and R1184 (resolution plus disclosure); filed R1186-R1191.
+
 ## [0.40.11] — 2026-10-15
 
 - **SOUNDNESS: v058/v059/v060 rounds** (candor-rust `7cbe4bb`, candor-java `548f3a1`, candor-swift `5cd1c16`). Closed R1171, R1177, R1174 (by disclosure), R1179 (by resolution), R1175, R1176; filed R1180-R1185 (R1185 closed on filing). Tooling trap: `eval/coverage-gate/refresh.sh` runs `git checkout -- covered.tsv open.tsv`, silently discarding an unstaged splice despite its header comment; stage first (the 0.40.10 mysql_async splice `b895a23` was done this way).
