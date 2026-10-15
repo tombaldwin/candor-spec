@@ -26,6 +26,7 @@ Run it after any patch-cycle commit that adds a section here.
 ## Unreleased
 
 - **SOUNDNESS: v061/v062 rounds** (candor-rust `45b320f`, candor-java `441dd0e`). Closed R1180 (it was UNSETTLED; it was REAL), R1181, R1182, R1183 (bounded) and R1184 (resolution plus disclosure); filed R1186-R1191.
+- **SOUNDNESS: v063/v064 rounds** (candor-rust `356fed4`, candor-java `ceaae07`). Closed R1186 (by disclosure), R1188, R1189 (resolutions), R1190 (declined, charge kept), R1191, and R1193 (java kappa generator floor); filed R1192 and R1194. Open silent residual: `Stream.iterate(..).sorted()`.
 
 ## [0.40.11] — 2026-10-15
 
