@@ -264,6 +264,8 @@ EXCLUDED_VERBS = {
     "locate":      "engine-specific artifact-probe utility outside the §3.3.1 grammar",
     "engine-version": "engine-specific artifact-probe utility outside the §3.3.1 grammar",
     "merge-hook":  "engine-specific settings utility outside the §3.3.1 grammar",
+    "units":       "cargo-candor build-completion check (candor-rust 4ebfb8a, issue #10): exactly three "
+                   "positional files, no flag, no report or verdict sink; prints MISSING lines to stdout",
 }
 
 # §3.1-family verbs get EVERY derived flag (the §3.3.1 grammar is uniform across them; a flag a verb
