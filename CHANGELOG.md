@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SOUNDNESS: v069-v072 rounds and candor-rust#10** (candor-rust `1f0bab1`, candor-java `2713406`). Closed R1199 (disclosure floor plus two resolutions), R1200 (disclosure; reach re-measured after its corpus was lost), R1201 (java Object floor), R1202 and its in-crate sibling R1206 (resolution), R1203 (java equality/hashing site table) and the cargo-candor false passes R1213-R1215. Filed R1204, R1205 (a two-sided discontinuity at the CHA bound, decision pending), R1207 and R1217 as open silent residuals; R1208-R1210 as unsettled (named, not executed); R1211 and R1216 (over-charges) and R1212 (spec gap in the ⟨0.40⟩ Rust permission).
+
 ## [0.40.12] — 2026-10-16
 
 - **SOUNDNESS: v061/v062 rounds** (candor-rust `45b320f`, candor-java `441dd0e`). Closed R1180 (it was UNSETTLED; it was REAL), R1181, R1182, R1183 (bounded) and R1184 (resolution plus disclosure); filed R1186-R1191.
