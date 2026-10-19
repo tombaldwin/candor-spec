@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.13] — 2026-10-19
+
 - **SOUNDNESS: v074 (java, recovered) and v075 (rust) joins, and the S5 gate-port spike** (candor-rust `3393538`, candor-java `2c20660`..`f8f168d`). Closed R1204, R1205 (both sides; the S4/S5 Object floor is on by default, a disclosure priced under the band), R1217, R1207 (chained and unchained halves), R1208 and R1209 (both executed SILENT before the fix). R1216 narrowed. Filed R1218-R1224 from the S5 spike, R1225 and R1226 (rust over-charge and over-wide trait-in-scope matching), R1227 (R1207's standalone half, an open silent residual), R1228 (a `corpus-ab.py` memory hazard), R1229 (a java lead) and R1230 (a java over-charge).
 
 - **SOUNDNESS: v069-v072 rounds and candor-rust#10** (candor-rust `1f0bab1`, candor-java `2713406`). Closed R1199 (disclosure floor plus two resolutions), R1200 (disclosure; reach re-measured after its corpus was lost), R1201 (java Object floor), R1202 and its in-crate sibling R1206 (resolution), R1203 (java equality/hashing site table) and the cargo-candor false passes R1213-R1215. Filed R1204, R1205 (a two-sided discontinuity at the CHA bound, decision pending), R1207 and R1217 as open silent residuals; R1208-R1210 as unsettled (named, not executed); R1211 and R1216 (over-charges) and R1212 (spec gap in the ⟨0.40⟩ Rust permission).
