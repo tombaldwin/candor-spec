@@ -2939,6 +2939,10 @@ echo "PART 96 — a bind/listen address is never a destination, a unit that acce
 # cannot see this fault. (2) query.mjs's `gate` verb handing `evaluatePolicy` the entries with `calls`
 # emptied on inherited-Unknown rows -> arm B DIVERGE (`b_reasoned_only` read `unresolved` — the measured
 # pre-⟨0.24⟩ ts shape), arm A unmoved; PART 98 DIVERGE on 8 of 17 policies.
+# Arm C, 2026-10-20 (SOUNDNESS R1241): C_TOKENS gained one EMITTED spelling per alias prefix
+# (`dynamicMemberLookup:`, `indy`, `closure`, `task-handoff`, `no-node_modules`) and three off-case tokens (§6.2
+# ⟨0.40⟩ case). Against the released candor-query 0.40.13 it diverges under [reflect] and [unresolved] on both
+# `dynamicMemberLookup:` spellings — R1218, which the old token list could not see — and passes on `08a53ef`.
 # Arm D, 2026-10-11, same discipline (throwaway candor-ts worktree at 3ca4b9a): (3) `classFilterExcludes`'s
 # Net branch made to return false (the destination filter ignored) -> 30 D1 rules DIVERGE, every proper
 # filter; (4) the absent-`netClass` refusal in `evaluatePolicy` disabled -> 63 D2 cells exit 0 where the
@@ -2958,6 +2962,39 @@ P97_OK=0
 echo "PART 97 — each engine's gate --report verdict equals the reference model's (SPEC §4.0, §3.1 ⟨0.24⟩, §6.2 incl. ⟨0.21⟩ Net[dest]; LEAN-CHECKER-PLAN.md Phase 0 + 2(a))"
 # ENGINES: rust java ts swift
 # CONTROLS: none — delegated: gen_model_verdict.py runs six controls every time (model-side Db-refines-Net seed, one flipped expected row, a deleted violation in a real --gate-json, a zero-function report, and for arm D the destination filter ignored and an absent netClass read as the empty set) and fails the part if any does not diverge
+
+# PART 97b — THE SCAN-ROUTE ARM: `scan --policy` (with a baseline) composes its producers as the reference
+# model does (SPEC §3.1 ⟨0.24⟩/⟨0.27⟩/⟨0.40⟩ precedence, §3.3.1 dominance, §3 ⟨0.40⟩ baseline guard).
+#
+# PART 97 judges `gate --report`, a pure function of the report; the baseline guard has no report route and
+# the scan route's composition of producers (policy gate, AS-EFF-005 guard) with causes (a parse failure, a
+# policy token it cannot honour) is where SOUNDNESS R1231 and R1236 lived. The oracle is
+# `policy_model.scan_verdict`, fed the ground-truth signatures of one four-function program per engine,
+# over 24 (policy x baseline x cause) cells. A precondition checks each engine's own report carries that
+# ground truth first (ANALYSIS-MISMATCH otherwise). NOT covered: an unread excluded CLASS (R1231's ⟨0.32⟩
+# arm needs a per-engine class token every engine can both exclude and peek) and an unreadable baseline
+# (R1237, unruled — PART 29 measures it).
+#
+# CALIBRATED 2026-10-20 against the RELEASED 0.40.13 binaries (run.sh overrides, never the trees): candor-scan
+# 0.40.13 diverges on `p=fire/b=clean/c=parse` (exit 2, the two `deny Fs` rows lost — R1236); the same cell
+# passes on candor-rust `08a53ef` (`f81d38a` fixed it); java, ts and swift 24/24. The first run also found a
+# HARNESS artifact shaped like a swift defect: a baseline recorded over a different DIRECTORY than the run
+# shares no key in candor-swift (it names the package after the directory), so every unit read as absent and
+# fired — the generator now rewrites one directory in place.
+[ -f "$HERE/gen_scan_verdict.py" ] || { echo "FAIL: gen_scan_verdict.py is missing"; exit 2; }
+echo
+echo "[97b] the scan-route verdict composes policy gate, baseline guard, parse failure and bad token as the model does"
+P97B_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_scan_verdict.py"
+) || { P97B_OK=1; rc=1; }
+[ "$P97B_OK" = 0 ] || echo "  -> DIVERGE — a cell line is a (policy, baseline, cause) the engine composed differently from policy_model.scan_verdict; ANALYSIS-MISMATCH means the engine's own report did not carry the ground truth, so its cells were not judged; a SEED FAIL means the comparator could not say DIVERGE"
+echo "PART 97b — scan --policy composes its producers as the reference model does (SPEC §3.1 ⟨0.24⟩/⟨0.40⟩, §3.3.1, §3 ⟨0.40⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_scan_verdict.py runs three seeds every time (the refusal-first composer of R1231/R1236 must diverge from the engines, a violation deleted from a real --gate-json must be caught, one flipped EXPECTED exit must move exactly one cell) plus a per-engine ground-truth precondition, and fails the part if any does not hold
 
 
 # PART 98 — ROUTE EQUALITY OVER THE PROJECTION: `scan --policy` == `gate --report` on the report that scan
@@ -2993,6 +3030,36 @@ P98_OK=0
 echo "PART 98 — scan --policy and gate --report are byte-equal over class-scoped, layer-scoped and inherited-Unknown rules (SPEC §3.1 ⟨0.24⟩, ⟨0.40⟩)"
 # ENGINES: rust java ts swift
 # CONTROLS: none — delegated: gen_route_equality.py runs two controls every time (a deleted violation, and the scan's own report with `calls` stripped from inherited entries) and fails the part if either reads byte-equal
+
+# PART 99 — THE POLICY-SEMANTICS DIFFERENTIAL: one report's bytes, one policy file, four `gate --report`s, and
+# an EXPECTED answer per cell written from SPEC before the first run (SPEC §6.2 Lexical incl. the ⟨0.40⟩ BOM
+# ruling, §6.2 ⟨0.28⟩ zero rules, §3.1 ⟨0.24⟩/⟨0.40⟩ refusal documents, §2 ⟨0.40⟩ units, §3.1 ⟨0.40⟩
+# interfaceUnion entries, §6.2 ⟨0.40⟩ reason-prefix case; plus engine-written reports cross-fed under
+# scopeless rules). Replaces the orphaned `differential/policy_grammar_run.py` (SOUNDNESS R1240), which scored
+# agreement only, was called by nothing, and defaulted to the 0.27.0 jar. Four engines agreeing on a cell with
+# no EXPECTED is AGREE-UNPINNED and FAILS; rows SPEC does not decide are listed as NOT_PINNED and not run.
+#
+# CALIBRATED 2026-10-20 against the RELEASED 0.40.13 binaries: the C family's off-case `DynamicMemberLookup:`
+# reason diverges on candor-query 0.40.13 (R1218) and passes on candor-rust `08a53ef`. The xfail table is
+# keyed to OPEN rows: R1224 (rust/java/ts keep a byte-0 BOM), R1233 (rust/swift `gate --report` policy-error
+# refusals carry no `unevaluated` — their SCAN route does), R1219 (rust/java/swift key units by hash alone:
+# `deny Fs src.billing` exits 0 with zeroMatch over a unit that performs Fs), R1234/R1223 (java and ts treat
+# union entries as units: zeroMatch suppressed, a narrowed filter refused, and java merges a union beside a
+# real entry into it).
+[ -f "$HERE/gen_policy_semantics.py" ] || { echo "FAIL: gen_policy_semantics.py is missing"; exit 2; }
+echo
+echo "[99] policy semantics: one report, one policy, four gate --report verdicts, each against an EXPECTED value from SPEC"
+P99_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_policy_semantics.py"
+) || { P99_OK=1; rc=1; }
+[ "$P99_OK" = 0 ] || echo "  -> DIVERGE — a cell line is an engine answering differently from the EXPECTED value SPEC gives; XFAIL ARM PASSED means a row was fixed and its xfail must be retired; CONTROL DEAD / VACUOUS / SEED FAIL mean the cells could not have failed"
+echo "PART 99 — the policy-semantics differential: one report and policy, four gates, EXPECTED from SPEC (§6.2 Lexical ⟨0.40⟩, §6.2 ⟨0.28⟩, §3.1 ⟨0.40⟩, §2 ⟨0.40⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_policy_semantics.py runs five seeds every time (a violation deleted from a real --gate-json, a zeroMatch dropped, `refused` added to an exit-1 verdict, one EXPECTED exit flipped moving exactly one cell, and an unpinned agreement classified AGREE-UNPINNED), a control cell per report and per-engine exit/zeroMatch floors, and fails the part if any does not hold
 
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
@@ -6246,6 +6313,18 @@ fi
 # directory (so the "incomplete" arms were not incomplete), and `find_report` excluded two of SPEC 2.2's
 # six reserved sidecar segments, so a `.locs.json` sidecar was handed to an engine as a BASELINE.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+# BOTH PRODUCERS, 2026-10-20 (SOUNDNESS R1236/R1237/R1232). Three arms were added beside `policy`/`baseline`:
+#   policy+baseline     a CLEAN guard rides along with `deny Net` over an unparseable unit. candor-scan 0.40.13
+#                       exited 2 and lost the violation (R1236); passes on candor-rust `08a53ef`; java/ts/swift
+#                       clean on 0.40.13 — the "other three UNMEASURED" in R1236 is now measured.
+#   policy+badbaseline  an UNREADABLE baseline beside a firing `deny Net`. SPEC does not decide exit 1 vs 2
+#                       (§3.3 cause (a) vs §3.1's general precedence), so only fail-closed is asserted and the
+#                       rest prints as UNPINNED: on 0.40.13 ALL FOUR engines exit 2 and drop the violation — R1237
+#                       is four-way, not rust-only, and waits on a ruling.
+#   merged (java only)  §3 ⟨0.40⟩ "both sides are report rows": a default method whose written row gains Fs
+#                       through java's write-time union merge. candor-java 0.40.13 exits 0 (R1232); passes on
+#                       candor-java `2c5647d` (`c6ad21c` fixed it). rust/ts/swift: no write-time merge — a
+#                       declared exclusion.
 [ -f "$HERE/gen_incomplete_dominance.py" ] || { echo "FAIL: gen_incomplete_dominance.py is missing"; exit 2; }
 [ -f "$HERE/incomplete-dominance-baseline.json" ] || { echo "FAIL: incomplete-dominance-baseline.json is missing — the ratchet cannot run, and an absent baseline must never read as 'nothing is waived'"; exit 2; }
 P29_OK=0
@@ -6259,7 +6338,7 @@ echo
 
 echo "PART 29 — incomplete-vs-violation dominance: a real violation survives an incomplete scan (SPEC §3.3.1, P5)"
 # ENGINES: rust java ts swift
-# CONTROLS: none — delegated: gen_incomplete_dominance.py; PART 30's probe_check proves its verdict can still fail, via a
+# CONTROLS: none — delegated: gen_incomplete_dominance.py (the `merged` arm carries two controls of its own — `deny Fs p.I` must fire on the merged row and an unchanged tree must pass its own baseline); PART 30's probe_check proves its verdict can still fail, via a
 #   dropped-violation corruption of the `both` arm's verdict document (2026-08-30 hardening — closing an
 #   UNCOVERED gap probe_check.py's own header used to name); content differential with its own baseline
 #   otherwise

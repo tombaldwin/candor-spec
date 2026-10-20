@@ -29,7 +29,7 @@ parts (24–29). What "correct" is gets decided after the differential points at
 | file | grammar | shapes |
 |---|---|---|
 | `config_grammar_gen.py` | `.candor/config` — separators, versions, qualifiers, trailers, every key | 2546 |
-| `policy_grammar_gen.py` | the §6.2 policy DSL — verbs, effects, filters, scopes, malformed shapes | 61 |
+| ~~`policy_grammar_gen.py`~~ | **REMOVED 2026-10-20 (SOUNDNESS R1240).** Nothing called it — not `run.sh`, not CI — it defaulted to the 0.27.0 jar, and it scored only agreement. Its battery now lives in conformance PART 99 (`../gen_policy_semantics.py`) with an EXPECTED value per row written from SPEC, a `NOT_PINNED` list for the rows SPEC does not decide, and one report's bytes held constant across all four gates | — |
 
 Each generator emits `(label, text)`; the runner writes the text, runs all engines, compares exit codes.
 

@@ -119,6 +119,7 @@ SPEC_CLAUSES = [
     ("§3.1 ⟨0.24⟩", "`netClass` is emitted for every `Net`-bearing entry and is floored at `unknown-host`"),
     ("§3.1 ⟨0.24⟩", "per-(rule, function) for the scoped case, so a scoped rule whose own matches carry their evidence still evaluates"),
     ("§3.1 ⟨0.40⟩", "a class list spelled out in the policy is a **proper filter even when it names every class in"),
+    ("§6.2 ⟨0.40⟩", "**The prefixes are matched without regard to ASCII case**"),
 ]
 
 E = list(M.E)
@@ -272,8 +273,9 @@ CLASS_PREFIX = [("reflect", ("reflect:", "dynamicMemberLookup")),
 
 
 def class_of(tok):
+    low = tok.lower()                                     # §6.2 ⟨0.40⟩: ASCII case-insensitive prefixes
     for c, pfx in CLASS_PREFIX:
-        if any(tok.startswith(p) for p in pfx):
+        if any(low.startswith(p.lower()) for p in pfx):
             return c
     return "unresolved"                                   # the catch-all
 
@@ -289,7 +291,17 @@ B1 = [  # the ⟨0.24⟩ repair rows, multi-function, WITH calls (no sidecar: th
 ]
 B3 = [{"fn": "app.Q.inherited_no_calls", "inferred": ["Unknown"], "direct": []}]
 C_TOKENS = ["reflect:x.Y.m", "dispatch:app.T.m", "ambiguous:x", "callback:x", "native:x", "macro:x",
-            "missing-config", "no-tsconfig", "indirect:x", "banana:x"]
+            "missing-config", "no-tsconfig", "indirect:x", "banana:x",
+            # SOUNDNESS R1241 — ONE EMITTED SPELLING PER ALIAS PREFIX. `CLASS_PREFIX` listed every alias and
+            # this list exercised none of them, so the arm could not see R1218 (candor-query tested
+            # `dynamicmemberlookup` by EQUALITY, while candor-swift emits `dynamicMemberLookup:<Root>.<prop>`).
+            # Each token is the spelling a producer actually writes: swift `dynamicMemberLookup:`/`closure`,
+            # java `indy`/`task-handoff`, ts `no-node_modules`. CALIBRATED 2026-10-20: the released candor-query
+            # 0.40.13 (pre-08a53ef) diverges on `dynamicMemberLookup:Root.p` under [reflect] and [unresolved].
+            "dynamicMemberLookup:Root.p", "indy:java.lang.invoke.LambdaMetafactory", "closure:k",
+            "task-handoff:Executor.submit", "no-node_modules",
+            # §6.2 ⟨0.40⟩ — the prefixes match WITHOUT REGARD TO ASCII CASE (all four engines lowercase first).
+            "DynamicMemberLookup:Root.q", "NATIVE:strlen", "Reflect:Method.invoke"]
 
 
 def c_entries():

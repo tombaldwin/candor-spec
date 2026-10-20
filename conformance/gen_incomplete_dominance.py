@@ -453,6 +453,52 @@ def measure(eng, go, ws, gate):
             with open(pol, "w") as f:
                 f.write("deny Net\n")
             rc, _o, _e = go(target, pol, verdict, None)
+        elif gate == "policy+baseline":
+            # SOUNDNESS R1236 — BOTH PRODUCERS CONFIGURED, THE BASELINE CLEAN. The snapshot is recorded over
+            # the VIOLATING body (Fs + Net), so in every arm the guard has nothing to report: Net is never
+            # GAINED, and the incomplete_only arm (Fs alone) only LOSES an effect. What varies is the policy
+            # violation and the unreadable unit — exactly the `policy` gate's two bits — with a clean guard
+            # riding along. candor-scan 0.40.13 returned exit 2 from the clean guard over the unparsed unit
+            # BEFORE the policy gate ran, so `both` lost its `deny Net` violation (`violations: []`).
+            base_prefix = os.path.join(ws, f"{eng}.base")
+            for f in gd._glob(os.path.dirname(base_prefix), ".json"):
+                if os.path.basename(f).startswith(os.path.basename(base_prefix)):
+                    os.remove(f)
+            target = TREES[eng](ws, FS[eng] + " " + NET[eng], False)
+            if target is None:
+                return None
+            rc0, _o, _e = go(target, None, None, None, out_prefix=base_prefix)
+            snap = find_report(os.path.dirname(base_prefix), base_prefix)
+            if rc0 != 0 or not snap:
+                return None
+            body = FS[eng] + " " + NET[eng] if violating else FS[eng]
+            target = TREES[eng](ws, body, incomplete)
+            with open(pol, "w") as f:
+                f.write("deny Net\n")
+            rc, _o, _e = go(target, pol, verdict, snap)
+        elif gate == "policy+badbaseline":
+            # SOUNDNESS R1237 — AN UNREADABLE BASELINE FILE BESIDE A FIRING POLICY. Here the "incomplete"
+            # bit is the BASELINE, not the source: the tree always parses, and the incomplete arms hand the
+            # engine a baseline that is not JSON. What SPEC DECIDES is asserted: a corrupt baseline fails
+            # closed (§3, §3.3 cause (a)), so neither incomplete_only nor `both` may exit 0. What SPEC does
+            # NOT decide is whether `both` exits 1 carrying the `deny Net` violation (§3.1 ⟨0.24⟩: "the
+            # precedence is general") or 2 (§3.3 (a): an invalid baseline means "the gate could not be
+            # evaluated at all", and the "a real violation still dominates" sentence is written for causes
+            # (b) and (c) only). MEASURED on the released 0.40.13 engines, 2026-10-20: ALL FOUR exit 2 and
+            # drop the violation — so R1237 is not a rust-only defect, it is an open question, and asserting
+            # exit 1 here would be this file's documented hazard (a property stricter than the contract,
+            # waiving four engines as broken). The cell prints what it measured as UNPINNED until R1237 is
+            # ruled; the ruling turns it into an assertion.
+            bad = os.path.join(ws, f"{eng}.badbase.json")
+            with open(bad, "w") as f:
+                f.write("not json\n")
+            body = NET[eng] if violating else ""
+            target = TREES[eng](ws, body, False)
+            if target is None:
+                return None
+            with open(pol, "w") as f:
+                f.write("deny Net\n")
+            rc, _o, _e = go(target, pol, verdict, bad if incomplete else None)
         else:
             # BASELINE: record a snapshot of the FS-only body, then (for the violating arms) add Net on
             # top of it — an EXISTING function gaining an effect, which is what AS-EFF-005 fires on.
@@ -474,8 +520,15 @@ def measure(eng, go, ws, gate):
     return res
 
 
-def judge(res):
-    """The three clauses, as findings. Returns (control_ok, [finding…])."""
+UNPINNED = []   # what the R1237 cell measured, printed beside the table — not judged until it is ruled
+
+
+def judge(res, refusal_trigger=False):
+    """The three clauses, as findings. Returns (control_ok, [finding…]).
+
+    `refusal_trigger`: the incomplete bit is a REFUSAL CAUSE (an unreadable baseline), not unreadable
+    source — so incomplete_only must be a refusal document rather than an `incomplete` one, and `both` is
+    judged on dominance alone (its disclosure of the unrun guard is unruled, R1237)."""
     out = []
     rc1, d1 = res["violation_only"]
     base_v = violations_of(d1)
@@ -488,12 +541,22 @@ def judge(res):
     if rc2 == 0:
         out.append(("FALSE-GREEN",
                     "incomplete_only exited 0 — a gate certified code it could not read (§3.3.1 clause 1)"))
+    elif refusal_trigger:
+        if rc2 != 2 or not (isinstance(d2, dict) and d2.get("refused")):
+            out.append(("UNDISCLOSED", f"incomplete_only exited {rc2} without a refusal document — an "
+                                       f"unreadable baseline must fail closed (§3)"))
     elif not says_incomplete(d2) and d2 is not None:
         out.append(("UNDISCLOSED",
                     f"incomplete_only exited {rc2} but its document neither sets `incomplete` nor names "
                     f"`unanalyzed` — the refusal is not machine-readable"))
     rc3, d3 = res["both"]
     got_v = violations_of(d3)
+    if refusal_trigger:
+        if rc3 == 0:
+            out.append(("FALSE-GREEN", "both exited 0 beside an unreadable baseline — a configured guard "
+                                       "that could not be read must fail closed (§3)"))
+        UNPINNED.append(f"exit {rc3}, {len(got_v)} of {len(base_v)} violation(s) carried")
+        return True, out
     if rc3 != 1:
         out.append(("NOT-DOMINANT",
                     f"both exited {rc3}, not 1 — §3.3.1 says a real violation still dominates; this "
@@ -502,7 +565,7 @@ def judge(res):
         out.append(("DROPPED",
                     f"both carries {len(got_v)} violation(s) where violation_only carries {len(base_v)} — "
                     f"the finding is ABSENT FROM THE ARTIFACT, not merely mis-coded"))
-    elif not says_incomplete(d3):
+    elif not says_incomplete(d3) and not refusal_trigger:
         out.append(("SWAPPED",
                     "both reports the violation but NOT the incompleteness — the two halves are "
                     "additive, and dropping clause 1 to satisfy clause 2 is the mirror defect"))
@@ -539,6 +602,77 @@ def _maybe_probe_corrupt(res):
     return res
 
 
+# =====================================================================================================
+# ARM `merged` — SPEC §3 ⟨0.40⟩ "Both sides of the comparison are REPORT ROWS" (SOUNDNESS R1232).
+#
+# A different property from the three-arm dominance above, kept in this PART because SPEC names it here:
+# the baseline guard's CURRENT side is the row the run WRITES, including an interface union the engine
+# merges into it at write time. Only candor-java merges at write time (§3.1, R682), so only candor-java can
+# be measured; rust, ts and swift publish a union BESIDE the real entry and have no merged row to compare
+# — a DECLARED exclusion, not a gap. v1: `p.I.m` is a default method (Clock) and nothing implements `I`;
+# v2: `C implements I`, so java's writer merges `C.m`'s Fs into the written `p.I.m` row. A guard that reads
+# the narrower internal set exits 0 while `deny Fs p.I` on the same run exits 1 (candor-java 0.40.13,
+# fixed in `c6ad21c`). The CONTROLS make the arm able to fail for the right reason: `deny Fs p.I` must fire
+# on v2 (the merged row really carries Fs), and v1 against its own baseline must pass (the guard is armed
+# and quiet when nothing moved).
+# =====================================================================================================
+MERGED_SRC = {
+    "v1": {"I.java": "package p;\npublic interface I {\n    default void m() { System.currentTimeMillis(); }\n}\n",
+           "C.java": "package p;\npublic class C {\n    public void m() {\n        try { java.nio.file.Files."
+                     "writeString(java.nio.file.Path.of(\"/tmp/r1232-proof.txt\"), \"w\"); }\n        "
+                     "catch (java.io.IOException e) { throw new RuntimeException(e); }\n    }\n}\n"},
+}
+MERGED_SRC["v2"] = {"I.java": MERGED_SRC["v1"]["I.java"],
+                    "C.java": MERGED_SRC["v1"]["C.java"].replace("public class C {", "public class C implements I {")}
+
+
+def measure_merged(ws):
+    """Returns (findings, note). Java only; see the block comment above."""
+    go, err = engine_bin("java")
+    if go is None:
+        return None, f"java absent: {err}"
+    cls = {}
+    for v, files in MERGED_SRC.items():
+        src = os.path.join(ws, f"m{v}", "p")
+        os.makedirs(src, exist_ok=True)
+        for n, t in files.items():
+            with open(os.path.join(src, n), "w") as f:
+                f.write(t)
+        out = os.path.join(ws, f"m{v}-classes")
+        rc, _o, e = run(["javac", "-d", out] + [os.path.join(src, n) for n in files])
+        if rc != 0:
+            return [("HARNESS", f"javac {v}: {e[:160]}")], None
+        cls[v] = out
+    base = os.path.join(ws, "m-base")
+    rc0, _o, _e = go(cls["v1"], None, None, None, out_prefix=base)
+    if rc0 != 0 or not os.path.exists(base + ".json"):
+        return [("HARNESS", f"baseline scan of v1 exited {rc0}")], None
+    pol = os.path.join(ws, "m-pol.txt")
+    with open(pol, "w") as f:
+        f.write("deny Fs p.I\n")
+    out = []
+    v_ctl = os.path.join(ws, "m-ctl.json")
+    rc, _o, _e = go(cls["v2"], pol, v_ctl, None)
+    if rc != 1:
+        out.append(("CONTROL-DEAD", f"`deny Fs p.I` on v2 exited {rc}, not 1 — the merged row does not carry "
+                                    "Fs, so the guard arm below would measure nothing"))
+    v_quiet = os.path.join(ws, "m-quiet.json")
+    rc, _o, _e = go(cls["v1"], None, v_quiet, base + ".json")
+    if rc != 0:
+        out.append(("CONTROL-DEAD", f"v1 against its own baseline exited {rc}, not 0 — the guard is not "
+                                    "quiet when nothing moved"))
+    v_g = os.path.join(ws, "m-guard.json")
+    rc, _o, _e = go(cls["v2"], None, v_g, base + ".json")
+    doc = verdict_of(v_g)
+    hit = [v for v in violations_of(doc) if v.get("rule") == "AS-EFF-005" and v.get("fn") == "p.I.m"]
+    if rc != 1 or not hit:
+        out.append(("MERGED-ROW-UNJUDGED",
+                    f"the guard exited {rc} with {len(hit)} AS-EFF-005 row(s) for p.I.m — the written p.I.m row "
+                    "gained Fs (the control above proves it), and §3 ⟨0.40⟩ makes the written row the current "
+                    "side"))
+    return out, None
+
+
 def main():
     args = sys.argv[1:]
     keep = "--keep" in args
@@ -556,7 +690,7 @@ def main():
         if go is None:
             absent.append((eng, err))
             continue
-        for gate in ("policy", "baseline"):
+        for gate in ("policy", "baseline", "policy+baseline", "policy+badbaseline"):
             ws = tempfile.mkdtemp(prefix=f"candor-p5-{eng}-{gate}-")
             try:
                 res = measure(eng, go, ws, gate)
@@ -567,7 +701,10 @@ def main():
                                      "harness, and it must never read as a refusal by the engine"))
                     continue
                 res = _maybe_probe_corrupt(res)
-                ok, fs = judge(res)
+                n_unp = len(UNPINNED)
+                ok, fs = judge(res, refusal_trigger=(gate == "policy+badbaseline"))
+                if len(UNPINNED) > n_unp:
+                    UNPINNED[-1] = f"{eng:<6} {gate}: {UNPINNED[-1]}"
                 rows.append((eng, gate, "live" if ok else "control-dead", len(fs)))
                 for kind, why in fs:
                     findings.append((eng, gate, kind, why))
@@ -597,12 +734,35 @@ def main():
                     else:
                         shutil.rmtree(ws, ignore_errors=True)
 
-    print(f"\n  {'engine':<8}{'gate':<18}{'status':<14}{'findings':>9}")
+    if not only or "java" in only:
+        ws = tempfile.mkdtemp(prefix="candor-p5-merged-")
+        try:
+            fs, note = measure_merged(ws)
+            if fs is None:
+                absent.append(("java (merged)", note))
+            else:
+                rows.append(("java", "merged", "live" if not any(k == "CONTROL-DEAD" for k, _ in fs)
+                             else "control-dead", len(fs)))
+                for kind, why in fs:
+                    findings.append(("java", "merged", kind, why))
+        finally:
+            if keep:
+                print(f"    kept: {ws}")
+            else:
+                shutil.rmtree(ws, ignore_errors=True)
+        print("  merged: rust, ts and swift are DECLARED exclusions — no write-time union merge, so no "
+              "merged row exists to compare (SPEC §3 ⟨0.40⟩)")
+
+    print(f"\n  {'engine':<8}{'gate':<20}{'status':<14}{'findings':>9}")
     for eng, gate, status, n in rows:
-        print(f"  {eng:<8}{gate:<18}{status:<14}{n:>9}")
+        print(f"  {eng:<8}{gate:<20}{status:<14}{n:>9}")
     for eng, err in absent:
         print(f"  {eng:<8}{'—':<10}ABSENT — {err}")
 
+    if UNPINNED:
+        print("\n  UNPINNED (SOUNDNESS R1237 — SPEC does not decide exit 1 vs 2 here; measured, not judged):")
+        for u in UNPINNED:
+            print(f"    {u}")
     if findings:
         print(f"\n{len(findings)} VIOLATION(S) of §3.3.1:")
         for eng, gate, kind, why in findings:

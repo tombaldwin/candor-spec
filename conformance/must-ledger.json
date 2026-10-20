@@ -3611,7 +3611,7 @@
       "sha": "ac1d3fea263f93a7",
       "at": "2. The report",
       "excerpt": "- ⟨0.40⟩ **WITHIN ONE REPORT, `hash` IS THE JOIN KEY AND THE PAIR `(hash, fn)` IS THE UNIT** (SOUNDNESS R1219;",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): the policy-semantics differential (PART 99) carries the `tsdup` twin-hash report and gates it on all four engines; this entry is re-pointed at that PART in the commit that adds it."
+      "part": "PART 99 (cells u-twins-*, u-equal-*)"
     },
     {
       "sha": "9ffc7649e4842a5d",
@@ -3623,13 +3623,13 @@
       "sha": "9611d440e18d67ff",
       "at": "2. The report",
       "excerpt": "- **A VERDICT keys by `(hash, fn)`.** Scope matching, violation rows, the subject's effect, reason-class and N",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99's `tsdup` cells (deny Fs on each twin's module) — re-pointed when the PART lands."
+      "part": "PART 99 (cells u-twins-billing, u-twins-ui, u-twins-net-billing)"
     },
     {
       "sha": "eb7fc2ee9a8b9ba8",
       "at": "2. The report",
       "excerpt": "- **Two unit entries equal in BOTH fields are ONE unit and MUST be unioned** (⟨0.25⟩), never picked from: cand",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99 carries an equal-(hash, fn) pair whose second row alone is effectful — re-pointed when the PART lands."
+      "part": "PART 99 (cells u-equal-env, u-equal-fs)"
     },
     {
       "sha": "77fad6fda8c6288a",
@@ -3641,7 +3641,7 @@
       "sha": "b7ea522a64bf1eef",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "- **The unit table excludes it.** On both routes no scope binds a union entry: it is never a violation row; it",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99's union-only cells (zeroMatch, scoped Unknown[C] refusal) — re-pointed when the PART lands."
+      "part": "PART 99 (cells i-scoped-net, i-scoped-unknown-native, i-unscoped-*, i-beside-env)"
     },
     {
       "sha": "4f7d84084f57b29a",
@@ -3659,25 +3659,25 @@
       "sha": "16b2201aa7173b42",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "⟨0.40⟩ **A REFUSAL CAUSED BY THE POLICY DISCLOSES THE POLICY** (SOUNDNESS R1233; a clarification, 2026-10-20).",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99's fatal-policy cells compare the `unevaluated` line sets — re-pointed when the PART lands."
+      "part": "PART 99 (z-* and the policy-error g-* cells) and PART 97b (c=badtoken)"
     },
     {
       "sha": "59b6529cb8c62dff",
       "at": "6.2 The policy DSL (normative)",
       "excerpt": "⟨0.40⟩ **A U+FEFF AT BYTE OFFSET 0 OF THE POLICY FILE IS AN ENCODING MARK, NOT A CHARACTER OF ITS FIRST TOKEN:",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99's `bom`, `bom-mid` and `bom-twice` rows (EXPECTED written before the first run) — re-pointed when the PART lands."
+      "part": "PART 99 (cells g-bom, g-bom-multi, g-bom-mid, g-bom-twice, g-bom-crlf)"
     },
     {
       "sha": "acbbe7e5a5098c40",
       "at": "6.2 The policy DSL (normative)",
       "excerpt": "⟨0.40⟩ **The prefixes are matched without regard to ASCII case** (a clarification, 2026-10-20): `DynamicMember",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 99's off-case alias reason rows and PART 97 arm C's alias tokens — re-pointed when they land."
+      "part": "PART 99 (cells c-*) and PART 97 (arm C)"
     },
     {
       "sha": "2dde90ec544ad05a",
       "at": "3. Modes",
       "excerpt": "- ⟨0.40⟩ **Both sides of the comparison are REPORT ROWS** (SOUNDNESS R1232; a clarification, 2026-10-20). The ",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 29 arm `merged` (candor-java only — the shape needs a write-time merge, which no other engine performs) — re-pointed when the arm lands."
+      "part": "PART 29 (arm merged, candor-java only)"
     }
   ]
 }

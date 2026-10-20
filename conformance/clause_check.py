@@ -68,6 +68,8 @@ GENERATORS = [
     "gen_bind_listen.py",
     "gen_model_verdict.py",
     "gen_route_equality.py",
+    "gen_scan_verdict.py",
+    "gen_policy_semantics.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

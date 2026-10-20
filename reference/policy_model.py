@@ -280,6 +280,103 @@ def baseline_guard(baseline, ratchet=False):
 
 
 # ---------------------------------------------------------------------------------------------
+# THE SCAN-ROUTE VERDICT — the COMPOSITION of the producers above into one `scan --policy` outcome
+# (SPEC §3.1 ⟨0.24⟩/⟨0.27⟩ precedence, §3.3.1 dominance; conformance PART 97b). Every predicate above judges
+# ONE function under ONE producer; what a scan reports is the composition of every producer's rows with every
+# cause that can make the run refuse, and the 2026-10-20 S5 review found that composition is where the
+# scan-route defects live (SOUNDNESS R1231, R1236: an exit-2 arm that forgot "a certain violation dominates").
+#
+# The rules, each a SPEC sentence:
+#   1. ANY certain violation, from ANY producer, dominates every refusal and every incompleteness: exit 1,
+#      a verdict document carrying the rows, never `refused` (§3.1 ⟨0.24⟩ "the rule is over the verdict";
+#      ⟨0.27⟩ the composed shape). The policy's rows survive a parse failure (§3.3.1 "a real violation
+#      still dominates"); a policy that cannot be honoured AS WRITTEN (a bad token) contributes NO rows and
+#      puts EVERY rule in `unevaluated` (§3.1 ⟨0.24⟩, "on a whole-policy refusal that list carries EVERY
+#      rule").
+#   2. Otherwise a refusal cause wins: a policy error -> the refusal document (§3.1 ⟨0.40⟩: carrying every
+#      rule in `unevaluated`); a parse failure under a configured gate -> the ⟨0.21⟩ incomplete document.
+#      Both exit 2.
+#   3. Otherwise exit 0.
+# An unreadable BASELINE is deliberately NOT modelled: whether a firing policy dominates it is unruled
+# (SOUNDNESS R1237 — §3.3 cause (a) vs §3.1's general precedence; measured four-way exit 2 on 0.40.13).
+
+def scan_verdict(units, policy=None, baseline=ABSENT, has_baseline=False, parse_failure=False,
+                 policy_error=False, policy_rules=()):
+    """One scan's outcome. `units`: {fn: Sig} the CURRENT analysis (what the scan saw — a parse failure
+    hides only the unparsed unit, which is not in `units`). `policy`: a Reject predicate (from `deny`/`pure`)
+    or None. `baseline`: {fn: Sig} or ABSENT; `has_baseline`: a baseline is configured and readable.
+
+    Returns {'exit', 'rows': {(producer, fn)}, 'refused', 'incomplete', 'unevaluated': set of raw rules}."""
+    rows = set()
+    if policy is not None and not policy_error:
+        rows |= {("AS-EFF-006", f) for f, sig in units.items() if policy(sig)}
+    if has_baseline:
+        for f, sig in units.items():
+            prior = baseline.get(f, ABSENT) if baseline is not ABSENT else ABSENT
+            if baseline_guard(prior)(sig):           # the shipped guard, reused — not a second copy of it
+                rows.add(("AS-EFF-005", f))
+    unevaluated = set(policy_rules) if policy_error else set()
+    gate = policy is not None or policy_error or has_baseline
+    if rows:
+        return {"exit": 1, "rows": rows, "refused": False, "incomplete": bool(parse_failure and gate),
+                "unevaluated": unevaluated}
+    if policy_error:
+        return {"exit": 2, "rows": set(), "refused": True, "incomplete": False, "unevaluated": unevaluated}
+    if parse_failure and gate:
+        return {"exit": 2, "rows": set(), "refused": False, "incomplete": True, "unevaluated": set()}
+    return {"exit": 0, "rows": set(), "refused": False, "incomplete": False, "unevaluated": set()}
+
+
+def _scan_verdict_refusal_first(*a, **k):
+    """THE SEED: the defect class R1231/R1236 measured — a refusal arm that runs BEFORE the violation check.
+    `_selftest_scan_verdict` requires the rows below to tell it apart from `scan_verdict`."""
+    v = scan_verdict(*a, **k)
+    if k.get("policy_error") or (k.get("parse_failure") and v["exit"] == 1):
+        return {"exit": 2, "rows": set(), "refused": bool(k.get("policy_error")),
+                "incomplete": not k.get("policy_error"), "unevaluated": v["unevaluated"]}
+    return v
+
+
+def _selftest_scan_verdict() -> int:
+    """Worked rows, each a SPEC sentence; and the refusal-first seed must disagree with at least one."""
+    rc = 0
+    cur = {"save": Sig({"Fs"}), "go": Sig({"Fs"}), "env": Sig({"Env"})}
+    base_gain = {"save": Sig({"Fs"}), "go": Sig({"Fs"}), "env": Sig()}
+    base_clean = dict(cur)
+    rows = [
+        ("policy fires",                     dict(policy=deny("Fs")),                                 1, {"save", "go"}),
+        ("policy fires + parse failure",     dict(policy=deny("Fs"), parse_failure=True),             1, {"save", "go"}),
+        ("policy clean + parse failure",     dict(policy=deny("Net"), parse_failure=True),            2, set()),
+        ("baseline gain + bad token",        dict(policy=deny("Net"), policy_error=True, has_baseline=True,
+                                                  baseline=base_gain, policy_rules=("deny Net", "deny Unknown[x]")), 1, {"env"}),
+        ("clean baseline + policy fires + parse",
+                                             dict(policy=deny("Fs"), has_baseline=True, baseline=base_clean,
+                                                  parse_failure=True),                                1, {"save", "go"}),
+        ("bad token alone",                  dict(policy=deny("Fs"), policy_error=True, policy_rules=("deny Fs",)), 2, set()),
+        ("baseline absent fn gains",         dict(has_baseline=True, baseline={}),                    1, {"save", "go", "env"}),
+        ("no gate + parse failure",          dict(parse_failure=True),                                0, set()),
+    ]
+    seed_caught = False
+    for name, kw, want_exit, want_fns in rows:
+        v = scan_verdict(cur, **kw)
+        ok = v["exit"] == want_exit and {f for _, f in v["rows"]} == want_fns
+        if v["exit"] == 1 and v["refused"]:
+            ok = False
+        if kw.get("policy_error") and v["unevaluated"] != set(kw.get("policy_rules", ())):
+            ok = False
+        print(f"  {'OK  ' if ok else 'FAIL'}  scan verdict, {name:40} -> exit {v['exit']} rows {sorted(f for _, f in v['rows'])}")
+        rc |= 0 if ok else 1
+        s = _scan_verdict_refusal_first(cur, **kw)
+        seed_caught |= (s["exit"], s["rows"]) != (v["exit"], v["rows"])
+    if not seed_caught:
+        print("  FAIL  the refusal-first seed (R1231/R1236's defect) agrees with every row — the rows cannot see it")
+        rc = 1
+    else:
+        print("  OK    the refusal-first seed (R1231/R1236's defect class) disagrees with the rows above")
+    return rc
+
+
+# ---------------------------------------------------------------------------------------------
 # THE `Net` DESTINATION CLASS — the first carrier beyond `L` (LEAN-CHECKER-PLAN.md Phase 2(a)). Transcribed
 # in step with `lean/CandorModel/NetDest.lean`; `differential_lean_vs_python.py` compares every row.
 #
@@ -729,6 +826,7 @@ def selftest() -> int:
     print("  OK    Definitions 2, 4, 30, 31 worked examples (incl. `Db` NOT refining `Net`)")
 
     rc |= _selftest_baseline_guard()
+    rc |= _selftest_scan_verdict()
     rc |= _selftest_net_dest()
 
     ce = monotonicity_counterexample()
