@@ -3061,6 +3061,37 @@ echo "PART 99 — the policy-semantics differential: one report and policy, four
 # ENGINES: rust java ts swift
 # CONTROLS: none — delegated: gen_policy_semantics.py runs five seeds every time (a violation deleted from a real --gate-json, a zeroMatch dropped, `refused` added to an exit-1 verdict, one EXPECTED exit flipped moving exactly one cell, and an unpinned agreement classified AGREE-UNPINNED), a control cell per report and per-engine exit/zeroMatch floors, and fails the part if any does not hold
 
+# PART 100 — A FORMATTING MEMBER DISPATCHED ON A DEPENDENCY'S OWN ABSTRACTION, FOUR-WAY, SPEC §4 ⟨0.39⟩/⟨0.40⟩.
+# SOUNDNESS R1304 (java), R1308 (rust), R1309 (ts), R1310 (swift).
+#
+# A dependency formats a field typed by its OWN abstraction (`Converter`) — `elem.toString()`, `${this.elem}`,
+# `write!(f, "{}", self.elem)`, `"\(elem)"` — and the consumer supplies a `Converter` whose formatting member
+# touches the file system. Executed, the file is touched. Scanned as ONE tree, every engine charges the
+# consumer's caller `Fs`. CHAINED, every engine reads it pure, and `deny Fs` and `deny Fs Unknown` both exit 0.
+# The same shape through the ordinary member `convert` charges chained in all four, which is what isolates the
+# formatting member. The ⟨0.40⟩ clarification states why ⟨0.39⟩ already binds it: the MAY for formatting,
+# equality, hashing and cloning is judged by the RECEIVER's declared type, and waives a hedge, never the name.
+#
+# The part asserts the PROPERTY at the consumer and names no wire route, as PARTs 92 and 94 do. Every consumer
+# function reads the environment first, so `deny Env` is a carrier on every cell and the scope is the row's own
+# `fn` read back from the report — a policy that matched nothing cannot pass here.
+[ -f "$HERE/gen_format_dispatch.py" ] || { echo "FAIL: gen_format_dispatch.py is missing"; exit 2; }
+echo
+echo "[100] a consumer implementor reached through a dependency's formatting of its own abstraction is carried chained"
+P100_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_format_dispatch.py"
+) || { P100_OK=1; rc=1; }
+[ "$P100_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on c_fmt_call/c_fmt_interp is the chained formatting member going silent; on w_fmt_call/w_fmt_interp the one-tree reference stopped charging and the comparison cannot be read; on w_conv_run/c_conv_run the ⟨0.39⟩ chain itself is broken; on c_fmt_run, c_conv_call, c_conv_interp, c_pure_call, c_pure_interp, c_pure_run (or their w_ twins) a fix FABRICATED Fs onto a member that does nothing; XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 100 — a formatting member dispatched on a dependency's own abstraction reaches the chained consumer (SPEC §4 ⟨0.39⟩/⟨0.40⟩; SOUNDNESS R1304/R1308/R1309/R1310)"
+# ENGINES: rust java ts swift
+# CONTROLS: w_fmt_call w_fmt_interp w_conv_run c_conv_run c_fmt_run c_conv_call c_conv_interp c_pure_call c_pure_interp c_pure_run — the w_fmt arms are the same source as ONE tree, which every engine charges today, so a c_fmt xfail measures what chaining deletes rather than what the engine cannot see; the conv_run arms are the ordinary member through the ⟨0.39⟩ route and prove the chain reached the consumer; every other arm reaches a member that performs nothing and must keep `deny Fs` at 0, which fails a fix that joins every member of the implementor or keys the formatting member under the standard-library type. `deny Env` fires on every cell as the carrier.
+# NOTE: all four engines xfail c_fmt_call and c_fmt_interp (executed: xeng-r1304, javaab-a/fx/conv) — rust on R1308, java on R1304, ts on R1309, swift on R1310. Each line retires when its engine fixes the row, and a PASSING xfail is a FAILURE. `deny Fs Unknown` is not asserted on the controls: a hedge is permitted there, and the zero-local-implementor hedge on `convert` surviving a consumer's pure implementor (c_fmt_run, c_pure_run read `Unknown`) is a known disclosure, not this part's subject.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders MyConv's formatting member without its Fs, so the w_fmt REFERENCE arms go red on all four engines (8 cells, exit 1). Separately measured: with the XFAIL table emptied the eight c_fmt cells FAIL (exit 1), and declaring an xfail on a passing control (c_conv_run) prints XFAIL ARM PASSED and exits 1.
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

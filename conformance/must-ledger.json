@@ -1932,7 +1932,7 @@
       "sha": "70ad7bf23ae7d73b",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "An implementation MAY treat dispatch over a curated set of conventionally-pure standard-library traits/interfa",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): the ⟨0.40⟩ receiver-type sentence is PART 100's subject — re-pointed when the PART lands. The curated-set MAY and its documentation MUST stay unpinned: a MAY is not a row."
+      "part": "PART 100 (the ⟨0.40⟩ sentence: a formatting member on a receiver typed by a package's own abstraction is a ⟨0.39⟩ dispatch — c_fmt_call/c_fmt_interp, with the *_pure_*/*_conv_call controls). The curated-set MAY and its documentation MUST were pre-ledger and stay unpinned: a MAY is not a row, and which set an engine documents is engine data."
     },
     {
       "sha": "aae45f4879f365b5",
@@ -3407,7 +3407,7 @@
       "sha": "8610681676e15492",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "⟨0.40⟩ **A FORMATTING, EQUALITY, HASHING OR CLONING MEMBER CALLED ON A RECEIVER TYPED BY A PACKAGE'S OWN ABSTR",
-      "unenforced": "ARM PENDING (2026-10-20 spec lane): PART 100 (gen_format_dispatch.py) carries the chained formatting-member arms four-way with declared xfails on R1304/R1308/R1309/R1310; this entry is re-pointed at that PART in the commit that adds it."
+      "part": "PART 100 (c_fmt_call c_fmt_interp — a consumer implementor's formatting member reached through the dependency's formatting of its own abstraction, chained; w_fmt_* the one-tree reference; *_conv_run the ⟨0.39⟩ ordinary-member control; *_fmt_run, *_conv_call, *_conv_interp, *_pure_* the fabrication controls). Formatting only: equality, hashing and cloning follow the same sentence and have no arm yet. The key spelling is not asserted — the part names no wire route."
     },
     {
       "sha": "b30f446c5e0c4502",
