@@ -279,24 +279,6 @@ NOT_PINNED = {
 # Written from the released 0.40.13 calibration (2026-10-20); each engine lane retires its entries in the
 # commit that lands the fix.
 XFAIL = {
-    ('g-bom', 'rust'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom', 'java'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom', 'ts'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-multi', 'rust'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-multi', 'java'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-multi', 'ts'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-crlf', 'rust'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-crlf', 'java'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
-    ('g-bom-crlf', 'ts'):
-        'R1224: the engine keeps a byte-0 U+FEFF as part of `deny`, so the first rule is ignored (a one-rule file refuses, a multi-rule file loses its first rule at exit 1/0)',
     ('g-unknown-effect', 'rust'):
         'R1233: the policy-error refusal document carries no `unevaluated` (java and ts carry every rule)',
     ('g-unknown-effect', 'swift'):
@@ -369,20 +351,12 @@ XFAIL = {
         'R1219: the gate keys units by `hash` alone, so two units sharing a hash collapse into one row named after one of them',
     ('u-twins-net-billing', 'swift'):
         'R1219: the gate keys units by `hash` alone, so two units sharing a hash collapse into one row named after one of them',
-    ('i-scoped-net', 'java'):
-        'R1234: a rule matching only `interfaceUnion` entries is not disclosed as zeroMatch',
-    ('i-scoped-unknown-native', 'java'):
-        'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses',
-    ('i-unscoped-unknown-native', 'java'):
-        'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses',
     ('i-scoped-net', 'ts'):
         'R1234: a rule matching only `interfaceUnion` entries is not disclosed as zeroMatch',
     ('i-scoped-unknown-native', 'ts'):
         'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses',
     ('i-unscoped-unknown-native', 'ts'):
         'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses',
-    ('i-beside-env', 'java'):
-        "R1223: java's report route merges a union entry into the real entry sharing its hash, so the union's Env is charged to the unit",
 }
 
 # ======================================================================================================
