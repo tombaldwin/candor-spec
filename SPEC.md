@@ -5042,14 +5042,25 @@ abstraction in the owning package's namespace (rust `convlib#Converter::fmt`, sw
 `convlib/Converter.toString()Ljava/lang/String;`) and NEVER under the declaring standard-library type,
 which would join every formatting implementor a consumer has onto every formatting call in the dependency
 (the over-charge SOUNDNESS R601 refuses for a κ owner). For obligation 3, an implementor of that key is
-every visible type implementing the abstraction, with its body of the member wherever the member is
-declared — the abstraction itself, a supertrait or superinterface, or the language's root type: an
-`impl Display for MyConv` beside `impl Converter for MyConv`, a Java `toString` override, a Swift
-`description`. §4's MAY to treat formatting, equality, hashing and cloning as resolved-pure, and the
+every visible type implementing the abstraction, and it contributes EVERY body it has under that member
+name from any formatting, equality, hashing or cloning protocol, wherever declared — the abstraction itself,
+a supertrait or superinterface, or the language's root type: an `impl Display for MyConv` beside
+`impl Converter for MyConv`, a Java `toString` override, a Swift `description`. The key names the
+abstraction and the member, not the protocol the dependency reached, so a Rust implementor's
+`Display::fmt`, `Debug::fmt` and `LowerHex::fmt`, which all key as `Converter::fmt`, ALL join. A receiver
+whose declared type is a composition or carries several bounds (`C: Converter + Debug`,
+`any Converter & CustomDebugStringConvertible`) dispatches through EACH package abstraction in it and is
+named under each. §4's MAY to treat formatting, equality, hashing and cloning as resolved-pure, and the
 bounded-CHA MAY to leave an unmodelled EXTERNAL abstraction unflagged, cover a receiver whose declared type
-IS the standard-library or root type (a bare `Object`, `&dyn Display`, `any CustomStringConvertible`);
-they license omitting a HEDGE where no implementor is visible, never omitting the name or a visible
-implementor's effects. Pinned by PART 100. This names an obligation the clause already made; it adds none.
+IS the standard-library or root type (a bare `Object`, `&dyn Display`, `any CustomStringConvertible`) — a
+composition only when EVERY part of it is one — and so a collection's own `equals`/`hashCode` on elements it
+holds as `Object` or an unbounded type parameter stays under them; they license omitting a HEDGE where no
+implementor is visible, never omitting the name or a visible implementor's effects. Pinned by PART 100,
+for formatting only. *This resolves an ambiguity AGAINST the reading two engines shipped:* the ⟨0.39⟩ cost
+note's census sentence read the MAY as excluding these members from obligation 1, and candor-java documents
+`toString`/`hashCode`/`equals` as a pure-exempt dispatch set (its README) and does not name them; under this
+paragraph that reading is non-conforming. It adds no field and moves no floor, because ⟨0.39⟩'s headline
+already required the effect to reach the consumer.
 
 **`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in "until a floor rung
 pins it". This is that rung: it is REQUIRED, and its absence is a non-conformance.
@@ -6381,8 +6392,11 @@ declare it via the envelope's `spec`.
   owner's ruling, R1224) and pins reason-prefix matching as ASCII case-insensitive. Pinned by PART 99 (the
   policy-semantics differential), PART 97's scan-route arm and PART 29's both-producers arms. §4 states that
   a formatting, equality, hashing or cloning member called on a receiver typed by a package's own
-  abstraction is a ⟨0.39⟩ dispatch — named under that abstraction, joined against every visible implementor's
-  body of the member — and that §4's MAY waives a hedge, never the name (R1304, R1308–R1310); PART 100,
+  abstraction is a ⟨0.39⟩ dispatch — named under that abstraction (under each, for a composition), joined
+  against every body a visible implementor has under that member name — and that §4's MAY waives a hedge,
+  never the name (R1304, R1308–R1310). This resolves an ambiguity against the shipped reading (the ⟨0.39⟩
+  cost note's census sentence; candor-java's documented Object-protocol exemption); a collection's own
+  `equals`/`hashCode` on `Object`-typed elements stays under the MAY. PART 100 pins formatting only, with
   declared xfails in all four engines.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,

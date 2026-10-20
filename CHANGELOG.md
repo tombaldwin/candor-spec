@@ -25,7 +25,7 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
-- **SPEC §4 ⟨0.40⟩ clarification (SOUNDNESS R1304, R1308–R1310), no floor move:** a formatting, equality, hashing or cloning member called on a receiver typed by a package's OWN abstraction is a ⟨0.39⟩ dispatch — the producer names it under that abstraction (never under `Object`/`Display`/`CustomStringConvertible`), and the consumer joins every visible implementor's body of it; §4's MAY waives a hedge, never the name. The ⟨0.39⟩ cost note's census wording, which read as permitting the exemption, is corrected. Pinned by conformance PART 100, declared xfails in all four engines.
+- **SPEC §4 ⟨0.40⟩ clarification (SOUNDNESS R1304, R1308–R1310), no floor move, and it resolves an ambiguity AGAINST the shipped reading:** a formatting, equality, hashing or cloning member called on a receiver typed by a package's OWN abstraction is a ⟨0.39⟩ dispatch. The producer names it under that abstraction (under each, for a composition or several bounds; never under `Object`/`Display`/`CustomStringConvertible`), and the consumer joins every body a visible implementor has under that member name (a Rust `Display::fmt`, `Debug::fmt` and `LowerHex::fmt` all key as `Converter::fmt`). §4's MAY waives a hedge on a receiver that IS the standard-library type, never the name; a collection's own `equals`/`hashCode` on `Object`-typed elements stays under it. The ⟨0.39⟩ cost note's census sentence and candor-java's documented Object-protocol exemption (its README) both read the MAY the other way, so an engine that shipped that reading is non-conforming now, not newly obliged. Pinned by conformance PART 100, formatting only, declared xfails in all four engines.
 
 ## [0.40.13] — 2026-10-19
 

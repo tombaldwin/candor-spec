@@ -3404,10 +3404,10 @@
       "part": "PART 94 (o1_typed o2_chain o3_bound — a chained dependency's own subclass override; k1..k3 the non-overriding controls). Re-used by PART 95 r7a_holds_open / r7b_returns_open for a receiver typed by a declaration."
     },
     {
-      "sha": "8610681676e15492",
+      "sha": "b542bb10fe7cb90c",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "⟨0.40⟩ **A FORMATTING, EQUALITY, HASHING OR CLONING MEMBER CALLED ON A RECEIVER TYPED BY A PACKAGE'S OWN ABSTR",
-      "part": "PART 100 (c_fmt_call c_fmt_interp — a consumer implementor's formatting member reached through the dependency's formatting of its own abstraction, chained; w_fmt_* the one-tree reference; *_conv_run the ⟨0.39⟩ ordinary-member control; *_fmt_run, *_conv_call, *_conv_interp, *_pure_* the fabrication controls). Formatting only: equality, hashing and cloning follow the same sentence and have no arm yet. The key spelling is not asserted — the part names no wire route."
+      "part": "PART 100 (c_fmt_call c_fmt_interp — a consumer implementor's formatting member reached through the dependency's formatting of its own abstraction, chained; w_fmt_* the one-tree reference; *_conv_run the ⟨0.39⟩ ordinary-member control; *_fmt_run, *_conv_call, *_conv_interp, *_pure_* the fabrication controls). Formatting only: equality, hashing and cloning follow the same sentence and have no arm yet, and neither do the composition/several-bounds rule or the every-body union (a Rust implementor's Display/Debug/LowerHex `fmt` under one key). The stdlib-key over-charge the paragraph forbids IS pinned: the constant consumer type `Other` (not a Converter, effectful formatting member) must not charge *_pure_call/*_conv_call. The key spelling is not asserted — the part names no wire route."
     },
     {
       "sha": "b30f446c5e0c4502",
