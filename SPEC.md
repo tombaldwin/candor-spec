@@ -5028,6 +5028,29 @@ union like any other — a chained dependency's own subclasses included (SOUNDNE
 names an obligation the clause already made; it adds none. ⟨0.40⟩ (§2) relies on it for a receiver typed
 by a DECLARATION rather than a parameter.
 
+⟨0.40⟩ **A FORMATTING, EQUALITY, HASHING OR CLONING MEMBER CALLED ON A RECEIVER TYPED BY A PACKAGE'S OWN
+ABSTRACTION IS A DISPATCH THROUGH THAT ABSTRACTION, AND THIS CLAUSE BINDS IT** (SOUNDNESS R1304, R1308,
+R1309, R1310; a clarification, 2026-10-20). A dependency that formats a field typed `Converter`, its own
+open abstraction — `elem.toString()`, `` `${this.elem}` ``, `write!(f, "{}", self.elem)`, `"\(elem)"` —
+runs whatever `Converter` the consumer supplied, and every engine charges that implementor's effect when
+the two packages are scanned as ONE tree. Chained, all four read the consumer's caller pure. What decides
+is the RECEIVER's declared type — its static type, or a generic receiver's bound — not the type that
+declares the member (`Object`, `core::fmt::Display`, `CustomStringConvertible`). So obligation 1 applies:
+the producer names the member on the row even though it is otherwise pure, spelled under the receiver's
+abstraction in the owning package's namespace (rust `convlib#Converter::fmt`, swift
+`ConvLib#Converter.description`, ts `convlib#Converter.toString`, java
+`convlib/Converter.toString()Ljava/lang/String;`) and NEVER under the declaring standard-library type,
+which would join every formatting implementor a consumer has onto every formatting call in the dependency
+(the over-charge SOUNDNESS R601 refuses for a κ owner). For obligation 3, an implementor of that key is
+every visible type implementing the abstraction, with its body of the member wherever the member is
+declared — the abstraction itself, a supertrait or superinterface, or the language's root type: an
+`impl Display for MyConv` beside `impl Converter for MyConv`, a Java `toString` override, a Swift
+`description`. §4's MAY to treat formatting, equality, hashing and cloning as resolved-pure, and the
+bounded-CHA MAY to leave an unmodelled EXTERNAL abstraction unflagged, cover a receiver whose declared type
+IS the standard-library or root type (a bare `Object`, `&dyn Display`, `any CustomStringConvertible`);
+they license omitting a HEDGE where no implementor is visible, never omitting the name or a visible
+implementor's effects. Pinned by PART 100. This names an obligation the clause already made; it adds none.
+
 **`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in "until a floor rung
 pins it". This is that rung: it is REQUIRED, and its absence is a non-conformance.
 
@@ -5039,7 +5062,7 @@ abstraction implementor nothing. Extending containment to a body in another pack
 which §4 lists as fabrication. The union above charges the consumer only where the dependency's own row
 says a dispatch OCCURS.
 
-*Cost — PREDICTED before the clause was written, then MEASURED by the first port. The prediction was right in direction and wrong in magnitude, and both numbers are kept here because the correction is the useful part.* **Producer side: predicted wire bytes with no verdict change — HOLDS EXACTLY** (over 1,608 crates, `inferred` ADDED 9,636 / REMOVED 0 / **CHANGED 0**: not one existing row's effect set moved; all 34,211 changed keys are `dispatchesOn`-only). Row growth was predicted at +1.3% and measured at +3.1% — 4,916 newly-emitted pure dispatching rows plus 4,378 union entries the prediction did not count at all. **Consumer side: predicted at most 13 crates (0.8%); MEASURED 46 crates (2.86%), 310 rows — a 3.5× understatement.** The direction held precisely (310 rows gained an effect, **0 lost one**, and no implementation hedged). **Why the prediction was wrong, stated because it indicts the method and not the estimate: the pricing census EXCLUDED ~70 trait leaf names — `Stream`, `AsyncRead`, `AsyncWrite`, `Future`, `Write` — and §4 permits excluding only formatting, equality, hashing and cloning, while EXPLICITLY FORBIDDING the extension to iterators, callbacks and I/O traits.** The excluded population is `tower#Service::call`, `futures_core#Stream::poll_next`, `http_body#Body::poll_frame`, `rand_core#RngCore::fill_bytes` — which is to say, precisely the abstractions an effect hides behind. A census that prices a rung must not quietly narrow the population the rung is about. The comparison to the in-crate hedge is unchanged and still decisive: that alternative costs 2.60% of FUNCTIONS across 435 libraries (70% of `x11rb`, 20% of `rustls`) and bills every consumer including those that supply no implementor, against this design's 2.86% of CRATES which pay only by gaining an effect they really reach. **The `pub`-scoped variant of that hedge had never been priced; it has now, and it still loses.**
+*Cost — PREDICTED before the clause was written, then MEASURED by the first port. The prediction was right in direction and wrong in magnitude, and both numbers are kept here because the correction is the useful part.* **Producer side: predicted wire bytes with no verdict change — HOLDS EXACTLY** (over 1,608 crates, `inferred` ADDED 9,636 / REMOVED 0 / **CHANGED 0**: not one existing row's effect set moved; all 34,211 changed keys are `dispatchesOn`-only). Row growth was predicted at +1.3% and measured at +3.1% — 4,916 newly-emitted pure dispatching rows plus 4,378 union entries the prediction did not count at all. **Consumer side: predicted at most 13 crates (0.8%); MEASURED 46 crates (2.86%), 310 rows — a 3.5× understatement.** The direction held precisely (310 rows gained an effect, **0 lost one**, and no implementation hedged). **Why the prediction was wrong, stated because it indicts the method and not the estimate: the pricing census EXCLUDED ~70 trait leaf names — `Stream`, `AsyncRead`, `AsyncWrite`, `Future`, `Write` — and §4's MAY covers only formatting, equality, hashing and cloning, while EXPLICITLY FORBIDDING the extension to iterators, callbacks and I/O traits.** ⟨0.40⟩ *Even those four are not excludable from obligation 1's population: the MAY waives a hedge on a receiver typed by the standard-library type itself, and a formatting call on a receiver typed by a package's own abstraction must be named like any other (the paragraph on formatting members above; SOUNDNESS R1304).* The excluded population is `tower#Service::call`, `futures_core#Stream::poll_next`, `http_body#Body::poll_frame`, `rand_core#RngCore::fill_bytes` — which is to say, precisely the abstractions an effect hides behind. A census that prices a rung must not quietly narrow the population the rung is about. The comparison to the in-crate hedge is unchanged and still decisive: that alternative costs 2.60% of FUNCTIONS across 435 libraries (70% of `x11rb`, 20% of `rustls`) and bills every consumer including those that supply no implementor, against this design's 2.86% of CRATES which pay only by gaining an effect they really reach. **The `pub`-scoped variant of that hedge had never been priced; it has now, and it still loses.**
 
 **Refining the subprocess boundary** ⟨0.5⟩. `Exec` marks that a subprocess was spawned; what the
 child does is beyond the caller's static scope (the *capability cliff*, the subprocess analog of an
@@ -5073,7 +5096,10 @@ For a consumer, this means:
 An implementation MAY treat dispatch over a curated set of conventionally-pure standard-library
 traits/interfaces (formatting, equality, hashing, cloning) as resolved-pure, to avoid flooding
 reports with false `Unknown`s; but it MUST document which, and MUST NOT extend the set to anything where an
-effect could plausibly hide (iterators, callbacks, I/O traits, finalizers).
+effect could plausibly hide (iterators, callbacks, I/O traits, finalizers). ⟨0.40⟩ The set is judged by
+the RECEIVER's declared type: a formatting, equality, hashing or cloning member called on a receiver typed by
+a package's own abstraction is a dispatch through that abstraction, and §4's ⟨0.39⟩ chained-consumer clause
+binds it (SOUNDNESS R1304).
 
 A method *inherited* by a type (a trait default/provided method, or a concrete method on a base
 class the type does not override) is a **resolved** call, not an `Unknown`: it lands on that inherited
@@ -6353,7 +6379,11 @@ declare it via the envelope's `spec`.
   classes (R1223/R1234/R1239), and makes a policy-caused refusal carry `unevaluated` (R1233); §3's baseline
   guard compares report rows on both sides (R1232); §6.2 strips a U+FEFF at byte 0 of a policy file (the
   owner's ruling, R1224) and pins reason-prefix matching as ASCII case-insensitive. Pinned by PART 99 (the
-  policy-semantics differential), PART 97's scan-route arm and PART 29's both-producers arms.
+  policy-semantics differential), PART 97's scan-route arm and PART 29's both-producers arms. §4 states that
+  a formatting, equality, hashing or cloning member called on a receiver typed by a package's own
+  abstraction is a ⟨0.39⟩ dispatch — named under that abstraction, joined against every visible implementor's
+  body of the member — and that §4's MAY waives a hedge, never the name (R1304, R1308–R1310); PART 100,
+  declared xfails in all four engines.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave
@@ -6366,8 +6396,8 @@ declare it via the envelope's `spec`.
   longer gated** — this is the floor rung ⟨0.23⟩ was waiting for. **UPGRADE NOTE: a gate that passed on
   0.38 can exit 1 on identical bytes** — measured at 46 crates of 1,608 (2.86%, roughly one in
   thirty-five), 310 rows gaining an effect and **ZERO losing one**. *The rung's first pricing said 0.8%
-  and was wrong; its census excluded ~70 trait leaf names §4 permits excluding only for formatting,
-  equality, hashing and cloning.* **Obligation 1's first draft was UNIMPLEMENTABLE and only a port could
+  and was wrong; its census excluded ~70 trait leaf names, where §4's MAY covers only formatting,
+  equality, hashing and cloning — and waives only their hedge, not their name (⟨0.40⟩, R1304).* **Obligation 1's first draft was UNIMPLEMENTABLE and only a port could
   show it**: it required the transitive closure ON THE WIRE, which took `avro` from 852 member strings to
   157,562 and left `jooq` unserialisable with 8 GB of heap; it now requires only that the member REACH
   the caller, with §2 `calls` free to carry the closure. Pinned by PART 92, whose `(arm, engine)` xfail

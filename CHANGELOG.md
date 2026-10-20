@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §4 ⟨0.40⟩ clarification (SOUNDNESS R1304, R1308–R1310), no floor move:** a formatting, equality, hashing or cloning member called on a receiver typed by a package's OWN abstraction is a ⟨0.39⟩ dispatch — the producer names it under that abstraction (never under `Object`/`Display`/`CustomStringConvertible`), and the consumer joins every visible implementor's body of it; §4's MAY waives a hedge, never the name. The ⟨0.39⟩ cost note's census wording, which read as permitting the exemption, is corrected. Pinned by conformance PART 100, declared xfails in all four engines.
+
 ## [0.40.13] — 2026-10-19
 
 - **SOUNDNESS: v074 (java, recovered) and v075 (rust) joins, and the S5 gate-port spike** (candor-rust `3393538`, candor-java `2c20660`..`f8f168d`). Closed R1204, R1205 (both sides; the S4/S5 Object floor is on by default, a disclosure priced under the band), R1217, R1207 (chained and unchained halves), R1208 and R1209 (both executed SILENT before the fix). R1216 narrowed. Filed R1218-R1224 from the S5 spike, R1225 and R1226 (rust over-charge and over-wide trait-in-scope matching), R1227 (R1207's standalone half, an open silent residual), R1228 (a `corpus-ab.py` memory hazard), R1229 (a java lead) and R1230 (a java over-charge).
