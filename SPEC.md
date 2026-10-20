@@ -1406,6 +1406,36 @@ already carry.
   identity: without it the twin rows tie and the two routes, which accumulate in different orders,
   produce unequal documents — the ⟨0.31⟩ `outOfScope` hazard repeated.
 
+- ⟨0.40⟩ **WITHIN ONE REPORT, `hash` IS THE JOIN KEY AND THE PAIR `(hash, fn)` IS THE UNIT** (SOUNDNESS
+  R1219; a clarification, 2026-10-20). The bullet above makes the `hash`-identified unit the unit of a
+  verdict, and ⟨0.25⟩ (§2 rule 1) expects a key to be shared WITHIN one report wherever an engine keys an
+  entry by a tail. Both are true of candor-ts, which keys a unit `<package>#<tail>`: measured on its corpus,
+  16.7% of entries in 13 of 18 reports share a `hash` with a DIFFERENT function (three `createConsola` units
+  share `consola#createConsola`). So a `hash` names a join target, not a unit, and the two jobs are split:
+  - **The JOIN keys by `hash`, unchanged.** Resolving a `calls` edge, a chained lookup and the ⟨0.39⟩ union
+    still go by key, and a key two entries share is ⟨0.25⟩'s case: unioned, never picked from, never dropped.
+  - **A VERDICT keys by `(hash, fn)`.** Scope matching, violation rows, the subject's effect, reason-class and
+    Net-class sets, the answerability test, `zeroMatch`, and — where an engine's baseline key is the `hash` —
+    the baseline guard's prior and current row (§3) MUST treat two entries whose `fn` differs as two units,
+    and MUST NOT merge them. Executed (S5 spike fixture `tsdup`: `src/billing.ts` `load` reads a file,
+    `src/ui.ts` `load` is pure, one `hash`): a gate keying units by `hash` alone answered `deny Fs
+    src.billing` with exit 0 and `zeroMatch` where candor-ts's own gate exits 1, and FABRICATED a violation
+    under `deny Fs src.ui`; a hash-keyed baseline over the same pair reads twin B gaining `Fs` as no gain
+    when twin A already had it.
+  - **Two unit entries equal in BOTH fields are ONE unit and MUST be unioned** (⟨0.25⟩), never picked from:
+    candor-scan emits byte-identical rows for macro-expanded impls at one span (measured: 876 of 1,790
+    corpus reports), and those are several functions sharing one identity. `interfaceUnion: true` entries are
+    not unit entries and are never merged into one (§3.1, the union-entry clause).
+  - An entry with no `hash` is keyed by `fn` alone — the single-report route, where `hash` is a decoration
+    (§3.1). A verdict row carries both fields when the entry has both.
+
+  *Who moves: no engine on its OWN reports* (measured on the reports on disk: 0 duplicate-`hash`,
+  different-`fn` pairs in 1,790 candor-scan, 28 candor-rust-deep, 748 candor-java and 86 candor-swift reports;
+  candor-ts's gate already keys the pair). *On a candor-ts report gated by another engine* — candor-query's
+  `gate --report` and candor-java's key units by `hash` alone — *both directions*: violations added (0 → 1),
+  fabricated violations removed (1 → 0), and refusals added where a twin's reason classes were borrowed. That
+  route is latent today: the umbrella dispatcher routes a report to its own engine's gate.
+
 - ⟨0.32⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
   `peeked: false` and without `judgedElsewhere: true` (below) MUST suppress `ok` and exit 2, on BOTH the
   `scan --policy` and `gate --report` routes. ⟨0.30⟩ already ruled that a non-empty `outOfScope` does so,
@@ -2555,6 +2585,18 @@ An implementation SHOULD support:
     existing functions whose only gain is `Unknown` ("N new function(s) carry only Unknown: …"). Before
     this rung such a function was not even mentioned. Under `unknown-ratchet` (§3.4) it fails like any
     newly-introduced `Unknown`, because its prior is ∅ — a consequence of the rule, not an extension of it.
+  - ⟨0.40⟩ **Both sides of the comparison are REPORT ROWS** (SOUNDNESS R1232; a clarification,
+    2026-10-20). The prior is the baseline's entry for the key; the current side is the entry this run
+    writes for that key — or, with no report requested, would write — including any interface union the
+    engine merges into it at write time (§3.1's policy subject, SOUNDNESS R682). An engine MUST NOT compare a
+    written prior against an internal set its writer later widens: the baseline guard and the policy gate
+    judge the same row. `interfaceUnion: true` entries are neither side (§3.1). *Measured in candor-java
+    only* (`c6ad21c`): a `default` method merged into the written `p.I.m` row gained `Fs` while the guard read
+    the narrower internal set, so `CANDOR_BASELINE` exited 0 and `deny Fs p.I` exited 1 on the same run. No
+    other engine merges at write time, so the merged-row shape cannot be built there; the sentence's
+    union-entry half moves an engine only if its guard reads union entries as rows (candor-swift skips them,
+    `Baseline.swift`; candor-scan's and candor-ts's guards were not read for this). Conformance pins the
+    merged-row half on candor-java alone (PART 29, arm `merged`).
   - **Every AS-EFF-005 entry of the `--gate-json` verdict (§3.3) MUST carry `origin`**, the ⟨0.12⟩ closed
     vocabulary under the ⟨0.12⟩ existence rule: `"existing"` — in the baseline report or a node of its
     callgraph sidecar; `"new"` — in neither, with the sidecar present and loaded; `"unknown"` — absent from
@@ -2842,6 +2884,63 @@ only, zero on the scan route only, all AS-EFF-006 and all 137 abstract declarati
 minimal fixture at `6c000a4`, `deny Fs p.A.m` exited 0 on the scan and 1 on `gate --report` over the
 report that same scan wrote. The scan route MUST NOT
 recompute the merge either: the entries it gates are the entries it writes.
+
+⟨0.40⟩ **AN `interfaceUnion: true` ENTRY IS NEVER A UNIT OF A VERDICT, IT IS ALWAYS A CONTRIBUTOR TO THE
+JOIN, AND ITS REASONS ARE ITS CONTRIBUTORS' REASONS** (SOUNDNESS R1223, R1234, R1239; a clarification,
+2026-10-20). A union entry (§2 ⟨0.23⟩, §4 ⟨0.39⟩) is published under an abstraction member's key and has no
+body of its own: it says what a dispatch on that member can reach. Three rules follow, and the first two
+must not be confused with each other.
+
+- **The unit table excludes it.** On both routes no scope binds a union entry: it is never a violation
+  row; it never counts as a match for `zeroMatch`, so a rule whose only matching entries are union entries
+  rides `zeroMatch`; it is never the subject of an answerability test, so its missing reasons cannot refuse
+  a rule; and it is neither side of the baseline guard's comparison (§3). A consumer MUST NOT merge a
+  separately published union entry into a real entry that shares its key for any of these purposes. Only a
+  producer's own WRITE-TIME merge (the paragraph above) makes a union part of a unit, and then the merged
+  entry is what both routes judge. A `declaration: true` entry (§2) is a unit, not a union entry. *Measured
+  by the S5 spike: candor-java's `gate --report` refused 9 (report, policy) pairs at exit 2 that
+  candor-query answered, because two of its loops (the scoped-filter answerability test and the
+  `zeroMatch` disclosure) walk every entry while its violation loop skips union entries — so candor-java's
+  own two routes disagree, against the byte-equality MUST above; candor-scan emits `zeroMatch` for a rule
+  matching only union entries and candor-java suppresses it.*
+- **The join includes it, unchanged.** Resolving a `calls` edge or a chained lookup unions EVERY entry
+  under the key, union entries included (⟨0.25⟩; §4 ⟨0.39⟩ obligation 3; SOUNDNESS R867, PART 94). The
+  first rule above is not licence to drop a union entry from the join: a union published beside the real
+  entry it extends, under the same `hash` (the subclass-override union), still reaches every caller of
+  that key. Dropping it there is the silence ⟨0.39⟩ closed.
+- **When its `inferred` carries `Unknown`, its `unknownWhy` MUST be non-empty and MUST project (§6.2) to
+  EXACTLY the union of its contributors' TRANSITIVE reason-class sets**, each resolved as the producer's own
+  gate resolves it, together with the union's own dispatch hedge where it publishes one. A contributor whose
+  class set the producer cannot complete contributes `unresolved`, the catch-all, as a `dep:` reason does
+  (§6.2). One raw reason per class is enough: a contributor's own reason verbatim, or the hedge's
+  `dispatch:` token. This is the one entry whose `unknownWhy` is not direct-only (§4), and the reason is
+  structural: it has no body, so it has no direct sites, and the whole of its `Unknown` is what its dispatch
+  reaches. A projection that is a strict SUBSET is a false green for a narrowed filter (`deny Unknown[reflect]
+  <caller>` passes over a reflect hole one contributor inherited); a strict SUPERSET charges a class nobody
+  reaches.
+
+  *Why the producer resolves it, rather than publishing `calls` from the union to its implementers and
+  letting each consumer walk them.* Measured 2026-10-20 at the four engines' heads: no producer publishes
+  either today — every union entry carries `inferred` and surfaces only, with a reason only on a BROAD
+  dispatch hedge (candor-java, candor-ts) — and only two of the four chained consumers walk a dependency's
+  `calls` at all (candor-scan's chained reason fixpoint, candor-java's `depTransitiveWhy`; candor-swift reads
+  a dependency entry's own reasons and synthesises `dep:` otherwise, candor-ts copies none). A walk can also
+  only recover what the wire's `calls` carry, while the producer holds every body and already runs this
+  fixpoint for its own gate — §6.2's *implement it at the source* is the shape this family settled on for
+  exactly this question. And it is measured to work without a consumer change: on the S5 R1238 fixtures,
+  adding the contributor's reason to the dependency's union entry by hand moved candor-scan's, candor-swift's
+  and candor-java's chained consumers to the contributor's class (`deny Unknown[native]` and
+  `deny Unknown[reflect]`, exit 0 → 1), where all four engines exit 0 today over executed native and
+  reflective code.
+
+  *Who moves.* Unit table — candor-java's report route REMOVES refusals and effects (refusals caused by union
+  entries alone; and on a candor-swift- or candor-ts-shaped report, effects its hash merge charged to a real
+  entry from a union beside it), and gains `zeroMatch` disclosures; candor-ts by reading only (its `zeroMatch`
+  walks every entry); candor-scan and candor-swift drop union entries at load and do not move. Reasons —
+  all four PRODUCERS add `unknownWhy` to union entries carrying `Unknown`, so a chained consumer's
+  `deny Unknown[<class>] <caller>` goes 0 → 1 for a contributor's class (each new class must be a
+  contributor's own), and `deny Unknown[unresolved] <caller>` goes 1 → 0 where a reasonless union was the
+  only `unresolved` source (each removal must trace to contributors whose classes exclude `unresolved`).
 
 ⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never
 evaluated.** Reaching equivalence required the refusals below, each found by measurement and each
@@ -4024,6 +4123,20 @@ violation the run still exits 2 with the refusal document, on both routes — a 
 from the policy itself, so `gate --report` with a firing `deny Fs` beside a bad token correctly refuses
 whole-policy (the answerability refusals, which leave the parsed rules trustworthy, are the exit-1 +
 `unevaluated` case).
+
+⟨0.40⟩ **A REFUSAL CAUSED BY THE POLICY DISCLOSES THE POLICY** (SOUNDNESS R1233; a clarification,
+2026-10-20). When a run exits 2 with no established violation because of the POLICY itself — the file
+unreadable, zero rules (§6.2), a fatal policy error such as an unrecognised class token, or a whole-policy
+answerability refusal — the refusal document MUST carry `unevaluated` exactly as the composed document
+above would: one entry per rule with the raw line verbatim, the offending line(s) with their cause and
+every other rule with a `why` naming the whole-policy refusal; and where no line can be named, one entry
+naming the whole policy. This states for the SOLE refusal what the paragraph above states for a composed
+verdict and §6.2's zero-rules clause already states for its own case; the bad-token refusal is named above
+as whole-policy, so leaving its list empty was already short of that text. It says nothing about a refusal
+whose cause is not the policy (an unreadable report or baseline, a usage error, a sink collision): there an
+`unevaluated` list is neither required nor forbidden. *Measured by the S5 spike over its (report, policy)
+pairs: on a fatal policy error candor-java and candor-ts write `unevaluated` and candor-query and
+candor-swift do not.* It adds a key to an exit-2 document: no exit code moves.
 
 ⟨0.27⟩ **A rule whose SCOPE binds nothing rides the verdict document as `zeroMatch` — see §3.1's
 zero-match clause for the shape; it is named here only because it is the third disclosure list a composed
@@ -5507,6 +5620,22 @@ line whose kind is unrecognized, or that is malformed for its kind, is **ignored
 silently treated as a stricter or looser rule (silent reinterpretation is the one thing a security gate
 must not do).
 
+⟨0.40⟩ **A U+FEFF AT BYTE OFFSET 0 OF THE POLICY FILE IS AN ENCODING MARK, NOT A CHARACTER OF ITS FIRST
+TOKEN: it is removed before the file is split into lines** (the owner's ruling, 2026-10-20, SOUNDNESS
+R1224). Anywhere else — at the start of a later line, inside a token, or a second U+FEFF after the first —
+it stays an ordinary character of its token under the rule above, so that line is ignored-with-a-warning.
+Why: a policy saved by an editor that writes a UTF-8 byte-order mark (PowerShell 5.1's `Out-File -Encoding
+utf8`; Notepad before Windows 10 1903) otherwise loses its FIRST rule — a one-rule file refuses at exit 2
+under the zero-rules clause below, and a multi-rule file runs with its first rule dropped, disclosed only in
+the parse witness and on stderr. Stripping honours the policy as written; making the mark fatal would settle
+by a carve-out the open question of whether a dropped line should make the gate refuse (§3.1, the parse
+witness). This binds the POLICY file only: a mark at the start of a report, a baseline or a `.candor/config`
+is not covered here (SOUNDNESS R1250). *Who moves:* candor-scan, candor-java and candor-ts kept the mark
+(measured by the S5 spike: exit 2 on a one-rule BOM'd policy) and now strip it; candor-swift already
+evaluated the rule (exit 1) through its UTF-8 decode, and must strip at byte 0 explicitly rather than by
+library behaviour. *Upgrade:* a BOM'd multi-rule policy's first rule starts being enforced, exit 0 → 1
+only where it fires; a BOM'd one-rule policy goes from exit 2 to its real verdict.
+
 **An unreadable policy FILE is a failure, not an absent gate.** The malformed-line rule above is for
 content; the file is different: when a policy is *configured* (a `--policy` flag, the `CANDOR_POLICY`
 env) and cannot be read, the run MUST fail loudly with a non-zero exit (the code engines' CLIs use a
@@ -5719,6 +5848,12 @@ without reading any engine's raw reason strings:
 The projection is **conservative**: a raw reason matching no listed prefix maps to `unresolved`, and a
 function whose `Unknown` carries no recorded reason **CONTRIBUTES** `unresolved` to its class set — so a
 narrowed filter never *silently* tolerates a hole it failed to classify.
+
+⟨0.40⟩ **The prefixes are matched without regard to ASCII case** (a clarification, 2026-10-20):
+`DynamicMemberLookup:Root.p`, `NATIVE:x` and `Closure` project as their spellings in the table do. This
+records what all four engines already do — each lowercases the raw reason before its prefix test (read
+2026-10-20 at candor-scan `08a53ef`, candor-java `2c5647d`, candor-ts `0e6ec34`, candor-swift `d2762c9`) —
+so a cross-engine differential has an expected value for an off-case token. No engine moves.
 
 ⟨0.24⟩ **The `--class` FILTER — normative, because it had no semantics here and three engines wrote three.**
 `blindspots --class` and `unverified --class` (§3.1 ⟨0.20⟩) select the entries whose reason classes
@@ -6212,6 +6347,13 @@ declare it via the envelope's `spec`.
   join. §3.1 also names the policy subject (SOUNDNESS R682): a function's report entry, including any
   interface union merged into it, on BOTH routes — no new obligation, the byte-equality MUST's input; and
   §2 records candor-scan's extension key `declaration: true` (SOUNDNESS R894).
+  **Clarifications under this rung, 2026-10-20, no floor move:** §2 splits the join key from the unit —
+  `hash` joins, `(hash, fn)` is the unit of a verdict (R1219); §3.1 makes an `interfaceUnion` entry never a
+  unit and always a join contributor, with an `unknownWhy` projecting to its contributors' transitive
+  classes (R1223/R1234/R1239), and makes a policy-caused refusal carry `unevaluated` (R1233); §3's baseline
+  guard compares report rows on both sides (R1232); §6.2 strips a U+FEFF at byte 0 of a policy file (the
+  owner's ruling, R1224) and pins reason-prefix matching as ASCII case-insensitive. Pinned by PART 99 (the
+  policy-semantics differential), PART 97's scan-route arm and PART 29's both-producers arms.
 - **0.39 (all four engines)** — a **NON-ADDITIVE** rung that flips ONE way only, fail-closed. §4 gains
   *A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE TO IT*,
   closing a toggle that ran the wrong way: a library whose public abstraction had ZERO implementors gave
