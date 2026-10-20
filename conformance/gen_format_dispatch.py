@@ -47,8 +47,11 @@ and the consumer FUNCTIONS are byte-identical across all of them (asserted, not 
               already implements. If this goes red the chain itself is broken, not the formatting leg.
   *_fmt_run, *_conv_call, *_conv_interp, *_pure_*
               CONTROL   — the member reached performs NOTHING, so `deny Fs` must stay 0: a fix that joins
-              every member of MyConv onto any Converter dispatch (or keys the formatting member under the
-              standard-library type and joins some other formatting body) reddens here. `deny Fs Unknown`
+              every member of MyConv onto any Converter dispatch reddens here. The consumer also declares
+              `Other`, which is NOT a Converter and whose formatting member performs Fs in every variant and
+              both layouts (its row must read Fs, or the run is BROKEN): a fix that keys the dependency's
+              formatting call under the standard-library type, or joins every formatting body the consumer
+              has, charges Other's Fs onto *_pure_call/*_conv_call and reddens them. `deny Fs Unknown`
               is NOT asserted on these: a hedge is permitted, and the zero-local-implementor hedge on
               `convert` surviving a consumer's pure implementor is a known disclosure (R1304's side note),
               not this part's subject.
@@ -177,6 +180,10 @@ impl fmt::Display for MyConv {
 impl Converter for MyConv {
     fn convert(&self, s: &str) -> String { %(CONV)ss.to_string() }
 }
+pub struct Other;
+impl fmt::Display for Other {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { %(OTHER)swrite!(f, "Other") }
+}
 '''
 
 RS_FUNCS = '''pub fn c_call(ac: &ArrayConverter) -> String { %(ENV)s ac.to_string() }
@@ -197,6 +204,11 @@ JAVA_IMPL = '''package app;
 public class MyConv implements convlib.Converter {
   public String convert(String s) { %(CONV)sreturn s; }
   @Override public String toString() { %(FMT)sreturn "MyConv"; }
+}
+'''
+JAVA_OTHER = '''package app;
+public class Other {
+  @Override public String toString() { %(OTHER)sreturn "Other"; }
 }
 '''
 JAVA_FUNCS = '''package app;
@@ -223,6 +235,9 @@ TS_IMPL = '''export class MyConv implements Converter {
   convert(s: string): string { %(CONV)sreturn s; }
   toString(): string { %(FMT)sreturn "MyConv"; }
 }
+export class Other {
+  toString(): string { %(OTHER)sreturn "Other"; }
+}
 '''
 TS_FUNCS = '''export function c_call(ac: ArrayConverter): string { %(ENV)s return ac.toString(); }
 export function c_interp(ac: ArrayConverter): string { %(ENV)s return `${ac}`; }
@@ -244,6 +259,10 @@ SW_IMPL = '''public struct MyConv: Converter {
     public init() {}
     public func convert(_ s: String) -> String { %(CONV)sreturn s }
     public var description: String { %(FMT)sreturn "MyConv" }
+}
+public struct Other: CustomStringConvertible {
+    public init() {}
+    public var description: String { %(OTHER)sreturn "Other" }
 }
 '''
 SW_FUNCS = '''public func c_call(_ ac: ArrayConverter) -> String {
@@ -277,10 +296,23 @@ def consumer_funcs(lang):
 
 def _impl(lang, variant):
     fmt, conv = _bodies(lang, variant)
+    # THE STDLIB-KEY CONTROL'S SEED: `Other` is a consumer type that is NOT a Converter, whose formatting
+    # member performs Fs in EVERY variant and both layouts. An engine that keys the dependency's formatting
+    # call under the declaring standard-library type (`Display::fmt`, `Object.toString`,
+    # `CustomStringConvertible.description`), or joins every formatting body the consumer has, charges
+    # Other's Fs onto c_pure_call / c_conv_call — which must stay `deny Fs` 0.
+    other = _sink("fs", lang) + " "
     if lang == "swift":
         fmt = (_swift_sink(fmt.strip()) + " ") if fmt else ""
         conv = (_swift_sink(conv.strip()) + " ") if conv else ""
-    return {"rust": RS_IMPL, "java": JAVA_IMPL, "ts": TS_IMPL, "swift": SW_IMPL}[lang] % dict(FMT=fmt, CONV=conv)
+        other = _swift_sink(other.strip()) + " "
+    return {"rust": RS_IMPL, "java": JAVA_IMPL, "ts": TS_IMPL, "swift": SW_IMPL}[lang] % dict(
+        FMT=fmt, CONV=conv, OTHER=other)
+
+
+def other_text(lang):
+    """java keeps Other in its own file; the other three carry it inside the impl text."""
+    return JAVA_OTHER % dict(OTHER=_sink("fs", "java") + " ")
 
 
 def _w(path, text):
@@ -320,6 +352,7 @@ def render(lang, root, layout, variant):
         _w(os.path.join(src, "convlib", "Converter.java"), JAVA_CONVERTER)
         _w(os.path.join(src, "convlib", "ArrayConverter.java"), JAVA_ARRAY)
         _w(os.path.join(src, "app", "MyConv.java"), impl)
+        _w(os.path.join(src, "app", "Other.java"), other_text("java"))
         _w(os.path.join(src, "app", "App.java"), funcs)
         cls = os.path.join(root, "cls")
         os.makedirs(cls, exist_ok=True)
@@ -455,6 +488,14 @@ def run_engine(lang, ws):
             if not ((rep.get("analyzed") or {}).get("count") or 0):
                 return None, None, "%s/%s: analyzed.count is 0 — a hollow report judges nothing" % (variant, layout)
             rows = {_leaf(f.get("fn")): f for f in rep.get("functions") or []}
+            # The stdlib-key control is only evidence if its SEED is live: Other's formatting member must
+            # read Fs in this very report. If it does not, the c_pure_call/c_conv_call zeros prove nothing.
+            seeded = [f for f in rep.get("functions") or []
+                      if "Other" in (f.get("fn") or "") and "Fs" in (f.get("inferred") or [])]
+            if not seeded:
+                return None, None, ("%s/%s: Other's formatting member is not charged Fs in the consumer report "
+                                    "— the stdlib-key control's seed is dead, so its zeros would be vacuous"
+                                    % (variant, layout))
             pol_dir = os.path.join(root, "pol")
             os.makedirs(pol_dir, exist_ok=True)
             for arm_id, lay, var, fk, kind in arms:
