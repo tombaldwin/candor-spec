@@ -124,10 +124,6 @@ XFAIL = {
     ("c_fmt_call", "rust"):    "R1308 — the producer names `convlib#Converter::fmt` but the consumer keys its "
                                "union only under `Converter::convert`: `impl Display for MyConv` is not joined",
     ("c_fmt_interp", "rust"):  "R1308 — the same join miss, reached through `format!`",
-    ("c_fmt_call", "java"):    "R1304 — the producer exempts the Object protocol from `dispatchesOn`, so the "
-                               "dependency's `toString` row names nothing",
-    ("c_fmt_interp", "java"):  "R1304 — the same, reached through string concatenation (an invokedynamic the "
-                               "one-tree scan already follows to `ArrayConverter.toString`)",
     ("c_fmt_call", "ts"):      "R1309 — no row and no `dispatchesOn` for `ArrayConverter.toString`, and no "
                                "consumer join for a member the interface does not declare",
     ("c_fmt_interp", "ts"):    "R1309 — the same, reached through template interpolation",
