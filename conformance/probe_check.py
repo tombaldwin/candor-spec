@@ -267,6 +267,10 @@ UNCOVERED = {
     "gen_sink_surface.py":         "derives its matrix from each binary's --help and drives real argv; "
                                    "the fault has to make a BINARY mishandle a sink, which is the "
                                    "gen_differential.py shape one layer out",
+    # PART 100 (45020d1) was added in NEITHER set; filed at the 0.40.14 join, when this check first ran.
+    "gen_format_dispatch.py":      "as gen_differential.py: per-cell EXPECTED gate exits; its own "
+                                   "non-vacuousness is the `Other` control (BROKEN unless its row reads "
+                                   "Fs) and the `deny Env` carrier on every cell",
 }
 
 
