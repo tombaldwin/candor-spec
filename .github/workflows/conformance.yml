@@ -150,7 +150,8 @@ jobs:
     # off half the runs; the cost is probe_check.py (~350 s: 16 generators x clean+fault arms, serial),
     # NOT PART 22 (3.6 s — a header-to-header timing blamed it). Moving probe_check to its own job is the
     # real fix; this is the margin until then.
-    timeout-minutes: 45
+    # 45 → 70 (2026-10-21, 0.40.14 join): cancelled at 45 min mid-run, no verdict, after PARTs 99/100 landed.
+    timeout-minutes: 70
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
@@ -240,7 +241,9 @@ jobs:
     runs-on: macos-15
     # 40 → 60 (2026-10-07): ~36 min before ⟨0.40⟩'s PARTs 15d/96 landed, then cancelled at 39.5 min on the
     # join commit (local four-way on the same trees: OK). Still a hard limit — the swift CI-hang lesson stands.
-    timeout-minutes: 60
+    # 60 → 80 (2026-10-21, 0.40.14 join): the strict step printed `conformance: OK` at 59 min and the job was
+    # cancelled 2 s later in the AGENTS.md step, after PARTs 99/100 landed.
+    timeout-minutes: 80
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
