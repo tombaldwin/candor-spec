@@ -380,6 +380,23 @@ fi
 [ -x "$QUERY" ] || { echo "FAIL: no candor-query at $QUERY"; exit 2; }
 [ -f "$JAR" ]   || { echo "FAIL: no candor-java jar at $JAR"; exit 2; }
 
+# THE JAVA RUNTIME IS AN INPUT, so it is pinned to the one CI runs (SOUNDNESS R1335). candor-java's
+# output depends on the JDK it RUNS on: on the 0.40.14 cut, preflight [11] ran this suite under the box's
+# default JDK 17 and PART 100's java w_conv/w_pure cells fabricated `Fs` (on the published jar too), while
+# the same trees passed under 21. A suite that passes or fails by whichever `java` is first on PATH is not
+# measuring the engines. The pin is READ from this repo's CI workflow so the two cannot drift apart.
+WANT_JDK="$(sed -nE "s/^[[:space:]]*java-version:[[:space:]]*'?([0-9]+)'?.*/\1/p" "$HERE/../.github/workflows/conformance.yml" | sort -u)"
+HAVE_JDK="$(java -version 2>&1 | sed -nE '1s/.*version "(1\.)?([0-9]+).*/\2/p')"
+if [ -z "$WANT_JDK" ] || [ "$(printf '%s\n' "$WANT_JDK" | wc -l | tr -d ' ')" != 1 ]; then
+  echo "FAIL: cannot read ONE java-version from .github/workflows/conformance.yml (got: ${WANT_JDK:-nothing})"; exit 2
+fi
+if [ "$HAVE_JDK" != "$WANT_JDK" ] && [ -z "${CONFORMANCE_ANY_JDK:-}" ]; then
+  echo "FAIL: \`java\` on PATH is JDK ${HAVE_JDK:-unknown}; CI runs this suite on JDK $WANT_JDK, and candor-java's"
+  echo "  output differs between them (R1335). Put a JDK $WANT_JDK first on PATH and set JAVA_HOME to it, or set"
+  echo "  CONFORMANCE_ANY_JDK=1 to measure on this runtime knowingly."
+  exit 2
+fi
+
 # The optional THIRD engine (candor-ts). When present, it joins the grammar (4), query-shape (5) and
 # effect-set (6) differentials; when absent those parts run two-way / Part 6 skips loudly.
 # TS_PRESENT (the checkout exists) is deliberately distinct from TS_OK (the scan produced a report):

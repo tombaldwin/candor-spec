@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **`conformance/run.sh` refuses to run on a JDK other than the one CI uses (SOUNDNESS R1335).** candor-java's output depends on the JDK it runs on, and on the 0.40.14 cut the suite failed PART 100 under the default JDK 17 and passed under 21 on the same trees. The pin is read from `.github/workflows/conformance.yml`; `CONFORMANCE_ANY_JDK=1` measures on another runtime knowingly. Preflight [11] and `release.sh` inherit the check.
+
 ## [0.40.14] — 2026-10-21
 
 - **SPEC §4 ⟨0.40⟩ clarification (SOUNDNESS R1304, R1308–R1310), no floor move, and it resolves an ambiguity AGAINST the shipped reading:** a formatting, equality, hashing or cloning member called on a receiver typed by a package's OWN abstraction is a ⟨0.39⟩ dispatch. The producer names it under that abstraction (under each, for a composition or several bounds; never under `Object`/`Display`/`CustomStringConvertible`), and the consumer joins every body a visible implementor has under that member name (a Rust `Display::fmt`, `Debug::fmt` and `LowerHex::fmt` all key as `Converter::fmt`). §4's MAY waives a hedge on a receiver that IS the standard-library type, never the name; a collection's own `equals`/`hashCode` on `Object`-typed elements stays under it. The ⟨0.39⟩ cost note's census sentence and candor-java's documented Object-protocol exemption (its README) both read the MAY the other way, so an engine that shipped that reading is non-conforming now, not newly obliged. Pinned by conformance PART 100, formatting only, declared xfails in all four engines.
