@@ -121,6 +121,11 @@ WHY = {
 
 # An expectation keyed by (arm, engine), never by arm alone — one engine will fix this first.
 XFAIL = {
+    ("c_fmt_call", "java"):    "R1304 — the producer exempts the Object protocol from `dispatchesOn`, so the "
+                               "dependency's `toString` row names nothing (fix held for 0.40.15, "
+                               "candor-java hold/r1239-stack-0415)",
+    ("c_fmt_interp", "java"):  "R1304 — the same, reached through string concatenation (an invokedynamic the "
+                               "one-tree scan already follows to `ArrayConverter.toString`; fix held for 0.40.15)",
     ("c_fmt_call", "rust"):    "R1308 — the producer names `convlib#Converter::fmt` but the consumer keys its "
                                "union only under `Converter::convert`: `impl Display for MyConv` is not joined",
     ("c_fmt_interp", "rust"):  "R1308 — the same join miss, reached through `format!`",
