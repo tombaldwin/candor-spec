@@ -351,6 +351,14 @@ XFAIL = {
         'R1219: the gate keys units by `hash` alone, so two units sharing a hash collapse into one row named after one of them',
     ('u-twins-net-billing', 'swift'):
         'R1219: the gate keys units by `hash` alone, so two units sharing a hash collapse into one row named after one of them',
+    ('i-scoped-net', 'java'):
+        'R1234: a rule matching only `interfaceUnion` entries is not disclosed as zeroMatch (fix held for 0.40.15, candor-java hold/r1239-stack-0415)',
+    ('i-scoped-unknown-native', 'java'):
+        'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses (fix held for 0.40.15)',
+    ('i-unscoped-unknown-native', 'java'):
+        'R1223: a reasonless `interfaceUnion` entry is treated as an answerability subject and the narrowed filter refuses (fix held for 0.40.15)',
+    ('i-beside-env', 'java'):
+        "R1223: java's report route merges a union entry into the real entry sharing its hash, so the union's Env is charged to the unit (fix held for 0.40.15)",
     ('i-scoped-net', 'ts'):
         'R1234: a rule matching only `interfaceUnion` entries is not disclosed as zeroMatch',
     ('i-scoped-unknown-native', 'ts'):
