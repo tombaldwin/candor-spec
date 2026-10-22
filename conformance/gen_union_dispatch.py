@@ -48,6 +48,9 @@ consumer FUNCTIONS and the abstraction text are byte-identical (asserted, not tr
                             own effect for the key reddens (Fable B-E5; `*_fwd` is a different union entry).
   Layout `u` is `f` with the abstraction's owner `api` NOT chained to the consumer (Fable B-E3): a key that arrives
                             through the union under `api#…` then has no chained entry to hit.
+  xn_*/xc_*                 the doctored-producer CROSS-SPELLING arm (Fable REVIEW3 B3-E1), on the `deep` shape
+                            (Doc.put -> helper -> v.mapv): the engine's own Sink.put union re-spelled into its OWN
+                            spelling (xn_, control) and the OTHER one (xc_, rule 2: every consumer follows both).
   *_none (l/f/u only)       a second consumer `zapp` with NO Mapper implementor of its own (it passes api's pure
                             Nop; executed: no Fs). `deny Fs` MUST stay 0; the disclosure is RECORDED, not asserted —
                             it is where a port's removal lands, to be accounted for against the 0.40.15 column.
@@ -113,6 +116,8 @@ WANT = {
     "member": {"deny Env": 1, "deny Fs": 1, "deny Fs Unknown": 1},
     "clean":  {"deny Env": 1, "deny Fs": 0},
     "none":   {"deny Env": 1, "deny Fs": 0},
+    "spell":  {"deny Env": 1, "deny Fs": 1, "deny Fs Unknown": 1},
+    "cross":  {"deny Env": 1, "deny Fs": 1, "deny Fs Unknown": 1},
 }
 WHY = {
     "ref":    "REFERENCE: one tree — the engine's own unchained answer charges Mine.mapv's Fs",
@@ -121,6 +126,8 @@ WHY = {
     "member": "CONTROL: the union's own effect through the ⟨0.39⟩ route — if this is red the chain is broken",
     "clean":  "CONTROL: the member reached performs nothing — a Fs here is a FABRICATION",
     "none":   "CONTROL: the consumer supplies no implementor (it passes api's pure Nop) — a Fs here is a FABRICATION",
+    "spell":  "CONTROL: the union doctored in this engine's OWN spelling — if red, the doctor never reached the consumer",
+    "cross":  "DEFECT: a union in the OTHER spelling must be followed too (§4 ⟨0.40⟩ rule 2: every consumer, both spellings)",
 }
 
 # Keyed by (arm, engine), each naming its register row; measured 2026-10-22 at the four heads (candor-scan d10e401,
@@ -242,6 +249,30 @@ XFAIL = {
         "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
     ('u_busy_far_direct', 'swift'):
         "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
+    ('xc_local_via', 'rust'):
+        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+    ('xc_local_direct', 'rust'):
+        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+    ('xc_foreign_via', 'rust'):
+        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+    ('xc_foreign_direct', 'rust'):
+        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+    ('xc_local_via', 'ts'):
+        "R1365 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
+    ('xc_foreign_via', 'ts'):
+        "R1365 (LATENT) — the consumer does not walk a union's `calls`; disclosed by the reasonless foreign union (R1358)",
+    ('xc_local_via', 'swift'):
+        "R1366 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
+    ('xc_local_direct', 'ts'):
+        "R1365 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
+    ('xc_foreign_direct', 'ts'):
+        "R1365 (LATENT) — the consumer does not walk a union's `calls`; disclosed by the reasonless foreign union (R1358)",
+    ('xc_local_direct', 'swift'):
+        "R1366 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
+    ('xc_foreign_via', 'swift'):
+        "R1366 (LATENT) — the consumer does not walk a union's `calls`; disclosed through the dependency-key route only",
+    ('xc_foreign_direct', 'swift'):
+        "R1366 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
 }
 
 
@@ -470,6 +501,45 @@ def _link(link, target):
     os.symlink(target, link)
 
 
+# THE CROSS-SPELLING ARM (Fable REVIEW3 B3-E1). Rule 2 binds every consumer to follow BOTH union spellings. The
+# `deep` shape puts the further dispatch one helper below the contributor (Doc.put -> helper -> v.mapv), so a union
+# in spelling (b) (`calls` naming the contributor, no `dispatchesOn` — Doc.put dispatches nothing itself) reaches the
+# member only through the consumer's walk of the union's `calls`, and spelling (a) only through its transitive key.
+DEEP_DOC = {
+    "rust": """pub struct Doc;
+pub fn helper<T: Mapper>(v: &T) -> i32 { v.mapv(1) }
+impl Sink for Doc {
+    fn put<T: Mapper>(&self, v: &T) -> i32 { %(BUSY)shelper(v) }
+    fn fwd(&self) -> i32 { %(FS)s0 }
+}
+""",
+    "java": """package %(PKG)s;
+public class Doc implements api.Sink {
+  static int helper(api.Mapper v) { return v.mapv(1); }
+  public int put(api.Mapper v) { %(BUSY)sreturn helper(v); }
+  public int fwd() { %(FS)sreturn 0; }
+}
+""",
+    "ts": """export function helper(v: Mapper): number { return v.mapv(1); }
+export class Doc implements Sink {
+  put(v: Mapper): number { %(BUSY)sreturn helper(v); }
+  fwd(): number { %(FS)sreturn 0; }
+}
+""",
+    "swift": """public func helper(_ v: any Mapper) -> Int { v.mapv(1) }
+public struct Doc: Sink {
+    public init() {}
+    public func put(_ v: any Mapper) -> Int { %(BUSY)sreturn helper(v) }
+    public func fwd() -> Int { %(FS)sreturn 0 }
+}
+""",
+}
+MAPV_KEY = {"rust": "api#Mapper::mapv", "java": "api/Mapper.mapv(I)I", "ts": "api#Mapper.mapv", "swift": "Api#Mapper.mapv"}
+# The spelling each engine's OWN producer writes for rows today (measured, B-E1-spellings.txt): the native arm is the
+# CONTROL that proves the doctored union reached the consumer; the cross arm is rule 2's other half.
+NATIVE = {"rust": "a", "ts": "a", "swift": "a", "java": "b"}
+
+
 def render(lang, root, layout, sv):
     if layout == "unchained":
         layout = "foreign"   # the same packages; only the consumer's CHAIN omits api (see run_engine)
@@ -479,6 +549,8 @@ def render(lang, root, layout, sv):
     if lang == "java":
         return _render_java(root, layout, shape, variant)
     api, doc, mid, impl, _funcs = TEXT[lang]
+    if shape == "deep":
+        doc, shape = DEEP_DOC[lang], "busy"
     doc_t = doc % _doc_vars(lang, shape)
     impl_t = impl % _impl_vars(lang, variant)
     funcs = consumer_funcs(lang)
@@ -595,7 +667,8 @@ def _render_java(root, layout, shape, variant):
     _w(os.path.join(src, "api", "Mapper.java"), JV_MAPPER)
     _w(os.path.join(src, "api", "Sink.java"), JV_SINK)
     _w(os.path.join(src, "api", "Nop.java"), JV_NOP)
-    _w(os.path.join(src, docpkg, "Doc.java"), JV_DOC % dict(PKG=docpkg, **_doc_vars("java", shape)))
+    jdoc, jshape = (DEEP_DOC["java"], "busy") if shape == "deep" else (JV_DOC, shape)
+    _w(os.path.join(src, docpkg, "Doc.java"), jdoc % dict(PKG=docpkg, **_doc_vars("java", jshape)))
     _w(os.path.join(src, "mid", "Mid.java"), JV_MID)
     iv = _impl_vars("java", variant)
     _w(os.path.join(src, "app", "Mine.java"), JV_MINE % iv)
@@ -839,6 +912,94 @@ def run_engine(lang, ws, diag):
     return results, notes, None
 
 
+def cross_arms():
+    out = []
+    for which in ("n", "c"):
+        for layout in ("local", "foreign"):
+            for fk in ("via", "direct"):
+                out.append(("x%s_%s_%s" % (which, layout, fk), layout, which, fk, "spell" if which == "n" else "cross"))
+    return out
+
+
+def _spell(f, spelling, lang, contributor_fn):
+    """Re-spell ONE union entry. (a): the transitive key, no `calls`. (b): `calls` naming the contributor, and the
+    contributor's DIRECT members in `dispatchesOn` — none here, since Doc.put dispatches only through its helper."""
+    f.pop("calls", None)
+    f.pop("dispatchesOn", None)
+    if spelling == "a":
+        f["dispatchesOn"] = [MAPV_KEY[lang]]
+    else:
+        f["calls"] = [contributor_fn]
+
+
+def run_cross(lang, ws):
+    """The doctored-producer arm: real producer reports for the `deep` shape, the Sink.put union re-spelled in the
+    engine's NATIVE spelling (control) and in the OTHER one (rule 2's cross-spelling duty)."""
+    scanner = sa.SCANNERS[lang]()
+    if not scanner.available:
+        return None, scanner.err
+    results = {}
+    for layout in ("local", "foreign"):
+        root = os.path.join(ws, lang, "cross", layout)
+        os.makedirs(root, exist_ok=True)
+        try:
+            pk, app, _ = render(lang, root, layout, ("deep", "far"))
+        except RuntimeError as e:
+            return None, "cross %s: %s" % (layout, e)
+        err = build_proof(lang, app)
+        if err and not err.startswith("SKIPPED"):
+            return None, "%s (cross %s)" % (err, layout)
+        reps = {}
+        for name, d, deps in pk[:-1]:
+            r = scanner.scan(d, deps=[reps[x] for x in deps])
+            if not r.produced:
+                return None, "cross %s: %s scan produced no report" % (layout, name)
+            keep = os.path.join(root, "rep_%s.json" % name)
+            shutil.copy(r.report, keep)
+            reps[name] = keep
+        holder = "api" if layout == "local" else "prod"
+        base = json.load(open(reps[holder]))
+        contrib = [f.get("fn") for f in base.get("functions") or []
+                   if not f.get("interfaceUnion") and "Doc" in (f.get("fn") or "") and _leaf(f.get("fn")) == "put"]
+        unions = [f for f in base.get("functions") or [] if f.get("interfaceUnion") and _leaf(f.get("fn")) == "put"]
+        if not contrib or not unions:
+            return None, ("cross %s: the producer report has no Doc.put row or no Sink.put union (%d/%d) — the doctor "
+                          "has nothing to re-spell, so no cell here is evidence" % (layout, len(contrib), len(unions)))
+        for which in ("n", "c"):
+            spelling = NATIVE[lang] if which == "n" else ("b" if NATIVE[lang] == "a" else "a")
+            rep_ = json.loads(json.dumps(base))
+            for f in rep_["functions"]:
+                if f.get("interfaceUnion") and _leaf(f.get("fn")) == "put":
+                    _spell(f, spelling, lang, contrib[0])
+            dfile = os.path.join(root, "rep_%s_%s.json" % (holder, spelling))
+            json.dump(rep_, open(dfile, "w"))
+            deps = [(dfile if x == holder else reps[x]) for x in pk[-1][2]]
+            r = scanner.scan(app, deps=deps)
+            if not r.produced:
+                return None, "cross %s: consumer scan produced no report" % layout
+            rows = {_leaf(f.get("fn")): f for f in json.load(open(r.report)).get("functions") or []}
+            for fk in ("via", "direct"):
+                arm = "x%s_%s_%s" % (which, layout, fk)
+                row = rows.get(FUNCS[fk])
+                if row is None:
+                    results[arm] = (False, "ABSENT from functions[] — the Env carrier is missing")
+                    continue
+                got, bad = {}, []
+                for i, (pol, want) in enumerate(sorted(WANT["carry"].items())):
+                    pp = os.path.join(root, "x_%s_%s_%d.policy" % (which, fk, i))
+                    with open(pp, "w") as fh:
+                        fh.write("%s %s\n" % (pol, row["fn"]))
+                    rc = gate(scanner, app, deps, pp)
+                    got[pol] = rc
+                    if rc != want:
+                        bad.append("`%s` exit %d want %d" % (pol, rc, want))
+                results[arm] = (not bad, "spelling (%s) inferred=%s gates=%s%s" % (
+                    spelling, sorted(row.get("inferred") or []),
+                    " ".join("[%s]=%d" % (p_, c) for p_, c in sorted(got.items())),
+                    "" if not bad else " — " + "; ".join(bad)))
+    return results, None
+
+
 def main():
     import tempfile
     print("=" * 100)
@@ -874,10 +1035,16 @@ def main():
                 print("  %-6s -> BROKEN: %s" % (lang, err))
                 bad += 1
             continue
+        xres, xerr = run_cross(lang, ws)
+        if xerr:
+            print("  %-6s -> BROKEN (cross-spelling arm): %s" % (lang, xerr))
+            bad += 1
+            xres = {}
+        res.update(xres)
         live += 1
         for n in notes:
             print(n)
-        for arm_id, _lay, _var, _fk, kind in arms_for(lang):
+        for arm_id, _lay, _var, _fk, kind in arms_for(lang) + (cross_arms() if xres else []):
             ok, detail = res[arm_id]
             key = (arm_id, lang)
             if ok and key in XFAIL:

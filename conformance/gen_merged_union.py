@@ -161,7 +161,8 @@ XFAIL = {
 }
 # What each xfail expects wrong: "scan"/"report" (that route's exit, and so the documents), "doc" (the exits are
 # right and only the documents differ), "split" (both exits wrong and different from each other), "both" (default:
-# both exits wrong, equal to each other, documents byte-equal).
+# both exits wrong, equal to each other, documents byte-equal, and neither a refusal — Fable A3-E1: a both-route
+# refusal is an answerability break, not this xfail).
 XFAIL_ROUTE = {"b_exact_dispatch": "scan", "b_exact_reflect": "doc",
                "n_merged_reflect": "split", "n_merged_unres": "split"}
 
@@ -312,7 +313,10 @@ def main():
             both_wrong = "scan" in problems and "report" in problems
             other_wrong = ((route == "scan" and "report" in problems) or (route == "report" and "scan" in problems)
                            or (route == "doc" and ("scan" in problems or "report" in problems))
-                           or (route == "both" and (not both_wrong or "doc" in problems))
+                           or (route == "both" and (not both_wrong or "doc" in problems or s == 2 or g == 2))
+                           # A3-E2: a route-scoped xfail whose declared route is now RIGHT but whose documents still
+                           # differ is a changed state — re-declare it ("doc"), never carry the old reason.
+                           or (route in ("scan", "report") and route not in problems)
                            or (route == "split" and (not both_wrong or s == g)))
             if ok:
                 print("  XFAIL ARM PASSED  %-18s java   — expectation is STALE: %s" % (cell, why))

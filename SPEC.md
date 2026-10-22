@@ -5035,22 +5035,34 @@ implementors, so the sidecar can only RAISE the count, which moves a site from t
 never the other way; each such move removes concrete effects and is to be accounted for as a removal
 (SOUNDNESS R1336's own accounting), never licensed by this sentence.
 
-**A consumer whose bound reads the sidecar is a sidecar reader under PART 30's P6 (⟨0.26⟩: degrading a sidecar
-may only WIDEN a disclosure), and P6 binds it.** Without the sidecar the count falls to the rows, which can only
-be lower, so a site that hedges with the sidecar present would take the union without it: removing an optional
-artifact would make the verdict MORE resolved, the direction P6 forbids and the instability R1336 set out to
-remove, one artifact over. So where the paired sidecar is absent, unreadable, unpaired or incomplete by its key
-set (⟨0.26⟩), the count is UNANSWERABLE, and an unanswerable count MUST NOT license the union over a site the
-count could put past the bound: the consumer hedges there (it MAY carry the rows' effects beside the hedge).
-That costs disclosure only on degraded input — candor-java writes the sidecar beside every report. A consumer
-that never reads a dependency's sidecar has no verdict that depends on it, so P6 does not reach it, but its
-row count is an UNDER-count of what this sentence counts and is to be documented as a named miss (§7 item 7).
-*Chosen over the other two readings measured against the same property (Fable, REVIEW2 C-E1):* scoping P6 to
-the readers it was measured on would exempt exactly the reader that violates it, and making the sidecar
-REQUIRED beside a chained dependency report would satisfy the property but change §2.2's OPTIONAL, which is a
-floor question and not this clarification's. A producer could also carry the bound decision on its own report
-(it already makes it in-scan), which would remove the dependency on the sidecar; that is a design for the
-engine lane, recorded here as available rather than chosen.
+**Where the count is UNANSWERABLE, the consumer falls back to the producer's own bound verdict, which is
+already on the wire; and PART 30's P6 (⟨0.26⟩: degrading a sidecar may only WIDEN a disclosure) binds the
+reading.** Without the sidecar the count falls to the rows, which can only be lower, so a site the producer
+hedged would take the union of rows: removing an optional artifact would make the verdict MORE resolved, the
+direction P6 forbids and the instability R1336 set out to remove, one artifact over. But the producer applied the
+bound in-scan, with every subtype in view, and published the result under the member's key: a union past the
+bound carries the bounded-CHA hedge on its own key (§3.1 ⟨0.40⟩ "the union's own dispatch hedge"; rule 4 of the
+union paragraph below), a union within it carries its contributors' effects, and the chained join already takes
+every entry under the key, union entries included (§3.1 ⟨0.40⟩ "The join includes it, unchanged"). R1331's
+zookeeper `CliCommand.parse` is the instance: its real row carries the producer's hedge, byte-identical in every
+producer arm. A consumer's own count is therefore a REFINEMENT of that verdict (a receiver typed narrower than
+the declaring abstraction has fewer implementors), not a second copy of it. So: where the paired sidecar is
+absent, unreadable, unpaired, or incomplete by its key set (⟨0.26⟩ — detected as a dependency report row whose
+unit has no key in the sidecar), and wherever a consumer does not read the sidecar at all, its verdict at that
+site MUST be no more resolved than what the dependency's report publishes under the member's key — its union
+entry, beside the real entry or merged into it, and where it publishes none, the real entry — and MAY be exactly
+that. Falling back to the rows is more resolved than a published hedge (the P6 violation); falling back to a
+blanket hedge is less resolved than a published narrow union (the hedge-on-"a-dispatch-occurred" PART 92's
+`c3_pure_only` forbids). This binds every consumer the same way, whether it reads the sidecar or not. In
+practice it costs nothing new: candor-java writes the sidecar beside every report it produces (an armed exit-2
+report, whose sidecars ⟨0.28⟩ deletes, is unanswerable input anyway). *Chosen over the readings measured against
+the same property (Fable, REVIEW2 C-E1 and REVIEW3 C-E1′):* scoping P6 to the readers it was measured on would
+exempt exactly the reader that violates it; making the sidecar REQUIRED beside a chained dependency report would
+satisfy the property but change §2.2's OPTIONAL, a floor question and not this clarification's; and this lane's
+own first reading — hedge every site whose count is unanswerable — read literally hedged every chained dispatch
+through a dependency without a sidecar and left the never-reading consumer exempt and more resolved, which
+inverted the incentive. Released candor-java 0.40.15 counts rows and does not read the sidecar; where that unions
+over a published hedge it is SOUNDNESS R1336's open defect, not a new non-conformance.
 
 ⟨0.39⟩ **A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE
 TO THE CONSUMER — its own and any chained report's — so supplying an effectful implementor to a
@@ -5214,12 +5226,17 @@ dependency's key cannot join its own `Serialize` implementor. Four rules:
    none; its helper's does) and its consumer follows a union's `calls` into the contributor and on to the
    helper's key. Hand-doctored unions: (a) carries all four consumers to `deny Fs` 1; (b) carries
    candor-java only; the contributor row's own keys copied onto the union carry rust, ts and swift and not
-   java. That is the measured state, not the rule: rule 2 binds every consumer to both spellings, which is
+   java. Pinned as PART 102's cross-spelling arm (`xc_*`, each engine's own producer report with the union
+   re-spelled into the other spelling; `xn_*` re-spells it into its own as the control): candor-java follows
+   both; candor-scan, candor-ts and candor-swift do not follow (b) (SOUNDNESS R1359, R1365, R1366, LATENT).
+   That is the measured state, not the rule: rule 2 binds every consumer to both spellings, which is
    the duty obligation 1 already places on any consumer of a direct-only producer, and which candor-scan,
    candor-ts and candor-swift have not needed because their own producers publish the closure. Its reach today
    is zero: a chained consumer joins only reports of its own ecosystem's dependencies — its call sites are in
    one language and its keys in one engine's namespace — so no engine chains another engine's report, and
-   `gate --report`, which does read another engine's report, does not chain.
+   `gate --report`, which does read another engine's report, does not chain. The reach is zero TODAY: it becomes
+   non-zero the day any engine's own producer switches a union to the other spelling (a producer choosing (b)
+   for size), and rule 2 is what makes that switch safe.
 2. **The consumer MUST join them as it joins a row's, in BOTH spellings.** A union's `dispatchesOn` keys,
    transitively, AND its `calls` into the contributors and on through their `dispatchesOn` and `calls`, enter
    obligation 3's per-key join and closure exactly as a row's do, whether the consumer reached the union at its own
@@ -5273,14 +5290,21 @@ candor-java port. First, its R1328 memo (bare-`fn` keyed, latent today) goes liv
 `calls`, and the doctored fixture had one union per `fn`, the population in which it cannot collide — so the
 port closes R1328 with or before the union change, or its consumer half is not yet measured. Second, spelling
 (b) gives the REPORT route new `calls` edges to walk for its own class resolution (§6.2; R1338 is the proof
-that route walks `calls`), so the port MUST show §3.1 ⟨0.24⟩ byte-equality — exits and `--gate-json`
-documents — on a (b)-spelled report with a producer-internal caller whose `calls` name the union's key and
-that carries `Unknown` of its own. Measured 2026-10-22 on the nearest shape this lane could build (a narrow
+that route walks `calls`), so the port MUST EITHER show §3.1 ⟨0.24⟩ byte-equality — exits and
+`--gate-json` documents — on a (b)-spelled report with a producer-internal caller whose `calls` name the union's
+key and that carries `Unknown` of its own, OR show that no unit's `calls` in its reports can name a narrow
+(b)-spelled union's key (one check over a corpus report: no non-union `calls` value equal to such a union's
+hash, because CHA expansion writes the contributors instead), in which case the condition is met vacuously and
+the port records why. Measured 2026-10-22 on the nearest shape this lane could build (a narrow
 local interface, a reflective contributor, an internal caller with its own native call, the union doctored to
 (b)): byte-equal on all three class filters, but vacuously so for this purpose — candor-java's CHA writes the
 contributor into the caller's own `calls`, so the union's `calls` were never walked
-(`~/candor-handoff/specagent-0416/B2-E2-route-equality.txt`). The shape that reaches them is the port's to
-build and show. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
+(`~/candor-handoff/specagent-0416/B2-E2-route-equality.txt`), which is evidence for the second branch, not yet
+proof of it. A (b)-spelled write-time MERGED entry (§3.1 ⟨0.40⟩) is the one place a (b) `calls` edge sits on a
+REAL unit: an exact `I.super.m()` caller's `calls` name its hash, and the report route would walk on into the
+contributors. That is covered by the merged-entry paragraph's rules 1-3 — the classes reached are the union's,
+the superset rule 3 already makes mandatory on both routes — so the two clauses agree, and PART 101's
+route-equality cells, run against the (b)-spelled port, see any split. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
 named member performs `E` — a RESOLUTION, so every new charge must trace to that implementor's own body;
 `deny E Unknown <caller>` goes 0 → 1 on the silent cells; and `deny Unknown <caller>` goes 1 → 0 where a
 hedge stood in for the names and the implementors they join are pure — candor-scan's R1324 hedge, and on
