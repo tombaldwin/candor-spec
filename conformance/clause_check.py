@@ -73,6 +73,7 @@ GENERATORS = [
     "gen_format_dispatch.py",
     "gen_merged_union.py",
     "gen_union_dispatch.py",
+    "gen_bound_publication.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

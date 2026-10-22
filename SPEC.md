@@ -5047,11 +5047,24 @@ every entry under the key, union entries included (§3.1 ⟨0.40⟩ "The join in
 zookeeper `CliCommand.parse` is the instance: its real row carries the producer's hedge, byte-identical in every
 producer arm. A consumer's own count is therefore a REFINEMENT of that verdict (a receiver typed narrower than
 the declaring abstraction has fewer implementors), not a second copy of it. So: where the paired sidecar is
-absent, unreadable, unpaired, or incomplete by its key set (⟨0.26⟩ — detected as a dependency report row whose
-unit has no key in the sidecar), and wherever a consumer does not read the sidecar at all, its verdict at that
+absent, unreadable, unpaired, or incomplete by its key set (⟨0.26⟩ — detected by comparing the number of sidecar
+keys with the paired report's ⟨0.21⟩ `analyzed.count`, which counts every analysed unit, pure ones included: a key
+count below it marks the sidecar incomplete whatever it omitted, and a report row whose unit has no key is the
+cheaper necessary test, but blind to a sidecar that omits only PURE units — exactly the units the count needs;
+measured equal on PART 103's dependency reports in all four engines and on a candor-java class with overloads,
+whose sidecar keys each overload separately), and wherever a consumer does not read the sidecar at all, its verdict at that
 site MUST be no more resolved than what the dependency's report publishes under the member's key — its union
 entry, beside the real entry or merged into it, and where it publishes none, the real entry — and MAY be exactly
-that. Falling back to the rows is more resolved than a published hedge (the P6 violation); falling back to a
+that. **A UNION FOR A MEMBER WHOSE VISIBLE IMPLEMENTORS EXCEED THE BOUND IS PUBLISHED BROAD**: it MUST carry the
+bounded-CHA hedge on its own key, and is never published pure and never omitted, so that what the dependency
+publishes is never more resolved than the producer's own in-scan verdict (the union paragraph's rule 4 already
+assumes it; §3.1 ⟨0.40⟩'s "where it publishes one" is not licence to publish a broad union without it). *Measured
+2026-10-22 by conformance PART 103 (13 PURE implementors of one member, a consumer with none; executed nothing,
+since nothing performs an effect): in one tree all four engines read `Unknown`; chained, candor-java and
+candor-ts publish the union with its `dispatch:` hedge and their consumers read `Unknown`; candor-scan publishes the
+union PURE (`inferred: []`) and candor-swift does not publish it, and both consumers read PURE (SOUNDNESS R1367,
+R1368, SILENT relative to their own one-tree answer). The 12-implementor control reads pure chained in three
+engines; candor-ts, which omits a pure union, hedges there on the missing key (R1369, NOTSILENT).* Falling back to the rows is more resolved than a published hedge (the P6 violation); falling back to a
 blanket hedge is less resolved than a published narrow union (the hedge-on-"a-dispatch-occurred" PART 92's
 `c3_pure_only` forbids). This binds every consumer the same way, whether it reads the sidecar or not. In
 practice it costs nothing new: candor-java writes the sidecar beside every report it produces (an armed exit-2

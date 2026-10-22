@@ -210,6 +210,13 @@ COVERED = {
         "holds":  r"UNION-DISPATCH: OK — every reference charges",
         "breaks": r"UNION-DISPATCH: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 103 (SOUNDNESS R1367-R1369). The fault renders the 13-implementor fixture with 12, so the w_13 ONE-TREE
+    # REFERENCE (green on every engine) can no longer read Unknown and goes red. At the fixture, not the comparison.
+    "gen_bound_publication.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"BOUND-PUBLICATION: OK — every reference hedges past the bound",
+        "breaks": r"BOUND-PUBLICATION: [1-9]\d* cell\(s\) wrong",
+    },
     # PART 95 (SOUNDNESS R843). The fault empties `Client.fetch` and `SubO.m` (c5_factory on both engines,
     # c1_convention and r7b_returns_open on swift — all green today) and turns the stale/nothing doctors into
     # the identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer). Every
@@ -264,7 +271,7 @@ COVERED = {
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 23
+COVERED_FLOOR = 24
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

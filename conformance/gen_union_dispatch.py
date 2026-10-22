@@ -51,6 +51,12 @@ consumer FUNCTIONS and the abstraction text are byte-identical (asserted, not tr
   xn_*/xc_*                 the doctored-producer CROSS-SPELLING arm (Fable REVIEW3 B3-E1), on the `deep` shape
                             (Doc.put -> helper -> v.mapv): the engine's own Sink.put union re-spelled into its OWN
                             spelling (xn_, control) and the OTHER one (xc_, rule 2: every consumer follows both).
+                            What the control does NOT prove (Fable REVIEW4): (i) the undoctored deep arm is not run
+                            in-suite, so "the doctor reaches the consumer" rests on xn passing where V0 was measured
+                            failing (B-E1-spellings.txt), not on a per-run comparison; (ii) the (b) doctor writes
+                            `calls=[Doc.put]` and no `dispatchesOn`, right for this shape (Doc.put dispatches only
+                            through its helper) and wrong for one whose contributor also dispatches directly — one
+                            shape, as every doctored arm is.
   *_none (l/f/u only)       a second consumer `zapp` with NO Mapper implementor of its own (it passes api's pure
                             Nop; executed: no Fs). `deny Fs` MUST stay 0; the disclosure is RECORDED, not asserted —
                             it is where a port's removal lands, to be accounted for against the 0.40.15 column.

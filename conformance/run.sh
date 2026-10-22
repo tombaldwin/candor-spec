@@ -3161,6 +3161,30 @@ echo "PART 102 — a union entry names the members its contributors dispatch on,
 # NOTE: the xfail table is per (arm, engine) and says DISCLOSED or SILENT per cell. Layouts l (owner local), f (foreign, owner chained) and u (foreign, owner NOT chained to the consumer — Fable B-E3). rust xfails 12 far cells on R1324 (union hedge, disclosed) and 3 u direct cells on R1349 (SILENT, and the union's own Clock lost); java 12 on R1355 (7 SILENT); ts 12 on R1356 (2 SILENT); swift 12 on R1357 (3 SILENT). `busy` cells also assert `deny Clock` 1 (the union's OWN effect, B-E5). The *_none arms are a second consumer `zapp` with NO Mapper implementor (it passes api's pure Nop; executed: no Fs): `deny Fs` must stay 0 and the disclosure is RECORDED, not asserted — the 0.40.15 column (`deny Fs Unknown`): rust 1 on all six; java bare 1 / busy 0; ts and swift bare 1, l_busy 0, f_busy and u_busy 1. A port that moves a 1 there to 0 is the removing direction and must account for it. A PASSING xfail is a FAILURE. The xn_*/xc_* arm (Fable REVIEW3 B3-E1) is a doctored-producer arm on the `deep` fixture (Doc.put -> helper -> v.mapv): each engine's own producer report with the Sink.put union re-spelled into its OWN spelling (xn_*, the control that proves the doctor reaches the consumer) and into the OTHER spelling (xc_*, rule 2's cross-spelling duty); java passes both, rust/ts/swift xfail xc_* on LATENT rows R1359/R1365/R1366 (rust disclosed by its union hedge; ts 2 and swift 3 of 4 SILENT).
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders Mine.mapv without its Fs, so the w_*_far_via/direct REFERENCE arms go red on every engine (16 cells, exit 1). Registered in probe_check.py (java arm).
 
+# PART 103 — A UNION PAST THE BOUNDED-CHA LIMIT IS PUBLISHED WITH ITS HEDGE, NEVER PURE, NEVER OMITTED, FOUR-WAY,
+# SPEC §4 ⟨0.40⟩. SOUNDNESS R1367 (rust), R1368 (swift), R1369 (ts).
+#
+# The ⟨0.40⟩ bound fallback makes a chained consumer no more resolved than what the dependency PUBLISHES under the
+# member's key; that is sound against the truth only if publication honours the bound (Fable REVIEW4 C4-E1). 13 PURE
+# implementors of one member: in one tree every engine reads `Unknown`; chained, a pure or omitted union would be a
+# purity claim the producer's own scan does not make. 12 is the control: within the bound and pure, chained reads pure.
+[ -f "$HERE/gen_bound_publication.py" ] || { echo "FAIL: gen_bound_publication.py is missing"; exit 2; }
+echo
+echo "[103] a union past the bounded-CHA limit is published with its hedge: 13 pure implementors read Unknown chained, as in one tree"
+P103_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_bound_publication.py"
+) || { P103_OK=1; rc=1; }
+[ "$P103_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on c_13 is a union past the bound published pure or omitted (chained silent); on w_13 the one-tree reference stopped hedging; on c_12/w_12 a fix hedges a narrow pure dispatch; XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 103 — a union past the bounded-CHA limit is published with its hedge, never pure, never omitted (SPEC §4 ⟨0.40⟩; SOUNDNESS R1367/R1368/R1369)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_bound_publication.py judges the w_13 one-tree reference and the w_12/c_12 pure-within-the-bound controls every run and fails the part on any, and refuses (BROKEN) on a hollow consumer report
+# NOTE: measured 2026-10-22 at the heads: java and ts publish the 13-implementor union with its dispatch: hedge and pass; rust publishes it PURE (R1367) and swift omits it (R1368), both SILENT chained; ts omits the 12-implementor pure union and its consumer hedges on the missing key (R1369, NOTSILENT). Nothing executed: no implementor performs an effect; the reference is each engine's own one-tree answer.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders the 13-implementor fixture with 12, so w_13 goes red on every engine (exit 1). Registered in probe_check.py (java arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
