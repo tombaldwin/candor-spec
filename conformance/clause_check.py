@@ -71,6 +71,8 @@ GENERATORS = [
     "gen_scan_verdict.py",
     "gen_policy_semantics.py",
     "gen_format_dispatch.py",
+    "gen_merged_union.py",
+    "gen_union_dispatch.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

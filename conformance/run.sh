@@ -3109,6 +3109,57 @@ echo "PART 100 — a formatting member dispatched on a dependency's own abstract
 # NOTE: all four engines xfail c_fmt_call and c_fmt_interp (executed: xeng-r1304, javaab-a/fx/conv) — rust on R1308, java on R1304, ts on R1309, swift on R1310. Each line retires when its engine fixes the row, and a PASSING xfail is a FAILURE. `deny Fs Unknown` is not asserted on the controls: a hedge is permitted there, and the zero-local-implementor hedge on `convert` surviving a consumer's pure implementor (c_fmt_run, c_pure_run read `Unknown`) is a known disclosure, not this part's subject.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders MyConv's formatting member without its Fs, so the w_fmt REFERENCE arms go red on all four engines (8 cells, exit 1). Separately measured: with the XFAIL table emptied the eight c_fmt cells FAIL (exit 1), and declaring an xfail on a passing control (c_conv_run) prints XFAIL ARM PASSED and exits 1. The `Other` control, calibrated by seeding Other as a Converter implementor (so a union over Converter's formatting bodies MUST include it): w_pure_call, w_pure_interp, w_conv_call and w_conv_interp go red on all four engines (16 cells, exit 1). Its c_ twins cannot go red today, because no engine joins the formatting member chained at all; they bite when a port lands.
 
+# PART 101 — A UNION MERGED INTO A REAL ENTRY AT WRITE TIME CARRIES THE UNION'S REASONS, AND BOTH ROUTES
+# PROPAGATE THEM ALIKE (SPEC §3.1 ⟨0.40⟩). SOUNDNESS R1354 (producer), R1330 (consumer), R1338 (routes).
+#
+# candor-java merges an interface default's override union into the default's own entry when it WRITES the
+# report (§3.1 ⟨0.40⟩, R682), so one entry is both a body and a union. It took the union's EFFECTS and none of
+# its REASONS: the producer's own narrowed filter over the merged unit reads 0 on the scan route and is REFUSED
+# on the report route, a chained consumer reads a false `unresolved` (R1330), and a BROAD merge's hedge reaches
+# an exact `I.super.m()` caller on the report route only (R1338). Every cell is judged on BOTH routes over the
+# report that scan wrote, exits AND `--gate-json` documents. The CONSEQUENCE cells (exact callers) assert only
+# that the routes AGREE: the clause names the superset they will then agree on, and does not pin it as a value.
+[ -f "$HERE/gen_merged_union.py" ] || { echo "FAIL: gen_merged_union.py is missing"; exit 2; }
+echo
+echo "[101] a union merged into a real entry at write time brings its reasons, and both routes propagate them alike"
+P101_OK=0
+(
+  export CANDOR_JAVA_JAR="$JAR"
+  python3 "$HERE/gen_merged_union.py"
+) || { P101_OK=1; rc=1; }
+[ "$P101_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on n_merged_*/n_app_unres is the merged entry's reasons; on a CONSEQUENCE cell (n_exact_reflect, n_ctl_reflect, b_exact_dispatch) the two routes split; on a CONTROL the fixture or chain broke; XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 101 — a write-time merged union entry carries the union's reasons on both routes (SPEC §3.1 ⟨0.40⟩; SOUNDNESS R1330/R1338/R1354)"
+# ENGINES: java; rust: publishes the union BESIDE the real entry and never merges at write time (measured 2026-10-22 on a trait provided method overridden with Fs: the real `Shape::name` carries only the default's Env and a separate interfaceUnion entry under the same hash carries the Fs) — the clause binds only a producer that merges; ts: the same, measured on a class method overridden in a subclass; swift: the same, measured on a protocol-extension default
+# CONTROLS: none — delegated: gen_merged_union.py judges eleven CONTROL cells every run (n_merged_fs, n_exact_native, n_exact_fs, n_app_reflect, n_app_fs, n_ctl_native, n_ctl_fs, b_merged_dispatch, b_exact_fs, b_app_dispatch, b_app_unres) and fails the part on any — the *_fs cells pin that EFFECTS stay exact for an exact caller (the clause moves only classes); n_merged_fs pins R682's merged subject; the app/appb cells pin that the chain reached the consumer with the union's true class. The generator also refuses to run (BROKEN) unless both producer reports show the merge happened.
+# NOTE: java xfails n_merged_reflect and n_merged_unres (R1354 — scan 0/1, report REFUSED 2), n_app_unres (R1330), b_exact_dispatch (R1338, scan route) and b_exact_reflect (R1338, documents only). Executed: app.Main.go(RShape) runs the override; ctl.Main.go(PShape) and p.Ex.call run the default body only.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders the overrides without their reflective load — n_app_reflect and b_exact_reflect go red and three xfails pass (exit 1). Registered in probe_check.py.
+
+# PART 102 — A UNION ENTRY'S CONTRIBUTOR DISPATCHES ON A FURTHER MEMBER: THE CONSUMER MUST CARRY IT, FOUR-WAY,
+# SPEC §4 ⟨0.39⟩/⟨0.40⟩. SOUNDNESS R1324 (rust), R1355 (java), R1356 (ts), R1357 (swift).
+#
+# `Doc: Sink { put(v) { v.mapv() } }` and a consumer `Mine: Mapper` whose `mapv` performs Fs, reached through a
+# dependency's `Sink.put` key (the aws-smithy `Serializer::serialize_some` -> `Serialize::serialize` shape) and
+# at the consumer's own dispatch site; the abstraction local to Doc's package and foreign to it; Doc.put pure
+# apart from the dispatch (`bare`) or performing an effect of its own (`busy`). Executed in all four languages.
+# No producer puts `dispatchesOn` on a union entry, so no consumer carries the Fs: every engine fails `deny Fs`
+# on all eight chained defect cells. `bare` is disclosed everywhere; `busy` is SILENT on java, ts and swift.
+[ -f "$HERE/gen_union_dispatch.py" ] || { echo "FAIL: gen_union_dispatch.py is missing"; exit 2; }
+echo
+echo "[102] a member a union's contributor dispatches on reaches the consumer that reaches the union"
+P102_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_union_dispatch.py"
+) || { P102_OK=1; rc=1; }
+[ "$P102_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on *_far_via/*_far_direct is the further member not carried; on w_* the one-tree reference stopped charging; on *_fwd the chain itself broke; on *_near_* a fix FABRICATED Fs (joined a member nobody dispatches, or a same-named body); XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 102 — a union entry names the members its contributors dispatch on, and the consumer carries them (SPEC §4 ⟨0.39⟩/⟨0.40⟩; SOUNDNESS R1324/R1355/R1356/R1357)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_union_dispatch.py judges the control arms every run per engine (the w_ one-tree references, every *_fwd arm, every *_near_* arm) and fails the part on any, and refuses to run (BROKEN) unless Other.mapv's Fs seed is live and the consumer functions and abstraction text are byte-identical across fixtures — the w_ arms are the same source as ONE tree, which every engine charges, so a chained xfail measures what chaining loses; the *_fwd arms are the union's own effect through the ⟨0.39⟩ route and prove the chain reached the union; the *_near_* arms reach a member that does nothing while Mine.other and the non-Mapper Other.mapv (its row checked live) do Fs, so a fix that joins every member or every same-named body reddens them. `deny Env` fires on every cell as the carrier.
+# NOTE: the xfail table is per (arm, engine) and says DISCLOSED or SILENT per cell. rust xfails all 8 chained far cells on R1324 (its union hedge discloses); java 8 on R1355 (4 SILENT); ts 8 on R1356 (2 SILENT); swift 8 on R1357 (3 SILENT). A PASSING xfail is a FAILURE.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders Mine.mapv without its Fs, so the w_*_far_via/direct REFERENCE arms go red on every engine (16 cells, exit 1). Registered in probe_check.py (java arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

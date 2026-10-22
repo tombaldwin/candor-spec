@@ -2913,7 +2913,8 @@ must not be confused with each other.
   gate resolves it, together with the union's own dispatch hedge where it publishes one. A contributor whose
   class set the producer cannot complete contributes `unresolved`, the catch-all, as a `dep:` reason does
   (§6.2). One raw reason per class is enough: a contributor's own reason verbatim, or the hedge's
-  `dispatch:` token. This is the one entry whose `unknownWhy` is not direct-only (§4), and the reason is
+  `dispatch:` token. This is the one entry whose `unknownWhy` is not direct-only (§4) — with, ⟨0.40⟩, the
+  merge-derived part of a write-time merged entry (the paragraph after this one) — and the reason is
   structural: it has no body, so it has no direct sites, and the whole of its `Unknown` is what its dispatch
   reaches. A projection that is a strict SUBSET is a false green for a narrowed filter (`deny Unknown[reflect]
   <caller>` passes over a reflect hole one contributor inherited); a strict SUPERSET charges a class nobody
@@ -2941,6 +2942,67 @@ must not be confused with each other.
   `deny Unknown[<class>] <caller>` goes 0 → 1 for a contributor's class (each new class must be a
   contributor's own), and `deny Unknown[unresolved] <caller>` goes 1 → 0 where a reasonless union was the
   only `unresolved` source (each removal must trace to contributors whose classes exclude `unresolved`).
+
+⟨0.40⟩ **A UNION MERGED INTO A REAL ENTRY AT WRITE TIME BRINGS ITS REASONS WITH IT, AND BOTH ROUTES
+PROPAGATE THEM ALIKE** (SOUNDNESS R1327, R1330, R1338, R1354; a clarification, 2026-10-22; pinned by
+conformance PART 101). The merged-entry paragraph above and the union rule meet at one entry, and neither
+reached it: a producer that merges a union into the real entry under its hash when it WRITES the report
+makes one entry that is both a body and a union, while the union rule is stated for an `interfaceUnion: true`
+entry. So the merged entry took the union's EFFECTS and none of its REASONS, and §4's direct-only
+`unknownWhy` gave the merge-derived `Unknown` no place on the wire. This paragraph binds only a producer that
+merges at write time — today candor-java alone, for an interface default or a bodiless abstract member whose
+class declares a capability. candor-scan, candor-ts and candor-swift publish the union BESIDE the real entry
+(measured 2026-10-22 on a trait provided method, a class method and a protocol-extension default, each
+overridden with `Fs`: the real entry carries only the default's `Env`, and a separate `interfaceUnion` entry
+under the same hash carries the `Fs`), and the union rule above already covers them. *Measured on
+candor-java 0.40.15, a one-variable fixture executed (`lib.Shape.name`'s default reads the environment;
+`RShape`'s override loads a class reflectively and reads a file; `PShape.plain` makes its own native call and
+then calls `Shape.super.name()`): the merged entry reads `inferred: [Env, Fs, Unknown]` with no `unknownWhy`, so
+`deny Unknown[reflect] lib.Shape.name` exits 0 on `scan --policy` and is REFUSED (exit 2) by `gate --report`
+over the report that scan wrote; a chained consumer dispatching `s.name()` reads a false `unresolved`
+beside the true `reflect` (R1330); and a BROAD merge, which does write its `dispatch:` hedge into the merged
+entry, hands it through `calls` to an exact `I.super.m()` caller on the report route only (R1338: scan 0 /
+report 1).* Three rules:
+
+1. **The merged entry's `unknownWhy` carries the union's reasons.** Where the merge contributes `Unknown`, the
+   entry's `unknownWhy` MUST project (§6.2) to the union of its own body's direct reason classes and EXACTLY
+   the class set the union rule above gives the union: its contributors' transitive reason classes, together
+   with the union's own dispatch hedge where it publishes one. It is therefore the second entry whose
+   `unknownWhy` is not direct-only (§4), for the union's own reason: the merged part has no site in the body.
+   A consumer reads it as it reads any entry, and needs no rule to tell a merged entry from an ordinary one.
+   The `dep:` a consumer synthesises for a reasonless `Unknown` (§6.2's catch-all) has nothing left to
+   synthesise for here, which is how R1330 closes at the source rather than by a consumer-side repair.
+2. **Both routes walk the same seeds.** The scan route MUST seed its class fixpoint with the merged entry's
+   reasons BEFORE propagating over `calls`, not attach them to the merged unit after propagation. The report
+   route can only read them off the written entry and propagate them through `calls` like any callee's
+   reasons, and the byte-equality MUST above allows no other reading.
+3. **The cost: an exact caller of a merged entry inherits the union's classes.** One `hash` holds the default
+   body and the merge, and `calls` names the hash, so a caller that runs only the body (Java's
+   `I.super.m()`) and carries `Unknown` of its own reads the union's classes on BOTH routes. That is a
+   superset (NOTSILENT), replacing a route split. Its EFFECTS stay exact: `inferred` is computed once, by the
+   scan, and the report route reads it as given. An engine that is exact on both routes also conforms; what
+   MUST NOT happen is the two routes disagreeing.
+
+*Why the producer, and not the consumer, carries it.* The fallback is consumer-side: credit a reasonless
+real row's `Unknown` to the dependency hierarchy's overrides before synthesising `dep:`. It was considered and
+not taken, because it is a second copy of the merge the producer already computed, priced on a different
+input (the consumer sees effectful override rows only, the R1331/R1336 bound input), and it leaves the
+producer's own gate wrong. §6.2's *implement it at the source* is the shape this family settled on for the
+union rule, and it applies unchanged. *Why not forbid the merge* and publish the union beside the real entry,
+as the other three producers do: that would change which entry is the policy subject (the merged-entry
+paragraph above, R682), and move the 137 census violations it measured from 1 to 0. That is the removing
+direction, and it would need a ruling, not a clarification.
+
+*Who moves.* candor-java only, and no effect moves. Producer gate: `deny Unknown[<class>] <merged unit>`
+goes 0 → 1 for a contributor's class (each new class must be a contributor's own) and the report route
+answers where it refused; `deny Unknown[unresolved] <merged unit>` goes 1 → 0 where the merge was the only
+reasonless source. Chained consumers: `deny Unknown[unresolved] <caller>` goes 1 → 0 where a merged entry's
+reasonless `Unknown` was the only `unresolved` source (R1330; each removal must trace to contributors whose
+classes exclude `unresolved`). Exact callers that carry `Unknown` of their own: the union's classes go 0 → 1 on
+the scan route, and on the report route too where the merge was narrow (a BROAD merge's hedge already reaches
+them there) — the superset in rule 3, to be reach-counted by the port. This adds no field and moves no floor:
+the merged-entry paragraph already makes the merged entry the subject on both routes, and the union rule
+already fixes a union's reasons; this paragraph states what the two give when they meet.
 
 ⟨0.24⟩ **ANSWERABILITY: a rule whose EVIDENCE THE WIRE DOES NOT CARRY MUST BE REFUSED (exit 2), never
 evaluated.** Reaching equivalence required the refusals below, each found by measurement and each
@@ -5061,6 +5123,77 @@ note's census sentence read the MAY as excluding these members from obligation 1
 `toString`/`hashCode`/`equals` as a pure-exempt dispatch set (its README) and does not name them; under this
 paragraph that reading is non-conforming. It adds no field and moves no floor, because ⟨0.39⟩'s headline
 already required the effect to reach the consumer.
+
+⟨0.40⟩ **AN `interfaceUnion` ENTRY NAMES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON (`dispatchesOn`), AND A
+CONSUMER THAT REACHES THE UNION JOINS THEM** (SOUNDNESS R1324, R1355, R1356, R1357; a clarification,
+2026-10-22; pinned by conformance PART 102). Obligation 1 binds a union entry as it binds a row. A dispatch
+through the union's key runs a contributor's body, so a member that body dispatches on is a member the
+dispatch through the key REACHES, and obligation 1 requires that member to reach the caller transitively. A
+row may meet that with its direct members and its `calls`, leaving the closure to the consumer; a union has
+no body and publishes no `calls`, so nothing a consumer holds can take the closure through it. In the
+measured instance (R1324) aws-smithy-types implements serde's `Serializer`, its `serialize_some` dispatches
+`serde#ser::Serialize::serialize`, and a consumer reaching the `Serializer::serialize_some` union through a
+dependency's key cannot join its own `Serialize` implementor. Four rules:
+
+1. **The producer MUST name the members on the union.** When a contributor of a union entry dispatches —
+   directly, or transitively over the producer's own call graph — on a member other than the union's own
+   key, the union entry MUST carry `dispatchesOn` naming every such member: the union of its contributors'
+   TRANSITIVE member sets, each value in the `dispatchesOn` spelling rule above and as the contributor's
+   own row would carry it. It does so even when the union is otherwise pure, obligation 1's exception for obligation
+   1's reason. The union's own key MAY be omitted: a contributor that forwards on the union's own member adds
+   nothing the consumer's join does not already hold. A member's NAME is never a reason to omit it — §4's
+   conventionally-pure MAY is judged by the receiver's declared type (the paragraph above) and every key a
+   union can carry names a package's own abstraction (SOUNDNESS R1351) — and a value the contributor's row
+   could not validly carry (a trait that does not declare the member, R549/R1353) is not made valid by
+   appearing on a union. Carrying `dispatchesOn` does not make a union entry a unit (§3.1 ⟨0.40⟩).
+2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys enter obligation 3's
+   per-key join exactly as a row's do, transitively, whether the consumer reached the union at its own
+   dispatch site or through a dependency row's `dispatchesOn`. A consumer that reaches the contributors by
+   another sound route (a walk of the dependency's published hierarchy) meets this too: the property is that
+   the implementor's effect is CARRIED, and conformance asserts it at the consumer, as PARTs 92, 94 and 100 do.
+3. **A hedge in its place is a disclosure, not a conforming alternative.** A union that carries its
+   contributors' effects plus `Unknown` with `dispatch:<owner>.<member>` for the further member (candor-scan
+   0.40.15's R1324 hedge) turns `deny E Unknown` red and leaves `deny E` green over code that performs `E`.
+   It is better than silence, and it is not this clause. The hedge is right only for the part the producer
+   CANNOT name — a contributor whose member set it could not complete — exactly as an incomplete contributor
+   contributes `unresolved` to the union's reasons (§3.1 ⟨0.40⟩).
+4. **It binds a NARROW union**, one that publishes its contributors' effects. A BROAD union, which publishes
+   the bounded-CHA hedge on its own key instead (§3.1 ⟨0.40⟩ "the union's own dispatch hedge"), already
+   discloses everything a dispatch through it reaches and names nothing further. If the reference engine
+   cannot serialise the closure for the narrow unions it publishes, that is a report against this clause,
+   as it was against obligation 1's first draft, not a licence to hedge.
+
+*Measured 2026-10-22 at the four engines' heads (candor-scan `d10e401`, candor-java `b679b9a`, candor-ts
+`e6481ee`, candor-swift `6d2031a`), on PART 102's one-variable fixture, executed in all four languages:
+`Doc: Sink { put(v) { v.mapv() } }`, a consumer `Mine: Mapper` whose `mapv` writes a file, reached through a
+dependency's `Sink.put` key and at the consumer's own dispatch site, with the abstraction local to `Doc`'s
+package and foreign to it.* No producer puts `dispatchesOn` on any union entry, and every engine reads
+`deny Fs` 0 on all eight chained defect cells. What differs is disclosure. Where `Doc.put` only dispatches,
+its union is pure and all four disclose `Unknown` (candor-scan through the R1324 hedge on the union, the
+others through the consumer's own hedge on a key whose union carries nothing). Where `Doc.put` also performs
+an effect of its own, the union is published with that effect, the consumer trusts it, and candor-java (4 of
+4 cells, R1355), candor-ts (2 of 4, R1356) and candor-swift (3 of 4, R1357) read SILENT: `deny Fs Unknown`
+exits 0 over code that wrote the file. candor-scan stays disclosed on all 8 through its hedge (R1324,
+PARTIAL — R1351/R1352 are its own measured holes in that hedge). **And the resolution is measured to need no
+consumer change:** adding to each producer's report, by hand, the `dispatchesOn` its own `Doc.put` row
+already carries — on the published `Sink.put` union, or on a pure union entry where the producer published
+none — moves all four chained consumers to `deny Fs` 1 on all 16 doctored cells, `bare` and `busy`, local
+and foreign, through the dependency's key and at the consumer's own site.
+
+*Who moves.* The producers, all four: they add `dispatchesOn` to narrow union entries whose contributors
+dispatch further, and candor-ts and candor-swift, which omit an otherwise-pure union, publish one when it has
+members to name (wire growth; no producer-side `inferred` moves; candor-java's R1328 memo goes live). The
+consumers already join, measured above. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
+named member performs `E` — a RESOLUTION, so every new charge must trace to that implementor's own body;
+`deny E Unknown <caller>` goes 0 → 1 on the silent cells; and `deny Unknown <caller>` goes 1 → 0 where a
+hedge stood in for the names and the implementors they join are pure — candor-scan's R1324 hedge, and on
+candor-java, candor-ts and candor-swift the consumer's own hedge over a key whose union was pure or absent
+(PART 102's `*_bare_near_*` cells read `Unknown` today). That is the REMOVING direction: each removal is to be
+accounted for, the disclosure of a key with no visible implementor (PART 92's `c2_zero_impl`) shown intact,
+and a newly published pure union shown not to delete an unchained owner's `invisible` disclosure by making
+the lookup hit (SOUNDNESS R764). This adds no field and moves no floor: `dispatchesOn` exists, ⟨0.39⟩ obligation 1 already requires
+the member to reach the caller, and ⟨0.39⟩'s headline already requires the effect to reach the consumer;
+this paragraph states where a union entry puts it.
 
 **`interfaceUnion` is no longer gated.** The ⟨0.23⟩ paragraph in §2 made it opt-in "until a floor rung
 pins it". This is that rung: it is REQUIRED, and its absence is a non-conformance.

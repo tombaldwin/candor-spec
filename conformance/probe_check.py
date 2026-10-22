@@ -194,6 +194,22 @@ COVERED = {
         "holds":  r"DEP-OVERRIDE: OK — every engine's reference carries the override",
         "breaks": r"DEP-OVERRIDE: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 101 (SOUNDNESS R1330/R1338/R1354). The fault renders the overrides WITHOUT their reflective load, so the
+    # chained consumer's `deny Unknown[reflect]` CONTROL (green today) goes red, and three xfailed cells pass and
+    # print XFAIL ARM PASSED. At the FIXTURE: the union contributes no `reflect` to merge.
+    "gen_merged_union.py": {
+        "args":   [],
+        "holds":  r"MERGED-UNION: OK — every control holds",
+        "breaks": r"MERGED-UNION: [1-9]\d* cell\(s\) wrong",
+    },
+    # PART 102 (SOUNDNESS R1324/R1355-R1357). The fault renders Mine.mapv WITHOUT its Fs, so the one-tree
+    # w_*_far_via / w_*_far_direct REFERENCE cells — green on every engine today — cannot charge Fs and go red.
+    # Substituting into the chained far cells would be vacuous: they are xfailed on every engine.
+    "gen_union_dispatch.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"UNION-DISPATCH: OK — every reference charges",
+        "breaks": r"UNION-DISPATCH: [1-9]\d* cell\(s\) wrong",
+    },
     # PART 95 (SOUNDNESS R843). The fault empties `Client.fetch` and `SubO.m` (c5_factory on both engines,
     # c1_convention and r7b_returns_open on swift — all green today) and turns the stale/nothing doctors into
     # the identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer). Every
@@ -248,7 +264,7 @@ COVERED = {
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 21
+COVERED_FLOOR = 23
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

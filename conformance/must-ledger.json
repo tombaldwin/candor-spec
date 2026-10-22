@@ -11,7 +11,8 @@
     "which is the point — an edited MUST must be RE-confirmed. `at`/`excerpt` are informative.",
     "⟨2026-08-25⟩ The ten ⟨0.33⟩ cross-policy statements are classified to PART 69, which drives all four of the design's controls plus the `pure` flattening arm and the `scannedUnder` corruption arm. The ⟨0.32⟩ producer-must-scan-with-the-policy entry was RE-CONFIRMED rather than re-frozen: its row (PART 62) is unchanged and only its trailing sentence moved — it used to say the mismatch was undetectable from the document, which ⟨0.33⟩ makes false.",
     "⟨2026-08-28⟩ The five ⟨0.34⟩ statements (the cause/remedy swap, the version-licenses-a-remedy-never-a-verdict/byte-equality MUST, the numeric-never-lexicographic ladder rule, the absent-or-unparseable-predates-with-whitespace-stripped-first rule, and the exemption from the general present-but-unparseable-is-a-refusal rule) are classified to PART 80, which builds its own single-tree fixture per engine and mutates ONLY the envelope `spec` across five gated copies of the same bytes — the `cur` cell is the over-charge control, and PART 80's `ws` cell PROBES rather than hard-codes which engines have ported whitespace-tolerant parsing (candor-java/candor-ts pass; candor-rust/candor-swift SKIP, reference-led, until they trim before parsing).",
-    "⟨2026-08-28⟩ Two more ⟨0.34⟩ items, added to the still-open rung above rather than a new ⟨0.35⟩ (there was no 0.34 release to close it against — see the `eaab823` rule: do not open a new rung while the previous one is unreleased). (1) The `zeroMatch` §3.1 carve-out (BACKLOG.md CURRENT QUEUE item 1, Tom's ruling: option D) — four statements classified to PART 83, which already measured the divergence and now asserts it as SPEC'd behaviour rather than an unruled state; the advisory pairing on `analyzed.count > |functions|` was considered and explicitly REJECTED (noise, not signal — the same arithmetic the ⟨0.24⟩ manifest clause already names), so no new wire key was minted. (2) The `--policy` usage-error rule extended from `gains` alone to the full twelve-verb set with no policy-derived field — two statements classified to PART 84 (`verb_reject`), which falsifies every cell against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`) in throwaway clones."
+    "⟨2026-08-28⟩ Two more ⟨0.34⟩ items, added to the still-open rung above rather than a new ⟨0.35⟩ (there was no 0.34 release to close it against — see the `eaab823` rule: do not open a new rung while the previous one is unreleased). (1) The `zeroMatch` §3.1 carve-out (BACKLOG.md CURRENT QUEUE item 1, Tom's ruling: option D) — four statements classified to PART 83, which already measured the divergence and now asserts it as SPEC'd behaviour rather than an unruled state; the advisory pairing on `analyzed.count > |functions|` was considered and explicitly REJECTED (noise, not signal — the same arithmetic the ⟨0.24⟩ manifest clause already names), so no new wire key was minted. (2) The `--policy` usage-error rule extended from `gains` alone to the full twelve-verb set with no policy-derived field — two statements classified to PART 84 (`verb_reject`), which falsifies every cell against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`) in throwaway clones.",
+    "⟨2026-10-22⟩ lane/spec-0416: the ⟨0.40⟩ merged-entry paragraph (§3.1, R1354/R1330/R1338) is classified to PART 101 and the ⟨0.40⟩ union-`dispatchesOn` paragraph (§4, R1324/R1355-R1357) to PART 102, except the BROAD-union exemption and the measurement paragraph (unenforced, reasons recorded). The union-reasons bullet was re-anchored for a one-clause cross-reference, its classification unchanged."
   ],
   "entries": [
     {
@@ -3656,12 +3657,6 @@
       "unenforced": "Restates ⟨0.39⟩ obligation 3 and R867, pinned by PART 92 and PART 94; it adds no obligation."
     },
     {
-      "sha": "327dd4c492a9a551",
-      "at": "3.1 Read-only queries (SHOULD)",
-      "excerpt": "- **When its `inferred` carries `Unknown`, its `unknownWhy` MUST be non-empty and MUST project (§6.2) to EXACT",
-      "unenforced": "A PRODUCER obligation; no PART yet scans a dependency whose implementers carry classified Unknown and checks the union entry's unknownWhy. The R1238 fixtures (~/candor-handoff/fixture-r1238) are the executed shape; a PART 92 arm is owed when the engine lanes land the producer change."
-    },
-    {
       "sha": "16b2201aa7173b42",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "⟨0.40⟩ **A REFUSAL CAUSED BY THE POLICY DISCLOSES THE POLICY** (SOUNDNESS R1233; a clarification, 2026-10-20).",
@@ -3684,6 +3679,72 @@
       "at": "3. Modes",
       "excerpt": "- ⟨0.40⟩ **Both sides of the comparison are REPORT ROWS** (SOUNDNESS R1232; a clarification, 2026-10-20). The ",
       "part": "PART 29 (arm merged, candor-java only)"
+    },
+    {
+      "sha": "818822adeb388e77",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "- **When its `inferred` carries `Unknown`, its `unknownWhy` MUST be non-empty and MUST project (§6.2) to EXACT",
+      "unenforced": "A PRODUCER obligation; no PART yet scans a dependency whose implementers carry classified Unknown and checks the union entry's unknownWhy. The R1238 fixtures (~/candor-handoff/fixture-r1238) are the executed shape; a PART 92 arm is owed when the engine lanes land the producer change. RE-ANCHORED 2026-10-22 (lane/spec-0416): the only edit is a cross-reference naming the merged-entry paragraph as the second not-direct-only entry; the classification is unchanged. The merged-entry half IS pinned, by PART 101."
+    },
+    {
+      "sha": "3b41df43e810c4ab",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "⟨0.40⟩ **A UNION MERGED INTO A REAL ENTRY AT WRITE TIME BRINGS ITS REASONS WITH IT, AND BOTH ROUTES PROPAGATE ",
+      "part": "PART 101 (the merged-entry paragraph's headline: n_merged_reflect, n_merged_unres, n_app_unres for the reasons; the CONSEQUENCE cells n_exact_reflect, n_ctl_reflect, b_exact_dispatch for route agreement; the scope sentence — only a producer that merges — is the part's ENGINES exclusion of rust/ts/swift, measured)"
+    },
+    {
+      "sha": "f246e452657288ac",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "1. **The merged entry's `unknownWhy` carries the union's reasons.** Where the merge contributes `Unknown`, the",
+      "part": "PART 101 (n_merged_reflect, n_merged_unres: the merged unit's own class set on both routes; n_app_unres: a chained consumer's false `unresolved` from the merged entry, R1330; n_app_reflect the true-class control)"
+    },
+    {
+      "sha": "ef82b27ff8ead983",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "2. **Both routes walk the same seeds.** The scan route MUST seed its class fixpoint with the merged entry's re",
+      "part": "PART 101 (n_exact_reflect, n_ctl_reflect, b_exact_dispatch assert scan == report for an exact caller of the merged entry, and every cell compares the two `--gate-json` documents byte for byte; a report-only implementation of rule 1 reads scan 0 / report 1 on n_exact_reflect, measured by doctoring the report — A-doctored.txt)"
+    },
+    {
+      "sha": "7bd865d9539c74a7",
+      "at": "3.1 Read-only queries (SHOULD)",
+      "excerpt": "3. **The cost: an exact caller of a merged entry inherits the union's classes.** One `hash` holds the default ",
+      "part": "PART 101 (the CONSEQUENCE cells assert the routes AGREE and print the value, deliberately not pinning the superset; n_exact_fs, n_ctl_fs and b_exact_fs pin that the exact caller's EFFECTS stay exact)"
+    },
+    {
+      "sha": "38b745b6f8595f13",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "⟨0.40⟩ **AN `interfaceUnion` ENTRY NAMES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON (`dispatchesOn`), AND A CON",
+      "part": "PART 102 (the property at the consumer, four-way: *_far_via through a dependency's key, *_far_direct at the consumer's own site, local and foreign abstraction, bare and busy contributor; names no wire route, as PARTs 92/94/100)"
+    },
+    {
+      "sha": "08be7566360ee636",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "1. **The producer MUST name the members on the union.** When a contributor of a union entry dispatches — direc",
+      "part": "PART 102 (the producer leg is exercised through its consequence at the consumer — the far cells; the union entries' `dispatchesOn` are PRINTED as diagnostics, not asserted, so a producer that met the property another way would pass. The member-name and false-trait sentences (R1351/R1353) have no arm here: they are candor-scan's rows and its own tests' to pin)"
+    },
+    {
+      "sha": "524dcc8ad93faf95",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys enter obligation 3's per",
+      "part": "PART 102 (*_far_via reaches the union through mid's `dispatchesOn`, *_far_direct at the consumer's own dispatch site; the near/fwd controls pin that the join adds only the named member)"
+    },
+    {
+      "sha": "9109e05bc97793e0",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "3. **A hedge in its place is a disclosure, not a conforming alternative.** A union that carries its contributo",
+      "part": "PART 102 (the far cells assert `deny Fs`, not only `deny Fs Unknown`: candor-scan's R1324 hedge reads 0 / 1 and is xfailed as DISCLOSED, not passed)"
+    },
+    {
+      "sha": "512ec194227c4c00",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "4. **It binds a NARROW union**, one that publishes its contributors' effects. A BROAD union, which publishes t",
+      "unenforced": "An EXEMPTION, not an obligation: it says a BROAD union need name nothing further. No arm builds a broad union whose contributor dispatches further, and a row asserting the absence of `dispatchesOn` would pin an engine to one route. The serialisation sentence is a report-against-the-clause instruction for the reference engine's port, which no single-fixture row can hold."
+    },
+    {
+      "sha": "53a663fe254a60e2",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "*Measured 2026-10-22 at the four engines' heads (candor-scan `d10e401`, candor-java `b679b9a`, candor-ts `e648",
+      "unenforced": "A MEASUREMENT RECORD (2026-10-22, four heads named in it): what it asserts is what each engine read on PART 102's fixture and on hand-doctored producer reports, which is the part's xfail table and `~/candor-handoff/specagent-0416/B-*.txt`, not an obligation a build meets or fails. The obligation it supports is pinned by PART 102."
     }
   ]
 }
