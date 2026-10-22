@@ -44,6 +44,13 @@ consumer FUNCTIONS and the abstraction text are byte-identical (asserted, not tr
                             implementor, or every same-named body (Other.mapv, live in every report and
                             checked), fabricates here.
   `deny Env` fires on every cell — the carrier that proves the scope matched the row.
+  `busy` via/direct/none cells also assert `deny Clock` 1: Doc.put's own effect, so a port that trades the union's
+                            own effect for the key reddens (Fable B-E5; `*_fwd` is a different union entry).
+  Layout `u` is `f` with the abstraction's owner `api` NOT chained to the consumer (Fable B-E3): a key that arrives
+                            through the union under `api#…` then has no chained entry to hit.
+  *_none (l/f/u only)       a second consumer `zapp` with NO Mapper implementor of its own (it passes api's pure
+                            Nop; executed: no Fs). `deny Fs` MUST stay 0; the disclosure is RECORDED, not asserted —
+                            it is where a port's removal lands, to be accounted for against the 0.40.15 column.
 
 THE XFAIL TABLE is per (arm, engine), each naming a register row, and A PASSING XFAIL IS A FAILURE: the
 engine that fixes its row reddens this part and retires its own lines in the same commit.
@@ -60,7 +67,7 @@ import split_arms as sa            # noqa: E402
 
 SPEC_CLAUSES = [
     ("§4 ⟨0.39⟩", "The obligation is that the member must REACH the caller transitively"),
-    ("§4 ⟨0.40⟩", "AN `interfaceUnion` ENTRY NAMES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON"),
+    ("§4 ⟨0.40⟩", "AN `interfaceUnion` ENTRY CARRIES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON"),
     ("§4 ⟨0.40⟩", "hedge in its place is a disclosure, not a conforming alternative"),
     ("§4 ⟨0.39⟩", "A mechanism that makes reports better must not make silence cheaper."),
 ]
@@ -70,11 +77,11 @@ NOBUILD = os.environ.get("CANDOR_PART102_NOBUILD")
 EXEC_MARK = os.environ.get("CANDOR_PART102_EXEC")   # ground-truth mode: Mine.mapv / Doc.fwd WRITE this file
 
 ENGINES = ("rust", "java", "ts", "swift")
-LAYOUTS = ("one", "local", "foreign")
-LAYOUT_PREFIX = {"one": "w", "local": "l", "foreign": "f"}
+LAYOUTS = ("one", "local", "foreign", "unchained")
+LAYOUT_PREFIX = {"one": "w", "local": "l", "foreign": "f", "unchained": "u"}
 SHAPES = ("bare", "busy")
 VARIANTS = ("far", "near")
-FUNCS = {"via": "c_via", "direct": "c_direct", "fwd": "c_fwd"}
+FUNCS = {"via": "c_via", "direct": "c_direct", "fwd": "c_fwd", "none": "c_none"}
 
 
 def arms_for(lang):
@@ -82,7 +89,13 @@ def arms_for(lang):
     for layout in LAYOUTS:
         for shape in SHAPES:
             for variant in VARIANTS:
-                for fk in ("via", "direct", "fwd"):
+                for fk in ("via", "direct", "fwd", "none"):
+                    if fk == "none" and (layout == "one" or variant != "far"):
+                        continue   # zapp has no Mine, so the variant cannot move it: one arm per (layout, shape)
+                    if fk == "none":
+                        out.append(("%s_%s_none" % (LAYOUT_PREFIX[layout], shape), layout, (shape, variant), fk,
+                                    "none"))
+                        continue
                     if fk == "fwd":
                         kind = "member"
                     elif variant == "far":
@@ -99,6 +112,7 @@ WANT = {
     "carry":  {"deny Env": 1, "deny Fs": 1, "deny Fs Unknown": 1},
     "member": {"deny Env": 1, "deny Fs": 1, "deny Fs Unknown": 1},
     "clean":  {"deny Env": 1, "deny Fs": 0},
+    "none":   {"deny Env": 1, "deny Fs": 0},
 }
 WHY = {
     "ref":    "REFERENCE: one tree — the engine's own unchained answer charges Mine.mapv's Fs",
@@ -106,6 +120,7 @@ WHY = {
               "performs Fs — `deny Fs` MUST fire (§4 ⟨0.39⟩ obligation 1, ⟨0.40⟩ union `dispatchesOn`)",
     "member": "CONTROL: the union's own effect through the ⟨0.39⟩ route — if this is red the chain is broken",
     "clean":  "CONTROL: the member reached performs nothing — a Fs here is a FABRICATION",
+    "none":   "CONTROL: the consumer supplies no implementor (it passes api's pure Nop) — a Fs here is a FABRICATION",
 }
 
 # Keyed by (arm, engine), each naming its register row; measured 2026-10-22 at the four heads (candor-scan d10e401,
@@ -193,6 +208,40 @@ XFAIL = {
         "R1357 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('l_busy_far_via', 'swift'):
         "R1357 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
+    ('u_bare_far_via', 'rust'):
+        'R1324 (PARTIAL) — DISCLOSED by the union hedge; the owner `api` is not chained to the consumer',
+    ('u_busy_far_via', 'rust'):
+        'R1324 (PARTIAL) — DISCLOSED by the union hedge; the owner `api` is not chained to the consumer',
+    ('u_bare_far_direct', 'rust'):
+        "R1349 — SILENT: at the consumer's own `s.put` with the owner unchained, the non-owner union is never consulted (the R1324 hedge cannot help: it is never reached)",
+    ('u_busy_far_direct', 'rust'):
+        "R1349 — SILENT and the union's own Clock is LOST too: the consumer's own dispatch site never consults the non-owner union when the owner is unchained",
+    ('u_busy_near_direct', 'rust'):
+        "R1349 — the union's own Clock is lost at the consumer's own site with the owner unchained",
+    ('u_bare_far_via', 'java'):
+        "R1355 — DISCLOSED by the consumer's own hedge; no union carries `dispatchesOn`",
+    ('u_bare_far_direct', 'java'):
+        'R1355 — SILENT with the owner unchained: no consumer hedge, no union key',
+    ('u_busy_far_via', 'java'):
+        "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`",
+    ('u_busy_far_direct', 'java'):
+        "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`",
+    ('u_bare_far_via', 'ts'):
+        "R1356 — DISCLOSED (the reasonless foreign union's Unknown); no `dispatchesOn`",
+    ('u_bare_far_direct', 'ts'):
+        "R1356 — DISCLOSED (the reasonless foreign union's Unknown); no `dispatchesOn`",
+    ('u_busy_far_via', 'ts'):
+        "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
+    ('u_busy_far_direct', 'ts'):
+        "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
+    ('u_bare_far_via', 'swift'):
+        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
+    ('u_bare_far_direct', 'swift'):
+        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
+    ('u_busy_far_via', 'swift'):
+        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
+    ('u_busy_far_direct', 'swift'):
+        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
 }
 
 
@@ -422,6 +471,8 @@ def _link(link, target):
 
 
 def render(lang, root, layout, sv):
+    if layout == "unchained":
+        layout = "foreign"   # the same packages; only the consumer's CHAIN omits api (see run_engine)
     """Returns (packages, app_dir, api_text): `packages` is [(name, dir, [dep names])] in chain order,
     the consumer last. `one` is a single package."""
     shape, variant = sv
@@ -580,6 +631,53 @@ def _render_java(root, layout, shape, variant):
         pk.append((name, d, [x[0] for x in pk]))
     return pk, pk[-1][1], api_text
 
+# THE ZERO-IMPLEMENTOR CONSUMER (Fable B-E2/B-E3). A second consumer package, `zapp`, beside `app` in every chained
+# layout, with the same dependencies and NO implementor of Mapper of its own: it passes api's pure `Nop`. Under the
+# clause, a key it reaches through the union joins nothing visible but `Nop`, so `deny Fs` MUST stay 0 and the
+# DISCLOSURE is what a port may remove — recorded per engine, not asserted (see `none` in WANT).
+Z_FUNCS = {
+    "rust": "use api::{Nop, Sink};\nuse mid::mid_via;\n\npub fn c_none<S: Sink>(s: &S) -> i32 { %(ENV)s mid_via(s, &Nop) }\n",
+    "java": ("package zapp;\npublic class Z {\n  public static int c_none(api.Sink s) { %(ENV)s return mid.Mid.via(s, new "
+             "api.Nop()); }\n}\n"),
+    "ts": ('import { type Sink, Nop } from "api";\nimport { mid_via } from "mid";\n\n'
+           "export function c_none(s: Sink): number { %(ENV)s return mid_via(s, new Nop()); }\n"),
+    "swift": "import Foundation\nimport Api\nimport Mid\n\npublic func c_none(_ s: any Sink) -> Int {\n    %(ENV)s\n    return mid_via(s, Nop())\n}\n",
+}
+
+
+def render_zero(lang, root, deps):
+    """Lay `zapp` out beside the chained packages; returns its scan target."""
+    text = Z_FUNCS[lang] % dict(ENV=_sink("env", lang))
+    d = os.path.join(root, "zapp")
+    if lang == "rust":
+        _w(os.path.join(d, "Cargo.toml"), '[package]\nname="zapp"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\n'
+           + "".join('%s={path="../%s"}\n' % (x, x) for x in deps))
+        _w(os.path.join(d, "src", "lib.rs"), text)
+        return d
+    if lang == "java":
+        src = os.path.join(root, "zsrc", "zapp", "Z.java")
+        _w(src, text)
+        c = gd.run(["javac", "-nowarn", "-cp", os.path.join(root, "cls"), "-d", os.path.join(root, "d_zapp"), src])
+        if c.returncode != 0:
+            raise RuntimeError("javac (zapp) failed: " + c.stderr.decode()[:400])
+        return os.path.join(root, "d_zapp")
+    if lang == "ts":
+        dj = ",".join('"%s":"file:../%s"' % (x, x) for x in deps)
+        _w(os.path.join(d, "package.json"), '{"name":"zapp","version":"0.0.0","main":"src/index.ts","dependencies":{%s}}\n' % dj)
+        _w(os.path.join(d, "src", "index.ts"), text)
+        for x in deps:
+            _link(os.path.join(d, "node_modules", x), os.path.join(root, x))
+        types = os.path.join(gd.CANDOR_TS, "node_modules", "@types")
+        if os.path.isdir(types):
+            _link(os.path.join(d, "node_modules", "@types"), types)
+        return d
+    mods = {"api": "Api", "prod": "Prod", "mid": "Mid"}
+    _w(os.path.join(d, "Package.swift"), SW_MANIFEST % dict(
+        mod="Zapp", deps=", ".join('.package(path: "../%s")' % x for x in deps),
+        prods=", ".join('.product(name: "%s", package: "%s")' % (mods[x], x) for x in deps)))
+    _w(os.path.join(d, "Sources", "Zapp", "lib.swift"), text)
+    return d
+
 
 def build_proof(lang, app):
     if NOBUILD or lang == "java":
@@ -666,7 +764,10 @@ def run_engine(lang, ws, diag):
             reports[name] = keep
             if variant == "far":
                 diag.extend("  [%s %s %s] %s" % (lang, layout, shape, x) for x in union_diag(keep, name))
-        app_deps = [reports[x] for x in pk[-1][2]]
+        # `unchained`: the consumer chains the implementor's package and the dispatcher but NOT the abstraction's
+        # owner, so a key a union names under `api#…` has no chained entry to hit (Fable B-E3, the owner-unchained
+        # removal bucket). Every producer scan is unchanged.
+        app_deps = [reports[x] for x in pk[-1][2] if not (layout == "unchained" and x == "api")]
         r = scanner.scan(app, deps=app_deps)
         if not r.produced:
             return None, None, "%s/%s: consumer scan produced no report (rc=%d) %s" % (
@@ -676,6 +777,21 @@ def run_engine(lang, ws, diag):
             return None, None, "%s/%s: analyzed.count is 0 — a hollow report judges nothing" % (layout, variant)
         rows = {_leaf(f.get("fn")): f for f in rep.get("functions") or []
                 if _leaf(f.get("fn")) in FUNCS.values()}
+        ztarget = None
+        if layout != "one" and variant == "far":
+            try:
+                ztarget = render_zero(lang, root, pk[-1][2])
+            except RuntimeError as e:
+                return None, None, "%s/%s/%s zapp: %s" % (lang, layout, shape, e)
+            zerr = build_proof(lang, ztarget)
+            if zerr and not zerr.startswith("SKIPPED"):
+                return None, None, "%s (zapp %s/%s)" % (zerr, layout, shape)
+            zr = scanner.scan(ztarget, deps=app_deps)
+            if not zr.produced:
+                return None, None, "%s/%s: zapp scan produced no report (rc=%d) %s" % (layout, shape, zr.rc, zr.note)
+            for f in json.load(open(zr.report)).get("functions") or []:
+                if _leaf(f.get("fn")) == "c_none":
+                    rows["c_none"] = f
         seeded = [f for f in rep.get("functions") or []
                   if "Other" in (f.get("fn") or "") and "Fs" in (f.get("inferred") or [])]
         if not seeded:
@@ -693,13 +809,23 @@ def run_engine(lang, ws, diag):
                                           "purity claim (SPEC §2 rule 3)")
                 continue
             got, bad = {}, []
-            for i, (pol, want) in enumerate(sorted(WANT[kind].items())):
+            wants = dict(WANT[kind])
+            # `busy`: Doc.put's own Clock reaches every consumer that runs Doc.put, so a port that trades the
+            # union's own effect for the key (B-E5) reddens here — `*_fwd` is a different union entry.
+            if sv[0] == "busy" and fk in ("via", "direct", "none"):
+                wants["deny Clock"] = 1
+            # `none`: the DISCLOSURE is recorded, not asserted — a key with no visible implementor may correctly
+            # read pure (every visible implementor is pure) or stay hedged; a port's move here is a removal to
+            # account for against this column (the 0.40.15 values are in the NOTE beside the part in run.sh).
+            if kind == "none":
+                wants["deny Fs Unknown"] = None
+            for i, (pol, want) in enumerate(sorted(wants.items())):
                 pp = os.path.join(pol_dir, "%s_%d.policy" % (fn, i))
                 with open(pp, "w") as f:
                     f.write("%s %s\n" % (pol, row["fn"]))
-                rc = gate(scanner, app, app_deps, pp)
+                rc = gate(scanner, ztarget if fk == "none" else app, app_deps, pp)
                 got[pol] = rc
-                if rc != want:
+                if want is not None and rc != want:
                     bad.append("`%s` exit %d want %d" % (pol, rc, want))
             detail = "inferred=%s gates=%s" % (sorted(row.get("inferred") or []),
                                               " ".join("[%s]=%d" % (p, c) for p, c in sorted(got.items())))

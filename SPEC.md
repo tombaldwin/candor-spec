@@ -2980,8 +2980,14 @@ report 1).* Three rules:
    body and the merge, and `calls` names the hash, so a caller that runs only the body (Java's
    `I.super.m()`) and carries `Unknown` of its own reads the union's classes on BOTH routes. That is a
    superset (NOTSILENT), replacing a route split. Its EFFECTS stay exact: `inferred` is computed once, by the
-   scan, and the report route reads it as given. An engine that is exact on both routes also conforms; what
-   MUST NOT happen is the two routes disagreeing.
+   scan, and the report route reads it as given. The superset is not optional: the report route cannot tell
+   the exact edge from a dispatch (that is R1338's mechanism), so rule 2's seeding is the only reading under
+   which the two routes agree, and what MUST NOT happen is the two routes disagreeing.
+
+A second, smaller cost: `blindspots` (§3.1 ⟨0.24⟩) lists a unit carrying a DIRECT reason as a root cause,
+and a merged entry whose `Unknown` is purely merge-derived now carries a reason that is not a site in its
+body, so it is listed as a source beside the override that is the real one. That is a worklist over-listing,
+not a gate.
 
 *Why the producer, and not the consumer, carries it.* The fallback is consumer-side: credit a reasonless
 real row's `Unknown` to the dependency hierarchy's overrides before synthesising `dep:`. It was considered and
@@ -5013,6 +5019,18 @@ invisible); both are the accepted trade everywhere else in this contract. Dispat
 EXTERNAL abstraction an engine does not model (a stdlib iterator protocol, a serialization trait)
 MAY remain unflagged, but then MUST be documented as a named miss (item 7, §7).
 
+⟨0.40⟩ **The bound counts IMPLEMENTORS, and for a chained dependency's abstraction too** (SOUNDNESS R1336; a
+clarification, 2026-10-22). What is counted against the 12 is the implementing or overriding units visible to
+the consumer, pure ones included, as the in-scan count is — not the dependency's published rows. A pure
+implementor has no row (§2 rule 3), so a count of rows measures the producer's precision rather than the
+dispatch, and a verdict that flips between the union and the hedge as a dependency's precision moves (R1336:
+zookeeper `CliCommand.parse`, 23 overriding subtypes, read as 1 row on one producer and 21 on another) is
+exactly the instability this bound exists to prevent. A consumer MAY count them from the dependency's §2.2
+call-graph sidecar, which exists to show pure units to consumers; that reading is the chained SCAN's, and
+§3.1's rule that `gate --report` reads the report as given and back-fills nothing from a sidecar is
+unaffected, because the consumer's own report records the verdict the scan reached. Where the sidecar is
+absent, the pure implementors are not visible to the consumer and the rows are the count.
+
 ⟨0.39⟩ **A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE
 TO THE CONSUMER — its own and any chained report's — so supplying an effectful implementor to a
 dependency is never silent.** The paragraph above calls the invisible downstream implementor "the
@@ -5124,33 +5142,61 @@ note's census sentence read the MAY as excluding these members from obligation 1
 paragraph that reading is non-conforming. It adds no field and moves no floor, because ⟨0.39⟩'s headline
 already required the effect to reach the consumer.
 
-⟨0.40⟩ **AN `interfaceUnion` ENTRY NAMES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON (`dispatchesOn`), AND A
-CONSUMER THAT REACHES THE UNION JOINS THEM** (SOUNDNESS R1324, R1355, R1356, R1357; a clarification,
+⟨0.40⟩ **AN `interfaceUnion` ENTRY CARRIES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON, AND A CONSUMER THAT
+REACHES THE UNION JOINS THEM** (SOUNDNESS R1324, R1355, R1356, R1357; a clarification,
 2026-10-22; pinned by conformance PART 102). Obligation 1 binds a union entry as it binds a row. A dispatch
 through the union's key runs a contributor's body, so a member that body dispatches on is a member the
 dispatch through the key REACHES, and obligation 1 requires that member to reach the caller transitively. A
 row may meet that with its direct members and its `calls`, leaving the closure to the consumer; a union has
-no body and publishes no `calls`, so nothing a consumer holds can take the closure through it. In the
+no body, and as published today it carries neither the members nor `calls`, so nothing a consumer holds can
+take the closure through it. In the
 measured instance (R1324) aws-smithy-types implements serde's `Serializer`, its `serialize_some` dispatches
 `serde#ser::Serialize::serialize`, and a consumer reaching the `Serializer::serialize_some` union through a
 dependency's key cannot join its own `Serialize` implementor. Four rules:
 
-1. **The producer MUST name the members on the union.** When a contributor of a union entry dispatches —
-   directly, or transitively over the producer's own call graph — on a member other than the union's own
-   key, the union entry MUST carry `dispatchesOn` naming every such member: the union of its contributors'
-   TRANSITIVE member sets, each value in the `dispatchesOn` spelling rule above and as the contributor's
-   own row would carry it. It does so even when the union is otherwise pure, obligation 1's exception for obligation
-   1's reason. The union's own key MAY be omitted: a contributor that forwards on the union's own member adds
-   nothing the consumer's join does not already hold. A member's NAME is never a reason to omit it — §4's
-   conventionally-pure MAY is judged by the receiver's declared type (the paragraph above) and every key a
-   union can carry names a package's own abstraction (SOUNDNESS R1351) — and a value the contributor's row
-   could not validly carry (a trait that does not declare the member, R549/R1353) is not made valid by
-   appearing on a union. Carrying `dispatchesOn` does not make a union entry a unit (§3.1 ⟨0.40⟩).
-2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys enter obligation 3's
-   per-key join exactly as a row's do, transitively, whether the consumer reached the union at its own
+1. **The producer MUST make the members reach the consumer through the union, in either spelling obligation 1
+   allows a row.** When a contributor of a union entry dispatches — directly, or transitively over the
+   producer's own call graph — on a member other than the union's own key, the union entry MUST carry EITHER
+   (a) `dispatchesOn` naming every such member, the union of its contributors' TRANSITIVE member sets, OR
+   (b) its contributors' DIRECT members in `dispatchesOn` together with `calls` naming the contributors
+   themselves, so that the consumer takes the closure over the dependency's own `calls` graph exactly as it
+   does for a row published direct-only. Each value takes the `dispatchesOn` spelling rule above, and is
+   what the contributor's own row would carry. A producer uses the spelling its rows use, and its consumer
+   follows that spelling (rule 2). It does so even when the union is otherwise pure, obligation 1's exception
+   for obligation 1's reason. The union's own key MAY be omitted: a contributor that forwards on the union's
+   own member adds nothing the consumer's join does not already hold. A member's NAME is never a reason to
+   omit it — §4's conventionally-pure MAY is judged by the receiver's declared type (the paragraph above) and
+   every key a union can carry names a package's own abstraction (SOUNDNESS R1351) — and a value the
+   contributor's row could not validly carry (a trait that does not declare the member, R549/R1353) is not
+   made valid by appearing on a union. Carrying `dispatchesOn` or `calls` does not make a union entry a unit
+   (§3.1 ⟨0.40⟩), and the `calls` of spelling (b) add no reason class the union does not already carry,
+   since its classes are its contributors' transitive ones (§3.1 ⟨0.40⟩).
+
+   *Why two spellings, measured rather than assumed* (2026-10-22, `~/candor-handoff/specagent-0416/B-E1-*`).
+   The first draft of this rule required spelling (a) alone — the per-union form of the on-wire closure
+   obligation 1's own history records as unserialisable. Priced on candor-java `b679b9a` over the three jars
+   that history names, by walking each NARROW union's contributors through the producer's own call-graph
+   sidecar (fn-keyed, so overloads conflate and the figures are UPPER bounds; the same instrument over every
+   ROW reproduces the first draft's order — avro-1.11.3 184,564 member strings against the 157,562 recorded
+   above): spelling (a) adds 10,756 member strings and 0.79 MB to avro-1.11.3's 1.8 MB report (+43%),
+   13,270 and 1.26 MB to spring-core-6.1.10's 4.6 MB (+27%), and 3,340,556 strings and 217 MB to
+   jooq-3.19.10's 41 MB (+527%: 1,977 narrow unions with a further member, median 1,751 members each).
+   Spelling (b) costs 57 / 191 / 1,438 direct member strings plus 338 / 740 / 5,949 contributor names.
+   And each engine's producer and consumer already agree on one spelling: on a fixture where the further
+   dispatch is one helper deeper than the contributor, candor-scan, candor-ts and candor-swift already
+   publish the TRANSITIVE set on the contributor's row and their consumers follow a union's `dispatchesOn`
+   but not a union's `calls`, while candor-java publishes DIRECT members (the contributor's row names
+   none; its helper's does) and its consumer follows a union's `calls` into the contributor and on to the
+   helper's key. Hand-doctored unions: (a) carries all four consumers to `deny Fs` 1; (b) carries
+   candor-java only; the contributor row's own keys copied onto the union carry rust, ts and swift and not
+   java.
+2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys — and, in spelling (b),
+   its `calls` — enter obligation 3's per-key join and closure exactly as a row's do, transitively, whether the consumer reached the union at its own
    dispatch site or through a dependency row's `dispatchesOn`. A consumer that reaches the contributors by
-   another sound route (a walk of the dependency's published hierarchy) meets this too: the property is that
-   the implementor's effect is CARRIED, and conformance asserts it at the consumer, as PARTs 92, 94 and 100 do.
+   another sound route (a walk of the dependency's published hierarchy) meets this rule within its own engine,
+   but not rule 1: rule 1 binds the producer regardless, because a union hit shadows such a walk (that is why
+   PART 102's `busy` cells are SILENT) and only the key on the wire carries across consumers. The property is
+   that the implementor's effect is CARRIED, and conformance asserts it at the consumer, as PARTs 92, 94 and 100 do.
 3. **A hedge in its place is a disclosure, not a conforming alternative.** A union that carries its
    contributors' effects plus `Unknown` with `dispatch:<owner>.<member>` for the further member (candor-scan
    0.40.15's R1324 hedge) turns `deny E Unknown` red and leaves `deny E` green over code that performs `E`.
@@ -5159,18 +5205,23 @@ dependency's key cannot join its own `Serialize` implementor. Four rules:
    contributes `unresolved` to the union's reasons (§3.1 ⟨0.40⟩).
 4. **It binds a NARROW union**, one that publishes its contributors' effects. A BROAD union, which publishes
    the bounded-CHA hedge on its own key instead (§3.1 ⟨0.40⟩ "the union's own dispatch hedge"), already
-   discloses everything a dispatch through it reaches and names nothing further. If the reference engine
-   cannot serialise the closure for the narrow unions it publishes, that is a report against this clause,
-   as it was against obligation 1's first draft, not a licence to hedge.
+   discloses everything a dispatch through it reaches and names nothing further. Spelling (b) is what keeps
+   the narrow case serialisable for the reference engine (the measurement under rule 1); a port that finds
+   it is not is a report against this clause, not a licence to hedge.
 
 *Measured 2026-10-22 at the four engines' heads (candor-scan `d10e401`, candor-java `b679b9a`, candor-ts
 `e6481ee`, candor-swift `6d2031a`), on PART 102's one-variable fixture, executed in all four languages:
 `Doc: Sink { put(v) { v.mapv() } }`, a consumer `Mine: Mapper` whose `mapv` writes a file, reached through a
 dependency's `Sink.put` key and at the consumer's own dispatch site, with the abstraction local to `Doc`'s
 package and foreign to it.* No producer puts `dispatchesOn` on any union entry, and every engine reads
-`deny Fs` 0 on all eight chained defect cells. What differs is disclosure. Where `Doc.put` only dispatches,
-its union is pure and all four disclose `Unknown` (candor-scan through the R1324 hedge on the union, the
-others through the consumer's own hedge on a key whose union carries nothing). Where `Doc.put` also performs
+`deny Fs` 0 on all twelve chained defect cells (eight with the abstraction's owner chained to the consumer,
+four without it; without it candor-scan is SILENT at the consumer's own dispatch site and loses the union's own
+effect as well, SOUNDNESS R1349, and candor-java is SILENT on three of the four). What differs is disclosure. Where `Doc.put` only dispatches,
+all four disclose `Unknown`: candor-scan through the R1324 hedge on the union; candor-java through the
+consumer's own hedge over a pure union; candor-swift, and candor-ts with the abstraction local, through the
+consumer's hedge on a key with no published union; and candor-ts with the abstraction foreign through a
+union whose `Unknown` (fed by `Doc.put`'s own hedge on the foreign `Mapper.mapv`) carries no `unknownWhy` —
+itself against the union-reasons rule of §3.1 ⟨0.40⟩ (SOUNDNESS R1358). Where `Doc.put` also performs
 an effect of its own, the union is published with that effect, the consumer trusts it, and candor-java (4 of
 4 cells, R1355), candor-ts (2 of 4, R1356) and candor-swift (3 of 4, R1357) read SILENT: `deny Fs Unknown`
 exits 0 over code that wrote the file. candor-scan stays disclosed on all 8 through its hedge (R1324,
@@ -5180,18 +5231,30 @@ already carries — on the published `Sink.put` union, or on a pure union entry 
 none — moves all four chained consumers to `deny Fs` 1 on all 16 doctored cells, `bare` and `busy`, local
 and foreign, through the dependency's key and at the consumer's own site.
 
-*Who moves.* The producers, all four: they add `dispatchesOn` to narrow union entries whose contributors
-dispatch further, and candor-ts and candor-swift, which omit an otherwise-pure union, publish one when it has
-members to name (wire growth; no producer-side `inferred` moves; candor-java's R1328 memo goes live). The
-consumers already join, measured above. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
+*Who moves.* The producers, all four: candor-scan, candor-ts and candor-swift add spelling (a) to narrow union
+entries whose contributors dispatch further — their rows already carry the transitive set, so this is the
+union of keys already on the wire — and candor-ts and candor-swift, which omit an otherwise-pure union,
+publish one when it has members to name; candor-java adds spelling (b). No producer-side `inferred` moves.
+The consumers already follow each engine's own spelling, measured above, with one condition: candor-java's
+R1328 memo (bare-`fn` keyed, latent today) goes live once unions carry keys or `calls`, and the doctored
+fixture had one union per `fn`, the population in which it cannot collide — so the java port closes R1328
+with or before the union change, or its consumer half is not yet measured. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
 named member performs `E` — a RESOLUTION, so every new charge must trace to that implementor's own body;
 `deny E Unknown <caller>` goes 0 → 1 on the silent cells; and `deny Unknown <caller>` goes 1 → 0 where a
 hedge stood in for the names and the implementors they join are pure — candor-scan's R1324 hedge, and on
 candor-java, candor-ts and candor-swift the consumer's own hedge over a key whose union was pure or absent
 (PART 102's `*_bare_near_*` cells read `Unknown` today). That is the REMOVING direction: each removal is to be
-accounted for, the disclosure of a key with no visible implementor (PART 92's `c2_zero_impl`) shown intact,
-and a newly published pure union shown not to delete an unchained owner's `invisible` disclosure by making
-the lookup hit (SOUNDNESS R764). This adds no field and moves no floor: `dispatchesOn` exists, ⟨0.39⟩ obligation 1 already requires
+accounted for, and a newly published pure union shown not to delete an unchained owner's `invisible`
+disclosure by making the lookup hit (SOUNDNESS R764). One removal bucket is joined by NO implementor at all:
+a consumer that reaches the union and has no visible implementor of a named member loses the hedge's
+`Unknown` and gains either the owner's pure union (owner chained: correct under ⟨0.39⟩'s model, where every
+visible implementor is pure) or only the owner's non-gating `invisible` (owner not chained). PART 92's
+`c2_zero_impl` does not reach it — its disclosure is the DEPENDENCY's own hedge at zero implementors, which
+flows into the union's `inferred` and stays. PART 102's `*_none` arms (a consumer with no implementor, owner
+chained and not) record that disclosure per engine at 0.40.15 — `deny Fs Unknown` 1 on every `bare` cell in
+all four engines, on every `busy` cell in candor-scan, and on candor-ts's and candor-swift's foreign `busy`
+cells; 0 on candor-java's `busy` cells and on candor-ts's and candor-swift's local `busy` cell — and each 1 → 0 a port makes there is to be shown against that
+column. This adds no field and moves no floor: `dispatchesOn` exists, ⟨0.39⟩ obligation 1 already requires
 the member to reach the caller, and ⟨0.39⟩'s headline already requires the effect to reach the consumer;
 this paragraph states where a union entry puts it.
 

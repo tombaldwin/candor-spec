@@ -105,24 +105,27 @@ def broad_sources():
 
 
 # (cell, fixture, target package, fn, policy, expected exit, kind). Fixtures: n = narrow, b = broad.
-# kind: DEFECT (a cell the clause decides), CONSEQUENCE (an exact caller of the merged entry: the clause fixes
-# that both routes AGREE, and with today's wire the agreed value is the union's classes — the superset it
-# names — so the cell asserts the agreement and PRINTS the value), CONTROL (unchanged by the clause).
+# kind: DEFECT (a cell the clause decides), CONSEQUENCE (an exact caller of the merged entry: rule 3 makes the
+# superset mandatory — the report route cannot tell the exact edge from a dispatch, so rule 2's seeding is the
+# only reading under which the routes agree — and the cell pins it on BOTH routes, so a port that writes the
+# reasons without seeding the scan route reads scan 0 / report 1 and fails here: the PShape.plain guard),
+# CONTROL (unchanged by the clause). Every cell compares the two `--gate-json` documents as well as the exits,
+# and a refusal (exit 2) fails every cell, since none expects 2.
 CELLS = [
     ("n_merged_reflect", "n", "lib", "lib.Shape.name", "deny Unknown[reflect]", 1, "DEFECT"),
     ("n_merged_unres", "n", "lib", "lib.Shape.name", "deny Unknown[unresolved]", 0, "DEFECT"),
     ("n_merged_fs", "n", "lib", "lib.Shape.name", "deny Fs", 1, "CONTROL"),
-    ("n_exact_reflect", "n", "lib", "lib.PShape.plain", "deny Unknown[reflect]", None, "CONSEQUENCE"),
+    ("n_exact_reflect", "n", "lib", "lib.PShape.plain", "deny Unknown[reflect]", 1, "CONSEQUENCE"),
     ("n_exact_native", "n", "lib", "lib.PShape.plain", "deny Unknown[native]", 1, "CONTROL"),
     ("n_exact_fs", "n", "lib", "lib.PShape.plain", "deny Fs", 0, "CONTROL"),
     ("n_app_reflect", "n", "app", "app.Main.go", "deny Unknown[reflect]", 1, "CONTROL"),
     ("n_app_unres", "n", "app", "app.Main.go", "deny Unknown[unresolved]", 0, "DEFECT"),
     ("n_app_fs", "n", "app", "app.Main.go", "deny Fs", 1, "CONTROL"),
-    ("n_ctl_reflect", "n", "ctl", "ctl.Main.go", "deny Unknown[reflect]", None, "CONSEQUENCE"),
+    ("n_ctl_reflect", "n", "ctl", "ctl.Main.go", "deny Unknown[reflect]", 1, "CONSEQUENCE"),
     ("n_ctl_native", "n", "ctl", "ctl.Main.go", "deny Unknown[native]", 1, "CONTROL"),
     ("n_ctl_fs", "n", "ctl", "ctl.Main.go", "deny Fs", 0, "CONTROL"),
     ("b_merged_dispatch", "b", "p", "p.I.m", "deny Unknown[dispatch]", 1, "CONTROL"),
-    ("b_exact_dispatch", "b", "p", "p.Ex.call", "deny Unknown[dispatch]", None, "CONSEQUENCE"),
+    ("b_exact_dispatch", "b", "p", "p.Ex.call", "deny Unknown[dispatch]", 1, "CONSEQUENCE"),
     ("b_exact_reflect", "b", "p", "p.Ex.call", "deny Unknown[reflect]", 1, "CONTROL"),
     ("b_exact_fs", "b", "p", "p.Ex.call", "deny Fs", 0, "CONTROL"),
     ("b_app_dispatch", "b", "appb", "appb.Main.go", "deny Unknown[dispatch]", 1, "CONTROL"),
@@ -145,6 +148,10 @@ XFAIL = {
     ("n_app_unres", "java"):
         ("R1330 — the chained consumer synthesises `dep:` for the merged entry's reasonless Unknown and reads a "
          "false `unresolved` beside the true reflect"),
+    ("n_exact_reflect", "java"):
+        "R1354 — no reflect reason is on the merged entry, so neither route propagates it to the exact caller",
+    ("n_ctl_reflect", "java"):
+        "R1354 — the same, one chain hop further: the chained exact caller has nothing to inherit",
     ("b_exact_dispatch", "java"):
         ("R1338 — the BROAD merge writes its `dispatch:` hedge into the merged entry; the report route hands it to "
          "the exact caller through `calls`, the scan route does not"),
@@ -282,18 +289,12 @@ def main():
         d, deps = targets[tgt]
         s, g, da, db = two_routes(j, d, deps, pp, work)
         problems = []
-        if want is None:
-            # CONSEQUENCE: the clause fixes that the two routes AGREE; with today's wire the agreed value is the
-            # union's classes (a superset), and an engine exact on both routes would also conform.
-            if s != g:
-                problems.append("split")
-        else:
-            if s != want:
-                problems.append("scan")
-            if g != want:
-                problems.append("report")
+        if s != want:
+            problems.append("scan")
+        if g != want:
+            problems.append("report")
         docs_equal = da is not None and da == db
-        detail = "`%s %s` scan=%d report=%d want=%s%s" % (pol, fn, s, g, "scan==report" if want is None else want,
+        detail = "`%s %s` scan=%d report=%d want=%s%s" % (pol, fn, s, g, want,
                                                        "" if docs_equal else " — --gate-json documents DIFFER")
         if not docs_equal and "doc" not in problems:
             problems.append("doc")
