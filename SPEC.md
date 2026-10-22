@@ -5049,10 +5049,15 @@ producer arm. A consumer's own count is therefore a REFINEMENT of that verdict (
 the declaring abstraction has fewer implementors), not a second copy of it. So: where the paired sidecar is
 absent, unreadable, unpaired, or incomplete by its key set (⟨0.26⟩ — detected by comparing the number of sidecar
 keys with the paired report's ⟨0.21⟩ `analyzed.count`, which counts every analysed unit, pure ones included: a key
-count below it marks the sidecar incomplete whatever it omitted, and a report row whose unit has no key is the
-cheaper necessary test, but blind to a sidecar that omits only PURE units — exactly the units the count needs;
-measured equal on PART 103's dependency reports in all four engines and on a candor-java class with overloads,
-whose sidecar keys each overload separately), and wherever a consumer does not read the sidecar at all, its verdict at that
+count that DIFFERS from it in either direction disqualifies the sidecar — below it the sidecar is incomplete
+whatever it omitted, above it the sidecar is not this report's (it can over-count the total while under-counting
+the member in hand) — and where the manifest carries `analyzed.digest`, equality of the key set's digest with it
+is the complete pairing test, within one engine only, since that digest is within-engine-opaque (⟨0.21⟩). A
+report row whose unit has no key is the cheaper necessary test, but blind to a sidecar that omits only PURE
+units — exactly the units the count needs. Measured: count equal on PART 103's dependency reports in all four
+engines and on a candor-java class with overloads, whose sidecar keys each overload separately; and count AND
+digest equal on all 304 dependency reports of candor-java's chained corpus (the java lane, lane/java-0416
+`fc51e14` — the one corpus measurement, java only), and wherever a consumer does not read the sidecar at all, its verdict at that
 site MUST be no more resolved than what the dependency's report publishes under the member's key — its union
 entry, beside the real entry or merged into it, and where it publishes none, the real entry — and MAY be exactly
 that. **A UNION FOR A MEMBER WHOSE VISIBLE IMPLEMENTORS EXCEED THE BOUND IS PUBLISHED BROAD**: it MUST carry the
@@ -5064,7 +5069,7 @@ since nothing performs an effect): in one tree all four engines read `Unknown`; 
 candor-ts publish the union with its `dispatch:` hedge and their consumers read `Unknown`; candor-scan publishes the
 union PURE (`inferred: []`) and candor-swift does not publish it, and both consumers read PURE (SOUNDNESS R1367,
 R1368, SILENT relative to their own one-tree answer). The 12-implementor control reads pure chained in three
-engines; candor-ts, which omits a pure union, hedges there on the missing key (R1369, NOTSILENT).* Falling back to the rows is more resolved than a published hedge (the P6 violation); falling back to a
+engines; candor-ts, which omits a pure union, hedges there on the missing key (R1369, NOTSILENT — an instance of R613).* Falling back to the rows is more resolved than a published hedge (the P6 violation); falling back to a
 blanket hedge is less resolved than a published narrow union (the hedge-on-"a-dispatch-occurred" PART 92's
 `c3_pure_only` forbids). This binds every consumer the same way, whether it reads the sidecar or not. In
 practice it costs nothing new: candor-java writes the sidecar beside every report it produces (an armed exit-2

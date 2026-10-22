@@ -20,6 +20,10 @@ Arms: `w_<N>` one tree (the engine's own in-scan answer), `c_<N>` chained (depen
 Nothing is executed: every implementor is pure, so there is no effect to observe; the property is the DISCLOSURE of an
 indeterminacy the SPEC requires, judged against the engine's own one-tree answer.
 
+WHAT A PASSING c_13 CANNOT SAY FOR candor-ts (Fable REVIEW5 E3): ts's consumer hedges a dependency dispatch
+whose union is missing (R613/R1369, the c_12 xfail), so its c_13 pass cannot distinguish "trusts the BROAD union" from
+"hedges any dependency dispatch" until R613 closes; the c_12 cell is what will tell them apart.
+
 The producer's union entry for Sink.put is PRINTED per engine (published or not, inferred, unknownWhy), not asserted:
 the part asserts the property at the consumer, as PARTs 92, 94, 100 and 102 do.
 """

@@ -16,7 +16,8 @@
     "⟨2026-10-22⟩ lane/spec-0416 revision after Fable's review (fable-spec0416/REVIEW.txt): the §4 union clause re-anchored (two spellings, retitled, zero-implementor bucket), rule 3 of the §3.1 merged-entry clause re-anchored (A-E1), and the new §4 bounded-CHA chained-count sentence (R1336) classified unenforced with its reason.",
     "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW2: union rules 1-2 re-anchored (both spellings bind every consumer), the union Who-moves classified (java-port conditions), the bound sentence re-anchored and its P6 paragraph classified unenforced with the owed arm named.",
     "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW3: rule 2's cross-spelling half pinned (PART 102 xc_*, R1359/R1365/R1366 LATENT) and its entry relabelled; the bound fallback re-anchored to the producer's published verdict with the owed PART 30 arm given its second assertion; the union Who-moves re-anchored for the dischargeable B2-E2 condition.",
-    "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW4: the bound-fallback paragraph re-anchored for the BROAD-publication MUST (pinned by new PART 103) and the analyzed.count incompleteness detector; its degraded-sidecar half stays owed and is named in the entry."
+    "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW4: the bound-fallback paragraph re-anchored for the BROAD-publication MUST (pinned by new PART 103) and the analyzed.count incompleteness detector; its degraded-sidecar half stays owed and is named in the entry.",
+    "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW5: the bound paragraph re-anchored for the two-sided pairing detector; classification unchanged."
   ],
   "entries": [
     {
@@ -3763,10 +3764,10 @@
       "unenforced": "Port CONDITIONS, not obligations a build meets today: candor-java closes R1328 with or before the union change, and EITHER shows §3.1 ⟨0.24⟩ byte-equality on a (b)-spelled report with a producer-internal caller whose `calls` name the union key, OR shows no unit's `calls` can name a narrow (b)-spelled union's key (Fable REVIEW3 B3-E2; this lane's nearest shape, B2-E2-route-equality.txt, is evidence for the second branch). The gate directions it lists are pinned by PART 102's cells and the *_none recorded column."
     },
     {
-      "sha": "b501887260a77637",
+      "sha": "6a8e5c4299d64a44",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "**Where the count is UNANSWERABLE, the consumer falls back to the producer's own bound verdict",
-      "part": "PART 103 for the paragraph's PREMISE, now its bold MUST (a union past the bound is published BROAD: 13 pure implementors, four-way; R1367 rust, R1368 swift xfailed; R1369 ts on the 12 control). NOT pinned, and owed: the degraded-sidecar half — a PART 30 P6 arm with a dependency of >12 overriding subtypes of which <=12 are effectful rows, its paired sidecar removed / truncated / swapped, asserting BOTH that the site does not move from hedge to union AND that with the sidecar removed it reads the dependency's union entry (c3_pure_only's shape for a blanket hedge). The `analyzed.count` detector (Fable REVIEW4 C4-E2) is measured equal on PART 103's reports and a java overload class only. candor-java lane/java-0416 8cb94c8 is non-conforming under this paragraph (reported, not filed); released 0.40.15's row count is R1336."
+      "part": "PART 103 for the paragraph's PREMISE, now its bold MUST (a union past the bound is published BROAD: 13 pure implementors, four-way; R1367 rust, R1368 swift xfailed; R1369 ts on the 12 control). NOT pinned, and owed: the degraded-sidecar half — a PART 30 P6 arm with a dependency of >12 overriding subtypes of which <=12 are effectful rows, its paired sidecar removed / truncated / swapped, asserting BOTH that the site does not move from hedge to union AND that with the sidecar removed it reads the dependency's union entry (c3_pure_only's shape for a blanket hedge). The pairing detector (key count differing from `analyzed.count` in either direction disqualifies; `analyzed.digest` equality the complete within-engine test — Fable REVIEW4 C4-E2, REVIEW5 E1) is measured equal on PART 103's reports, a java overload class, and (count + digest) java's 304 corpus deps (lane/java-0416 fc51e14); no PART pins it. candor-java lane/java-0416 8cb94c8 is non-conforming under this paragraph (reported, not filed); released 0.40.15's row count is R1336."
     }
   ]
 }
