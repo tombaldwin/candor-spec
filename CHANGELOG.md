@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.15] — 2026-10-22
+
 - **PART 99 and PART 100 retire candor-java's six held xfails (SOUNDNESS R1223, R1234, R1304).** The fixes ship in candor-java 0.40.15; the cells now agree with EXPECTED on JDK 21, and a passing xfail is a failure, so their lines are removed.
 - **`conformance/run.sh` refuses to run on a JDK other than the one CI uses (SOUNDNESS R1335).** candor-java's output depends on the JDK it runs on, and on the 0.40.14 cut the suite failed PART 100 under the default JDK 17 and passed under 21 on the same trees. The pin is read from `.github/workflows/conformance.yml`; `CONFORMANCE_ANY_JDK=1` measures on another runtime knowingly. Preflight [11] and `release.sh` inherit the check.
 
