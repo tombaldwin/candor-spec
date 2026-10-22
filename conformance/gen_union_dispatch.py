@@ -789,6 +789,9 @@ def run_engine(lang, ws, diag):
             zr = scanner.scan(ztarget, deps=app_deps)
             if not zr.produced:
                 return None, None, "%s/%s: zapp scan produced no report (rc=%d) %s" % (layout, shape, zr.rc, zr.note)
+            # NO Other.mapv seed check here, deliberately (Fable REVIEW2): `Other` lives in `app`, which zapp neither
+            # contains nor chains, so a name-only join on zapp has nothing to join and the seed cannot exist. Do not
+            # "fix" the app-side seed check to cover zapp; it would make this arm BROKEN on every engine.
             for f in json.load(open(zr.report)).get("functions") or []:
                 if _leaf(f.get("fn")) == "c_none":
                     rows["c_none"] = f

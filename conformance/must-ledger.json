@@ -13,7 +13,8 @@
     "⟨2026-08-28⟩ The five ⟨0.34⟩ statements (the cause/remedy swap, the version-licenses-a-remedy-never-a-verdict/byte-equality MUST, the numeric-never-lexicographic ladder rule, the absent-or-unparseable-predates-with-whitespace-stripped-first rule, and the exemption from the general present-but-unparseable-is-a-refusal rule) are classified to PART 80, which builds its own single-tree fixture per engine and mutates ONLY the envelope `spec` across five gated copies of the same bytes — the `cur` cell is the over-charge control, and PART 80's `ws` cell PROBES rather than hard-codes which engines have ported whitespace-tolerant parsing (candor-java/candor-ts pass; candor-rust/candor-swift SKIP, reference-led, until they trim before parsing).",
     "⟨2026-08-28⟩ Two more ⟨0.34⟩ items, added to the still-open rung above rather than a new ⟨0.35⟩ (there was no 0.34 release to close it against — see the `eaab823` rule: do not open a new rung while the previous one is unreleased). (1) The `zeroMatch` §3.1 carve-out (BACKLOG.md CURRENT QUEUE item 1, Tom's ruling: option D) — four statements classified to PART 83, which already measured the divergence and now asserts it as SPEC'd behaviour rather than an unruled state; the advisory pairing on `analyzed.count > |functions|` was considered and explicitly REJECTED (noise, not signal — the same arithmetic the ⟨0.24⟩ manifest clause already names), so no new wire key was minted. (2) The `--policy` usage-error rule extended from `gains` alone to the full twelve-verb set with no policy-derived field — two statements classified to PART 84 (`verb_reject`), which falsifies every cell against the pre-fix commits (java `802efe4`, rust `caca530`, ts `b4c3a22`) in throwaway clones.",
     "⟨2026-10-22⟩ lane/spec-0416: the ⟨0.40⟩ merged-entry paragraph (§3.1, R1354/R1330/R1338) is classified to PART 101 and the ⟨0.40⟩ union-`dispatchesOn` paragraph (§4, R1324/R1355-R1357) to PART 102, except the BROAD-union exemption and the measurement paragraph (unenforced, reasons recorded). The union-reasons bullet was re-anchored for a one-clause cross-reference, its classification unchanged.",
-    "⟨2026-10-22⟩ lane/spec-0416 revision after Fable's review (fable-spec0416/REVIEW.txt): the §4 union clause re-anchored (two spellings, retitled, zero-implementor bucket), rule 3 of the §3.1 merged-entry clause re-anchored (A-E1), and the new §4 bounded-CHA chained-count sentence (R1336) classified unenforced with its reason."
+    "⟨2026-10-22⟩ lane/spec-0416 revision after Fable's review (fable-spec0416/REVIEW.txt): the §4 union clause re-anchored (two spellings, retitled, zero-implementor bucket), rule 3 of the §3.1 merged-entry clause re-anchored (A-E1), and the new §4 bounded-CHA chained-count sentence (R1336) classified unenforced with its reason.",
+    "⟨2026-10-22⟩ lane/spec-0416 after Fable REVIEW2: union rules 1-2 re-anchored (both spellings bind every consumer), the union Who-moves classified (java-port conditions), the bound sentence re-anchored and its P6 paragraph classified unenforced with the owed arm named."
   ],
   "entries": [
     {
@@ -3715,31 +3716,13 @@
       "sha": "981650856cd8eea6",
       "at": "3.1 Read-only queries (SHOULD)",
       "excerpt": "3. **The cost: an exact caller of a merged entry inherits the union's classes.** One `hash` holds the default ",
-      "part": "PART 101 (n_exact_reflect, n_ctl_reflect pin the mandatory superset on BOTH routes — a report-only port reads scan 0 / report 1 and fails, measured by doctoring the report; b_exact_dispatch is R1338's route split; n_exact_fs, n_ctl_fs, b_exact_fs pin that EFFECTS stay exact). Re-anchored 2026-10-22 (Fable A-E1): the 'exact on both routes also conforms' permission was struck as contradicting rule 2."
-    },
-    {
-      "sha": "807d4bb9cc92b2e6",
-      "at": "4.0 The disclosure model, formally — a signature",
-      "excerpt": "⟨0.40⟩ **The bound counts IMPLEMENTORS, and for a chained dependency's abstraction too** (SOUNDNESS R1336; a c",
-      "unenforced": "No conformance PART pins how a CHAINED consumer counts a dependency's implementors against the bound; candor-java's DepInheritedMemberTest (pure overriding subtypes count; sidecar deleted -> the row count returns) pins it in one engine, and rust/ts/swift's chained bound counts are unmeasured. A four-way cell owes a dependency with >12 implementors of which <=12 are effectful rows."
+      "part": "PART 101 (n_exact_reflect, n_ctl_reflect pin the mandatory superset on BOTH routes as \"both\"-route xfails, which require both exits wrong AND agreeing; calibrated 2026-10-22 after Fable A2-E1 by driving the report-only half-fix through the generator — n_exact_reflect reads scan 0 / report 1 and FAILS. At 721da5c, before A2-E1, the same half-fix printed xfail. b_exact_dispatch is R1338's route split; n_exact_fs, n_ctl_fs, b_exact_fs pin that EFFECTS stay exact). Re-anchored 2026-10-22 (Fable A-E1)."
     },
     {
       "sha": "2e1627fe656186ff",
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "⟨0.40⟩ **AN `interfaceUnion` ENTRY CARRIES EVERY MEMBER ITS CONTRIBUTORS DISPATCH ON, AND A CONSUMER THAT REAC",
       "part": "PART 102 (the property at the consumer, four-way: *_far_via through a dependency's key, *_far_direct at the consumer's own site, local and foreign abstraction, bare and busy contributor; names no wire route, as PARTs 92/94/100)"
-    },
-    {
-      "sha": "20fd8c93058f6f5f",
-      "at": "4.0 The disclosure model, formally — a signature",
-      "excerpt": "1. **The producer MUST make the members reach the consumer through the union, in either spelling obligation 1 ",
-      "part": "PART 102 (the producer leg exercised through its consequence at the consumer — the far cells, in each engine's own spelling; the union entries are PRINTED as diagnostics, not asserted, so either spelling (a) or (b) passes. The two-spellings measurement is a record: ~/candor-handoff/specagent-0416/B-E1-*. The member-name and false-trait sentences (R1351/R1353) are candor-scan's rows and its own tests' to pin)"
-    },
-    {
-      "sha": "61d8d442476dd555",
-      "at": "4.0 The disclosure model, formally — a signature",
-      "excerpt": "2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys — and, in spelling (b), ",
-      "part": "PART 102 (*_far_via reaches the union through mid's `dispatchesOn`, *_far_direct at the consumer's own dispatch site; the near/fwd controls pin that the join adds only the named member)"
     },
     {
       "sha": "69fd44c78cc79359",
@@ -3752,6 +3735,36 @@
       "at": "4.0 The disclosure model, formally — a signature",
       "excerpt": "*Measured 2026-10-22 at the four engines' heads (candor-scan `d10e401`, candor-java `b679b9a`, candor-ts `e648",
       "unenforced": "A MEASUREMENT RECORD (2026-10-22, four heads named in it): what it asserts is what each engine read on PART 102's fixture and on hand-doctored producer reports, which is the part's xfail table and `~/candor-handoff/specagent-0416/B-*.txt`, not an obligation a build meets or fails. The obligation it supports is pinned by PART 102."
+    },
+    {
+      "sha": "11f0a721ca9abd67",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "⟨0.40⟩ **The bound counts IMPLEMENTORS, and for a chained dependency's abstraction too** (SOUNDNESS R1336; a c",
+      "unenforced": "No conformance PART pins how a CHAINED consumer counts a dependency's implementors against the bound; candor-java's DepInheritedMemberTest (pure overriding subtypes count; sidecar deleted -> the row count returns) pins it in one engine, and rust/ts/swift's chained bound counts are unmeasured. A four-way cell owes a dependency with >12 implementors of which <=12 are effectful rows. Re-anchored 2026-10-22 (Fable REVIEW2 C-E2/C-E3): the pairing rule and the one-direction statement added."
+    },
+    {
+      "sha": "c2b83829a9da3ecd",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "**A consumer whose bound reads the sidecar is a sidecar reader under PART 30's P6 (⟨0.26⟩: degrading a sidecar",
+      "unenforced": "No PART degrades a DEPENDENCY's sidecar under a chained bound. Owed: a PART 30 P6 arm — a dependency with >12 overriding subtypes of which <=12 are effectful rows, its paired sidecar removed / truncated / swapped for another scan's — asserting the consumer's site does not move from hedge to union. candor-java's lane/java-0416 8cb94c8 falls back to the row count with no sidecar, which this paragraph makes non-conforming (reported to the coordinator, not filed)."
+    },
+    {
+      "sha": "56175704ada070f3",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "1. **The producer MUST make the members reach the consumer through the union, in either spelling obligation 1 ",
+      "part": "PART 102 (the producer leg exercised through its consequence at the consumer — the far cells, in each engine's own spelling; the union entries are PRINTED as diagnostics, not asserted, so either spelling (a) or (b) passes. The two-spellings measurement is a record: ~/candor-handoff/specagent-0416/B-E1-*. The member-name and false-trait sentences (R1351/R1353) are candor-scan's rows and its own tests' to pin) Re-anchored 2026-10-22 (Fable REVIEW2 B2-E1/B2-E4): producer MAY choose either spelling, consumer follows both; dangling (b) `calls` names read as pure."
+    },
+    {
+      "sha": "fa346ca6dac4b470",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "2. **The consumer MUST join them as it joins a row's, in BOTH spellings.** A union's `dispatchesOn` keys, tran",
+      "part": "PART 102, for each engine's OWN producer's spelling (the far/u cells). The cross-spelling half of the duty — a rust/ts/swift consumer following a (b)-spelled union's `calls` — is exercised by nothing: its reach is zero (no engine chains another engine's report), and B-E1-spellings.txt V2 measures today's state (not followed)."
+    },
+    {
+      "sha": "250009a3dabb71f3",
+      "at": "4.0 The disclosure model, formally — a signature",
+      "excerpt": "*Who moves.* The producers, all four: candor-scan, candor-ts and candor-swift add spelling (a) to narrow union",
+      "unenforced": "Port CONDITIONS, not obligations a build meets today: candor-java closes R1328 with or before the union change, and shows §3.1 ⟨0.24⟩ byte-equality on a (b)-spelled report with a producer-internal caller whose `calls` name the union key (this lane's nearest shape was vacuous: B2-E2-route-equality.txt). The gate directions it lists are pinned by PART 102's cells and the *_none recorded column."
     }
   ]
 }

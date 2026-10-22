@@ -160,8 +160,10 @@ XFAIL = {
          "and the scan route's does not, so the documents differ"),
 }
 # What each xfail expects wrong: "scan"/"report" (that route's exit, and so the documents), "doc" (the exits are
-# right and only the documents differ), "both" (default: either exit, either way).
-XFAIL_ROUTE = {"b_exact_dispatch": "scan", "b_exact_reflect": "doc"}
+# right and only the documents differ), "split" (both exits wrong and different from each other), "both" (default:
+# both exits wrong, equal to each other, documents byte-equal).
+XFAIL_ROUTE = {"b_exact_dispatch": "scan", "b_exact_reflect": "doc",
+               "n_merged_reflect": "split", "n_merged_unres": "split"}
 
 
 def _w(path, text):
@@ -302,15 +304,22 @@ def main():
         why = XFAIL.get((cell, "java"))
         if why:
             route = XFAIL_ROUTE.get(cell, "both")
-            # A route-scoped xfail says WHICH route is wrong: the other one must already be right.
+            # A route-scoped xfail says WHICH route is wrong: the other one must already be right. "both" means BOTH
+            # exits wrong AND agreeing (documents byte-equal): one route moving alone is a §3.1 ⟨0.24⟩ route split —
+            # the report-only half-fix (A-doctored.txt: scan 0 / report 1) — and is never an xfail (Fable A2-E1).
+            # "split" declares the measured state where both are wrong and DISAGREE (R1354's scan 0 / report 2); a
+            # port that fixes only one of them still FAILS here.
+            both_wrong = "scan" in problems and "report" in problems
             other_wrong = ((route == "scan" and "report" in problems) or (route == "report" and "scan" in problems)
-                           or (route == "doc" and ("scan" in problems or "report" in problems)))
+                           or (route == "doc" and ("scan" in problems or "report" in problems))
+                           or (route == "both" and (not both_wrong or "doc" in problems))
+                           or (route == "split" and (not both_wrong or s == g)))
             if ok:
                 print("  XFAIL ARM PASSED  %-18s java   — expectation is STALE: %s" % (cell, why))
                 stale += 1
             elif other_wrong:
-                print("  FAIL  %-18s java   %s  [declared a %s-route xfail, but the other route is wrong too: %s]"
-                      % (cell, detail, route, why))
+                print("  FAIL  %-18s java   %s  [declared a %s-route xfail, and the routes do not match it "
+                      "(a route moving alone is a §3.1 ⟨0.24⟩ split, never an xfail): %s]" % (cell, detail, route, why))
                 bad += 1
             else:
                 print("  xfail %-18s java   %s  [%s]" % (cell, detail, why))

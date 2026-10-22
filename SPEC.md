@@ -5025,11 +5025,32 @@ the consumer, pure ones included, as the in-scan count is — not the dependency
 implementor has no row (§2 rule 3), so a count of rows measures the producer's precision rather than the
 dispatch, and a verdict that flips between the union and the hedge as a dependency's precision moves (R1336:
 zookeeper `CliCommand.parse`, 23 overriding subtypes, read as 1 row on one producer and 21 on another) is
-exactly the instability this bound exists to prevent. A consumer MAY count them from the dependency's §2.2
-call-graph sidecar, which exists to show pure units to consumers; that reading is the chained SCAN's, and
-§3.1's rule that `gate --report` reads the report as given and back-fills nothing from a sidecar is
-unaffected, because the consumer's own report records the verdict the scan reached. Where the sidecar is
-absent, the pure implementors are not visible to the consumer and the rows are the count.
+exactly the instability this bound exists to prevent. A consumer MAY count them from the §2.2 call-graph
+sidecar PAIRED with that dependency's report (§2.2 "read together with its report"; the ⟨0.28⟩ pairing rule) —
+a sidecar from another scan of the same dependency counts a different tree. The sidecar exists to show pure
+units to consumers; that reading is the chained SCAN's, and §3.1's rule that `gate --report` reads the report
+as given and back-fills nothing from a sidecar is unaffected, because the consumer's own report records the
+verdict the scan reached. The reading moves verdicts in one direction only: rows are a subset of
+implementors, so the sidecar can only RAISE the count, which moves a site from the union to the hedge and
+never the other way; each such move removes concrete effects and is to be accounted for as a removal
+(SOUNDNESS R1336's own accounting), never licensed by this sentence.
+
+**A consumer whose bound reads the sidecar is a sidecar reader under PART 30's P6 (⟨0.26⟩: degrading a sidecar
+may only WIDEN a disclosure), and P6 binds it.** Without the sidecar the count falls to the rows, which can only
+be lower, so a site that hedges with the sidecar present would take the union without it: removing an optional
+artifact would make the verdict MORE resolved, the direction P6 forbids and the instability R1336 set out to
+remove, one artifact over. So where the paired sidecar is absent, unreadable, unpaired or incomplete by its key
+set (⟨0.26⟩), the count is UNANSWERABLE, and an unanswerable count MUST NOT license the union over a site the
+count could put past the bound: the consumer hedges there (it MAY carry the rows' effects beside the hedge).
+That costs disclosure only on degraded input — candor-java writes the sidecar beside every report. A consumer
+that never reads a dependency's sidecar has no verdict that depends on it, so P6 does not reach it, but its
+row count is an UNDER-count of what this sentence counts and is to be documented as a named miss (§7 item 7).
+*Chosen over the other two readings measured against the same property (Fable, REVIEW2 C-E1):* scoping P6 to
+the readers it was measured on would exempt exactly the reader that violates it, and making the sidecar
+REQUIRED beside a chained dependency report would satisfy the property but change §2.2's OPTIONAL, which is a
+floor question and not this clarification's. A producer could also carry the bound decision on its own report
+(it already makes it in-scan), which would remove the dependency on the sidecar; that is a design for the
+engine lane, recorded here as available rather than chosen.
 
 ⟨0.39⟩ **A CHAINED CONSUMER'S INHERITED SIGNATURE MUST CARRY THE EFFECTS OF EVERY IMPLEMENTOR VISIBLE
 TO THE CONSUMER — its own and any chained report's — so supplying an effectful implementor to a
@@ -5161,8 +5182,12 @@ dependency's key cannot join its own `Serialize` implementor. Four rules:
    (b) its contributors' DIRECT members in `dispatchesOn` together with `calls` naming the contributors
    themselves, so that the consumer takes the closure over the dependency's own `calls` graph exactly as it
    does for a row published direct-only. Each value takes the `dispatchesOn` spelling rule above, and is
-   what the contributor's own row would carry. A producer uses the spelling its rows use, and its consumer
-   follows that spelling (rule 2). It does so even when the union is otherwise pure, obligation 1's exception
+   what the contributor's own row would carry. A producer MAY choose either; the consumer MUST follow both
+   (rule 2), so the wire stays engine-neutral, as the `dispatchesOn` spelling rule above requires ("without a
+   per-engine rule"). A name in the `calls` of spelling (b) that has no row is a contributor the producer
+   found pure and dispatching on nothing (§2 rule 3), and is read as any absent callee is — pure — never as
+   unresolvable: on jooq-3.19.10 that is up to 5,949 names, and hedging each would undo the spelling. It does
+   so even when the union is otherwise pure, obligation 1's exception
    for obligation 1's reason. The union's own key MAY be omitted: a contributor that forwards on the union's
    own member adds nothing the consumer's join does not already hold. A member's NAME is never a reason to
    omit it — §4's conventionally-pure MAY is judged by the receiver's declared type (the paragraph above) and
@@ -5189,9 +5214,15 @@ dependency's key cannot join its own `Serialize` implementor. Four rules:
    none; its helper's does) and its consumer follows a union's `calls` into the contributor and on to the
    helper's key. Hand-doctored unions: (a) carries all four consumers to `deny Fs` 1; (b) carries
    candor-java only; the contributor row's own keys copied onto the union carry rust, ts and swift and not
-   java.
-2. **The consumer MUST join them as it joins a row's.** A union's `dispatchesOn` keys — and, in spelling (b),
-   its `calls` — enter obligation 3's per-key join and closure exactly as a row's do, transitively, whether the consumer reached the union at its own
+   java. That is the measured state, not the rule: rule 2 binds every consumer to both spellings, which is
+   the duty obligation 1 already places on any consumer of a direct-only producer, and which candor-scan,
+   candor-ts and candor-swift have not needed because their own producers publish the closure. Its reach today
+   is zero: a chained consumer joins only reports of its own ecosystem's dependencies — its call sites are in
+   one language and its keys in one engine's namespace — so no engine chains another engine's report, and
+   `gate --report`, which does read another engine's report, does not chain.
+2. **The consumer MUST join them as it joins a row's, in BOTH spellings.** A union's `dispatchesOn` keys,
+   transitively, AND its `calls` into the contributors and on through their `dispatchesOn` and `calls`, enter
+   obligation 3's per-key join and closure exactly as a row's do, whether the consumer reached the union at its own
    dispatch site or through a dependency row's `dispatchesOn`. A consumer that reaches the contributors by
    another sound route (a walk of the dependency's published hierarchy) meets this rule within its own engine,
    but not rule 1: rule 1 binds the producer regardless, because a union hit shadows such a walk (that is why
@@ -5235,10 +5266,21 @@ and foreign, through the dependency's key and at the consumer's own site.
 entries whose contributors dispatch further — their rows already carry the transitive set, so this is the
 union of keys already on the wire — and candor-ts and candor-swift, which omit an otherwise-pure union,
 publish one when it has members to name; candor-java adds spelling (b). No producer-side `inferred` moves.
-The consumers already follow each engine's own spelling, measured above, with one condition: candor-java's
-R1328 memo (bare-`fn` keyed, latent today) goes live once unions carry keys or `calls`, and the doctored
-fixture had one union per `fn`, the population in which it cannot collide — so the java port closes R1328
-with or before the union change, or its consumer half is not yet measured. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
+The consumers already follow their own engine's spelling, measured above; under rule 2, candor-scan,
+candor-ts and candor-swift also add the walk through a union's `calls` (no in-ecosystem payoff today, since
+their producers write spelling (a); it is what keeps the wire engine-neutral). Two conditions on the
+candor-java port. First, its R1328 memo (bare-`fn` keyed, latent today) goes live once unions carry keys or
+`calls`, and the doctored fixture had one union per `fn`, the population in which it cannot collide — so the
+port closes R1328 with or before the union change, or its consumer half is not yet measured. Second, spelling
+(b) gives the REPORT route new `calls` edges to walk for its own class resolution (§6.2; R1338 is the proof
+that route walks `calls`), so the port MUST show §3.1 ⟨0.24⟩ byte-equality — exits and `--gate-json`
+documents — on a (b)-spelled report with a producer-internal caller whose `calls` name the union's key and
+that carries `Unknown` of its own. Measured 2026-10-22 on the nearest shape this lane could build (a narrow
+local interface, a reflective contributor, an internal caller with its own native call, the union doctored to
+(b)): byte-equal on all three class filters, but vacuously so for this purpose — candor-java's CHA writes the
+contributor into the caller's own `calls`, so the union's `calls` were never walked
+(`~/candor-handoff/specagent-0416/B2-E2-route-equality.txt`). The shape that reaches them is the port's to
+build and show. Gates: `deny E <caller>` goes 0 → 1 where a consumer implementor of a
 named member performs `E` — a RESOLUTION, so every new charge must trace to that implementor's own body;
 `deny E Unknown <caller>` goes 0 → 1 on the silent cells; and `deny Unknown <caller>` goes 1 → 0 where a
 hedge stood in for the names and the implementors they join are pure — candor-scan's R1324 hedge, and on
