@@ -189,13 +189,13 @@ XFAIL = {
     ('u_busy_far_direct', 'ts'):
         "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
     ('xc_local_via', 'rust'):
-        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the 0.40.15 union hedge that used to disclose it is gone",
     ('xc_local_direct', 'rust'):
-        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the 0.40.15 union hedge that used to disclose it is gone",
     ('xc_foreign_via', 'rust'):
         "R1359 (LATENT) — the consumer does not walk a union's `calls`; this cell alone stays disclosed (deny Fs Unknown 1)",
     ('xc_foreign_direct', 'rust'):
-        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the 0.40.15 union hedge that used to disclose it is gone",
     ('xc_local_via', 'ts'):
         "R1365 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
     ('xc_foreign_via', 'ts'):
