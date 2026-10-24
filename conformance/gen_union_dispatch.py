@@ -140,97 +140,38 @@ WHY = {
 # candor-java b679b9a, candor-ts e6481ee, candor-swift 6d2031a). DISCLOSED = `deny Fs Unknown` already 1 (the cell
 # fails on `deny Fs` only); SILENT = both 0 over code that wrote the file.
 XFAIL = {
-    ('f_bare_far_direct', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('f_bare_far_via', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('f_busy_far_direct', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('f_busy_far_via', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('l_bare_far_direct', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('l_bare_far_via', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('l_busy_far_direct', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
-    ('l_busy_far_via', 'rust'):
-        ('R1324 (PARTIAL) — DISCLOSED: the union hedges `Unknown` + `dispatch:Mapper.mapv` instead of naming '
-         'the member, so `deny Fs` stays 0'),
     ('f_bare_far_direct', 'java'):
-        ("R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union "
-         'carries `dispatchesOn`'),
+        "R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union carries `dispatchesOn`",
     ('f_bare_far_via', 'java'):
-        ("R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union "
-         'carries `dispatchesOn`'),
+        "R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union carries `dispatchesOn`",
     ('f_busy_far_direct', 'java'):
         "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('f_busy_far_via', 'java'):
         "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('l_bare_far_direct', 'java'):
-        ("R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union "
-         'carries `dispatchesOn`'),
+        "R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union carries `dispatchesOn`",
     ('l_bare_far_via', 'java'):
-        ("R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union "
-         'carries `dispatchesOn`'),
+        "R1355 — DISCLOSED by the consumer's own `dispatch:api.Sink.put` hedge over a pure union; no union carries `dispatchesOn`",
     ('l_busy_far_direct', 'java'):
         "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('l_busy_far_via', 'java'):
         "R1355 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('f_bare_far_direct', 'ts'):
-        ("R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless "
-         '`Unknown` union foreign)'),
+        "R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless `Unknown` union foreign)",
     ('f_bare_far_via', 'ts'):
-        ("R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless "
-         '`Unknown` union foreign)'),
+        "R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless `Unknown` union foreign)",
     ('f_busy_far_direct', 'ts'):
         "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
     ('f_busy_far_via', 'ts'):
         "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
     ('l_bare_far_direct', 'ts'):
-        ("R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless "
-         '`Unknown` union foreign)'),
+        "R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless `Unknown` union foreign)",
     ('l_bare_far_via', 'ts'):
-        ("R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless "
-         '`Unknown` union foreign)'),
+        "R1356 — DISCLOSED by the consumer's own hedge (no union under Sink.put locally; a reasonless `Unknown` union foreign)",
     ('l_busy_far_direct', 'ts'):
         "R1356 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
     ('l_busy_far_via', 'ts'):
         "R1356 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
-    ('f_bare_far_direct', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge over a key with no published union",
-    ('f_bare_far_via', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge over a key with no published union",
-    ('f_busy_far_direct', 'swift'):
-        ("R1357 — SILENT at the consumer's own dispatch site over the foreign union, which carries Clock and "
-         'no `dispatchesOn`'),
-    ('f_busy_far_via', 'swift'):
-        'R1357 — DISCLOSED through the dependency-key route only (its direct twin is SILENT)',
-    ('l_bare_far_direct', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge over a key with no published union",
-    ('l_bare_far_via', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge over a key with no published union",
-    ('l_busy_far_direct', 'swift'):
-        "R1357 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
-    ('l_busy_far_via', 'swift'):
-        "R1357 — SILENT: the union carries Doc.put's Clock and no `dispatchesOn`, and the consumer trusts it",
-    ('u_bare_far_via', 'rust'):
-        'R1324 (PARTIAL) — DISCLOSED by the union hedge; the owner `api` is not chained to the consumer',
-    ('u_busy_far_via', 'rust'):
-        'R1324 (PARTIAL) — DISCLOSED by the union hedge; the owner `api` is not chained to the consumer',
-    ('u_bare_far_direct', 'rust'):
-        "R1349 — SILENT: at the consumer's own `s.put` with the owner unchained, the non-owner union is never consulted (the R1324 hedge cannot help: it is never reached)",
-    ('u_busy_far_direct', 'rust'):
-        "R1349 — SILENT and the union's own Clock is LOST too: the consumer's own dispatch site never consults the non-owner union when the owner is unchained",
-    ('u_busy_near_direct', 'rust'):
-        "R1349 — the union's own Clock is lost at the consumer's own site with the owner unchained",
     ('u_bare_far_via', 'java'):
         "R1355 — DISCLOSED by the consumer's own hedge; no union carries `dispatchesOn`",
     ('u_bare_far_direct', 'java'):
@@ -247,22 +188,14 @@ XFAIL = {
         "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
     ('u_busy_far_direct', 'ts'):
         "R1356 — DISCLOSED only because the producer hedges Doc.put's own `Mapper.mapv` dispatch",
-    ('u_bare_far_via', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
-    ('u_bare_far_direct', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
-    ('u_busy_far_via', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
-    ('u_busy_far_direct', 'swift'):
-        "R1357 — DISCLOSED by the consumer's own hedge with the owner unchained; no `dispatchesOn`",
     ('xc_local_via', 'rust'):
-        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
     ('xc_local_direct', 'rust'):
-        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
     ('xc_foreign_via', 'rust'):
-        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+        "R1359 (LATENT) — the consumer does not walk a union's `calls`; this cell alone stays disclosed (deny Fs Unknown 1)",
     ('xc_foreign_direct', 'rust'):
-        "R1359 (LATENT) — the consumer does not walk a union's `calls`; disclosed only by the union's own R1324 hedge",
+        "R1359 (LATENT) — SILENT since the 0.40.16 join: the consumer does not walk a union's `calls`, and the R1324 hedge that used to disclose it is gone",
     ('xc_local_via', 'ts'):
         "R1365 (LATENT) — SILENT: the consumer does not walk a union's `calls`",
     ('xc_foreign_via', 'ts'):

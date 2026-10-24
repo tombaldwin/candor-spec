@@ -51,12 +51,8 @@ WHY = {13: "past the bound with every implementor pure: the dispatch MUST read U
        12: "CONTROL: within the bound and every implementor pure — an Unknown here is a hedge on 'a dispatch occurred'"}
 
 XFAIL = {
-    ("c_13", "rust"):
-        "R1367 — SILENT: the producer publishes the union past the bound PURE (`inferred: []`), and the consumer trusts it",
-    ("c_13", "swift"):
-        "R1368 — SILENT: the producer does not publish the union past the bound, and the consumer reads pure",
-    ("c_12", "ts"):
-        "R1369 — NOTSILENT: the producer omits the pure narrow union, and the consumer hedges on the missing key",
+    ('c_12', 'ts'):
+        'R1369 — NOTSILENT: the producer omits the pure narrow union, and the consumer hedges on the missing key',
 }
 
 

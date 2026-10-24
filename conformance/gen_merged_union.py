@@ -139,32 +139,14 @@ WHY = {
 }
 
 # Keyed by (cell, engine) like every generator's table (scripts/xfail-register-agree.py reads it as a literal).
-XFAIL = {
-    ("n_merged_reflect", "java"):
-        ("R1354 — the merged entry `lib.Shape.name` carries RShape's Unknown in `inferred` and no reason for it: "
-         "the scan route projects a strict SUBSET and the report route refuses the narrowed filter"),
-    ("n_merged_unres", "java"):
-        "R1354 — the reasonless merged Unknown projects to the `unresolved` catch-all (scan) or refuses (report)",
-    ("n_app_unres", "java"):
-        ("R1330 — the chained consumer synthesises `dep:` for the merged entry's reasonless Unknown and reads a "
-         "false `unresolved` beside the true reflect"),
-    ("n_exact_reflect", "java"):
-        "R1354 — no reflect reason is on the merged entry, so neither route propagates it to the exact caller",
-    ("n_ctl_reflect", "java"):
-        "R1354 — the same, one chain hop further: the chained exact caller has nothing to inherit",
-    ("b_exact_dispatch", "java"):
-        ("R1338 — the BROAD merge writes its `dispatch:` hedge into the merged entry; the report route hands it to "
-         "the exact caller through `calls`, the scan route does not"),
-    ("b_exact_reflect", "java"):
-        ("R1338 — the exits agree, but the report route's violation carries the BROAD merge's `dispatch` class "
-         "and the scan route's does not, so the documents differ"),
-}
+XFAIL = {}
 # What each xfail expects wrong: "scan"/"report" (that route's exit, and so the documents), "doc" (the exits are
 # right and only the documents differ), "split" (both exits wrong and different from each other), "both" (default:
 # both exits wrong, equal to each other, documents byte-equal, and neither a refusal — Fable A3-E1: a both-route
 # refusal is an answerability break, not this xfail).
-XFAIL_ROUTE = {"b_exact_dispatch": "scan", "b_exact_reflect": "doc",
-               "n_merged_reflect": "split", "n_merged_unres": "split"}
+# Retired 2026-10-24 at the 0.40.16 join with every xfail (candor-java 8979d87 passes all seven cells); the judging
+# code keeps the route semantics for the next declared xfail.
+XFAIL_ROUTE = {}
 
 
 def _w(path, text):
