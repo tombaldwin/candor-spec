@@ -213,11 +213,49 @@ def _idkey(rid):
     return (int(m.group(1)), m.group(2)) if m else (0, rid)
 
 
+# THE REGISTER HAS TWO LAYOUTS AND `bucket()` READ ONE OF THEM. The header is
+# `| entry | date | engine | class | outcome |`. ~1,116 rows FOLD the engine into the status
+# (`rust — **OPEN …**` in the engine column, evidence in the class column), which is what every head
+# test below was written against. But 141 rows follow the header literally: a BARE engine token in
+# the engine column (`rust`, `swift`, `instrument (`candor/bin/ci-watch.sh`)`) and the STATUS in the
+# class column. For those rows every head test was run against the word "rust" and could never fire,
+# the row fell through to "closure word + sha anywhere", and R399/R400/R401 — status heads
+# `PARTIALLY CLOSED` / `FABRICATION HALF CLOSED … STILL OPEN` / `HALF CLOSED … remain OPEN` — bucketed
+# `closed-with-fix`. R400 is a live cardinal sin; it was off the shipping-defect list. Found by the
+# 2026-10-24 backlog audit (`~/candor-handoff/backlogaudit-0416/FABLE-REVIEW.md` §2.1, which named it a
+# COLUMN-LAYOUT defect, not a regex one); no register row of its own — R400's row records the effect.
+#
+# A cell is a bare engine LABEL when it carries no status word at all. That is the whole safety
+# argument for the redirect: every head pattern (`_DECLARED_OPEN`, `_DECLARED_RESOLVED`,
+# `_DECLARED_PARTLY`, `_PART_OPEN`, `_DECLARED_NOT_FIXED`) needs one of these words, so on a label cell
+# they were already dead, and reading the next cell instead can only ADD a head the row really has.
+# A folded cell (`rust — OPEN DIR=SILENT`, `swift FIXED; rust UNCHECKED`) always carries one and is
+# untouched. Deliberately case-insensitive: a lowercase status word keeps the cell where it was, which
+# is the old behaviour, never a new reading.
+_STATUS_WORD = re.compile(r'\b(?:OPEN|REOPENED|CLOSED|FIXED|RESOLVED|RETRACTED|WITHDRAWN|SUPERSEDED|'
+                          r'REFUTED|DECLINED|RETIRED|PARTLY|PARTIALLY|HALF|LIVE|LANDED|ANSWERED|'
+                          r'SETTLED|KILLED|ACCEPTED|INTRODUCED|PRE-EXISTING)\b', re.I)
+
+
+def _is_engine_label(cell):
+    c = cell.strip()
+    return bool(c) and len(c) <= 90 and "**" not in c and "__" not in c \
+        and "\u2014" not in c and not _STATUS_WORD.search(c)
+
+
+def status_index(cells):
+    """Which split cell holds the row's STATUS: 3 in the folded layout, 4 when cell 3 is a bare label."""
+    if len(cells) > 4 and _is_engine_label(cells[3]):
+        return 4
+    return 3
+
+
 def bucket(line, outcome=None):
-    # The STATUS cell is the register's third column — see `_DECLARED_OPEN`. Split the same
-    # escaped-pipe-aware way `main()` does, or a row with `\|` in a code sample shifts every index.
+    # The STATUS cell is the register's third column — see `_DECLARED_OPEN` — or the FOURTH when the
+    # third is a bare engine label (the two-layout note above). Split the same escaped-pipe-aware way `main()`
+    # does, or a row with `\|` in a code sample shifts every index.
     _cells = re.split(r'(?<!\\)\|', line)
-    status = _cells[3] if len(_cells) > 3 else ""
+    status = _cells[status_index(_cells)] if len(_cells) > 3 else ""
     oc = outcome if outcome is not None else ""
     # An explicit closure at the head of the OUTCOME cell is the row's LATER word and wins over a status
     # head left stale (R230). Everything else: a declared OPEN in EITHER status cell outranks inference.
@@ -406,7 +444,7 @@ def main(argv):
         print("PARTLY CLOSED — a fix landed and the row NAMES what is still owed. Read the remainder:")
         for rid, l in sorted(by["partly-closed"], key=lambda t: _idkey(t[0])):
             cells = re.split(r'(?<!\\)\|', l)
-            head = " ".join(cells[3].split())[:96] if len(cells) > 3 else ""
+            head = " ".join(cells[status_index(cells)].split())[:96] if len(cells) > 3 else ""
             print(f"  {rid:6s} {head}")
     if by.get("cites-a-sha-only"):
         print()
@@ -559,6 +597,24 @@ def selftest():
         # reopened is not a closure (`_SAYS_OPEN_TOO`), whatever its head says.
         ("| R905 rust: a thing | 2026-09-27 | rust — **CLOSED — `abc1234`; REOPENED 2026-10-01 on a"
          " second spelling** | class | **OPEN.** |", "open"),
+        # THE HEADER LAYOUT, 2026-10-24 (FABLE-REVIEW §2.1). A BARE engine label in the engine column
+        # puts the status in the class column. Before the redirect, R912 bucketed `closed-with-fix` on
+        # another row's closure word + sha (its declared OPEN was never read), and R913 — R400's own
+        # spelling — bucketed `closed-with-fix` instead of `partly-closed`. Both FAIL with
+        # `status_index` pinned to 3; that is the calibration, not an assumption.
+        ("| R912 rust: a thing | 2026-10-24 | rust | **OPEN — the sibling R9 was CLOSED by `abc1234`.** |"
+         " evidence | measured. |", "open"),
+        ("| R913 rust: a thing | 2026-10-24 | rust | **FABRICATION HALF CLOSED — candor-rust `abc1234`."
+         " UNDER-REPORT HALF STILL OPEN.** | evidence |", "partly-closed"),
+        ("| R914 swift: a thing | 2026-10-24 | instrument (`candor/bin/x.sh`) | **OPEN — latent.**"
+         " cites `abc1234` CLOSED | evidence |", "open"),
+        # …AND THE NEAR-MISSES THAT MUST NOT MOVE. A header-layout row whose class cell is a plain class
+        # description keeps its old inference (here the outcome's closure + sha), and a FOLDED cell that
+        # carries its own status word is never redirected, even when the next cell opens with OPEN.
+        ("| R915 rust: a thing | 2026-10-24 | rust | FABRICATION; latent, zero corpus reach |"
+         " **CLOSED — candor-rust `abc1234`.** |", "closed-with-fix"),
+        ("| R916 rust: a thing | 2026-10-24 | rust — **CLOSED — `abc1234`** | **OPEN** in the evidence |"
+         " measured. |", "closed-with-fix"),
     ]
     # SOUNDNESS R641 — the SHARED recogniser's own table, run here so neither tool can drift from
     # the other's idea of what a row is. It is the same list `check_soundness_tables.py --selftest`
