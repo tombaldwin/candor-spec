@@ -64,8 +64,8 @@ REPOS = ["candor", "candor-spec", "candor-rust", "candor-java",
 # checked any of them either.
 #
 # So the set is now DERIVED from `git ls-files` rather than listed: every tracked `.md`, `.py` and `.sh`
-# in this repo, plus the umbrella's BACKLOG.md. Derived rather than enumerated on this file's own
-# evidence — an enumerated list is what went stale, and a new design document would have joined the
+# in this repo, plus the umbrella's BACKLOG.md and its archived predecessor under history/. Derived
+# rather than enumerated on this file's own evidence — an enumerated list is what went stale, and a new design document would have joined the
 # uncovered set silently.
 _SKIP_NAMES = {"CHANGELOG.md"}
 
@@ -84,7 +84,8 @@ def _tracked_targets():
     return keep
 
 
-TARGETS = [ROOT / "SOUNDNESS.md", ROOT / "SOUNDNESS-LOG.md", FAMILY / "candor" / "BACKLOG.md"] + [
+TARGETS = [ROOT / "SOUNDNESS.md", ROOT / "SOUNDNESS-LOG.md", FAMILY / "candor" / "BACKLOG.md",
+           FAMILY / "candor" / "history" / "BACKLOG-2026-07-to-09.md"] + [
     p for p in _tracked_targets()
     if p.name not in ("SOUNDNESS.md", "SOUNDNESS-LOG.md")]
 
