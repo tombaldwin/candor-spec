@@ -330,8 +330,6 @@ XFAIL = {
         "consumer subclass's override never joins; executed (the override runs)",
     ("wx_concrete_subclass", "ts"):
         "R1417 — SILENT: the dependency row is [] with no dispatchesOn for a concrete-class member (T7); executed",
-    ("wx_concrete_subclass", "swift"):
-        "R1416 — SILENT: an `open class` member dispatched in the library publishes no dispatchesOn (cause C); executed",
     ("r764", "ts"):
         "R764 — DIR=NOTSILENT at HEAD (no ts producer publishes a pure-only entry today): with the entry doctored in, "
         "chaining deletes the unchained owner's invisible and leaves the row silent",

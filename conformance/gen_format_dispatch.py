@@ -128,9 +128,6 @@ XFAIL = {
     ("c_fmt_call", "ts"):      "R1309 — no row and no `dispatchesOn` for `ArrayConverter.toString`, and no "
                                "consumer join for a member the interface does not declare",
     ("c_fmt_interp", "ts"):    "R1309 — the same, reached through template interpolation",
-    ("c_fmt_call", "swift"):   "R1310 — the producer publishes no row/`dispatchesOn` for "
-                               "`ArrayConverter.description`; the consumer's union is already right",
-    ("c_fmt_interp", "swift"): "R1310 — the same, reached through string interpolation",
 }
 
 
