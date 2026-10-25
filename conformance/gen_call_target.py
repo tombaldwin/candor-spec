@@ -48,7 +48,8 @@ MODES, because the SPEC does not yet bind every class (the site clause is PROPOS
 
 ROUND 2 (2026-10-25) adds CONTROL cells — CLEAN programs, executed — because the round-3/4 key-publishing work widens
 exactly the surface that fabricates (FABLE-REVIEW §3.1/§3.2/§3.4): `wx_unrelated_override`, `wx_exact_producer`,
-`cb_stored_not_run` (scored) and `wx_sibling_override` (recorded: ⟨0.39⟩ obligation 3 as written REQUIRES that union).
+`cb_stored_not_run` (scored) and `wx_sibling_override` (recorded: ⟨0.39⟩ obligation 3 as written REQUIRES that union),
+plus the scored POSITIVE `wx_heldvalue_sibling`, which pins why that union may not be narrowed by the consumer.
 
 Every consumer function `c_go` reads the environment first: `deny Env` is the carrier on every cell, so a policy
 that matched nothing cannot pass. Truth: every effectful body performs `Fs` directly (the same sink every engine
@@ -188,8 +189,9 @@ def _wx_override(leg):
                        consumer's join MUST union, PER KEY, its own visible implementors, and `Right.m` is one: as
                        written, the SPEC does not scope that union to the consumer call site's receiver subtree, so
                        this charge is the sound over-approximation it requires, not a non-conformance. RECORDED
-                       (`rcontrol`) until a sentence narrows the join (proposal §3, the receiver-subtree question);
-                       swift R1436 and rust R1420 (a) are this shape. FABLE-REVIEW §3.1 called it a fabrication."""
+                       (`rcontrol`), and it must stay charged: the consumer MUST NOT narrow by its own call-site
+                       receiver, because `wx_heldvalue_sibling` publishes the same key and its sibling RUNS (proposal
+                       §3.1; FABLE-OBLIGATION3). swift R1436 and rust R1420 (a) are this shape."""
     def b(lang, twin=False):
         t = _tw(lang, twin)
         r = ("FS\n    " if lang == "swift" else "FS ") if leg == "sibling" else ""
@@ -229,6 +231,39 @@ def _wx_override(leg):
                                            "public func c_go() -> Int {\n  ENV\n  return Left().run()\n}\n"
                                            "public func c_mk() -> [Any] { [Right(), Other()] }\n") % (t, r, o))}, "chain": ["api"]}
     return b
+
+
+def _wx_heldvalue_sibling(lang):
+    """The scored POSITIVE that pins why `wx_sibling_override` must stay charged (FABLE-OBLIGATION3 §3; the swift
+    round-2 lane's control K14h). The dependency's own member `walk(other)` dispatches `other.visit()` on a HELD
+    VALUE, so it publishes the same key `Base.visit` as `wx_sibling_override`'s self-dispatch — the wire does not
+    say which receiver was dispatched on. The consumer calls `Left().walk(Right())` on a CLOSED `Left`, and the
+    sibling `Right.visit` RUNS (executed). A consumer that narrowed the per-key union by its own call-site receiver
+    (`Left`'s subtree) would be SILENT here: the reason the narrowing is refused (proposal §3.1)."""
+    if lang == "rust":
+        return {"pkgs": {"api": ([], "pub trait V { fn visit(&self) -> i32; fn walk(&self, other: &dyn V) -> i32 { other.visit() } }\n"),
+                         "app": (["api"], "use api::V;\npub struct Left;\nimpl V for Left { fn visit(&self) -> i32 { 2 } }\n"
+                                          "pub struct Right;\nimpl V for Right { fn visit(&self) -> i32 { FS 3 } }\n"
+                                          "pub fn c_go() -> i32 { ENV Left.walk(&Right) }\n")}, "chain": ["api"]}
+    if lang == "java":
+        return {"pkgs": {"api": ([], {"Base": "package api;\npublic class Base { public int visit() { return 1; } "
+                                              "public int walk(Base other) { return other.visit(); } }\n"}),
+                         "app": (["api"], {"Left": "package app;\npublic final class Left extends api.Base { public int visit() { return 2; } }\n",
+                                           "Right": "package app;\npublic class Right extends api.Base { public int visit() { FS return 3; } }\n",
+                                           "App": JV_APP % "public static int c_go() { ENV return new Left().walk(new Right()); }"})},
+                "chain": ["api"]}
+    if lang == "ts":
+        return {"pkgs": {"api": ([], "export class Base { visit(): number { return 1; } walk(other: Base): number { return other.visit(); } }\n"),
+                         "app": (["api"], 'import { Base } from "api";\n'
+                                          "class Left extends Base { visit(): number { return 2; } }\n"
+                                          "export class Right extends Base { visit(): number { FS return 3; } }\n"
+                                          "export function c_go(): number { ENV return new Left().walk(new Right()); }\n")},
+                "chain": ["api"]}
+    return {"pkgs": {"api": ([], "open class Base { public init() {}\n  open func visit() -> Int { 1 }\n"
+                                 "  public func walk(_ other: Base) -> Int { other.visit() } }\n"),
+                     "app": (["api"], "import Api\nfinal class Left: Base { override func visit() -> Int { 2 } }\n"
+                                      "class Right: Base { override func visit() -> Int { FS\n    return 3 } }\n"
+                                      "public func c_go() -> Int {\n  ENV\n  return Left().walk(Right())\n}\n")}, "chain": ["api"]}
 
 
 def _wx_exact_producer(lang, twin=False):
@@ -442,6 +477,10 @@ CELLS = [
     ("wx_sibling_override", "explicit · consumer-of-dependency · closed receiver, effectful `m` on a SIBLING subclass · chained",
      "rcontrol", {"deny Env": 1, "deny Fs": 0}, _wx_override("sibling"),
      "RECORDED CONTROL: executed CLEAN, but ⟨0.39⟩ obligation 3 unions PER KEY, not per call-site receiver subtree"),
+    ("wx_heldvalue_sibling", "explicit · consumer-of-dependency · dispatch on a HELD VALUE (same key as a self-dispatch) · sibling runs · chained",
+     "assert", {"deny Env": 1, "deny Fs": 1}, _wx_heldvalue_sibling,
+     "the sibling override RUNS (executed); the wire key is byte-identical to wx_sibling_override's, so the per-key "
+     "union MUST charge it — a consumer that narrowed by its own call-site receiver would be silent (§4 ⟨0.39⟩ obl. 3)"),
     ("wx_exact_producer", "explicit · chained dependency's own · exact (final/closed) receiver · consumer subclass of the base",
      "control", {"deny Env": 1, "deny Fs": 0}, _wx_exact_producer,
      "CONTROL: a dispatch on a CLOSED receiver has one target; the consumer's subclass of the base cannot run there — "
@@ -485,9 +524,14 @@ XFAIL = {
     ("cb_stored_not_run", "java"):
         "R1442 — FABRICATED: the method reference `App::eff` stored in `H` is charged at creation though never run",
     ("cb_stored_not_run", "swift"):
-        "R1442 (the swift instance, measured by PART 104 and noted on the row; its own row is the coordinator's to "
-        "file) — FABRICATED: the function reference `eff` passed as an ARGUMENT to `H(r:)` is edged as a call (the "
+        "R1447 — FABRICATED: the function reference `eff` passed as an ARGUMENT to `H(r:)` is edged as a call (the "
         "fn-reference argument arm that also makes hk_callback charge), though `H` only stores it",
+    ("wx_heldvalue_sibling", "java"):
+        "R1317 — SILENT: `Base.walk` dispatches `other.visit()` on a public CONCRETE non-final dependency class and names "
+        "no member, so the consumer's `Right.visit` that RUNS (executed) never joins",
+    ("wx_heldvalue_sibling", "ts"):
+        "R1417 — SILENT: `Base.walk`'s row is [] with no dispatchesOn for the concrete-class member; `Right.visit` RUNS "
+        "(executed)",
     ("wx_concrete_subclass", "java"):
         "R1317 — SILENT: a dispatch on a public CONCRETE non-final dependency class is not named (obligation 1), so the "
         "consumer subclass's override never joins; executed (the override runs)",

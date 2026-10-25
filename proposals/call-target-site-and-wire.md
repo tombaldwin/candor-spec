@@ -154,23 +154,52 @@ the owner's disclosure to survive — it PASSES on rust, java and swift (with it
 entry reaches them) and is XFAILED on ts (R764). It must stay green on every engine before any producer publishes
 pure-only or class-member keys (FABLE-SYNTHESIS §3.2).
 
-### 3.1 Open: is obligation 3's union scoped to the CALL SITE's receiver subtree?
+### 3.1 Obligation 3's union is NOT narrowed by the consumer's call-site receiver (clarification, PROPOSED)
 
-Measured by PART 104's recorded cell `wx_sibling_override` (round 2). A dependency's own member `run` dispatches
-`self.m()`, so the dependency publishes the key `Base.m`. The consumer calls `Left().run()` on a CLOSED `Left`, and a
-SIBLING `Right: Base` writes a file in its `m`. Executed, `Right.m` never runs. rust (the R1420 (a) shape) and swift
-(R1436) charge it, and java does too once the base member is abstract
-(`~/candor-handoff/calltarget-round2/spec/abstract-base-variant.txt`). FABLE-REVIEW §3.1 calls this a fabrication
-and asks for the join to be scoped to "the receiver's static-type subtree". **The SPEC as written does not say that.**
-Obligation 3 reads *"the consumer's join MUST union, per key, its own visible implementors"*, and `Right.m` is one of
-them. ⟨0.40⟩'s receiver-type sentence is about the PRODUCER's dispatch site, where the receiver is `self: Base`. So the
-charge is the sound over-approximation the clause requires, not a non-conformance, and the cell is recorded rather
-than scored. If Tom wants the narrowing, the sentence it needs is roughly: *a consumer that reaches a keyed dispatch
-through an inherited member, at a call site whose receiver's static type is a subtype of the key's abstraction, MAY
-restrict the union to that subtype's subtree.* It should be MAY, not MUST: the narrowing is precision, and every
-removal it makes falls under the removal-direction bar. Its negative control is the scored cell
-`wx_unrelated_override`: a class that is not a subtype at all is never an implementor, and that cell holds on all
-four engines today.
+Ruled 2026-10-25 (`~/candor-handoff/calltarget-round2/FABLE-OBLIGATION3.md`). Measured by two PART 104 cells.
+
+- **`wx_sibling_override`** (recorded): a dependency's own member `run` dispatches `self.m()`, so the dependency
+  publishes the key `Base.m`. The consumer calls `Left().run()` on a CLOSED `Left`, and a SIBLING `Right: Base` writes
+  a file in its `m`. Executed, `Right.m` never runs. rust (the R1420 (a) shape) and swift (R1436) charge it, and so
+  does java once the base member is abstract (`~/candor-handoff/calltarget-round2/spec/abstract-base-variant.txt`).
+- **`wx_heldvalue_sibling`** (scored, must CHARGE): the same key `Base.visit` is published by `walk(_ other: Base) {
+  other.visit() }`, a dispatch on a HELD VALUE. The consumer calls `Left().walk(Right())`, and `Right.visit` RUNS. This
+  is the swift lane's control K14h. On v0.40.17 rust and swift charge it; java (R1317) and ts (R1417) are silent,
+  because they do not join through a concrete-class key at all yet.
+
+The two producer rows are byte-identical on the wire and have opposite ground truth. That settles what the text
+already said. Obligation 3 reads *"the consumer's join MUST union, per key, its own visible implementors"*, the
+subclass sentence makes `Right` one of them, and ⟨0.40⟩'s receiver-type sentence governs the PRODUCER's dispatch site
+(where the receiver is `self: Base`), not the consumer's. So the sibling charge is the bounded-CHA over-approximation
+the clause requires, and narrowing it at the consumer would make `wx_heldvalue_sibling` silent. *A mechanism that
+makes reports better must not make silence cheaper.* The earlier draft of this section offered a MAY to narrow; it is
+withdrawn, because a permission to do something unsound is not made safe by being optional.
+
+Draft text, a clarification at obligation 3 (no field, no rung):
+
+> **The wire does not distinguish a dispatch on `self` from a dispatch on a held value of the same class, so a
+> consumer MUST NOT narrow the union by its own call-site receiver.** A consumer that reaches a keyed dispatch through
+> an inherited member, at a call site whose receiver's static type is narrower than the key's abstraction, still
+> unions every visible implementor of the key. The over-charge this leaves at a self-dispatch is the accepted
+> bounded-CHA trade; restricting the union to the receiver's subtree is silent wherever the dependency dispatched on
+> another instance.
+
+It is pinned by `wx_heldvalue_sibling` (scored) and `wx_sibling_override` (recorded, must stay charged), per the rule
+that the row and the PART come before any engine moves.
+
+**Candidate for the wire round, not this round: a self-dispatch key marker.** The only sound form of the narrowing
+needs the PRODUCER to say that a key was reached by a dispatch on `self`, either as a per-key marker or as a spelling.
+A consumer MAY then scope that key, and only that key, to its call-site receiver's subtree. That is a new field
+four-way, so it is a rung. It also brings a conformance PART with both shapes scored, and a removal-direction change
+in every engine, priced under the R1105 bar. **Measure its maximum payoff before it is scheduled:** count the corpus
+joins that reach a class-member key through an inherited-member call on a receiver typed strictly narrower than the
+key's class. That count bounds what the marker can ever remove. Today's evidence is small: swift has 1 fabricated row
+of 84,667 plus 6 rows with extra edges (R1436), rust has the shape at R1420 (a) on its matrix, java has it only with
+an abstract base member, and ts does not have it. Recommendation in the ruling: record it, do not build it now. It
+goes to Tom as a priority call, not a correctness one.
+
+The scored negative control is `wx_unrelated_override`: a class that is not a subtype of the key's abstraction is
+never an implementor. It holds on all four engines today, and is vacuous on java and ts until R1317/R1417 land.
 
 ## 4. NOT drafted: the std-owned requirement key (R974's deferred rung)
 

@@ -32,11 +32,13 @@ Run it after any patch-cycle commit that adds a section here.
   `wx_unrelated_override` (an effectful `m` on a class that is not a subtype of the key's abstraction) and
   `wx_exact_producer` (a dispatch on a final/closed receiver beside a consumer subclass of the base) pass four-way;
   the first is VACUOUS on java and ts until [R1317]/[R1417] land. `cb_stored_not_run` (a named function's reference
-  stored and never invoked) passes on rust and ts and is xfailed on java ([R1442]) and on swift (the same shape:
-  swift edges a function reference passed as an argument as if it were a call). `wx_sibling_override` is
-  RECORDED, not scored: it charges on rust and swift, but ⟨0.39⟩ obligation 3 unions per key, so the SPEC as written
-  requires that charge. `proposals/call-target-site-and-wire.md` gains the minted-body-less sentence (§2), the
-  receiver-subtree question (§3.1) and the sidecar-less chained-report question with each engine's behaviour today
+  stored and never invoked) passes on rust and ts and is xfailed on java ([R1442]) and on swift ([R1447]: swift
+  edges a function reference passed as an argument as if it were a call). `wx_sibling_override` is RECORDED, not
+  scored: it charges on rust and swift, and ⟨0.39⟩ obligation 3 unions per key, so the SPEC as written requires that
+  charge. The scored positive `wx_heldvalue_sibling` pins why the union may not be narrowed by the consumer's call-site
+  receiver: the same key is published by a dispatch on a held value, whose sibling RUNS. It charges on rust and swift
+  and is xfailed SILENT on java ([R1317]) and ts ([R1417]). `proposals/call-target-site-and-wire.md` gains the minted-body-less sentence (§2), the
+  receiver-subtree clarification (§3.1: the consumer MUST NOT narrow) and the sidecar-less chained-report question with each engine's behaviour today
   (§5). All of it stays PROPOSED.
 
 ## [0.40.17] — 2026-10-25
