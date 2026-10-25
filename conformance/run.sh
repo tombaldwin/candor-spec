@@ -3185,6 +3185,36 @@ echo "PART 103 — a union past the bounded-CHA limit is published with its hedg
 # NOTE: measured 2026-10-22 at the heads: java and ts publish the 13-implementor union with its dispatch: hedge and pass; rust publishes it PURE (R1367) and swift omits it (R1368), both SILENT chained; ts omits the 12-implementor pure union and its consumer hedges on the missing key (R1369, NOTSILENT). Nothing executed: no implementor performs an effect; the reference is each engine's own one-tree answer. 0.40.16 JOIN, 2026-10-24: rust (6b2648d) and swift (96f88f0) now publish the 13-implementor union BROAD and c_13 PASSES on both — R1367/R1368 xfails RETIRED; ts c_12 (R1369, the R613 instance) still fails and stays.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders the 13-implementor fixture with 12, so w_13 goes red on every engine (exit 1). Registered in probe_check.py (java arm).
 
+# PART 104 — THE CALL-TARGET TAXONOMY: ONE SAMPLE CELL PER CLASS, FOUR-WAY, PLUS THE R764 CELL (SKELETON, call-target
+# round 1, 2026-10-25). SPEC §4 bounded-CHA, ⟨0.39⟩ chained consumer + "Implementor includes a SUBCLASS", ⟨0.40⟩
+# receiver-type sentence. SOUNDNESS R764, R1317, R1416, R1417 (xfails); R1247/R1249 (recorded cells).
+#
+# The four call-target lanes (~/candor-handoff/calltarget-analysis/) found one structure in every engine — SITE, WIRE,
+# IDENTITY, TYPE — and matrices of 2k-30k cells each, which this suite cannot carry. So the structure is two-tier
+# (FABLE-SYNTHESIS §2.4): each engine's matrix is its exhaustive silence instrument in its own repo, and this part pins
+# the cross-engine PROPERTY with one sample cell per taxonomy class (site kind x placement x count x closedness x wire,
+# with the `invisible`-only and the recognised-but-untyped cells every lane's count looked away from). Cells whose
+# property waits on the PROPOSED site clause (proposals/call-target-site-and-wire.md) are RECORDED, never scored. The
+# r764 cell doctors a chained producer's report with the unchained OWNER's union entry made pure-only — spelling taken
+# from the owner's own report, so the doctor invents nothing — and requires the owner's disclosure to survive; its `fx`
+# arm (the same entry carrying Fs) is the control that the doctored entry reaches the consumer at all.
+[ -f "$HERE/gen_call_target.py" ] || { echo "FAIL: gen_call_target.py is missing"; exit 2; }
+echo
+echo "[104] one sample cell per call-target class reaches the caller four-way, and a pure-only union never deletes an unchained owner's disclosure"
+P104_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_call_target.py"
+) || { P104_OK=1; rc=1; }
+[ "$P104_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on ex_local_one/hk_fmt_local/op_local is a reference that stopped charging; on ex_local_pure a FABRICATION; on ex_local_bound/ut_fmt_abstraction a silence where the SPEC requires a charge or a disclosure; on wx_* the chained consumer lost a consumer-supplied implementor; on inv_unchained the unchained package left the ledger; on r764 a pure-only union deleted the owner's disclosure; XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 104 — call-target taxonomy, one sample cell per class four-way, and the R764 cell (SPEC §4 bounded-CHA / ⟨0.39⟩ / ⟨0.40⟩; SOUNDNESS R764/R1317/R1416/R1417)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_call_target.py judges the controls every run and fails the part on any — ex_local_one (explicit dispatch, the solved class, charged by every engine), hk_fmt_local and op_local (resolved calls to user bodies) are REFERENCES; ex_local_pure (every implementor pure) is the FABRICATION control; the r764 `fx` arm proves the doctored union entry reaches the consumer (it must charge Fs), so a passing `pure` arm is not vacuous; `deny Env` fires on every cell as the carrier, and a hollow consumer report (analyzed.count 0) is BROKEN.
+# NOTE: MEASURED 2026-10-25 against the engines' main checkouts at v0.40.16 (java jar built from 75a8875 = v0.40.16 + a jbang/CHANGELOG commit, JDK 21). Scored: every engine passes ex_local_one, ex_local_bound, ex_local_pure, wx_consumer_impl, hk_fmt_local, ut_fmt_abstraction, inv_unchained (ledger present; `deny Fs` 0 on the scan route BY DESIGN) and op_local (rust, swift — java and ts have no user operators). xfail wx_concrete_subclass on java (R1317), ts (R1417) and swift (R1416), SILENT — rust has no class inheritance, its consumer-supplied implementor is wx_consumer_impl. xfail r764 on ts (R764, DIR=NOTSILENT — no ts producer publishes a pure-only entry today; doctored in, the owner's `invisible` vanishes and the row is silent); rust, java and swift keep `invisible` with the doctor shown to reach them (fx charges Fs). ts `fx` also drops `invisible` (charged, so no gate moves — R764's pre-existing non-empty case). RECORDED, not scored (they wait on the site clause): hk_fmt_container SILENT on rust (R1247) and swift (R1249), charged on java and ts; hk_iter_local and hk_callback charged on all four. The xfailed and recorded-silent cells were EXECUTED once with the sink replaced by a printed marker (~/candor-handoff/calltarget-round1/spec/exec.json). A PASSING xfail is a FAILURE.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders ex_local_one's implementor without its Fs, so the REFERENCE cell goes red on every engine (exit 1). Registered in probe_check.py (rust arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

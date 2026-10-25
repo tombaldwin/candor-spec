@@ -217,6 +217,14 @@ COVERED = {
         "holds":  r"BOUND-PUBLICATION: OK — every reference hedges past the bound",
         "breaks": r"BOUND-PUBLICATION: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 104 (call-target taxonomy; SOUNDNESS R764, R1405-R1428). The fault renders ex_local_one's implementor WITHOUT
+    # its Fs, so the explicit-dispatch REFERENCE cell — green on every engine — cannot charge and goes red. Rust arm:
+    # the cheapest engine, and rust has no xfail in this part, so a stale-xfail exit cannot mask the fault's FAIL.
+    "gen_call_target.py": {
+        "args":   ["--engine", "rust"],
+        "holds":  r"CALL-TARGET: OK — every reference charges",
+        "breaks": r"CALL-TARGET: [1-9]\d* cell\(s\) wrong",
+    },
     # PART 95 (SOUNDNESS R843). The fault empties `Client.fetch` and `SubO.m` (c5_factory on both engines,
     # c1_convention and r7b_returns_open on swift — all green today) and turns the stale/nothing doctors into
     # the identity (o4/o5 on swift, which proves the DOCTORED document is what reached the consumer). Every
@@ -271,7 +279,7 @@ COVERED = {
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 24
+COVERED_FLOOR = 25
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
