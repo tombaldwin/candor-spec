@@ -25,6 +25,20 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **Conformance PART 104: four CONTROL cells (call-target round 2). No SPEC text, no floor move.** Each cell is a
+  CLEAN program, executed. `deny Fs` must exit 0, and a POSITIVE TWIN arm must reach the caller on every run, so each
+  control is shown able to fail. In the twin the effect sits on the body that does run, or the stored value is
+  invoked; executed, the effect runs. A silent twin is a FAIL unless `TWIN_SILENT` names the row. The cells:
+  `wx_unrelated_override` (an effectful `m` on a class that is not a subtype of the key's abstraction) and
+  `wx_exact_producer` (a dispatch on a final/closed receiver beside a consumer subclass of the base) pass four-way;
+  the first is VACUOUS on java and ts until [R1317]/[R1417] land. `cb_stored_not_run` (a named function's reference
+  stored and never invoked) passes on rust and ts and is xfailed on java ([R1442]) and on swift (the same shape:
+  swift edges a function reference passed as an argument as if it were a call). `wx_sibling_override` is
+  RECORDED, not scored: it charges on rust and swift, but ⟨0.39⟩ obligation 3 unions per key, so the SPEC as written
+  requires that charge. `proposals/call-target-site-and-wire.md` gains the minted-body-less sentence (§2), the
+  receiver-subtree question (§3.1) and the sidecar-less chained-report question with each engine's behaviour today
+  (§5). All of it stays PROPOSED.
+
 ## [0.40.17] — 2026-10-25
 
 - **Conformance PART 104 (skeleton) — the call-target taxonomy, one sample cell per class four-way, plus the [R764] cell. No SPEC text, no floor move.** `conformance/gen_call_target.py` pins, per engine, explicit dispatch (one implementor, past the bound, pure-only control), a consumer-supplied implementor of a dependency's abstraction and a consumer SUBCLASS of a dependency's concrete class, formatting of a local type and through an abstraction lacking the hook member, a user operator, the `invisible`-only cell (the ledger must name an unchained package; `deny Fs` reads 0 by design), and RECORDS — never scores — the implicit sites whose property waits on the PROPOSED site clause. The `r764` cell doctors a chained producer's report with the unchained owner's union entry made pure-only (spelled as the owner's own report spells it) and requires the owner's disclosure to survive; an `fx` arm proves the doctored entry reaches the consumer. xfails: `wx_concrete_subclass` on java (R1317), ts (R1417), swift (R1416); `r764` on ts (R764). Calibrated by `CANDOR_PROBE_FAULT` (probe_check, rust arm). Drafts for the site/disclosure clause (two strictness options), the resolved-means-minted sentence and the wire's member-kind clarification are in `proposals/call-target-site-and-wire.md`, PROPOSED and not normative.

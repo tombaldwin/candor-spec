@@ -103,7 +103,7 @@ The decision then reads off (3) and (4) per option: B's hedge reach is (3) restr
 convert/deferred/drop class; A's is all of (3). A count in (3) that the lane can move into (2) first — a resolution
 — is not a cost of the clause at all (CLAUDE.md: "a resolution beats a hedge").
 
-## 2. The resolved-means-minted rule (one sentence, §4 — after "A method *inherited* by a type … is a resolved call")
+## 2. The resolved-means-minted rule (two sentences, §4 — after "A method *inherited* by a type … is a resolved call")
 
 > **A body an implementation names as a target is RESOLVED only if it is an analysed unit; a target that is not a
 > unit — a declaration with no body the scan analysed, a member assigned at run time, a body in a file the scan did
@@ -115,6 +115,22 @@ Why: the ts lane's prototype first suppressed the opaque-iterable hedge on findi
 fixed only by counting minted bodies (`~/candor-handoff/calltarget-analysis/ts/REPORT.md` §4). It is the resolver-level
 form of ⟨0.26⟩'s "disclose the ambiguity, never resolve it by guessing", and of R1424 (JS prototype-assigned members
 never minted). It adds no field.
+
+**The second half — a body-less declaration the scan DID mint is a resolved target, and is edged.** Append:
+
+> **A declaration without a body that the scan MINTED as a unit — an abstract member, a trait's required method, a
+> protocol requirement, an ambient `declare` — is a resolved target: the edge to it MUST be added, and the
+> disclosure its own row carries (a dispatch hedge, a ledger entry, an `Unknown` with its reason) reaches the caller
+> through that edge. It MUST NOT be skipped as "no body", because the row is where the implementation already says
+> what it does not know, and skipping the edge deletes that disclosure.**
+
+Why: the first sentence alone invites the opposite error, and the ts round-1 lane made it. Its first cut read "a
+target that is not a unit" as "a declaration with no body" and skipped body-less declarations that WERE minted; 28
+chained cells lost their disclosure (FABLE-REVIEW §3.3; ts round-1 report). The rule the two sentences make together
+is about MINTING, not about bodies: minted → edge it and let its row speak; not minted → disclose at the site. The
+other three engines already behave this way and the sentence pins them: java's S4 floor, rust's hedge on a trait's
+required method, and swift's protocol-requirement rows (the `describePureProto` test). Like the first sentence it
+adds no field.
 
 ## 3. The wire's member-kind generality (clarification of ⟨0.39⟩ obligation 1 — no rung, no field)
 
@@ -137,6 +153,24 @@ non-final classes (R1317) and third-package Object-protocol members (R1316). Wha
 the owner's disclosure to survive — it PASSES on rust, java and swift (with its `fx` control proving the doctored
 entry reaches them) and is XFAILED on ts (R764). It must stay green on every engine before any producer publishes
 pure-only or class-member keys (FABLE-SYNTHESIS §3.2).
+
+### 3.1 Open: is obligation 3's union scoped to the CALL SITE's receiver subtree?
+
+Measured by PART 104's recorded cell `wx_sibling_override` (round 2). A dependency's own member `run` dispatches
+`self.m()`, so the dependency publishes the key `Base.m`. The consumer calls `Left().run()` on a CLOSED `Left`, and a
+SIBLING `Right: Base` writes a file in its `m`. Executed, `Right.m` never runs. rust (the R1420 (a) shape) and swift
+(R1436) charge it, and java does too once the base member is abstract
+(`~/candor-handoff/calltarget-round2/spec/abstract-base-variant.txt`). FABLE-REVIEW §3.1 calls this a fabrication
+and asks for the join to be scoped to "the receiver's static-type subtree". **The SPEC as written does not say that.**
+Obligation 3 reads *"the consumer's join MUST union, per key, its own visible implementors"*, and `Right.m` is one of
+them. ⟨0.40⟩'s receiver-type sentence is about the PRODUCER's dispatch site, where the receiver is `self: Base`. So the
+charge is the sound over-approximation the clause requires, not a non-conformance, and the cell is recorded rather
+than scored. If Tom wants the narrowing, the sentence it needs is roughly: *a consumer that reaches a keyed dispatch
+through an inherited member, at a call site whose receiver's static type is a subtype of the key's abstraction, MAY
+restrict the union to that subtype's subtree.* It should be MAY, not MUST: the narrowing is precision, and every
+removal it makes falls under the removal-direction bar. Its negative control is the scored cell
+`wx_unrelated_override`: a class that is not a subtype at all is never an implementor, and that cell holds on all
+four engines today.
 
 ## 4. NOT drafted: the std-owned requirement key (R974's deferred rung)
 
@@ -163,3 +197,59 @@ Report the counts per engine with the spelling control in place (rust: a `use`/`
 dependency placement). The rung is probably two-engine (rust, swift): java erases generics in bytecode and ts has no
 std-owned bound traits, but that is to be confirmed by the java and ts lanes, and if confirmed the rung names them as
 declared exclusions with their reasons, as ⟨0.38⟩ did.
+
+## 5. Open: a chained report read WITHOUT its sidecars — ledger, `Unknown`, or INCOMPLETE?
+
+Recorded here because java's round 1 had to answer it alone (P6, SOUNDNESS R1377/R1333) and the answer is a
+four-way SPEC question (FABLE-REVIEW §3.5). Status: a question with today's measurements, not draft text.
+
+**What the SPEC already says.** §2.2 sidecars are OPTIONAL. ⟨0.24⟩ rules that an empty, an absent and an unparseable
+sidecar are the SAME INPUT. ⟨0.26⟩ says a type absent from a present hierarchy sidecar is UNANSWERABLE, and a query
+that depends on it "MUST disclose rather than drop". Those rules were written for the QUERY consumers (the frontier,
+`gains` origin, `fix`), and they settle that a missing sidecar must not read as a claim. They do not say which
+CHANNEL a chained SCAN uses when its own verdict depends on a dependency's missing sidecar. There are three
+candidates, and they differ in what a gate sees:
+
+| channel | what the caller's row/verdict carries | `deny E` / `deny Unknown` | precedent |
+|---|---|---|---|
+| ledger | `invisible: [pkg]` (+ a stderr line) | both PASS (exit 0), by ⟨0.30⟩'s non-gating ruling | an unchained dependency (`inv_unchained`) |
+| `Unknown` | `Unknown` with a reason naming the missing sidecar | `deny Unknown` FAILS; `deny E` passes | §4's unresolved-call rule |
+| INCOMPLETE | the ⟨0.21⟩ `unanalyzed` manifest / exit 2 | the verdict is INCOMPLETE, neither pass nor fail | ⟨0.21⟩/⟨0.30⟩ `outOfScope` |
+
+**What each engine does today** (measured 2026-10-25 on builds of the v0.40.17 sources from the main checkouts — rust
+`61e791c`, swift `6d881f5`, ts `4ea610d`, java jar built from `71876b3`, which is v0.40.17 plus a jbang/CHANGELOG
+commit — under JDK 21). Fixtures: PART 104's builders for `wx_consumer_impl`, `wx_concrete_subclass` and a one-hop
+dependency effect, plus a two-hop variant (the dependency reaches the dispatch through a pure private intermediary).
+Each producer was scanned, then the consumer was scanned twice: once with every file the producer wrote handed over,
+once with only the report. Probe and results: `~/candor-handoff/calltarget-round2/spec/sidecar_probe.py`,
+`sidecar-probe.{txt,json}`. java's row uses R1377's own fixture (`javaagent-0416/fixtures/fable-nohier`), re-scanned
+by the 0.40.17 jar.
+
+| engine | does the chained route READ a dependency's sidecars? | sidecar deleted | channel |
+|---|---|---|---|
+| rust | no — the `CANDOR_DEPS` loader skips `*callgraph*` (`candor-scan/src/deps.rs` `dep_report_files`); the report carries `dispatchesOn` itself | consumer report IDENTICAL (`functions[]` and top level) on 3 cells; gates unchanged | none needed |
+| swift | no — `Deps.swift` skips `callgraph`/`hierarchy` | IDENTICAL on 4 cells | none needed |
+| ts | no — `scan.mjs` skips `.callgraph`/`.hierarchy`/`.locs`. This is deliberate: its comment ("WHY A PRODUCER ROW AND NOT A CONSUMER WALK OF `.hierarchy.json`") cites ⟨0.24⟩'s absent = empty rule as the reason to publish subclass information as producer ROWS | IDENTICAL on 4 cells | none needed |
+| java | yes — the hierarchy sidecar drives the consumer's override walk | R1377 fixture: present `app.Main.go` = `[Unknown]{dispatch:dep.P.format}`, `deny Fs Unknown` exit 1; hierarchy deleted → `[]` + `invisible: [dep]` + one stderr line, exit **0**; callgraph deleted → `[Fs, Unknown]`, exit 1 (it widens) | **ledger** (P6) |
+
+**So the question is narrower than it looked.** Three engines put everything a chained consumer needs into the REPORT
+and never read a sidecar on that route, so for them a missing sidecar cannot change a verdict. Only java's consumer
+depends on one. The SPEC question is therefore whether a consumer MAY depend on a sidecar for a verdict at all, and
+if it does, which channel the dependence takes when the file is missing:
+
+1. **Ledger** (java today). Cheapest, and consistent with how an unchained package is treated. But it passes every
+   `deny`, so a degraded input turns `deny Fs Unknown` from exit 1 to exit 0 (the R1377 cell). Under R764's sentence
+   (*a mechanism that makes reports better must not make silence cheaper*) that is the weakest of the three.
+2. **`Unknown` with a reason** (e.g. `sidecar:<pkg>.hierarchy`). It keeps `deny Unknown` red where the walk could not
+   run. It costs one `Unknown` per affected caller, and that is reached only on degraded input: a java scan always
+   writes the sidecar beside the report, which is why R1377's census reach is 0.
+3. **INCOMPLETE.** The strongest signal, but it bills the whole verdict for one package's missing file, and ⟨0.30⟩
+   bounded `outOfScope` to effects the policy DENIES so that it would stay affordable. This would need the same bound.
+4. **Report-only**: make the report self-sufficient for the chained join, as rust/swift/ts already are, and demote
+   the sidecar to the query tools. Then the question disappears, and so does java's P6 branch, at the cost of moving
+   java's hierarchy walk onto producer rows (the ts design note's argument).
+
+What to measure before Tom chooses (the java lane owns the numbers; the other three have nothing to measure):
+R1333's corpus arm re-run under P6 (2,098 rows changed, 240 concrete effects lost before round 1), split by whether P6
+discloses each loss, plus the gate flips options 2 and 3 would cause on that arm. No option needs a field the wire
+lacks except option 2's reason class, which would need a new entry in the reason vocabulary, and so a rung.

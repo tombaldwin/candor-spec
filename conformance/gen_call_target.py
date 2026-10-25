@@ -35,11 +35,20 @@ MODES, because the SPEC does not yet bind every class (the site clause is PROPOS
     record   the property depends on the pending site clause (option A asserts every recognised implicit site,
              option B only the iteration/callback/I/O/conversion/deferred class); the verdict is PRINTED with
              the option that would decide it, never scored. These cells are where the PROPOSED clause will bite.
+    control  a CLEAN program (EXECUTED: the effectful body is reachable by name and never runs). `deny Fs` must
+             exit 0 — a charge is a FABRICATION — and a POSITIVE TWIN arm (the effect moved onto the body that does
+             run, or the stored value invoked; executed) must reach the caller, so the control is shown able to fail
+             on every run. A silent twin is a FAIL unless TWIN_SILENT names the row that makes it so (VACUOUS).
+    rcontrol a `control` the SPEC does not bind yet: both arms are run and PRINTED, never scored.
     r764     a newly published / pure-only union must not delete an unchained owner's disclosure (SPEC §4
              ⟨0.39⟩: "A mechanism that makes reports better must not make silence cheaper"). Two arms over the
              same three packages: `base` (the producer's report as written) and `pure` (the producer's report
              with the owner's union entry DOCTORED to pure-only, re-using the spelling the owner's OWN report
              gives that key, so the doctor cannot invent a spelling). Both must disclose.
+
+ROUND 2 (2026-10-25) adds CONTROL cells — CLEAN programs, executed — because the round-3/4 key-publishing work widens
+exactly the surface that fabricates (FABLE-REVIEW §3.1/§3.2/§3.4): `wx_unrelated_override`, `wx_exact_producer`,
+`cb_stored_not_run` (scored) and `wx_sibling_override` (recorded: ⟨0.39⟩ obligation 3 as written REQUIRES that union).
 
 Every consumer function `c_go` reads the environment first: `deny Env` is the carrier on every cell, so a policy
 that matched nothing cannot pass. Truth: every effectful body performs `Fs` directly (the same sink every engine
@@ -153,6 +162,137 @@ def _wx_concrete_subclass(lang):
     return {"pkgs": {"api": ([], "open class Base { public init() {}\n  open func m() -> Int { 1 } }\npublic func run(_ b: Base) -> Int { b.m() }\n"),
                      "app": (["api"], "import Api\nfinal class Mine: Base { override func m() -> Int { FS\n    return 2 } }\n"
                                       "public func c_go() -> Int {\n  ENV\n  return run(Mine())\n}\n")}, "chain": ["api"]}
+
+
+# ---- the three CONTROL cells (call-target round 2, FABLE-REVIEW §3.1/§3.2/§3.4). Every one is CLEAN by execution: the
+# effectful body exists, is reachable by NAME, and never runs. Each also renders a POSITIVE TWIN (`twin=True`): the
+# same program with the effect on the body that DOES run, or with the stored value invoked — executed, the effect
+# runs. The twin arm runs EVERY time (mode `control`) and must reach the caller (charge or disclose), so a control
+# that passes only because the engine never reads the site is visible: a twin that stays silent is either a row in
+# TWIN_SILENT (the control is VACUOUS on that engine until the row is fixed) or a FAIL.
+
+
+def _tw(lang, twin):
+    return ("FS\n    " if lang == "swift" else "FS ") if twin else ""
+
+
+def _wx_override(leg):
+    """api: an open base whose OWN member `run` dispatches `self.m()` (so the dependency publishes the key `Base.m`).
+    app: the receiver is a CLOSED subclass `Left` (final / no visible subclass / a struct) with a pure `m`, plus one
+    effectful `m` that cannot run at `Left().run()`, instantiated by `c_mk` so reachability cannot excuse it:
+
+      leg "unrelated"  on `Other`, a class that is NOT a subtype of `Base` (rust: an inherent method). No SPEC sentence
+                       makes `Other` an implementor of `Base.m`, so a charge is a FABRICATION — scored (`control`).
+                       java's `c_ct_unrelated_*` shape; FABLE-REVIEW §3.1.
+      leg "sibling"    on `Right`, a SIBLING subclass of `Base`. Executed CLEAN, but ⟨0.39⟩ obligation 3 says the
+                       consumer's join MUST union, PER KEY, its own visible implementors, and `Right.m` is one: as
+                       written, the SPEC does not scope that union to the consumer call site's receiver subtree, so
+                       this charge is the sound over-approximation it requires, not a non-conformance. RECORDED
+                       (`rcontrol`) until a sentence narrows the join (proposal §3, the receiver-subtree question);
+                       swift R1436 and rust R1420 (a) are this shape. FABLE-REVIEW §3.1 called it a fabrication."""
+    def b(lang, twin=False):
+        t = _tw(lang, twin)
+        r = ("FS\n    " if lang == "swift" else "FS ") if leg == "sibling" else ""
+        o = ("FS\n    " if lang == "swift" else "FS ") if leg == "unrelated" else ""
+        if lang == "rust":
+            return {"pkgs": {"api": ([], "pub trait Tr { fn m(&self) -> i32; fn run(&self) -> i32 { self.m() } }\n"),
+                             "app": (["api"], ("use api::Tr;\npub struct Left;\nimpl Tr for Left { fn m(&self) -> i32 { %s2 } }\n"
+                                               "pub struct Right;\nimpl Tr for Right { fn m(&self) -> i32 { %s3 } }\n"
+                                               "pub struct Other;\nimpl Other { pub fn m(&self) -> i32 { %s4 } }\n"
+                                               "pub fn c_go() -> i32 { ENV Left.run() }\n"
+                                               "pub fn c_mk() -> (Right, Other) { (Right, Other) }\n") % (t, r, o))}, "chain": ["api"]}
+        if lang == "java":
+            return {"pkgs": {"api": ([], {"Base": "package api;\npublic class Base { public int m() { return 1; } "
+                                                  "public int run() { return m(); } }\n"}),
+                             "app": (["api"], {"Left": "package app;\npublic final class Left extends api.Base { public int m() { %sreturn 2; } }\n" % t,
+                                               "Right": "package app;\npublic class Right extends api.Base { public int m() { %sreturn 3; } }\n" % r,
+                                               "Other": "package app;\npublic class Other { public int m() { %sreturn 4; } }\n" % o,
+                                               "App": JV_APP % ("public static int c_go() { ENV return new Left().run(); } "
+                                                                "public static Object[] c_mk() { return new Object[] { new Right(), new Other() }; }")})},
+                    "chain": ["api"]}
+        if lang == "ts":
+            # No `final` in TypeScript; `Left` has no visible subclass, so its subtree is {Left}. Not closed with a
+            # private constructor as wx_exact_producer is: an explicit `constructor() { super(); }` adds an unrelated
+            # `Unknown[callback:super]` (measured on 0.40.17) that would cloud the cell's detail.
+            return {"pkgs": {"api": ([], "export class Base { m(): number { return 1; } run(): number { return this.m(); } }\n"),
+                             "app": (["api"], ('import { Base } from "api";\n'
+                                               "class Left extends Base { m(): number { %sreturn 2; } }\n"
+                                               "export class Right extends Base { m(): number { %sreturn 3; } }\n"
+                                               "export class Other { m(): number { %sreturn 4; } }\n"
+                                               "export function c_go(): number { ENV return new Left().run(); }\n"
+                                               "export function c_mk(): object[] { return [new Right(), new Other()]; }\n") % (t, r, o))},
+                    "chain": ["api"]}
+        return {"pkgs": {"api": ([], "open class Base { public init() {}\n  open func m() -> Int { 1 }\n  public func run() -> Int { m() } }\n"),
+                         "app": (["api"], ("import Api\nfinal class Left: Base { override func m() -> Int { %sreturn 2 } }\n"
+                                           "class Right: Base { override func m() -> Int { %sreturn 3 } }\n"
+                                           "final class Other { func m() -> Int { %sreturn 4 } }\n"
+                                           "public func c_go() -> Int {\n  ENV\n  return Left().run()\n}\n"
+                                           "public func c_mk() -> [Any] { [Right(), Other()] }\n") % (t, r, o))}, "chain": ["api"]}
+    return b
+
+
+def _wx_exact_producer(lang, twin=False):
+    """api: an open base, a CLOSED subclass `Fin` (final / non-`open` / private-constructor / concrete struct) with a
+    pure override, and `run(f: Fin)` dispatching `f.m()`. app: a consumer subclass (rust: implementor) of the BASE with
+    an effectful `m`, instantiated by `c_mk`. `run`'s receiver is exact, so the consumer's override cannot run there —
+    a producer that publishes a class-wide key for this site, or a consumer that joins one, fabricates."""
+    t = _tw(lang, twin)
+    if lang == "rust":
+        return {"pkgs": {"api": ([], "pub trait Tr { fn m(&self) -> i32; }\npub struct Fin;\n"
+                                     "impl Tr for Fin { fn m(&self) -> i32 { %s1 } }\npub fn run(f: &Fin) -> i32 { f.m() }\n" % t),
+                         "app": (["api"], "use api::{Tr, Fin, run};\npub struct Mine;\nimpl Tr for Mine { fn m(&self) -> i32 { FS 2 } }\n"
+                                          "pub fn c_go() -> i32 { ENV run(&Fin) }\npub fn c_mk() -> Mine { Mine }\n")}, "chain": ["api"]}
+    if lang == "java":
+        return {"pkgs": {"api": ([], {"Base": "package api;\npublic class Base { public int m() { return 1; } }\n",
+                                      "Fin": "package api;\npublic final class Fin extends Base { public int m() { %sreturn 3; } }\n" % t,
+                                      "Run": "package api;\npublic class Run { public static int run(Fin f) { return f.m(); } }\n"}),
+                         "app": (["api"], {"Mine": "package app;\npublic class Mine extends api.Base { public int m() { FS return 2; } }\n",
+                                           "App": JV_APP % ("public static int c_go() { ENV return api.Run.run(new api.Fin()); } "
+                                                            "public static Object c_mk() { return new Mine(); }")})},
+                "chain": ["api"]}
+    if lang == "ts":
+        # TypeScript has no `final`; a PRIVATE constructor forbids `extends Fin` (TS2675) and the private field makes
+        # the type nominal, so no consumer value can be passed as a `Fin`.
+        return {"pkgs": {"api": ([], "export class Base { m(): number { return 1; } }\n"
+                                     "export class Fin extends Base { private k = 0; private constructor() { super(); } "
+                                     "static make(): Fin { return new Fin(); } m(): number { %sreturn 3; } }\n"
+                                     "export function run(f: Fin): number { return f.m(); }\n" % t),
+                         "app": (["api"], 'import { Base, Fin, run } from "api";\nexport class Mine extends Base { m(): number { FS return 2; } }\n'
+                                          "export function c_go(): number { ENV return run(Fin.make()); }\n"
+                                          "export function c_mk(): Mine { return new Mine(); }\n")}, "chain": ["api"]}
+    return {"pkgs": {"api": ([], "open class Base { public init() {}\n  open func m() -> Int { 1 } }\n"
+                                 "public final class Fin: Base { public override init() {}\n  public override func m() -> Int { %sreturn 3 } }\n"
+                                 "public func run(_ f: Fin) -> Int { f.m() }\n" % t),
+                     "app": (["api"], "import Api\nfinal class Mine: Base { override func m() -> Int { FS\n    return 2 } }\n"
+                                      "public func c_go() -> Int {\n  ENV\n  return run(Fin())\n}\n"
+                                      "public func c_mk() -> Any { Mine() }\n")}, "chain": ["api"]}
+
+
+def _cb_stored_not_run(lang, twin=False):
+    """A platform-shaped function value (rust `fn()`, java `Runnable`, ts `() => void`, swift `() -> Void`) naming an
+    effectful function is created and STORED in a field, and never invoked. The NON-INVOKING LOOK-ALIKE axis (java
+    R1442 is its live instance). Calibration twin: the stored value is invoked.
+
+    A NAMED function, never a closure LITERAL: SPEC §4 (⟨0.39⟩, "What this clause deliberately does NOT do") records
+    that engines charge a closure by SYNTACTIC CONTAINMENT — `keep(|| net)` yields `Net` where `keep` never calls it —
+    as the precedent the escaping-value rule was refused against. A stored-not-run closure literal is therefore
+    charged BY DESIGN and would be a wrong control; a reference to a function declared elsewhere contains no body."""
+    if lang == "rust":
+        call = "(h.f)(); " if twin else ""
+        return _one(lang, "fn eff() { FS }\npub struct H { pub f: fn() }\npub fn c_go() { ENV let h = H { f: eff }; %slet _k = &h; }\n" % call,
+                    None, None, None)
+    if lang == "java":
+        call = "h.r.run(); " if twin else ""
+        return _one(lang, None, {"H": "package app;\npublic class H { Runnable r; public H(Runnable r) { this.r = r; } }\n",
+                                 "App": JV_APP % ("static void eff() { FS } public static void c_go() { ENV H h = new H(App::eff); %s}" % call)},
+                    None, None)
+    if lang == "ts":
+        call = "h.r(); " if twin else ""
+        return _one(lang, None, None, "function eff(): void { FS }\nclass H { r: () => void; constructor(r: () => void) { this.r = r; } }\n"
+                    "export function c_go(): void { ENV const h = new H(eff); %svoid h; }\n" % call, None)
+    call = "  h.r()\n" if twin else ""
+    return _one(lang, None, None, None, "func eff() { FS\n}\nstruct H { let r: () -> Void }\n"
+                "public func c_go() {\n  ENV\n  let h = H(r: eff)\n%s  _ = h\n}\n" % call)
 
 
 def _one(lang, rust, java, ts, swift):
@@ -295,6 +435,20 @@ CELLS = [
     ("wx_concrete_subclass", "explicit · consumer-of-dependency · 1 · open class · chained", "assert",
      {"deny Env": 1, "deny Fs": 1}, _wx_concrete_subclass,
      "a consumer SUBCLASS overriding a dependency class's member is an implementor (§4 ⟨0.39⟩ subclass sentence)"),
+    ("wx_unrelated_override", "explicit · consumer-of-dependency · closed receiver, effectful `m` on an UNRELATED class · chained",
+     "control", {"deny Env": 1, "deny Fs": 0}, _wx_override("unrelated"),
+     "CONTROL: a class that is not a subtype of the key's abstraction is not an implementor of it — joining it by "
+     "member NAME is a FABRICATION (executed: `Other.m` never runs)"),
+    ("wx_sibling_override", "explicit · consumer-of-dependency · closed receiver, effectful `m` on a SIBLING subclass · chained",
+     "rcontrol", {"deny Env": 1, "deny Fs": 0}, _wx_override("sibling"),
+     "RECORDED CONTROL: executed CLEAN, but ⟨0.39⟩ obligation 3 unions PER KEY, not per call-site receiver subtree"),
+    ("wx_exact_producer", "explicit · chained dependency's own · exact (final/closed) receiver · consumer subclass of the base",
+     "control", {"deny Env": 1, "deny Fs": 0}, _wx_exact_producer,
+     "CONTROL: a dispatch on a CLOSED receiver has one target; the consumer's subclass of the base cannot run there — "
+     "a charged Fs is a FABRICATION (executed)"),
+    ("cb_stored_not_run", "callback look-alike · same package · function value stored, never invoked",
+     "control", {"deny Env": 1, "deny Fs": 0}, _cb_stored_not_run,
+     "CONTROL: creating and storing a function value runs nothing — a charged Fs is a FABRICATION (executed)"),
     ("hk_fmt_local", "implicit hook (formatting) · same package · 1 · closed concrete type · none", "assert",
      {"deny Env": 1, NS: 1}, _hk_fmt_local,
      "formatting a LOCAL concrete type runs a user body; the conventionally-pure MAY covers only receivers typed by "
@@ -325,6 +479,15 @@ CELLS = [
 # (cell, engine) -> the row it rests on. MEASURED 2026-10-25 against the engines' main checkouts at v0.40.16 (see
 # the run.sh NOTE). A passing xfail is a FAILURE.
 XFAIL = {
+    # Round-2 CONTROLS (CLEAN by execution; ~/candor-handoff/calltarget-round2/spec/exec-*.json). MEASURED 2026-10-25
+    # against the engines' main checkouts at v0.40.17. Each is a FABRICATION: `deny Fs` exits 1 over a program that
+    # performs no Fs. wx_unrelated_override and wx_exact_producer pass on all four engines.
+    ("cb_stored_not_run", "java"):
+        "R1442 — FABRICATED: the method reference `App::eff` stored in `H` is charged at creation though never run",
+    ("cb_stored_not_run", "swift"):
+        "R1442 (the swift instance, measured by PART 104 and noted on the row; its own row is the coordinator's to "
+        "file) — FABRICATED: the function reference `eff` passed as an ARGUMENT to `H(r:)` is edged as a call (the "
+        "fn-reference argument arm that also makes hk_callback charge), though `H` only stores it",
     ("wx_concrete_subclass", "java"):
         "R1317 — SILENT: a dispatch on a public CONCRETE non-final dependency class is not named (obligation 1), so the "
         "consumer subclass's override never joins; executed (the override runs)",
@@ -333,6 +496,18 @@ XFAIL = {
     ("r764", "ts"):
         "R764 — DIR=NOTSILENT at HEAD (no ts producer publishes a pure-only entry today): with the entry doctored in, "
         "chaining deletes the unchained owner's invisible and leaves the row silent",
+}
+
+# (control cell, engine) -> the row whose SILENCE makes the control's positive twin silent, so the control passes
+# VACUOUSLY there until that row is fixed — which is exactly when the control starts to bite (FABLE-REVIEW §3.2: the
+# negative cells must exist BEFORE the key ships). MEASURED 2026-10-25 on v0.40.17; the twin's effect EXECUTED. A twin
+# listed here that reaches the caller is a FAILURE (retire the line with the row); a silent twin NOT listed is a FAILURE.
+TWIN_SILENT = {
+    ("wx_unrelated_override", "java"):
+        "R1317 — the dependency's `Base.run` dispatches `this.m()` on a public concrete non-final class and names no "
+        "member, so the consumer override `Left.m` that runs is never joined (wx_concrete_subclass's xfail)",
+    ("wx_unrelated_override", "ts"):
+        "R1417 — `Base.run`'s row is [] with no dispatchesOn for the concrete-class member (wx_concrete_subclass's xfail)",
 }
 
 # ------------------------------------------------------------------------------------------------- rendering
@@ -507,13 +682,14 @@ def run_cell(lang, scanner, ws, cid, mode, wants, builder):
     if isinstance(spec, str):
         return ("EXCLUDED", spec)
     fault = bool(FAULT) and cid == "ex_local_one"
-    arms = ("base", "pure", "fx") if mode == "r764" else ("base",)
+    arms = ("base", "pure", "fx") if mode == "r764" else ("base", "twin") if mode in ("control", "rcontrol") else ("base",)
     out = {}
     for arm in arms:
         wsc = os.path.join(ws, lang, cid, arm)
         os.makedirs(wsc, exist_ok=True)
-        dirs = materialise(lang, os.path.join(wsc, "src"), spec, fault)
-        deps, note = scan_set(scanner, dirs, spec, wsc, doctor=(arm if arm != "base" else None))
+        aspec = builder(lang, twin=True) if arm == "twin" else spec
+        dirs = materialise(lang, os.path.join(wsc, "src"), aspec, fault)
+        deps, note = scan_set(scanner, dirs, aspec, wsc, doctor=(arm if arm in ("pure", "fx") else None))
         r = scanner.scan(dirs["app"], deps=deps)
         if not r.produced:
             raise RuntimeError("%s/%s: consumer scan produced no report (rc=%d) %s" % (cid, arm, r.rc, r.note))
@@ -527,14 +703,14 @@ def run_cell(lang, scanner, ws, cid, mode, wants, builder):
         all_w = dict(wants)
         for extra in ("deny Fs", NS):
             all_w.setdefault(extra, None)
-        if mode != "assert":
+        if mode not in ("assert", "control") or arm == "twin":   # rcontrol: scored nowhere
             all_w = {k: (v if k == "deny Env" else None) for k, v in all_w.items()}
         got, bad = judge_policies(scanner, dirs["app"], deps, row, all_w, wsc)
         out[arm] = (not bad, "; ".join(bad), got, disclosure(row), note)
     return ("RAN", out)
 
 
-def verdict(mode, res):
+def verdict(mode, res, key=None):
     """(ok, detail) for a scored mode; (None, detail) for record."""
     def fmt(arm, v):
         ok, bad, got, disc, note = v
@@ -553,6 +729,23 @@ def verdict(mode, res):
         # charge (§4 ⟨0.39⟩ obligation 3). Without it a passing `pure` arm may only mean the entry was never read.
         if "Fs" not in x[3]:
             detail += " — CONTROL: the doctored entry carrying Fs did not charge, so this engine never joins it and the pure arm's pass is VACUOUS (recorded)"
+        return ok, detail
+    if mode in ("control", "rcontrol"):
+        b, tw = res["base"], res["twin"]
+        detail = fmt("base", b) + " | " + fmt("twin", tw)
+        if mode == "rcontrol":
+            return None, detail + (" — base CHARGES the sibling (the SPEC-required per-key union; R1436/R1420 (a) shape)"
+                                   if "Fs" in b[3] else "") + (" — twin SILENT" if not tw[3] else "")
+        ok = b[0]
+        silent_twin = not tw[3]
+        if silent_twin and key in TWIN_SILENT:
+            detail += " — VACUOUS on this engine: the positive twin is silent too (%s)" % TWIN_SILENT[key]
+        elif silent_twin:
+            ok = False
+            detail += " — the POSITIVE TWIN (effect executed) is SILENT: the control cannot fail here, and the twin is a silence"
+        elif key in TWIN_SILENT:
+            ok = False
+            detail += " — TWIN_SILENT is STALE: the twin now reaches the caller; retire %s" % (key,)
         return ok, detail
     v = res["base"]
     detail = fmt("base", v)
@@ -593,7 +786,7 @@ def main():
             if kind == "EXCLUDED":
                 print("  excl  %-20s %-6s %s" % (cid, lang, res))
                 continue
-            ok, detail = verdict(mode, res)
+            ok, detail = verdict(mode, res, key)
             if ok is None:
                 print("  rec   %-20s %-6s %s  [%s]" % (cid, lang, detail, why.split(":")[0]))
             elif ok and key in XFAIL:
