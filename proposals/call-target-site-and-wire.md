@@ -55,9 +55,36 @@ inventories show the hand-written lists are where the silences cluster (the lane
 — FABLE-SYNTHESIS §1.3 found rust's overall list percentage irreproducible: rust implicit-hook 33 of 92 items,
 deferred-iterator 21 of 35; swift 66 pure lists; ts ~20 lists across the implicit readers).
 
-### 1.3 The two strictness options (Tom chooses)
+### 1.3 The two strictness options — RULED 2026-10-31: A DECLINED, B's class list fixed
 
-**Option A — every recognised unresolved implicit site discloses.** Append:
+**Tom's ruling, 2026-10-31** (umbrella `BACKLOG.md` §0; `~/candor-handoff/calltarget-round2/FABLE-REVIEW.md` Q1). Option A
+is DECLINED: round 2 priced it at about 3–8% of analysed units in every engine (rust 8.15%, java 4.20% standalone,
+ts 4.13%, swift 2.79%), above the 2.6% decline band, and the one measured benefit (ts) was entirely J3-shaped and
+resolvable. **Option B is the BACKSTOP where resolution fails, not an alternative to resolving the site**: an engine
+first resolves a recognised site through its derived table (§1.2), and only a site it still cannot resolve discloses.
+B binds exactly this class list:
+
+- **iteration** — `for`/for-in/for-of, spread, destructuring of an iterable, and an iterator adapter or consumer
+  that drives the element protocol;
+- **a function value run by the platform** — a routine that invokes a closure, function reference or callback it was
+  handed (`thread::spawn`, `Thread.start` → `run`, a comparator, `forEach`, a sort key);
+- **I/O read/write** — a platform routine that calls a member of a user reader or writer (`io::copy`, `BufWriter`,
+  a JDK stream decorator, `writeObject`);
+- **conversion** — `From`/`Into`/`TryFrom`/`AsRef`/`FromStr`-style conversion to or from a user type. NOT `Number(x)`
+  or `+x`, which run the formatting family;
+- **`await`/`then` deferred force** — and any lazy or deferred value the platform forces;
+- **drop / close / finaliser** — drop glue, `close`, `Dispose`, a finaliser or deinit.
+
+Formatting, equality, ordering, hashing, cloning, `Default` and operator traits (including `Deref`/`Index`) stay
+under §4's conventionally-pure MAY as narrowed by ⟨0.40⟩. **An accessor is classed with the member it runs**: a
+getter reached by iteration is iteration, one reached by formatting is formatting. Neither option reaches a site
+whose operand is a GENERIC PARAMETER (rust `collector.rs` fallback, swift `ct2UnresolvedOperand`); those silences are
+[SOUNDNESS R974]'s wire rung (round 4). Next: re-price B four-way with ONE shared `bin/` script plus each matrix with
+the switch on (cost AND silences caught); Tom then decides per engine. The fallback does NOT ship in round 3.
+
+The two options as drafted are kept below for the record.
+
+**Option A (DECLINED) — every recognised unresolved implicit site discloses.** Append:
 
 > This binds every implicit site, including formatting, equality, hashing and cloning: §4's conventionally-pure MAY
 > licenses treating a resolved dispatch over those members as pure only where every implementor reachable at the
@@ -69,7 +96,8 @@ becomes scored (today SILENT on rust, R1247, and swift, R1249; charged on java a
 a formatting/equality/hashing/cloning site becomes an `Unknown` until the engine can type it — this is the half rust
 priced once and withdrew (R1157, 558 rows).
 
-**Option B — only the class §4 already says may not be left silent.** Append instead:
+**Option B (ADOPTED as the backstop, with the class list above) — only the class §4 already says may not be left
+silent.** Append instead:
 
 > This binds iteration, a callback, an I/O read or write, a conversion, a deferred or lazy force, and a drop, close
 > or finaliser. Formatting, equality, hashing and cloning remain under §4's conventionally-pure MAY as narrowed by
