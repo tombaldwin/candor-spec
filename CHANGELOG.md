@@ -25,6 +25,14 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.40.18] — 2026-10-31
+
+- **Proposal §1.3 records Tom's 2026-10-31 ruling on the site-clause fallback; register rows for call-target round 2.
+  No SPEC text.** Option A (disclose at every recognised unresolved site) is DECLINED; option B is the backstop where
+  resolution fails, with its class list fixed (iteration; a function value run by the platform; I/O read/write;
+  `From`/`Into`/`TryFrom`/`AsRef`/`FromStr`-style conversion; `await`/`then` deferred force; drop/close/finaliser).
+  Still PROPOSED. SOUNDNESS: R1444, R1446, R1434, R1435, R1441, R1450, R1452 FIX COMMITTED for 0.40.18; R1408 (J3
+  one-tree), R1430, R1248, R1249 partly; new open rows R1448–R1449, R1451, R1453–R1460.
 - **Conformance PART 104: four CONTROL cells (call-target round 2). No SPEC text, no floor move.** Each cell is a
   CLEAN program, executed. `deny Fs` must exit 0, and a POSITIVE TWIN arm must reach the caller on every run, so each
   control is shown able to fail. In the twin the effect sits on the body that does run, or the stored value is
