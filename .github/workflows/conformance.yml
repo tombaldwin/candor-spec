@@ -151,7 +151,9 @@ jobs:
     # NOT PART 22 (3.6 s — a header-to-header timing blamed it). Moving probe_check to its own job is the
     # real fix; this is the margin until then.
     # 45 → 70 (2026-10-21, 0.40.14 join): cancelled at 45 min mid-run, no verdict, after PARTs 99/100 landed.
-    timeout-minutes: 70
+    # 70 → 100 (2026-11-02): cancelled twice at 70 min on ad8b764, still passing parts; every part ~10%
+    # slower than the last green run (53 min), none regressed. probe_check is now ~24 min, not ~6.
+    timeout-minutes: 100
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
@@ -243,7 +245,9 @@ jobs:
     # join commit (local four-way on the same trees: OK). Still a hard limit — the swift CI-hang lesson stands.
     # 60 → 80 (2026-10-21, 0.40.14 join): the strict step printed `conformance: OK` at 59 min and the job was
     # cancelled 2 s later in the AGENTS.md step, after PARTs 99/100 landed.
-    timeout-minutes: 80
+    # 80 → 110 (2026-11-02): cancelled twice at 80 min on ad8b764 in PART 68, still passing; every section
+    # ~10% slower than the last green run (75 min), none regressed. probe_check is ~25 of those minutes.
+    timeout-minutes: 110
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
