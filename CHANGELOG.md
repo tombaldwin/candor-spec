@@ -25,6 +25,21 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.41⟩ AUTHORED, declared by no engine: `accept` lines for KNOWN policy violations (§6.2), plus conformance
+  PART 105. No floor move; reference-led in candor-java.** `accept <fn> [<Effect>…] for <rule tokens…> because
+  <reason…>` takes one named verdict row out of `violations` and lists it in a new verdict key, `accepted`. The key
+  is the RAW tokens of the `deny`/`pure`/`forbid` line, the unit's exact `fn`, and the accepted effect set (subset
+  match; an `Unknown` only under an explicit class filter that contains the row's `reasonClass`). Matching is per
+  producing line before de-duplication; entries are independent; `(hash, fn)` twins accept neither; positional keys
+  are refused, and a nested positional unit rides its enclosing entry only when this run's rows show the subset.
+  `allow`/`only` lines cannot be accepted. A STALE entry (its rule evaluated, `zeroMatch` included, nothing
+  accepted) is a new `AS-EFF-012` row at exit 1; a row that outgrew its entry is `exceeded` (red, never also 012);
+  an entry on a rule this route left unevaluated is `unjudged`. Accepted rows are never established violations, so
+  all-accepted beside a refused rule exits 2. Every malformed line is ignored with a warning and stays red, which is
+  also what a pre-rung engine does — measured four-way on all 38 PART 105 rows. PART 105 runs a hand-written-report
+  arm and a source arm; the ⟨0.41⟩ expectations are SKIPped (probed) until an engine ships, and each over-accept row
+  is shown able to fail against a reference model of the clause and 19 mutants of it.
+
 ## [0.40.18] — 2026-10-31
 
 - **Proposal §1.3 records Tom's 2026-10-31 ruling on the site-clause fallback; register rows for call-target round 2.

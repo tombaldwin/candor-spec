@@ -2873,6 +2873,11 @@ engine over 25 rows and two corpora (a 970-function report against 13 policies, 
 a fixture making the scoped arms non-vacuous). Anything less than byte-equality lets the two routes drift
 into two gates.
 
+⟨0.41⟩ **`accepted` (§6.2) joins the EVALUATED PROJECTION.** Over the rules both routes decided, the two
+documents carry the same `accepted` items byte for byte. An entry whose rule one route left unevaluated —
+`forbid` and `only` on `gate --report`, an unanswerable filter — is `unjudged` there and may be `accepted`,
+`exceeded` or stale on the scan route, so the two lists differ on those entries and in nothing else.
+
 ⟨0.40⟩ **A function's report entry, including any interface union merged into it, is the policy subject on
 BOTH routes** (SOUNDNESS R682). This adds no obligation; it names the input the byte-equality MUST above
 already fixes, for the one case where an engine had the routes reading different inputs. An engine that
@@ -4211,6 +4216,12 @@ zero-match clause for the shape; it is named here only because it is the third d
 verdict can carry** (`violations`, `unevaluated`, `zeroMatch`), and the three answer different questions:
 what fired, what could not be decided, and what was decided over nothing.
 
+⟨0.41⟩ **A verdict that a policy's `accept` lines touched carries a FOURTH list, `accepted`** — what fired and
+was taken out of `violations` by a named, reasoned line (§6.2 *`accept`* for the shape, the statuses and the
+ordering). A stale `accept` entry is not in that list: it is an `AS-EFF-012` row in `violations`. An accepted
+row is not an established violation for the precedence rule above, so a run whose only certain violations
+were accepted, beside a refused rule, exits 2 with the refusal document — which carries no `accepted` key.
+
 ⟨0.24⟩ **A SCOPE DOES NOT SHRINK THE QUESTION — the answerability test runs over what the in-scope
 function REACHES, not over the in-scope entry's own class set. Adding a scope currently RE-OPENS the
 fail-open the third refusal exists to close, in ALL FOUR ENGINES.** Measured:
@@ -4771,6 +4782,10 @@ disagrees with the gate. Source locations are not duplicated: a consumer joins e
 the §2 report (this is what the PR-native SARIF reporter does; `effects` gives it the precise effect to trace
 a codeFlow for, which the report's per-fn `direct` set, a superset, cannot). An engine MAY also expose the
 verdict some other idiomatic way, but `--gate-json` is the pinned form.
+
+⟨0.41⟩ A verdict over a policy carrying `accept` lines (§6.2) also carries `accepted`, the rows those lines took
+out of `violations`, and may carry `AS-EFF-012` rows for stale lines; conformance pins each item's `{rule, fn,
+effects, status}` and its `line`, and `because` verbatim. Without `accept` lines the shape above is unchanged.
 
 Two further MUSTs guard the verdict's integrity:
 
@@ -5768,6 +5783,7 @@ Shared codes (the `AS-EFF` prefix is historical — "AgentScript effect", the pr
 | `AS-EFF-009` | (transitively) calls into a layer a declared dependency rule forbids | policy |
 | `AS-EFF-010` | a boundary effect leaked into a layer it was not in, versus a baseline (containment regression) | containment |
 | ⟨0.29⟩ `AS-EFF-011` | reaches a scope an `only` PERMISSION rule does not list | policy |
+| ⟨0.41⟩ `AS-EFF-012` | a policy `accept` entry matched no violation of a rule this run evaluated — a stale acceptance (§6.2) | policy |
 
 The program entry point (e.g. `main`) is exempt from `AS-EFF-001` — it legitimately mints/holds the
 whole capability bundle.
@@ -6042,6 +6058,9 @@ pure    [<scope>]                    # AS-EFF-006 — shorthand for "deny every 
 allow   <Effect> [in <scope>] <v>…   # AS-EFF-008 — which literals an effect may reach
 forbid  <A> -> <B>                   # AS-EFF-009 — A may not depend on B
 ```
+
+⟨0.41⟩ A policy MAY also carry `accept` lines. They are DIRECTIVES, not rules — they name a known
+violation of one of the rules here and take it out of `violations`. See *`accept`* at the end of this section.
 
 - **`deny`**: the tokens after `deny` are read left to right: each token that names an effect (the §1
   vocabulary, **or** the literal `Unknown`) joins the forbidden set; the **first** token that is not a
@@ -6482,6 +6501,167 @@ does not cover `ledgerx.entries`) and a bare allowed name never silently widenin
 checked. Each matching `allow` rule is checked **independently** (the SEMANTICS predicate quantifies per
 rule): two rules that each cover half of a function's reached literals do not pass by union.
 
+⟨0.41⟩ **`accept` — A KNOWN VIOLATION, WRITTEN DOWN WHERE A REVIEWER READS IT.** A policy MAY carry lines of
+the kind `accept`. An `accept` line is a DIRECTIVE, not a rule: it never fires, and it is not counted by the
+zero-rules check above, so a policy holding only `accept` lines still refuses at exit 2. Its grammar:
+
+    accept <fn> [<Effect>…] for <rule tokens…> because <reason tokens…>
+
+- **`<fn>` is ONE token, compared by exact string equality with a verdict row's `fn`** (§3.3). No scope
+  matching, no last-segment prefix, no descriptor or suffix folding: `accept dao.Repo.load` does not cover
+  `dao.Repo.loadAll`, `dao.Repo.load(I)V` or `dao.Repo.lambda$load$0`. `fn` is engine-natural (§3.3), so an
+  `accept` line is written in ONE engine's spelling, and a polyglot policy carries one line per engine.
+- **`<Effect>…` are §1 effect names.** For a `deny` or `pure` rule at least one is REQUIRED; for a `forbid`
+  rule there MUST be none. `Unknown` is written ONLY with a reason-class filter that lists §6.2 classes by
+  name (`Unknown[dispatch]`, `Unknown[native,reflect]`): bare `Unknown`, `Unknown[*]`, `Unknown[dynamic]`
+  and a config `unknown-alias` name are malformed here. No other effect takes a bracketed filter on an
+  `accept` line. The effect list is a policy value list, so an unrecognised token in it — `Fss`, or
+  `dispatchh` inside the brackets — is the policy error the unrecognised-token rule above already makes it
+  (exit 2), exactly as `deny Nett app` is.
+- **`for` and `because` are literal tokens.** The tokens between them MUST equal, token for token, the RAW
+  lexed tokens (comment removed, ASCII-whitespace runs collapsed) of a `deny`, `pure` or `forbid` line that
+  PARSED as a rule in the same file, before or after the `accept` line. The raw tokens, not the tokens the
+  rule kind consumed: `deny Fs dao extra` parses as `deny Fs dao`, and only `for deny Fs dao extra` names it
+  — the line a reviewer reads is the line the entry names, the same raw text `unevaluated` and `zeroMatch`
+  carry. Reformatting a rule leaves its entries matching; changing any token of it — an effect added or
+  removed, the scope renamed — makes them stop matching. Where two parsed lines carry identical tokens, the
+  entry names both.
+- **`<reason tokens…>` (at least one) is the operator's justification**, carried into the verdict as its
+  tokens joined by single spaces. A `#` still begins a comment, so `because see #123` carries `see` and
+  `because #123` carries no reason at all; write `ticket-123`.
+- **`<fn>` MUST NOT be a POSITIONAL key** — one an engine assigns by ordinal position rather than by a
+  declared name: javac's `lambda$<method>$<N>`, an anonymous function keyed by its source position, a
+  `{closure#N}` (which §6.2's comment rule makes unwritable anyway). The engine knows its own positional
+  spellings and refuses them; this is a property it checks, not a pattern this document lists. A positional
+  key is renumbered by an unrelated edit — inserting one lambda renumbers every later one in the class
+  (§3's key-renumbering clause) — so an entry on one would silently accept DIFFERENT code after the edit,
+  which no other key component can detect. The enclosing unit is accepted instead, under the nested-unit
+  rule below.
+
+A line that is otherwise malformed by this grammar, names no parsed rule of this file, names an `allow` or
+`only` rule, carries no reason, or names a positional key, is **ignored with a warning and listed in
+`ignored`** (§6.2 ⟨0.28⟩) — and the violation it meant to accept STAYS in `violations`. Every parse failure of an `accept` line errs RED. An engine that predates this rung reads
+`accept` as an unrecognised rule kind and does exactly that, so a mixed fleet errs red, never green.
+
+**Why `allow` and `only` are excluded and `forbid` is not.** An AS-EFF-008 row names neither the value
+outside the allowlist nor the literal it could not see, and an AS-EFF-011 row does not name the scope
+reached, so an entry keyed on the row would silently accept a NEW host or a NEW unlisted dependency from the
+same function — a new violation of the same line with no line of its own. A `forbid A -> B` row also names
+no target, but its line IS the pair of layers: a crossing into a different layer is a different rule line
+and so a different key. What an AS-EFF-009 entry does not see is WHICH member of `B` is reached, which is
+the same granularity as the new-path residual below, not the 008/011 shape. `allow` and `only` become
+acceptable only in a rung that adds that identity to the row.
+
+**Matching.** A row that rule line R produced on unit U, with the per-rule effect set E (§3.3), is ACCEPTED
+iff an entry names R and U's `fn`, and covers E: every concrete effect of E is listed, and an `Unknown` in E
+is covered only by an `Unknown[F]` whose class list contains every class of the row's `reasonClass` (§6.2,
+all classes on the function). So an entry written for a `dispatch` hole does not cover the same function
+once a `native` hole appears in it. Matching is per producing LINE, before any de-duplication of identical
+`{rule, fn, effects}` rows: a row that two rule lines produce is accepted only if BOTH lines' entries accept
+it. A row an entry does not cover stays in `violations` WHOLE — there is no partial row. Entries are
+INDEPENDENT: a row is accepted if any entry covers it, nothing is unioned across entries, and each entry is
+judged stale or not on its own. Where the run holds two units whose `fn` equals the entry's and whose `hash`
+differs (§3.1 ⟨0.40⟩, the `(hash, fn)` unit), the entry accepts NEITHER of them.
+
+**The nested-unit rule.** A row on a unit V that the engine keys positionally and reports as nested in U —
+its body lexically inside U's — is accepted by an entry on U iff that entry accepts U's own row under the
+same rule line in this run, and V's row effects are a subset of U's row effects. Both conditions are read
+from this run, so the rule trusts no engine's attribution model: an engine that does not carry V's effect
+onto U leaves V red, and the operator cannot accept it — fail-closed, and disclosed by the red row itself.
+Measured 2026-11-02 at the heads, on a function whose ONLY effect is a file read inside a lambda it calls:
+candor-java reports `lambda$a$0` as its own unit and edges the enclosing method to it, so the enclosing row
+carries the lambda's `Fs`; candor-ts does the same for an arrow function keyed by its source position
+(`f#2:35`, which an edit earlier on the line renumbers); candor-scan and candor-swift charge the enclosing
+function and emit no closure row at all. With positional keys refused and nested units covered this way, the policy file never holds a
+key a renumbering can land on.
+
+**What an accepted row does.** It is removed from `violations` and listed in `accepted`; `ok` and the exit
+code are computed over what remains, exactly as if the accepted rows had never been produced. **An accepted
+row is not an established violation** for §3.1's precedence rule: a run whose only certain violations are
+accepted, beside a rule that went unevaluated or an analysis that is incomplete (§3.3 causes (b) and (c)),
+exits 2, not 0 and not 1. This is forced rather than chosen — a document with no `violations` cannot exit 1
+(§3.3), and the sole-refusal case is exit 2 on both routes (§3.1). Acceptance changes no report (§2): it is
+never written into a report, a sidecar or a baseline, so a consumer chaining a report never inherits another
+repository's acceptances. It changes no `Unknown`, `incomplete`, `unverified` or `zeroMatch` disclosure, and
+it never touches a row it did not match: an AS-EFF-005 gain on an accepted function still fires, because an
+`accept` line can only name a policy rule.
+
+**A STALE entry FAILS.** An entry whose rule R was evaluated in this run — not in `unevaluated`, the run not
+refused — and which accepted no row is stale, unless it is `exceeded` or `ambiguous` (below). A rule that
+bound nothing (`zeroMatch`) WAS evaluated, so its entries are stale too. Each stale entry is a violation
+row
+
+    { "rule": "AS-EFF-012", "fn": "<the entry's fn>", "effects": [ <the entry's effect names> ] }
+
+— `ok: false`, exit 1 — whose human message MUST name the policy line and say that deleting it is the
+remedy. *Why fail, unlike `zeroMatch`, which only discloses: a zero-match rule cannot fire, so naming it is
+enough; a stale ACCEPTANCE can fire — it is a signed acceptance for a key the next edit may hand to
+different code, and §3's key-renumbering clause measures exactly that reuse (an added overload renames a
+method's key; a renamed file renames every unit in it). The prior art is `@ts-expect-error`, an error when
+nothing is suppressed.* *Why a zero-match rule's entries are stale and not merely disclosed: §3.1's ⟨0.34⟩
+carve-out reads a rule scoped to a real function that is pure as `zeroMatch` on the `gate --report` route
+and as bound on the scan route; an entry `unjudged` on one route and stale on the other would give the two
+routes different exit codes over the same bytes, which that carve-out explicitly does not permit. And a rule
+that binds nothing today binds code the day its scope gains a member — at which point a surviving entry would
+accept it unread.* An engine upgrade that removes an over-charge makes the entries written for it stale, so
+the first upgrade after adoption can be red by construction: that is a review event, and the remedy is to
+delete lines.
+
+**The other statuses, none of which moves anything:**
+
+- **`exceeded`** — a row of R on the entry's `fn` exists, no entry covers it, and it stays in `violations`.
+  The function now does MORE than was accepted. Never also an AS-EFF-012: reporting it as stale would read as
+  *fixed* when the truth is *worse*.
+- **`ambiguous`** — the `(hash, fn)` case above.
+- **`unjudged`** — R is in `unevaluated` on this route (§3.1: `forbid`, `only` and an unanswerable filter on
+  the `gate --report` route), so nothing can be said either way.
+
+**The `accepted` verdict key.** It rides VERDICT documents only — the exit-0/1 shape that carries
+`violations`, on both routes — and is OMITTED when no `accept` line became an entry, so a policy without the
+directive keeps a byte-identical verdict. It is also omitted from every exit-2 document: a refusal or an
+incomplete verdict makes no claim about violations, so it makes none about which were accepted, and the
+human channel still prints the count.
+
+    "accepted": [ { "rule": "<code>", "fn": "<fn>", "hash"?: "<hash>", "effects": [Effect…],
+                    "line": <n>, "policyRule": "<R's raw tokens, single-spaced>",
+                    "because": "<reason>", "status": "accepted" | "exceeded" | "ambiguous" | "unjudged",
+                    "enclosing"?: "<U's fn>" } … ]
+
+One item per entry, carrying the row it accepted (`rule`, `fn`, `hash` and `effects` from the row) when its
+status is `accepted`, and otherwise the code R would charge with the entry's own `fn` and effect names; plus
+one item per nested row accepted under the nested-unit rule, with `fn` the nested unit and `enclosing` the
+entry's. `line` is the 1-based line of the `accept` line in the policy file. Sorted by `line`, then `fn` and
+`hash` by Unicode code point. Stale entries are AS-EFF-012 rows in `violations`, never items here. **A human
+channel MUST print the accepted COUNT on every run that has at least one accepted row** (e.g. *"211
+violation(s) accepted by policy; 0 new"*), never only on request — a gate that says `ok` over 211 accepted
+violations without the number is the silence this directive exists to avoid.
+
+**The advisory verbs** (`whatif`, `fix`/`fix-gate`, `unverified`, any later sibling) apply the same parse and
+the same matching. ⟨0.24⟩'s "at least as pessimistic as the gate over the same bytes" binds them: they MUST
+NOT accept anything the gate would not, and `unverified` MUST NOT describe a unit with an accepted violation
+as clean.
+
+**What an entry cannot see, stated rather than discovered.**
+
+- **The same function reaching the same effect by a NEW path.** An entry accepts a FACT — *"this unit may
+  perform `Fs` under this rule"* — not a cause, so a new direct `Files.write` in a function accepted for an
+  inherited `Fs` is accepted too. The AS-EFF-005 baseline guard has the same blindness (it charges GAINED
+  effects), and a carrier-set key would be a claim about a call graph the reviewer cannot see that churns on
+  every refactor; it is not part of this rung.
+- **A shared policy across separately-gated modules.** The ambiguity rule fires only when both `(hash, fn)`
+  twins are in the SAME run. Gate module B alone under a policy whose entry was written for module A's
+  `com.x.Repo.load`, and B's own `com.x.Repo.load` — a shaded or vendored copy is the realistic case — is
+  accepted on A's signature. The same sharing has a false-red side: B goes red on A's entries as stale. The
+  remedy for both is one policy file per separately-gated module; this rung does not widen the grammar to
+  scope an entry by package, because "unjudged when the package is absent" is a fail-open path with a reason
+  attached. A verdict row already carries `hash` where the entry has one (§3.1 ⟨0.40⟩), which is the hook a
+  later `hash`-qualified form would use.
+
+*Version.* A tier-1 additive rung (a new verdict key, a new code, a new line kind) and therefore a minor, led
+by the reference engine: without `accept` lines the verdict is byte-identical, and an engine that does not
+implement it reads the line as an unrecognised kind and stays red. Conformance PART 105 pins it across the
+engines that declare it.
+
 **From gate to guard — runtime enforcement** ⟨0.5⟩. A policy is an *advisory* gate by default: the
 engine DETECTS a violation (a build fails), but nothing stops the effect at runtime. Where the analysed
 artifact runs on a host with a native capability boundary, an implementation MAY **compile a `deny
@@ -6626,6 +6806,20 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.41 (AUTHORED 2026-11-02, declared by no engine yet; reference-led — candor-java first, the floor rises
+  when the last engine lands)** — a **tier-1 additive** rung: **`accept` lines for KNOWN policy violations**
+  (§6.2). `accept <fn> [<Effect>…] for <rule tokens…> because <reason…>` names one verdict row by the RAW
+  tokens of the `deny`/`pure`/`forbid` line that produced it, the unit's exact `fn`, and the effect set it
+  accepts (a row is accepted iff its effects are a subset; an `Unknown` only under an explicit class filter
+  that contains the row's `reasonClass`). Per producing line, before de-duplication; entries independent;
+  `(hash, fn)` twins accept neither; positional keys are refused and a nested positional unit rides its
+  enclosing entry only under this run's subset condition; `allow`/`only` lines cannot be accepted (their rows
+  do not name the value or scope). Accepted rows leave `violations` for a fourth verdict list `accepted`
+  (statuses `accepted`/`exceeded`/`ambiguous`/`unjudged`), are never established violations (so
+  all-accepted beside an unevaluated rule exits 2), never enter a report, and never touch AS-EFF-005; a STALE
+  entry — its rule evaluated, `zeroMatch` included, and nothing accepted — is a new **`AS-EFF-012`** row,
+  exit 1. Every malformed line is ignored with a warning and stays red, which is also what an engine that
+  predates the rung does. Byte-identical verdict without `accept` lines. Pinned by PART 105.
 - **0.40 (AUTHORED 2026-10-03 and revised through three adversarial reviews; IMPLEMENTED by candor-swift
   `2a3ddc6` and candor-scan `f7f4c08`, declared by all four engines from the floor bump, 2026-10-07, first released as 0.40.0; the type-surface half binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, the downward way only by permission. §2 gains four `typeSurface` keys beside ⟨0.23⟩'s

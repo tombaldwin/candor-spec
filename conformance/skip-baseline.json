@@ -166,7 +166,12 @@
   "Each cell FALLS to 0 as its engine ports the whitespace-tolerant parse (a fall is free) and the entry",
   "must then be DELETED, not left at 1, for the reason every note above this one already gives.",
   "",
-  "2026-08-28 (later) — TWO new cells for PART 84 (`verb_reject`, SPEC §3.3.1 ⟨0.34⟩) are ADDED DELIBERATELY, hand-edited rather than a wholesale --write-baseline regen (the established rule two entries up): `cell:candor-ts:verb-reject-not-exposed` (candor-ts has no `rewire` verb at all) and `cell:candor-swift:verb-reject-not-exposed` (candor-swift's §3.1/§3.2 surface exposes only `path`/`tour`/`gains` of the twelve-verb set, confirmed structurally against the live binary, not assumed). Both are PERMANENT-BY-DESIGN, the same shape as the swift `whatif`-absent cell above: `--policy` is a usage error on none of these verbs, not because they are unfixed, but because they do not exist on these engines — the surface itself is smaller (§3.1/§3.2 queries are SHOULD). Counted anyway, per this file's own standing rule, because an uncounted skip is exactly the never-shipped/un-shipped confusion this ratchet exists to prevent — a future rise past 1 on either key (a SECOND uncovered cause on the same engine) would be worth investigating, and a fall to 0 means the verb shipped and the entry should be deleted, not left stale."
+  "2026-08-28 (later) — TWO new cells for PART 84 (`verb_reject`, SPEC §3.3.1 ⟨0.34⟩) are ADDED DELIBERATELY, hand-edited rather than a wholesale --write-baseline regen (the established rule two entries up): `cell:candor-ts:verb-reject-not-exposed` (candor-ts has no `rewire` verb at all) and `cell:candor-swift:verb-reject-not-exposed` (candor-swift's §3.1/§3.2 surface exposes only `path`/`tour`/`gains` of the twelve-verb set, confirmed structurally against the live binary, not assumed). Both are PERMANENT-BY-DESIGN, the same shape as the swift `whatif`-absent cell above: `--policy` is a usage error on none of these verbs, not because they are unfixed, but because they do not exist on these engines — the surface itself is smaller (§3.1/§3.2 queries are SHOULD). Counted anyway, per this file's own standing rule, because an uncounted skip is exactly the never-shipped/un-shipped confusion this ratchet exists to prevent — a future rise past 1 on either key (a SECOND uncovered cause on the same engine) would be worth investigating, and a fall to 0 means the verb shipped and the entry should be deleted, not left stale.",
+  "",
+  "2026-11-02 — the eight `⟨0.41⟩ accept` lines are ADDED DELIBERATELY. PART 105 is reference-led:",
+  "⟨0.41⟩ lands in candor-java first, so every engine scores one SKIP per arm (R, S) until it ports.",
+  "Counted so that an engine which ships the rung and later un-ships it reddens here; each port",
+  "makes its two counts fall, which needs no edit. swift's two are absent on the ubuntu leg (a fall)."
  ],
  "skips": {
   "line:rust SKIP — ⟨<n>.<n>⟩ cross-policy: `whatif` emits no `incomplete` key over this report (probed, not declared)": 1,
@@ -181,6 +186,14 @@
   "tally:candor-swift": 0,
   "tally:candor-ts": 0,
   "cell:candor-ts:verb-reject-not-exposed": 1,
-  "cell:candor-swift:verb-reject-not-exposed": 1
+  "cell:candor-swift:verb-reject-not-exposed": 1,
+  "line:rust [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
+  "line:rust [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
+  "line:java [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
+  "line:java [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
+  "line:ts [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s):": 1,
+  "line:ts [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s):": 1,
+  "line:swift [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(": 1,
+  "line:swift [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(": 1
  }
 }

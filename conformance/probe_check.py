@@ -273,13 +273,21 @@ COVERED = {
         "holds":  r"POLICY-SEMANTICS DIFFERENTIAL: OK",
         "breaks": r"POLICY-SEMANTICS DIFFERENTIAL: [1-9]\d* FAILURE",
     },
+    # PART 105 (SPEC §6.2 ⟨0.41⟩). The fault rewrites the r01 control to `deny Net dao`, which binds no
+    # violating unit, so the control's own vacuity floor reddens; the row is scored on every engine,
+    # implementing or not, which is why it can fail while every engine is still pre-rung.
+    "gen_accept.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"ACCEPT: OK",
+        "breaks": r"ACCEPT: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 25
+COVERED_FLOOR = 26
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
