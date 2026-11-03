@@ -74,6 +74,12 @@ SPEC_CLAUSES = [
     ("§6.2 ⟨0.41⟩", "**A human channel MUST print the accepted COUNT on every run that has at least one accepted row**"),
     ("§6.2 ⟨0.41⟩", "they MUST NOT accept anything the gate would not"),
     ("§3.1 ⟨0.41⟩", "**`accepted` (§6.2) joins the EVALUATED PROJECTION.**"),
+    ("§6.2 ⟨0.41⟩", "**THE ORDER OF THE CHECKS decides ignored versus refused, and it is not left to the engine.**"),
+    ("§6.2 ⟨0.41⟩", "Only an EXIT-2 document omits the key."),
+    ("§6.2 ⟨0.41⟩", "and it therefore carries no `accepted` key"),
+    ("§6.2 ⟨0.41⟩", "carries `\"accepted\": [ \"<fn>\", … ]`"),
+    ("§6.2 ⟨0.41⟩", "carries `\"staleAccepts\": [ { \"fn\": \"<fn>\", \"detail\": \"<the AS-EFF-012 message>\" }, … ]`"),
+    ("§3.3 ⟨0.41⟩", "**The `violations` key on an incomplete verdict is OPTIONAL, and neither its absence nor its"),
 ]
 
 EFFECTS = {"Net", "Llm", "Fs", "Db", "Exec", "Env", "Clock", "Ipc", "Log", "Rand", "Clipboard"}
@@ -110,7 +116,25 @@ def report(*extra, drop=()):
 # (fn, status, enclosing); ign — the 1-based policy lines that must be (exactly the accept lines) in
 # `ignored`; because/policyRule on the first accepted item where given.
 # =====================================================================================================
+def nested_rep(v_effects):
+    """U (`{a}`, Fs) calls V (`{lamR}`, `v_effects`), V lexically inside U. U's own effect set is Fs ONLY, so
+    V exceeds it when v_effects is wider — an engine that did not carry V's effect onto U, which is the very
+    case the nested-unit rule exists for."""
+    def mk(eng):
+        u, v = SPELL[eng]["a"], SPELL[eng]["lamR"]
+        fns = [F(u, ["Fs"], "hU", calls=[v], loc="dao/index.ts:4:1"),
+               F(v, v_effects, "hV", loc="dao/index.ts:4:35")]
+        return {"candor": {"version": "handwritten", "spec": "0.40"}, "package": "dao",
+                "analyzed": {"count": len(fns) + 1, "digest": "0"}, "functions": fns}
+    return mk
+
+
+def rep_of(row, eng):
+    return row["rep"](eng) if callable(row["rep"]) else row["rep"]
+
+
 A_DENY = "accept dao.a Fs for deny Fs dao because known since 2026"
+UNAN = [{"path": "src/x", "reason": "failed to parse"}]
 ROWS = [
     dict(id="r01_control", arm="R", rep=report(), pol=["deny Fs dao"],
          want=dict(exit=1, viol=[("AS-EFF-006", "dao.a", ["Fs"])], acc=None, ign=[])),
@@ -191,6 +215,44 @@ ROWS = [
          want=dict(exit=0, viol=[], acc=[("dao.a", "accepted")], ign=[], because="see")),
     dict(id="r30b_hash_only", arm="R", dia=1, rep=report(), pol=["deny Fs dao", "accept dao.a Fs for deny Fs dao because #1"],
          want=dict(exit=1, viol=[("AS-EFF-006", "dao.a", ["Fs"])], acc=None, ign=[2])),
+    # ---- ⟨0.41⟩ follow-ups: points 1-7 of the 2026-11-03 settling lane --------------------------------
+    # 1. an exit-1 document that is ALSO incomplete is a verdict and carries `accepted`
+    dict(id="r33_accepted_incomplete", arm="R", rep=dict(report(F("dao.b", ["Fs"], "hb")), unanalyzed=UNAN),
+         pol=["deny Fs dao", A_DENY],
+         want=dict(exit=1, viol=[("AS-EFF-006", "dao.b", ["Fs"])], acc=[("dao.a", "accepted")], ign=[], incomplete=True)),
+    # 2. the advisory verbs: `unverified` names the accepted fn and omits `ok`; `fix-gate` still sees the crossing
+    dict(id="r34_adv_accepted", arm="R", cg=1, rep=report(), pol=["deny Fs dao", A_DENY],
+         want=dict(exit=0, viol=[], acc=[("dao.a", "accepted")], ign=[]),
+         adv=dict(unverified_accepted=["dao.a"], fixgate_strict=1)),
+    #    …and a STALE entry is a finding `fix-gate` must not lose (the gate exits 1 on that run)
+    dict(id="r34b_adv_stale", arm="R", cg=1, rep=report(drop=("dao.a",)), pol=["deny Fs dao", A_DENY],
+         want=dict(exit=1, viol=[("AS-EFF-012", "dao.a", ["Fs"])], acc=[], ign=[]),
+         adv=dict(fixgate_stale=["dao.a"], fixgate_strict=1)),
+    # 4. the ORDER of the checks: form, then vocabulary, then everything else
+    dict(id="r31_typo_after_form", arm="R", dia=1, rep=report(), pol=["deny Fs dao", "accept dao.a Fss for deny Fs dao"],
+         want=dict(exit=1, viol=[("AS-EFF-006", "dao.a", ["Fs"])], acc=None, ign=[2])),
+    dict(id="r31b_typo_beats_norule", arm="R", dia=1, rep=report(),
+         pol=["deny Fs dao", "accept dao.a Fss for deny Fs app because x"],
+         want=dict(exit=2, doc="refusal", viol=None, acc=None, ign=[])),
+    dict(id="r31c_typo_beats_allow", arm="R", rep=report(),
+         pol=["deny Fs dao", "allow Fs in dao /ok", "accept dao.a Fss for allow Fs in dao /ok because x"],
+         want=dict(exit=2, doc="refusal", viol=None, acc=None, ign=[])),
+    dict(id="r31d_typo_beats_shape", arm="R", rep=report(),
+         pol=["deny Fs dao", "accept dao.a Fss Fs[x] for deny Fs dao because x"],
+         want=dict(exit=2, doc="refusal", viol=None, acc=None, ign=[])),
+    # 6. a bracket on a non-Unknown effect is MALFORMED (ignored, red), not an unrecognised token (refused)
+    dict(id="r10c_bracket_on_effect", arm="R", dia=1, rep=report(),
+         pol=["deny Fs dao", "accept dao.a Fs[x] for deny Fs dao because x",
+              "accept dao.a Fs[dispatch] for deny Fs dao because x"],
+         want=dict(exit=1, viol=[("AS-EFF-006", "dao.a", ["Fs"])], acc=None, ign=[2, 3])),
+    # 7. the nested-unit rule's SUBSET condition: V does more than U, so V stays red though U is accepted
+    dict(id="r32_nested_nosubset", arm="R", dia=1, rep=nested_rep(["Fs", "Clock"]),
+         pol=["deny Fs Clock dao", "accept {a} Fs for deny Fs Clock dao because x"],
+         want=dict(exit=1, viol=[("AS-EFF-006", "{lamR}", ["Clock", "Fs"])], acc=[("{a}", "accepted")], ign=[])),
+    #    …and its TWIN, so the row is shown to reach the rule: with V inside U's effects both are accepted
+    dict(id="r32b_nested_subset", arm="R", only=("rust", "java", "ts"), rep=nested_rep(["Fs"]),
+         pol=["deny Fs Clock dao", "accept {a} Fs for deny Fs Clock dao because x"],
+         want=dict(exit=0, viol=[], acc=[("{a}", "accepted"), ("{lamR}", "accepted", "{a}")], ign=[])),
     # ---- S arm (per-engine spellings: {a} {b} {lam} …) ------------------------------------------------
     dict(id="s01_control", arm="S", fx="base", pol=["deny Fs dao"],
          want=dict(exit=1, viol=[("AS-EFF-006", "{a}", ["Fs"])], acc=None, ign=[])),
@@ -221,6 +283,11 @@ ROWS = [
     dict(id="s29_baseline", arm="S", dia=1, fx="base", baseline="pure_a", scan_only=1,
          pol=["deny Fs dao", "accept {a} Fs for deny Fs dao because known"],
          want=dict(exit=1, viol=[("AS-EFF-005", "{a}", ["Fs"])], acc=[("{a}", "accepted")], ign=[])),
+    # 3. a certain baseline violation dominating a WHOLE-POLICY refusal: exit 1, and no `accepted` key (no accept
+    #    line became an entry — the policy was not evaluated), the accept line sitting in `unevaluated`
+    dict(id="s35_baseline_over_refusal", arm="S", dia=1, fx="base", baseline="pure_a", scan_only=1,
+         pol=["deny Fs dao", "accept {a} Fs for deny Fs dao because known", "deny Fss dao"],
+         want=dict(exit=1, viol=[("AS-EFF-005", "{a}", ["Fs"])], acc=None, ign=[])),
 ]
 DIAMONDS = [r["id"] for r in ROWS if r.get("dia")]
 
@@ -304,11 +371,15 @@ def swift_src(fx):
             "enum infra { static func q() -> Int { 4 } }\n")
 
 
+# `lamR` is the positional spelling the HAND-WRITTEN nested-unit rows (R arm) give each engine; the engines
+# read "nested in U" differently (java and rust off the NAME, ts off `calls` + `loc`), swift has no such rule and
+# the same row simply leaves V red there.
 SPELL = {
-    "rust": {"a": "dao::a", "b": "dao::b", "n": "dao::n", "lam": None},
-    "java": {"a": "dao.D.a", "b": "dao.D.b", "n": "dao.D.n", "lam": "dao.D.lambda$a$0"},
-    "ts": {"a": "dao.index.a", "b": "dao.index.b", "n": "dao.index.n", "lam": None},   # its arrow key holds `#`
-    "swift": {"a": "dao.a", "b": "dao.b", "n": "dao.n", "lam": None},
+    "rust": {"a": "dao::a", "b": "dao::b", "n": "dao::n", "lam": None, "lamR": "dao::a::{closure#0}"},
+    "java": {"a": "dao.D.a", "b": "dao.D.b", "n": "dao.D.n", "lam": "dao.D.lambda$a$0", "lamR": "dao.D.lambda$a$0"},
+    "ts": {"a": "dao.index.a", "b": "dao.index.b", "n": "dao.index.n", "lam": None,   # its arrow key holds `#`
+           "lamR": "dao.index.a#4:35"},
+    "swift": {"a": "dao.a", "b": "dao.b", "n": "dao.n", "lam": None, "lamR": "dao.a#1"},
 }
 UNPARSEABLE = {"rust": ("src/broken.rs", "pub fn (( {\n"), "java": ("classes/dao/Broken.class", "not a class file"),
                "ts": ("dao/broken.ts", "export function (( {\n"), "swift": ("broken.swift", "func (( {\n")}
@@ -521,11 +592,32 @@ def vmatch(doc, want):
 # =====================================================================================================
 # the REFERENCE MODEL of §6.2 ⟨0.41⟩ — and its MUTANTS
 # =====================================================================================================
+def vocab_error(effs, mut):
+    """STEP 2 of the clause's order of checks: the effect list's VOCABULARY. A token that is not a §1 effect
+    name, or a class inside `Unknown[…]` that is not a §6.2 class, is the policy error (exit 2). The SHAPE of
+    the list (bare Unknown, a bracket on a non-Unknown effect) is step 3 and is not judged here."""
+    for e in effs:
+        base = e.split("[", 1)[0]
+        if base == "Unknown":
+            m = re.match(r"^Unknown\[(.*)\]$", e)
+            if m and m.group(1) not in ("*", "dynamic"):
+                if any(c not in CLASSES for c in m.group(1).split(",")) and "classdrop" not in mut:
+                    return "unrecognised class token"
+        elif base not in EFFECTS and "lenient" not in mut:
+            return f"not an effect: {e}"
+    return None
+
+
 def parse_accept(tokens, rule_toks, mut):
-    """-> ("entry", dict) | ("ignored", why) | ("error", why)."""
+    """-> ("entry", dict) | ("ignored", why) | ("error", why).  The order is the clause's: (1) FORM, (2)
+    VOCABULARY, (3) everything else."""
     if len(tokens) < 2:
         return "ignored", "no fn"
     fn, rest = tokens[1], tokens[2:]
+    if "vocabfirst" in mut:
+        err = vocab_error(rest[:rest.index("for")] if "for" in rest else rest, mut)
+        if err:
+            return "error", err
     if "for" not in rest:
         return "ignored", "no `for`"
     i = rest.index("for")
@@ -537,28 +629,32 @@ def parse_accept(tokens, rule_toks, mut):
         rtoks, reason = after, []
     if not reason and "lenient" not in mut:
         return "ignored", "no reason"
+    targets = [ln for ln, toks in rule_toks.items() if toks == rtoks or
+               ("consumed" in mut and toks[:len(rtoks)] == rtoks and len(rtoks) >= 3)]
+    if "typoorder" in mut and not targets:
+        return "ignored", "names no parsed rule"
+    err = vocab_error(effs, mut)
+    if err:
+        return "error", err
     A, filt = set(), None
     for e in effs:
+        base = e.split("[", 1)[0]
         m = re.match(r"^Unknown(?:\[(.*)\])?$", e)
-        if m:
-            if m.group(1) is None or m.group(1) in ("*", "dynamic"):
+        if base == "Unknown":
+            if m is None or m.group(1) is None or m.group(1) in ("*", "dynamic"):
                 if "classblind" in mut or "lenient" in mut:
                     A.add("Unknown"); filt = None; continue
                 return "ignored", "Unknown needs an explicit class filter"
-            cls = m.group(1).split(",")
-            if any(c not in CLASSES for c in cls):
-                if "classdrop" not in mut:
-                    return "error", "unrecognised class token"
-                cls = [c for c in cls if c in CLASSES]
-            A.add("Unknown"); filt = set(cls)
+            cls = [c for c in m.group(1).split(",") if c in CLASSES or "classdrop" not in mut]
+            A.add("Unknown"); filt = set(c for c in cls if c in CLASSES)
+        elif "[" in e:
+            if "lenient" in mut:
+                A.add(base); continue
+            return "ignored", "only Unknown takes a bracketed filter"
         elif e in EFFECTS:
             A.add(e)
         elif "lenient" in mut:
             continue
-        else:
-            return "error", f"not an effect: {e}"
-    targets = [ln for ln, toks in rule_toks.items() if toks == rtoks or
-               ("consumed" in mut and toks[:len(rtoks)] == rtoks and len(rtoks) >= 3)]
     if not targets:
         return "ignored", "names no parsed rule"
     kinds = {rule_toks[t][0] for t in targets}
@@ -627,6 +723,10 @@ def model(pol, base, per_line, units, eng, mut=frozenset()):
         return [ln for ln, d in per_line.items() if any(vkey(v) == vkey(r) and v.get("hash") == r.get("hash")
                                                          for v in (d or {}).get("violations", []))]
     uneval = set(unevaluated_texts(doc0))
+    # a WHOLE-POLICY refusal beside a dominating violation: every rule is unevaluated, no accept line
+    # became an entry, and the composed document carries no `accepted` key (§6.2 ⟨0.41⟩)
+    if rule_toks and all(" ".join(t) in uneval for t in rule_toks.values()) and "wholekeep" not in mut:
+        entries = []
     accepted_rows, items, covered_by = set(), [], {}
     lines_of = {}
     for idx, r in enumerate(rows):
@@ -655,7 +755,7 @@ def model(pol, base, per_line, units, eng, mut=frozenset()):
                         hit = e; break
                     for r2 in rows:
                         if r2["fn"] == e["fn"] and L in producing(r2) and covers(e, r2, mut, rclass) and \
-                                set(r.get("effects") or []) <= set(r2.get("effects") or []):
+                                ("nestednosubset" in mut or set(r.get("effects") or []) <= set(r2.get("effects") or [])):
                             hit = e; break
                     if hit:
                         break
@@ -710,7 +810,7 @@ def model(pol, base, per_line, units, eng, mut=frozenset()):
         return 2, out
     doc["violations"] = remaining
     doc["ok"] = rc == 0
-    if entries:
+    if entries and not ("incompomit" in mut and doc0.get("incomplete")):
         doc["accepted"] = sorted(items, key=lambda x: (x["line"], x["fn"]))
     return rc, doc
 
@@ -735,6 +835,11 @@ MUTANTS = {
     "zmunjudged": "a zero-match rule's entries `unjudged` (the proposal's carve-out)",
     "consumed": "rule tokens matched against the tokens the rule kind CONSUMED, not the raw line",
     "nestedany": "a positional key accepted, and a nested unit accepted with no subset condition",
+    "nestednosubset": "a nested unit accepted on its enclosing entry with the subset condition left out",
+    "incompomit": "`accepted` dropped from an exit-1 document that is also incomplete",
+    "wholekeep": "entries kept (as `unjudged`) under a WHOLE-POLICY refusal, so the composed document carries `accepted`",
+    "vocabfirst": "the effect-list vocabulary checked BEFORE the form: a typo beside a missing reason refuses",
+    "typoorder": "rule resolution checked BEFORE the vocabulary: a typo on a line naming no rule is ignored",
 }
 
 
@@ -815,6 +920,8 @@ def judge(row, eng, route, rc, doc, pol, units=None):
                     if "line" in w and i.get("line") != w["line"]:
                         bad.append(f"line {i.get('line')!r}, want {w['line']}")
                     break
+    if w.get("incomplete") and doc.get("incomplete") is not True:
+        bad.append("`incomplete` is not true — the fixture did not reach the incomplete-and-exit-1 shape")
     exp_ign = set(w.get("ign") or [])
     got_ign = set(ignored_lines(doc)) & set(accept_lines(pol))
     if kind == "verdict" and got_ign != exp_ign:
@@ -858,10 +965,61 @@ class Run:
         return os.path.join(self.ws, f"{self.n:04d}-{tag}")
 
 
+def first_json(text):
+    i = text.find("{")
+    if i < 0:
+        return None
+    try:
+        return json.JSONDecoder().raw_decode(text[i:])[0]
+    except Exception:
+        return None
+
+
+def adv_collect(eng, loc, pol_path):
+    """The advisory verbs' JSON over one policy: `unverified` and `fix-gate`, plain and `--strict`."""
+    out = {}
+    for verb in ("unverified", "fix-gate"):
+        c = gate_cmd(eng, loc, pol_path)
+        i = c.index("gate")
+        base = c[:i] + [verb] + c[i + 1:] + (["--json"] if eng in ("rust", "java") else [])
+        rc, text = run(base)
+        out[verb] = (rc, first_json(text), text)
+        rcs, _ = run(base + ["--strict"])
+        out[verb + "--strict"] = rcs
+    return out
+
+
+def adv_judge(row, eng, x):
+    bad = []
+    want = row["adv"]
+    unv, fg = x["unverified"][1], x["fix-gate"][1]
+    if "unverified_accepted" in want:
+        if unv is None:
+            bad.append("`unverified` wrote no JSON")
+        else:
+            if unv.get("accepted") != want["unverified_accepted"]:
+                bad.append(f"`unverified` accepted {unv.get('accepted')!r}, want {want['unverified_accepted']!r}")
+            if "ok" in unv:
+                bad.append(f"`unverified` carries ok:{unv['ok']!r} over an accepted violation (the clause omits it)")
+    if "fixgate_stale" in want:
+        if fg is None:
+            bad.append("`fix-gate` wrote no JSON")
+        else:
+            got = [i.get("fn") for i in fg.get("staleAccepts") or []]
+            if got != want["fixgate_stale"]:
+                bad.append(f"`fix-gate` staleAccepts {got!r}, want {want['fixgate_stale']!r}")
+            if fg.get("ok") is not False:
+                bad.append(f"`fix-gate` ok:{fg.get('ok')!r} over a stale entry (the clause wants false)")
+    if "fixgate_strict" in want and x["fix-gate--strict"] != want["fixgate_strict"]:
+        bad.append(f"`fix-gate --strict` exits {x['fix-gate--strict']}, want {want['fixgate_strict']}")
+    return bad
+
+
 def r_arm(R, eng, row, pol, calib=False):
     """-> dict(obs=(rc, doc, out), base=(rc, doc), per_line={...}|None, units=[...])"""
     d = os.path.join(R.ws, "rep", eng, row["id"])
-    loc = G.write_report(d, eng, row["rep"])
+    cg = {u["fn"]: u.get("calls", []) for u in rep_of(row, eng)["functions"]} if row.get("cg") else None
+    loc = G.write_report(d, eng, rep_of(row, eng), callgraph=cg)
     p = R.path("pol"); write(p, pol_text(pol, eng))
     p0 = R.path("pol0"); write(p0, pol_text(commented(pol), eng))
     rc, doc, out = gate(eng, loc, p, R.path("g.json"))
@@ -872,7 +1030,10 @@ def r_arm(R, eng, row, pol, calib=False):
         for L in rule_lines(pol):
             pl = R.path("pl"); write(pl, pol_text(commented(pol, keep={L}), eng))
             per[L] = gate(eng, loc, pl, R.path("gl.json"))[1]
-    return dict(obs=(rc, doc, out), base=(rc0, doc0), per_line=per, units=row["rep"]["functions"], loc=loc)
+    res = dict(obs=(rc, doc, out), base=(rc0, doc0), per_line=per, units=rep_of(row, eng)["functions"], loc=loc)
+    if row.get("adv"):
+        res["advx"] = adv_collect(eng, loc, p)
+    return res
 
 
 def s_arm(R, eng, row, pol, calib=False):
@@ -938,6 +1099,8 @@ def main():
             for row in ROWS:
                 if row.get("positional") and not SPELL[eng]["lam"]:
                     continue
+                if row.get("only") and eng not in row["only"]:
+                    continue
                 pol = [spell(ln, eng) for ln in row["pol"]]
                 if fault and row["id"] == "r01_control":
                     pol = ["deny Net dao"]             # probe fault: the control no longer fires
@@ -972,6 +1135,9 @@ def main():
                         if "robs" in x:
                             for p in judge(row, eng, "report", x["robs"][0], x["robs"][1], x["pol"], x["units"]):
                                 bad.append(f"{row['id']} [gate --report]: {p}")
+                        if "advx" in x:
+                            for p in adv_judge(row, eng, x["advx"]):
+                                bad.append(f"{row['id']} [advisory]: {p}")
                         if row.get("human") and not re.search(r"\b1\b[^\n]*accepted|accepted[^\n]*\b1\b", out, re.I):
                             bad.append(f"{row['id']}: the human channel does not print the accepted count")
                         if "adv" in x and rc == 0 and re.search(r"provably clean", x["adv"]["unverified"][1], re.I):
@@ -1077,7 +1243,7 @@ def selftest():
     row = next(r for r in ROWS if r["id"] == "r02_accept")
     v = {"rule": "AS-EFF-006", "fn": "dao.a", "hash": "ha", "effects": ["Fs"]}
     base = (1, {"spec": "0.40", "ok": False, "violations": [v]})        # the accept-free policy's verdict
-    rc, doc = model(row["pol"], base, {1: {"violations": [v]}}, row["rep"]["functions"], "rust")
+    rc, doc = model(row["pol"], base, {1: {"violations": [v]}}, rep_of(row, "rust")["functions"], "rust")
     p1 = judge(row, "rust", "report", rc, doc, row["pol"])
     pre = dict(base[1], ignored=[{"line": 2, "text": A_DENY}], accepted=[])  # a pre-rung engine's, mislabelled
     p2 = judge(row, "rust", "report", base[0], pre, row["pol"])

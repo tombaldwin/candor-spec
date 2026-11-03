@@ -4808,6 +4808,19 @@ Two further MUSTs guard the verdict's integrity:
   green report over unanalyzed source). A configured gate over incompletely-analyzed code MUST fail closed
   (exit ≠ 0); a real violation (exit 1) still dominates. A bare scan with no gate does not exit 2 — it
   discloses `unanalyzed` in the report (exit 0). The `analyzed: { count }` count rides EVERY verdict (Gap 1).
+  ⟨0.41⟩ **The `violations` key on an incomplete verdict is OPTIONAL, and neither its absence nor its
+  emptiness means "no violations".** (A clarification of a disagreement found 2026-11-03, written as the minimal
+  move; the alternative is named below.) The MUST NOT in (a) binds the REFUSAL document (`refused: true`), the
+  exit-2 document §3.1 says makes no claim about violations, and all four engines obey it on every refusal
+  cause measured (a typo, zero rules, an unreadable policy, an answerability refusal; both routes). The
+  INCOMPLETE verdict is a different exit-2 document: the shape listed in (b) has no `violations` key, and no
+  clause forbids one. All four engines write `violations: []` there when the policy has no `accept` line, and
+  omit it when the only rows were accepted, so the key already comes and goes with no consumer able to rely on
+  it. A consumer MUST key on `ok`, `incomplete` and the exit code, never on `violations` being empty, over a
+  document that carries `incomplete: true`. The stricter alternative — dropping the key on the incomplete
+  verdict as the refusal document does, since an empty array there is the claim the analysis cannot make —
+  would change the bytes of every accept-free incomplete verdict in all four engines, so it is not made here;
+  it is a ruling for Tom, not a drive-by.
   ⟨0.30⟩ **(c) AN INCOMPLETE SCOPE** — the peek found a function performing an effect the policy DENIES in
   a file the scan deliberately did NOT open (§2's `outOfScope`). This is neither (a) nor (b): the policy
   loaded and the files READ cleanly; what is missing is not readable bytes but the DECISION to open them.
@@ -6515,9 +6528,24 @@ zero-rules check above, so a policy holding only `accept` lines still refuses at
   rule there MUST be none. `Unknown` is written ONLY with a reason-class filter that lists §6.2 classes by
   name (`Unknown[dispatch]`, `Unknown[native,reflect]`): bare `Unknown`, `Unknown[*]`, `Unknown[dynamic]`
   and a config `unknown-alias` name are malformed here. No other effect takes a bracketed filter on an
-  `accept` line. The effect list is a policy value list, so an unrecognised token in it — `Fss`, or
+  `accept` line: `Net[x]` is MALFORMED (ignored, below), not an unrecognised token, because `Net` is a known
+  effect. The effect list is a policy value list, so an unrecognised token in it — `Fss`, or
   `dispatchh` inside the brackets — is the policy error the unrecognised-token rule above already makes it
   (exit 2), exactly as `deny Nett app` is.
+- ⟨0.41⟩ **THE ORDER OF THE CHECKS decides ignored versus refused, and it is not left to the engine.** (1) The
+  FORM: a `<fn>`, the literal `for`, and `because` followed by at least one reason token. A line that fails it
+  is ignored, whatever else is wrong with it. (2) The VOCABULARY of the effect list: a token that is not a §1
+  effect name (`Fss`), or a class inside `Unknown[…]` that is not a §6.2 class (`dispatchh`), is the policy
+  error above and refuses the whole policy (exit 2) — EVEN WHEN the same line would also have been ignored at
+  step (3), because it names no parsed rule, names an `allow` rule or a positional key, or carries a malformed
+  filter beside the typo. A typo is not downgraded to a warning by being written next to another mistake.
+  (3) Everything else, each of which ignores the line: the SHAPE of the effect list (bare `Unknown`,
+  `Unknown[*]`, `Unknown[dynamic]`, a bracket on a non-`Unknown` effect, effects on a `forbid`, none on a
+  `deny`/`pure`), rule tokens that name no parsed rule or name an `allow`/`only` rule, and a positional
+  `<fn>`. *Chosen, not derived: the text above separately says "malformed → ignored" and "unrecognised →
+  refused" and is silent on a line that is both. Measured 2026-11-03: all four engines already order the
+  checks this way, so this sentence moves no engine; it pins the order so a fifth cannot pick another.* The
+  direction is fail-closed either way — a refusal exits 2 and an ignored line leaves the violation red.
 - **`for` and `because` are literal tokens.** The tokens between them MUST equal, token for token, the RAW
   lexed tokens (comment removed, ASCII-whitespace runs collapsed) of a `deny`, `pure` or `forbid` line that
   PARSED as a rule in the same file, before or after the `accept` line. The raw tokens, not the tokens the
@@ -6536,7 +6564,12 @@ zero-rules check above, so a policy holding only `accept` lines still refuses at
   key is renumbered by an unrelated edit — inserting one lambda renumbers every later one in the class
   (§3's key-renumbering clause) — so an entry on one would silently accept DIFFERENT code after the edit,
   which no other key component can detect. The enclosing unit is accepted instead, under the nested-unit
-  rule below.
+  rule below. ⟨0.41⟩ The property is "the key can come to name different code without the code it names
+  changing", so it is not limited to an ordinal suffix: candor-swift also refuses a bare `<main>`, the
+  synthetic unit for top-level statements, which in a multi-module scan is the alphabetically first module's
+  and names different code the day an earlier module is added. An engine applies the property to its own
+  synthetic keys and over-matches RED (the line is ignored, the violation stays); which synthetic keys those
+  are is engine-natural, so conformance does not pin them.
 
 A line that is otherwise malformed by this grammar, names no parsed rule of this file, names an `allow` or
 `only` rule, carries no reason, or names a positional key, is **ignored with a warning and listed in
@@ -6622,6 +6655,17 @@ directive keeps a byte-identical verdict. It is also omitted from every exit-2 d
 incomplete verdict makes no claim about violations, so it makes none about which were accepted, and the
 human channel still prints the count.
 
+⟨0.41⟩ **Two documents settle the edges of "verdict".** (a) An EXIT-1 document that is also incomplete (§3.3
+causes (b) and (c); a real violation dominates the incompleteness) carries `violations`, so it is a verdict
+and it carries `accepted` exactly as the same run would without the incompleteness: the accepted rows were
+evaluated, and dropping the list from the one document a CI job still reads hides them beside the violation
+that set the exit code. Only an EXIT-2 document omits the key. (b) A certain violation that dominates a
+whole-policy REFUSAL (§3.1: a fatal token elsewhere in the policy, so every rule is in `unevaluated`) leaves
+a composed exit-1 document in which no `accept` line became an entry — the policy was not evaluated, so there
+is nothing to accept and nothing `unjudged` — and it therefore carries no `accepted` key; the `accept` lines
+are listed in `unevaluated` with every other rule. This differs from a PER-RULE unevaluated rule (`forbid` on
+the `gate --report` route), whose entries are `unjudged` and ARE listed.
+
     "accepted": [ { "rule": "<code>", "fn": "<fn>", "hash"?: "<hash>", "effects": [Effect…],
                     "line": <n>, "policyRule": "<R's raw tokens, single-spaced>",
                     "because": "<reason>", "status": "accepted" | "exceeded" | "ambiguous" | "unjudged",
@@ -6640,6 +6684,20 @@ violations without the number is the silence this directive exists to avoid.
 the same matching. ⟨0.24⟩'s "at least as pessimistic as the gate over the same bytes" binds them: they MUST
 NOT accept anything the gate would not, and `unverified` MUST NOT describe a unit with an accepted violation
 as clean.
+
+⟨0.41⟩ **The shapes, chosen where this section was silent** (measured 2026-11-03: the four engines had three
+spellings). `unverified` over a run with at least one accepted row carries `"accepted": [ "<fn>", … ]` — the
+distinct `fn` of every row accepted, nested units included, sorted by Unicode code point — and OMITS `ok`:
+`true` would describe the layer as clean, which is the one thing the paragraph above forbids, and `false`
+would assert an Unknown hole beside an empty `unverified` list, the fabrication mirror §3.3.1 already rules
+out for an incomplete report. `--strict` is unchanged (an accepted violation is not an Unknown hole), and the
+human channel names the accepted functions and says they are not clean. `unverified` carries nothing about a
+stale entry: it answers about Unknown holes, not about violations. `fix-gate` still proposes the remedy for an
+accepted function, because acceptance changes a verdict and not a crossing, so `--strict` still exits 1 while
+that crossing is outstanding. A stale entry is a finding it MUST NOT lose: `fix-gate` over a run holding one
+carries `"staleAccepts": [ { "fn": "<fn>", "detail": "<the AS-EFF-012 message>" }, … ]`, `ok: false`, and
+`--strict` exits 1 — the gate exits 1 on that run, and an advisory verb may be less certain than the gate,
+never more (§3.3.1).
 
 **What an entry cannot see, stated rather than discovered.**
 

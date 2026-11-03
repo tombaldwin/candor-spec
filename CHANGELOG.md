@@ -25,6 +25,14 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.41⟩ follow-ups: eight loose points of the `accept` rung settled in §6.2/§3.3, pinned by eleven new PART 105
+  rows (49 total, 24 mutants).** An exit-1 document that is also incomplete is a verdict and carries `accepted`;
+  `unverified` carries `accepted: [fn…]` and omits `ok`, `fix-gate` carries `staleAccepts` and exits 1 under
+  `--strict` on a stale entry; a baseline violation over a whole-policy refusal carries no `accepted`; the order of
+  an `accept` line's checks is form, then effect vocabulary (a typo refuses even beside another mistake), then the
+  rest (ignored); a bracket on a non-`Unknown` effect is ignored, not refused; the nested-unit subset condition now
+  has a row. Also: an incomplete exit-2 verdict's `violations` key is optional (a description of all four engines;
+  dropping it is open for a ruling). No floor move. Engines to fix: rust (r33), java and ts (r33, r34, r34b).
 - **SPEC ⟨0.41⟩ AUTHORED, declared by no engine: `accept` lines for KNOWN policy violations (§6.2), plus conformance
   PART 105. No floor move; reference-led in candor-java.** `accept <fn> [<Effect>…] for <rule tokens…> because
   <reason…>` takes one named verdict row out of `violations` and lists it in a new verdict key, `accepted`. The key
