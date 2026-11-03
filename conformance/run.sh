@@ -3246,6 +3246,31 @@ echo "PART 105 — accept lines for known policy violations: over-accept detecto
 # NOTE: MEASURED 2026-11-02 against the main checkouts (candor-rust 527bbbd, candor-java 4d21893 jar 0.40.18, candor-ts aefaca8, candor-swift 2f7e442; JDK 21): no engine implements ⟨0.41⟩; all four list every `accept` line in `ignored` ("unknown rule kind `accept`") and give the accept-free verdict on all 38 rows, both arms and both routes — the rung's fail-closed premise holds four-way. The reference model passes every row on each engine's data run alone (rust, java, ts, swift). Measured for the nested-unit rule: candor-java (`lambda$a$0`) and candor-ts (`f#2:35`, position-keyed) emit the lambda as its own unit AND carry its Fs onto the enclosing row; candor-scan and candor-swift emit no closure unit. Advisory verbs pre-rung: `fix-gate --strict` exits 1 where the gate exits 1 on all four (scored); `unverified --strict` exits 0 there on all four — it answers about Unknown holes, not violations — so only its "PROVABLY clean" claim over an ACCEPTED row is scored, once an engine implements. `whatif` is not driven (it takes an edit, not a report).
 # CALIBRATED: CANDOR_PROBE_FAULT=1 rewrites the r01 control to `deny Net dao`, which binds no violating unit, so its vacuity floor reddens on every engine (exit 1). Registered in probe_check.py (java arm). The mutant table is the per-row demonstration that each over-accept row can fail.
 
+# PART 106 — `accepts`: REFRESHING `accept` LINES AFTER AN UPGRADE, AND ADOPTING THEM, SPEC §6.2 ⟨0.41⟩ (+ §3.3.1). [TIER 2]
+#
+# The advisory verb prints a PROPOSED policy and writes no file: stale entries deleted, over-wide accepted entries
+# narrowed to their rows, an `exceeded` entry kept with a `# candor-accepts:` comment proposing the wider line, and —
+# only under `--adopt --because <reason>` — one appended line per violation no entry names, carrying the operator's
+# reason. Every row is judged through the engine's OWN GATE over the proposed text: refresh accepts exactly what the
+# input accepted, adopt adds only the created lines' rows, and a later report that regains a narrowed effect stays
+# red. REFERENCE-LED: no engine ships the verb yet; the SKIP is PROBED (q01: exit 0 with a plan carrying `text`).
+[ -f "$HERE/gen_accept_refresh.py" ] || { echo "FAIL: gen_accept_refresh.py is missing"; exit 2; }
+echo
+echo "[106] accepts: a refreshed or adopted policy accepts nothing the input did not, except the lines the operator gave a reason for"
+P106_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_accept_refresh.py"
+) || { P106_OK=1; rc=1; }
+[ "$P106_OK" = 0 ] || echo "  -> DIVERGE — a pre-rung FAIL is an engine that answered an unknown verb at exit 0 or changed the policy file's bytes; an implementing FAIL on a ◆ row is an OVER-ACCEPT (the gate over the proposed text accepts a row the input did not, or a later report regaining a narrowed effect goes green); a CALIBRATION FAIL is this part's own expectations or reference model disagreeing with the clause, never a finding about an engine"
+echo "PART 106 — accepts: refresh/adopt accept lines as a proposed policy, judged by the gate over the proposal (SPEC §6.2 ⟨0.41⟩)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_accept_refresh.py calibrates every run against a REFERENCE MODEL of the verb computed from a real ⟨0.41⟩ engine's GATE on the same bytes (the input verdict, one run per rule line, the report's units) whose proposed text is then GATED by that engine (the model must pass every row), and against 22 MUTANTS of it, each a wrong reading of the clause that must fail ≥1 row, with every ◆ over-accept row failed by ≥1 mutant (a row no mutant fails is VACUOUS and fails the part). q01 (an already-fresh policy, proposed text byte-identical) is the probe and the no-op control.
+# NOTE: MEASURED 2026-11-03 against the engine mains (candor-rust eb64e64, candor-java b37bbf4 jar 0.40.18, candor-ts 5a272b0, candor-swift f2a9c18): no engine exposes `accepts`; all four refuse it at exit 2 and leave the policy bytes unchanged (rust and ts: unknown command; java and swift read it as a scan target and refuse an unknown `--report` flag). Found while here, NOT a part row: candor-swift, given that argv, CREATES `accepts/.candor/report.refused.json` under the cwd for the nonexistent target, so this part runs every verb call in an empty temp cwd. The reference model passes all 26 rows on rust's gate; q11 (the nested-unit adoption) runs on rust, java and ts only — swift emits no nested unit.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 reports q01's policy file as rewritten, so the no-in-place check reddens on every engine, implementing or not. Registered in probe_check.py (rust arm). The mutant table is the per-row demonstration that each over-accept row can fail.
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

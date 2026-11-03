@@ -4694,7 +4694,7 @@ engine exposes, it MUST accept:
   §3.1 (b13) — had been passing on the DISAGREEMENT between pre-pass and loop, which is why neither half
   looked wrong on its own.*
 - **Verb args** are positional, in the §3.1 order: `where <Effect>`; `show`/`callers`/`impact` `<fn>`;
-  `path`/`whatif`/`fix` `<fn> <Effect>`; `map`/`reachable`/`blindspots`/`fix-gate`/`unverified` none;
+  `path`/`whatif`/`fix` `<fn> <Effect>`; `map`/`reachable`/`blindspots`/`fix-gate`/`unverified`/`accepts` (⟨0.41⟩) none;
   `containment [<baseline>]`. The report is a **flag**, never a leading positional, so the first token after
   the verb is the verb's own argument. In particular a **single** bare positional to `containment` is the
   **baseline** (the gating ratchet), report discovered — never re-read as the report (which would silently
@@ -4727,8 +4727,9 @@ change — is not specific to `gains` at all. Measured 2026-08-28 against every 
 assumed from the shape of the rule — and **none of the twelve carries a policy-derived key**, the same
 shape `gains` already has. `blindspots`/`containment` are the two a reader might expect to be scoped by
 policy and are not: both answer from the report's own fields alone. Only `whatif`, `fix`, `fix-gate`,
-`unverified` and `gate --report` (§3.1/§3.2) have a policy-relative verdict to give — those five, and no
-others, legitimately read `--policy`.
+`unverified` and `gate --report` (§3.1/§3.2) have a policy-relative verdict to give — those five, ⟨0.41⟩
+and `accepts` (§6.2 ⟨0.41⟩), which proposes a revision of the policy it reads, and no others legitimately
+read `--policy`.
 
 So: **an engine exposing any of the twelve MUST reject `--policy` on it with the same exit-2 usage error
 `gains` already gives, naming `gate --report`/`whatif`/`fix`/`fix-gate`/`unverified` as the
@@ -6699,6 +6700,119 @@ carries `"staleAccepts": [ { "fn": "<fn>", "detail": "<the AS-EFF-012 message>" 
 `--strict` exits 1 — the gate exits 1 on that run, and an advisory verb may be less certain than the gate,
 never more (§3.3.1).
 
+⟨0.41⟩ **`accepts` — REFRESHING `accept` LINES IS A VERB THAT PRINTS A PROPOSED POLICY, AND IT CAN ONLY
+ACCEPT LESS.** The first upgrade after adoption can be red by construction (above), and its remedy is
+mostly mechanical — delete the stale lines — with a few judgements in it: a function that now does more,
+a key the upgrade renamed. An engine that implements `accept` lines SHOULD expose this verb, and one that
+exposes it MUST give it this contract in this spelling, so the four engines and the dispatcher take one
+command:
+
+    <cmd> accepts [--report <locator>] [--policy <file>] [--json] [--adopt --because <reason>]
+
+It resolves the report and the policy exactly as `gate --report` does (§3.3.1), applies the same parse and
+the same matching, and **writes no file — not the policy, not anything else.** It prints a PROPOSED POLICY
+to stdout: the input with the changes below and nothing else; with `--json` it prints the plan document
+instead, whose `text` is those same bytes. The operator diffs it against the policy and commits it, or does
+not; there is no in-place mode, because the policy is an input of the run that produced the proposal
+(§3.3.1's sink rules), and because a rewrite nobody diffed is the silent acceptance this directive exists to
+prevent. (A shell redirect onto the policy itself truncates it before the verb reads it; write elsewhere.)
+`--because` is ONE argument, lexed into tokens by ASCII whitespace. `--strict` and every other flag are the
+§3.3.1 exit-2 usage error.
+
+**What it changes unattended** — each change leaves the set of rows this run accepts exactly as it was, and
+none makes a later row easier to accept:
+
+- **A stale entry's line is DELETED** — exactly the lines that make an AS-EFF-012 row in the gate over the
+  same bytes, `zeroMatch` rules included. An entry that accepted nothing accepts nothing when it is gone.
+- **An accepted entry wider than what it accepted is NARROWED to it.** Its effect list is rewritten to the
+  union of the effect sets of the rows it accepted directly, an `Unknown` written as `Unknown[<the classes
+  of those rows' reasonClass>]`. This is the stale-entry argument applied to one effect instead of the whole
+  line: an effect an upgrade stopped charging stays pre-signed otherwise, and the day the function performs it
+  again the entry accepts it unread. Nested rows still ride the entry, because the nested-unit condition reads
+  U's ROW, which narrowing does not touch.
+- **The verb's own earlier comments** — a line whose first non-blank characters are `# candor-accepts:` —
+  are dropped and regenerated, so a second run over its own output prints it unchanged.
+
+A rewritten line is `accept <fn> <effects> for <rule tokens> because <reason>` — the rule tokens and the
+reason as the line's own tokens, single-spaced, effects in Unicode code-point order — followed, if the
+original carried a comment, by one space and the comment from its `#` to the end of the line. **Every other
+line is kept byte for byte**: rule lines, comments, blank lines, and every `accept` line whose entry is
+`accepted` with nothing to narrow, `ambiguous`, `unjudged` (nothing is known about it on this route, so a
+`forbid` entry is never pruned over a report) or `ignored` (malformed: the gate already says why, and a
+repair is the operator's).
+
+**What it only PROPOSES — an `exceeded` entry.** The function now does more than was accepted, and the verb
+never widens the line. It keeps the line as it is and inserts directly after it the one comment line
+`# candor-accepts: exceeded (adds <added tokens>): accept <fn> <the row's effects> for <rule tokens> because <reason>`
+— the added effects (and an `Unknown[…]` of the added classes) named in the comment's own text, the line's
+own reason carried. A comment does nothing, so committing the proposed file does not accept the wider row;
+taking the proposal is a human edit (delete the comment's prefix up to `accept`), after which the old line
+accepts nothing and the next run deletes it as stale.
+
+**What it never does.** It never writes an `accept` line for a row that no entry names — a new violation,
+or an old one under a key the upgrade renamed (an added overload, a moved file, §3's key-renumbering
+clause). In particular it never pairs a stale entry with a new row and carries the old reason across: that
+pairing is a claim about identity no key component can check, and it is exactly the reuse the
+key-renumbering clause measures. The stale line is deleted, the new row stays red, and the plan lists both,
+so the reviewer can write the new line with a reason.
+
+**Adoption — `--adopt --because <reason>`.** The same verb, with one more change: for every violation row
+of a `deny`, `pure` or `forbid` line under which no entry names the row's `fn`, it APPENDS one line,
+`accept <fn> <effects> for <rule tokens> because <reason>`, whose reason is the operator's `--because`
+tokens, single-spaced — never a reason the engine composes. `--adopt` without `--because`, `--because`
+without `--adopt`, and a reason with no token or with a `#` in it (the comment rule would cut it) are exit-2
+usage errors. Effects are written as above, an `Unknown` as `Unknown[<the row's reasonClass, sorted>]` —
+the classes the row has, never the rule's filter, which would pre-accept a hole of a class the function does
+not have. It writes no line the gate would not honour or that could only be ambiguous: none for an `allow`
+or `only` row, an AS-EFF-005 row, a positional or unwritable `fn` (one holding `#` or ASCII whitespace; a
+nested unit rides its enclosing entry instead), a `(hash, fn)` twin, or an `Unknown` with no class. **And
+none for a row an entry already names**: an exceeded row is PROPOSED, as above, even under `--adopt`,
+because widening a known acceptance and accepting a new violation are different decisions and only the
+second was asked for. Created lines are appended after the input's last line, one per producing rule line,
+in the order of that line, then `fn` by Unicode code point; if the input does not end in a newline, one is
+added first. (Lines are split at LF; a CR is part of its line.) An initial adoption is the same command over a
+policy with no `accept` lines; so is a module added later.
+
+**When it answers.** Only where the gate over the same bytes evaluated the policy over a complete
+analysis: an unreadable report or policy, a whole-policy refusal and an incomplete analysis (§3.3 causes
+(b) and (c)) are exit 2 with no proposal — an incomplete analysis because a unit it did not read makes its
+entries look stale, and pruning them would delete the reasons for code that still exists. A rule in
+`unevaluated` on this route does not stop it: that rule's entries are `unjudged` and kept. Otherwise it
+exits 0 whatever it found: it is advisory, and the gate is the CI check.
+
+    { "mode": "refresh" | "adopt", "text": "<the proposed policy>",
+      "removed":   [ { "line": <n>, "fn": …, "policyRule": …, "because": … } … ],
+      "narrowed":  [ { "line": <n>, "fn": …, "policyRule": …, "because": …, "from": [tok…], "to": [tok…],
+                       "text": "<the rewritten line>" } … ],
+      "proposals": [ { "line": <n>, "fn": …, "policyRule": …, "because": …, "adds": [tok…],
+                       "text": "<the proposed accept line>" } … ],
+      "created":   [ { "fn": …, "hash"?: …, "policyRule": …, "because": …, "effects": [tok…],
+                       "text": "<the appended line>" } … ],          // present iff mode is "adopt"
+      "after":     { "exit": <n>, "violations": <n>, "accepted": <n> } }
+
+`line` is the INPUT line; `removed`, `narrowed` and `proposals` are sorted by it, `created` in the order it
+is appended. `because` is always the line's own reason (`created`: the operator's). `after` is the gate's
+verdict over `text` on the same report — its exit, its `violations` count, and its count of `accepted` items
+with status `accepted` — so the reviewer sees what committing the proposal does. Without `--json`, stdout is
+the proposed policy byte for byte, and the human summary (those counts, and `after`'s exit) goes to stderr.
+
+**The property, which conformance pins.** Write Acc(P) for the rows the gate over policy P accepts on this
+run. In refresh mode Acc(proposed) = Acc(P), and the proposed verdict's `violations` are P's minus exactly
+its AS-EFF-012 rows. Under `--adopt`, Acc(proposed) ⊆ Acc(P) ∪ the rows the created lines name and the
+nested rows riding them. Nothing else can enter `accepted`, now or — because narrowing only removes — on a
+later report.
+
+**What it does to a shared policy, stated rather than discovered.** Run over module B, an entry written for
+module A's functions, or in another engine's `fn` spelling, or for a function only another platform's build
+contains (a `cfg`-gated one), is stale here and is deleted — and an entry narrowed here can come out exceeded
+there; committed, that turns the other gate red, with the reason recoverable from `removed` and from version control. Fail-closed, and the
+same remedy as above: one policy file per separately-gated module, and per engine.
+
+*Why a new verb and not a flag on `fix-gate` or `gate`: `fix-gate` proposes edits to CODE and still treats an
+accepted crossing as outstanding (above), and a gate's document is a verdict that CI reads; a proposed
+policy is neither. A separate verb is also probe-able — an engine without it refuses an unknown verb at
+exit 2 and writes nothing — so a mixed fleet errs toward no proposal, never toward a wrong one.*
+
 **What an entry cannot see, stated rather than discovered.**
 
 - **The same function reaching the same effect by a NEW path.** An entry accepts a FACT — *"this unit may
@@ -6877,7 +6991,13 @@ declare it via the envelope's `spec`.
   all-accepted beside an unevaluated rule exits 2), never enter a report, and never touch AS-EFF-005; a STALE
   entry — its rule evaluated, `zeroMatch` included, and nothing accepted — is a new **`AS-EFF-012`** row,
   exit 1. Every malformed line is ignored with a warning and stays red, which is also what an engine that
-  predates the rung does. Byte-identical verdict without `accept` lines. Pinned by PART 105.
+  predates the rung does. Byte-identical verdict without `accept` lines. Pinned by PART 105. The rung also
+  adds the advisory verb **`accepts`** (§6.2, §3.3.1): it prints a PROPOSED policy and writes no file —
+  stale entries deleted, over-wide accepted entries narrowed to their rows, an `exceeded` entry kept with a
+  `# candor-accepts:` comment proposing the wider line, and, only under `--adopt --because <reason>`, one
+  appended line carrying the operator's reason per violation no entry names. In refresh mode the gate over
+  the proposal accepts exactly what it accepted before; it never re-keys a stale entry onto a renamed
+  function. Pinned by PART 106.
 - **0.40 (AUTHORED 2026-10-03 and revised through three adversarial reviews; IMPLEMENTED by candor-swift
   `2a3ddc6` and candor-scan `f7f4c08`, declared by all four engines from the floor bump, 2026-10-07, first released as 0.40.0; the type-surface half binds rust + swift, java and ts declared NOT APPLICABLE)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, the downward way only by permission. §2 gains four `typeSurface` keys beside ⟨0.23⟩'s

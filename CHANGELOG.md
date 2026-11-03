@@ -25,6 +25,19 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.41⟩: the advisory verb `accepts` — refresh `accept` lines after an upgrade, or adopt them — plus
+  conformance PART 106 (26 rows, 22 mutants). No floor move; declared by no engine (reference-led, probed SKIP).**
+  `accepts [--report] [--policy] [--json] [--adopt --because <reason>]` prints a PROPOSED policy to stdout (the
+  plan document with `--json`) and writes no file. Unattended: a stale (AS-EFF-012) entry's line is deleted; an
+  accepted entry wider than its rows is narrowed to them (an effect an upgrade stopped charging is not left
+  pre-signed); the verb's own `# candor-accepts:` comments are regenerated. Proposed only: an `exceeded` entry is
+  kept and a comment after it names the added effects and the wider line. Never: a line for a row no entry names,
+  or a stale entry re-keyed onto a renamed function with its old reason. `--adopt --because` appends one line per
+  unnamed violation with the operator's reason (never one the engine composes; never for an exceeded row, a twin,
+  a positional key or an `allow`/`only` row; an `Unknown` carries the row's classes, not the rule's filter). It
+  refuses over an incomplete analysis. PART 106 judges every row through the engine's own gate over the proposed
+  text: refresh accepts exactly what the input accepted, adopt adds only the created lines' rows, and a later
+  report that regains a narrowed effect stays red.
 - **SPEC ⟨0.41⟩ follow-ups: eight loose points of the `accept` rung settled in §6.2/§3.3, pinned by eleven new PART 105
   rows (49 total, 24 mutants).** An exit-1 document that is also incomplete is a verdict and carries `accepted`;
   `unverified` carries `accepted: [fn…]` and omits `ok`, `fix-gate` carries `staleAccepts` and exits 1 under

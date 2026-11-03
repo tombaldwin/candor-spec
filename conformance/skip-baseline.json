@@ -171,7 +171,13 @@
   "2026-11-02 — the eight `⟨0.41⟩ accept` lines are ADDED DELIBERATELY. PART 105 is reference-led:",
   "⟨0.41⟩ lands in candor-java first, so every engine scores one SKIP per arm (R, S) until it ports.",
   "Counted so that an engine which ships the rung and later un-ships it reddens here; each port",
-  "makes its two counts fall, which needs no edit. swift's two are absent on the ubuntu leg (a fall)."
+  "makes its two counts fall, which needs no edit. swift's two are absent on the ubuntu leg (a fall).",
+  "",
+  "2026-11-03 — the four `⟨0.41⟩ accepts` lines are ADDED DELIBERATELY. PART 106 (the `accepts` verb that",
+  "refreshes or adopts accept lines as a PROPOSED policy) is reference-led and no engine exposes the verb yet,",
+  "so every engine scores one probed SKIP. Counted so that an engine which ships the verb and later un-ships",
+  "it reddens here; each port makes its count fall, and the entry must then be DELETED, not left at 1.",
+  "swift's is absent on the ubuntu leg (a fall)."
  ],
  "skips": {
   "line:rust SKIP — ⟨<n>.<n>⟩ cross-policy: `whatif` emits no `incomplete` key over this report (probed, not declared)": 1,
@@ -186,6 +192,10 @@
   "tally:candor-swift": 0,
   "tally:candor-ts": 0,
   "cell:candor-ts:verb-reject-not-exposed": 1,
-  "cell:candor-swift:verb-reject-not-exposed": 1
+  "cell:candor-swift:verb-reject-not-exposed": 1,
+  "line:rust SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
+  "line:java SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
+  "line:ts SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
+  "line:swift SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1
  }
 }

@@ -281,13 +281,20 @@ COVERED = {
         "holds":  r"ACCEPT: OK",
         "breaks": r"ACCEPT: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 106 (SPEC §6.2 ⟨0.41⟩ `accepts`). The fault reports q01's policy file as rewritten, so the no-in-place
+    # check reddens; it is scored on every engine, implementing or not, so it can fail while all are pre-rung.
+    "gen_accept_refresh.py": {
+        "args":   ["--engine", "rust"],
+        "holds":  r"ACCEPTS: OK",
+        "breaks": r"ACCEPTS: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 26
+COVERED_FLOOR = 27
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
