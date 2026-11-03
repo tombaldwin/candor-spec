@@ -194,7 +194,6 @@
   "cell:candor-ts:verb-reject-not-exposed": 1,
   "cell:candor-swift:verb-reject-not-exposed": 1,
   "line:rust SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
-  "line:java SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
   "line:ts SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1,
   "line:swift SKIP — does not yet implement ⟨<n>.<n>⟩ `accepts` (reference-led, probed)": 1
  }
