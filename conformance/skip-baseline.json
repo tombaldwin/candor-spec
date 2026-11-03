@@ -186,12 +186,6 @@
   "tally:candor-swift": 0,
   "tally:candor-ts": 0,
   "cell:candor-ts:verb-reject-not-exposed": 1,
-  "cell:candor-swift:verb-reject-not-exposed": 1,
-  "line:rust [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
-  "line:rust [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s": 1,
-  "line:ts [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s):": 1,
-  "line:ts [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(s):": 1,
-  "line:swift [R] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(": 1,
-  "line:swift [S] SKIP — does not yet implement ⟨<n>.<n>⟩ accept (reference-led, probed); mixed-fleet posture scored on <n> row(": 1
+  "cell:candor-swift:verb-reject-not-exposed": 1
  }
 }
