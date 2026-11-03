@@ -57,7 +57,13 @@ SPEC_CLAUSES = [
     ("§6.2 ⟨0.41⟩", "**A stale entry's line is DELETED**"),
     ("§6.2 ⟨0.41⟩", "An accepted entry wider than what it accepted is NARROWED to it."),
     ("§6.2 ⟨0.41⟩", "**What it only PROPOSES — an `exceeded` entry.**"),
-    ("§6.2 ⟨0.41⟩", "# candor-accepts: exceeded (adds <added tokens>): accept <fn> <the row's effects> for <rule tokens> because <reason>"),
+    ("§6.2 ⟨0.41⟩", "# candor-accepts: exceeded (adds <added tokens>) — REPLACE the line above with: accept <fn> <the row's effects> for <rule tokens> because <reason>"),
+    ("§6.2 ⟨0.41⟩", "**Taking the proposal is ONE human edit: replace the line above with the text after `with: ` and delete the comment.**"),
+    ("§6.2 ⟨0.41⟩", "a refusal because the policy holds no rules MUST say that a shell redirect onto the policy empties it"),
+    ("§6.2 ⟨0.41⟩", "**Its route is the report route, and what that cannot see is listed.**"),
+    ("§6.2 ⟨0.41⟩", "`unnamed` is present in BOTH modes and holds exactly the rows `--adopt` writes a line for"),
+    ("§6.2 ⟨0.41⟩", "whose message MUST name `accepts`."),
+    ("§6.2 ⟨0.41⟩", "and `--adopt` changes its SCALE, not its kind"),
     ("§6.2 ⟨0.41⟩", "**What it never does.** It never writes an `accept` line for a row that no entry names"),
     ("§6.2 ⟨0.41⟩", "**Adoption — `--adopt --because <reason>`.**"),
     ("§6.2 ⟨0.41⟩", "the classes the row has, never the rule's filter"),
@@ -89,34 +95,36 @@ def rd(*extra, drop=(), unanalyzed=None):
 # =====================================================================================================
 ROWS = [
     dict(id="q01_fresh", rep=rd(), pol=["deny Fs dao", A_DENY], args=[],
-         want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[], narrowed={}, proposals={}, after=0)),
+         want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[], narrowed={}, proposals={}, after=0,
+                   unnamed=[], unjudged=[])),
     dict(id="q02_stale", rep=rd(drop=("dao.a",)), pol=["deny   Fs  dao   # keep me", A_DENY, "", "# a note"], args=[],
          want=dict(exit=0, text=["deny   Fs  dao   # keep me", "", "# a note"], removed=[2], narrowed={},
                    proposals={}, after=0)),
     dict(id="q03_new_violation", dia=1, rep=rd(F("dao.b", ["Fs"], "hb")), pol=["deny Fs dao", A_DENY], args=[],
-         want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[], narrowed={}, proposals={}, after=1)),
+         want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[], narrowed={}, proposals={}, after=1,
+                   unnamed=["dao.b"])),
     dict(id="q03b_because_without_adopt", dia=1, rep=rd(F("dao.b", ["Fs"], "hb")), pol=["deny Fs dao", A_DENY],
          args=["--because", "known"], want=dict(exit=2)),
     dict(id="q04_exceeded", dia=1, rep=rd(F("dao.a", ["Fs", "Rand"], "ha"), drop=("dao.a",)),
          pol=["deny Fs Rand dao", "accept dao.a Fs for deny Fs Rand dao because x"], args=[],
          want=dict(exit=0, text=["deny Fs Rand dao", "accept dao.a Fs for deny Fs Rand dao because x",
-                                 MARK + " exceeded (adds Rand): accept dao.a Fs Rand for deny Fs Rand dao because x"],
-                   removed=[], narrowed={}, proposals={2: ["Rand"]}, after=1)),
+                                 MARK + " exceeded (adds Rand) — REPLACE the line above with: accept dao.a Fs Rand for deny Fs Rand dao because x"],
+                   removed=[], narrowed={}, proposals={2: ["Rand"]}, after=1, unnamed=[]), take=0),
     dict(id="q05_renamed_key", dia=1, rep=rd(F("dao.a2", ["Fs"], "ha2"), drop=("dao.a",)),
          pol=["deny Fs dao", A_DENY], args=[],
-         want=dict(exit=0, text=["deny Fs dao"], removed=[2], narrowed={}, proposals={}, after=1)),
+         want=dict(exit=0, text=["deny Fs dao"], removed=[2], narrowed={}, proposals={}, after=1, unnamed=["dao.a2"])),
     dict(id="q05b_renamed_key_adopt", rep=rd(F("dao.a2", ["Fs"], "ha2"), drop=("dao.a",)),
          pol=["deny Fs dao", A_DENY], args=["--adopt", "--because", "renamed by the upgrade, reviewed"],
          want=dict(exit=0, text=["deny Fs dao", "accept dao.a2 Fs for deny Fs dao because renamed by the upgrade, reviewed"],
                    removed=[2], narrowed={}, proposals={}, created=["dao.a2"], after=0)),
     dict(id="q06_class_moved", dia=1, rep=rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["native:strlen"])),
          pol=["deny Unknown[dispatch,native] dao",
-              "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because x"], args=[],
+              "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because x  # why"], args=[],
          want=dict(exit=0, text=["deny Unknown[dispatch,native] dao",
-                                 "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because x",
-                                 MARK + " exceeded (adds Unknown[native]): accept dao.c Unknown[native] for "
-                                        "deny Unknown[dispatch,native] dao because x"],
-                   removed=[], narrowed={}, proposals={2: ["Unknown[native]"]}, after=1)),
+                                 "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because x  # why",
+                                 MARK + " exceeded (adds Unknown[native]) — REPLACE the line above with: accept dao.c Unknown[native] for "
+                                        "deny Unknown[dispatch,native] dao because x # why"],
+                   removed=[], narrowed={}, proposals={2: ["Unknown[native]"]}, after=1), take=0),
     dict(id="q07_twins_kept", rep=rd(F("dao.t", ["Fs"], "ht1"), F("dao.t", ["Fs"], "ht2")),
          pol=["deny Fs dao", A_DENY, "accept dao.t Fs for deny Fs dao because x"], args=[],
          want=dict(exit=0, text=["deny Fs dao", A_DENY, "accept dao.t Fs for deny Fs dao because x"],
@@ -125,15 +133,16 @@ ROWS = [
          args=["--adopt", "--because", "  pre-existing   at adoption "],
          want=dict(exit=0, text=["deny Fs dao", "accept dao.a Fs for deny Fs dao because " + REASON,
                                  "accept dao.b Fs for deny Fs dao because " + REASON],
-                   removed=[], narrowed={}, proposals={}, created=["dao.a", "dao.b"], after=0)),
+                   removed=[], narrowed={}, proposals={}, created=["dao.a", "dao.b"], after=0,
+                   unnamed=["dao.a", "dao.b"])),
     dict(id="q08b_adopt_no_reason", dia=1, rep=rd(F("dao.b", ["Fs"], "hb")), pol=["deny Fs dao"], args=["--adopt"],
          want=dict(exit=2)),
     dict(id="q08c_adopt_hash_reason", rep=rd(F("dao.b", ["Fs"], "hb")), pol=["deny Fs dao"],
-         args=["--adopt", "--because", "see #1"], want=dict(exit=2)),
+         args=["--adopt", "--because", "see #1"], want=dict(exit=2, stderr_re=r"#[^\n]*comment|comment[^\n]*#")),
     dict(id="q09_adopt_exceeded", dia=1, rep=rd(F("dao.a", ["Fs", "Rand"], "ha"), F("dao.b", ["Fs"], "hb"), drop=("dao.a",)),
          pol=["deny Fs Rand dao", "accept dao.a Fs for deny Fs Rand dao because x"], args=["--adopt", "--because", REASON],
          want=dict(exit=0, text=["deny Fs Rand dao", "accept dao.a Fs for deny Fs Rand dao because x",
-                                 MARK + " exceeded (adds Rand): accept dao.a Fs Rand for deny Fs Rand dao because x",
+                                 MARK + " exceeded (adds Rand) — REPLACE the line above with: accept dao.a Fs Rand for deny Fs Rand dao because x",
                                  "accept dao.b Fs for deny Fs Rand dao because " + REASON],
                    removed=[], narrowed={}, proposals={2: ["Rand"]}, created=["dao.b"], after=1)),
     dict(id="q10_adopt_twins", rep=rd(F("dao.t", ["Fs"], "ht1"), F("dao.t", ["Fs"], "ht2")), pol=["deny Fs dao"],
@@ -149,24 +158,24 @@ ROWS = [
     dict(id="q13_forbid_unjudged", rep=rd(F("dao.b", ["Fs"], "hb")),
          pol=["deny Fs dao", "forbid dao -> infra", "accept dao.a for forbid dao -> infra because x"], args=[],
          want=dict(exit=0, text=["deny Fs dao", "forbid dao -> infra", "accept dao.a for forbid dao -> infra because x"],
-                   removed=[], narrowed={}, proposals={}, after=1)),
+                   removed=[], narrowed={}, proposals={}, after=1, unjudged=[3], unnamed=["dao.a", "dao.b"])),
     dict(id="q14_ignored_kept", rep=rd(drop=("dao.a",)), pol=["deny Fs dao", "accept dao.a Fs for deny Fs dao", A_DENY],
          args=[], want=dict(exit=0, text=["deny Fs dao", "accept dao.a Fs for deny Fs dao"], removed=[3], narrowed={},
-                            proposals={}, after=0)),
+                            proposals={}, after=0, ignored=[2])),
     dict(id="q15_own_comments", rep=rd(),
          pol=["deny Fs dao", A_DENY, "  " + MARK + " exceeded (adds Rand): accept dao.a Fs Rand for deny Fs dao because x"],
          args=[], want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[], narrowed={}, proposals={}, after=0)),
     dict(id="q16_narrow", dia=1, rep=rd(), pol=["deny Fs Rand dao", "accept dao.a Rand Fs for deny Fs Rand dao because known  # why"],
          args=[], want=dict(exit=0, text=["deny Fs Rand dao", "accept dao.a Fs for deny Fs Rand dao because known # why"],
                             removed=[], narrowed={2: ["Fs"]}, proposals={}, after=0),
-         future=rd(F("dao.a", ["Fs", "Rand"], "ha"), drop=("dao.a",))),
+         future=(rd(F("dao.a", ["Fs", "Rand"], "ha"), drop=("dao.a",)), 1)),
     dict(id="q16b_narrow_class", dia=1, rep=rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["dispatch:dao.I.m"])),
          pol=["deny Unknown[dispatch,native] dao",
               "accept dao.c Unknown[dispatch,native] for deny Unknown[dispatch,native] dao because x"], args=[],
          want=dict(exit=0, text=["deny Unknown[dispatch,native] dao",
                                  "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because x"],
                    removed=[], narrowed={2: ["Unknown[dispatch]"]}, proposals={}, after=0),
-         future=rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["dispatch:dao.I.m", "native:strlen"]))),
+         future=(rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["dispatch:dao.I.m", "native:strlen"])), 1)),
     dict(id="q16c_narrow_keeps_reason", rep=rd(F("dao.b", ["Fs"], "hb")),
          pol=["deny Fs Rand dao", "accept dao.a Fs Rand for deny Fs Rand dao because known"],
          args=["--adopt", "--because", REASON],
@@ -178,7 +187,7 @@ ROWS = [
          want=dict(exit=0, text=["deny Unknown[dispatch,native] dao",
                                  "accept dao.c Unknown[dispatch] for deny Unknown[dispatch,native] dao because " + REASON],
                    removed=[], narrowed={}, proposals={}, created=["dao.c"], after=0),
-         future=rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["dispatch:dao.I.m", "native:strlen"]))),
+         future=(rd(F("dao.c", ["Unknown"], "hc", unknownWhy=["dispatch:dao.I.m", "native:strlen"])), 1)),
     dict(id="q18_adopt_two_lines", rep=rd(), pol=["deny Fs dao", "deny Fs"], args=["--adopt", "--because", REASON],
          want=dict(exit=0, text=["deny Fs dao", "deny Fs", "accept dao.a Fs for deny Fs dao because " + REASON,
                                  "accept dao.a Fs for deny Fs because " + REASON],
@@ -186,6 +195,36 @@ ROWS = [
     dict(id="q19_stale_zeromatch", rep=rd(), pol=["deny Fs daoz", "accept dao.a Fs for deny Fs daoz because x"], args=[],
          want=dict(exit=0, text=["deny Fs daoz"], removed=[2], narrowed={}, proposals={}, after=0)),
     dict(id="q20_strict", rep=rd(), pol=["deny Fs dao", A_DENY], args=["--strict"], want=dict(exit=2)),
+    # ---- round 2 (FABLE-REVIEW-accepts §3) ------------------------------------------------------------
+    dict(id="q22_two_entries_one_stale", dia=1, rep=rd(),
+         pol=["deny Fs dao", A_DENY, "accept dao.a Clock for deny Fs dao because y"], args=[],
+         want=dict(exit=0, text=["deny Fs dao", A_DENY], removed=[3], narrowed={}, proposals={}, after=0)),
+    dict(id="q23_adopt_beside_forbid", rep=rd(F("dao.b", ["Fs"], "hb")),
+         pol=["deny Fs dao", "forbid dao -> infra", "accept dao.a for forbid dao -> infra because x"],
+         args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["deny Fs dao", "forbid dao -> infra", "accept dao.a for forbid dao -> infra because x",
+                                 "accept dao.a Fs for deny Fs dao because " + REASON,
+                                 "accept dao.b Fs for deny Fs dao because " + REASON],
+                   removed=[], narrowed={}, proposals={}, created=["dao.a", "dao.b"], after=2, unjudged=[3])),
+    dict(id="q24_adopt_pure", rep=rd(), pol=["pure dao"], args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["pure dao", "accept dao.a Fs for pure dao because " + REASON,
+                                 "accept dao.k Clock for pure dao because " + REASON],
+                   removed=[], narrowed={}, proposals={}, created=["dao.a", "dao.k"], after=0)),
+    dict(id="q25_adopt_identical_rules", rep=rd(), pol=["deny Fs dao", "deny  Fs dao"], args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["deny Fs dao", "deny  Fs dao", "accept dao.a Fs for deny Fs dao because " + REASON],
+                   removed=[], narrowed={}, proposals={}, created=["dao.a"], after=0)),
+    dict(id="q26_crlf", rep=rd(drop=("dao.a",)), pol=["deny Fs dao\r", A_DENY + "\r", "# note\r"], args=[],
+         want=dict(exit=0, text=["deny Fs dao\r", "# note\r"], removed=[2], narrowed={}, proposals={}, after=0)),
+    dict(id="q28_empty_policy", rep=rd(), pol=[], args=[],
+         want=dict(exit=2, stderr_re=r"(?i)redirect|truncat")),
+    dict(id="q29_out_of_scope", rep=dict(rd(F("dao.b", ["Fs"], "hb")), outOfScope=[{"fn": "dao.x", "path": "src/x", "effects": ["Fs"], "class": "excluded", "reason": "excluded by config"}]), pol=["deny Fs dao", A_DENY], args=[], want=dict(exit=2)),
+    # the cross-module (hash, fn) twin under --adopt: a DISCLOSED residual, measured (not an over-accept detector) —
+    # adopt over module A alone, then gate module B alone, whose same-named unit is accepted on A's line
+    dict(id="q30_twin_across_runs", rep=rd(F("dao.t", ["Fs"], "ht1"), drop=("dao.a",)), pol=["deny Fs dao"],
+         args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["deny Fs dao", "accept dao.t Fs for deny Fs dao because " + REASON],
+                   removed=[], narrowed={}, proposals={}, created=["dao.t"], after=0),
+         future=(rd(F("dao.t", ["Fs"], "ht2"), drop=("dao.a",)), 0)),
 ]
 DIAMONDS = [r["id"] for r in ROWS if r.get("dia")]
 
@@ -291,6 +330,11 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
             if "noprune" in mut:
                 continue
             removed.append(dict(line=L, fn=e["fn"], policyRule=rule, because=" ".join(e["reason"])))
+            if "prunebyfn" in mut:
+                for L2, e2 in entries.items():
+                    if L2 != L and e2["fn"] == e["fn"]:
+                        removed.append(dict(line=L2, fn=e2["fn"], policyRule=" ".join(e2["rtoks"]),
+                                            because=" ".join(e2["reason"])))
         elif e["status"] == "accepted":
             if "nonarrow" in mut:
                 continue
@@ -325,7 +369,7 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                 extra = classes - (e["filt"] or set()) if e["filt"] is not None else classes
                 if extra:
                     adds = sorted(adds + ["Unknown[" + ",".join(sorted(extra)) + "]"])
-            line = f"accept {e['fn']} {' '.join(prop)} for {rule} because {why}"
+            line = f"accept {e['fn']} {' '.join(prop)} for {rule} because {why}" + comment_of(pol[L - 1])
             proposals[L] = dict(line=L, fn=e["fn"], policyRule=rule, because=why, adds=adds, text=line)
         elif e["status"] == "ambiguous" and "pruneambiguous" in mut:
             removed.append(dict(line=L, fn=e["fn"], policyRule=rule, because=" ".join(e["reason"])))
@@ -349,7 +393,7 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                                          f"{' '.join(e['rtoks'])} because {' '.join(e['reason'])}"
                     removed.remove(r)
                     break
-    if adopt:
+    if True:                                     # the candidates are computed in both modes: `unnamed`
         seen = set()
         for v in d["violations"]:
             if v.get("rule") not in ("AS-EFF-006", "AS-EFF-009"):
@@ -363,7 +407,8 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                 named = [e for e in entries.values() if e["fn"] == fn and L in e["lines"]]
                 if "adoptexceeded" in mut:
                     named = [e for e in named if e["status"] != "exceeded"]
-                if named or any(k[0] == L and k[1] == fn for k in seen):
+                key = (L if "adoptdupe" in mut else tuple(rule_tok[L]), fn)
+                if named or key in seen:
                     continue
                 if len(hashes.get(fn, ())) > 1 and "adopttwins" not in mut:
                     continue
@@ -380,10 +425,14 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                         continue
                 toks = canon(effs - {"Unknown"}, classes)
                 rule = " ".join(rule_tok[L])
-                seen.add((L, fn))
+                seen.add(key)
                 created.append(dict(fn=fn, hash=v.get("hash"), policyRule=rule, because=reason_new, effects=toks,
                                     text=f"accept {fn} {' '.join(toks)} for {rule} because {reason_new}", _line=L))
         created.sort(key=lambda c: (c["_line"], c["fn"]))
+    unnamed = [dict(fn=c["fn"], policyRule=c["policyRule"], effects=c["effects"], **({"hash": c["hash"]} if c.get("hash") else {}))
+               for c in created]
+    if not adopt:
+        created = []
     # ---- the proposed text --------------------------------------------------------------------------
     src = "\n".join(pol) + "\n"
     out = []
@@ -402,7 +451,10 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
         out.append(ln)
         if idx in proposals:
             p = proposals[idx]
-            out.append(f"{MARK} exceeded (adds {' '.join(p['adds'])}): {p['text']}")
+            if "appendwording" in mut:
+                out.append(f"{MARK} exceeded (adds {' '.join(p['adds'])}): {p['text']}")
+            else:
+                out.append(f"{MARK} exceeded (adds {' '.join(p['adds'])}) — REPLACE the line above with: {p['text']}")
     text = "\n".join(out)
     if created:
         if text and not text.endswith("\n"):
@@ -421,6 +473,12 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                 proposals=[proposals[k] for k in sorted(proposals)], after=after)
     if adopt:
         plan["created"] = [{k: v for k, v in c.items() if v is not None} for c in created]
+    if "nounnamed" not in mut:
+        plan["unnamed"] = unnamed
+    if "nounjudged" not in mut:
+        plan["unjudged"] = [dict(line=L, fn=e["fn"], policyRule=" ".join(e["rtoks"]))
+                            for L, e in sorted(entries.items()) if e["status"] == "unjudged"]
+    plan["ignored"] = [dict(line=L) for L in A.accept_lines(pol) if L in ign]
     return 0, plan
 
 
@@ -447,6 +505,11 @@ MUTANTS = {
     "keepmarkers": "the verb's own earlier comments kept (a second run is not idempotent)",
     "reasonrewrite": "a narrowed or proposed line carries the `--because` reason instead of its own",
     "afterlie": "`after` reports the input policy's verdict, not the proposed text's",
+    "prunebyfn": "every entry on a fn deleted once one of them is stale (the accepted sibling lost)",
+    "adoptdupe": "`--adopt` writes one line per producing LINE even where two rule lines carry identical tokens",
+    "appendwording": "the exceeded proposal worded as an ADDITIONAL line, so taking it leaves the old line stale (a second red cycle)",
+    "nounnamed": "the plan omits `unnamed` — the reviewer cannot see what `--adopt` would write",
+    "nounjudged": "the plan omits `unjudged` — an entry this route cannot judge reads as fresh",
 }
 
 
@@ -461,7 +524,22 @@ def acc_set(doc):
     return {(i.get("fn"), i.get("enclosing")) for i in (doc or {}).get("accepted") or [] if i.get("status") == "accepted"}
 
 
-def judge(row, eng, rc, plan, gate_in, gate_out, gate_future=None):
+def take(text):
+    """Do what each `# candor-accepts: exceeded` comment SAYS: replace the line above (or, worded as an extra line,
+    uncomment it). The operator's one edit; the result is gated to see whether it reaches green."""
+    lines, out = text.split("\n"), []
+    for ln in lines:
+        if is_mark(ln) and " — REPLACE the line above with: " in ln:
+            if out:
+                out[-1] = ln.split(" — REPLACE the line above with: ", 1)[1]
+            continue
+        if is_mark(ln) and "exceeded" in ln and ": accept " in ln:
+            out.append("accept " + ln.split(": accept ", 1)[1]); continue
+        out.append(ln)
+    return "\n".join(out)
+
+
+def judge(row, eng, rc, plan, gate_in, gate_out, gate_future=None, gate_take=None):
     """-> list of problems (empty = PASS). gate_in: (rc, doc) over the input policy; gate_out: (rc, doc) over
     plan['text'] (None when the verb refused)."""
     w = row["want"]
@@ -512,9 +590,18 @@ def judge(row, eng, rc, plan, gate_in, gate_out, gate_future=None):
                 accepted=sum(1 for i in (d2 or {}).get("accepted") or [] if i.get("status") == "accepted"))
     if a != real:
         bad.append(f"`after` {a}, the gate over the proposed text says {real}")
-    if row.get("future") and gate_future is not None and gate_future[0] != 1:
-        bad.append(f"LATENT OVER-ACCEPT: over a later report in which the function regains what it no longer does, "
-                   f"the gate over the proposed text exits {gate_future[0]}, want 1")
+    if row.get("future") and gate_future is not None and gate_future[0] != row["future"][1]:
+        bad.append(f"LATER REPORT: the gate over the proposed text and the row's later report exits {gate_future[0]}, "
+                   f"want {row['future'][1]}" + (" — a LATENT OVER-ACCEPT" if row["future"][1] == 1 else ""))
+    if "take" in row and gate_take is not None and gate_take[0] != row["take"]:
+        bad.append(f"TAKING THE PROPOSAL (one edit, as its comment says) leaves the gate at exit {gate_take[0]}, "
+                   f"want {row['take']} — a second red cycle")
+    for k in ("unnamed",):
+        if k in w and [i.get("fn") for i in plan.get(k) or []] != [spell(x, eng) for x in w[k]] or (k in w and k not in plan):
+            bad.append(f"`{k}` {[i.get('fn') for i in plan.get(k) or []] if k in plan else 'ABSENT'}, want {w[k]}")
+    for k in ("unjudged", "ignored"):
+        if k in w and (k not in plan or [i.get("line") for i in plan.get(k) or []] != w[k]):
+            bad.append(f"`{k}` {[i.get('line') for i in plan.get(k) or []] if k in plan else 'ABSENT'}, want {w[k]}")
     # THE PROPERTY — judged by the engine's own gate
     rc1, d1 = gate_in
     a1, a2 = acc_set(d1), acc_set(d2)
@@ -586,16 +673,18 @@ def collect(C, eng, row, calib):
     plan = A.first_json(out)
     rct, outt = run_stdout(verb_cmd(eng, loc, p, row["args"], json_out=False), cwd)
     gin = A.gate(eng, loc, p, C.path("gi.json"))[:2]
-    res = dict(pol=pol, loc=loc, obs=(rc, plan, out), text_run=(rct, outt), unchanged=(sha(p) == before), gin=gin)
+    res = dict(pol=pol, loc=loc, polpath=p, obs=(rc, plan, out), text_run=(rct, outt), unchanged=(sha(p) == before), gin=gin)
     res["cwd_clean"] = not os.listdir(cwd)
     floc = None
     if row.get("future"):
-        floc = G.write_report(os.path.join(C.ws, "fut", eng, row["id"]), eng, row["future"])
+        floc = G.write_report(os.path.join(C.ws, "fut", eng, row["id"]), eng, row["future"][0])
         res["gate_future"] = gate_text_fn(C, eng, floc)
     if isinstance(plan, dict) and isinstance(plan.get("text"), str):
         res["gout"] = gate_text_fn(C, eng, loc)(plan["text"])
         if floc:
             res["gfut"] = res["gate_future"](plan["text"])
+        if "take" in row:
+            res["gtake"] = gate_text_fn(C, eng, loc)(take(plan["text"]))
     if calib:
         per = {}
         for L in A.rule_lines(pol):
@@ -654,7 +743,9 @@ def main():
                 if implementing:
                     if not x["cwd_clean"]:
                         bad.append(f"{row['id']}: the verb wrote a file into its working directory — it writes none")
-                    for p in judge(row, eng, rc, plan, x["gin"], x.get("gout", (None, None)), x.get("gfut")):
+                    if row["want"].get("stderr_re") and not re.search(row["want"]["stderr_re"], out):
+                        bad.append(f"{row['id']}: the refusal does not name its remedy (want /{row['want']['stderr_re']}/)")
+                    for p in judge(row, eng, rc, plan, x["gin"], x.get("gout", (None, None)), x.get("gfut"), x.get("gtake")):
                         bad.append(f"{row['id']}{' ◆' if row.get('dia') else ''}: {p}")
                     rct, outt = x["text_run"]
                     if row["want"]["exit"] == 0 and isinstance(plan, dict) and (rct != 0 or outt != plan.get("text")):
@@ -665,6 +756,13 @@ def main():
                     if isinstance(plan, dict) and "text" in plan:
                         bad.append(f"{row['id']} (pre-rung): a plan document without the probe passing")
             if implementing:
+                # `accept` (the line kind) typed as a verb: a usage error that NAMES `accepts`, never an answer
+                x = data[(eng, "q01_fresh")]
+                c = verb_cmd(eng, x["loc"], x["polpath"], [])
+                c[c.index("accepts")] = "accept"
+                trc, tout = A.run(c, cwd=tempfile.mkdtemp(dir=ws))
+                if trc != 2 or "accepts" not in tout:
+                    bad.append(f"`accept` as a verb exits {trc}" + ("" if "accepts" in tout else " and does not name `accepts`"))
                 print(f"  {eng:6s} IMPLEMENTS ⟨0.41⟩ accepts: " + (f"OK — {len(cells)} row(s)" if not bad else "DIVERGE"))
             else:
                 # `SKIP —` is the token skip_ratchet.py counts (skip-baseline.json).
@@ -691,7 +789,8 @@ def main():
                                      x["gate_text"], mut)
                     gout = x["gate_text"](plan["text"]) if plan else (None, None)
                     gfut = x["gate_future"](plan["text"]) if plan and "gate_future" in x else None
-                    return judge(row, calib, rc, plan, x["gin"], gout, gfut)
+                    gtk = x["gate_text"](take(plan["text"])) if plan and "take" in row else None
+                    return judge(row, calib, rc, plan, x["gin"], gout, gfut, gtk)
                 for p in run_model(frozenset()):
                     model_bad.append(f"{calib} {row['id']}: {p}")
                 for m in MUTANTS:

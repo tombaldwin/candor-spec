@@ -6715,9 +6715,23 @@ to stdout: the input with the changes below and nothing else; with `--json` it p
 instead, whose `text` is those same bytes. The operator diffs it against the policy and commits it, or does
 not; there is no in-place mode, because the policy is an input of the run that produced the proposal
 (§3.3.1's sink rules), and because a rewrite nobody diffed is the silent acceptance this directive exists to
-prevent. (A shell redirect onto the policy itself truncates it before the verb reads it; write elsewhere.)
-`--because` is ONE argument, lexed into tokens by ASCII whitespace. `--strict` and every other flag are the
-§3.3.1 exit-2 usage error.
+prevent. `--because` is ONE argument, lexed into tokens by ASCII whitespace. `--strict` and every other flag
+are the §3.3.1 exit-2 usage error, and so is `accept` written as a verb — the line kind, one letter short —
+whose message MUST name `accepts`.
+
+**The redirect trap, named where it is sprung.** `accepts > <the policy file>` makes the shell empty the
+policy before the verb reads it; the verb then sees no rules and refuses, and the policy is gone. The verb
+cannot prevent this, so it says it at the two places an operator looks: a refusal because the policy holds
+no rules MUST say that a shell redirect onto the policy empties it, and the stderr summary of an answered run
+SHOULD print the next command (write to another path, then diff).
+
+**Its route is the report route, and what that cannot see is listed.** The verb answers over a report, so a
+`forbid` or `only` rule is in `unevaluated` (§3.1) and its entries are `unjudged`: the verb can neither
+delete a stale `forbid` entry nor adopt a `forbid` violation, and those entries are kept and LISTED in the
+plan's `unjudged` and on stderr, never left to read as fresh. A scan-route form is not part of this rung. An
+`accept` line the gate ignored — malformed, or naming a rule line that no longer parses because the rule
+was edited — is kept and listed in `ignored`: re-pointing an entry at an edited rule is a judgement, not a
+refresh.
 
 **What it changes unattended** — each change leaves the set of rows this run accepts exactly as it was, and
 none makes a later row easier to accept:
@@ -6743,11 +6757,13 @@ repair is the operator's).
 
 **What it only PROPOSES — an `exceeded` entry.** The function now does more than was accepted, and the verb
 never widens the line. It keeps the line as it is and inserts directly after it the one comment line
-`# candor-accepts: exceeded (adds <added tokens>): accept <fn> <the row's effects> for <rule tokens> because <reason>`
+`# candor-accepts: exceeded (adds <added tokens>) — REPLACE the line above with: accept <fn> <the row's effects> for <rule tokens> because <reason>`
 — the added effects (and an `Unknown[…]` of the added classes) named in the comment's own text, the line's
-own reason carried. A comment does nothing, so committing the proposed file does not accept the wider row;
-taking the proposal is a human edit (delete the comment's prefix up to `accept`), after which the old line
-accepts nothing and the next run deletes it as stale.
+own reason and trailing comment carried as a rewritten line carries them. A comment does nothing, so
+committing the proposed file does not accept the wider row. **Taking the proposal is ONE human edit: replace
+the line above with the text after `with: ` and delete the comment.** Worded as a replacement, not as an
+extra line, because an extra line beside the old one leaves the old one accepting nothing — a stale entry,
+and a second red run for a decision already made.
 
 **What it never does.** It never writes an `accept` line for a row that no entry names — a new violation,
 or an old one under a key the upgrade renamed (an added overload, a moved file, §3's key-renumbering
@@ -6768,8 +6784,9 @@ or `only` row, an AS-EFF-005 row, a positional or unwritable `fn` (one holding `
 nested unit rides its enclosing entry instead), a `(hash, fn)` twin, or an `Unknown` with no class. **And
 none for a row an entry already names**: an exceeded row is PROPOSED, as above, even under `--adopt`,
 because widening a known acceptance and accepting a new violation are different decisions and only the
-second was asked for. Created lines are appended after the input's last line, one per producing rule line,
-in the order of that line, then `fn` by Unicode code point; if the input does not end in a newline, one is
+second was asked for. Created lines are appended after the input's last line, one per producing rule line —
+one per distinct token sequence, since an entry names every parsed line with its tokens (above) — in the
+order of that line, then `fn` by Unicode code point; if the input does not end in a newline, one is
 added first. (Lines are split at LF; a CR is part of its line.) An initial adoption is the same command over a
 policy with no `accept` lines; so is a module added later.
 
@@ -6788,10 +6805,16 @@ exits 0 whatever it found: it is advisory, and the gate is the CI check.
                        "text": "<the proposed accept line>" } … ],
       "created":   [ { "fn": …, "hash"?: …, "policyRule": …, "because": …, "effects": [tok…],
                        "text": "<the appended line>" } … ],          // present iff mode is "adopt"
+      "unnamed":   [ { "fn": …, "hash"?: …, "policyRule": …, "effects": [tok…] } … ],
+      "unjudged":  [ { "line": <n>, "fn": …, "policyRule": … } … ],
+      "ignored":   [ { "line": <n> } … ],
       "after":     { "exit": <n>, "violations": <n>, "accepted": <n> } }
 
 `line` is the INPUT line; `removed`, `narrowed` and `proposals` are sorted by it, `created` in the order it
-is appended. `because` is always the line's own reason (`created`: the operator's). `after` is the gate's
+is appended. `unnamed` is present in BOTH modes and holds exactly the rows `--adopt` writes a line for, in
+the same order — so a refresh shows the reviewer the new violations (a renamed key's row among them) without
+a second run. `unjudged` and `ignored` hold the entries the run kept without judging, by input line.
+`because` is always the line's own reason (`created`: the operator's). `after` is the gate's
 verdict over `text` on the same report — its exit, its `violations` count, and its count of `accepted` items
 with status `accepted` — so the reviewer sees what committing the proposal does. Without `--json`, stdout is
 the proposed policy byte for byte, and the human summary (those counts, and `after`'s exit) goes to stderr.
@@ -6805,8 +6828,14 @@ later report.
 **What it does to a shared policy, stated rather than discovered.** Run over module B, an entry written for
 module A's functions, or in another engine's `fn` spelling, or for a function only another platform's build
 contains (a `cfg`-gated one), is stale here and is deleted — and an entry narrowed here can come out exceeded
-there; committed, that turns the other gate red, with the reason recoverable from `removed` and from version control. Fail-closed, and the
-same remedy as above: one policy file per separately-gated module, and per engine.
+there; committed, that turns the other gate red, with the reason recoverable from `removed` and from
+version control. Fail-closed. **The false-green side is the rung's own `(hash, fn)` residual (below), and
+`--adopt` changes its SCALE, not its kind:** adopt over module A writes `accept com.x.Repo.load …`, and
+module B gated alone under the same file accepts B's same-named unit on A's reason — for every line one
+command wrote. The fail-closed rule is the one a single run can enforce: a twin INSIDE the run gets no line
+(it stays red), and the verb writes nothing it cannot tell apart within the run it read. Across runs no key
+component distinguishes A's unit from B's, so the verb does not pretend to; the remedy is one policy file per
+separately-gated module, and per engine, and an `--adopt` that created any line SHOULD say so on stderr.
 
 *Why a new verb and not a flag on `fix-gate` or `gate`: `fix-gate` proposes edits to CODE and still treats an
 accepted crossing as outstanding (above), and a gate's document is a verdict that CI reads; a proposed

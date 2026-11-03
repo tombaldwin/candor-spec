@@ -26,7 +26,7 @@ Run it after any patch-cycle commit that adds a section here.
 ## Unreleased
 
 - **SPEC ⟨0.41⟩: the advisory verb `accepts` — refresh `accept` lines after an upgrade, or adopt them — plus
-  conformance PART 106 (26 rows, 22 mutants). No floor move; declared by no engine (reference-led, probed SKIP).**
+  conformance PART 106 (34 rows, 27 mutants). No floor move; declared by no engine (reference-led, probed SKIP).**
   `accepts [--report] [--policy] [--json] [--adopt --because <reason>]` prints a PROPOSED policy to stdout (the
   plan document with `--json`) and writes no file. Unattended: a stale (AS-EFF-012) entry's line is deleted; an
   accepted entry wider than its rows is narrowed to them (an effect an upgrade stopped charging is not left
@@ -37,7 +37,10 @@ Run it after any patch-cycle commit that adds a section here.
   a positional key or an `allow`/`only` row; an `Unknown` carries the row's classes, not the rule's filter). It
   refuses over an incomplete analysis. PART 106 judges every row through the engine's own gate over the proposed
   text: refresh accepts exactly what the input accepted, adopt adds only the created lines' rows, and a later
-  report that regains a narrowed effect stays red.
+  report that regains a narrowed effect stays red. The exceeded comment is worded as a REPLACE so taking it is one
+  edit to green; the plan lists `unnamed` (what `--adopt` would write, in both modes), `unjudged` (the `forbid`
+  entries the report route cannot judge) and `ignored`; a no-rules refusal names the shell-redirect trap; `accept`
+  as a verb is a usage error naming `accepts`; the cross-module twin under `--adopt` is priced and measured.
 - **SPEC ⟨0.41⟩ follow-ups: eight loose points of the `accept` rung settled in §6.2/§3.3, pinned by eleven new PART 105
   rows (49 total, 24 mutants).** An exit-1 document that is also incomplete is a verdict and carries `accepted`;
   `unverified` carries `accepted: [fn…]` and omits `ok`, `fix-gate` carries `staleAccepts` and exits 1 under
