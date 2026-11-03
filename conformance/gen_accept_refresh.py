@@ -70,6 +70,9 @@ SPEC_CLAUSES = [
     ("§6.2 ⟨0.41⟩", "**When it answers.**"),
     ("§6.2 ⟨0.41⟩", "**The property, which conformance pins.**"),
     ("§3.3.1 ⟨0.41⟩", "and `accepts` (§6.2 ⟨0.41⟩)"),
+    ("§6.2 ⟨0.41⟩", "**The SOLE refusal is a refusal.**"),
+    ("§6.2 ⟨0.41⟩", "**Lines are numbered as the gate numbers them: a line ends at LF, at CR, or at CRLF, which is"),
+    ("§6.2 ⟨0.41⟩", "**A row whose `Unknown` carries no reason class is written nowhere.**"),
 ]
 
 MARK = "# candor-accepts:"
@@ -225,6 +228,37 @@ ROWS = [
          want=dict(exit=0, text=["deny Fs dao", "accept dao.t Fs for deny Fs dao because " + REASON],
                    removed=[], narrowed={}, proposals={}, created=["dao.t"], after=0),
          future=(rd(F("dao.t", ["Fs"], "ht2"), drop=("dao.a",)), 0)),
+    # ---- round 3 (the accepts follow-up lane, 2026-11-03) ---------------------------------------------
+    # The SOLE refusal: an unevaluated `forbid` and nothing established. The gate exits 2 with the refusal document, so
+    # the verb exits 2 with no proposal (§6.2 "When it answers"); q13/q23 above pin the other half, the same rule beside
+    # an exit-1 verdict, where the verb answers and lists the entry as `unjudged`.
+    dict(id="q31_sole_refusal", rep=rd(drop=("dao.a",)),
+         pol=["deny Fs dao", "forbid dao -> infra", "accept dao.a for forbid dao -> infra because x"], args=[],
+         want=dict(exit=2)),
+    dict(id="q31b_sole_refusal_narrowable", dia=1, rep=rd(),
+         pol=["deny Fs Rand dao", "accept dao.a Fs Rand for deny Fs Rand dao because x", "forbid dao -> infra"], args=[],
+         want=dict(exit=2)),
+    # A lone CR ends a line (the gate's numbering): the `accept` is line 2, stale, and deleted WITH its terminator —
+    # the surviving line keeps the CR it was written with.
+    dict(id="q32_lone_cr", dia=1, rep=rd(drop=("dao.a",)),
+         pol=["deny Fs dao", "accept dao.a Fs for deny Fs dao because x"], terms=["\r", "\n"], args=[],
+         want=dict(exit=0, text=["deny Fs dao"], terms=["\r"], removed=[2], narrowed={}, proposals={}, after=0)),
+    # An `Unknown` row with no reason class (a report whose `inferred` holds Unknown that no `direct` accounts for):
+    # no filter covers it, so the entry is exceeded and stays red; the verb proposes nothing and adopts nothing.
+    dict(id="q33_classless_unknown", rep=rd(dict(F("dao.c", ["Unknown"], "hc"), direct=[]), drop=("dao.a",)),
+         pol=["deny Unknown dao", "accept dao.c Unknown[dispatch] for deny Unknown dao because x"], args=[],
+         want=dict(exit=0, text=["deny Unknown dao", "accept dao.c Unknown[dispatch] for deny Unknown dao because x"],
+                   removed=[], narrowed={}, proposals={}, after=1, unnamed=[])),
+    dict(id="q33b_classless_unknown_adopt", rep=rd(dict(F("dao.c", ["Unknown"], "hc"), direct=[]), drop=("dao.a",)),
+         pol=["deny Unknown dao"], args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["deny Unknown dao"], removed=[], narrowed={}, proposals={}, created=[], after=1,
+                   unnamed=[])),
+    # `--adopt` writes no line for a fn holding whitespace or `#` — on EVERY engine, so a single-engine run (swift,
+    # which has no nested unit for q11) still calibrates `adoptpositional`.
+    dict(id="q11b_adopt_unwritable_fn", rep=rd(F("dao.w x", ["Fs"], "hw"), F("dao.h#z", ["Fs"], "hh"), drop=("dao.a",)),
+         pol=["deny Fs dao"], args=["--adopt", "--because", REASON],
+         want=dict(exit=0, text=["deny Fs dao"], removed=[], narrowed={}, proposals={}, created=[], after=1,
+                   unnamed=[])),
 ]
 DIAMONDS = [r["id"] for r in ROWS if r.get("dia")]
 
@@ -266,7 +300,7 @@ def is_mark(line):
     return line.lstrip(" \t").startswith(MARK)
 
 
-def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
+def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset(), terms=None):
     """-> (rc, plan|None). gate_doc: the ⟨0.41⟩ gate's verdict over the input policy; per_line: {rule line:
     verdict with only that rule (accept lines withheld)}; gate_text(text) -> (rc, doc): the gate over a
     proposed policy text."""
@@ -295,6 +329,9 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
     if "adoptsilent" in mut and not adopt:
         adopt, reason_new = True, "accepted by refresh"
     rc_in, d = gate_in
+    if "answerrefusal" in mut and isinstance(d, dict) and d.get("refused"):
+        d = dict(d, refused=False)
+        d.setdefault("violations", [])
     if d is None or "violations" not in d or d.get("refused") or (d.get("incomplete") and "incompleteanswer" not in mut):
         return 2, None
     ign = set(A.ignored_lines(d))
@@ -363,6 +400,8 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
             for v in rows:
                 E |= set(v.get("effects") or [])
                 classes |= set(v.get("reasonClass") or [])
+            if "Unknown" in E and not classes and "classlessproposal" not in mut:
+                continue                         # no class to name: the line stays, nothing is proposed
             prop = canon(E - {"Unknown"}, classes if "Unknown" in E else None)
             adds = sorted(E - {"Unknown"} - e["conc"])
             if "Unknown" in E:
@@ -421,7 +460,7 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
                     if "adoptwideclass" in mut:
                         m = re.search(r"Unknown\[([^\]]*)\]", pol[L - 1])
                         classes = set(m.group(1).split(",")) if m else classes
-                    if not classes:
+                    if not classes and "classlessadopt" not in mut:
                         continue
                 toks = canon(effs - {"Unknown"}, classes)
                 rule = " ".join(rule_tok[L])
@@ -434,28 +473,31 @@ def model(pol, args, gate_in, per_line, units, eng, gate_text, mut=frozenset()):
     if not adopt:
         created = []
     # ---- the proposed text --------------------------------------------------------------------------
-    src = "\n".join(pol) + "\n"
-    out = []
+    tl = list(terms or []) + ["\n"] * (len(pol) - len(terms or []))
+    src = list(zip(pol, tl))
+    if "lfonly" in mut:                          # a reader that numbers lines at LF alone: a lone CR stays inside its line
+        src = [(l, "\n") for l in join_terms(pol, terms).split("\n")[:-1]]
+    out = []                                     # (line, terminator)
     gone = {r["line"] for r in removed}
-    for idx, ln in enumerate(src.split("\n"), 1):
+    for idx, (ln, tm) in enumerate(src, 1):
         if is_mark(ln) and "keepmarkers" not in mut:
             continue
         if idx in gone:
             continue
         if idx in rekeyed:
-            out.append(rekeyed[idx]); continue
+            out.append((rekeyed[idx], tm)); continue
         if idx in narrowed:
-            out.append(narrowed[idx]["text"]); continue
+            out.append((narrowed[idx]["text"], tm)); continue
         if idx in proposals and "widen" in mut:
-            out.append(proposals[idx]["text"]); continue
-        out.append(ln)
+            out.append((proposals[idx]["text"], tm)); continue
+        out.append((ln, tm))
         if idx in proposals:
             p = proposals[idx]
             if "appendwording" in mut:
-                out.append(f"{MARK} exceeded (adds {' '.join(p['adds'])}): {p['text']}")
+                out.append((f"{MARK} exceeded (adds {' '.join(p['adds'])}): {p['text']}", "\n"))
             else:
-                out.append(f"{MARK} exceeded (adds {' '.join(p['adds'])}) — REPLACE the line above with: {p['text']}")
-    text = "\n".join(out)
+                out.append((f"{MARK} exceeded (adds {' '.join(p['adds'])}) — REPLACE the line above with: {p['text']}", "\n"))
+    text = "".join(l + t for l, t in out)
     if created:
         if text and not text.endswith("\n"):
             text += "\n"
@@ -509,6 +551,10 @@ MUTANTS = {
     "adoptdupe": "`--adopt` writes one line per producing LINE even where two rule lines carry identical tokens",
     "appendwording": "the exceeded proposal worded as an ADDITIONAL line, so taking it leaves the old line stale (a second red cycle)",
     "nounnamed": "the plan omits `unnamed` — the reviewer cannot see what `--adopt` would write",
+    "answerrefusal": "the verb answers over a SOLE refusal (the gate's refusal document claims nothing about violations, yet entries are pruned and narrowed beside it)",
+    "lfonly": "lines numbered at LF alone — a lone CR stays inside its line, so the entry on the next line is never seen",
+    "classlessproposal": "an exceeded entry on an Unknown row with no reason class proposed as `Unknown[]` (a line the gate does not honour: a second red run)",
+    "classlessadopt": "`--adopt` writes `Unknown[]` for an Unknown row with no reason class",
     "nounjudged": "the plan omits `unjudged` — an entry this route cannot judge reads as fresh",
 }
 
@@ -552,7 +598,8 @@ def judge(row, eng, rc, plan, gate_in, gate_out, gate_future=None, gate_take=Non
         return bad
     if not isinstance(plan, dict):
         return bad + ["no plan document"]
-    want_text = "".join(spell(x, eng) + "\n" for x in w["text"])
+    wt = list(w.get("terms") or []) + ["\n"] * (len(w["text"]) - len(w.get("terms") or []))
+    want_text = "".join(spell(x, eng) + t for x, t in zip(w["text"], wt))
     if plan.get("text") != want_text:
         bad.append(f"proposed text {plan.get('text')!r}, want {want_text!r}")
     adopt = "--adopt" in row["args"]
@@ -636,6 +683,12 @@ def run_stdout(cmd, cwd):
     return r.returncode, r.stdout.decode(errors="replace")
 
 
+def join_terms(lines, terms=None):
+    """The file's bytes: each logical line then its terminator (default LF). A row's `terms` gives the ones that are not."""
+    t = list(terms or []) + ["\n"] * (len(lines) - len(terms or []))
+    return "".join(l + x for l, x in zip(lines, t))
+
+
 def sha(p):
     with open(p, "rb") as fh:
         return fh.read()
@@ -665,7 +718,7 @@ def collect(C, eng, row, calib):
     d = os.path.join(C.ws, "rep", eng, row["id"])
     loc = G.write_report(d, eng, A.rep_of(row, eng))
     p = C.path("pol")
-    A.write(p, "\n".join(pol) + "\n")
+    A.write(p, join_terms(pol, row.get("terms")))
     before = sha(p)
     cwd = C.path("cwd")
     os.makedirs(cwd)
@@ -786,7 +839,7 @@ def main():
 
                 def run_model(mut):
                     rc, plan = model(x["pol"], row["args"], x["gin"], x["per_line"], x["units"], calib,
-                                     x["gate_text"], mut)
+                                     x["gate_text"], mut, row.get("terms"))
                     gout = x["gate_text"](plan["text"]) if plan else (None, None)
                     gfut = x["gate_future"](plan["text"]) if plan and "gate_future" in x else None
                     gtk = x["gate_text"](take(plan["text"])) if plan and "take" in row else None

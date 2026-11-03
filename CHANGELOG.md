@@ -25,6 +25,14 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.41⟩ `accepts` follow-ups, PART 106 +6 rows, +4 mutants (40 rows, 31 mutants).** (1) The SOLE refusal is a refusal:
+  an unevaluated `forbid`/`only` that leaves the gate nothing established makes the verb exit 2 with no proposal (rust answered
+  and narrowed beside the refusal; java, ts and swift refused) — q31, q31b. (2) Lines are numbered as the gate numbers them: LF,
+  lone CR, or CRLF as one break (the clause said LF only; all four gates split on a lone CR) — q32. (3) An `Unknown` row with no
+  reason class is written nowhere: no proposal for an exceeded entry, no adopted line, never `Unknown[]` (java and ts proposed it)
+  — q33, q33b. (4) `gen_accept_refresh.py` calibrates for any single `--engine`: q11b gives `adoptpositional` a row that does
+  not need a nested unit (swift has none).
+
 - **SPEC ⟨0.41⟩: the advisory verb `accepts` — refresh `accept` lines after an upgrade, or adopt them — plus
   conformance PART 106 (34 rows, 27 mutants). No floor move; declared by no engine (reference-led, probed SKIP).**
   `accepts [--report] [--policy] [--json] [--adopt --because <reason>]` prints a PROPOSED policy to stdout (the

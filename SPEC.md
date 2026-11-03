@@ -6765,6 +6765,17 @@ the line above with the text after `with: ` and delete the comment.** Worded as 
 extra line, because an extra line beside the old one leaves the old one accepting nothing — a stale entry,
 and a second red run for a decision already made.
 
+⟨0.41⟩ **A row whose `Unknown` carries no reason class is written nowhere.** A report the writer's invariant
+(§4: every `Unknown` has a reason) does not hold for — a function whose `inferred` holds `Unknown` that no
+`direct` entry and no callee accounts for — makes the gate's row carry no `reasonClass`; no `Unknown[…]` filter
+covers such a row (above), so an entry on it is `exceeded` and stays red. The verb then keeps the line as it is
+and proposes NOTHING for it — no comment, no `proposals` item, an `adds` list is never empty — and `--adopt` writes
+no line for it (it is not in `unnamed`). It never writes `Unknown[]`: an empty bracket names no class the gate
+honours, so taking the proposal would trade a missing line for a second red run. The human channel says the row's
+classes are not carried. Measured 2026-11-03 over a hand-written report with `"inferred": ["Unknown"],
+"direct": []`: candor-rust and candor-swift kept the line and said so; candor-java and candor-ts proposed
+`Unknown[]`.
+
 **What it never does.** It never writes an `accept` line for a row that no entry names — a new violation,
 or an old one under a key the upgrade renamed (an added overload, a moved file, §3's key-renumbering
 clause). In particular it never pairs a stale entry with a new row and carries the old reason across: that
@@ -6787,15 +6798,27 @@ because widening a known acceptance and accepting a new violation are different 
 second was asked for. Created lines are appended after the input's last line, one per producing rule line —
 one per distinct token sequence, since an entry names every parsed line with its tokens (above) — in the
 order of that line, then `fn` by Unicode code point; if the input does not end in a newline, one is
-added first. (Lines are split at LF; a CR is part of its line.) An initial adoption is the same command over a
+added first. (⟨0.41⟩ **Lines are numbered as the gate numbers them: a line ends at LF, at CR, or at CRLF, which is
+ONE break.** A line keeps its own terminator and a deleted line takes it with it, so a CRLF policy stays CRLF and
+`line` in the plan and in `accepted` is the gate's. Measured 2026-11-03 on all four gates: `deny Fs dao⏎accept …`
+written with a lone CR between the two is two lines, and the `accept` is line 2 — a reader that split at LF alone
+would see one rule line with a stray token and ignore it.) An initial adoption is the same command over a
 policy with no `accept` lines; so is a module added later.
 
 **When it answers.** Only where the gate over the same bytes evaluated the policy over a complete
 analysis: an unreadable report or policy, a whole-policy refusal and an incomplete analysis (§3.3 causes
 (b) and (c)) are exit 2 with no proposal — an incomplete analysis because a unit it did not read makes its
 entries look stale, and pruning them would delete the reasons for code that still exists. A rule in
-`unevaluated` on this route does not stop it: that rule's entries are `unjudged` and kept. Otherwise it
-exits 0 whatever it found: it is advisory, and the gate is the CI check.
+`unevaluated` on this route does not stop it **while the gate's document is a verdict** (exit 1: it carries
+`violations`): that rule's entries are `unjudged` and kept. ⟨0.41⟩ **The SOLE refusal is a refusal.** When the
+unevaluated rule leaves the gate nothing established — the other rules found no violation, or found only rows an
+`accept` line took (an accepted row is not an established violation, above) — the gate exits 2 with the refusal
+document, which makes no claim about violations, and the verb exits 2 with no proposal: on a document that
+claims nothing an entry is neither stale, accepted nor narrowable, and a plan computed beside it would prune or
+narrow on evidence the gate itself declined to give. Measured 2026-11-03 over `deny Fs dao` + `forbid dao -> infra`
+and a report with no violation: candor-java, candor-ts and candor-swift refused; candor-rust answered, and narrowed
+an over-wide entry beside the refusal. Otherwise it exits 0 whatever it found: it is advisory, and the gate is the
+CI check.
 
     { "mode": "refresh" | "adopt", "text": "<the proposed policy>",
       "removed":   [ { "line": <n>, "fn": …, "policyRule": …, "because": … } … ],
