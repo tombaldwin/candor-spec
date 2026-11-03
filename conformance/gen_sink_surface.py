@@ -273,7 +273,7 @@ EXCLUDED_VERBS = {
 # stay in are scoped to the value-flags on their OWN usage line, parsed from help, not assumed.
 FAMILY_VERBS = {"show", "where", "callers", "map", "diff", "containment", "reachable", "path",
                 "impact", "blindspots", "tour", "whatif", "fix", "fix-gate", "gate", "unverified",
-                "gains", "rewire", "privacy-manifest"}
+                "gains", "rewire", "privacy-manifest", "accepts"}
 
 # Canonical positional args per §3.3.1 ("Verb args are positional, in the §3.1 order"). Symbols are
 # resolved per engine: REP = that engine's report locator, PREFIX = its --out prefix.
@@ -284,6 +284,8 @@ VERB_ARGS = {
     "whatif": ["touch", "Fs"], "fix": ["touch", "Fs"], "fix-gate": [], "unverified": [],
     "diff": [REP, REP], "gains": [REP, REP], "rewire": [PREFIX, PREFIX], "gate": [],
     "privacy-manifest": [], "reports": [PREFIX], "gate-verdict": [PARTS, OUTPOS],
+    # ⟨0.41⟩ `accepts` takes no positional (SPEC §6.2): --report/--policy/--json are flags, like `fix-gate`.
+    "accepts": [],
 }
 
 # Verbs that DISCOVER a report (§3.3.1): a healthy `--report <rep>` is added when the flag under test
