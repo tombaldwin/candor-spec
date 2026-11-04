@@ -27,6 +27,9 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.41.0] — 2026-11-03
 
+- **CI: conformance job limits 100/110 → 150 min.** ⟨0.41⟩'s PARTs 105 and 106 pushed the differential jobs past
+  their limits on slower runners (cancelled, not failed). Moving `probe_check` to its own job remains the real fix.
+
 - **SPEC ⟨0.41⟩ `accepts` follow-ups, PART 106 +6 rows, +4 mutants (40 rows, 31 mutants).** (1) The SOLE refusal is a refusal:
   an unevaluated `forbid`/`only` that leaves the gate nothing established makes the verb exit 2 with no proposal (rust answered
   and narrowed beside the refusal; java, ts and swift refused) — q31, q31b. (2) Lines are numbered as the gate numbers them: LF,
