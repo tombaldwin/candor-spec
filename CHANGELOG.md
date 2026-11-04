@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.41.1] — 2026-11-04
+
+- **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1468 and R1469 filed from the field case's
+  0.41.0 trial; R1469 closed (candor-java 2dff722), R1468(b) partly resolved.
+
+
 ## [0.41.0] — 2026-11-03
 
 - **CI: conformance job limits 100/110 → 150 min.** ⟨0.41⟩'s PARTs 105 and 106 pushed the differential jobs past
