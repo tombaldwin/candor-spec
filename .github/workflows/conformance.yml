@@ -341,7 +341,8 @@ jobs:
   released-floor:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 30 → 60 (2026-11-05): scheduled runs took 19, 26, then >30 min (cancelled 2026-11-02 and on the 0.41.1 dispatch).
+    timeout-minutes: 60
     steps:
       - name: Checkout candor-spec
         uses: actions/checkout@v6
