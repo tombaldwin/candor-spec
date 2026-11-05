@@ -25,6 +25,12 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.41.2] — 2026-11-05
+
+- **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records its measured reach through the
+  R1462 fix (candor-java 0.41.2).
+
+
 ## [0.41.1] — 2026-11-04
 
 - **CI: the weekly `released-floor` job's limit 30 → 60 min** (it took 19, 26, then >30 min and was cancelled).
