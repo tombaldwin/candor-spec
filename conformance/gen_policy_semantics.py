@@ -457,8 +457,11 @@ def gate(eng, loc, policy_bytes, ws, tag):
     gj = os.path.join(ws, f"{eng}.{tag}.gate.json")
     if os.path.exists(gj):
         os.remove(gj)                       # never read a stale document as this run's
-    base = {"rust": [G.rust_query(), "gate"], "java": ["java", "-jar", G.java_jar(), "gate"],
-            "ts": ["node", os.path.join(G.ts_root(), "query.mjs"), "gate"], "swift": [G.swift_bin(), "gate"]}[eng]
+    # Built for THIS engine only: an absent engine's locator is None, and building every arm eagerly crashed
+    # the released-floor leg (rust + java only) in os.path.join before any cell ran.
+    base = {"rust": lambda: [G.rust_query(), "gate"], "java": lambda: ["java", "-jar", G.java_jar(), "gate"],
+            "ts": lambda: ["node", os.path.join(G.ts_root(), "query.mjs"), "gate"],
+            "swift": lambda: [G.swift_bin(), "gate"]}[eng]()
     rc, _o, err = run(base + ["--report", loc, "--policy", pf, "--gate-json", gj])
     doc = None
     if os.path.exists(gj):

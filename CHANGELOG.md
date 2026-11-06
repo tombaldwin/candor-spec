@@ -27,6 +27,9 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.41.2] — 2026-11-05
 
+- **Conformance PART 99 runs with an engine absent.** It built every engine's gate command eagerly, so the weekly
+  `released-floor` leg (rust + java only) crashed before any cell ran; it now builds only the engine it calls.
+
 - **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records its measured reach through the
   R1462 fix (candor-java 0.41.2).
 
