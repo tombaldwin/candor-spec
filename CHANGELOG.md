@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.41.3] — 2026-11-06
+
 - **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records the hedge candor-java 0.41.3
   ships for the JDK collection owners, its measured price, and that the wider owner set stays off.
 
