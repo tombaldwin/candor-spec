@@ -25,6 +25,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records the hedge candor-java 0.41.3
+  ships for the JDK collection owners, its measured price, and that the wider owner set stays off.
+
+
 ## [0.41.2] — 2026-11-05
 
 - **Conformance commands time out by name in CI.** `CONFORMANCE_CMD_TIMEOUT` (1200 s in both differential jobs) bounds every
