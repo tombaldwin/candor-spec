@@ -27,6 +27,9 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.41.2] — 2026-11-05
 
+- **Conformance commands time out by name in CI.** `CONFORMANCE_CMD_TIMEOUT` (1200 s in both differential jobs) bounds every
+  generator subprocess; a blocked child is reported with its command line instead of hanging the job silently to its limit.
+
 - **Conformance PART 99 runs with an engine absent.** It built every engine's gate command eagerly, so the weekly
   `released-floor` leg (rust + java only) crashed before any cell ran; it now builds only the engine it calls.
 

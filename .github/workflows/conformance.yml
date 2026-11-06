@@ -231,6 +231,7 @@ jobs:
       # already use and the form `gate-run.sh` knows how to strip.
       - name: Cross-impl conformance differential
         env:
+          CONFORMANCE_CMD_TIMEOUT: "1200"   # a blocked child names itself instead of silencing the job (2026-11-06)
           CANDOR: ${{ github.workspace }}/candor
           CANDOR_JAVA: ${{ github.workspace }}/candor-java
           CANDOR_TS: ${{ github.workspace }}/candor-ts
@@ -314,6 +315,7 @@ jobs:
       # R406 — one-line `run:` so `bin/gates.sh` can list it; see the three-engine leg above.
       - name: Four-engine conformance differential (strict)
         env:
+          CONFORMANCE_CMD_TIMEOUT: "1200"
           CONFORMANCE_REQUIRE_ALL: "1"
           CANDOR: ${{ github.workspace }}/candor
           CANDOR_JAVA: ${{ github.workspace }}/candor-java

@@ -586,7 +586,18 @@ def write_sources(ws, cells):
 # present=False -> SKIP loudly; present=True & ok=False -> FAIL (present-but-broken).
 # =====================================================================================================
 def run(cmd, **kw):
-    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kw)
+    # CONFORMANCE_CMD_TIMEOUT (seconds), set by CI: a child that blocks would otherwise hang the whole job
+    # with no output until the job limit cancels it (measured 2026-11-06: PART 104 sat silent 128 min on
+    # ubuntu, twice). With it set, the stuck command is NAMED and the generator fails instead.
+    t = os.environ.get("CONFORMANCE_CMD_TIMEOUT")
+    if t and "timeout" not in kw:
+        kw["timeout"] = float(t)
+    try:
+        return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kw)
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("TIMEOUT after %ss (CONFORMANCE_CMD_TIMEOUT): %s\n" % (kw.get("timeout"), " ".join(map(str, cmd))))
+        sys.stderr.flush()
+        raise
 
 
 def leaf_set(path, seps=(".", "::")):
