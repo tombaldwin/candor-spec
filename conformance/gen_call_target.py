@@ -165,6 +165,40 @@ def _wx_concrete_subclass(lang):
                                       "public func c_go() -> Int {\n  ENV\n  return run(Mine())\n}\n")}, "chain": ["api"]}
 
 
+def _wx_template_self(lang):
+    """The `this`-receiver twin of wx_concrete_subclass (SOUNDNESS R1512 = R1317 through `this`; FABLE-REVIEW
+    java-r1512 §2 last paragraph, §5 item 2). The dependency's concrete public TEMPLATE method `run` calls an
+    overridable member `step` on its OWN receiver; the consumer subclass overrides `step` with the effect and calls the
+    inherited `run` through a parameter typed by the DEPENDENCY's class, so the consumer's call site names only `run`
+    and the dispatch point is inside the dependency's body. Obligation 1 binds the producer to name `step` on `run`'s
+    row (the dispatch in its own body), and the subclass sentence makes `Sub` an implementor. `c_mk` instantiates
+    `Sub` so reachability cannot excuse it. EXECUTED (the override runs: `c_go(c_mk())` performs the read).
+    rust has no class inheritance; its twin is a PROVIDED trait method calling another PROVIDED method that the
+    consumer's impl overrides (`Tr::run` -> `self.step()`), which no other rust cell carries (wx_override's and
+    wx_consumer_impl's dispatched member is REQUIRED)."""
+    if lang == "rust":
+        return {"pkgs": {"api": ([], "pub trait Tr { fn step(&self) -> i32 { 0 } fn run(&self) -> i32 { self.step() + 1 } }\n"),
+                         "app": (["api"], "use api::Tr;\npub struct Sub;\nimpl Tr for Sub { fn step(&self) -> i32 { FS 2 } }\n"
+                                          "pub fn c_go(t: &dyn Tr) -> i32 { ENV t.run() }\n"
+                                          "pub fn c_mk() -> Box<dyn Tr> { Box::new(Sub) }\n")}, "chain": ["api"]}
+    if lang == "java":
+        return {"pkgs": {"api": ([], {"Tmpl": "package api;\npublic class Tmpl { public int run() { return step() + 1; } "
+                                              "protected int step() { return 0; } }\n"}),
+                         "app": (["api"], {"Sub": "package app;\npublic class Sub extends api.Tmpl { protected int step() { FS return 2; } }\n",
+                                           "App": JV_APP % ("public static int c_go(api.Tmpl t) { ENV return t.run(); } "
+                                                            "public static api.Tmpl c_mk() { return new Sub(); }")})},
+                "chain": ["api"]}
+    if lang == "ts":
+        return {"pkgs": {"api": ([], "export class Tmpl { step(): number { return 0; } run(): number { return this.step() + 1; } }\n"),
+                         "app": (["api"], 'import { Tmpl } from "api";\nexport class Sub extends Tmpl { step(): number { FS return 2; } }\n'
+                                          "export function c_go(t: Tmpl): number { ENV return t.run(); }\n"
+                                          "export function c_mk(): Tmpl { return new Sub(); }\n")}, "chain": ["api"]}
+    return {"pkgs": {"api": ([], "open class Tmpl { public init() {}\n  open func step() -> Int { 0 }\n  public func run() -> Int { step() + 1 } }\n"),
+                     "app": (["api"], "import Api\nfinal class Sub: Tmpl { override func step() -> Int { FS\n    return 2 } }\n"
+                                      "public func c_go(_ t: Tmpl) -> Int {\n  ENV\n  return t.run()\n}\n"
+                                      "public func c_mk() -> Tmpl { Sub() }\n")}, "chain": ["api"]}
+
+
 # ---- the three CONTROL cells (call-target round 2, FABLE-REVIEW §3.1/§3.2/§3.4). Every one is CLEAN by execution: the
 # effectful body exists, is reachable by NAME, and never runs. Each also renders a POSITIVE TWIN (`twin=True`): the
 # same program with the effect on the body that DOES run, or with the stored value invoked — executed, the effect
@@ -470,6 +504,10 @@ CELLS = [
     ("wx_concrete_subclass", "explicit · consumer-of-dependency · 1 · open class · chained", "assert",
      {"deny Env": 1, "deny Fs": 1}, _wx_concrete_subclass,
      "a consumer SUBCLASS overriding a dependency class's member is an implementor (§4 ⟨0.39⟩ subclass sentence)"),
+    ("wx_template_self", "explicit · consumer-of-dependency · 1 · open class, dispatch on the dependency's OWN receiver · chained",
+     "assert", {"deny Env": 1, "deny Fs": 1}, _wx_template_self,
+     "a dependency template method dispatching on `this` names the overridable member on its own row (§4 ⟨0.39⟩ "
+     "obligation 1), and the consumer subclass overriding it is an implementor (subclass sentence) — R1512"),
     ("wx_unrelated_override", "explicit · consumer-of-dependency · closed receiver, effectful `m` on an UNRELATED class · chained",
      "control", {"deny Env": 1, "deny Fs": 0}, _wx_override("unrelated"),
      "CONTROL: a class that is not a subtype of the key's abstraction is not an implementor of it — joining it by "
@@ -537,6 +575,16 @@ XFAIL = {
         "consumer subclass's override never joins; executed (the override runs)",
     ("wx_concrete_subclass", "ts"):
         "R1417 — SILENT: the dependency row is [] with no dispatchesOn for a concrete-class member (T7); executed",
+    # wx_template_self MEASURED 2026-11-08 against main checkouts (rust e911992, java 557ef84, swift 5d47ef6, ts
+    # f11c78e): rust and swift ASSERTED and pass (swift fails with CANDOR_R1416_OFF; rust fails when `dispatchesOn` is
+    # stripped from the producer's `Tr::run` row) — ~/candor-handoff/spec-p104-template-self/ is the evidence.
+    ("wx_template_self", "java"):
+        "R1317 (R1512) — SILENT: `Tmpl.run` dispatches `this.step()` on a public CONCRETE non-final dependency class and "
+        "names no member, so the consumer's `Sub.step` (executed) never joins; the row reads only `invisible:[api]` here "
+        "because this harness chains the bare report without its §2.2 sidecars, and with them (fx8) it has no ledger either",
+    ("wx_template_self", "ts"):
+        "R1417 — SILENT: the dependency's `Tmpl.run` row is [] with no dispatchesOn for the `this.step()` concrete-class "
+        "member, so the consumer's `Sub.step` (executed) never joins",
     ("r764", "ts"):
         "R764 — DIR=NOTSILENT at HEAD (no ts producer publishes a pure-only entry today): with the entry doctored in, "
         "chaining deletes the unchained owner's invisible and leaves the row silent",
