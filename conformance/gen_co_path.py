@@ -96,20 +96,6 @@ XFAIL = {
     ("h_tok_mid", "ts"):     "R1549 — candor-ts's gate splits inside the parameter list (measured 2026-11-09)",
     ("h_tok_last", "ts"):    "R1549 — the same split",
     ("h_tok_rs", "ts"):      "R1549 — the same split over a `::` disambiguator",
-    ("h_tok_mid", "swift"):  "R1549 — candor-swift's gate splits inside the parameter list",
-    ("h_tok_last", "swift"): "R1549 — the same split",
-    ("h_tok_rs", "swift"):   "R1549 — the same split over a `::` disambiguator",
-    # S arm, swift — its own scan-route matcher splits the same way.
-    ("tok", "swift"):        "R1549 — candor-swift's scan-route matcher splits `Box.act(Models.Inner.Rec)` into segments",
-    ("only_tok", "swift"):   "R1550 — `only callEff -> Inner` is satisfied by the parameter type: a FALSE GREEN",
-    # S arm, swift CHAINED — the consumer derives its join keys by splitting the producer's `fn` on `.` INSIDE the
-    # parameter list, so a member whose disambiguator names a qualified type gets no bare-path key: SILENT.
-    ("eff_caller_c[callEff]", "swift"):     "R1551 — the chained join misses `Box.act(Models.Inner.Rec)`: callEff reads [] and `deny Fs` exits 0",
-    ("eff_caller_c_rev[callEff]", "swift"): "R1551 — the same miss; order is irrelevant because nothing is joined",
-    ("stale[callEff]", "swift"):            "R1551 — the join never fires, so the §2.1 downgrade has nothing to downgrade",
-    ("eff_caller_c[freeEff]", "swift"):     "R1551 — the chained join misses `shell(Models.Inner.Rec)`: freeEff reads [] and `deny Fs` exits 0",
-    ("eff_caller_c_rev[freeEff]", "swift"): "R1551 — the same miss; order is irrelevant because nothing is joined",
-    ("stale[freeEff]", "swift"):            "R1551 — the join never fires, so the §2.1 downgrade has nothing to downgrade",
     # S arm, rust — candor-scan merges the pair into one unit (two byte-identical rows, the union's effects).
     ("units", "rust"):       "R1537 — candor-scan publishes the inherent/trait pair as ONE merged unit under the bare path",
     ("pure_caller[call_pure]", "rust"): "R1420 — (c): the caller of the pure inherent method is charged the trait member's Fs",
