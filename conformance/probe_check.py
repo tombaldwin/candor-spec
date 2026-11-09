@@ -288,13 +288,20 @@ COVERED = {
         "holds":  r"ACCEPTS: OK",
         "breaks": r"ACCEPTS: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 107 (SPEC §2/§6.2 ⟨0.42⟩ co-path units). The fault renders the effectful member WITHOUT its Fs, so the
+    # one-tree deny_bare/eff_caller cells and the chained eff cells go red, and seed_drop reports UNCALIBRATED.
+    "gen_co_path.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"CO-PATH: OK",
+        "breaks": r"CO-PATH: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 27
+COVERED_FLOOR = 28
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

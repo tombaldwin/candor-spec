@@ -25,6 +25,24 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.42⟩ AUTHORED, declared by no engine: CO-PATH UNITS (§2, under the ⟨0.40⟩ `(hash, fn)` bullet; §6.2
+  Scope matching), plus conformance PART 107. No floor move; reference-led — candor-java's main conforms
+  (`b79597b`, unreleased).** Several separately-written bodies under one fully-qualified path (an overload set; a
+  Rust inherent method beside a trait implementation of the same name; one trait implemented with different
+  arguments) are several units. EVERY member's `fn` is the bare path plus a disambiguator — a parenthesised group
+  that ends the name, engine-natural content, optionally `#<N>` — and none is spelled bare. Every scope matcher
+  keeps the disambiguator inside the last segment, so an old `deny E <path>` binds every member and a
+  parameter-type token binds nothing (no `only` permission is satisfied through one). A call naming only the bare
+  path resolves to the member the consumer proves or to the UNION of every entry with that bare path, never one
+  picked by order and never a miss. ⟨0.36⟩'s cfg arms stay one definition. NON-ADDITIVE, flips both ways once
+  candor-scan splits. Corrects the ⟨0.32⟩ sentence that called candor-scan's merged pair "two entries sharing
+  `fn`" (it is one merged unit printed twice). PART 107: an H arm (one hand-written report, four `gate --report`s)
+  and an S arm (rust, java, swift source fixtures, one tree and chained, with a reversed-producer arm, a
+  stale-version arm and a seed that deletes the effectful member and must flip the chained cell). java passes every
+  cell (jar 0.41.2, before `b79597b`, fails five — the matcher half shown able to fail). SOUNDNESS: R1550 (swift
+  `only` false green), R1551 (swift's chained join goes SILENT on a disambiguator naming a qualified type — a
+  cardinal sin), R1552 (ts accessor spelling, disclosed); R1537/R1548/R1549 updated (R1549 now includes ts).
+
 ## [0.41.3] — 2026-11-06
 
 - **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records the hedge candor-java 0.41.3

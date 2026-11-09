@@ -2978,10 +2978,10 @@
    "part": "PART 62"
   },
   {
-   "sha": "129801f93cab9251",
+   "sha": "6a2fd23ab05550fc",
    "at": "2. The report",
    "excerpt": "- ⟨0.32⟩ **A MULTI-REPORT VERDICT MUST BE COMPUTED OVER `hash`-KEYED UNITS, NEVER OVER BARE `fn`.** §2.2 alrea",
-   "part": "PART 63 (the hash-keyed join) + PART 68 (the verdict-row identity and its sort key — this block states TWO MUSTs, and PART 63 drives exit codes only: it never opens the verdict document, so the row half was marked covered by a part that cannot see it)"
+   "part": "PART 63 (the hash-keyed join) + PART 68 (the verdict-row identity and its sort key — this block states TWO MUSTs, and PART 63 drives exit codes only: it never opens the verdict document, so the row half was marked covered by a part that cannot see it). RE-ANCHORED 2026-11-09 (⟨0.42⟩): only the example sentence moved — it said an inherent method and a trait implementation 'emit two entries sharing `fn`', which candor-scan does only as one merged unit printed twice; it now points at co-path units. Both MUSTs are unchanged and re-read against PART 63/68"
   },
   {
    "sha": "e77e57323b5d905f",
@@ -3638,10 +3638,10 @@
    "part": "PART 99 (cells u-twins-billing, u-twins-ui, u-twins-net-billing)"
   },
   {
-   "sha": "eb7fc2ee9a8b9ba8",
+   "sha": "b93e44234463a55d",
    "at": "2. The report",
    "excerpt": "- **Two unit entries equal in BOTH fields are ONE unit and MUST be unioned** (⟨0.25⟩), never picked from: cand",
-   "part": "PART 99 (cells u-equal-env, u-equal-fs)"
+   "part": "PART 99 (cells u-equal-env, u-equal-fs). RE-ANCHORED 2026-11-09 (⟨0.42⟩): one sentence added saying this binds the CONSUMER and ⟨0.42⟩ binds the producer not to create equal entries from separately-written bodies; the consumer MUST is unchanged and still pinned by PART 99's u-equal cells"
   },
   {
    "sha": "77fad6fda8c6288a",
@@ -3996,6 +3996,60 @@
    "at": "6.2 The policy DSL (normative)",
    "excerpt": "**Its route is the report route, and what that cannot see is listed.** The verb answers over a report, so a `f",
    "part": "PART 106 (q13_forbid_unjudged and q23_adopt_beside_forbid: the forbid entry kept and listed in `unjudged`; q14_ignored_kept: listed in `ignored`; mutants nounjudged, prununjudged, pruneignored)"
+  },
+  {
+   "sha": "6efc5c708fd0178b",
+   "at": "2. The report",
+   "excerpt": "⟨0.42⟩ **CO-PATH UNITS: SEVERAL SEPARATELY-WRITTEN BODIES UNDER ONE FULLY-QUALIFIED PATH ARE SEVERAL UNITS, AN",
+   "part": "PART 107 (the lead-in: its definition of a co-path set is exercised by every S-arm fixture — a JVM overload set, a Swift overload set and free-function pair, a Rust inherent/trait pair; two traits' same-named members, trait/self-type arguments and private globals are named by the clause and have no cell yet — the rust lane adds them with its port)"
+  },
+  {
+   "sha": "6a882daefde9b71b",
+   "at": "2. The report",
+   "excerpt": "- **Each body is its own unit, and no member of the set is spelled with the bare path alone.** A producer MUST",
+   "part": "PART 107 (units, units_c — no entry spelled with the bare path, pairwise-distinct `fn`, a §2.2 sidecar key for EVERY member, pure included; java and swift pass, candor-scan xfails on R1537)"
+  },
+  {
+   "sha": "3d1992d030058042",
+   "at": "2. The report",
+   "excerpt": "- **The disambiguator is a parenthesised group that ENDS the `fn`, opened directly after the last segment's na",
+   "part": "PART 107 (gen_co_path.bare() implements the grammar and every S-arm cell keys on it; the H arm's `::` pair and JVM-dotted pair are the separator-bearing content). The corpus count in the block (2,565 reports, 20,589 trailing groups, none opening a segment) is a measurement record, not a row"
+  },
+  {
+   "sha": "cc2a84ec87e16d78",
+   "at": "2. The report",
+   "excerpt": "- **Every scope matcher MUST keep the disambiguator inside the LAST name-segment and never split inside it**, ",
+   "part": "PART 107 (H arm: h_bare_fs, h_bare_env, h_exact, h_exact_other, h_tok_first, h_tok_mid, h_tok_last, h_rs_bare, h_rs_tok_first, h_tok_rs four-way through `gate --report`; S arm: tok and only_tok on the scan route for java and swift)"
+  },
+  {
+   "sha": "4eae43b105f5bb73",
+   "at": "2. The report",
+   "excerpt": "- **A call that names only the bare path joins the UNION of the members, or the one member the consumer can pr",
+   "part": "PART 107 (eff_caller_c, eff_caller_c_rev — the producer's functions[] REVERSED, so a last-wins loader fails one order — and seed_drop, which deletes the effectful member and requires the chained cell to flip; java resolves exactly, swift unions on an unqualified disambiguator and xfails on R1551 on a qualified one). The chained pure-caller answer is printed, not asserted: the clause permits the union"
+  },
+  {
+   "sha": "fff38e2b2c3b057f",
+   "at": "2. The report",
+   "excerpt": "- **One definition is not a co-path set.** ⟨0.36⟩'s conditional-compilation arms, of which exactly one is buil",
+   "unenforced": "A SCOPE STATEMENT with one binding half and no row yet: the cfg-arm half restates ⟨0.36⟩ (PART 10/89 pin it); the macro half — distinct compiled bodies at one span are several units — has no PART 107 cell, because candor-scan publishes no co-path set at all today (R1537) and the per-type macro expansion is the rust lane's to build with its port (Fable §5 defect 2: R1537's SAMELOC 2,039 are classified by span alone). The accessor sentence is a measurement (R1552), not an obligation"
+  },
+  {
+   "sha": "847414781f94d0ba",
+   "at": "2. The report",
+   "excerpt": "- **Version skew ends in the union or a disclosure, never in a miss.** An OLDER producer publishes a co-path s",
+   "part": "PART 107 (stale — the producer report's `candor.version` changed, `deny Fs Unknown` must fire on the effectful caller; k_split / k_split_stale on rust — a producer report REWRITTEN to the ⟨0.42⟩ spelling read by today's consumer, same and other build). The old-gate half (fabrication only, `only` has no report route) is §6.2's own rule, not a new row"
+  },
+  {
+   "sha": "39bc19efa8c329bf",
+   "at": "2. The report",
+   "excerpt": "- *Who moves.* candor-java already splits and disambiguates overloads, resolves a chained call exactly from it",
+   "unenforced": "THE PER-RUNG ADDITIVITY NARRATIVE for ⟨0.42⟩ plus a port-status record (2026-11-09). What it asserts is what an UPGRADE does — a verdict moving BETWEEN two engine versions — and every conformance row measures ONE build; the per-engine status sentences are the PART 107 xfail table restated, and the xfail-register agreement gate keeps the table and the rows in step"
+  },
+  {
+   "sha": "98ef885dff18fc71",
+   "at": "6.2 The policy DSL (normative)",
+   "excerpt": "⟨0.42⟩ **A DISAMBIGUATOR IS PART OF THE LAST SEGMENT, AND ITS CONTENT IS NEVER A SEGMENT.** A co-path unit's `",
+   "part": "PART 107 (H arm, four-way through `gate --report`: h_bare_fs/h_rs_bare bind by the last-segment prefix, h_exact/h_exact_other bind one member exactly, h_tok_first/h_tok_mid/h_tok_last/h_rs_tok_first/h_tok_rs bind nothing; S arm tok/only_tok on java's and swift's scan routes, `only` being unanswerable from a report). Shown able to fail: candor-java 0.41.2 (before b79597b) fails h_tok_mid, h_tok_last, h_tok_rs, tok and only_tok"
   }
  ]
 }

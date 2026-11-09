@@ -3274,6 +3274,32 @@ echo "PART 106 — accepts: refresh/adopt accept lines as a proposed policy, jud
 # NOTE: ROUND 3, MEASURED 2026-11-03 against the lane heads (+6 rows: q31/q31b the SOLE refusal exits 2 on all four, rust answered; q32 a lone CR ends a line; q33/q33b an Unknown row with no reason class is written nowhere, java and ts proposed `Unknown[]`; q11b an unwritable fn, so `--engine swift` alone calibrates; +4 mutants). All four engines pass 40/40 once candor-rust, candor-java and candor-ts carry the fixes.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 reports q01's policy file as rewritten, so the no-in-place check reddens on every engine, implementing or not. Registered in probe_check.py (rust arm). The mutant table is the per-row demonstration that each over-accept row can fail.
 
+# PART 107 — CO-PATH UNITS, SPEC §2 ⟨0.42⟩ (under the ⟨0.40⟩ `(hash, fn)` bullet) and §6.2 Scope matching ⟨0.42⟩.
+#
+# Several separately-written bodies under one fully-qualified path (an overload set; a Rust inherent method beside a
+# trait implementation of the same name) are several units, each `fn` the bare path plus a parenthesised
+# disambiguator ending the name; no matcher splits inside it; a chained call naming only the bare path joins the union
+# of the members or the one it can prove, never one picked by order and never a miss. Two arms: H (one hand-written
+# report, four `gate --report`s — the matcher half, four-way) and S (a source fixture per engine with a co-path set,
+# one tree and chained, on the engine's own scan route). ts has no S arm: it has no co-path set (R1552). The rung is
+# AUTHORED, declared by no engine; candor-java conforms, every other engine's open cell is a declared xfail on a row.
+[ -f "$HERE/gen_co_path.py" ] || { echo "FAIL: gen_co_path.py is missing"; exit 2; }
+echo
+echo "[107] co-path units: every member its own disambiguated unit, the disambiguator never a segment, a bare-path call joins the union"
+P107_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_co_path.py"
+) || { P107_OK=1; rc=1; }
+[ "$P107_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on an h_* cell is a gate's matcher splitting inside (or failing to bind through) a disambiguator; on units/units_c a producer merging or bare-spelling a co-path set; on eff_caller_c/_rev/stale a chained consumer losing the effectful member (SILENT); on pure_caller a sibling's effect FABRICATED; on only_tok a permission satisfied through a parameter type (SILENT); on seed_drop the chained cells cannot fail; XFAIL ARM PASSED means a row was fixed and its xfail must be retired"
+echo "PART 107 — co-path units: several bodies under one path are several units, the disambiguator is never a segment, a bare-path call joins the union (SPEC §2 ⟨0.42⟩, §6.2 ⟨0.42⟩; SOUNDNESS R1537/R1548/R1549/R1550/R1551)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_co_path.py runs its controls in-process — h_bare_fs/h_rs_bare/h_exact are exit-1 cells every gate passes today, so a gate whose zero-exit cells pass because it never read the report fails them; deny_bare and eff_caller fire on every S engine one-tree; every caller cell scopes `deny Env` on the row's own `fn` as a CARRIER; and seed_drop deletes the effectful member from the producer report and requires each chained eff cell that read 1 to read 0, so the chained cells are shown to read the producer (an engine with no live chained cell FAILS as uncalibrated).
+# NOTE: MEASURED 2026-11-09 against the engine mains (candor-rust ab8554c, candor-java b79597b jar 0.41.3 on JDK 21, candor-ts f11c78e, candor-swift cd9b919): java passes every cell; with the pre-fix jar 0.41.2 its h_tok_mid, h_tok_last, h_tok_rs, tok and only_tok cells FAIL (the R1548/R1549 shape), which is the matcher half shown able to fail. candor-scan publishes the inherent/trait pair as two byte-identical entries `m::S::act` at the inherent's span charged Fs (units xfail R1537) and charges the pure inherent's caller (R1420 (c)); its consumer, handed a producer report REWRITTEN to the ⟨0.42⟩ spelling, still charges the trait member's caller (through the trait's union entry) and discloses `Unknown[dispatch]` on the inherent's — not silent (k_split). candor-swift's chained consumer goes SILENT when the effectful overload's parameter type is qualified (`Box.act(Models.Inner.Rec)`: callEff reads [] chained, `deny Fs` exit 0, R1551) and joins by union when it is not (`Pad.put(String)`); its `only callEff -> Inner` exits 0 (R1550). INFO lines print the chained pure-caller answer, which the clause does not pin (the union is permitted).
+# CALIBRATED: CANDOR_PROBE_FAULT=1 renders the effectful member WITHOUT its Fs, so units, deny_bare, eff_caller, eff_caller_c and stale go red and seed_drop reports UNCALIBRATED (measured on java: 8 cells, exit 1). Registered in probe_check.py (java arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

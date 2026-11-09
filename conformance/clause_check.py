@@ -77,6 +77,7 @@ GENERATORS = [
     "gen_call_target.py",
     "gen_accept.py",
     "gen_accept_refresh.py",
+    "gen_co_path.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

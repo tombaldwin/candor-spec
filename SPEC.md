@@ -1397,8 +1397,12 @@ already carry.
   `policy ✓` — the filter read the sibling's Unknown-class set through the name join and tolerated. The
   same join was measured charging one member's function with a class it inherits from another's. A
   FALSE GREEN produced by adding a report, which is why this is a MUST and not a SHOULD.
-  Names legitimately repeat across packages, and they are not unique even WITHIN one report: an inherent
-  method and a trait implementation of the same name emit two entries sharing `fn`. So the unit of a
+  Names legitimately repeat across packages, and a bare path is not unique even WITHIN one report: two
+  modules' same-named functions can share a `hash` (the ⟨0.40⟩ bullet below), and an overload set or a Rust
+  inherent method beside a trait implementation of the same name shares one fully-qualified path (⟨0.42⟩
+  CO-PATH UNITS, below — each is its own unit with its own `fn`; ⟨2026-11-09, SOUNDNESS R1537⟩ *this sentence
+  said such a pair "emit[s] two entries sharing `fn`", which candor-scan does only as one MERGED unit printed
+  twice, so it described a merge as if it were two units*). So the unit of a
   verdict is the `hash`-identified unit, and a verdict row MUST carry enough identity for a consumer to
   tell two units apart — a row a reader cannot attribute to a package is not actionable, and a consumer
   that fingerprints on name alone (candor's own SARIF action did) silently hides one finding behind
@@ -1425,7 +1429,8 @@ already carry.
   - **Two unit entries equal in BOTH fields are ONE unit and MUST be unioned** (⟨0.25⟩), never picked from:
     candor-scan emits byte-identical rows for macro-expanded impls at one span (measured: 876 of 1,790
     corpus reports), and those are several functions sharing one identity. `interfaceUnion: true` entries are
-    not unit entries and are never merged into one (§3.1, the union-entry clause).
+    not unit entries and are never merged into one (§3.1, the union-entry clause). This binds the CONSUMER of
+    such entries; ⟨0.42⟩ below binds the PRODUCER not to create them from separately-written bodies.
   - An entry with no `hash` is keyed by `fn` alone — the single-report route, where `hash` is a decoration
     (§3.1). A verdict row carries both fields when the entry has both.
 
@@ -1435,6 +1440,80 @@ already carry.
   `gate --report` and candor-java's key units by `hash` alone — *both directions*: violations added (0 → 1),
   fabricated violations removed (1 → 0), and refusals added where a twin's reason classes were borrowed. That
   route is latent today: the umbrella dispatcher routes a report to its own engine's gate.
+
+  ⟨0.42⟩ **CO-PATH UNITS: SEVERAL SEPARATELY-WRITTEN BODIES UNDER ONE FULLY-QUALIFIED PATH ARE SEVERAL UNITS,
+  AND EVERY ONE OF THEM CARRIES A DISAMBIGUATOR IN ITS `fn`** (SOUNDNESS R1537, R1548–R1551; pinned by
+  conformance PART 107). The bullet above lets distinct units share a `hash`; this is its mirror, and the two are
+  kept together so they cannot drift: distinct units never share a `fn`. Where a language lets more than one body
+  sit under one fully-qualified path — an overload set (JVM, Swift); in Rust an inherent method beside a trait
+  implementation of the same name, two traits' same-named members on one type, or one trait implemented for one
+  type with different trait or self-type arguments; one global name declared privately in two files — the bodies
+  are a **co-path set**, and:
+  - **Each body is its own unit, and no member of the set is spelled with the bare path alone.** A producer MUST
+    NOT publish a co-path set as one merged entry, nor two of its bodies as entries equal in `(hash, fn)` (which the
+    bullet above then unions back into one unit). EVERY member spells its `fn` as the bare path followed by a
+    disambiguator — not only the second one written: a bare-path entry beside disambiguated siblings would let an
+    exact-key lookup stop at one body and never reach the rest. A unique name keeps its bare spelling
+    (`bank.Bank.solo`), so adding a sibling renames the existing body (§3's key-renumbering note already prices
+    this for candor-java's overloads).
+  - **The disambiguator is a parenthesised group that ENDS the `fn`, opened directly after the last segment's
+    name, optionally followed by a positional `#<N>`.** Its content is engine-natural and is not normalised across
+    engines: the parameter types (`HmacUtils.hmac(byte[])`, `bank.Bank.pay(ua.user.User)` where simple names
+    collide, `shellOut(String)`), and for Rust whatever names the impl (the trait, its arguments, the self type's
+    arguments). `#<N>` (decimal) follows where the group alone still collides, or stands alone where a language
+    offers nothing better to name (candor-swift's `NAME#1` for a private global). The **bare path** of a `fn` is
+    the `fn` with its disambiguator removed. A parenthesised group that BEGINS a segment of its own — candor-scan's
+    tuple self type, `row::convert::(T1,T2)::from_row_opt` — is a path segment, not a disambiguator. Measured on the
+    2,565 reports on disk under the coordinator's handoff tree (2026-11-09): 20,589 distinct `fn`s end in a
+    parenthesised group, none of them opening a segment, and 984 carry a path separator inside it.
+  - **Every scope matcher MUST keep the disambiguator inside the LAST name-segment and never split inside it**,
+    whatever separators its content carries (§6.2 Scope matching ⟨0.42⟩). So a scope that named the path before
+    the split still binds every member by the last-segment prefix (`deny Fs bank.Bank.pay` binds
+    `bank.Bank.pay(ua.user.User)`), a scope written WITH a disambiguator binds that member only, and a token
+    inside a disambiguator binds nothing: `deny Fs user` does not fire on a function that merely takes a
+    `ua.user.User`, and `only app -> user` does not permit a call into `bank`. The second is the silent direction —
+    a permission satisfied through a parameter type is a false green (EXECUTED: candor-java's scan route before
+    `b79597b`, R1548; candor-swift's today, R1550).
+  - **A call that names only the bare path joins the UNION of the members, or the one member the consumer can prove
+    it reaches.** A consumer whose call site cannot spell the disambiguator — Rust's `x.act()` against an
+    inherent/trait pair, Swift's `shellOut(to:)` against a dependency's overloads, any consumer that does not
+    resolve the dependency's parameter types — MUST derive the bare path of every chained entry and resolve the
+    call to the member it can prove, or else to the union of every entry whose bare path equals the call's (⟨0.25⟩,
+    §2 rule 1); it MUST NOT pick one member by order, and a miss on the members' keys MUST NOT read as purity (§2
+    rule 3). Deriving the bare path is the same rule as the matcher's: a separator inside the disambiguator is not
+    a separator. The union is the over-approximation a merged producer entry already gave, so it never regresses
+    one; picking or missing is how the effectful member is lost. EXECUTED twice in candor-swift: 0.33.0 had no
+    bare-path key at all (R567 (b), `deny Fs` exit 0 over a call to an overloaded `shellOut`), and its fix derives
+    the bare path only from a disambiguator WITHOUT a separator inside it, so a consumer calling a dependency's
+    `Box.act(_ r: Models.Inner.Rec)` reads `[]` chained and `deny Fs` exits 0 (R1551) while the same text with an
+    unqualified parameter type joins.
+  - **One definition is not a co-path set.** ⟨0.36⟩'s conditional-compilation arms, of which exactly one is built,
+    are ONE definition behind one name and keep one `fn`. Distinct COMPILED bodies are a co-path set even when they
+    share a source span — a macro expanded once per type argument is several units, and sharing a span is not
+    evidence of being one. An accessor pair a language spells with its own keyword inside the last segment
+    (candor-ts's `Store.get x` / `Store.set x`) is two distinct paths, not a co-path set; a scope naming the bare
+    property (`Store.x`) binds neither and is disclosed by `zeroMatch` (§4) — measured, R1552.
+  - **Version skew ends in the union or a disclosure, never in a miss.** An OLDER producer publishes a co-path set
+    as one entry under the bare path, which a newer consumer's bare-path join reaches: the union, the answer the
+    merge always gave. A NEWER producer's disambiguated entries read by an older consumer come from a different
+    engine build, which §2.1 already makes that consumer downgrade to `Unknown` and grant no coverage — so no new
+    mechanism is added for that direction, and a consumer that does not honour §2.1's `version` comparison is
+    non-conformant there on its own account. A `gate --report` older than this rung reads a disambiguated report
+    with its old matcher, which errs only toward FABRICATION (a parameter-type token binds, R1549): `only` is
+    unanswerable from a report (§6.2), so the false green has no report route.
+  - *Who moves.* candor-java already splits and disambiguates overloads, resolves a chained call exactly from its
+    bytecode descriptor, and (since `b79597b`) keeps a parameter list whole in every matcher: it CONFORMS, and its
+    spelling is pinned as shipped. candor-swift splits and disambiguates overloads and unions a bare call
+    (R567 (b)), but its matcher splits inside a parameter list (R1549, R1550) and so does its chained key
+    derivation (R1551). candor-scan publishes an inherent/trait pair as ONE merged unit — two byte-identical entries
+    under the bare path, at the inherent method's span, charged the union of both bodies (measured, PART 107
+    `units`) — and must split it; candor-query's and candor-ts's matchers split inside a parameter list (R1549).
+    candor-ts has no co-path set: an overload declaration set has one body. **This rung FLIPS BOTH WAYS once
+    candor-scan splits**: a caller the merge charged with a sibling's effect loses it (1 → 0, R1420 (c)), each such
+    row under the release bar's truth-monotone check; a caller the merge read through a pure sibling gains the real
+    effect (0 → 1); and `accept` lines and `fn`-keyed baselines written against a merged `fn` go stale on the renamed
+    members (AS-EFF-012; §3's key-renumbering note). The matcher half moves fabrications 1 → 0 and the `only` false
+    green 0 → 1; the consumer half moves silent rows 0 → 1.
 
 - ⟨0.32⟩ **A CLASS THE SCAN DID NOT READ MAKES THE VERDICT INCOMPLETE.** An `excluded` entry with
   `peeked: false` and without `judgedElsewhere: true` (below) MUST suppress `ok` and exit 2, on BOTH the
@@ -6503,6 +6582,17 @@ four-way after a 2026-08-23 field report and was pinned by PART 64 with no claus
 implementation written from this document alone would rebuild the prefix-only matcher the form exists
 to escape — the reporter's remedy had been to delete the rule.*
 
+⟨0.42⟩ **A DISAMBIGUATOR IS PART OF THE LAST SEGMENT, AND ITS CONTENT IS NEVER A SEGMENT.** A co-path unit's `fn`
+ends in a parenthesised disambiguator (§2 ⟨0.42⟩, CO-PATH UNITS), whose content may carry the path separator
+(`bank.Bank.pay(ua.user.User)`, `Box.act(Models.Inner.Rec)`). Every matcher this section governs — `deny`, `pure`,
+`allow … in`, both sides of `forbid`, `only`'s `from` and its listed permitted scopes — MUST split a name only
+OUTSIDE its disambiguator, so the name above has the segments `bank`, `Bank`, `pay(ua.user.User)`: scope
+`bank.Bank.pay` binds it by the last-segment prefix, scope `bank.Bank.pay(ua.user.User)` binds it exactly, and
+scopes `ua`, `user` and `User` bind nothing. A scope is segmented by the same rule. Pinned four-way by PART 107's
+hand-written-report arm. ⟨2026-11-09, SOUNDNESS R1548, R1549⟩ *Every engine's matcher split the whole name on its
+separators, so `only app -> user` was satisfied by a callee in `bank` that takes a `ua.user.User` (a false green on
+candor-java's scan route, and on candor-swift's) and `deny Fs User` fired on it (a fabrication, four-way).*
+
 **Literal matching** (`allow`) is **per effect**: a `Net` host matches by hostname with the port ignored
 (`api.stripe.com` allows `api.stripe.com:443`); an `Exec` command matches by basename
 (`git` allows `/usr/bin/git`); an `Fs` path matches by **path-boundary-respecting prefix** (an allowed
@@ -7030,6 +7120,24 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.42 (AUTHORED 2026-11-09, declared by no engine yet; reference-led — candor-java's main already conforms
+  as of `b79597b`, unreleased; the floor rises when the last engine lands)** — a **NON-ADDITIVE** rung that FLIPS
+  BOTH WAYS, minor on the ⟨0.36⟩/⟨0.40⟩ precedent (no field added, removed or retyped): **CO-PATH UNITS** (§2,
+  under the ⟨0.40⟩ `(hash, fn)` bullet; §6.2 Scope matching). Several separately-written bodies under one
+  fully-qualified path — an overload set, a Rust inherent method beside a trait implementation of the same name,
+  one trait implemented with different arguments — are several units; EVERY member's `fn` is the bare path plus a
+  disambiguator, a parenthesised group that ends the name (engine-natural content, never normalised across
+  engines), optionally followed by a positional `#<N>`; no member is spelled bare. Every scope matcher keeps the
+  disambiguator inside the last segment and never splits inside it, so an old `deny E <path>` binds every member and
+  a parameter-type token binds nothing (no permission is ever satisfied through one). A consumer resolves a call that
+  names only the bare path to the member it can prove or to the UNION of every entry with that bare path — never to
+  one picked by order, never to a miss read as purity. ⟨0.36⟩'s cfg arms stay one definition; distinct compiled
+  bodies at one span do not. Version skew ends in the union (old producer) or §2.1's `Unknown` (new producer, old
+  consumer). Corrects the ⟨0.32⟩ sentence that described candor-scan's merged pair as two entries sharing `fn`.
+  Pinned by PART 107: java conforms; swift xfails on R1549 (matcher), R1550 (`only` false green) and R1551 (its
+  chained join goes SILENT on a disambiguator naming a qualified type); candor-scan xfails on R1537 (the pair is one
+  merged unit) and R1420 (c); the `gate --report` matchers of candor-query, candor-ts and candor-swift xfail on R1549. ts has no co-path
+  set (R1552 records its accessor spelling).
 - **0.41 (AUTHORED 2026-11-02, declared by no engine yet; reference-led — candor-java first, the floor rises
   when the last engine lands)** — a **tier-1 additive** rung: **`accept` lines for KNOWN policy violations**
   (§6.2). `accept <fn> [<Effect>…] for <rule tokens…> because <reason…>` names one verdict row by the RAW
