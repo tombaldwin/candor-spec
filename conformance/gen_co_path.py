@@ -93,9 +93,6 @@ XFAIL = {
     ("h_tok_mid", "rust"):   "R1549 — candor-query `name_segments` (policy.rs:880 / matching.rs:38) splits inside the parameter list",
     ("h_tok_last", "rust"):  "R1549 — the same split; `User` prefix-matches the segment `User)`",
     ("h_tok_rs", "rust"):    "R1549 — the same split over a `::` disambiguator; `Tr` prefix-matches `Tr)`",
-    ("h_tok_mid", "ts"):     "R1549 — candor-ts's gate splits inside the parameter list (measured 2026-11-09)",
-    ("h_tok_last", "ts"):    "R1549 — the same split",
-    ("h_tok_rs", "ts"):      "R1549 — the same split over a `::` disambiguator",
     # S arm, rust — candor-scan merges the pair into one unit (two byte-identical rows, the union's effects).
     ("units", "rust"):       "R1537 — candor-scan publishes the inherent/trait pair as ONE merged unit under the bare path",
     ("pure_caller[call_pure]", "rust"): "R1420 — (c): the caller of the pure inherent method is charged the trait member's Fs",
