@@ -372,7 +372,10 @@ fi
 JAR="${CANDOR_JAVA_JAR:-}"
 if [ -z "$JAR" ]; then
   echo "building candor-java…"
-  ( cd "$CANDOR_JAVA" && ./gradlew -q shadowJar ) 2>/dev/null \
+  # --no-daemon: the Gradle daemon is shared by every worktree on the box, and one started from a since-removed
+  # worktree baked git's error text into the jar's version (the --agents header, failing PART 1xx). A private JVM
+  # makes the build independent of whatever daemon state is lying around.
+  ( cd "$CANDOR_JAVA" && ./gradlew --no-daemon -q shadowJar ) 2>/dev/null \
     || { echo "FAIL: could not build candor-java (set CANDOR_JAVA or CANDOR_JAVA_JAR)"; exit 2; }
   JAR="$(ls -t "$CANDOR_JAVA"/build/libs/*-all.jar 2>/dev/null | head -1)"  # -t: newest, not lexicographic — a stale 0.3.2 jar must not shadow 0.3.3
 fi

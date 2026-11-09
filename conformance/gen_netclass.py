@@ -220,7 +220,7 @@ class JavaEngine(Engine):
             cands = _glob(os.path.join(CANDOR_JAVA, "build", "libs"), "-all.jar")
             if not cands:
                 print("  [java]  building candor-java (shadowJar)...")
-                b = run(["./gradlew", "-q", "shadowJar"], cwd=CANDOR_JAVA)
+                b = run(["./gradlew", "--no-daemon", "-q", "shadowJar"], cwd=CANDOR_JAVA)
                 if b.returncode != 0:
                     self.present, self.err = True, "gradlew shadowJar failed (set CANDOR_JAVA or CANDOR_JAVA_JAR)"
                     return

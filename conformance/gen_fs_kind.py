@@ -227,7 +227,7 @@ class JavaEngine(Engine):
         if not self.jar:
             cands = _glob(os.path.join(CANDOR_JAVA, "build", "libs"), "-all.jar")
             if not cands:
-                run(["./gradlew", "-q", "shadowJar"], cwd=CANDOR_JAVA)
+                run(["./gradlew", "--no-daemon", "-q", "shadowJar"], cwd=CANDOR_JAVA)
                 cands = _glob(os.path.join(CANDOR_JAVA, "build", "libs"), "-all.jar")
             self.jar = max(cands, key=os.path.getmtime) if cands else None
         if not self.jar or not os.path.exists(self.jar) or not shutil.which("javac"):
