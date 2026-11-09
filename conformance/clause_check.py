@@ -78,6 +78,7 @@ GENERATORS = [
     "gen_accept.py",
     "gen_accept_refresh.py",
     "gen_co_path.py",
+    "gen_dep_sources.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

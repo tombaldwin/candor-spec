@@ -3300,6 +3300,30 @@ echo "PART 107 — co-path units: several bodies under one path are several unit
 # NOTE: MEASURED 2026-11-09 against the engine mains (candor-rust ab8554c, candor-java b79597b jar 0.41.3 on JDK 21, candor-ts f11c78e, candor-swift cd9b919): java passes every cell; with the pre-fix jar 0.41.2 its h_tok_mid, h_tok_last, h_tok_rs, tok and only_tok cells FAIL (the R1548/R1549 shape), which is the matcher half shown able to fail. candor-scan publishes the inherent/trait pair as two byte-identical entries `m::S::act` at the inherent's span charged Fs (units xfail R1537) and charges the pure inherent's caller (R1420 (c)); its consumer, handed a producer report REWRITTEN to the ⟨0.42⟩ spelling, still charges the trait member's caller (through the trait's union entry) and discloses `Unknown[dispatch]` on the inherent's — not silent (k_split). candor-swift's chained consumer goes SILENT when the effectful overload's parameter type is qualified (`Box.act(Models.Inner.Rec)`: callEff reads [] chained, `deny Fs` exit 0, R1551) and joins by union when it is not (`Pad.put(String)`); its `only callEff -> Inner` exits 0 (R1550). INFO lines print the chained pure-caller answer, which the clause does not pin (the union is permitted).
 # CALIBRATED: CANDOR_PROBE_FAULT=1 renders the effectful member WITHOUT its Fs, so units, deny_bare, eff_caller, eff_caller_c and stale go red and seed_drop reports UNCALIBRATED (measured on java: 8 cells, exit 1). Registered in probe_check.py (java arm).
 
+# PART 108 — TYPING A VALUE FROM A DEPENDENCY'S OWN SOURCE, `dependencySources`, SPEC §2 ⟨0.42⟩. [TIER 1]
+#
+# An engine MAY type an UNCHAINED dependency's value from the dependency's source — only the version the lockfile pins,
+# only when that source is present, adding only — and records every source read in the top-level `dependencySources`.
+# S arm (rust): a hermetic CARGO_HOME registry plus a path dependency, six consumers differing only in manifest/lock,
+# the adding-only monotonicity check with its seed, cross-home byte identity, and a chained producer carrying the key.
+# H arm (four-way): one hand-written report with the key through every engine's `gate --report`.
+[ -f "$HERE/gen_dep_sources.py" ] || { echo "FAIL: gen_dep_sources.py is missing"; exit 2; }
+echo
+echo "[108] dependency sources: lock-pinned and present only, adding only, every read recorded; every reader ignores the key"
+P108_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_dep_sources.py"
+) || { P108_OK=1; rc=1; }
+[ "$P108_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on pin_reg/pin_path/twin is a lock-pinned present source that typed nothing or was not recorded; on absent_ver/no_lock a charge from a source the lock does not pin (a semver guess); on twin's Fs/edge a same-leaf local type answering for the dependency's; on mono a source reading that WITHDREW something; on mono_seed the subset checker cannot fail; on det a report that depends on where the source lives; on chain_tol or h_tol a reader that does not ignore the key"
+echo "PART 108 — dependency sources: an unchained dependency's value typed from its lock-pinned source, adding only, recorded (SPEC §2 ⟨0.42⟩; SOUNDNESS R1578)"
+# ENGINES: rust java ts swift
+# CONTROLS: mono_seed h_tol — mono_seed runs the subset checker in the REVERSE direction and requires it to find the difference, so `mono` is shown able to fail; h_tol's plain report is the exit-1 control every gate must fire on, so the with-key cell cannot pass by reading nothing; pin_reg is the charged control for absent_ver/no_lock (identical consumer text), and chain_tol fails a DEAD JOIN (chained report equal to the unchained one).
+# NOTE: java, ts and swift run the H arm only — java reads bytecode and ts asks the type checker, so neither types a dependency value from its source, and candor-swift does not today (SPEC §2 ⟨0.42⟩ records them NOT APPLICABLE). MEASURED 2026-11-09: candor-rust lane/rust-vein 1a8f88e passes all 14 cells (with candor-java 60258ff jar 0.41.3, candor-ts f11c78e, candor-swift eeefa55); candor-rust main 73a38f0 FAILS pin_reg, pin_path, twin (f untyped: `deny Net f` exit 0, no field), mono_seed (nothing to differ) and det (both homes type nothing).
+# CALIBRATED: CANDOR_PROBE_FAULT=1 deletes the registry checkouts and strips the Net from the H report carrying the key, so pin_reg, twin, mono_seed, det and h_tol go red (measured on the lane binary: 5 cells). Registered in probe_check.py (java arm, H only).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

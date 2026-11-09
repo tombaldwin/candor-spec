@@ -4050,6 +4050,54 @@
    "at": "6.2 The policy DSL (normative)",
    "excerpt": "⟨0.42⟩ **A DISAMBIGUATOR IS PART OF THE LAST SEGMENT, AND ITS CONTENT IS NEVER A SEGMENT.** A co-path unit's `",
    "part": "PART 107 (H arm, four-way through `gate --report`: h_bare_fs/h_rs_bare bind by the last-segment prefix, h_exact/h_exact_other bind one member exactly, h_tok_first/h_tok_mid/h_tok_last/h_rs_tok_first/h_tok_rs bind nothing; S arm tok/only_tok on java's and swift's scan routes, `only` being unanswerable from a report). Shown able to fail: candor-java 0.41.2 (before b79597b) fails h_tok_mid, h_tok_last, h_tok_rs, tok and only_tok"
+  },
+  {
+   "sha": "8f7f1cd175ac55c1",
+   "at": "2. The report",
+   "excerpt": "⟨0.42⟩ **Typing a value from a dependency's own source — `dependencySources`** (SOUNDNESS R1578; pinned by con",
+   "part": "PART 108 (the lead-in: its MAY is exercised by pin_reg/pin_path, an unchained dependency's factory value typed from its source on candor-scan; java/ts/swift are NOT APPLICABLE and run the H arm only)"
+  },
+  {
+   "sha": "994e0ed217c5b881",
+   "at": "2. The report",
+   "excerpt": "- **ONLY THE SOURCE THE PROJECT'S LOCKFILE PINS, AND ONLY WHEN THAT SOURCE IS PRESENT.** That means a registry",
+   "part": "PART 108 (pin_reg, pin_path — registry and path origins typed; absent_ver — a lock pinning a version that is not present types nothing although a semver-compatible checkout is; no_lock — a lockless tree types nothing). The SHOULD (registry identity / checksum) and the more-than-one-version refusal have no cell"
+  },
+  {
+   "sha": "ad47756ae83509d5",
+   "at": "2. The report",
+   "excerpt": "- **THE READING MAY ONLY ADD.** It may add a charge, an edge into the dependency's own code, an `invisible` or",
+   "part": "PART 108 (mono — the source-absent report is a subset of the source-present one unit by unit over inferred/invisible/incomplete, with mono_seed proving the checker can fail; twin — a consumer-declared same-leaf `Context` gets no edge and no Fs). Monotonicity is checked over the PART's fixtures, not universally"
+  },
+  {
+   "sha": "aecce5e050f25f00",
+   "at": "2. The report",
+   "excerpt": "- **EVERY SOURCE READ TO TYPE A VALUE IS RECORDED** as a top-level array:",
+   "part": "PART 108 (pin_reg, pin_path, twin — the array's required members and values; ds_check rejects any member beyond package/version/origin/typed)"
+  },
+  {
+   "sha": "33029d24c001e7e7",
+   "at": "2. The report",
+   "excerpt": "There is one element per package, ordered by `package` in code-point order. A source that was opened and typed",
+   "part": "PART 108 (none — a lock-pinned present source that typed nothing leaves NO key; absent_ver/no_lock — no key; ds_check checks the order and that `typed`, when present, is an integer >= 1; h_tol — every engine's gate ignores the key and a `typed` member). The no-path rule is checked by det. The consumer MUST NOT gate on `typed` is pinned only as h_tol's identical verdict"
+  },
+  {
+   "sha": "a8c84f4038ef49d7",
+   "at": "2. The report",
+   "excerpt": "- **THE REPORT IS A FUNCTION OF THE TREE AND OF THE PINNED SOURCES PRESENT, AND OF NOTHING ELSE.** Two scans b",
+   "part": "PART 108 (det — one tree under two CARGO_HOMEs at different paths with different registry index names gives byte-identical reports, neither carrying a home path; mono's absent arm is the machine lacking the source)"
+  },
+  {
+   "sha": "979afc3dfc1af0d1",
+   "at": "2. The report",
+   "excerpt": "**Why this is permitted when ⟨0.32⟩ forbids the tree's own build metadata from choosing a derivation's inputs.",
+   "unenforced": "RATIONALE reconciling the clause with ⟨0.32⟩ and recording the owner ruling. Its one obligation, adding-only, is the bullet above and is exercised by PART 108 mono/twin"
+  },
+  {
+   "sha": "d1b6552f84e0cda1",
+   "at": "2. The report",
+   "excerpt": "**What the permission does NOT cover**, recorded so it is a decision rather than a discovery. A reading that W",
+   "unenforced": "A SCOPE STATEMENT recording two non-conformances as decisions still to be made (candor-scan's conversion-witness narrowing, R1165/R1192, withdraws Unknown from a semver-chosen source; the opt-in CANDOR_R1580 floor), and java/ts/swift NOT APPLICABLE. A row would pin an opt-in mode or a pre-existing behaviour the clause names as open; the coordinator files the row"
   }
  ]
 }

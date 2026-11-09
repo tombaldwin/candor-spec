@@ -295,13 +295,20 @@ COVERED = {
         "holds":  r"CO-PATH: OK",
         "breaks": r"CO-PATH: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 108 (SPEC §2 ⟨0.42⟩ dependencySources). The fault strips the Net from the H report carrying the key, so
+    # h_tol reddens on every engine (it also deletes the registry checkouts, which reddens rust's S arm).
+    "gen_dep_sources.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"DEP-SOURCES: OK",
+        "breaks": r"DEP-SOURCES: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 28
+COVERED_FLOOR = 29
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

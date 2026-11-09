@@ -43,6 +43,14 @@ Run it after any patch-cycle commit that adds a section here.
   `only` false green), R1551 (swift's chained join goes SILENT on a disambiguator naming a qualified type — a
   cardinal sin), R1552 (ts accessor spelling, disclosed); R1537/R1548/R1549 updated (R1549 now includes ts).
 
+- **SPEC ⟨0.42⟩ also gains `dependencySources` (§2; tier-1 additive, optional), plus conformance PART 108.** An engine
+  MAY type an unchained dependency's value from the dependency's own source, but only from the version the project's
+  lockfile pins and only when that source is present. The reading may only ADD charges. Every source read is recorded
+  as a top-level `dependencySources` array of `{package, version, origin}`, omitted when empty. This reconciles the
+  rust behaviour with ⟨0.32⟩, whose paragraph gains a cross-reference. PART 108 runs a hermetic Cargo registry and
+  path dependency through candor-scan, and checks that every engine's `gate --report` ignores the new key. Its rust
+  arm fails on candor-rust main `73a38f0` and passes on the change it pins (SOUNDNESS R1578).
+
 ## [0.41.3] — 2026-11-06
 
 - **No change to SPEC.md** — the ⟨0.41⟩ contract is unchanged. SOUNDNESS: R1461 records the hedge candor-java 0.41.3

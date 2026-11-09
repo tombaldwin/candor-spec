@@ -792,6 +792,66 @@ here turns `deny Env Unknown` 1 → 0 over a real `Env`. In Rust a declared type
 nominal subtyping), so the risk is a producer defect, and PART 95 `p1_holds` checks the declared value
 itself, not merely that one is present.
 
+⟨0.42⟩ **Typing a value from a dependency's own source — `dependencySources`** (SOUNDNESS R1578; pinned by
+conformance PART 108). Everything above types a dependency's value from a CHAINED report. Where the
+dependency is not chained, a consumer that reads source cannot type the value at all: in
+`let js = dep::jetstream::new(c); js.query_account()` the method reaches no rule, and the caller reads its
+`invisible` disclosure or nothing. An engine MAY type such a value — a factory's return, and the steps after
+it — from the dependency's own SOURCE, and if it does, all four rules below bind it.
+
+- **ONLY THE SOURCE THE PROJECT'S LOCKFILE PINS, AND ONLY WHEN THAT SOURCE IS PRESENT.** That means a
+  registry checkout of exactly the locked package and version, or a path dependency whose own manifest
+  declares the locked version. It never means a semver-compatible checkout, a version the lockfile does not
+  name, a tree with no lockfile, or a package the lockfile locks at more than one version (which version a
+  spelling names is the manifest's to say, not the engine's to guess). An engine SHOULD also establish
+  that the checkout came from the source the lockfile names (its registry, its checksum). One that matches
+  on name and version alone can read another registry's checkout of the same name, and the next rule is
+  what bounds the cost of that to an over-charge.
+- **THE READING MAY ONLY ADD.** It may add a charge, an edge into the dependency's own code, an `invisible`
+  or an `Unknown`. It MUST NOT withdraw any effect, `Unknown`, `invisible` or `incomplete` that the same
+  engine reports for the same tree when the source is absent. It MUST NOT route the call to a definition
+  the consumer declares that merely shares the type's leaf name: a consumer's own `struct Context` never
+  answers for the dependency's `Context`. As a test this is monotonicity: for every unit, each surface of
+  the report scanned with the source absent is a subset of the same surface with it present (PART 108
+  `mono`, `twin`).
+- **EVERY SOURCE READ TO TYPE A VALUE IS RECORDED** as a top-level array:
+
+      "dependencySources": [ { "package": "<name as the lockfile spells it>", "version": "<locked version>",
+                               "origin": "registry" | "path" }, … ]
+
+  There is one element per package, ordered by `package` in code-point order. A source that was opened and
+  typed nothing is not listed. The field is OMITTED when empty, so a report that read nothing is
+  byte-identical to a pre-rung one. No path is recorded: where a checkout lives belongs to the machine, not
+  to the tree. An element MAY carry `"typed": <n>`, n ≥ 1, the number of call sites typed through it. That
+  count is informative only and comparable only within one engine version, and a consumer MUST NOT gate on
+  it. What reproduces a report is the identity of its inputs, which the three required members give.
+- **THE REPORT IS A FUNCTION OF THE TREE AND OF THE PINNED SOURCES PRESENT, AND OF NOTHING ELSE.** Two scans
+  by one engine version, of one tree, with the same lock-pinned sources present, produce byte-identical
+  reports wherever those sources are installed (PART 108 `det`). This is ⟨0.24⟩'s determinism premise with
+  the second input named rather than ambient. A machine that lacks a source gives the pre-rung answer for
+  the sites it would have typed. Its gate can therefore be GREENER than the same gate on a machine that has
+  the source, and its report, with the field shorter or absent, is what shows the difference. A gate that
+  must answer the same everywhere fetches the locked sources first (`cargo fetch`).
+
+**Why this is permitted when ⟨0.32⟩ forbids the tree's own build metadata from choosing a derivation's
+inputs.** ⟨0.32⟩'s reason is that such a choice lets an artifact certify itself innocent. A lockfile-chosen
+source that may only ADD cannot make the tree read cleaner: a wrong or hostile lockfile can only over-charge
+or type nothing. So the adding-only rule is the condition of the permission, not a refinement of it. The
+record is ⟨0.32⟩'s "provenance disclosed", carried in the report. (Owner ruling, 2026-11-09: lock-pinned
+only, no semver guessing, record the sources consulted.)
+
+**What the permission does NOT cover**, recorded so it is a decision rather than a discovery. A reading that
+WITHDRAWS a hedge on the strength of a dependency's source is not licensed here. candor-scan's
+conversion-witness narrowing (SOUNDNESS R1165/R1192) withdraws `Unknown` using a source chosen by the
+manifest's semver requirement, and records nothing. It predates this clause, and it is the open half of
+⟨0.32⟩'s concern. The same rule applies to an opt-in residual disclosure for an untyped dependency value,
+such as candor-scan's `CANDOR_R1580=1`, which is off by default. Where a source reading replaces that
+disclosure's `Unknown`, or withholds it, the absent-source report carries an `Unknown` the present-source
+report lacks. That fails the adding-only rule, so such a mode does not conform while it does so. java and
+ts are NOT APPLICABLE: java reads bytecode, whose classpath ⟨0.32⟩ governs, and candor-ts asks the type
+checker. Neither types a dependency value by reading the dependency's source. candor-swift does not type
+from dependency source today, and these rules bind it if it starts.
+
 **Spec extensions** ⟨0.13⟩. An engine that classifies effects from a **spec extension** (§"Versioning
 policy" — an ecosystem-specific effect surface led by the motivated engine, e.g. the candor-swift
 `privacy/1` Apple-sensor cluster) MUST disclose the active extensions in the envelope as
@@ -1615,6 +1675,11 @@ already carry.
   inputs that shape its own derived bytecode — an artifact could compile itself innocent. An operator
   declaration puts that choice with the operator, where a wrong version is a wrong declaration in the
   same class as a wrong `net-partner` list, rather than something the engine silently picked.
+
+  ⟨0.42⟩ *One reading of the tree's own lockfile is permitted, and it is not a derivation:* §2's
+  `dependencySources` lets an engine type an UNCHAINED dependency's value from the source the lockfile pins,
+  on the condition that the reading may only ADD, and records every source read. Restricted that way, a
+  wrong lockfile can only over-charge, so the tree cannot use it to read itself innocent.
 
   *Reported as the derived class's own name, never as the analysed one: the operator asked about
   `src/com/x/Deploy.java`, and a finding filed under a scratch directory names a file they cannot open.*
@@ -7138,6 +7203,15 @@ declare it via the envelope's `spec`.
   chained join goes SILENT on a disambiguator naming a qualified type); candor-scan xfails on R1537 (the pair is one
   merged unit) and R1420 (c); the `gate --report` matchers of candor-query, candor-ts and candor-swift xfail on R1549. ts has no co-path
   set (R1552 records its accessor spelling).
+  ⟨0.42⟩ also carries one **tier-1 ADDITIVE** clause, independent of the co-path rule: **TYPING A VALUE FROM A
+  DEPENDENCY'S OWN SOURCE — `dependencySources`** (§2, after the ⟨0.40⟩ type-surface rules; SOUNDNESS R1578). An
+  engine MAY type an UNCHAINED dependency's value from that dependency's source, but only from the version the
+  lockfile pins and only when that source is present. The reading may only ADD: it never withdraws an effect,
+  `Unknown`, `invisible` or `incomplete` the source-absent scan carries, and never routes to a same-leaf local
+  definition. Every source read is recorded in the optional top-level `dependencySources` array (`package`,
+  `version`, `origin`; an informative `typed` count MAY ride along), omitted when empty. Reconciled with ⟨0.32⟩,
+  which gains a cross-reference. Pinned by PART 108 (rust S arm; four-way reader tolerance), which passes on
+  candor-rust `lane/rust-vein` `1a8f88e` and fails on main `73a38f0`.
 - **0.41 (AUTHORED 2026-11-02, declared by no engine yet; reference-led — candor-java first, the floor rises
   when the last engine lands)** — a **tier-1 additive** rung: **`accept` lines for KNOWN policy violations**
   (§6.2). `accept <fn> [<Effect>…] for <rule tokens…> because <reason…>` names one verdict row by the RAW
