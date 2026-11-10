@@ -4142,7 +4142,7 @@
    "part": "PART 109 (a_named, unconsulted, default_val for java's value semantics, seed_a) RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
   },
   {
-   "sha": "e7dc92ed81ac9ea2",
+   "sha": "baae9a2467bf2fed",
    "at": "3.4 The configuration file — `.candor/config` (S",
    "excerpt": "- **(c) A GATE EVALUATED UNDER A SET SWITCH IS UNANSWERABLE: exit 2, the §3.1 refusal document, the fifth §3.3",
    "part": "PART 109 (c_scan — exit 2 and the refusal document under a switch in the gate's own environment, h_ref — `gate --report` over a report carrying `switches`, seed_c — the refusal checker can pass and can fail). The advisory verbs that answer `ok` are not pinned by a row RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."

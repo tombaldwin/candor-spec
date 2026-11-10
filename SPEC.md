@@ -5146,7 +5146,10 @@ needs a shape for the same reason: *a MUST with no shape is an invitation to div
   keyed on the walk and this one on a report that exists. Both routes
   produce the same document: `gate --report` over a report a switched scan produced refuses as `scan --policy` did,
   because §3.1's byte-equality is quantified over *any report a scan produced*, and a scan that refused on (i) only
-  would split the verb. The advisory verbs that answer `ok` follow it, as they follow every cause (⟨0.33⟩). It is
+  would split the verb. The advisory verbs that answer `ok` follow it, as they follow every cause (⟨0.33⟩): they refuse with the same
+  document and exit 2 whether or not `--strict` is given, because a verb that answered over a switched report would
+  accept what the gate refuses, and an advisory verb may be less certain than the gate, never more (§3.3.1). `fix`,
+  which answers no `ok`, is not bound by this sentence. It is
   derived, not quoted: §3.1's rule says "disclosed, never scored", and the engine-pin clause answers a MISMATCH
   between the engine and the contract with exit 2 (*"the run is unevaluable, not violating"*). A switched engine is
   that mismatch one level down. The pin's other branch, where the producer cannot determine its OWN version, keeps

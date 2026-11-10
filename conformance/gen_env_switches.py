@@ -101,7 +101,9 @@ _C = "R1634 — a gate under a set switch scores the run (exit 1/0) instead of r
 _H = "R1634 — `gate --report` over a report carrying `switches` judges it instead of refusing with exit 2"
 _D = "R1634 — a chained report carrying `switches` is gated silently: no advisory names the switch on stderr"
 XFAIL = {}
-for _e in ENGINES:
+# Engines whose R1634 port has landed: their cells are pinned, not xfailed.
+PORTED = {"ts"}
+for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("a_named", _e)] = _A % SWITCH[_e]
     XFAIL[("c_scan", _e)] = _C
     XFAIL[("h_ref", _e)] = _H
@@ -109,7 +111,7 @@ for _e in ("rust", "java"):
     XFAIL[("d_adv", _e)] = _D
     XFAIL[("d_key", _e)] = "R1634 — the consumer's verdict carries no `switchedDependencies`, so a machine consumer cannot see the chained input was switched"
 XFAIL[("two_sw", "rust")] = "R1634 — the report names no switch, so neither of the two set switches appears"
-for _e in ENGINES:
+for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("c_report", _e)] = "R1634 — the refused policy run's report does not carry `switches` (the report is where a harness attributes, and what gate --report is bound to answer over)"
     XFAIL[("h_verb", _e)] = "R1634 — `unverified --report` over a report carrying `switches` certifies it instead of refusing as the gate does (⟨0.33⟩ siblings)"
 
