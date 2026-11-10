@@ -97,6 +97,18 @@ NONE_SRC = ("pub fn g() -> u8 { 1 }\n"
             "pub fn h() -> String { std::env::var(\"X\").unwrap_or_default() }\n")
 
 
+# A real cargo home keeps the downloaded .crate beside the extracted checkout; its SHA-256 is the lock's checksum.
+CRATE_BYTES = b"candor PART 108 stand-in .crate for async-nats 0.49.0\n"
+CRATE_SHA = __import__("hashlib").sha256(CRATE_BYTES).hexdigest()
+
+
+def crate_cache(home, index):
+    d = os.path.join(home, "registry/cache", index)
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "async-nats-0.49.0.crate"), "wb") as fh:
+        fh.write(CRATE_BYTES)
+
+
 def app(root, name, req, lock, src):
     d = os.path.join(root, name)
     write(os.path.join(d, "Cargo.toml"),
@@ -104,6 +116,9 @@ def app(root, name, req, lock, src):
     if lock is not None:
         ver, source = lock
         srcline = 'source = "%s"\n' % source if source else ""
+        if source:
+            # R1603: a registry source is read only when cargo's cached .crate hashes to the lock's checksum.
+            srcline += 'checksum = "%s"\n' % CRATE_SHA
         write(os.path.join(d, "Cargo.lock"),
               'version = 4\n\n[[package]]\nname = "async-nats"\nversion = "%s"\n%s\n[[package]]\nname = "%s"\n'
               'version = "0.1.0"\n' % (ver, srcline, name))
@@ -117,6 +132,8 @@ def build(ws):
              "empty": os.path.join(fx, "empty-home")}
     dep_src(os.path.join(homes["home"], "registry/src/index.crates.io-0000000000000000/async-nats-0.49.0"), "0.49.0")
     dep_src(os.path.join(homes["home2"], "registry/src/index.crates.io-1111111111111111/async-nats-0.49.0"), "0.49.0")
+    crate_cache(homes["home"], "index.crates.io-0000000000000000")
+    crate_cache(homes["home2"], "index.crates.io-1111111111111111")
     os.makedirs(os.path.join(homes["empty"], "registry/src"), exist_ok=True)
     dep_src(os.path.join(fx, "pathdep", "async-nats"), "0.50.0")
     if FAULT:
