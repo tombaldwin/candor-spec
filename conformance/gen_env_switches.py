@@ -22,6 +22,14 @@ CELLS (per engine unless stated; `w` = the switch arm, `u` = the unset arm):
 
   live          HARNESS CHECK, never an xfail: the unit present in `u` is ABSENT in `w`. A switch that moved nothing
                 would make every cell below read a pre-rung engine as conforming or as failing for the wrong reason.
+  two_sw        rust only: CANDOR_R1494_OFF (read at six sites) beside CANDOR_R1608_OFF: `switches` is the two names, code-point
+                sorted, each once. If a port reads R1494 lazily and this fixture never reaches the read, the lane moves
+                the fixture, not the clause.
+  c_report      (c) a refused policy run with a report sink STILL WRITES its report, carrying `switches`.
+  h_env         `gate --report` with a scan-time switch in ITS environment over a clean report judges it (exit 1, no
+                refusal): an evaluator that ran no analysis consulted nothing, and an engine must not read eagerly.
+  h_verb        the advisory verb `unverified --report` over the switched report exits 2 (plain: not 2).
+  d_key         (d) the consumer's verdict carries `switchedDependencies` naming the package and the switch.
   ctl_plain     `u`: no `switches` key, the firing policy exits 1, no refusal document. Passes today.
   a_named       (a) `w`'s report carries `switches` == [<NAME>] exactly.
   b_spec        (b) `w`'s `candor.spec` equals `u`'s. A guard against a fix that "marks" the report by changing `spec`.
@@ -83,6 +91,8 @@ SWITCH = {"rust": "CANDOR_R1608_OFF", "java": "CANDOR_R1304", "ts": "CANDOR_CT2_
 SET_VALUE = {"rust": "1", "java": "0", "ts": "1", "swift": "1"}
 UNIT = {"rust": "c_let_chain", "java": "convlib.ArrayConverter.toString", "ts": "src.a.destrIface", "swift": "mixAll"}
 UNCONSULTED = "CANDOR_R0_OFF"
+# rust only: a second switch read at six sites across three files (R1494), for the sorted / no-duplicates cell
+SECOND_RUST = "CANDOR_R1494_OFF"
 
 # An expectation keyed by (cell, engine). A PASSING XFAIL IS A FAILURE: the engine that lands its port reddens this
 # part and retires its own lines in the same commit.
@@ -97,6 +107,11 @@ for _e in ENGINES:
     XFAIL[("h_ref", _e)] = _H
 for _e in ("rust", "java"):
     XFAIL[("d_adv", _e)] = _D
+    XFAIL[("d_key", _e)] = "R1634 — the consumer's verdict carries no `switchedDependencies`, so a machine consumer cannot see the chained input was switched"
+XFAIL[("two_sw", "rust")] = "R1634 — the report names no switch, so neither of the two set switches appears"
+for _e in ENGINES:
+    XFAIL[("c_report", _e)] = "R1634 — the refused policy run's report does not carry `switches` (the report is where a harness attributes, and what gate --report is bound to answer over)"
+    XFAIL[("h_verb", _e)] = "R1634 — `unverified --report` over a report carrying `switches` certifies it instead of refusing as the gate does (⟨0.33⟩ siblings)"
 
 
 def strip_env(extra=None):
@@ -215,7 +230,7 @@ class Arm:
     def _find(self, out_dir):
         e = self.eng
         c = sorted(glob.glob(os.path.join(out_dir, "*.json")))
-        c = [p for p in c if not any(p.endswith(s) for s in (".callgraph.json", ".hierarchy.json", ".locs.json"))]
+        c = [p for p in c if not any(p.endswith(s) for s in (".callgraph.json", ".hierarchy.json", ".locs.json")) and os.path.basename(p) != "gate.json"]
         if e == "swift":
             c = [p for p in c if p.endswith(".Swift.json")]
         return c[0] if len(c) == 1 else None
@@ -263,7 +278,9 @@ class Arm:
         else:
             argv = self._argv(od, True, gj)
         rc, _o, err = run(argv, strip_env(env))
-        return {"rc": rc, "err": err, "gdoc": load(gj) if os.path.exists(gj) else None}
+        rep = os.path.join(od, "r.json") if e == "java" else self._find(od)
+        return {"rc": rc, "err": err, "gdoc": load(gj) if os.path.exists(gj) else None,
+                "rdoc": load(rep) if rep and os.path.exists(rep) else None}
 
     def chain(self, extra_env, tag, deps_path):
         """rust: the consumer crate gated over a dependency report handed on CANDOR_DEPS."""
@@ -278,6 +295,25 @@ class Arm:
         return {"rc": rc, "err": err, "gdoc": load(gj) if os.path.exists(gj) else None}
 
 
+def rgate(eng, loc, policy_text, ws, tag, extra_env=None, verb="gate"):
+    """`gate --report` (or `unverified --report`) with the environment STRIPPED of every CANDOR_ variable, like every
+    other cell here (PS.gate inherits os.environ). Returns (rc, gate-json doc, stderr)."""
+    pf = os.path.join(ws, "pol.%s" % tag)
+    w(pf, policy_text)
+    gj = os.path.join(ws, "%s.%s.gate.json" % (eng, tag))
+    if os.path.exists(gj):
+        os.remove(gj)
+    if verb == "gate":
+        base = {"rust": lambda: [G.rust_query(), "gate"], "java": lambda: ["java", "-jar", G.java_jar(), "gate"],
+                "ts": lambda: ["node", os.path.join(G.ts_root(), "query.mjs"), "gate"],
+                "swift": lambda: [G.swift_bin(), "gate"]}[eng]()
+        cmd = base + ["--report", loc, "--policy", pf, "--gate-json", gj]
+    else:
+        cmd = G._unverified_cmd(eng, loc, pf)
+    rc, _o, err = run(cmd, strip_env(extra_env))
+    return rc, load(gj) if os.path.exists(gj) else None, err
+
+
 def has_unit(doc, name):
     return any(f.get("fn") == name for f in (doc or {}).get("functions") or [])
 
@@ -290,10 +326,13 @@ def check_a(doc, name):
     return isinstance(doc, dict) and doc.get("switches") == [name]
 
 
-def check_refusal(gdoc, rc, name):
-    """(c): exit 2 and the §3.1 refusal document naming exactly [name]."""
+def check_refusal(gdoc, rc, names):
+    """(c): exit 2 and the §3.1 refusal document: `switches` == the sorted names, and a `reason` STRING naming each."""
+    names = [names] if isinstance(names, str) else list(names)
+    reason = gdoc.get("reason") if isinstance(gdoc, dict) else None
     return (rc == 2 and isinstance(gdoc, dict) and gdoc.get("ok") is False and gdoc.get("refused") is True
-            and "violations" not in gdoc and gdoc.get("switches") == [name])
+            and "violations" not in gdoc and gdoc.get("switches") == names
+            and isinstance(reason, str) and all(n in reason for n in names))
 
 
 def seed_report(doc, name, inject):
@@ -355,6 +394,12 @@ def run_engine(eng, ws):
          "control: today's output with no switch set")
     cell("a_named", check_a(wr["doc"], name), "switches = %r" % (wr["doc"].get("switches"),),
          "§3.4 (a): the report names a set and consulted switch")
+    if eng == "rust":
+        two = arm.report({SWITCH["rust"]: "1", SECOND_RUST: "1"}, "two")
+        cell("two_sw", two["doc"] is not None and two["doc"].get("switches") == sorted([SWITCH["rust"], SECOND_RUST]),
+             "two switches set: switches = %r (expected %r, sorted, each once although %s is read at several sites)"
+             % ((two["doc"] or {}).get("switches"), sorted([SWITCH["rust"], SECOND_RUST]), SECOND_RUST),
+             "§3.4 (a): sorted by code point, no duplicates")
     cell("b_spec", wr["doc"].get("candor", {}).get("spec") == u["doc"].get("candor", {}).get("spec"),
          "spec %r under the switch, %r unset" % (wr["doc"].get("candor", {}).get("spec"), u["doc"].get("candor", {}).get("spec")),
          "§3.4 (b): `spec` is not changed")
@@ -362,6 +407,9 @@ def run_engine(eng, ws):
          "policy run under %s: exit %s, refused=%s, switches=%r" % (name, gc["rc"], (gc["gdoc"] or {}).get("refused"),
                                                                     (gc["gdoc"] or {}).get("switches")),
          "§3.4 (c)(i): a gate under a set switch is unanswerable")
+    cell("c_report", check_a(gc.get("rdoc"), name),
+         "refused policy run wrote a report: %s, switches=%r" % (gc.get("rdoc") is not None, (gc.get("rdoc") or {}).get("switches")),
+         "§3.4 (c): a refused scan with a report sink still writes its report, carrying `switches`")
     un = arm.report({UNCONSULTED: "1"}, "un")
     ug = arm.gate({UNCONSULTED: "1"}, "ung", producer_path=u["path"]) if eng == "java" else arm.gate({UNCONSULTED: "1"}, "ung")
     cell("unconsulted", un["doc"] is not None and "switches" not in un["doc"] and ug["rc"] == 1,
@@ -381,12 +429,14 @@ def run_engine(eng, ws):
 
     # seed_c — calibrate the refusal checker the same way: a well-formed refusal passes, and each way a refusal can be
     # wrong (a scored verdict, a `violations` key, no switch named, a different switch) fails.
-    good = {"spec": "0.42", "ok": False, "refused": True, "switches": [name]}
+    good = {"spec": "0.42", "ok": False, "refused": True, "switches": [name],
+            "reason": "a result-moving switch is set (%s): unset it and re-run" % name}
     bads = [(1, dict(good, ok=True, refused=False)), (2, dict(good, violations=[])), (2, {k: v for k, v in good.items() if k != "switches"}),
-            (2, dict(good, switches=["CANDOR_OTHER"]))]
+            (2, dict(good, switches=["CANDOR_OTHER"])), (2, {k: v for k, v in good.items() if k != "reason"}),
+            (2, dict(good, reason="refused"))]
     seeded = check_refusal(good, 2, name) and not any(check_refusal(b, rc_, name) for rc_, b in bads) \
         and not check_refusal(good, 1, name)
-    cell("seed_c", seeded, "well-formed refusal passes, %d malformed ones and exit 1 fail" % len(bads),
+    cell("seed_c", seeded, "well-formed refusal (with a reason) passes, %d malformed ones (incl. no reason) and exit 1 fail" % len(bads),
          "calibration: `c_scan` and `h_ref` can pass and can fail")
 
     # h arm — (c)(ii) over a hand-written report, four-way
@@ -394,9 +444,19 @@ def run_engine(eng, ws):
          "functions": [{"fn": "app.f", "hash": "app#app.f", "inferred": ["Fs"], "direct": ["Fs"]}]}
     hs = dict(h, switches=[name])
     loc = G.write_report(os.path.join(ws, "h-%s-plain" % eng), eng, h)
-    rc0, doc0, _e0 = PS.gate(eng, loc, "deny Fs\n", ws, "h-%s-plain" % eng)
-    loc = G.write_report(os.path.join(ws, "h-%s-sw" % eng), eng, hs)
-    rc1, doc1, _e1 = PS.gate(eng, loc, "deny Fs\n", ws, "h-%s-sw" % eng)
+    rc0, doc0, _e0 = rgate(eng, loc, "deny Fs\n", ws, "h-%s-plain" % eng)
+    locs = G.write_report(os.path.join(ws, "h-%s-sw" % eng), eng, hs)
+    rc1, doc1, _e1 = rgate(eng, locs, "deny Fs\n", ws, "h-%s-sw" % eng)
+    # the evaluator's own environment: a scan-time switch in `gate --report`'s environment, over a CLEAN report
+    rce, doce, _ee = rgate(eng, loc, "deny Fs\n", ws, "h-%s-env" % eng, extra_env=arm.switch_env())
+    cell("h_env", rce == 1 and not (doce or {}).get("refused"),
+         "gate --report under %s over a clean report: exit %s, refused=%s" % (name, rce, (doce or {}).get("refused")),
+         "§3.4 (a): an evaluator that never ran the analysis did not consult a scan-time switch (no eager reads)")
+    # the advisory verbs follow the cause (⟨0.33⟩)
+    rv0, _d0, _x0 = rgate(eng, loc, "deny Fs\n", ws, "v-%s-plain" % eng, verb="unverified")
+    rv1, _d1, _x1 = rgate(eng, locs, "deny Fs\n", ws, "v-%s-sw" % eng, verb="unverified")
+    cell("h_verb", rv0 != 2 and rv1 == 2, "unverified --report: plain exit %s, over the switched report exit %s" % (rv0, rv1),
+         "§3.4 (c): the advisory verbs that answer `ok` refuse as the gate does")
     cell("h_ctl", rc0 == 1 and not (doc0 or {}).get("refused"), "plain hand-written report: exit %s" % rc0,
          "control: the same report without the key is judged and fails")
     cell("h_ref", check_refusal(doc1, rc1, name), "report carrying switches=[%s]: exit %s, refused=%s" % (name, rc1, (doc1 or {}).get("refused")),
@@ -430,15 +490,21 @@ def run_engine(eng, ws):
         cp = arm.chain({}, "dplain", os.path.join(plain_dir, bn))
         ci = arm.chain({}, "dinj", os.path.join(inj_dir, bn))
         live_join = cp["rc"] == 1
-        cell("d_exit", live_join and ci["rc"] == cp["rc"] and ci["gdoc"] == cp["gdoc"],
-             "plain chain exit %s, chain over a report carrying switches exit %s; documents %s"
-             % (cp["rc"], ci["rc"], "equal" if ci["gdoc"] == cp["gdoc"] else "DIFFER"),
-             "§3.4 (d): the exit and the verdict document are untouched (and the join is live: the plain chain fires)")
-        advisory = name in ci["err"]
+        strip = lambda g: {k: v for k, v in (g or {}).items() if k != "switchedDependencies"}   # noqa: E731
+        cell("d_exit", live_join and ci["rc"] == cp["rc"] and strip(ci["gdoc"]) == strip(cp["gdoc"]),
+             "plain chain exit %s, chain over a report carrying switches exit %s; documents equal but for `switchedDependencies`: %s"
+             % (cp["rc"], ci["rc"], strip(ci["gdoc"]) == strip(cp["gdoc"])),
+             "§3.4 (d): the exit and the rest of the verdict are untouched (and the join is live: the plain chain fires)")
+        once = ci["err"].count(name) == 1
         plain_silent = name not in cp["err"]
-        cell("d_adv", advisory and plain_silent,
-             "stderr names %s: %s (plain chain does not: %s)" % (name, advisory, plain_silent),
-             "§3.4 (d): the advisory names the switch")
+        cell("d_adv", once and plain_silent,
+             "stderr names %s %d time(s) (expected once); plain chain names it: %s" % (name, ci["err"].count(name), not plain_silent),
+             "§3.4 (d): the advisory names the switch, once")
+        sd = (ci["gdoc"] or {}).get("switchedDependencies")
+        okd = isinstance(sd, list) and len(sd) == 1 and sd[0].get("switches") == [name] and isinstance(sd[0].get("package"), str) \
+            and "switchedDependencies" not in (cp["gdoc"] or {})
+        cell("d_key", okd, "verdict switchedDependencies = %r (absent on the plain chain: %s)" % (sd, "switchedDependencies" not in (cp["gdoc"] or {})),
+             "§3.4 (d): a machine consumer of the verdict can see that a chained input was switched")
     return rows
 
 

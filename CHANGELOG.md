@@ -34,7 +34,7 @@ Run it after any patch-cycle commit that adds a section here.
   so an unswitched report is byte-identical). A report that carries it is not a conforming report of its `spec`, and
   `spec` is unchanged. A gate whose own environment holds a consulted switch, or that is handed a report carrying
   `switches`, is unanswerable: exit 2 and the §3.1 refusal document naming it, the FIFTH §3.3 exit-2 cause (every copy
-  of the count moved). A gate consuming a CHAINED report that carries `switches` gets the advisory shape, exit untouched.
+  of the count moved). A refused scan still writes its report. A gate consuming a CHAINED report that carries `switches` gets the advisory shape plus an additive verdict key `switchedDependencies`, exit untouched. "Consulted" is defined for an evaluator too: `gate --report` in a switched environment over a clean report judges it.
   The class is defined by effect (an environment read that can change any byte of a report or verdict; diagnostics that
   only write stderr are out), never by a name list, and the registration is the read itself. ADDITIVE for `switches`;
   the refusal is NOT additive, but moves only a run that sets a variable no engine documents. The refusal half is

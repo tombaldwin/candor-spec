@@ -4988,9 +4988,15 @@ Two further MUSTs guard the verdict's integrity:
   ⟨0.42⟩ **(e) A SET RESULT-MOVING SWITCH** (§3.4) — the engine that would judge was itself altered by its
   environment, or the report it is asked to judge says it was produced by one. The document is the §3.1
   REFUSAL document (`ok: false`, `refused: true`, NO `violations` key) carrying `switches`, the names; the
-  exit is 2. **Unlike (b) and (c), a violation does not dominate it**: those causes withhold a verdict over
-  code the engine did not see, and what it did see is sound, while a switched engine's findings are the
-  findings of an engine that is not the one `spec` names.
+  exit is 2. **Unlike (b) and (c), a violation does not dominate it, and that is the second instance
+  of §3.1's ⟨0.24⟩ corruption boundary, not a new ordering**: its test is whether the refusal's cause undermines the
+  premise that the fired rule's evidence was carried. (b) and (c) withhold a verdict over code the engine did not see,
+  and what it did see is carried. A switch is not purely subtractive (it can add an `Unknown` as well as remove a
+  row), so a finding from a switched report is computed from bytes whose meaning relative to `spec` is unknown, as a
+  `netClass: 1` finding is. The refusal also carries none of a run's `outOfScope` or `unanalyzed` findings: by the
+  order refusal > incomplete they are the switched engine's as well. The engine-pin MISMATCH refuses before the scan
+  runs, so there is nothing for it to dominate. A switch read mid-scan is detected after findings exist, and the
+  boundary is what licenses withholding them.
 
   *Recorded because a reader relied on the count: this list read "there are two exit-2 causes and they
   differ" for four rungs, and §3.1 leans on that enumeration when it rules that an engine refusing
@@ -5116,9 +5122,13 @@ needs a shape for the same reason: *a MUST with no shape is an invitation to div
 - **(a) THE REPORT NAMES IT: `"switches": [ "<NAME>", … ]`** (§2). One element per switch that was SET and CONSULTED
   by the run: names only, sorted by code point, no duplicates, OMITTED when empty. SET means the value, as the engine
   read it, selects a branch other than the one an unset variable selects, so `CANDOR_R1304=1` beside a default of on
-  is not set. CONSULTED means the engine read it during the run, before it wrote the report; a read on a path the
-  input never reached still counts (a static initialiser reads once), and a variable that was set and never read does
-  not. A `CANDOR_`-prefixed variable the engine does not consult is therefore NOT listed: dumping the environment
+  is not set. CONSULTED means the process EXECUTED a read of it while producing this answer: a producer, before it
+  wrote the report; an evaluator (`gate --report` and the query verbs, which write no report), before it wrote the
+  verdict. A read in a static initialiser counts for the process that ran it. A variable set and never read does
+  not, and a route that does not run the analysis does not consult an analysis switch: an engine MUST NOT satisfy
+  this by reading every switch at process start, because that makes a clean report's verdict depend on which engine
+  hoists its reads. So `gate --report` in an environment holding a scan-time switch, over a clean report, judges the
+  report and exits as it would without the variable. A `CANDOR_`-prefixed variable the engine does not consult is therefore NOT listed: dumping the environment
   buries the one that mattered, and lists the harness variables every conformance run inherits.
 - **(b) A REPORT THAT CARRIES IT IS NOT A CONFORMING REPORT OF ITS `spec`, AND `spec` IS NOT CHANGED.** The `spec`
   MUST is met by the value naming what the engine implements; `switches` is the engine's record that this run did
@@ -5127,7 +5137,13 @@ needs a shape for the same reason: *a MUST with no shape is an invitation to div
 - **(c) A GATE EVALUATED UNDER A SET SWITCH IS UNANSWERABLE: exit 2, the §3.1 refusal document, the fifth §3.3
   cause.** It fires when (i) the evaluating process's OWN environment holds a switch it consulted, or (ii) the report
   being judged carries a non-empty `switches`. The document is `ok: false`, `refused: true`, NO `violations` key,
-  with `switches` naming the union of (i) and (ii) in the same order, and a remedy (unset the variable). Both routes
+  with `switches` naming the union of (i) and (ii), code-point sorted without duplicates, and a `reason` string (§3.1,
+  as for every refusal) that names those switches and says to unset them. It takes ⟨0.30⟩'s ANCHOR, a field of the
+  report that both routes read, and §3.1's refusal SHAPE, not ⟨0.30⟩'s incomplete verdict, which lets violations ride.
+  **A refused `scan --policy` with a report sink STILL WRITES the report**, as the run does with no policy, carrying
+  `switches`: the refusal is the GATE's, and the report is what a harness attributes on and what `gate --report`
+  is bound to answer over. ⟨0.31⟩'s "this refusal produces none" is not available here, because that cause is
+  keyed on the walk and this one on a report that exists. Both routes
   produce the same document: `gate --report` over a report a switched scan produced refuses as `scan --policy` did,
   because §3.1's byte-equality is quantified over *any report a scan produced*, and a scan that refused on (i) only
   would split the verb. The advisory verbs that answer `ok` follow it, as they follow every cause (⟨0.33⟩). It is
@@ -5137,9 +5153,13 @@ needs a shape for the same reason: *a MUST with no shape is an invitation to div
   the exit because refusing there would break every source build. No operator sets these variables for a
   legitimate reason, so the branch that spared them does not apply.
 - **(d) A GATE THAT CONSUMES A CHAINED REPORT CARRYING `switches` GETS THE ADVISORY SHAPE, AND ITS EXIT IS UNTOUCHED.**
-  The package and the switch names go to stderr, once, the channel a corrupt chained report already uses (§3.1); the
-  exit code and `--gate-json` are what they would be without the key, byte-equal between `scan --policy` and
-  `gate --report`. The consumer's own run is not switched and it cannot judge what a dependency's environment did:
+  The package and the switch names go to stderr, once per package, the channel a corrupt chained report already
+  uses (§3.1), and the verdict document gains an additive key `"switchedDependencies": [ { "package": "<name>",
+  "switches": [ "<NAME>", … ] }, … ]`, ordered by `package`, OMITTED when empty. The key is there because a
+  switched producer's absent row is a CLAIM (⟨0.21⟩'s purity claim), unlike ⟨0.24⟩'s judged-nothing report, which
+  makes none, and §3.1 says stderr is not the machine channel. The exit code is what it would be without the key,
+  and both routes derive the key from the same chained report, so the documents are byte-equal between
+  `scan --policy` and `gate --report`. The consumer's own run is not switched and it cannot judge what a dependency's environment did:
   refusing here mints a cause the §3.1 paragraph on judged-nothing dependencies rules out, and splits the verb. The
   same rule applies to every other reader of a chained report, and a reader that does not understand the key
   ignores it (§2, forward compatibility).
@@ -7303,7 +7323,7 @@ declare it via the envelope's `spec`.
   mode) is named in the optional top-level `switches` array when it was set and consulted, omitted when empty. Such
   a report is not a conforming report of its `spec`, and `spec` is unchanged. A gate whose own environment holds a
   consulted switch, or that is handed a report carrying `switches`, refuses with exit 2 and the §3.1 refusal document
-  naming it: the fifth exit-2 cause. A chained report carrying it gets an advisory, exit untouched. The class is
+  naming it, a refused scan still writing its report: the fifth exit-2 cause. A chained report carrying it gets an advisory and an additive `switchedDependencies` key on the verdict, exit untouched. The class is
   defined by effect, never by a name list. ADDITIVE for `switches`; the refusal is NOT additive, and moves only a run
   that sets a variable no engine documents. Pinned by PART 109, which every engine fails today (xfail, one line per
   engine).
