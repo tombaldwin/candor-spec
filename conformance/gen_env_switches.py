@@ -102,12 +102,12 @@ _H = "R1634 — `gate --report` over a report carrying `switches` judges it inst
 _D = "R1634 — a chained report carrying `switches` is gated silently: no advisory names the switch on stderr"
 XFAIL = {}
 # Engines whose R1634 port has landed: their cells are pinned, not xfailed.
-PORTED = {"ts"}
+PORTED = {"ts", "java"}
 for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("a_named", _e)] = _A % SWITCH[_e]
     XFAIL[("c_scan", _e)] = _C
     XFAIL[("h_ref", _e)] = _H
-for _e in ("rust", "java"):
+for _e in [e for e in ("rust", "java") if e not in PORTED]:
     XFAIL[("d_adv", _e)] = _D
     XFAIL[("d_key", _e)] = "R1634 — the consumer's verdict carries no `switchedDependencies`, so a machine consumer cannot see the chained input was switched"
 XFAIL[("two_sw", "rust")] = "R1634 — the report names no switch, so neither of the two set switches appears"
