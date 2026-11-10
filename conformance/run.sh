@@ -3327,6 +3327,31 @@ echo "PART 108 — dependency sources: an unchained dependency's value typed fro
 # NOTE: java, ts and swift run the H arm only — java reads bytecode and ts asks the type checker, so neither types a dependency value from its source, and candor-swift does not today (SPEC §2 ⟨0.42⟩ records them NOT APPLICABLE). MEASURED 2026-11-09: candor-rust lane/rust-vein 1a8f88e passes all 14 cells (with candor-java 60258ff jar 0.41.3, candor-ts f11c78e, candor-swift eeefa55); candor-rust main 73a38f0 FAILS pin_reg, pin_path, twin (f untyped: `deny Net f` exit 0, no field), mono_seed (nothing to differ) and det (both homes type nothing).
 # CALIBRATED: CANDOR_PROBE_FAULT=1 deletes the registry checkouts and strips the Net from the H report carrying the key, so pin_reg, twin, mono_seed, det and h_tol go red (measured on the lane binary: 5 cells). Registered in probe_check.py (java arm, H only).
 
+# PART 109 — RESULT-MOVING SWITCHES, `switches`, SPEC §2/§3.4/§3.3 ⟨0.42⟩ (SOUNDNESS R1634). [TIER 1]
+#
+# An environment variable that changes any byte of a report or verdict (a kill switch, an opt-in mode) is named in the
+# report's `switches` when it was set and consulted; `spec` is unchanged; a gate under one is a §3.1 refusal (exit 2,
+# the fifth §3.3 cause); a chained report carrying one gets an advisory with the exit untouched.
+# One real switch per engine on a fixture where it moves a result (rust CANDOR_R1608_OFF, java CANDOR_R1304, ts
+# CANDOR_CT2_OFF, swift CANDOR_R1032_OFF), the unset control, an unconsulted-name control, seeds for both checkers,
+# a four-way hand-written `gate --report` arm, and a chained arm for rust and java.
+[ -f "$HERE/gen_env_switches.py" ] || { echo "FAIL: gen_env_switches.py is missing"; exit 2; }
+echo
+echo "[109] result-moving switches: a set and consulted switch is named in the report, spec unchanged, a gate under one refuses, a chained report carrying one gets an advisory"
+P109_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_env_switches.py"
+) || { P109_OK=1; rc=1; }
+[ "$P109_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on live/ctl_plain is a fixture or harness fault; on b_spec an engine marked a switched report by changing its spec value; on seed_a or seed_c a checker can no longer pass or can no longer fail (the part is vacuous); on unconsulted an engine listed a variable it never read (it dumps its environment); on h_ctl the plain hand-written report was not judged and failed; on d_exit an engine refused or altered a chained verdict; an XFAIL CELL PASSED is an engine that landed its port: retire its lines in gen_env_switches.py"
+echo "PART 109 — result-moving switches: named in the report, spec unchanged, a gate under one refuses, a chained report gets an advisory (SPEC §2/§3.4/§3.3 ⟨0.42⟩; SOUNDNESS R1634)"
+# ENGINES: rust java ts swift
+# CONTROLS: ctl_plain unconsulted h_ctl seed_a seed_c — ctl_plain is today's output with no switch set (no key, the policy exits 1), unconsulted sets a prefixed name no engine reads and must list nothing, h_ctl is the same hand-written report without the key judged normally, and seed_a and seed_c run each checker on a hand-built pass and on hand-edited failures (the report with `switches` deleted) so a_named and the refusal cells are shown able to fail.
+# NOTE: every engine FAILS a_named, c_scan and h_ref today, and rust and java d_adv: they are XFAIL in gen_env_switches.py keyed (cell, engine) and citing R1634, and a PASSING xfail is a FAILURE, so the port that lands reddens this part and retires its own lines. The chained arm (d) is rust and java only (CANDOR_DEPS over a hand-injected producer report): ts needs an npm package layout and swift a SwiftPM dependency pair, and no recipe for either exists in this suite beyond PART 107's swift S arm, so ts and swift (d) is a GAP until a port lane writes it. java's switch lives in the PRODUCER (`dispatchesOn` on a formatting member), so its (a) cell reads the producer report and its (c) cell gates a chained consumer; the other three are single-tree. MEASURED 2026-11-10 on candor-scan 0.41.3 (spec 0.41), candor-java 0.41.3 jar, candor-ts 0.41.3, candor-swift 0.41.3: 42 cells, 14 xfail, 0 FAIL.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 runs the switch arm WITHOUT the switch, so `live` reddens on every engine (a harness check, never an xfail). Registered in probe_check.py (java arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate
