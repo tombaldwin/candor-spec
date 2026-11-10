@@ -102,7 +102,7 @@ _H = "R1634 — `gate --report` over a report carrying `switches` judges it inst
 _D = "R1634 — a chained report carrying `switches` is gated silently: no advisory names the switch on stderr"
 XFAIL = {}
 # Engines whose R1634 port has landed: their cells are pinned, not xfailed.
-PORTED = {"ts", "java"}
+PORTED = {"ts", "java", "swift"}
 for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("a_named", _e)] = _A % SWITCH[_e]
     XFAIL[("c_scan", _e)] = _C
