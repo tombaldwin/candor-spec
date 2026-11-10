@@ -847,7 +847,9 @@ manifest's semver requirement, and records nothing. It predates this clause, and
 ⟨0.32⟩'s concern. The same rule applies to an opt-in residual disclosure for an untyped dependency value,
 such as candor-scan's `CANDOR_R1580=1`, which is off by default. Where a source reading replaces that
 disclosure's `Unknown`, or withholds it, the absent-source report carries an `Unknown` the present-source
-report lacks. That fails the adding-only rule, so such a mode does not conform while it does so. java and
+report lacks. That fails the adding-only rule, so such a mode does not conform while it does so. ⟨0.42⟩ gives
+that sentence its disclosure: `CANDOR_R1580=1` is a result-moving switch (§3.4), so a report produced under it
+names it in `switches`. java and
 ts are NOT APPLICABLE: java reads bytecode, whose classpath ⟨0.32⟩ governs, and candor-ts asks the type
 checker. Neither types a dependency value by reading the dependency's source. candor-swift does not type
 from dependency source today, and these rules bind it if it starts.
@@ -1284,7 +1286,9 @@ So: an advisory naming the package, on the channel a corrupt report already uses
 `--gate-json` byte-equal to `scan --policy`. Refusing with exit 2 is **not** an available reading — §3.3
 enumerates the exit-2 causes (a broken gate CONFIG; an INCOMPLETE analysis of the target's own code; ⟨0.30⟩
 an INCOMPLETE SCOPE; ⟨0.31⟩ an UNEVALUABLE TARGET, which is about the WALK and so cannot arise on a route
-that is handed a report) and a judged-nothing DEPENDENCY is none of them, so an engine that refuses here has
+that is handed a report; ⟨0.42⟩ a SET RESULT-MOVING SWITCH, which such a route meets in its OWN environment or
+in the report it is asked to judge, never in a chained dependency's) and a judged-nothing DEPENDENCY is none
+of them, so an engine that refuses here has
 minted a cause of its own and **split the verb**. *The argument is that the cause must be ENUMERATED, not
 that the list has a particular length: ⟨0.30⟩ added one deliberately, in §3.3, with a row exercising it —
 which is the difference between minting a cause and an engine inventing one.*
@@ -1328,6 +1332,12 @@ already carry.
   to a pre-rung report. Recorded by the PRODUCER because a report-reading consumer cannot compute it: it
   has no target to anchor at, and re-classifying these hosts through its OWN config would make the verdict
   depend on the reader's working directory.
+- ⟨0.42⟩ `"switches": [ "<NAME>", … ]` — ENVELOPE-level, beside `analyzed`: **the result-moving switches
+  (§3.4) that were SET in the producing run's environment and CONSULTED by it** — environment-variable NAMES
+  only (never values), sorted by code point, no duplicates. **Omitted when empty**, so a scan under no switch
+  is byte-identical to a pre-rung report. A report that carries it is NOT a conforming report of the `spec` it
+  names, and `spec` itself is unchanged (§3.4, SOUNDNESS R1634). Recorded by the PRODUCER, because a
+  report-reading consumer cannot see the environment the report was produced in.
 - ⟨0.29⟩ `"incomplete": [ "<Effect>", … ]` — **the effects whose LOCATOR this unit could not determine**:
   its own `Fs` write whose path is a parameter, its own exec whose command is computed, its own `Db` call
   whose table is built at runtime. **Omitted when empty**, so a scan that determined everything is
@@ -4934,8 +4944,8 @@ effects, status}` and its `line`, and `because` verbatim. Without `accept` lines
 
 Two further MUSTs guard the verdict's integrity:
 
-- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are four
-  exit-2 causes ⟨0.31⟩ and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
+- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are five
+  exit-2 causes ⟨0.42⟩ and they differ: **(a) a broken gate CONFIG** (an unreadable policy, an invalid baseline, an
   unknown flag) — the gate could not be evaluated at all. ⟨0.24⟩ **SUPERSEDED: this said NO verdict is
   written, and §3.1's refusal-document clause (`107755b`, generalised by `1503368`) now requires one on
   EVERY exit-2 cause including this one.** All four engines follow the newer rule; this sentence is stale
@@ -4975,13 +4985,27 @@ Two further MUSTs guard the verdict's integrity:
   MUST carry `outOfScope`, because exit 2 with a silent document is the stderr-only disclosure ⟨0.21⟩
   exists to close. It carries **no `violations` entry for these functions** — the same explicit statement
   (a) makes about its own shape — and a run that ALSO holds a real violation exits 1 carrying both keys. A real violation (exit 1) still dominates, as in (b).
+  ⟨0.42⟩ **(e) A SET RESULT-MOVING SWITCH** (§3.4) — the engine that would judge was itself altered by its
+  environment, or the report it is asked to judge says it was produced by one. The document is the §3.1
+  REFUSAL document (`ok: false`, `refused: true`, NO `violations` key) carrying `switches`, the names; the
+  exit is 2. **Unlike (b) and (c), a violation does not dominate it, and that is the second instance
+  of §3.1's ⟨0.24⟩ corruption boundary, not a new ordering**: its test is whether the refusal's cause undermines the
+  premise that the fired rule's evidence was carried. (b) and (c) withhold a verdict over code the engine did not see,
+  and what it did see is carried. A switch is not purely subtractive (it can add an `Unknown` as well as remove a
+  row), so a finding from a switched report is computed from bytes whose meaning relative to `spec` is unknown, as a
+  `netClass: 1` finding is. The refusal also carries none of a run's `outOfScope` or `unanalyzed` findings: by the
+  order refusal > incomplete they are the switched engine's as well. The engine-pin MISMATCH refuses before the scan
+  runs, so there is nothing for it to dominate. A switch read mid-scan is detected after findings exist, and the
+  boundary is what licenses withholding them.
 
   *Recorded because a reader relied on the count: this list read "there are two exit-2 causes and they
   differ" for four rungs, and §3.1 leans on that enumeration when it rules that an engine refusing
   elsewhere "has minted a third cause and split the verb". ⟨0.30⟩ mints one deliberately, and a superlative
   left standing next to its own exception is how the last one of these was found.* ⟨0.31⟩ *mints the
   fourth — (d) an UNEVALUABLE TARGET — and this note is the reason the count in the sentence above was
-  moved with it rather than left to be discovered. A stale count here has been shipped three times.*
+  moved with it rather than left to be discovered. A stale count here has been shipped three times.* ⟨0.42⟩ *mints the fifth — (e) a SET
+  RESULT-MOVING SWITCH — and the count above and the enumeration in §3.1's `gate --report` paragraph are the copies
+  that moved with it. The ⟨0.31⟩ sentences that call (d) "the fourth" are history and stay.*
 - **A multi-package scan MUST accumulate violations across members into ONE final verdict.** A
   per-member write lets a clean last member overwrite an earlier violator's verdict — shipped as
   exactly that bug in candor-scan 0.8.1, where a workspace's `gate.json` said `ok: true` while the
@@ -5068,6 +5092,88 @@ regenerates the baseline, which is exactly the discipline being enforced.
 candor-agents**, pinned by conformance **PART 33** (a holding pin is silent and changes no exit code; a
 mismatched or unreadable pin is exit 2; a pin qualified for another implementation is ignored) and by
 **PART 13b**, which pins that the key is recognized rather than reported unknown.
+
+**RESULT-MOVING SWITCHES — an environment variable that changes what an engine REPORTS is named in the report and
+makes a gate unanswerable.** ⟨0.42⟩ (SOUNDNESS R1634). The paragraph above refuses one environment variable for one
+key, and gives the reason: *an assertion an ambient environment can silently switch off is not one.* That reasoning
+reaches every other variable that selects which logic ran, and nothing bound it to them. MEASURED on candor-scan
+0.41.3, released: `CANDOR_R1608_OFF=1` removes 9 rows from `functions[]` and changes 2 more, every top-level key
+stays byte-equal, `"spec": "0.41"` is unchanged, and `deny Fs c_let_chain` goes from exit 1 to exit 0 with
+`ok: true`. candor-ts 0.41.3 does the same under `CANDOR_CT2_OFF=1`. Each engine ships such switches, and none of
+them records that one was set. Three obligations existed and did not reach this: the `spec` MUST (§2, "MUST emit
+the spec version it conforms to") names no remedy; §2's R1580 sentence labels one such mode non-conforming and
+asks nothing of the engine; and §3.1's *"an unanswerable condition MUST be disclosed, never scored — including as
+satisfied"* was written for the engine pin. The reasoning is the one ⟨0.31⟩'s `netPartners` already quotes, and it
+needs a shape for the same reason: *a MUST with no shape is an invitation to diverge.*
+
+- **WHAT IS A RESULT-MOVING SWITCH — BY DEFINITION, NEVER BY A LIST OF NAMES.** An environment variable whose value,
+  as the engine reads it, can change any byte of a report or of a verdict. A variable that SUPPLIES AN INPUT — a
+  path to a policy, a baseline, a dependency report, a configuration file (`CANDOR_POLICY`, `CANDOR_DEPS`,
+  `CANDOR_CONFIG`, and the rest of this section's table) — is configuration, and is out of scope: it names a thing
+  the run reads. A variable that changes HOW the engine reasons about the same inputs (a kill switch for a closed
+  defect, an opt-in mode, a measurement arm) is in scope. A read that only writes to stderr is out of scope, because
+  no report or verdict can depend on it. A name pattern cannot define the class: the family's own switches end in
+  `_OFF`, `_PRE`, `_SEED` and `_NO_NARROW`, and one has no suffix at all (`CANDOR_R1565=0`).
+- **THE REGISTRATION IS THE READ.** An engine MUST NOT keep a list of its switches beside the code that reads them:
+  a list of switch names is an allowlist, and it fails in the absence direction — a switch added without its entry
+  is the silent one. An engine SHOULD make one function the only way the engine reads such a variable, and that
+  function records the name. What no conformance cell can pin is that no other switch exists, so an engine SHOULD
+  enforce it with a source gate, shown red on a seeded raw read.
+- **(a) THE REPORT NAMES IT: `"switches": [ "<NAME>", … ]`** (§2). One element per switch that was SET and CONSULTED
+  by the run: names only, sorted by code point, no duplicates, OMITTED when empty. SET means the value, as the engine
+  read it, selects a branch other than the one an unset variable selects, so `CANDOR_R1304=1` beside a default of on
+  is not set. CONSULTED means the process EXECUTED a read of it while producing this answer: a producer, before it
+  wrote the report; an evaluator (`gate --report` and the query verbs, which write no report), before it wrote the
+  verdict. A read in a static initialiser counts for the process that ran it. A variable set and never read does
+  not, and a route that does not run the analysis does not consult an analysis switch: an engine MUST NOT satisfy
+  this by reading every switch at process start, because that makes a clean report's verdict depend on which engine
+  hoists its reads. So `gate --report` in an environment holding a scan-time switch, over a clean report, judges the
+  report and exits as it would without the variable. A `CANDOR_`-prefixed variable the engine does not consult is therefore NOT listed: dumping the environment
+  buries the one that mattered, and lists the harness variables every conformance run inherits.
+- **(b) A REPORT THAT CARRIES IT IS NOT A CONFORMING REPORT OF ITS `spec`, AND `spec` IS NOT CHANGED.** The `spec`
+  MUST is met by the value naming what the engine implements; `switches` is the engine's record that this run did
+  not implement it. `spec` stays because consumers key on it and §3.1 byte-equality between routes is quantified over
+  it, and a garbled `spec` MUST NOT impeach a document (§2).
+- **(c) A GATE EVALUATED UNDER A SET SWITCH IS UNANSWERABLE: exit 2, the §3.1 refusal document, the fifth §3.3
+  cause.** It fires when (i) the evaluating process's OWN environment holds a switch it consulted, or (ii) the report
+  being judged carries a non-empty `switches`. The document is `ok: false`, `refused: true`, NO `violations` key,
+  with `switches` naming the union of (i) and (ii), code-point sorted without duplicates, and a `reason` string (§3.1,
+  as for every refusal) that names those switches and says to unset them. It takes ⟨0.30⟩'s ANCHOR, a field of the
+  report that both routes read, and §3.1's refusal SHAPE, not ⟨0.30⟩'s incomplete verdict, which lets violations ride.
+  **A refused `scan --policy` with a report sink STILL WRITES the report**, as the run does with no policy, carrying
+  `switches`: the refusal is the GATE's, and the report is what a harness attributes on and what `gate --report`
+  is bound to answer over. ⟨0.31⟩'s "this refusal produces none" is not available here, because that cause is
+  keyed on the walk and this one on a report that exists. Both routes
+  produce the same document: `gate --report` over a report a switched scan produced refuses as `scan --policy` did,
+  because §3.1's byte-equality is quantified over *any report a scan produced*, and a scan that refused on (i) only
+  would split the verb. The advisory verbs that answer `ok` follow it, as they follow every cause (⟨0.33⟩). It is
+  derived, not quoted: §3.1's rule says "disclosed, never scored", and the engine-pin clause answers a MISMATCH
+  between the engine and the contract with exit 2 (*"the run is unevaluable, not violating"*). A switched engine is
+  that mismatch one level down. The pin's other branch, where the producer cannot determine its OWN version, keeps
+  the exit because refusing there would break every source build. No operator sets these variables for a
+  legitimate reason, so the branch that spared them does not apply.
+- **(d) A GATE THAT CONSUMES A CHAINED REPORT CARRYING `switches` GETS THE ADVISORY SHAPE, AND ITS EXIT IS UNTOUCHED.**
+  The package and the switch names go to stderr, once per package, the channel a corrupt chained report already
+  uses (§3.1), and the verdict document gains an additive key `"switchedDependencies": [ { "package": "<name>",
+  "switches": [ "<NAME>", … ] }, … ]`, ordered by `package`, OMITTED when empty. The key is there because a
+  switched producer's absent row is a CLAIM (⟨0.21⟩'s purity claim), unlike ⟨0.24⟩'s judged-nothing report, which
+  makes none, and §3.1 says stderr is not the machine channel. The exit code is what it would be without the key,
+  and both routes derive the key from the same chained report, so the documents are byte-equal between
+  `scan --policy` and `gate --report`. The consumer's own run is not switched and it cannot judge what a dependency's environment did:
+  refusing here mints a cause the §3.1 paragraph on judged-nothing dependencies rules out, and splits the verb. The
+  same rule applies to every other reader of a chained report, and a reader that does not understand the key
+  ignores it (§2, forward compatibility).
+- **THE EXCLUSIONS ARE DECIDED, NOT FORGOTTEN.** There is no opt-in variable that lets a switched run through
+  (`CANDOR_ALLOW_SWITCHES`): it would itself be an ambient input that changes an exit code, which is this section's
+  own objection to `--ignore-engine-pin`. There is no debug-build exemption: no engine ships a build without its
+  switches, and a conformance cell cannot see a build flavour. An engine that compiles its switches out of the
+  released artifact conforms trivially, because it has none to name. Harnesses that attribute a change to one fix by
+  switching it off do so on the REPORT route (`--json`, `--out`), where (a) is disclosure and nothing refuses.
+
+*A reader asked which half is derived: (c). (a), (b) and (d) are quotations of this document's own reasoning, and the
+exit-2 half of (c) is the one reading a ruling could reverse; the alternative is the advisory shape of (d) on every
+route, which leaves `deny Fs` at exit 0 beside a document that says the engine was altered. Field incidence at the
+time of writing is zero: none of the switches is documented.* Pinned by conformance **PART 109**.
 
 **`unknown-ratchet`** (opt-in, default off) makes `deny E Unknown` adoptable on legacy DI/reflection-heavy
 code. Ordinarily an `Unknown`-only gain vs the `baseline` is *advisory* (resolution noise dominates on version
@@ -7212,6 +7318,15 @@ declare it via the envelope's `spec`.
   `version`, `origin`; an informative `typed` count MAY ride along), omitted when empty. Reconciled with ⟨0.32⟩,
   which gains a cross-reference. Pinned by PART 108 (rust S arm; four-way reader tolerance), which passes on
   candor-rust `lane/rust-vein` `1a8f88e` and fails on main `73a38f0`.
+  ⟨0.42⟩ carries a second independent half, **RESULT-MOVING SWITCHES** (§2 `switches`; §3.4; §3.3 cause (e);
+  SOUNDNESS R1634). An environment variable that changes any byte of a report or verdict (a kill switch, an opt-in
+  mode) is named in the optional top-level `switches` array when it was set and consulted, omitted when empty. Such
+  a report is not a conforming report of its `spec`, and `spec` is unchanged. A gate whose own environment holds a
+  consulted switch, or that is handed a report carrying `switches`, refuses with exit 2 and the §3.1 refusal document
+  naming it, a refused scan still writing its report: the fifth exit-2 cause. A chained report carrying it gets an advisory and an additive `switchedDependencies` key on the verdict, exit untouched. The class is
+  defined by effect, never by a name list. ADDITIVE for `switches`; the refusal is NOT additive, and moves only a run
+  that sets a variable no engine documents. Pinned by PART 109, which every engine fails today (xfail, one line per
+  engine).
 - **0.41 (AUTHORED 2026-11-02, declared by no engine yet; reference-led — candor-java first, the floor rises
   when the last engine lands)** — a **tier-1 additive** rung: **`accept` lines for KNOWN policy violations**
   (§6.2). `accept <fn> [<Effect>…] for <rule tokens…> because <reason…>` names one verdict row by the RAW

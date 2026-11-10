@@ -302,13 +302,20 @@ COVERED = {
         "holds":  r"DEP-SOURCES: OK",
         "breaks": r"DEP-SOURCES: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 109 (SPEC §2/§3.4 ⟨0.42⟩ result-moving switches). The fault runs the switch arm WITHOUT the switch, so `live`
+    # (a harness check, never an xfail) reddens; the xfail cells stay xfail in both arms.
+    "gen_env_switches.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"ENV-SWITCHES: OK",
+        "breaks": r"ENV-SWITCHES: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 29
+COVERED_FLOOR = 30
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

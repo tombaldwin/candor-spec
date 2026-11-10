@@ -25,6 +25,24 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC ⟨0.42⟩ second half: RESULT-MOVING SWITCHES (§2 `switches`; §3.4; §3.3 cause (e)), plus conformance PART 109
+  (SOUNDNESS R1634). Declared by no engine; every engine fails it today.** Each engine's released binary honours
+  undocumented environment variables that restore closed defects or turn on opt-in modes, and none records that one
+  was set. MEASURED on candor-scan 0.41.3: `CANDOR_R1608_OFF=1` removes 9 rows and changes 2, leaves every top-level key
+  byte-equal and `"spec": "0.41"` unchanged, and takes `deny Fs` from exit 1 to exit 0. The report gains an optional
+  top-level `switches` array (names of the switches that were set AND consulted, code-point sorted, omitted when empty,
+  so an unswitched report is byte-identical). A report that carries it is not a conforming report of its `spec`, and
+  `spec` is unchanged. A gate whose own environment holds a consulted switch, or that is handed a report carrying
+  `switches`, is unanswerable: exit 2 and the §3.1 refusal document naming it, the FIFTH §3.3 exit-2 cause (every copy
+  of the count moved). A refused scan still writes its report. A gate consuming a CHAINED report that carries `switches` gets the advisory shape plus an additive verdict key `switchedDependencies`, exit untouched. "Consulted" is defined for an evaluator too: `gate --report` in a switched environment over a clean report judges it.
+  The class is defined by effect (an environment read that can change any byte of a report or verdict; diagnostics that
+  only write stderr are out), never by a name list, and the registration is the read itself. ADDITIVE for `switches`;
+  the refusal is NOT additive, but moves only a run that sets a variable no engine documents. The refusal half is
+  derived from §3.1 and the engine-pin clause rather than quoted, and the clause says so. PART 109 (tier 1): one real
+  switch per engine on a fixture where it moves a result (rust `CANDOR_R1608_OFF`, java `CANDOR_R1304`, ts
+  `CANDOR_CT2_OFF`, swift `CANDOR_R1032_OFF`), a no-switch control, an unconsulted-name control, a seeded hand-edited
+  report that must fail the (a) check, and a four-way hand-written `gate --report` arm for (d). xfail per engine on
+  (a), (c) and the (d) advisory until each port lands.
 - **SPEC ⟨0.42⟩ AUTHORED, declared by no engine: CO-PATH UNITS (§2, under the ⟨0.40⟩ `(hash, fn)` bullet; §6.2
   Scope matching), plus conformance PART 107. No floor move; reference-led — candor-java's main conforms
   (`b79597b`, unreleased).** Several separately-written bodies under one fully-qualified path (an overload set; a

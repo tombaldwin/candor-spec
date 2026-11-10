@@ -2888,12 +2888,6 @@
    "unenforced": "no row asserts remedy TEXT — PART 56 scores the exit code and the absence of a report, not the message. java's zero-class refusal is the model wording; a row would have to pin prose, which this suite deliberately does not do (the `did NOT judge` phrase in PART 48 is the one exception, and it is pinned because a consumer greps it)."
   },
   {
-   "sha": "d2205131ca212498",
-   "at": "3.3.1 The query command-line grammar (REQUIRED for any exposed query verb) ⟨0.10⟩",
-   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false",
-   "part": "PART 54 (the refusal document; unchanged). RE-CONFIRMED 2026-11-03 after a ⟨0.41⟩ note on the incomplete verdict's OPTIONAL `violations` key was added to this block: that sentence describes all four engines and requires nothing an engine could fail, so no row pins it (measured by hand: six refusal causes x two routes, and the incomplete verdict with and without accept lines)"
-  },
-  {
    "sha": "3615235979562ae9",
    "at": "2. The report",
    "excerpt": "- ⟨0.31⟩ `\"netPartners\": { \"config\": \"<path>\", \"hosts\": [ \"<host>\", … ] }` — ENVELOPE-level, beside `analyzed`",
@@ -4094,10 +4088,70 @@
    "unenforced": "RATIONALE reconciling the clause with ⟨0.32⟩ and recording the owner ruling. Its one obligation, adding-only, is the bullet above and is exercised by PART 108 mono/twin"
   },
   {
-   "sha": "d1b6552f84e0cda1",
+   "sha": "e0d6734b7c1729fc",
    "at": "2. The report",
    "excerpt": "**What the permission does NOT cover**, recorded so it is a decision rather than a discovery. A reading that W",
-   "unenforced": "A SCOPE STATEMENT recording two non-conformances as decisions still to be made (candor-scan's conversion-witness narrowing, R1165/R1192, withdraws Unknown from a semver-chosen source; the opt-in CANDOR_R1580 floor), and java/ts/swift NOT APPLICABLE. A row would pin an opt-in mode or a pre-existing behaviour the clause names as open; the coordinator files the row"
+   "unenforced": "A SCOPE STATEMENT recording two non-conformances as decisions still to be made (candor-scan's conversion-witness narrowing, R1165/R1192, withdraws Unknown from a semver-chosen source; the opt-in CANDOR_R1580 floor), and java/ts/swift NOT APPLICABLE. A row would pin an opt-in mode or a pre-existing behaviour the clause names as open; the coordinator files the row. ⟨0.42⟩ added one sentence cross-referencing the R1580 mode to the result-moving-switch disclosure, which PART 109 pins on one switch per engine"
+  },
+  {
+   "sha": "6b0a6a6966fb2c2d",
+   "at": "2. The report",
+   "excerpt": "- ⟨0.42⟩ `\"switches\": [ \"<NAME>\", … ]` — ENVELOPE-level, beside `analyzed`: **the result-moving switches (§3.4",
+   "part": "PART 109 (a_named — the report carries `switches` == [NAME] for a set and consulted switch; b_spec — `spec` unchanged; unconsulted and default_val — the omitted-when-empty half; seed_a — the checker is shown able to pass and to fail)"
+  },
+  {
+   "sha": "be24a6de1a711083",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "**RESULT-MOVING SWITCHES — an environment variable that changes what an engine REPORTS is named in the report ",
+   "unenforced": "THE LEAD PARAGRAPH of the ⟨0.42⟩ switches clause: a measurement record (candor-scan 0.41.3 CANDOR_R1608_OFF, candor-ts CANDOR_CT2_OFF) and the argument that no earlier MUST named a remedy. It adds no obligation beyond the bullets below it, each classified on its own; the measured example is PART 109's rust cell"
+  },
+  {
+   "sha": "edf7daed229c2300",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **WHAT IS A RESULT-MOVING SWITCH — BY DEFINITION, NEVER BY A LIST OF NAMES.** An environment variable whose ",
+   "part": "PART 109 (unconsulted — a prefixed name the engine never reads is not listed; live — each engine's real switch changes a result on its fixture). The by-effect definition itself is not machine-checkable, and no cell can show that a variable outside the four is or is not a switch"
+  },
+  {
+   "sha": "d84b5d4d33f28bd3",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **THE REGISTRATION IS THE READ.** An engine MUST NOT keep a list of its switches beside the code that reads ",
+   "unenforced": "A SOURCE PROPERTY of each engine (no second list of switch names beside the reads; one recording read function), and a negative: no black-box conformance cell can show that no other switch exists. Each port carries a source gate seeded with a raw read; the PART pins what the read produces, not how it is routed"
+  },
+  {
+   "sha": "2075fd671be4c370",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **(b) A REPORT THAT CARRIES IT IS NOT A CONFORMING REPORT OF ITS `spec`, AND `spec` IS NOT CHANGED.** The `s",
+   "part": "PART 109 (b_spec — `candor.spec` of the switched report equals the unswitched one)"
+  },
+  {
+   "sha": "0554fbfc806dcc55",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **THE EXCLUSIONS ARE DECIDED, NOT FORGOTTEN.** There is no opt-in variable that lets a switched run through ",
+   "unenforced": "NEGATIVE DECISIONS (no opt-in variable lets a switched run through, no debug-build exemption, harnesses attribute on the report route). A conformance cell cannot pin the absence of an escape hatch; the c_scan cells run in a harness environment with no opt-in and must refuse, which is the part of it that can fail"
+  },
+  {
+   "sha": "b16f210c43cf7d3a",
+   "at": "3.3.1 The query command-line grammar (REQUIRED f",
+   "excerpt": "- **On exit 2 (could-not-evaluate) no *ok:true/false GUESS* is written** — refined ⟨0.21⟩. There are five exit",
+   "part": "PART 54 (the refusal document; unchanged) and PART 109 (c_scan and h_ref — the ⟨0.42⟩ cause (e) is exit 2 with the refusal document naming the switch, on the scan route and on `gate --report`). RE-CONFIRMED 2026-11-10 after the count moved from four to five: the earlier ⟨0.41⟩ note on the incomplete verdict's OPTIONAL `violations` key is unchanged and still describes all four engines RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
+  },
+  {
+   "sha": "4af17630e377c30c",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **(a) THE REPORT NAMES IT: `\"switches\": [ \"<NAME>\", … ]`** (§2). One element per switch that was SET and CON",
+   "part": "PART 109 (a_named, unconsulted, default_val for java's value semantics, seed_a) RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
+  },
+  {
+   "sha": "e7dc92ed81ac9ea2",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **(c) A GATE EVALUATED UNDER A SET SWITCH IS UNANSWERABLE: exit 2, the §3.1 refusal document, the fifth §3.3",
+   "part": "PART 109 (c_scan — exit 2 and the refusal document under a switch in the gate's own environment, h_ref — `gate --report` over a report carrying `switches`, seed_c — the refusal checker can pass and can fail). The advisory verbs that answer `ok` are not pinned by a row RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
+  },
+  {
+   "sha": "39da5368fee840b1",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **(d) A GATE THAT CONSUMES A CHAINED REPORT CARRYING `switches` GETS THE ADVISORY SHAPE, AND ITS EXIT IS UNT",
+   "part": "PART 109 (d_exit — the chained verdict and exit are untouched, with the join shown live, d_adv — the advisory names the switch; rust and java only, ts and swift have no chained arm yet) RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
   }
  ]
 }
