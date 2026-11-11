@@ -92,7 +92,7 @@ SET_VALUE = {"rust": "1", "java": "0", "ts": "1", "swift": "1"}
 UNIT = {"rust": "c_let_chain", "java": "convlib.ArrayConverter.toString", "ts": "src.a.destrIface", "swift": "mixAll"}
 UNCONSULTED = "CANDOR_R0_OFF"
 # rust only: a second switch read at six sites across three files (R1494), for the sorted / no-duplicates cell
-SECOND_RUST = "CANDOR_R1494_OFF"
+SECOND_RUST = "CANDOR_R1474_OFF"  # a switch the RS_SRC fixture reaches (switches are read lazily; R1494 is never consulted here)
 
 # An expectation keyed by (cell, engine). A PASSING XFAIL IS A FAILURE: the engine that lands its port reddens this
 # part and retires its own lines in the same commit.
@@ -102,7 +102,7 @@ _H = "R1634 — `gate --report` over a report carrying `switches` judges it inst
 _D = "R1634 — a chained report carrying `switches` is gated silently: no advisory names the switch on stderr"
 XFAIL = {}
 # Engines whose R1634 port has landed: their cells are pinned, not xfailed.
-PORTED = {"ts", "java", "swift"}
+PORTED = {"ts", "java", "swift", "rust"}
 for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("a_named", _e)] = _A % SWITCH[_e]
     XFAIL[("c_scan", _e)] = _C
@@ -110,7 +110,6 @@ for _e in [e for e in ENGINES if e not in PORTED]:
 for _e in [e for e in ("rust", "java") if e not in PORTED]:
     XFAIL[("d_adv", _e)] = _D
     XFAIL[("d_key", _e)] = "R1634 — the consumer's verdict carries no `switchedDependencies`, so a machine consumer cannot see the chained input was switched"
-XFAIL[("two_sw", "rust")] = "R1634 — the report names no switch, so neither of the two set switches appears"
 for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("c_report", _e)] = "R1634 — the refused policy run's report does not carry `switches` (the report is where a harness attributes, and what gate --report is bound to answer over)"
     XFAIL[("h_verb", _e)] = "R1634 — `unverified --report` over a report carrying `switches` certifies it instead of refusing as the gate does (⟨0.33⟩ siblings)"
