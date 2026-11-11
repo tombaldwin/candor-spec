@@ -1333,8 +1333,10 @@ already carry.
   has no target to anchor at, and re-classifying these hosts through its OWN config would make the verdict
   depend on the reader's working directory.
 - ⟨0.42⟩ `"switches": [ "<NAME>", … ]` — ENVELOPE-level, beside `analyzed`: **the result-moving switches
-  (§3.4) that were SET in the producing run's environment and CONSULTED by it** — environment-variable NAMES
-  only (never values), sorted by code point, no duplicates. **Omitted when empty**, so a scan under no switch
+  (§3.4) that were SET in the producing run's environment and CONSULTED by it** — NAMES only (never values): an
+  environment variable's name, and for a switch the engine reads from another ambient channel the name the engine
+  reads it by, with no launcher syntax (the JVM engine's `-Dcandor.r1078=off` is named `candor.r1078`). Sorted by
+  code point, no duplicates. **Omitted when empty**, so a scan under no switch
   is byte-identical to a pre-rung report. A report that carries it is NOT a conforming report of the `spec` it
   names, and `spec` itself is unchanged (§3.4, SOUNDNESS R1634). Recorded by the PRODUCER, because a
   report-reading consumer cannot see the environment the report was produced in.
@@ -4550,8 +4552,12 @@ take that path — ⟨0.27⟩'s own MUST NOT forbids it (`zeroMatch` "MUST NOT c
 and refusing a verdict a real deployment depends on over a false positive on an ADVISORY key would trade
 a spurious warning for an outage). So this carve-out is narrower than a refusal: the MUST holds exactly as
 written for every OTHER key a verdict document carries, and is suspended for `zeroMatch` alone, and only
-in the one quadrant where the cause above applies — a rule whose scope names a function that is pure on
-BOTH routes. A rule scoped to an effectful function, or matching no function anywhere, is unaffected and
+in the one quadrant where the cause above applies — a rule whose scope binds only units that are pure on
+BOTH routes. ⟨0.42⟩ (clarification, SOUNDNESS R1651; no new ruling) *The scope's SHAPE does not move the quadrant:
+the cause is about which units the two routes can see, not how the scope reached them, so a function named in full,
+a last-segment prefix (`add`), and a trailing-separator prefix (`m2::`, `app.pure.`, a package, module, directory or
+type) are the same case when every unit the scope binds is pure on both routes. A prefix that also binds an effectful
+unit is not in the quadrant: the rule binds on both routes, and the ordinary MUST holds.* A rule scoped to an effectful function, or matching no function anywhere, is unaffected and
 stays governed by the ordinary MUST (PART 32/36 already pin the latter; PART 83, below, pins this one).
 
 **Which side to believe, stated because a carve-out that only permits divergence without saying which
@@ -4577,7 +4583,8 @@ or an envelope-level one. Until one of those lands, this carve-out is the honest
 and explained, not quietly instrumented with a key that cannot tell the two cases apart.
 
 Pinned by conformance **PART 83**, which measures the divergence together with a byte-equal effectful-
-sibling control proving it stays confined to this one quadrant.
+sibling control proving it stays confined to this one quadrant, and (⟨0.42⟩) on a PREFIX scope in all four engines,
+beside a control showing a prefix that binds no unit is `zeroMatch` on both routes, byte-equal.
 
 ⟨0.24⟩ **A `dispatch:` detail with NO DOT names no owner, so condition (3) is UNANSWERABLE — and an
 unanswerable condition MUST NOT be scored as a failed one.** §4 reserves the dot-free detail for an
@@ -5106,14 +5113,32 @@ asks nothing of the engine; and §3.1's *"an unanswerable condition MUST be disc
 satisfied"* was written for the engine pin. The reasoning is the one ⟨0.31⟩'s `netPartners` already quotes, and it
 needs a shape for the same reason: *a MUST with no shape is an invitation to diverge.*
 
-- **WHAT IS A RESULT-MOVING SWITCH — BY DEFINITION, NEVER BY A LIST OF NAMES.** An environment variable whose value,
-  as the engine reads it, can change any byte of a report or of a verdict. A variable that SUPPLIES AN INPUT — a
+- **WHAT IS A RESULT-MOVING SWITCH — BY DEFINITION, NEVER BY A LIST OF NAMES.** An ambient input whose value, as the
+  engine reads it, can change any byte of a report or of a verdict: an environment variable, or any other channel the
+  run meets in its own environment (§3.4's next bullet). A variable that SUPPLIES AN INPUT — a
   path to a policy, a baseline, a dependency report, a configuration file (`CANDOR_POLICY`, `CANDOR_DEPS`,
   `CANDOR_CONFIG`, and the rest of this section's table) — is configuration, and is out of scope: it names a thing
   the run reads. A variable that changes HOW the engine reasons about the same inputs (a kill switch for a closed
   defect, an opt-in mode, a measurement arm) is in scope. A read that only writes to stderr is out of scope, because
   no report or verdict can depend on it. A name pattern cannot define the class: the family's own switches end in
   `_OFF`, `_PRE`, `_SEED` and `_NO_NARROW`, and one has no suffix at all (`CANDOR_R1565=0`).
+- **THE CLASS BINDS THE EFFECT, NOT THE CHANNEL.** ⟨0.42⟩ (SOUNDNESS R1645). The definition above is by effect, and a
+  list of CHANNELS fails the way a list of names does: a channel the clause did not name is the silent one. MEASURED on
+  candor-java 0.41.3, released: `-Dcandor.r1078=off` takes one input from 2,882 functions to 2,889 and
+  `-Dcandor.r1461=off` changes the bytes, neither carrying `switches`, and the same JVM system property arrives through
+  the launcher's command line, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS`, a start script's options or
+  the umbrella dispatcher's own `CANDOR_JAVA_OPTS`, and a single `System.getProperty` read sees all of them alike. So a
+  property that changes how the engine reasons about the same inputs is a switch exactly as an environment variable is,
+  BY WHICHEVER ROUTE IT ARRIVED, and the explicit command-line spelling is bound for the same reason an explicit
+  `CANDOR_R1608_OFF=1` is: nothing in the clause licenses a switch for being deliberate, and an engine that kept the
+  routes apart would be keeping a list of launchers. Every rule below applies to such a property as to a variable:
+  "the evaluating process's OWN environment" (c) includes the properties it was started with; it is named by the
+  name the engine reads it by, with no launcher syntax and never its value; a property the engine does not read is not
+  listed; and the §3.3 refusal's `reason` says to unset the variable or the property. The input-versus-mode test is the
+  same one: a property that supplies an input or describes the host (a path to a policy, `user.dir`, `os.name`) is
+  configuration. An engine whose runtime has no such channel has nothing to name, and one that gains one is bound
+  without another amendment. A mechanism that REPLACES the engine rather than switching it (`-javaagent`,
+  `LD_PRELOAD`, a Node `--require` preload) is not a switch: no disclosure by the replaced engine can cover it.
 - **THE REGISTRATION IS THE READ.** An engine MUST NOT keep a list of its switches beside the code that reads them:
   a list of switch names is an allowlist, and it fails in the absence direction — a switch added without its entry
   is the silent one. An engine SHOULD make one function the only way the engine reads such a variable, and that
@@ -7327,7 +7352,9 @@ declare it via the envelope's `spec`.
   a report is not a conforming report of its `spec`, and `spec` is unchanged. A gate whose own environment holds a
   consulted switch, or that is handed a report carrying `switches`, refuses with exit 2 and the §3.1 refusal document
   naming it, a refused scan still writing its report: the fifth exit-2 cause. A chained report carrying it gets an advisory and an additive `switchedDependencies` key on the verdict, exit untouched. The class is
-  defined by effect, never by a name list. ADDITIVE for `switches`; the refusal is NOT additive, and moves only a run
+  defined by effect, never by a name list or a channel: a JVM `-D` system property that moves a result is a switch
+  and is named by the name the engine reads it by (SOUNDNESS R1645; amended 2026-11-11, before any engine declared
+  ⟨0.42⟩, so no floor moves). ADDITIVE for `switches`; the refusal is NOT additive, and moves only a run
   that sets a variable no engine documents. Pinned by PART 109, which every engine fails today (xfail, one line per
   engine).
 - **0.41 (AUTHORED 2026-11-02, declared by no engine yet; reference-led — candor-java first, the floor rises

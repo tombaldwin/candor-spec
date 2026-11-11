@@ -3104,10 +3104,10 @@
    "part": "PART 83"
   },
   {
-   "sha": "26c765966f2728d8",
+   "sha": "816a509976583b91",
    "at": "3.1 Read-only queries (SHOULD)",
    "excerpt": "This is **the ⟨0.26⟩ key-set-is-the-manifest shape one route over**: there, an absent sidecar entry could mean",
-   "part": "PART 83"
+   "part": "PART 83 (defect-* named-function cells, and, re-confirmed 2026-11-11 for the R1651 clarification that a PREFIX scope binding only pure units is the same quadrant, defect-prefix-pure-zeromatch four-way, nomatch-prefix-byteequal and control-prefix-effectful-byteequal)"
   },
   {
    "sha": "596fdc4d4ffe3335",
@@ -4094,10 +4094,10 @@
    "unenforced": "A SCOPE STATEMENT recording two non-conformances as decisions still to be made (candor-scan's conversion-witness narrowing, R1165/R1192, withdraws Unknown from a semver-chosen source; the opt-in CANDOR_R1580 floor), and java/ts/swift NOT APPLICABLE. A row would pin an opt-in mode or a pre-existing behaviour the clause names as open; the coordinator files the row. ⟨0.42⟩ added one sentence cross-referencing the R1580 mode to the result-moving-switch disclosure, which PART 109 pins on one switch per engine"
   },
   {
-   "sha": "6b0a6a6966fb2c2d",
+   "sha": "696ae5bbc33e195d",
    "at": "2. The report",
    "excerpt": "- ⟨0.42⟩ `\"switches\": [ \"<NAME>\", … ]` — ENVELOPE-level, beside `analyzed`: **the result-moving switches (§3.4",
-   "part": "PART 109 (a_named — the report carries `switches` == [NAME] for a set and consulted switch; b_spec — `spec` unchanged; unconsulted and default_val — the omitted-when-empty half; seed_a — the checker is shown able to pass and to fail)"
+   "part": "PART 109 (a_named — the report carries `switches` == [NAME] for a set and consulted switch, and jp_named_cmd/jto/jdk, xfail R1645, for a JVM property named without its `-D`; b_spec — `spec` unchanged; unconsulted and default_val — the omitted-when-empty half; seed_a — the checker is shown able to pass and to fail)"
   },
   {
    "sha": "be24a6de1a711083",
@@ -4106,10 +4106,16 @@
    "unenforced": "THE LEAD PARAGRAPH of the ⟨0.42⟩ switches clause: a measurement record (candor-scan 0.41.3 CANDOR_R1608_OFF, candor-ts CANDOR_CT2_OFF) and the argument that no earlier MUST named a remedy. It adds no obligation beyond the bullets below it, each classified on its own; the measured example is PART 109's rust cell"
   },
   {
-   "sha": "edf7daed229c2300",
+   "sha": "62f3c71c7883e46d",
    "at": "3.4 The configuration file — `.candor/config` (S",
    "excerpt": "- **WHAT IS A RESULT-MOVING SWITCH — BY DEFINITION, NEVER BY A LIST OF NAMES.** An environment variable whose ",
-   "part": "PART 109 (unconsulted — a prefixed name the engine never reads is not listed; live — each engine's real switch changes a result on its fixture). The by-effect definition itself is not machine-checkable, and no cell can show that a variable outside the four is or is not a switch"
+   "part": "PART 109 (unconsulted — a prefixed name the engine never reads is not listed; live — each engine's real switch changes a result on its fixture; jp_live — a java system property moves a result by `-D`, JAVA_TOOL_OPTIONS and JDK_JAVA_OPTIONS alike). The by-effect definition itself is not machine-checkable, and no cell can show that a variable outside the four is or is not a switch"
+  },
+  {
+   "sha": "32e9d0d6853a37ac",
+   "at": "3.4 The configuration file — `.candor/config` (S",
+   "excerpt": "- **THE CLASS BINDS THE EFFECT, NOT THE CHANNEL.** ⟨0.42⟩ (SOUNDNESS R1645). The definition above is by effect",
+   "part": "PART 109 (the jp_* arm, java: jp_named_cmd, jp_named_jto and jp_named_jdk — the same property by three routes is named alike; jp_refuse_cmd and jp_refuse_jto — a gate under it refuses; jp_two — a variable and a property of one flag both named, sorted, once; jp_unconsulted and jp_default_val — the omitted-when-empty half; jp_seed — the checker refuses the `-D` spelling). XFAIL citing R1645 until candor-java registers its properties. The `-javaagent` / preload exclusion and the no-channel-in-other-engines statements are not machine-checkable"
   },
   {
    "sha": "d84b5d4d33f28bd3",

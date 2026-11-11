@@ -43,6 +43,26 @@ Run it after any patch-cycle commit that adds a section here.
   `CANDOR_CT2_OFF`, swift `CANDOR_R1032_OFF`), a no-switch control, an unconsulted-name control, a seeded hand-edited
   report that must fail the (a) check, and a four-way hand-written `gate --report` arm for (d). xfail per engine on
   (a), (c) and the (d) advisory until each port lands.
+- **SPEC §3.1 ⟨0.34⟩ carve-out, clarified for PREFIX scopes (SOUNDNESS R1651); no new ruling, no behaviour change.** The
+  `zeroMatch` carve-out (Tom's ruling D) names "a function that is pure on both routes". A scope that is a prefix
+  binding only such units (`deny Fs m2::`) is the same quadrant, for the same cause: the scan route counts over the
+  in-memory unit set and `gate --report` over the persisted `functions`, which omit pure units. The clause now says the
+  scope's shape does not move it. PART 83 gains prefix arms in all four engines (`defect-prefix-pure-zeromatch`,
+  `control-prefix-effectful-byteequal`, `nomatch-prefix-byteequal`, plus rust's R1651 row fixture), all identical to the
+  named-function case. `multiMatch` is rust's stderr disclosure (R301), not a verdict key, and is outside the clause.
+- **SPEC ⟨0.42⟩ result-moving switches, amended: THE CLASS BINDS THE EFFECT, NOT THE CHANNEL (§2 `switches`; §3.4,
+  SOUNDNESS R1645), plus conformance PART 109's java property arm. Amended before any engine declares ⟨0.42⟩, so no
+  floor moves.** The definition said "an environment variable" while the paragraph under it said the class is never
+  defined by a list, and a list of channels fails the way a list of names does. candor-java also reads five
+  undocumented `-Dcandor.*` JVM system properties (`candor.r1078`, `candor.r1461`, `candor.r1461.wide`,
+  `candor.frameworkReach`, `candor.frameworkPure`) that move results, and the same property arrives through the
+  launcher's command line, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `_JAVA_OPTIONS` or a start script's options, which
+  one `System.getProperty` read cannot tell apart. So a property that changes how the engine reasons is a switch
+  exactly as a variable is, by whichever route it arrived; it is named in `switches` by the name the engine reads it by
+  with no launcher syntax (`candor.r1078`, never `-Dcandor.r1078`); every rule of §3.4 (a)-(d) applies unchanged.
+  An engine with no such channel has nothing to name (swift, ts and rust measured: none). The five java properties
+  and the java `-D` route are not yet ported: PART 109's `jp_*` arm pins them, xfail citing R1645 until candor-java
+  lands the port. No other engine changes.
 - **SPEC ⟨0.42⟩ AUTHORED, declared by no engine: CO-PATH UNITS (§2, under the ⟨0.40⟩ `(hash, fn)` bullet; §6.2
   Scope matching), plus conformance PART 107. No floor move; reference-led — candor-java's main conforms
   (`b79597b`, unreleased).** Several separately-written bodies under one fully-qualified path (an overload set; a

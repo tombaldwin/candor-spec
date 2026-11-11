@@ -50,6 +50,14 @@ CELLS (per engine unless stated; `w` = the switch arm, `u` = the unset arm):
   seed_c        the same for the refusal checker behind `c_scan` and `h_ref`: a well-formed refusal passes, and a scored
                 verdict, a `violations` key, no switch named, another switch named, or exit 1 each fail.
 
+THE JAVA PROPERTY ARM (R1645, `jp_*`, java only): a JVM system property that moves a result (`candor.r1078=off`; the fixture's
+`rfu.Cov$Base.getOptions` is absent unset and present under it) is a switch exactly as a variable is, so it is delivered
+by `java -D…`, `JAVA_TOOL_OPTIONS` and `JDK_JAVA_OPTIONS`, and named as `candor.r1078` (no `-D`). `jp_live` is a harness
+check (never an xfail); `jp_ctl`, `jp_spec`, `jp_unconsulted`, `jp_default_val`, `jp_two_ctl`, `jp_seed`, `jp_strip` pass
+today; `jp_named_cmd/jto/jdk`, `jp_refuse_cmd/jto` and `jp_two` (`CANDOR_R1461=off` beside `-Dcandor.r1461=off`: both names,
+sorted, once) are XFAIL citing R1645 until candor-java registers its properties. `strip_env` now drops the four JVM option
+variables from every engine's environment, and the property arm sets them on the ENGINE process only (javac is a JVM too).
+
 EVERY ENGINE FAILS a_named, c_scan, h_ref (and d_adv for rust and java) TODAY. They are XFAIL, keyed (cell, engine);
 a PASSING xfail is a FAILURE, so the engine that lands its port reddens this part and retires its own lines in the same
 commit. `live`, `ctl_plain`, `b_spec`, `unconsulted`, `default_val`, `h_ctl`, `d_exit`, `seed_a` and `seed_c` pass today and
@@ -74,7 +82,10 @@ import gen_policy_semantics as PS      # noqa: E402
 SPEC_CLAUSES = [
     ("§2 ⟨0.42⟩", "**the result-moving switches (§3.4) that were SET in the producing run's environment and CONSULTED by it**"),
     ("§2 ⟨0.42⟩", "**Omitted when empty**, so a scan under no switch is byte-identical to a pre-rung report."),
-    ("§3.4 ⟨0.42⟩", "An environment variable whose value, as the engine reads it, can change any byte of a report or of a verdict."),
+    ("§3.4 ⟨0.42⟩", "An ambient input whose value, as the engine reads it, can change any byte of a report or of a verdict: an environment variable, or any other channel the"),
+    ("§3.4 ⟨0.42⟩", "**THE CLASS BINDS THE EFFECT, NOT THE CHANNEL.**"),
+    ("§3.4 ⟨0.42⟩", "BY WHICHEVER ROUTE IT ARRIVED"),
+    ("§2 ⟨0.42⟩", "the name the engine reads it by, with no launcher syntax (the JVM engine's `-Dcandor.r1078=off` is named `candor.r1078`)"),
     ("§3.4 ⟨0.42⟩", "A `CANDOR_`-prefixed variable the engine does not consult is therefore NOT listed"),
     ("§3.4 ⟨0.42⟩", "**(b) A REPORT THAT CARRIES IT IS NOT A CONFORMING REPORT OF ITS `spec`, AND `spec` IS NOT CHANGED.**"),
     ("§3.4 ⟨0.42⟩", "**(c) A GATE EVALUATED UNDER A SET SWITCH IS UNANSWERABLE: exit 2, the §3.1 refusal document, the fifth §3.3"),
@@ -115,10 +126,23 @@ for _e in [e for e in ENGINES if e not in PORTED]:
     XFAIL[("h_verb", _e)] = "R1634 — `unverified --report` over a report carrying `switches` certifies it instead of refusing as the gate does (⟨0.33⟩ siblings)"
 
 
+# The channels that carry a JVM `-D` system property to the engine without a visible flag (SPEC §3.4 ⟨0.42⟩, R1645). A
+# coordinator's shell may hold any of them; an inherited `-Dcandor.…` would turn every unset arm into a switched one.
+JVM_OPTION_VARS = ("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "JAVA_OPTS")
+
+# R1645 — the java property arm (`jp_*` cells). candor-java reads five `-Dcandor.*` JVM system properties that move
+# results through no registering read, so none of them is named. XFAIL until the java port registers them.
+_JP = "R1645 — a result-moving JVM system property is set and consulted but the report names no switch: `switches` is absent"
+_JPC = "R1645 — a gate under a set JVM system property scores the run (exit 1/0) instead of refusing with exit 2"
+XFAIL.update({("jp_named_cmd", "java"): _JP, ("jp_named_jto", "java"): _JP, ("jp_named_jdk", "java"): _JP,
+              ("jp_refuse_cmd", "java"): _JPC, ("jp_refuse_jto", "java"): _JPC,
+              ("jp_two", "java"): "R1645 — `-Dcandor.r1461=off` beside `CANDOR_R1461=off`: only the variable is named, the property twin of the same switch is not"})
+
+
 def strip_env(extra=None):
     """The engine's environment: the harness's own, minus EVERY CANDOR_ variable (a switch inherited from the
     coordinator's shell would turn the unset arm into a switched one and read as a pre-rung engine)."""
-    env = {k: v for k, v in os.environ.items() if not k.startswith("CANDOR_")}
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CANDOR_") and k not in JVM_OPTION_VARS}
     env.update(extra or {})
     return env
 
@@ -509,6 +533,143 @@ def run_engine(eng, ws):
     return rows
 
 
+# =====================================================================================================
+# THE JAVA PROPERTY ARM (R1645) — a result-moving JVM system property is a switch exactly as a variable is
+# =====================================================================================================
+JP_PROP = "candor.r1078"
+JP_UNIT = "rfu.Cov$Base.getOptions"
+JP_SRC = """package rfu;
+public class Cov {
+  public interface Opts {}
+  public static class ChatOpts implements Opts {}
+  public interface Req { Opts getOptions(); }
+  public static class Base implements Req { public ChatOpts getOptions() { return new ChatOpts(); } }
+  public static class Sub extends Base { @Override public ChatOpts getOptions() {
+    try { java.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/candor-part109-never-run"), "x"); } catch (Exception e) { }
+    return new ChatOpts(); } }
+  public static boolean viaIface(Req r) { return r.getOptions() != null; }
+  // a call on a generic collection owner whose project implementor has another type argument: the only thing that makes
+  // the engine consult the R1461 generic-hedge switch
+  public static class Ints extends java.util.AbstractList<Integer> {
+    @Override public Integer get(int i) { return i; }
+    @Override public int size() { return 0; } }
+  public static int size(java.util.List<String> l) { return l.size(); }
+}
+"""
+
+
+def run_java_props(ws):
+    """A property the engine reads (`candor.r1078=off`: a covariant bridge's self-call is folded into its real member, so
+    `Base.getOptions` inherits `Sub`'s Fs when it is OFF) delivered four ways: `java -D… -jar`, `JAVA_TOOL_OPTIONS`,
+    `JDK_JAVA_OPTIONS`, and beside the env twin of a second switch. Every route is the SAME read in the engine, which is
+    why SPEC §3.4 binds them alike. The property arm's environment reaches the ENGINE process only: javac is a JVM too."""
+    rows = []
+
+    def cell(cid, ok, detail, why):
+        rows.append((cid, "java", ok, detail, why))
+
+    d = os.path.join(ws, "jprop")
+    w(os.path.join(d, "src", "rfu", "Cov.java"), JP_SRC)
+    cls = os.path.join(d, "cls")
+    os.makedirs(cls, exist_ok=True)
+    rc, _o, err = run(["javac", "-nowarn", "-d", cls, os.path.join(d, "src", "rfu", "Cov.java")], strip_env())
+    if rc:
+        raise RuntimeError("javac (property fixture) failed: " + err[:300])
+    pol = os.path.join(d, "p.candor")
+    w(pol, "deny Fs %s\n" % JP_UNIT)
+
+    def scan(tag, jvm=(), env=None, policy=False):
+        od = os.path.join(d, "out", tag)
+        shutil.rmtree(od, ignore_errors=True)
+        os.makedirs(od)
+        gj = os.path.join(od, "gate.json")
+        argv = ["java"] + list(jvm) + ["-jar", G.java_jar(), cls, "--json", os.path.join(od, "r.json")]
+        if policy:
+            argv += ["--policy", pol, "--gate-json", gj]
+        rc_, _o_, err_ = run(argv, strip_env(env))
+        return {"rc": rc_, "err": err_, "doc": load(os.path.join(od, "r.json")), "gdoc": load(gj)}
+
+    prop = [] if FAULT else ["-D%s=off" % JP_PROP]
+    jto = {} if FAULT else {"JAVA_TOOL_OPTIONS": "-D%s=off" % JP_PROP}
+    jdk = {} if FAULT else {"JDK_JAVA_OPTIONS": "-D%s=off" % JP_PROP}
+
+    u = scan("u", policy=True)
+    wc = scan("wc", jvm=prop, policy=False)
+    wj = scan("wj", env=jto, policy=False)
+    wk = scan("wk", env=jdk, policy=False)
+    if None in (u["doc"], wc["doc"], wj["doc"], wk["doc"]):
+        cell("jp_live", False, "a scan wrote no report: %s" % (u["err"] or wc["err"] or wj["err"] or wk["err"])[:200],
+             "harness: the fixture did not scan")
+        return rows
+    present = lambda r: has_unit(r["doc"], JP_UNIT)   # noqa: E731
+    live = (not present(u)) and present(wc) and present(wj) and present(wk)
+    cell("jp_live", live, "`%s` is %s unset, %s under -D, %s under JAVA_TOOL_OPTIONS, %s under JDK_JAVA_OPTIONS" % (
+        JP_UNIT, "present" if present(u) else "ABSENT", "present" if present(wc) else "absent",
+        "present" if present(wj) else "absent", "present" if present(wk) else "absent"),
+        "harness: the property must move a result by every route, or no jp_ cell measures anything")
+    if not live:
+        return rows
+    cell("jp_ctl", "switches" not in u["doc"] and u["rc"] == 0 and not (u["gdoc"] or {}).get("refused"),
+         "unset arm: no `switches` key (%s), policy exit %s, refused=%s" % ("switches" not in u["doc"], u["rc"], (u["gdoc"] or {}).get("refused")),
+         "control: today's output with no property set")
+    cell("jp_named_cmd", check_a(wc["doc"], JP_PROP), "java -D%s=off: switches = %r" % (JP_PROP, wc["doc"].get("switches")),
+         "§3.4 (a): a property set on the command line is named, by the name the engine reads it by (no `-D`)")
+    cell("jp_named_jto", check_a(wj["doc"], JP_PROP), "JAVA_TOOL_OPTIONS=-D%s=off: switches = %r" % (JP_PROP, wj["doc"].get("switches")),
+         "§3.4 (a): the same property by JAVA_TOOL_OPTIONS is named alike: the engine cannot tell the routes apart")
+    cell("jp_named_jdk", check_a(wk["doc"], JP_PROP), "JDK_JAVA_OPTIONS=-D%s=off: switches = %r" % (JP_PROP, wk["doc"].get("switches")),
+         "§3.4 (a): and by JDK_JAVA_OPTIONS")
+    cell("jp_spec", wc["doc"].get("candor", {}).get("spec") == u["doc"].get("candor", {}).get("spec"),
+         "spec %r under the property, %r unset" % (wc["doc"].get("candor", {}).get("spec"), u["doc"].get("candor", {}).get("spec")),
+         "§3.4 (b): `spec` is not changed")
+    gc = scan("gc", jvm=prop, policy=True)
+    gj = scan("gj", env=jto, policy=True)
+    cell("jp_refuse_cmd", check_refusal(gc["gdoc"], gc["rc"], JP_PROP),
+         "policy run under -D%s=off: exit %s, refused=%s, switches=%r" % (JP_PROP, gc["rc"], (gc["gdoc"] or {}).get("refused"), (gc["gdoc"] or {}).get("switches")),
+         "§3.4 (c)(i): a gate under a set property is unanswerable")
+    cell("jp_refuse_jto", check_refusal(gj["gdoc"], gj["rc"], JP_PROP),
+         "policy run under JAVA_TOOL_OPTIONS: exit %s, refused=%s, switches=%r" % (gj["rc"], (gj["gdoc"] or {}).get("refused"), (gj["gdoc"] or {}).get("switches")),
+         "§3.4 (c)(i): the same by the ambient route")
+    # a property the engine does not read is not listed, and a property set to its default is not SET
+    nn = scan("nn", jvm=["-Dcandor.nonesuch=off"], policy=True)
+    cell("jp_unconsulted", nn["doc"] is not None and "switches" not in nn["doc"] and nn["rc"] == 0,
+         "-Dcandor.nonesuch=off: switches %s, policy exit %s" % ("absent" if nn["doc"] and "switches" not in nn["doc"] else "PRESENT", nn["rc"]),
+         "§3.4 (a): a property the engine never reads is not listed (a dump of the properties would bury the one that mattered)")
+    dv = scan("dv", jvm=["-D%s=on" % JP_PROP], policy=True)
+    cell("jp_default_val", dv["doc"] is not None and "switches" not in dv["doc"] and dv["rc"] == 0,
+         "-D%s=on equals unset: switches %s, policy exit %s" % (JP_PROP, "absent" if dv["doc"] and "switches" not in dv["doc"] else "PRESENT", dv["rc"]),
+         "§3.4 (a): SET means the value selects a branch other than the unset one")
+    # two channels of ONE flag: the variable is read first, the property beside it. Both are SET and CONSULTED, so both are named.
+    e1 = scan("e1", env={"CANDOR_R1461": "off"}, policy=False)
+    e2 = scan("e2", jvm=["-Dcandor.r1461=off"], env={"CANDOR_R1461": "off"}, policy=False)
+    want1, want2 = ["CANDOR_R1461"], ["CANDOR_R1461", "candor.r1461"]
+    cell("jp_two_ctl", (e1["doc"] or {}).get("switches") == want1,
+         "CANDOR_R1461=off alone: switches = %r (expected %r — proves the flag is consulted on this fixture)" % ((e1["doc"] or {}).get("switches"), want1),
+         "control: the variable twin is already named, so jp_two is not vacuous")
+    cell("jp_two", (e2["doc"] or {}).get("switches") == want2,
+         "CANDOR_R1461=off beside -Dcandor.r1461=off: switches = %r (expected %r, code-point sorted, each once)" % ((e2["doc"] or {}).get("switches"), want2),
+         "§3.4 (a): two names of one flag arrive by two channels; sorted by code point, no duplicates")
+    # seeds — the same calibration as seed_a: the checker passes the right name, fails a deleted key and a launcher-syntax spelling
+    inj, dele = seed_report(u["doc"], JP_PROP, True), seed_report(wc["doc"], JP_PROP, False)
+    dash = seed_report(u["doc"], "-D" + JP_PROP, True)
+    cell("jp_seed", check_a(inj, JP_PROP) and not check_a(dele, JP_PROP) and not check_a(dash, JP_PROP),
+         "injected passes=%s, key deleted fails=%s, `-D`-prefixed name fails=%s" % (check_a(inj, JP_PROP), not check_a(dele, JP_PROP), not check_a(dash, JP_PROP)),
+         "calibration: jp_named_* can pass, can fail, and refuse the launcher spelling")
+    sv = {k: os.environ.get(k) for k in JVM_OPTION_VARS}
+    try:
+        for k in JVM_OPTION_VARS:
+            os.environ[k] = "-Dcandor.seeded=1"
+        leaked = [k for k in JVM_OPTION_VARS if k in strip_env()]
+    finally:
+        for k, v in sv.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    cell("jp_strip", not leaked, "strip_env drops every JVM option channel (leaked: %r)" % (leaked,),
+         "harness: an inherited JAVA_TOOL_OPTIONS must not turn an unset arm into a switched one")
+    return rows
+
+
 def main():
     argv = sys.argv[1:]
     only = argv[argv.index("--engine") + 1] if "--engine" in argv else None
@@ -535,6 +696,12 @@ def main():
                 rows += run_engine(e, ws)
             except Exception as ex:                     # noqa: BLE001
                 print("  %-6s -> BROKEN: %s" % (e, ex))
+                bad += 1
+        if "java" in engines:
+            try:
+                rows += run_java_props(ws)
+            except Exception as ex:                     # noqa: BLE001
+                print("  %-6s -> BROKEN (property arm): %s" % ("java", ex))
                 bad += 1
         nx = 0
         for cid, eng, ok, detail, why in rows:

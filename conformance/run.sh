@@ -3351,6 +3351,7 @@ echo "PART 109 — result-moving switches: named in the report, spec unchanged, 
 # CONTROLS: ctl_plain unconsulted h_ctl seed_a seed_c — ctl_plain is today's output with no switch set (no key, the policy exits 1), unconsulted sets a prefixed name no engine reads and must list nothing, h_ctl is the same hand-written report without the key judged normally, and seed_a and seed_c run each checker on a hand-built pass and on hand-edited failures (the report with `switches` deleted) so a_named and the refusal cells are shown able to fail.
 # NOTE: every engine FAILS a_named, c_scan and h_ref today, and rust and java d_adv: they are XFAIL in gen_env_switches.py keyed (cell, engine) and citing R1634, and a PASSING xfail is a FAILURE, so the port that lands reddens this part and retires its own lines. The chained arm (d) is rust and java only (CANDOR_DEPS over a hand-injected producer report): ts needs an npm package layout and swift a SwiftPM dependency pair, and no recipe for either exists in this suite beyond PART 107's swift S arm, so ts and swift (d) is a GAP until a port lane writes it. java's switch lives in the PRODUCER (`dispatchesOn` on a formatting member), so its (a) cell reads the producer report and its (c) cell gates a chained consumer; the other three are single-tree. MEASURED 2026-11-10 on candor-scan 0.41.3 (spec 0.41), candor-java 0.41.3 jar, candor-ts 0.41.3, candor-swift 0.41.3: 42 cells, 14 xfail, 0 FAIL.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 runs the switch arm WITHOUT the switch, so `live` reddens on every engine (a harness check, never an xfail). Registered in probe_check.py (java arm).
+# R1645: a java PROPERTY arm (`jp_*`) delivers `candor.r1078=off` by `-D`, JAVA_TOOL_OPTIONS and JDK_JAVA_OPTIONS and pins that it is named `candor.r1078`; jp_named_*, jp_refuse_* and jp_two are XFAIL citing R1645 until candor-java ports it.
 
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
@@ -17555,6 +17556,26 @@ if bad:
 print("OK — scan and report routes byte-equal, both fire AS-EFF-006, neither carries zeroMatch")
 ' "$1" "$2"
 }
+ck83_nomatch() {   # <scan.json> <report.json> <scope-literal> — a prefix that matches NOTHING: both routes say so, byte-equal
+  python3 -c '
+import json, sys
+sb = open(sys.argv[1], "rb").read(); rb = open(sys.argv[2], "rb").read(); scope = sys.argv[3]
+bad = []
+if sb != rb: bad.append("scan and report routes are NOT byte-equal for a prefix scope that matches no unit anywhere")
+try:
+    d = json.loads(sb)
+except Exception as exc:
+    print("FAIL: INSTRUMENT: cannot parse " + sys.argv[1] + " (" + str(exc) + ")")
+    sys.exit(1)
+zm = d.get("zeroMatch")   # a plain variable — see ck83_defect for why
+if zm != [scope]: bad.append("zeroMatch=" + repr(zm) + ", want [" + repr(scope) + "] — the scan route does not disclose an unbound PREFIX, so its silence on the defect cell would mean nothing")
+if d.get("ok") is not True: bad.append("ok=" + repr(d.get("ok")) + ", want True (zeroMatch is advisory)")
+if bad:
+    for b in bad: print("FAIL: " + b)
+    sys.exit(1)
+print("OK — a prefix binding no unit is zeroMatch on BOTH routes, byte-equal: the scan route does disclose an unbound prefix, so its silence on the defect cell is the carve-out and not blindness")
+' "$1" "$2" "$3"
+}
 p83() {   # <engine> <cell> <checker output>
   local engine="$1" cell="$2" out="$3"
   if printf '%s' "$out" | grep -q '^FAIL'; then
@@ -17637,12 +17658,113 @@ else
   P83_OUT="$P83_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked)
 "
 fi
+# ---- PREFIX SCOPES (SOUNDNESS R1651): the same quadrant, with a scope that is a PREFIX binding only pure units --------
+# `deny Fs <prefix>` where the prefix (a trailing-separator scope, §6.2 form (1): module / package / directory / type)
+# matches ONLY units that are pure on both routes. SPEC §3.1 ⟨0.34⟩'s carve-out names "a function" and the cause it gives
+# is about the unit set, not the scope's shape, so a reader holding the letter could argue a prefix is outside it; the
+# clarifying phrase says it is not, and these arms pin that four-way. Each engine's fixture has a PURE prefix (the defect)
+# and an EFFECTFUL sibling prefix (the control, which must stay byte-equal across routes). The rust fixture below is the
+# R1651 row's own (a trait whose effectful default is reached through a pure impl in `m2`), beside the plain-module one.
+P83P="$P83/prefix"
+mkdir -p "$P83P/rust/src" "$P83P/rustr/src" "$P83P/java/app/pure" "$P83P/java/classes" "$P83P/ts/src" "$P83P/swift/src"
+# ---- rust: a plain module, and the R1651 fixture ----
+printf '[package]\nname = "p83p"\nversion = "0.0.0"\nedition = "2021"\n' > "$P83P/rust/Cargo.toml"
+printf 'pub mod m2 { pub fn add_numbers(a: i32, b: i32) -> i32 { a + b } pub fn twice(a: i32) -> i32 { a * 2 } }\npub mod m1 { pub fn write_something() { std::fs::write("/tmp/x", "y").unwrap(); } }\n' > "$P83P/rust/src/lib.rs"
+printf '[package]\nname = "p83r"\nversion = "0.0.0"\nedition = "2021"\n' > "$P83P/rustr/Cargo.toml"
+printf 'pub trait Tr { fn act(&self); fn go(&self) { let _ = std::fs::read("/x"); self.act() } }\npub mod m2 { pub struct P; impl super::Tr for P { fn act(&self) {} } }\npub fn caller_p() { m2::P.go() }\n' > "$P83P/rustr/src/lib.rs"
+for fx in rust rustr; do
+  printf 'deny Fs m2::\n' > "$P83P/$fx/defect.policy"
+  printf 'deny Fs m1::\n' > "$P83P/$fx/control.policy"
+  "$SCAN" "$P83P/$fx" --policy "$P83P/$fx/defect.policy"  --gate-json "$P83P/$fx.defect.scan.json"  >/dev/null 2>&1
+  "$SCAN" "$P83P/$fx" --policy "$P83P/$fx/control.policy" --gate-json "$P83P/$fx.control.scan.json" >/dev/null 2>&1
+  RPT="$(ls "$P83P/$fx"/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+  "$QUERY" gate --report "$RPT" --policy "$P83P/$fx/defect.policy"  --gate-json "$P83P/$fx.defect.report.json"  >/dev/null 2>&1
+  "$QUERY" gate --report "$RPT" --policy "$P83P/$fx/control.policy" --gate-json "$P83P/$fx.control.report.json" >/dev/null 2>&1
+done
+p83 rust defect-prefix-pure-zeromatch  "$(ck83_defect  "$P83P/rust.defect.scan.json"  "$P83P/rust.defect.report.json"  'deny Fs m2::')"
+p83 rust control-prefix-effectful-byteequal "$(ck83_control "$P83P/rust.control.scan.json" "$P83P/rust.control.report.json")"
+printf 'deny Fs zzz_nomatch::\n' > "$P83P/rust/nomatch.policy"
+"$SCAN" "$P83P/rust" --policy "$P83P/rust/nomatch.policy" --gate-json "$P83P/rust.nomatch.scan.json" >/dev/null 2>&1
+RPT="$(ls "$P83P"/rust/.candor/report.*.scan.json 2>/dev/null | grep -v callgraph | head -1)"
+"$QUERY" gate --report "$RPT" --policy "$P83P/rust/nomatch.policy" --gate-json "$P83P/rust.nomatch.report.json" >/dev/null 2>&1
+p83 rust nomatch-prefix-byteequal "$(ck83_nomatch "$P83P/rust.nomatch.scan.json" "$P83P/rust.nomatch.report.json" 'deny Fs zzz_nomatch::')"
+p83 rust defect-prefix-pure-zeromatch-r1651-fixture "$(ck83_defect  "$P83P/rustr.defect.scan.json"  "$P83P/rustr.defect.report.json"  'deny Fs m2::')"
+# ---- java ----
+cat > "$P83P/java/app/pure/Calc.java" <<'JAVASRC'
+package app.pure;
+public class Calc { public int addNumbers(int a, int b) { return a + b; } public int twice(int a) { return a * 2; } }
+JAVASRC
+cat > "$P83P/java/app/Svc.java" <<'JAVASRC'
+package app;
+import java.nio.file.*;
+public class Svc { public void writeSomething() throws Exception { Files.writeString(Path.of("/tmp/x"), "y"); } }
+JAVASRC
+javac -d "$P83P/java/classes" "$P83P/java/app/pure/Calc.java" "$P83P/java/app/Svc.java" 2>/dev/null || { echo "FAIL: javac on the PART 83 prefix java fixture"; rc=1; }
+printf 'deny Fs app.pure.\n' > "$P83P/java/defect.policy"
+printf 'deny Fs app.Svc.\n' > "$P83P/java/control.policy"
+java -jar "$JAR" "$P83P/java/classes" --policy "$P83P/java/defect.policy"  --gate-json "$P83P/java.defect.scan.json"  >/dev/null 2>&1
+java -jar "$JAR" "$P83P/java/classes" --policy "$P83P/java/control.policy" --gate-json "$P83P/java.control.scan.json" >/dev/null 2>&1
+java -jar "$JAR" "$P83P/java/classes" --json "$P83P/java.report.json" >/dev/null 2>&1
+java -jar "$JAR" gate --report "$P83P/java.report.json" --policy "$P83P/java/defect.policy"  --gate-json "$P83P/java.defect.report.json"  >/dev/null 2>&1
+java -jar "$JAR" gate --report "$P83P/java.report.json" --policy "$P83P/java/control.policy" --gate-json "$P83P/java.control.report.json" >/dev/null 2>&1
+p83 java defect-prefix-pure-zeromatch  "$(ck83_defect  "$P83P/java.defect.scan.json"  "$P83P/java.defect.report.json"  'deny Fs app.pure.')"
+p83 java control-prefix-effectful-byteequal "$(ck83_control "$P83P/java.control.scan.json" "$P83P/java.control.report.json")"
+printf 'deny Fs zzz.nomatch.\n' > "$P83P/java/nomatch.policy"
+java -jar "$JAR" "$P83P/java/classes" --policy "$P83P/java/nomatch.policy" --gate-json "$P83P/java.nomatch.scan.json" >/dev/null 2>&1
+java -jar "$JAR" gate --report "$P83P/java.report.json" --policy "$P83P/java/nomatch.policy" --gate-json "$P83P/java.nomatch.report.json" >/dev/null 2>&1
+p83 java nomatch-prefix-byteequal "$(ck83_nomatch "$P83P/java.nomatch.scan.json" "$P83P/java.nomatch.report.json" 'deny Fs zzz.nomatch.')"
+# ---- ts ----
+if [ -n "$TS_PRESENT" ] && [ -f "$TS_DIR/scan.mjs" ]; then
+  printf 'export function addNumbers(a: number, b: number) { return a + b; }\nexport function twice(a: number) { return a * 2; }\n' > "$P83P/ts/src/p.ts"
+  printf 'import fs from "node:fs";\nexport function writeSomething() { fs.writeFileSync("/tmp/x", "y"); }\n' > "$P83P/ts/src/e.ts"
+  printf 'deny Fs src.p.\n' > "$P83P/ts/defect.policy"
+  printf 'deny Fs src.e.\n' > "$P83P/ts/control.policy"
+  node "$TS_DIR/scan.mjs" "$P83P/ts" --policy "$P83P/ts/defect.policy"  --gate-json "$P83P/ts.defect.scan.json"  >/dev/null 2>&1
+  node "$TS_DIR/scan.mjs" "$P83P/ts" --policy "$P83P/ts/control.policy" --gate-json "$P83P/ts.control.scan.json" >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P83P/ts/.candor/report.json" --policy "$P83P/ts/defect.policy"  --gate-json "$P83P/ts.defect.report.json"  >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P83P/ts/.candor/report.json" --policy "$P83P/ts/control.policy" --gate-json "$P83P/ts.control.report.json" >/dev/null 2>&1
+  p83 ts   defect-prefix-pure-zeromatch  "$(ck83_defect  "$P83P/ts.defect.scan.json"  "$P83P/ts.defect.report.json"  'deny Fs src.p.')"
+  p83 ts   control-prefix-effectful-byteequal "$(ck83_control "$P83P/ts.control.scan.json" "$P83P/ts.control.report.json")"
+  printf 'deny Fs zzz.nomatch.\n' > "$P83P/ts/nomatch.policy"
+  node "$TS_DIR/scan.mjs" "$P83P/ts" --policy "$P83P/ts/nomatch.policy" --gate-json "$P83P/ts.nomatch.scan.json" >/dev/null 2>&1
+  node "$TS_DIR/query.mjs" gate --report "$P83P/ts/.candor/report.json" --policy "$P83P/ts/nomatch.policy" --gate-json "$P83P/ts.nomatch.report.json" >/dev/null 2>&1
+  p83 ts   nomatch-prefix-byteequal "$(ck83_nomatch "$P83P/ts.nomatch.scan.json" "$P83P/ts.nomatch.report.json" 'deny Fs zzz.nomatch.')"
+else
+  P83_OUT="$P83_OUT  ts     -> SKIP     (candor-ts: not present on this runner — NOT asked) [prefix arms]
+"
+fi
+# ---- swift ----
+if [ -n "$SW_PRESENT" ] && [ -x "$SW_BIN" ]; then
+  printf 'import Foundation\nenum PureCalc {\n  static func addNumbers(_ a: Int, _ b: Int) -> Int { return a + b }\n  static func twice(_ a: Int) -> Int { return a * 2 }\n}\nenum Writer {\n  static func writeSomething() { try? "y".write(toFile: "/tmp/x", atomically: true, encoding: .utf8) }\n}\n' > "$P83P/swift/src/e.swift"
+  printf 'deny Fs PureCalc.\n' > "$P83P/swift/defect.policy"
+  printf 'deny Fs Writer.\n' > "$P83P/swift/control.policy"
+  "$SW_BIN" "$P83P/swift" --policy "$P83P/swift/defect.policy"  --gate-json "$P83P/swift.defect.scan.json"  >/dev/null 2>&1
+  "$SW_BIN" "$P83P/swift" --policy "$P83P/swift/control.policy" --gate-json "$P83P/swift.control.scan.json" >/dev/null 2>&1
+  "$SW_BIN" "$P83P/swift" --out "$P83P/swiftrep/report" >/dev/null 2>&1
+  SWP_REPORT="$(ls "$P83P"/swiftrep/report.*.Swift.json 2>/dev/null | grep -v callgraph | grep -v hierarchy | head -1)"
+  "$SW_BIN" gate --report "$SWP_REPORT" --policy "$P83P/swift/defect.policy"  --gate-json "$P83P/swift.defect.report.json"  >/dev/null 2>&1
+  "$SW_BIN" gate --report "$SWP_REPORT" --policy "$P83P/swift/control.policy" --gate-json "$P83P/swift.control.report.json" >/dev/null 2>&1
+  p83 swift defect-prefix-pure-zeromatch  "$(ck83_defect  "$P83P/swift.defect.scan.json"  "$P83P/swift.defect.report.json"  'deny Fs PureCalc.')"
+  p83 swift control-prefix-effectful-byteequal "$(ck83_control "$P83P/swift.control.scan.json" "$P83P/swift.control.report.json")"
+  printf 'deny Fs ZzzNoMatch.\n' > "$P83P/swift/nomatch.policy"
+  "$SW_BIN" "$P83P/swift" --policy "$P83P/swift/nomatch.policy" --gate-json "$P83P/swift.nomatch.scan.json" >/dev/null 2>&1
+  "$SW_BIN" gate --report "$SWP_REPORT" --policy "$P83P/swift/nomatch.policy" --gate-json "$P83P/swift.nomatch.report.json" >/dev/null 2>&1
+  p83 swift nomatch-prefix-byteequal "$(ck83_nomatch "$P83P/swift.nomatch.scan.json" "$P83P/swift.nomatch.report.json" 'deny Fs ZzzNoMatch.')"
+else
+  P83_OUT="$P83_OUT  swift  -> SKIP     (candor-swift: not present on this runner — NOT asked) [prefix arms]
+"
+fi
 rm -rf "$P83"
 # ENGINES: rust java ts swift
 # CONTROLS: control-effectful-scoped-byteequal — proves the divergence is confined to the pure-matched
 # quadrant (an engine whose two routes disagree on every policy would fail this control while still
 # passing a naive defect-only row); the defect cell's own no-other-key check is the second control,
 # ruling out the divergence quietly spreading to `ok`/`violations`/`analyzed`
+# R1651 (prefix scopes): the SAME quadrant with a scope that is a PREFIX binding only pure units (`m2::`, `app.pure.`, `src.p.`,
+# `PureCalc.`), four-way, plus rust's R1651 row fixture (a trait with an effectful default reached through a pure impl). The
+# `control-prefix-effectful-byteequal` cell is the effectful sibling prefix; `nomatch-prefix-byteequal` shows the scan route DOES
+# disclose a prefix that binds nothing (both routes carry zeroMatch, byte-equal), so its silence on the defect cell is the
+# carve-out and not a scan route that never computes the key for a prefix. MEASURED four-way identical to the named-function case.
 # NOT PAPERED OVER: the defect cells assert the RULED, SPEC'D value, not merely an observed one — see
 # the row's own comment above for why, and what to do when it changes. This is DELIBERATE per the brief
 # that produced this row: gating it behind the (then-pending) §3.1 ruling, or writing it to pass by
