@@ -55,7 +55,7 @@ THE JAVA PROPERTY ARM (R1645, `jp_*`, java only): a JVM system property that mov
 by `java -D…`, `JAVA_TOOL_OPTIONS` and `JDK_JAVA_OPTIONS`, and named as `candor.r1078` (no `-D`). `jp_live` is a harness
 check (never an xfail); `jp_ctl`, `jp_spec`, `jp_unconsulted`, `jp_default_val`, `jp_two_ctl`, `jp_seed`, `jp_strip` pass
 today; `jp_named_cmd/jto/jdk`, `jp_refuse_cmd/jto` and `jp_two` (`CANDOR_R1461=off` beside `-Dcandor.r1461=off`: both names,
-sorted, once) are XFAIL citing R1645 until candor-java registers its properties. `strip_env` now drops the four JVM option
+sorted, once) pass since candor-java registered its properties (R1645 PORTED; no xfail remains). `strip_env` now drops the four JVM option
 variables from every engine's environment, and the property arm sets them on the ENGINE process only (javac is a JVM too).
 
 EVERY ENGINE FAILS a_named, c_scan, h_ref (and d_adv for rust and java) TODAY. They are XFAIL, keyed (cell, engine);
@@ -130,13 +130,8 @@ for _e in [e for e in ENGINES if e not in PORTED]:
 # coordinator's shell may hold any of them; an inherited `-Dcandor.…` would turn every unset arm into a switched one.
 JVM_OPTION_VARS = ("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "JAVA_OPTS")
 
-# R1645 — the java property arm (`jp_*` cells). candor-java reads five `-Dcandor.*` JVM system properties that move
-# results through no registering read, so none of them is named. XFAIL until the java port registers them.
-_JP = "R1645 — a result-moving JVM system property is set and consulted but the report names no switch: `switches` is absent"
-_JPC = "R1645 — a gate under a set JVM system property scores the run (exit 1/0) instead of refusing with exit 2"
-XFAIL.update({("jp_named_cmd", "java"): _JP, ("jp_named_jto", "java"): _JP, ("jp_named_jdk", "java"): _JP,
-              ("jp_refuse_cmd", "java"): _JPC, ("jp_refuse_jto", "java"): _JPC,
-              ("jp_two", "java"): "R1645 — `-Dcandor.r1461=off` beside `CANDOR_R1461=off`: only the variable is named, the property twin of the same switch is not"})
+# R1645 — the java property arm (`jp_*` cells). candor-java registers its five `-Dcandor.*` JVM system properties through
+# `Env.propertySwitchRead` / `Env.propertyOptIn`: PORTED, so these cells are pinned, not xfailed.
 
 
 def strip_env(extra=None):
