@@ -25,6 +25,12 @@ PURE-LOOKING function reaching an uncertain callee is exactly the dangerous case
 the CALLGRAPH sidecar (spec §2.2: every function is a key), and uncertainty from the report — a function
 in the callgraph but ABSENT from the report is pure-and-certain, and is checked like any other.
 
+WHICH ROW JUDGES A CALLEE (SOUNDNESS R1673). A name can carry a unit row and a synthetic `interfaceUnion` row
+beside it; the check keeps them apart (see `check`). A callee with a body is judged by its UNIT rows; a
+dispatch through the member is the CALLER's `dispatchesOn` disclosure (§4 obligation 1), which this check does
+not verify — a caller that dispatches without naming the member reads as a static call here. Only a callee
+with no body at all (not a callgraph key) is judged by its union row.
+
 Works on ANY engine's report (rust/java/ts/swift — one spec format). Exit 0 iff honest.
 Usage:  python3 check_honesty.py <report.json> [<report2.json> ...]
         (the sibling <report>.callgraph.json is loaded automatically.)
@@ -48,10 +54,36 @@ def callgraph_path(report_path):
     return report_path[:-5] + ".callgraph.json" if report_path.endswith(".json") else report_path + ".callgraph.json"
 
 
-def check(funcs, edges):
+def check(funcs, edges, full_graph=True):
     """funcs: list of report function objects (effectful/disclosed only).
-    edges: {fn_name: [callee_name, ...]} from the callgraph (ALL functions). Returns [(fn, reason)]."""
-    rep = {f["fn"]: f for f in funcs}
+    edges: {fn_name: [callee_name, ...]} from the callgraph (ALL functions). Returns [(fn, reason)].
+    full_graph: False when `edges` was rebuilt from the report itself (no sidecar).
+
+    A NAME can carry two kinds of row (SOUNDNESS R1673): the unit's own row, and a synthetic
+    `interfaceUnion: true` row published BESIDE it under the same `fn` (SPEC §3.1: a union entry "is never a
+    unit of a verdict"; it says what a DISPATCH on that member can reach). A name-keyed dict lets one shadow
+    the other in BOTH directions, so the rows are kept apart and a callee is judged by the right one:
+      - a callee with a BODY (a unit row, or a callgraph key) is judged by its UNIT rows only. The sidecar
+        names an edge target by `fn`, and what a call to a name with a body reaches is that body; a
+        generic/dyn DISPATCH through the member is disclosed on the CALLER's own row (`dispatchesOn`, §4
+        obligation 1), so the union's `Unknown` is not the callee's. Several unit rows under one name (macro
+        expansions) count as uncertain if ANY is — a last-wins dict hid a real `Unknown` behind a pure sibling.
+      - a callee with NO unit and no callgraph key is a body-less abstraction member: all a call can reach is
+        its dispatch set, so its union row IS the callee and its uncertainty binds the caller.
+    Without a sidecar (full_graph False) a body-less member cannot be told from a pure default body, so every
+    row of the name is read (the old, conservative reading)."""
+    units, unions = {}, {}
+    for f in funcs:
+        (unions if f.get("interfaceUnion") else units).setdefault(f["fn"], []).append(f)
+
+    def callee_rows(name):
+        rows = units.get(name)
+        if rows:
+            return rows if full_graph else rows + unions.get(name, [])
+        if full_graph and name in edges:
+            return []  # has a body, absent from the report: pure and certain
+        return unions.get(name, [])
+
     viols = []
     # (1) Direct form: an unresolved call must surface as Unknown (or a disclosure field).
     for f in funcs:
@@ -61,13 +93,15 @@ def check(funcs, edges):
     # (2) Propagation over the FULL callgraph: a CERTAIN f (incl. a pure fn absent from the report)
     #     must not reach an UNCERTAIN callee g.
     for fn, callees in edges.items():
-        if uncertain(rep.get(fn)):
+        if any(uncertain(r) for r in units.get(fn, [])):
             continue  # f already honest about its uncertainty
         for callee in callees:
-            g = rep.get(callee)  # absent ⇒ pure ⇒ certain (no violation)
-            if g is not None and callee != fn and uncertain(g):
+            if callee == fn:
+                continue
+            g = next((r for r in callee_rows(callee) if uncertain(r)), None)
+            if g is not None:
                 why = "Unknown" if "Unknown" in (g.get("inferred") or []) else "disclosed-incomplete"
-                tag = "pure (omitted from report)" if fn not in rep else "reads certain"
+                tag = "pure (omitted from report)" if fn not in units else "reads certain"
                 viols.append((fn, f"{tag} but calls `{callee}` which is {why}"))
                 break
     return viols
@@ -83,6 +117,7 @@ def main(argv):
             total += 1
             continue
         funcs = d.get("functions", [])
+        full_graph = True
         try:
             edges = json.load(open(callgraph_path(path)))
         except Exception:  # noqa: BLE001
@@ -97,7 +132,8 @@ def main(argv):
             print(f"  (no callgraph sidecar for {path} — using inline `calls`; pure-fn callers NOT covered, "
                   f"the check is WEAKENED; set CONFORMANCE_REQUIRE_ALL=1 to make this a failure)")
             edges = {f["fn"]: (f.get("calls") or []) for f in funcs}
-        viols = check(funcs, edges)
+            full_graph = False
+        viols = check(funcs, edges, full_graph)
         if viols:
             print(f"DISHONEST {path} — {len(viols)} violation(s) of the propagation invariant:")
             for fn, reason in viols[:50]:

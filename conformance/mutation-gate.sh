@@ -275,7 +275,7 @@ trap 'rm -rf "$W"' EXIT INT TERM
 # real count drift upward while the floor stays put, and a gate that has grown to 300 legs with a floor of
 # 241 can lose 59 of them silently — the same defect one level out. Every change to what this gate covers,
 # in either direction, must edit this line, and the diff then SAYS what happened to coverage.
-MG_ROW_FLOOR=249
+MG_ROW_FLOOR=254
 RESULTS=""
 KIND="real"   # overridden to "canary" for the one canary call below — read by record(), not passed
               # positionally, so the two runner functions don't need a canary-vs-real branch of their own
@@ -1082,6 +1082,30 @@ run_ext_reject "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 1 "$W/ext/ch_p
 run_ext_accept "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 0 "$W/ext/ch_prop_good.json"
 run_ext_reject "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 1 "$W/ext/ch_direct_poison.json"
 run_ext_accept "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 0 "$W/ext/ch_direct_good.json"
+
+# ---- check_honesty.py, SOUNDNESS R1673 — a NAME can carry a unit row AND a synthetic `interfaceUnion` row beside it
+# (SPEC §3.1: a union entry is never a unit). A name-keyed dict let either shadow the other, in BOTH directions.
+# Every fixture here has a callgraph where the callee `T::m` is a KEY (it has a body); the union row is `interfaceUnion`.
+#   un_pure_unit   : callee has a body, no unit row (pure), a union row beside it carries Unknown  -> HONEST (the tokio shape)
+#   un_real_first  : callee's REAL unit row is Unknown and a pure union row is listed AFTER it       -> DISHONEST (the aho-corasick shape)
+#   un_dup_units   : two unit rows under one name, the Unknown one listed FIRST, a pure one last      -> DISHONEST (last-wins hid it)
+#   un_bodyless    : callee is NOT a callgraph key (no body), only an Unknown union row                -> DISHONEST (a pure caller of a dispatch-only member)
+#   un_bodyless_ok : the same, but the caller itself carries Unknown                                    -> HONEST
+printf '%s' '{"functions": [{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true, "unknownWhy": ["dispatch:T.m"], "interfaceUnion": true}]}' > "$W/ext/ch_un_pure_unit.json"
+printf '%s' '{"c": ["T::m"], "T::m": []}' > "$W/ext/ch_un_pure_unit.callgraph.json"
+printf '%s' '{"functions": [{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true}, {"fn": "T::m", "inferred": [], "interfaceUnion": true}]}' > "$W/ext/ch_un_real_first.json"
+printf '%s' '{"c": ["T::m"], "T::m": []}' > "$W/ext/ch_un_real_first.callgraph.json"
+printf '%s' '{"functions": [{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true}, {"fn": "T::m", "inferred": ["Fs"]}]}' > "$W/ext/ch_un_dup_units.json"
+printf '%s' '{"c": ["T::m"], "T::m": []}' > "$W/ext/ch_un_dup_units.callgraph.json"
+printf '%s' '{"functions": [{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true, "unknownWhy": ["dispatch:T.m"], "interfaceUnion": true}]}' > "$W/ext/ch_un_bodyless.json"
+printf '%s' '{"c": ["T::m"]}' > "$W/ext/ch_un_bodyless.callgraph.json"
+printf '%s' '{"functions": [{"fn": "c", "inferred": ["Unknown"]}, {"fn": "T::m", "inferred": ["Unknown"], "unresolved": true, "interfaceUnion": true}]}' > "$W/ext/ch_un_bodyless_ok.json"
+printf '%s' '{"c": ["T::m"]}' > "$W/ext/ch_un_bodyless_ok.callgraph.json"
+run_ext_accept "PART1c/check_honesty(union-beside-pure-unit)"   "$HONESTY_PY" 0 "$W/ext/ch_un_pure_unit.json"
+run_ext_reject "PART1c/check_honesty(real-unknown-not-shadowed)" "$HONESTY_PY" 1 "$W/ext/ch_un_real_first.json"
+run_ext_reject "PART1c/check_honesty(duplicate-unit-rows-any)"   "$HONESTY_PY" 1 "$W/ext/ch_un_dup_units.json"
+run_ext_reject "PART1c/check_honesty(bodyless-dispatch-member)"  "$HONESTY_PY" 1 "$W/ext/ch_un_bodyless.json"
+run_ext_accept "PART1c/check_honesty(bodyless-caller-honest)"    "$HONESTY_PY" 0 "$W/ext/ch_un_bodyless_ok.json"
 
 # ---- file_set_check.py (PART 48) — two conditions on the FINDING half: the effect-membership filter
 # (`hits`) and the reason-substring check ("did NOT judge"). GOOD is the full 8-condition accept shape;
