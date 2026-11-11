@@ -93,9 +93,6 @@ XFAIL = {
     ("h_tok_mid", "rust"):   "R1549 — candor-query `name_segments` (policy.rs:880 / matching.rs:38) splits inside the parameter list",
     ("h_tok_last", "rust"):  "R1549 — the same split; `User` prefix-matches the segment `User)`",
     ("h_tok_rs", "rust"):    "R1549 — the same split over a `::` disambiguator; `Tr` prefix-matches `Tr)`",
-    # S arm, rust — candor-scan merges the pair into one unit (two byte-identical rows, the union's effects).
-    ("units", "rust"):       "R1537 — candor-scan publishes the inherent/trait pair as ONE merged unit under the bare path",
-    ("pure_caller[call_pure]", "rust"): "R1420 — (c): the caller of the pure inherent method is charged the trait member's Fs",
 }
 
 # =====================================================================================================
@@ -229,9 +226,10 @@ SPEC_S = {
               "callers": [("callEff", "callPure"), ("freeEff", "freePure"), ("putEff", "putPure"), ("tellEff", "tellPure")],
               "tok": "Inner", "owner": "Box", "from": "callEff"},
 }
-WHY_RUST_NO_TOK = ("rust: no tok/only_tok cell — candor-scan publishes no disambiguator yet (R1537), and the "
-                   "trait's own path `m::tm::Tr` is a real segment run, so a token cell would read the trait "
-                   "declaration rather than a disambiguator; the rust port adds both cells with its spelling")
+WHY_RUST_NO_TOK = ("rust: no tok/only_tok cell — candor-scan's disambiguator (R1537 (c), candor-rust f6c278e8) is the "
+                   "trait LEAF or the self-type leaf, and both are also real segments of other published fns "
+                   "(`m::tm::Tr::act`), so no token occurs ONLY inside a disambiguator; a rust tok cell needs a fixture "
+                   "whose trait module path never carries the trait leaf as a segment")
 
 
 def _w(path, text):
