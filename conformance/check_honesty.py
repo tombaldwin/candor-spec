@@ -26,10 +26,13 @@ the CALLGRAPH sidecar (spec §2.2: every function is a key), and uncertainty fro
 in the callgraph but ABSENT from the report is pure-and-certain, and is checked like any other.
 
 WHICH ROW JUDGES A CALLEE (SOUNDNESS R1673). A name can carry a unit row and a synthetic `interfaceUnion` row
-beside it; the check keeps them apart (see `check`). A callee with a body is judged by its UNIT rows; a
-dispatch through the member is the CALLER's `dispatchesOn` disclosure (§4 obligation 1), which this check does
-not verify — a caller that dispatches without naming the member reads as a static call here. Only a callee
-with no body at all (not a callgraph key) is judged by its union row.
+beside it; the check keeps them apart and counts ANY uncertain row (see `check`). For candor-scan, positively
+identified by its `scan-` build id, a callee with a body is judged by its unit rows only: its sidecar keys are
+all bodies, and a dispatch is the caller's `dispatchesOn`. Every other report (java, swift, ts, unidentified)
+keeps the union row in play, because those engines key body-less members too (java abstract methods, swift
+protocol requirements) and an edge to one is a dispatch the union row alone exposes; only a static initializer
+chain and a Scala `m$` forwarder are carved out. The wire cannot tell a static call from a dispatch, so this
+oracle does not verify obligation 1 either way.
 
 Works on ANY engine's report (rust/java/ts/swift — one spec format). Exit 0 iff honest.
 Usage:  python3 check_honesty.py <report.json> [<report2.json> ...]
@@ -37,6 +40,7 @@ Usage:  python3 check_honesty.py <report.json> [<report2.json> ...]
 """
 import json
 import os
+import re
 import sys
 
 
@@ -54,35 +58,53 @@ def callgraph_path(report_path):
     return report_path[:-5] + ".callgraph.json" if report_path.endswith(".json") else report_path + ".callgraph.json"
 
 
-def check(funcs, edges, full_graph=True):
+_INIT = re.compile(r"(\.|^)(init|<init>)(\(|#\d+$|$)")
+
+
+def static_edge(fn, callee):
+    """An edge that is statically resolved by construction, so the callee's DISPATCH reach (its union row) is
+    not the caller's: an initializer chaining to another initializer (`super.init`/`self.init`; never
+    dispatched dynamically), and a Scala trait's static forwarder `m$` -> `m` (compiled to `invokespecial`).
+    Ground truth, SOUNDNESS R1673: 14 of 24 distinct swift removals and 170 of 307 java ones were exactly these."""
+    return (callee + "$" == fn) or (bool(_INIT.search(fn)) and bool(_INIT.search(callee)))
+
+
+def check(funcs, edges, full_graph=True, keys_are_bodies=False):
     """funcs: list of report function objects (effectful/disclosed only).
     edges: {fn_name: [callee_name, ...]} from the callgraph (ALL functions). Returns [(fn, reason)].
     full_graph: False when `edges` was rebuilt from the report itself (no sidecar).
+    keys_are_bodies: the engine's sidecar keys are ONLY units with a body (candor-scan: a body-less trait member
+      is never a key). Set ONLY on positive identification of such an engine (see `main`).
 
     A NAME can carry two kinds of row (SOUNDNESS R1673): the unit's own row, and a synthetic
     `interfaceUnion: true` row published BESIDE it under the same `fn` (SPEC §3.1: a union entry "is never a
-    unit of a verdict"; it says what a DISPATCH on that member can reach). A name-keyed dict lets one shadow
-    the other in BOTH directions, so the rows are kept apart and a callee is judged by the right one:
-      - a callee with a BODY (a unit row, or a callgraph key) is judged by its UNIT rows only. The sidecar
-        names an edge target by `fn`, and what a call to a name with a body reaches is that body; a
-        generic/dyn DISPATCH through the member is disclosed on the CALLER's own row (`dispatchesOn`, §4
-        obligation 1), so the union's `Unknown` is not the callee's. Several unit rows under one name (macro
-        expansions) count as uncertain if ANY is — a last-wins dict hid a real `Unknown` behind a pure sibling.
-      - a callee with NO unit and no callgraph key is a body-less abstraction member: all a call can reach is
-        its dispatch set, so its union row IS the callee and its uncertainty binds the caller.
-    Without a sidecar (full_graph False) a body-less member cannot be told from a pure default body, so every
-    row of the name is read (the old, conservative reading)."""
+    unit of a verdict"; it says what a DISPATCH on that member can reach). A name-keyed dict let one shadow the
+    other in BOTH directions, so the rows are kept apart, and ANY uncertain row of a name counts (a last-wins
+    dict hid a real `Unknown` behind a pure sibling). Which rows judge a callee:
+      - keys_are_bodies: a callee with a body (a unit row, or a callgraph key) is judged by its UNIT rows only.
+        A dispatch through the member is the CALLER's `dispatchesOn` (§4 obligation 1), so the union's
+        `Unknown` is not the callee's. A callee that is neither a unit nor a key is body-less: its union row.
+      - otherwise (java, swift, ts, anything unidentified): EVERY row of the name, unit and union. These
+        engines key body-less members too (java's abstract methods, swift's protocol requirements), and an
+        edge to one is a dispatch whose only uncertainty is the union row, so dropping it blinds the oracle.
+        MEASURED: swift `ByteToMessageHandler.handlerRemoved` and ReactiveSwift `Observer.process` are real
+        under-reports (no dispatch edges, no dispatchesOn) that only the union row exposes. The one carve-out is
+        `static_edge`. The wire cannot tell a static call from a dispatch otherwise, so the strict reading is
+        the default and the relaxation needs positive identification: a mis-identified engine can only keep
+        false positives, never lose a catch.
+    Without a sidecar (full_graph False) every row of the name is read."""
     units, unions = {}, {}
     for f in funcs:
         (unions if f.get("interfaceUnion") else units).setdefault(f["fn"], []).append(f)
+    relaxed = keys_are_bodies and full_graph
 
-    def callee_rows(name):
-        rows = units.get(name)
-        if rows:
-            return rows if full_graph else rows + unions.get(name, [])
-        if full_graph and name in edges:
-            return []  # has a body, absent from the report: pure and certain
-        return unions.get(name, [])
+    def callee_rows(name, caller):
+        rows = units.get(name, [])
+        if relaxed:
+            if rows:
+                return rows
+            return [] if name in edges else unions.get(name, [])
+        return rows if static_edge(caller, name) else rows + unions.get(name, [])
 
     viols = []
     # (1) Direct form: an unresolved call must surface as Unknown (or a disclosure field).
@@ -98,13 +120,19 @@ def check(funcs, edges, full_graph=True):
         for callee in callees:
             if callee == fn:
                 continue
-            g = next((r for r in callee_rows(callee) if uncertain(r)), None)
+            g = next((r for r in callee_rows(callee, fn) if uncertain(r)), None)
             if g is not None:
                 why = "Unknown" if "Unknown" in (g.get("inferred") or []) else "disclosed-incomplete"
                 tag = "pure (omitted from report)" if fn not in units else "reads certain"
                 viols.append((fn, f"{tag} but calls `{callee}` which is {why}"))
                 break
     return viols
+
+
+def is_candor_scan(report):
+    """True only for candor-scan, positively identified by its build id (`scan-<ver>`)."""
+    c = report.get("candor") if isinstance(report, dict) else None
+    return isinstance(c, dict) and str(c.get("version", "")).startswith("scan-")
 
 
 def main(argv):
@@ -133,7 +161,7 @@ def main(argv):
                   f"the check is WEAKENED; set CONFORMANCE_REQUIRE_ALL=1 to make this a failure)")
             edges = {f["fn"]: (f.get("calls") or []) for f in funcs}
             full_graph = False
-        viols = check(funcs, edges, full_graph)
+        viols = check(funcs, edges, full_graph, is_candor_scan(d))
         if viols:
             print(f"DISHONEST {path} — {len(viols)} violation(s) of the propagation invariant:")
             for fn, reason in viols[:50]:
