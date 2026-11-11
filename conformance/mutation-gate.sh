@@ -275,7 +275,7 @@ trap 'rm -rf "$W"' EXIT INT TERM
 # real count drift upward while the floor stays put, and a gate that has grown to 300 legs with a floor of
 # 241 can lose 59 of them silently — the same defect one level out. Every change to what this gate covers,
 # in either direction, must edit this line, and the diff then SAYS what happened to coverage.
-MG_ROW_FLOOR=249
+MG_ROW_FLOOR=260
 RESULTS=""
 KIND="real"   # overridden to "canary" for the one canary call below — read by record(), not passed
               # positionally, so the two runner functions don't need a canary-vs-real branch of their own
@@ -1082,6 +1082,50 @@ run_ext_reject "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 1 "$W/ext/ch_p
 run_ext_accept "PART1c/check_honesty(propagation)"  "$HONESTY_PY" 0 "$W/ext/ch_prop_good.json"
 run_ext_reject "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 1 "$W/ext/ch_direct_poison.json"
 run_ext_accept "PART1c/check_honesty(direct-form)"  "$HONESTY_PY" 0 "$W/ext/ch_direct_good.json"
+
+# ---- check_honesty.py, SOUNDNESS R1673 — a NAME can carry a unit row AND a synthetic `interfaceUnion` row beside it
+# (SPEC §3.1: a union entry is never a unit). A name-keyed dict let either shadow the other, in BOTH directions.
+# The callee `T::m` is a callgraph KEY in every fixture (a body-less swift requirement / java abstract is keyed too).
+# RS = a candor-scan header (`candor.version` "scan-…"): the ONLY engine whose keys are all bodies, so the only one
+# for which a union row is not the callee. Every other report reads every row of a name.
+#   rs_pure_unit    RS, no unit row, union Unknown            -> HONEST   (the tokio shape; was a false positive)
+#   nr_pure_unit    same, NO header                           -> DISHONEST (swift requirement / java abstract key:
+#                                                                 ByteToMessageHandler.handlerRemoved, GRDB sqlSelection)
+#   rs_real_first   RS, real Unknown unit row, then a pure union row -> DISHONEST (aho-corasick shape; was MISSED)
+#   nr_real_first   same, no header                           -> DISHONEST (was MISSED)
+#   rs_dup_units    RS, two unit rows, Unknown one first      -> DISHONEST (last-wins hid it)
+#   rs_bodyless     RS, callee NOT a key, union Unknown       -> DISHONEST
+#   rs_bodyless_ok  the same, caller itself Unknown           -> HONEST
+#   nr_fwd          no header, caller `m$` -> `m` (Scala static forwarder), union Unknown   -> HONEST
+#   nr_fwd_unit     same but the callee's own UNIT row is Unknown                          -> DISHONEST (carve-out drops union only)
+#   nr_init         no header, `A.init` -> `B.init` (super.init), union Unknown             -> HONEST
+#   nr_init_notinit no header, `A.run` -> `B.init`, union Unknown                           -> DISHONEST (carve-out is init->init only)
+mkch() {  # $1 name ; $2 header-json ; $3 functions-json ; $4 callgraph-json
+  printf '{%s"functions": %s}' "$2" "$3" > "$W/ext/ch_$1.json"; printf '%s' "$4" > "$W/ext/ch_$1.callgraph.json"; }
+RS='"candor": {"version": "scan-0.41.3"}, '
+UU='{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true, "unknownWhy": ["dispatch:T.m"], "interfaceUnion": true}'
+mkch rs_pure_unit  "$RS" "[$UU]" '{"c": ["T::m"], "T::m": []}'
+mkch nr_pure_unit  ""    "[$UU]" '{"c": ["T::m"], "T::m": []}'
+mkch rs_real_first "$RS" '[{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true}, {"fn": "T::m", "inferred": [], "interfaceUnion": true}]' '{"c": ["T::m"], "T::m": []}'
+mkch nr_real_first ""    '[{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true}, {"fn": "T::m", "inferred": [], "interfaceUnion": true}]' '{"c": ["T::m"], "T::m": []}'
+mkch rs_dup_units  "$RS" '[{"fn": "T::m", "inferred": ["Unknown"], "unresolved": true}, {"fn": "T::m", "inferred": ["Fs"]}]' '{"c": ["T::m"], "T::m": []}'
+mkch rs_bodyless   "$RS" "[$UU]" '{"c": ["T::m"]}'
+mkch rs_bodyless_ok "$RS" "[{\"fn\": \"c\", \"inferred\": [\"Unknown\"]}, $UU]" '{"c": ["T::m"]}'
+mkch nr_fwd        ""    "[$UU]" '{"T::m$": ["T::m"], "T::m": []}'
+mkch nr_fwd_unit   ""    "[$UU, {\"fn\": \"T::m\", \"inferred\": [\"Unknown\"], \"unresolved\": true}]" '{"T::m$": ["T::m"], "T::m": []}'
+mkch nr_init       ""    '[{"fn": "B.init", "inferred": ["Unknown"], "unresolved": true, "interfaceUnion": true}]' '{"A.init": ["B.init"], "B.init": []}'
+mkch nr_init_notinit ""  '[{"fn": "B.init", "inferred": ["Unknown"], "unresolved": true, "interfaceUnion": true}]' '{"A.run": ["B.init"], "B.init": []}'
+run_ext_accept "PART1c/check_honesty(scan-union-beside-pure-unit)"   "$HONESTY_PY" 0 "$W/ext/ch_rs_pure_unit.json"
+run_ext_reject "PART1c/check_honesty(nonscan-bodyless-key-keeps-union)" "$HONESTY_PY" 1 "$W/ext/ch_nr_pure_unit.json"
+run_ext_reject "PART1c/check_honesty(scan-real-unknown-not-shadowed)" "$HONESTY_PY" 1 "$W/ext/ch_rs_real_first.json"
+run_ext_reject "PART1c/check_honesty(nonscan-real-unknown-not-shadowed)" "$HONESTY_PY" 1 "$W/ext/ch_nr_real_first.json"
+run_ext_reject "PART1c/check_honesty(duplicate-unit-rows-any)"       "$HONESTY_PY" 1 "$W/ext/ch_rs_dup_units.json"
+run_ext_reject "PART1c/check_honesty(scan-bodyless-dispatch-member)" "$HONESTY_PY" 1 "$W/ext/ch_rs_bodyless.json"
+run_ext_accept "PART1c/check_honesty(scan-bodyless-caller-honest)"   "$HONESTY_PY" 0 "$W/ext/ch_rs_bodyless_ok.json"
+run_ext_accept "PART1c/check_honesty(static-forwarder-carve-out)"    "$HONESTY_PY" 0 "$W/ext/ch_nr_fwd.json"
+run_ext_reject "PART1c/check_honesty(forwarder-callee-unit-unknown)" "$HONESTY_PY" 1 "$W/ext/ch_nr_fwd_unit.json"
+run_ext_accept "PART1c/check_honesty(init-chain-carve-out)"          "$HONESTY_PY" 0 "$W/ext/ch_nr_init.json"
+run_ext_reject "PART1c/check_honesty(carve-out-is-init-to-init-only)" "$HONESTY_PY" 1 "$W/ext/ch_nr_init_notinit.json"
 
 # ---- file_set_check.py (PART 48) — two conditions on the FINDING half: the effect-membership filter
 # (`hits`) and the reason-substring check ("did NOT judge"). GOOD is the full 8-condition accept shape;
