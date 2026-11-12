@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+## [0.42.0] — 2026-11-12
+
 - **SPEC §4 ⟨0.38⟩, clarified for a MIXED arm set — a `#[cfg]`/`#if` BINDING arm beside a `#[cfg]`/`#if` local DECLARATION of the same
   name (SOUNDNESS R1657 stage 2, R1714); no new ruling, no behaviour change a conformant engine did not already owe.** The
   arms of a conditional-binding set need not be the same kind of item: `#[cfg(unix)] pub use crate::a::Tool;` beside
