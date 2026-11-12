@@ -101,6 +101,14 @@ ARMS = [
     ("b7mixed",     "denyenv",  1, "a MIXED arm set charges BOTH arms — not just the one the engine can type", SKIP),
     ("b8mixedrev",  "denyenv",  1, "…and the same answer with the mixed arms written the other way round",     SKIP),
     ("b9mixedallow","allowfs",  1, "a MIXED set must not CERTIFY off the arm it happened to resolve",          SKIP),
+    # THE CFG-GATED LOCAL TYPE (SOUNDNESS R1657 stage 2; SPEC ⟨0.38⟩ MIXED sentence). One arm DECLARES the type
+    # (`#[cfg(not(unix))] pub struct Tool;` / swift `enum Impl {..}` under `#else`), the other BINDS a type of the
+    # same name from elsewhere (`#[cfg(unix)] pub use crate::a::Tool;` / `typealias Impl = A.Tool`). Measured on
+    # published rust 0.41.3, EXECUTED on macOS (the unix arm is built, it sets the env var and writes no file): the
+    # report charged `Fs` ALONE — the cfg-off local declaration picked over the built re-export arm — so
+    # `deny Env probe` exited 0 over a real `set_var`. b11 writes the arms the other way round.
+    ("b10cfglocal",   "denyenv", 1, "a cfg-gated LOCAL type beside a RE-EXPORT arm: both arms charged", SKIP),
+    ("b11cfglocalrev","denyenv", 1, "…and the same answer with the arms written the other way round",  SKIP),
 ]
 
 _RUST_CALL = "use crate::sys::put;\npub fn probe() { let _ = put(\"%s\", \"x\"); }\n" % ALLOWED
@@ -139,8 +147,16 @@ _RUST_TWO_LIT = (
     "pub mod sys {\n  #[cfg(unix)] pub use crate::a::put;\n  #[cfg(not(unix))] pub use crate::b::put;\n}\n"
     "use crate::sys::put;\npub fn probe() { put(\"z\"); }\n" % ALLOWED
 )
+_RUST_CFGLOCAL = (
+    "pub mod a { pub struct Tool; impl Tool { pub fn act() { std::env::set_var(\"CANDOR_PART89\", \"1\"); } } }\n"
+    "pub mod sys {\n  #[cfg(%s)] pub use crate::a::Tool;\n  #[cfg(%s)] pub struct Tool;\n"
+    "  #[cfg(%s)] impl Tool { pub fn act() { let _ = std::fs::write(\"" + ALLOWED + "\", b\"x\"); } }\n}\n"
+    "use crate::sys::Tool;\npub fn probe() { Tool::act(); }\n"
+)
 BODIES = {
     "rust": {
+        "b10cfglocal":    _dbl(_RUST_CFGLOCAL % ("unix", "not(unix)", "not(unix)")),
+        "b11cfglocalrev": _dbl(_RUST_CFGLOCAL % ("not(unix)", "unix", "unix")),
         "b1union":   _rust(FS, ENV),
         "b2order":   _rust(ENV, FS),
         "b3nohedge": _rust(FS, ENV),
@@ -164,6 +180,18 @@ def _swift_mixed(first, second):
     exclude, and the shape real code writes (`Color = NSColor | UIColor`)."""
     return (_SW_HELPERS
             + "#if os(macOS)\ntypealias Impl = %s\n#else\ntypealias Impl = %s\n#endif\n" % (first, second)
+            + "public func probe() { Impl.act() }\n")
+
+
+def _swift_cfglocal(alias_cond, target):
+    """`#if <alias_cond>` binds `Impl` to `target`; the other arm DECLARES `Impl` as a local enum that writes a
+    file. alias_cond is `os(macOS)` or its negation, so the two cells are the same program with the arms
+    swapped (the built arm differs; the property is the union either way)."""
+    neg = alias_cond[1:] if alias_cond.startswith("!") else "!" + alias_cond
+    return (_SW_HELPERS
+            + "#if %s\ntypealias Impl = %s\n#endif\n" % (alias_cond, target)
+            + "#if %s\nenum Impl { static func act() { try? \"x\".write(toFile: \"%s\", atomically: true, "
+              "encoding: .utf8) } }\n#endif\n" % (neg, ALLOWED)
             + "public func probe() { Impl.act() }\n")
 
 
@@ -192,6 +220,11 @@ BODIES["swift"] = {
     "b7mixed":      _swift_mixed("FileManager", "EnvImpl"),
     "b8mixedrev":   _swift_mixed("EnvImpl", "FileManager"),
     "b9mixedallow": _swift_mixed("FileManager", "FsImpl"),
+    # A BINDING arm beside a LOCAL TYPE DECLARATION arm, same name (`Impl`): the `#if` arm aliases a type
+    # declared elsewhere, the `#else` arm DECLARES `Impl` itself. A picker that keeps the declaration (the
+    # `#else` arm, off on macOS) loses the aliased arm's Env, and one that keeps the alias loses the Fs.
+    "b10cfglocal":    _swift_cfglocal("os(macOS)", "EnvImpl"),
+    "b11cfglocalrev": _swift_cfglocal("!os(macOS)", "EnvImpl"),
 }
 
 POLICIES = {
@@ -256,6 +289,12 @@ XFAIL = {
     # arm becomes a call EDGE). The xfail-passed check is what reported it — an expectation about an
     # engine goes stale silently otherwise, which is the whole reason a passing xfail is a FAILURE here.
     # SWIFT'S TWO RETIRED 2026-09-14 with R429's second fix, and again this part is what reported it.
+    # b10/b11 (the ⟨0.42⟩ clarification: a BINDING arm beside a local DECLARATION arm of the same name). Measured
+    # 2026-11-12: swift reports `probe` as Fs ONLY — the `#if os(macOS) typealias Impl = EnvImpl` arm is dropped
+    # for the `#else` declaration — while the compiled program (EXECUTED, swiftc on macOS) sets the env var and
+    # writes no file. rust (main e412a781) passes both; the installed 0.41.3 failed both.
+    ("b10cfglocal",    "swift"): "SOUNDNESS R1714 — swift keeps the `#if` local declaration over the aliased arm",
+    ("b11cfglocalrev", "swift"): "SOUNDNESS R1714 — swift keeps the `#if` local declaration over the aliased arm",
 }
 
 
@@ -356,9 +395,9 @@ def main():
         # summary that claims the property while its own table shows otherwise is the false-green this
         # suite exists to prevent — one level up, in the sentence rather than the cell.
         engs = sorted({e for _a, e, _x in xfails})
-        print(f"\nBINDING-UNION: OK for the ALL-PROJECT-DECLARED case, with {len(xfails)} cell(s) "
-              f"EXPECTED RED on the MIXED arm set ({', '.join(engs)} — named above). The union "
-              f"property is NOT established for a mixed set on {'/'.join(engs)}.")
+        print(f"\nBINDING-UNION: OK for every cell not named above, with {len(xfails)} cell(s) "
+              f"EXPECTED RED ({', '.join(engs)} — named above, each citing its row). The union "
+              f"property is NOT established for those cells on {'/'.join(engs)}.")
     else:
         print("\nBINDING-UNION: OK — every engine answers a conditional binding with the union of its "
               "arms, in either written order, without withdrawing to Unknown and without certifying off "

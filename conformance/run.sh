@@ -2685,6 +2685,7 @@ P89_OK=0
 [ "$P89_OK" = 0 ] || echo "  -> DIVERGE — a ✘ on b1union/b2order is an arm the engine dropped or withdrew; a ✘ on b3nohedge/b5agree/b6single is the union over-reporting; a ✘ on b4surface is one arm's literal certifying for both"
 echo "PART 89 — a conditional BINDING unions its arms exactly as a conditional DEFINITION does (SPEC §4 ⟨0.38⟩)"
 # ENGINES: rust swift; java: the language has no mutually-exclusive configuration construct — there is no `#if`/`#[cfg]` that binds one name to two different definitions, so the shape cannot be written and a row would be asserting nothing; ts: same, and its conditional imports are runtime `await import()` expressions rather than build-configuration arms, so both targets exist in one build
+# MIXED KIND (⟨0.42⟩ clarification, R1657 stage 2 / R1714): b10cfglocal/b11cfglocalrev put a cfg-gated LOCAL type DECLARATION beside a cfg-gated RE-EXPORT/typealias of the same name; rust passes, swift xfails on R1714.
 # CONTROLS: b3nohedge — the answer is a complete one, never a withdrawal to {Unknown}; b5agree — arms that classify ALIKE manufacture nothing (the 6.6%-prevalent portability-shim shape); b6single — an ORDINARY binding still resolves AND still certifies off its literal, so a widening cannot pass by refusing determined code
 
 # PART 90 — THE FOLD-ELEMENT DIFFERENTIAL, ⟨0.21⟩, FOUR-WAY.

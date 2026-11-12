@@ -5805,6 +5805,17 @@ mutually-exclusive configuration arms: an implementation MUST answer with the un
 effects, MUST NOT resolve by source order, and MUST NOT withdraw the answer to `{Unknown}`. Resolution
 by SOURCE ORDER was and remains the cardinal sin under ⟨0.21⟩.
 
+⟨0.42⟩ (clarification, SOUNDNESS R1657 stage 2 and R1714; no new ruling) *The arms of the set need not be the same
+KIND of item.* One arm may BIND the name to a type declared elsewhere (`#[cfg(unix)] pub use crate::a::Tool;`,
+`#if os(macOS)` `typealias Impl = A.Tool`) while the other DECLARES the name itself (`#[cfg(not(unix))] pub struct
+Tool;`, `#else` `enum Impl { … }`); that is the same arm set, and the rules above apply to it unchanged: the name
+resolves to the union of the bound target's and the declaration's effects, in either written order. A declaration is
+not a reason to keep its arm over a binding, nor a binding over a declaration, and which arm the target platform
+compiles in is not a reason to drop the other (an engine cannot know the build). Measured on candor-scan 0.41.3,
+EXECUTED on macOS (the `unix` arm is built, it sets an environment variable and writes no file): the report charged
+`Fs` alone, the cfg-off local declaration picked over the built re-export arm, so `deny Env` over the caller exited 0
+over a real `set_var`. Pinned by PART 89 (b10cfglocal, b11cfglocalrev).
+
 **The union's SURFACE is the union of the arms' surfaces, and an implementation MUST NOT certify a
 destination on the strength of one arm when another names a different one.** Where it cannot attribute a
 literal to the arm that carries it, it MUST mark the surface incomplete (§2) rather than publish one
@@ -5866,9 +5877,10 @@ MIXED arm set — one project type beside a framework or `std` one, which is the
 shim rather than a corner — answering exactly as before. **In each engine the closing fixture was
 itself the boundary of the next defect:** rust's arms were both external, swift's were both
 project-declared, so neither fixture could see the mixed case, and PART 89 carried it as a declared
-xfail until R438 and R429 were fixed in turn. All nine arms are now green on both engines and the xfail
-list is empty; R287 closed with them. The clause is what stops them diverging again, and the xfail is
-what stopped the gap being forgotten while it was open.
+xfail until R438 and R429 were fixed in turn. All nine arms were green on both engines and the xfail
+list empty when ⟨0.38⟩ shipped; R287 closed with them. The clause is what stops them diverging again, and the xfail is
+what stopped the gap being forgotten while it was open. The ⟨0.42⟩ clarification above added two arms and the same
+thing happened: rust passes them, swift xfails on R1714 (its `typealias` arm is dropped for the `#else` declaration).
 
 The dividing line between `dispatch:` and `callback:` is whether a **resolvable owner type** exists:
 `dispatch:` is reserved for unresolved member dispatch where the engine knows the owner type and member
