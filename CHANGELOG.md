@@ -25,6 +25,18 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §4 ⟨0.38⟩, clarified for a MIXED arm set — a `#[cfg]`/`#if` BINDING arm beside a `#[cfg]`/`#if` local DECLARATION of the same
+  name (SOUNDNESS R1657 stage 2, R1714); no new ruling, no behaviour change a conformant engine did not already owe.** The
+  arms of a conditional-binding set need not be the same kind of item: `#[cfg(unix)] pub use crate::a::Tool;` beside
+  `#[cfg(not(unix))] pub struct Tool;` (swift: `#if os(macOS) typealias Impl = A.Tool` beside `#else enum Impl { … }`) is one
+  arm set and resolves to the union, in either written order. Measured on candor-scan 0.41.3, EXECUTED on macOS: the report
+  charged `Fs` alone, the cfg-off declaration picked over the built re-export, so `deny Env` exited 0 over a real `set_var`.
+  PART 89 gains `b10cfglocal` and `b11cfglocalrev` (rust, swift): candor-rust main `e412a781` passes both, published 0.41.3
+  failed both; **swift fails both and xfails on R1714** (it keeps the declaration and drops the aliased arm; executed ground
+  truth: the env var is set, no file written). java stays a declared exclusion (bytecode: only the built arm exists) and ts
+  keeps its R439 position (condition maps, one arm picked and `ambiguous:condition-map` disclosed). Must-ledger: the §4
+  ruling-premise paragraph's classification re-confirmed after a past-tense edit; the new sentence carries no MUST.
+
 - **SPEC ⟨0.42⟩ second half: RESULT-MOVING SWITCHES (§2 `switches`; §3.4; §3.3 cause (e)), plus conformance PART 109
   (SOUNDNESS R1634). Declared by no engine; every engine fails it today.** Each engine's released binary honours
   undocumented environment variables that restore closed defects or turn on opt-in modes, and none records that one
