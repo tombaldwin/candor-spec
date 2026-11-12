@@ -21,7 +21,7 @@ prefix.
 
 ```json
 {
-  "candor": { "version": "a1b2c3d", "toolchain": "jdk-21", "spec": "0.41" },
+  "candor": { "version": "a1b2c3d", "toolchain": "jdk-21", "spec": "0.42" },
   "resolves": ["fs"],
   "package": "app",
   "functions": [
