@@ -289,12 +289,6 @@ XFAIL = {
     # arm becomes a call EDGE). The xfail-passed check is what reported it — an expectation about an
     # engine goes stale silently otherwise, which is the whole reason a passing xfail is a FAILURE here.
     # SWIFT'S TWO RETIRED 2026-09-14 with R429's second fix, and again this part is what reported it.
-    # b10/b11 (the ⟨0.42⟩ clarification: a BINDING arm beside a local DECLARATION arm of the same name). Measured
-    # 2026-11-12: swift reports `probe` as Fs ONLY — the `#if os(macOS) typealias Impl = EnvImpl` arm is dropped
-    # for the `#else` declaration — while the compiled program (EXECUTED, swiftc on macOS) sets the env var and
-    # writes no file. rust (main e412a781) passes both; the installed 0.41.3 failed both.
-    ("b10cfglocal",    "swift"): "SOUNDNESS R1714 — swift keeps the `#if` local declaration over the aliased arm",
-    ("b11cfglocalrev", "swift"): "SOUNDNESS R1714 — swift keeps the `#if` local declaration over the aliased arm",
 }
 
 
