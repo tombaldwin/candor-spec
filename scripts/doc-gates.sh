@@ -94,6 +94,14 @@ else
   skipped=$((skipped+1))
 fi
 run "reanchor_banner"      python3 conformance/reanchor_banner.py
+# AGENTS.md DRIFT (spec floor vs AGENTS.md/README.md/SPEC.md envelope examples). It is the `agents-doc-drift` CI
+# job's first step and was in NO row here, so doc-gates went green on the 0.42.0 cut (2026-11-13) while that job
+# went red after the push on an unannotated `"spec": "0.41"` line in SPEC.md. Documents only, reads no sibling.
+run "agents_drift"         python3 scripts/check_agents_drift.py
+# …AND THE CLASS: a script wired into a workflow but absent from this file is the same hole. Fails when a CI
+# script is neither a row above nor exempt by name with a reason, and when an exemption has gone stale.
+run "ci_doc_gate_coverage" python3 scripts/ci-doc-gate-coverage.py
+run "ci_coverage_selftest" python3 scripts/ci-doc-gate-coverage.py --selftest
 # rung_ladder NEEDS `v0.N` TAGS. It reads `git tag` to tell a released rung from an authored one, and
 # refuses when it finds none rather than guessing — which is right, and means a SHALLOW, TAGLESS
 # checkout makes it FAIL rather than self-skip. That is R746: it went red in CI on the very commit
