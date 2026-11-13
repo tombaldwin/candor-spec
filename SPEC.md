@@ -5105,7 +5105,7 @@ makes a gate unanswerable.** ⟨0.42⟩ (SOUNDNESS R1634). The paragraph above r
 key, and gives the reason: *an assertion an ambient environment can silently switch off is not one.* That reasoning
 reaches every other variable that selects which logic ran, and nothing bound it to them. MEASURED on candor-scan
 0.41.3, released: `CANDOR_R1608_OFF=1` removes 9 rows from `functions[]` and changes 2 more, every top-level key
-stays byte-equal, `"spec": "0.41"` is unchanged, and `deny Fs c_let_chain` goes from exit 1 to exit 0 with
+stays byte-equal, `"spec": "0.41"` (measured at spec 0.41, informative) is unchanged, and `deny Fs c_let_chain` goes from exit 1 to exit 0 with
 `ok: true`. candor-ts 0.41.3 does the same under `CANDOR_CT2_OFF=1`. Each engine ships such switches, and none of
 them records that one was set. Three obligations existed and did not reach this: the `spec` MUST (§2, "MUST emit
 the spec version it conforms to") names no remedy; §2's R1580 sentence labels one such mode non-conforming and

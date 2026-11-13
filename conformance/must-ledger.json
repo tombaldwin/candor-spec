@@ -4100,10 +4100,10 @@
    "part": "PART 109 (a_named — the report carries `switches` == [NAME] for a set and consulted switch, and jp_named_cmd/jto/jdk, xfail R1645, for a JVM property named without its `-D`; b_spec — `spec` unchanged; unconsulted and default_val — the omitted-when-empty half; seed_a — the checker is shown able to pass and to fail)"
   },
   {
-   "sha": "be24a6de1a711083",
+   "sha": "4303520a39df34a9",
    "at": "3.4 The configuration file — `.candor/config` (S",
    "excerpt": "**RESULT-MOVING SWITCHES — an environment variable that changes what an engine REPORTS is named in the report ",
-   "unenforced": "THE LEAD PARAGRAPH of the ⟨0.42⟩ switches clause: a measurement record (candor-scan 0.41.3 CANDOR_R1608_OFF, candor-ts CANDOR_CT2_OFF) and the argument that no earlier MUST named a remedy. It adds no obligation beyond the bullets below it, each classified on its own; the measured example is PART 109's rust cell"
+   "unenforced": "THE LEAD PARAGRAPH of the ⟨0.42⟩ switches clause: (RE-ANCHORED 2026-11-13: the 0.41.3 measurement line gained the annotation '(measured at spec 0.41, informative)' for the AGENTS drift gate; wording otherwise unchanged, classification kept.) a measurement record (candor-scan 0.41.3 CANDOR_R1608_OFF, candor-ts CANDOR_CT2_OFF) and the argument that no earlier MUST named a remedy. It adds no obligation beyond the bullets below it, each classified on its own; the measured example is PART 109's rust cell"
   },
   {
    "sha": "62f3c71c7883e46d",
