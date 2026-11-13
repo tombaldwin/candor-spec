@@ -27,6 +27,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## [0.42.0] — 2026-11-12
 
+- **§3.4: the candor-scan 0.41.3 measurement line is annotated `(measured at spec 0.41, informative)`** so the AGENTS
+  drift gate reads it as history rather than a stale envelope; wording otherwise unchanged, ledger entry re-anchored.
+  SOUNDNESS R1732–R1734 filed (rust coverage-gate verdicts, two over-charges and one conditional; no silence).
+
 - **SPEC §4 ⟨0.38⟩, clarified for a MIXED arm set — a `#[cfg]`/`#if` BINDING arm beside a `#[cfg]`/`#if` local DECLARATION of the same
   name (SOUNDNESS R1657 stage 2, R1714); no new ruling, no behaviour change a conformant engine did not already owe.** The
   arms of a conditional-binding set need not be the same kind of item: `#[cfg(unix)] pub use crate::a::Tool;` beside
