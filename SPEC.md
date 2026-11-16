@@ -706,8 +706,10 @@ producer's purity claim:
   `InnerD` must charge `InnerD::leak`'s `Env`);
 - **anything else on the `Deref` chain discloses**: where the receiver, or any type the chain reaches, has
   no `types` key, a KIND-ONLY key, or a `deref` the consumer cannot follow, the consumer MUST ADD `Unknown`
-  (PART 95 `o15_deref_macro`: `WrapM`'s `Deref` comes out of a `macro_rules!`, and `w.leak()` must
-  disclose). A closed key with no `deref` and no member, and no chained trait in scope, keeps the purity
+  (PART 95 `o15_deref_macro`: `WrapM`'s `Deref` comes out of a `macro_rules!` whose definition is itself
+  produced by another macro, which a producer reading source cannot expand, and `w.leak()` must disclose. A
+  `Deref` out of a local `macro_rules!` the producer DOES expand is an ordinary visible one: the type is
+  closed with `deref` and followed, `r18_deref_macro_expanded`). A closed key with no `deref` and no member, and no chained trait in scope, keeps the purity
   reading (PART 95 `c8_closed_pure`, which pins that cost at zero).
 
 The permission exists because the default prices out of reach on real code: candor-scan `f7f4c08`, which

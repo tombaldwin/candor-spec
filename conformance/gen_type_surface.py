@@ -49,6 +49,11 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   r14_lookup_miss `Wrong.shared.quiet2()`: `Wrong.quiet2` PURE, the declared `Other.quiet2` reads Env -> Env
   r16_deref     rust `w.leak()`, `w: &dep::WrapD`, a VISIBLE `impl Deref<Target = InnerD>` -> Env (the `deref`
                 field resolves it)
+  r18_deref_macro_expanded rust `w.leak()`, `w: &dep::WrapX`, whose `Deref` comes out of a LOCAL `macro_rules!`
+                (definition and invocation both in `dep`'s own source) -> Env. A POSITIVE arm: a producer that
+                expands local macros closes WrapX with `deref` -> InnerD and the consumer follows it. SPEC permits
+                a producer that does NOT expand (WrapX kind-only, the consumer discloses), so this arm pins
+                candor-rust's I1 expansion rather than a SPEC floor; see p6_deref
   r15_kind_only `HolderK.shared.m2()`, `T2: PA2, PM2`, `PM2: PQ2`, PQ2's default (Env) more specific than
                 PA2's (Fs) -> Env (swift; executed). `HolderK` DECLARES its own `m2` (Fs) on purpose: without
                 it the singleton-convention lookup MISSES and swift's untyped-receiver disclosure supplies the
@@ -87,7 +92,9 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   o12_retproto_unkeyed rust r13 / swift r6 with the protocol's key WITHHELD -> a `returnsProtocol` target
                 is a protocol anyway: Env
   o13_lookup_miss_old r14 over the stripped report -> a guessed-owner lookup that MISSES discloses
-  o15_deref_macro rust `w.leak()`, `w: &depb::WrapM`, whose `Deref` comes out of a `macro_rules!` -> disclose
+  o15_deref_macro rust `w.leak()`, `w: &depb::WrapM`, whose `Deref` comes out of a `macro_rules!` NO producer
+                that reads source can expand (a macro defined by a macro) -> disclose. Until candor-rust
+                a1812e43 this was a plain `macro_rules!` invoked directly; that spelling is now r18's
                 (d15: silent on rust f7f4c08 and ad30e26, `deny Env` and `deny Env Unknown` 0, executed Env)
   r17_platform_ext swift `e.eqLeak()`, `EqT: Equatable`, and the DEPENDENCY's `extension Equatable { func
                 eqLeak() }` reads Env -> Env (silent on v0.39.3 and 2a3ddc6; executed)
@@ -112,7 +119,14 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
                 a type with only pure members, keyed (`types` is never bounded)
   p3_foreign    `adds` keyed in Base's namespace; SubThing's Base-owned supertype in Base's namespace
   p4_wrappers   `Other?`, `any PA & PSvc`, `Option<Other>` NOT published (and `holds` present at all)
-  p6_deref      rust: WrapD keyed CLOSED with `deref` -> InnerD; Quiet carries none; WrapM (macro Deref) unclosed
+  p6_deref      rust: WrapD keyed CLOSED with `deref` -> InnerD; Quiet carries none; WrapX (a Deref from a LOCAL
+                `macro_rules!`) keyed CLOSED with `deref` -> InnerD; WrapM (a Deref from a macro the producer
+                cannot expand) unclosed. A type is closable only where every expansion that could extend it is
+                visible, so WrapX closing is the SPEC's own rule applied to an expansion candor-rust now sees,
+                and WrapM staying open is the rule applied to one it cannot. WrapX and WrapM live in DIFFERENT
+                crates on purpose: an expansion the producer cannot see holds EVERY type in its crate open
+                (SPEC: "whether or not its invocation names the type"), so a closed WrapX beside it would be
+                a producer defect, not a pin
   p5_returns_protocol `returns` NEVER names a protocol result (mkP / mk_impl), `returnsProtocol` does,
                 and a `Box<dyn>` factory is in neither — the only guard a shipped ⟨0.23⟩ consumer has
   w1_macro      swift: an attached extension macro declared in ANOTHER package -> MacT omitted, witness
@@ -525,16 +539,39 @@ impl std::ops::Deref for WrapD {{
     type Target = InnerD;
     fn deref(&self) -> &InnerD {{ &self.0 }}
 }}
+// r18: the SAME Deref, but spelled through a LOCAL `macro_rules!` whose definition and invocation are both
+// in this crate's own source. A producer that expands local macros sees the impl (WrapX closed, `deref`
+// -> InnerD); this crate carries no other expansion it cannot see, so WrapX IS closable.
+macro_rules! mk_deref_x {{
+    ($t:ident, $u:ident) => {{
+        impl std::ops::Deref for $t {{
+            type Target = $u;
+            fn deref(&self) -> &$u {{ &self.0 }}
+        }}
+    }};
+}}
+pub struct WrapX(pub InnerD);
+mk_deref_x!(WrapX, InnerD);
 '''
 
 
 RS_BASE = 'pub struct Tok;\nimpl Tok {\n    pub fn new() -> Tok { Tok }\n}\npub trait BaseTr {}\n'
 RS_DEPB = ('pub struct Client;\nimpl Client {\n    pub fn fetch(&self) { %s }\n}\npub static CLIENT: Client = Client;\n' % FS["rust"]
-           # d15: `WrapM`'s Deref comes out of a `macro_rules!`, so the producer cannot close WrapM — the
-           # consumer's `w.leak()` forwards to `InnerM::leak` (Env) through an edge no report shows.
+           # d15: `WrapM`'s Deref comes out of a `macro_rules!` whose DEFINITION is itself produced by another
+           # macro's expansion (`mk_deref_def!` defines `mk_deref!`), so a producer that reads this crate's own
+           # source cannot see the impl and cannot close WrapM — the consumer's `w.leak()` forwards to
+           # `InnerM::leak` (Env) through an edge no report shows. THIS SHAPE WAS CHOSEN BY RUNNING candor-rust
+           # a1812e43 over six candidates (see the comment above PART 95's `p6_deref`): that engine expands a
+           # plain local `macro_rules!` invocation, so the earlier spelling (`macro_rules! mk_deref` invoked
+           # directly) is now `dep::WrapX` / r18, a POSITIVE arm. A producer that learns to expand this shape
+           # must move WrapM to one it still cannot see; the arm's meaning is "an expansion the producer
+           # could not see", not this spelling.
            + 'pub struct InnerM;\nimpl InnerM {\n    pub fn leak(&self) { %s }\n}\n' % ENV["rust"]
-           + 'macro_rules! mk_deref {\n    ($t:ident, $u:ident) => {\n        impl std::ops::Deref for $t {\n'
-             '            type Target = $u;\n            fn deref(&self) -> &$u { &self.0 }\n        }\n    };\n}\n'
+           + 'macro_rules! mk_deref_def {\n    ($n:ident) => {\n        macro_rules! $n {\n'
+             '            ($t:ident, $u:ident) => {\n                impl std::ops::Deref for $t {\n'
+             '                    type Target = $u;\n                    fn deref(&self) -> &$u { &self.0 }\n'
+             '                }\n            };\n        }\n    };\n}\n'
+             'mk_deref_def!(mk_deref);\n'
            + 'pub struct WrapM(pub InnerM);\nmk_deref!(WrapM, InnerM);\n'
            # THE TRAIT-IN-SCOPE ARMS (the reviewer's d2-d12, R887): every member below reaches its `Env` only
            # through a trait the CONSUMER brings into scope. depb is unclosable (the macro above), so a walk
@@ -566,6 +603,7 @@ pub fn r13_returns_impl() { dep::carrier(); dep::mk_impl().emit() }
 pub fn r14_lookup_miss() { dep::carrier(); dep::SHARED.quiet2() }
 pub fn r16_deref(w: &dep::WrapD) { dep::carrier(); w.leak() }
 pub fn o15_deref_macro(w: &depb::WrapM) { dep::carrier(); w.leak() }
+pub fn r18_deref_macro_expanded(w: &dep::WrapX) { dep::carrier(); w.leak() }
 pub fn c8_closed_pure(q: &dep::Quiet) { dep::carrier(); q.q() }
 pub fn t1_bound<T: depb::SubS>(t: &T) { dep::carrier(); t.g() }
 pub fn t2_dyn(t: &dyn depb::SubS) { dep::carrier(); t.g() }
@@ -718,6 +756,7 @@ ARMS = [
     ("r15_kind_only",      "main",  None,                "r15_kind_only",    {"swift": KEEP, "rust": ENV1}),
     ("r16_deref",          "main",  None,                "r16_deref",        ENV1),
     ("r17_platform_ext",   "main",  None,                "r17_platform_ext", ENV1),
+    ("r18_deref_macro_expanded", "main", None,           "r18_deref_macro_expanded", ENV1),
     ("c1_convention",      "main",  None,                "c1_convention",    ENV1),
     ("c2_final",           "main",  None,                "c2_final",         ENV0),
     ("c2_value",           "main",  None,                "c2_value",         ENV0),
@@ -789,6 +828,7 @@ ARM_NA = {
     ("r13_returns_impl", "swift"): "swift's r6_proto_ret is this shape (`-> any PSvc`)",
     ("r16_deref", "swift"): "Swift has no `Deref`; its implicit forwarding is `@dynamicMemberLookup`, which the DEFAULT rule covers (see SPEC §2 ⟨0.40⟩) — untested",
     ("o15_deref_macro", "swift"): "as r16_deref",
+    ("r18_deref_macro_expanded", "swift"): "as r16_deref",
     ("r17_platform_ext", "rust"): "a Rust trait method needs its trait in scope — the permission's first row, not a supertype walk",
     ("o16_dyn_member", "rust"): "Rust has no dynamic member lookup; its forwarding edge is `Deref` (r16, o15)",
     ("p6_deref", "swift"): "as r16_deref — `deref` is a Rust-only field",
@@ -1132,7 +1172,8 @@ def judge_p5(rep, lang):
 
 def judge_p6(rep, depb_rep, lang):
     """Rust: a VISIBLE `impl Deref` is published as `deref` on a CLOSED key, so the consumer can follow it;
-    a macro-generated one leaves its type unclosed (no `supers`, no `deref`)."""
+    a `macro_rules!`-generated one the producer EXPANDS (WrapX, a local definition invoked locally) is closed
+    with `deref` too, and one it CANNOT expand (WrapM) leaves its type unclosed (no `supers`, no `deref`)."""
     types = surface(rep).get("types")
     if not isinstance(types, dict):
         return False, "no `types` manifest"
@@ -1146,11 +1187,17 @@ def judge_p6(rep, depb_rep, lang):
     k = find_key(types, "Quiet")
     if k and isinstance(types[k], dict) and types[k].get("deref"):
         bad.append("Quiet carries a `deref` it does not have")
+    k = find_key(types, "WrapX")
+    e = types.get(k) if k else None
+    if not isinstance(e, dict) or "supers" not in e:
+        bad.append("WrapX (a Deref from a LOCAL macro_rules!) is not keyed closed (%s)" % e)
+    elif leaf_of(e.get("deref") or "") != "InnerD":
+        bad.append("WrapX is closed but its `deref` is %r — want InnerD (a closure that omits it is SHORT)" % e.get("deref"))
     bt = surface(depb_rep).get("types") or {}
     k = find_key(bt, "WrapM")
     if k and isinstance(bt[k], dict) and ("supers" in bt[k] or "deref" in bt[k]):
-        bad.append("WrapM is published CLOSED (%s) though its Deref comes from a macro_rules!" % bt[k])
-    return (not bad), ("; ".join(bad) if bad else "WrapD -> InnerD; WrapM unclosed")
+        bad.append("WrapM is published CLOSED (%s) though its Deref comes out of a macro the producer cannot expand" % bt[k])
+    return (not bad), ("; ".join(bad) if bad else "WrapD, WrapX -> InnerD; WrapM unclosed")
 
 
 WITHHELD = {"swift": ("MacT",), "rust": ("Y", "Z", "W", "Q", "Hidden", "Hidden2")}
@@ -1257,6 +1304,19 @@ def selftest():
     t["Mid4"] = {"kind": "protocol", "supers": ["dep#Grand4"]}
     assert judge_p2({"typeSurface": {"types": t}, "resolves": ["types"]}, "rust")[0] is False, "p2 kind"
     assert judge_p4({"typeSurface": {"holds": {"dep#OPT": "dep#Other"}}}, "rust")[0] is False
+    # p6: the moved pin. A producer that publishes WrapM (the unexpandable Deref) CLOSED must fail; so must
+    # one that closes WrapX without its `deref`, or leaves WrapX unclosed; the clean report passes.
+    p6_dep = {"typeSurface": {"types": {"dep#WrapD": {"kind": "value", "supers": [], "deref": "dep#InnerD"},
+                                        "dep#WrapX": {"kind": "value", "supers": [], "deref": "dep#InnerD"}}}}
+    p6_open = {"typeSurface": {"types": {"depb#WrapM": {"kind": "value"}}}}
+    p6_shut = {"typeSurface": {"types": {"depb#WrapM": {"kind": "value", "supers": [], "deref": "depb#InnerM"}}}}
+    assert judge_p6(p6_dep, p6_open, "rust")[0], "p6: the clean pair fails"
+    assert judge_p6(p6_dep, p6_shut, "rust")[0] is False, "p6: WrapM published closed passes"
+    assert judge_p6(p6_dep, {"typeSurface": {"types": {"depb#WrapM": {"kind": "value", "supers": []}}}}, "rust")[0] is False, "p6: WrapM closed short passes"
+    short_x = {"typeSurface": {"types": dict(p6_dep["typeSurface"]["types"], **{"dep#WrapX": {"kind": "value", "supers": []}})}}
+    assert judge_p6(short_x, p6_open, "rust")[0] is False, "p6: WrapX closed without deref passes"
+    open_x = {"typeSurface": {"types": dict(p6_dep["typeSurface"]["types"], **{"dep#WrapX": {"kind": "value"}})}}
+    assert judge_p6(open_x, p6_open, "rust")[0] is False, "p6: WrapX unclosed passes"
     assert judge_p5({"typeSurface": {"returns": {"dep#mk_impl": "dep#Sink"}, "returnsProtocol": {"dep#mk_impl": "dep#Sink"}},
                      "resolves": ["returnsProtocol"]}, "rust")[0] is False, "p5: protocol in returns"
     assert judge_p5({"typeSurface": {"returnsProtocol": {"dep#mk_impl": "dep#Sink"}}, "resolves": ["returnsProtocol"]}, "rust")[0]
@@ -1271,7 +1331,7 @@ def selftest():
     # a consumer defaulting the missing `supers` to [] reads [Fs]: both o14 cells go 0 and must fail
     o14 = [a for a in ARMS if a[0] == "o14_kind_only"][0]
     assert not judge_gates(want_for(o14, "swift"), {"deny Env Unknown": 0, "deny Net": 1})[0]
-    print("selftest: OK — %d flipped cells all fail; the u1, w, p1, p2, p3, p4 and p5 judges each fail their "
+    print("selftest: OK — %d flipped cells all fail; the u1, w, p1, p2, p3, p4, p5 and p6 judges each fail their "
           "seeded poison and pass their clean input" % n)
     return 0
 

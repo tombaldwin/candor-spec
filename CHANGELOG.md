@@ -25,6 +25,15 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved to a Deref candor-rust a1812e43 (I1 stage 1)
+  genuinely cannot expand; no behaviour change, no SPEC ruling.** That engine expands a plain local `macro_rules!`, so
+  closing the old `WrapM` (kind, `supers`, `deref` -> InnerM) is the SPEC's own rule applied to a now-visible expansion, not a
+  defect. `WrapM`'s `Deref` now comes out of a macro whose DEFINITION another macro produces, which the engine leaves
+  unclosed; `o15_deref_macro` (disclose) and `p6_deref` (WrapM unclosed) keep their meaning over it. The expanded shape is a new
+  rust arm, `r18_deref_macro_expanded` over `dep::WrapX` (a local `macro_rules!` Deref: closed with `deref`, `deny Env` 1), and
+  `p6_deref` also requires `WrapX` closed with `deref` -> InnerD. The §2 ⟨0.40⟩ sentence that cited `o15_deref_macro` as a
+  macro-generated Deref is reworded to name the shape; it names a fixture, not a behaviour. `--selftest` gains p6 poison cases.
+
 ## [0.42.0] — 2026-11-12
 
 - **§3.4: the candor-scan 0.41.3 measurement line is annotated `(measured at spec 0.41, informative)`** so the AGENTS

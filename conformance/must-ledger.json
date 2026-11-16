@@ -3497,13 +3497,13 @@
    "sha": "4f45dd37c2c13beb",
    "at": "2. The report",
    "excerpt": "- **a visible `Deref` is FOLLOWED**",
-   "part": "PART 95 (r16_deref; p6_deref for the producer's `deref` field)"
+   "part": "PART 95 (r16_deref; r18_deref_macro_expanded, the same follow through a local macro_rules! the producer expands; p6_deref for the producer's `deref` field, WrapD and WrapX)"
   },
   {
-   "sha": "9fe3cd41ad0515b6",
+   "sha": "7bdae0bb3b43ca69",
    "at": "2. The report",
    "excerpt": "- **anything else on the `Deref` chain discloses**",
-   "part": "PART 95 (o15_deref_macro — WrapM's Deref from a macro_rules!; c8_closed_pure — the closed, Deref-free control)"
+   "part": "PART 95 (o15_deref_macro — WrapM's Deref from a macro_rules! whose definition another macro produces, which a source-reading producer cannot expand; c8_closed_pure — the closed, Deref-free control). Re-confirmed 2026-11-16 against the reworded example: the clause is unchanged, only the fixture it names moved from a directly-invoked macro_rules! (now expanded by candor-rust a1812e43 and pinned positively by r18_deref_macro_expanded and p6_deref's WrapX) to a macro-defined macro."
   },
   {
    "sha": "d830e6afb57630d4",
