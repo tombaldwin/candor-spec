@@ -178,6 +178,10 @@ XFAIL = {
         "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
     ('st_c_param', 'swift'):
         "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+    ('st_c_ufcs', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped; the cell's only disclosure is the consumer's own `callback:computed` hedge, byte-identical to the unchained cell's: SILENT",
+    ('st_u_ufcs', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped; the cell's only disclosure is the consumer's own `callback:computed` hedge, byte-identical to the unchained cell's: SILENT",
     ('st_u_annot', 'swift'):
         "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
     ('st_u_ctor', 'swift'):
@@ -506,8 +510,19 @@ def must_disclose(lang, layout, m, sp):
     return layout == "nc" and (lang, sp) in CUR_NOT_TYPED
 
 
-def _disclosed(got):
-    return "Unknown" in got or any(e.startswith(INV) for e in got)
+# The package each engine's `invisible` names for the fixture's dependency (the chained dependency's OWN package).
+DEP_PKG = {"rust": "sqlx_core", "java": "org.slf4j", "ts": "winston", "swift": "AsyncHTTPClient"}
+
+
+def _disclosed(lang, got):
+    """`Unknown`, or an `invisible` entry naming THE chained dependency's package: an entry for an unrelated module
+    discloses nothing about this call."""
+    return "Unknown" in got or any(e.startswith(INV) and DEP_PKG[lang] in e[len(INV):] for e in got)
+
+
+def _disclosure(got):
+    """What a cell says about what it does not know: `Unknown` presence and every reason token."""
+    return ("Unknown" in got, frozenset(e for e in got if e.startswith(WHY)))
 
 
 def _model(lang, layout, m, sp):
@@ -544,9 +559,20 @@ def judge(lang, answers):
                                 "this spelling — retire the declaration" % CURATED[lang]))
         if miss:
             fails.append((cell, "MISSING %s (got %s, the union needs %s)" % (sorted(miss), sorted(got), sorted(need))))
-        if must_disclose(lang, layout, m, sp) and not _disclosed(got):
+        if must_disclose(lang, layout, m, sp) and not _disclosed(lang, got):
             fails.append((cell, "SILENT: an unchained call no curated term answers carries neither `Unknown` nor "
-                                "`invisible` (got %s)" % sorted(got)))
+                                "`invisible` naming %s (got %s)" % (DEP_PKG[lang], sorted(got))))
+        if WHY + DOCTOR_WHY in got and not (layout == "ch" and m == "u"):
+            fails.append((cell, "SMEARED: the doctored row's reason %s appears on a cell that did not read the "
+                                "doctored `u` row (got %s)" % (DOCTOR_WHY, sorted(got))))
+        if layout == "st" and m in ("c", "u"):
+            nc_cell = "nc_%s_%s" % (m, sp)
+            nc = set(answers.get(nc_cell) or ())
+            if not must_disclose(lang, "nc", m, sp) and _disclosure(got) == _disclosure(nc):
+                fails.append((cell, "OWN HEDGE: the §2.1-downgraded entry's `Unknown` is absent — the cell's "
+                                    "disclosure %s is byte-identical to the unchained cell's, so it carries nothing "
+                                    "from the entry (got %s)" % (sorted(_disclosure(got)[1]) or "(no reason)",
+                                                                 sorted(got))))
         if extra:
             fails.append((cell, "FABRICATED %s (got %s; no source of this cell supplies it)" % (sorted(extra), sorted(got))))
         if "Unknown" in got and "Unknown" not in need and not must_disclose(lang, layout, m, sp):
@@ -604,6 +630,19 @@ def calibrate(lang):
             lines.append("  BROKEN %s: seeded wrong rule %s PASSES the judge — the part is vacuous" % (lang, name))
         else:
             lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, name, n, f[0][0]))
+    # st-own-hedge, at the model level: the consumer's own hedge (Unknown + its reason) on BOTH the unchained and the
+    # downgraded cell, so the downgraded entry's `Unknown` never arrived. Must fail every such `st` cell.
+    ans = dict(model)
+    for c, la, m, sp in cells(lang):
+        if m in ("c", "u") and la in ("st", "nc") and not must_disclose(lang, "nc", m, sp):
+            ans[c] = model[c] | {"Unknown", OWN_REASON}
+    sts = [c for c, la, m, sp in cells(lang) if la == "st" and m in ("c", "u") and not must_disclose(lang, "nc", m, sp)]
+    n = len({c for c, _ in judge(lang, ans)[0]} & set(sts))
+    if n != len(sts):
+        broken = True
+        lines.append("  BROKEN %s: seeded st-own-hedge fails %d of %d st cell(s)" % (lang, n, len(sts)))
+    else:
+        lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, "st-own-hedge", n, sts[0]))
     # The disclosure rule, seeded at the model level so it is shown able to fail on every engine that HAS a
     # disclosure-required cell (live, those are swift's R1866 cells, which are red, so no live seed can act on them).
     nd = [c for c, la, m, sp in cells(lang) if must_disclose(lang, la, m, sp)]
@@ -615,6 +654,21 @@ def calibrate(lang):
             lines.append("  BROKEN %s: seeded silent-nc PASSES the judge — the disclosure rule is vacuous" % lang)
         else:
             lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, "silent-nc", n, nd[0]))
+        # An `invisible` naming an UNRELATED module must not satisfy the rule; one naming the dependency must.
+        for pkg, want_fail in (("com.unrelated.module", True), (DEP_PKG[lang], False)):
+            ans = {c: ((_model(lang, la, m, sp) - {"Unknown"}) | {INV + pkg} if c in nd else _model(lang, la, m, sp))
+                   for c, la, m, sp in cells(lang)}
+            n = len({c for c, _ in judge(lang, ans)[0]})
+            if want_fail and n == 0:
+                broken = True
+                lines.append("  BROKEN %s: an `invisible` naming an unrelated module PASSES the disclosure rule" % lang)
+            elif not want_fail and n:
+                broken = True
+                lines.append("  BROKEN %s: an `invisible` naming the dependency (%s) FAILS the disclosure rule" % (
+                    lang, DEP_PKG[lang]))
+            else:
+                lines.append("  SEED   %-5s %-13s %s" % (lang, "wrong-pkg-inv" if want_fail else "right-pkg-inv",
+                                                         "fails %d cell(s)" % n if want_fail else "passes (control)"))
     return lines, broken
 
 
@@ -622,41 +676,70 @@ def calibrate(lang):
 # wrong RULE; these prove it rejects a wrong CELL in the exact bytes this engine produced, which is where a `u` cell
 # could be satisfied by the engine's own receiver hedge. Each must turn ≥1 live cell red that the real answer kept
 # green; a seed with no live cell to act on is reported as such, never as a pass.
-def _seed_own_hedge(lang, cell, la, m, sp, got):
+def _seed_own_hedge(lang, cell, la, m, sp, got, answers):
     if la == "ch" and m == "u":
         return {e for e in got if not e.startswith(WHY)} | {"Unknown", WHY + "dispatch:untyped cross-package receiver"}
     return got
 
 
-def _seed_hedge_dropped_cell(lang, cell, la, m, sp, got):
+def _seed_hedge_dropped_cell(lang, cell, la, m, sp, got, answers):
     if la in ("ch", "st") and m == "u":
         return {e for e in got if e != "Unknown" and not e.startswith(WHY)}
     return got
 
 
-def _seed_silent(lang, cell, la, m, sp, got):
+def _seed_silent(lang, cell, la, m, sp, got, answers):
     if must_disclose(lang, la, m, sp):
         return {e for e in got if e != "Unknown" and not e.startswith(INV)}
     return got
 
 
-CELL_SEEDS = (("own-hedge", _seed_own_hedge), ("hedge-dropped/cell", _seed_hedge_dropped_cell),
-              ("silent-nc", _seed_silent))
+OWN_REASON = WHY + "callback:computed"      # a consumer's own hedge: it is on the cell with NO report chained
+
+
+def _seed_smear(lang, cell, la, m, sp, got, answers):
+    """An engine that smeared a chained report's reasons onto cells that never read the doctored `u` row."""
+    if not (la == "ch" and m == "u"):
+        return got | {WHY + DOCTOR_WHY}
+    return got
+
+
+def _seed_st_own_hedge(lang, cell, la, m, sp, got, answers):
+    """The consumer's own hedge on BOTH the unchained and the downgraded cell, byte-identical: the entry's `Unknown`
+    never arrived on `st`, though `Unknown` is present there. Acts only where the unchained cell is not itself
+    disclosure-required."""
+    if m in ("c", "u") and la in ("st", "nc") and not must_disclose(lang, "nc", m, sp):
+        return {e for e in got if e != "Unknown" and not e.startswith(WHY)} | {"Unknown", OWN_REASON}
+    return got
+
+
+def _seed_wrong_pkg(lang, cell, la, m, sp, got, answers):
+    if must_disclose(lang, la, m, sp):
+        return {e for e in got if e != "Unknown" and not e.startswith(INV)} | {INV + "com.unrelated.module"}
+    return got
+
+
+# (name, seed, the layouts whose cells the seed is meant to turn red)
+CELL_SEEDS = (("own-hedge", _seed_own_hedge, ("ch",)), ("hedge-dropped/cell", _seed_hedge_dropped_cell, ("ch", "st")),
+              ("silent-nc", _seed_silent, ("nc",)), ("smear", _seed_smear, ("ch", "st", "nc")),
+              ("st-own-hedge", _seed_st_own_hedge, ("st",)), ("wrong-pkg-inv", _seed_wrong_pkg, ("nc",)))
 
 
 def cell_seeds(lang, answers):
     lines, broken = [], False
     base = {c for c, _ in judge(lang, answers)[0]}
-    for name, fn in CELL_SEEDS:
+    for name, fn, layouts in CELL_SEEDS:
         mut = {}
         for c, la, m, sp in cells(lang):
             got = set(answers.get(c) or ())
-            mut[c] = fn(lang, c, la, m, sp, got)
-        acted = [c for c, la, m, sp in cells(lang) if mut[c] != set(answers.get(c) or ()) and c not in base]
+            mut[c] = fn(lang, c, la, m, sp, got, answers)
+        acted = [c for c, la, m, sp in cells(lang)
+                 if la in layouts and mut[c] != set(answers.get(c) or ()) and c not in base]
         if not acted:
             lines.append("  SEEDc  %-5s %-18s no live green cell to act on (nothing to show)" % (lang, name))
             continue
         newly = sorted({c for c, _ in judge(lang, mut)[0]} - base)
+        newly = [c for c in newly if c in acted]
         if not newly:
             broken = True
             lines.append("  BROKEN %s: cell seed %s altered %d green cell(s) and the judge PASSED them all" % (
