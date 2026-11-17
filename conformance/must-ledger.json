@@ -4178,10 +4178,10 @@
    "part": "PART 110 (ch_c_*/ch_u_* fail a skipped join, the curated-wins seed; ch_p_* — a call that joins NO entry keeps exactly the classifier's charge and needs no hedge, the row-wins seed)"
   },
   {
-   "sha": "1cc7f6e8b84fe410",
+   "sha": "1bf181cd6f891ed7",
    "at": "2. The report",
    "excerpt": "- **The union does not depend on how the call is written.** The call may be a path or fully-qualified call, a ",
-   "part": "PART 110 (every member in every spelling the language has — param, ufcs, annot, untyped, ret, ctor — with the unchained nc arm as the monotone reference; CUR_NOT_TYPED declarations are checked against nc every run and fail when stale). Aliased-binding arms and guessed builder chains are not cells: rust-specific spellings, pinned on candor-rust's own fixture (R1807 fx/m2)"
+   "part": "PART 110 (every member in every spelling the language has — param, ufcs, annot, untyped, ret, ctor — with the unchained nc arm as the monotone reference; CUR_NOT_TYPED declarations are checked against nc every run and fail when stale, and on those spellings the unchained cell must still disclose — Unknown or invisible — since §4, not this clause, owns that duty and the PART will not print ok over a silent call). Aliased-binding arms and guessed builder chains are not cells: rust-specific spellings, pinned on candor-rust's own fixture (R1807 fx/m2). RE-KEYED 2026-11-17 after Fable's R1815 merge review: the monotone sentence gained 'for that member', and the phrase vouching for an untyped-receiver disclosure was replaced by a pointer to §4"
   },
   {
    "sha": "00415d87739c543d",

@@ -18,6 +18,8 @@ member; swift `HTTPClient` → `Net` on `get`/`post`/`put`), holding four member
     p   the curated verb, body pure                                    no row             (pure: the covered
                                                                                            report's purity claim)
     q   a member the classifier does NOT name, body pure               no row             (the pure twin)
+        — except on ts, whose κ rule for `winston` names EVERY member of the module: there `q` is a second pure
+        CURATED member (no non-curated member exists inside a whole-module rule) and still refuses a fabricated Fs
 
 and a consumer that calls each one in every spelling its language has (typed parameter, path/UFCS, `let x: T`,
 untyped `let x = make()`, a method on a returned value, a method on a constructed value). Every consumer function
@@ -29,9 +31,11 @@ like any other" (Fable R1807 Q2 edit 2). `nc` — the dependency NOT chained: no
 joins no entry, and the classifier's charge is the whole of what the clause requires (Fable edit 1).
 
 WHAT EACH CELL ASSERTS (the effect SET of the consumer's row, `inferred`, not a gate exit):
-    ch  c → ⊇ {cur, Fs};      u → ⊇ {cur, Unknown};   p → ⊇ {cur};   q → no curated, no Fs
+    ch  c → ⊇ {cur, Fs};   u → ⊇ {cur, Unknown} AND `unknownWhy` carries the doctored reason;   p → ⊇ {cur};
+        q → no curated, no Fs
     st  c,u → ⊇ {cur, Unknown};                        p → ⊇ {cur};   q → no curated, no Fs
-    nc  c,u,p → ⊇ {cur};                                               q → no curated
+    nc  c,u,p → ⊇ {cur};  q → no curated;  and on a CUR_NOT_TYPED spelling (no curated source at all) the cell MUST
+        disclose — `Unknown` or `invisible` — because nothing charges the call (never `ok` over a silent cell)
 and in every cell: Env (the carrier) present, and NO concrete effect outside what the cell's sources supply
 (cur, the row's concrete effects, Env) — a `Clock` on `u` is a consumer that read the doctored body back, an `Fs`
 on `p`/`q` a fabrication. An `Unknown` the cell does not require is permitted (SPEC §4: over-disclosure is never
@@ -43,7 +47,11 @@ THE JUDGE IS SHOWN ABLE TO FAIL. Three wrong rules are computed from the same ce
 judge, each of which MUST fail ≥1 cell, with its count printed: ROW-WINS (the row is the whole answer when the
 dependency is chained), CURATED-WINS (the classifier's answer stops the join), HEDGE-DROPPED (the row's concrete
 effects unioned, its `Unknown` dropped — Fable R1807 Q6's subtler C3). A judge that passes any of them is vacuous
-and the part fails.
+and the part fails. Those seeds prove the judge rejects a wrong RULE. Three CELL-LEVEL seeds then mutate the
+engine's OWN answers and must turn ≥1 green cell red: OWN-HEDGE (a `u` cell's row reason replaced by the engine's own
+untyped-receiver hedge — the `Unknown` bytes are identical, only the reason tells them apart, Fable R1815 review §2),
+HEDGE-DROPPED/CELL (the `u` row's `Unknown` and reason removed), SILENT-NC (a disclosure-required cell's `Unknown`
+and `invisible` removed). A seed with no live green cell to act on says so; it is never counted as a pass.
 
 RECEIVER TYPING IS NOT THIS CLAUSE. Where an engine's classifier cannot name a spelling at all (the unchained arm
 shows no curated term there — swift's untyped `let r = makeClient()`), the curated term is not one of the cell's
@@ -51,7 +59,11 @@ sources: CUR_NOT_TYPED declares it with the reason, and every run checks the dec
 engine that starts typing the receiver fails the part until the declaration is retired. The clause's observable
 test is the monotone one: chaining a report must not remove a curated charge the unchained scan carries.
 
-THE XFAIL TABLE is per (cell, engine), each naming its finding; A PASSING XFAIL IS A FAILURE.
+THE XFAIL TABLE is per (cell, engine), each naming its register row; A PASSING XFAIL IS A FAILURE.
+
+EXECUTED GROUND TRUTH (outside the suite; Fable R1815 review, evidence copied to
+~/candor-handoff/spec-r1815/evidence/): the fixture run in all four languages wrote 22 files, every one by member
+`c` (rust 6, java 5, ts 5, swift 6 spellings) and none by `u`, `p` or `q`.
 
 CALIBRATED: CANDOR_PROBE_FAULT=1 strips the joined row's Fs from every chained `c` answer after the scan (the
 curated-wins rule), so every ch_c_* cell reddens; registered in probe_check.py on the java arm.
@@ -73,8 +85,8 @@ SPEC_CLAUSES = [
                   "charge because the join answered"),
     ("§2 ⟨0.43⟩", "An entry §2.1 downgraded joins like any other"),
     ("§2 ⟨0.43⟩", "A call that joins no entry adds nothing beyond the classifier's charge"),
-    ("§2 ⟨0.43⟩", "chaining a report MUST NOT remove a curated charge that the same call carries when that report "
-                  "is not chained."),
+    ("§2 ⟨0.43⟩", "chaining a report MUST NOT remove a curated charge for that member that the same call carries when "
+                  "that report is not chained."),
     ("§2", "makes a hand-curated classifier entry unnecessary for what the scan covers"),
 ]
 
@@ -108,52 +120,70 @@ CUR_NOT_TYPED = {
     ("swift", "ret"): "as `untyped`: `makeClient().get(p)` — the receiver is an untyped returned value",
 }
 
-# Keyed by (cell, engine), each naming its finding. MEASURED 2026-11-17 against the engine mains (candor-rust
-# 61c66d4e, candor-java bc03641 jar 0.42.0 on JDK 21, candor-ts 59bf8ab, candor-swift 7215b50). Both findings are NEW
-# and unnumbered: each note cites R1815 (this part's row) until the coordinator files its own row.
+# Keyed by (cell, engine), each naming its row. MEASURED 2026-11-17 against the engine mains (candor-rust 61c66d4e,
+# candor-java bc03641 jar 0.42.0 on JDK 21, candor-ts 59bf8ab, candor-swift 7215b50). The rust cells are existing rows
+# (R1819, R1820), pre-existing on 0.42.0; R1865 and R1866 are the swift rows this part's measurement produced.
 XFAIL = {
-    ('ch_p_untyped', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
     ('ch_p_ret', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
-    ('st_c_untyped', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
+        'R1820 — `typeSurface.returns` publishes no factory for a type with no effectful own unit, so the untyped route cannot type the receiver and hedges it, dropping the curated Db: DISCLOSED, `deny Db` 1 unchained -> 0 chained; pre-existing on 0.42.0, byte-identical',
+    ('ch_p_untyped', 'rust'):
+        'R1820 — `typeSurface.returns` publishes no factory for a type with no effectful own unit, so the untyped route cannot type the receiver and hedges it, dropping the curated Db: DISCLOSED, `deny Db` 1 unchained -> 0 chained; pre-existing on 0.42.0, byte-identical',
     ('st_c_ret', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
-    ('st_u_untyped', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
-    ('st_u_ret', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
-    ('st_p_untyped', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
+    ('st_c_untyped', 'rust'):
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
     ('st_p_ret', 'rust'):
-        'R1815 — NEW rust finding (unnumbered; the coordinator assigns its row and re-points this note): chaining WITHDRAWS the curated Db on an untyped/returned-value receiver the untyped route cannot type (no `returns` entry, or a downgraded report), DISCLOSED — `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1',
-    ('ch_c_param', 'swift'):
-        'R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
+    ('st_p_untyped', 'rust'):
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
+    ('st_u_ret', 'rust'):
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
+    ('st_u_untyped', 'rust'):
+        'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
     ('ch_c_annot', 'swift'):
-        'R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
+        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
     ('ch_c_ctor', 'swift'):
-        'R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
+        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
+    ('ch_c_param', 'swift'):
+        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
     ('ch_c_ufcs', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — DISCLOSED only by the consumer's own Unknown on the unapplied-method spelling",
-    ('ch_u_param', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): DISCLOSED only by the consumer's own Unknown on the unapplied-method spelling",
     ('ch_u_annot', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
     ('ch_u_ctor', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
-    ('st_c_param', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
+    ('ch_u_param', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
+    ('ch_u_ufcs', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the cell's `Unknown` is the consumer's own unapplied-method hedge (`callback:computed`, present unchained too), not the row's — the doctored reason never arrives",
+    ('nc_c_ret', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_c_untyped', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_p_ret', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_p_untyped', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_q_ret', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_q_untyped', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_u_ret', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
+    ('nc_u_untyped', 'swift'):
+        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
     ('st_c_annot', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
     ('st_c_ctor', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_u_param', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+    ('st_c_param', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
     ('st_u_annot', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
     ('st_u_ctor', 'swift'):
-        "R1815 — NEW swift finding (unnumbered; the coordinator assigns its row and re-points this note): a CLASSIFIED typed call never reads the chained row (curated wins: the shape rust, java and ts each closed by union) — the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
+    ('st_u_param', 'swift'):
+        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
 }
 
 
@@ -398,6 +428,11 @@ OWNER = {"rust": lambda m: "Raw" + m.upper(), "java": lambda m: "Log" + m.upper(
 
 
 # ======================================================================================== producer doctor
+# The reason the doctor writes. Every engine carries it to a consumer that READ the row, so it is what tells the row's
+# `Unknown` apart from an engine's own hedge on an untyped receiver (`dispatch:untyped cross-package receiver`), which
+# reads the same `inferred` bytes whether or not the join happened (Fable R1815 review §2).
+DOCTOR_WHY = "reflection:part110-doctored"
+WHY, INV = "why:", "inv:"     # answer elements that are not effects: an `unknownWhy` token, an `invisible` package
 def _is_member_row(lang, f, m):
     """The producer row for member `m` (its owner and verb), however the engine spells `fn`."""
     fn = (f.get("fn") or "").replace("::", ".")
@@ -415,7 +450,7 @@ def doctor(lang, src, dst):
             f["inferred"] = ["Unknown"]
             f["direct"] = ["Unknown"]
             f["unresolved"] = True
-            f["unknownWhy"] = ["reflection:part110-doctored"]
+            f["unknownWhy"] = [DOCTOR_WHY]
             for k in ("fs", "incomplete", "undeclared"):
                 f.pop(k, None)
             hit = f
@@ -455,7 +490,29 @@ def sources(lang, layout, m, sp=None):
 
 def required(lang, layout, m, sp=None):
     cur, row = sources(lang, layout, m, sp)
-    return {"Env"} | cur | (row or set())
+    need = {"Env"} | cur | (row or set())
+    if layout == "ch" and m == "u":
+        need.add(WHY + DOCTOR_WHY)          # the row's Unknown, not one the engine made up for itself
+    return need
+
+
+def must_disclose(lang, layout, m, sp):
+    """An UNCHAINED cell on a spelling the engine's classifier cannot name (CUR_NOT_TYPED: an untyped receiver into an
+    uncovered imported package): nothing charges the call and nothing joins it, so the cell MUST disclose — `Unknown`
+    or an `invisible` entry. A green cell over an undisclosed call is the shape this part must not print `ok` over
+    (Fable R1815 review §6). A TYPED call to a non-verb member of a package the classifier covers (`q` on java's
+    `org.slf4j`, swift's `HTTPClient`) is NOT asked here: there the classifier's coverage of the package is the
+    answer, which is the curated-coverage calibration contract, not this clause."""
+    return layout == "nc" and (lang, sp) in CUR_NOT_TYPED
+
+
+def _disclosed(got):
+    return "Unknown" in got or any(e.startswith(INV) for e in got)
+
+
+def _model(lang, layout, m, sp):
+    need = required(lang, layout, m, sp)
+    return need | ({"Unknown"} if must_disclose(lang, layout, m, sp) else set())
 
 
 def permitted_concrete(lang, layout, m, sp=None):
@@ -480,15 +537,19 @@ def judge(lang, answers):
         got = set() if got is None else set(got)
         need = required(lang, layout, m, sp)
         miss = need - got
-        extra = {e for e in got if e != "Unknown"} - permitted_concrete(lang, layout, m, sp)
+        extra = {e for e in got if e != "Unknown" and not e.startswith((WHY, INV))} - \
+            permitted_concrete(lang, layout, m, sp)
         if layout == "nc" and (lang, sp) in CUR_NOT_TYPED and curated_names(lang, m) and CURATED[lang] in got:
             fails.append((cell, "STALE CUR_NOT_TYPED: the unchained answer carries %s, so the classifier DOES name "
                                 "this spelling — retire the declaration" % CURATED[lang]))
         if miss:
             fails.append((cell, "MISSING %s (got %s, the union needs %s)" % (sorted(miss), sorted(got), sorted(need))))
+        if must_disclose(lang, layout, m, sp) and not _disclosed(got):
+            fails.append((cell, "SILENT: an unchained call no curated term answers carries neither `Unknown` nor "
+                                "`invisible` (got %s)" % sorted(got)))
         if extra:
             fails.append((cell, "FABRICATED %s (got %s; no source of this cell supplies it)" % (sorted(extra), sorted(got))))
-        if "Unknown" in got and "Unknown" not in need:
+        if "Unknown" in got and "Unknown" not in need and not must_disclose(lang, layout, m, sp):
             info.append((cell, "over-disclosure: Unknown not required (got %s)" % sorted(got)))
         if layout == "st" and m == "c" and "Fs" in got:
             info.append((cell, "carried the DOWNGRADED row's Fs (a §2.1 question, not this clause's)"))
@@ -496,20 +557,29 @@ def judge(lang, answers):
 
 
 # The wrong rules, computed from the same model. Each MUST fail the judge.
+def _row_why(layout, m):
+    return {WHY + DOCTOR_WHY} if (layout == "ch" and m == "u") else set()
+
+
 def _mut_row_wins(lang, layout, m, sp):
     cur, row = sources(lang, layout, m, sp)
     if layout == "nc":
-        return {"Env"} | cur
-    return {"Env"} | (row or set())          # chained: the row (or the covered report's silence) is the answer
+        return _model(lang, layout, m, sp)
+    return {"Env"} | (row or set()) | _row_why(layout, m)   # chained: the row (or the report's silence) is the answer
 
 
 def _mut_curated_wins(lang, layout, m, sp):
     cur, row = sources(lang, layout, m, sp)
-    return {"Env"} | (cur if cur else (row or set()))   # the join is read only when the classifier is silent
+    if layout == "nc":
+        return _model(lang, layout, m, sp)
+    # the join is read only when the classifier is silent
+    return {"Env"} | (cur if cur else ((row or set()) | _row_why(layout, m)))
 
 
 def _mut_hedge_dropped(lang, layout, m, sp):
     cur, row = sources(lang, layout, m, sp)
+    if layout == "nc":
+        return _model(lang, layout, m, sp)
     return {"Env"} | cur | ((row or set()) - {"Unknown"})
 
 
@@ -520,7 +590,7 @@ def calibrate(lang):
     """The judge on the CORRECT model must pass every cell, and on each wrong rule must fail ≥1. Returns lines and
     a broken flag."""
     lines, broken = [], False
-    model = {c: required(lang, la, m, sp) for c, la, m, sp in cells(lang)}
+    model = {c: _model(lang, la, m, sp) for c, la, m, sp in cells(lang)}
     f, _ = judge(lang, model)
     if f:
         broken = True
@@ -534,6 +604,66 @@ def calibrate(lang):
             lines.append("  BROKEN %s: seeded wrong rule %s PASSES the judge — the part is vacuous" % (lang, name))
         else:
             lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, name, n, f[0][0]))
+    # The disclosure rule, seeded at the model level so it is shown able to fail on every engine that HAS a
+    # disclosure-required cell (live, those are swift's R1866 cells, which are red, so no live seed can act on them).
+    nd = [c for c, la, m, sp in cells(lang) if must_disclose(lang, la, m, sp)]
+    if nd:
+        ans = {c: (_model(lang, la, m, sp) - ({"Unknown"} if c in nd else set())) for c, la, m, sp in cells(lang)}
+        n = len({c for c, _ in judge(lang, ans)[0]})
+        if n == 0:
+            broken = True
+            lines.append("  BROKEN %s: seeded silent-nc PASSES the judge — the disclosure rule is vacuous" % lang)
+        else:
+            lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, "silent-nc", n, nd[0]))
+    return lines, broken
+
+
+# CELL-LEVEL SEEDS, run over the engine's OWN answers after the scan. The model seeds above prove the judge rejects a
+# wrong RULE; these prove it rejects a wrong CELL in the exact bytes this engine produced, which is where a `u` cell
+# could be satisfied by the engine's own receiver hedge. Each must turn ≥1 live cell red that the real answer kept
+# green; a seed with no live cell to act on is reported as such, never as a pass.
+def _seed_own_hedge(lang, cell, la, m, sp, got):
+    if la == "ch" and m == "u":
+        return {e for e in got if not e.startswith(WHY)} | {"Unknown", WHY + "dispatch:untyped cross-package receiver"}
+    return got
+
+
+def _seed_hedge_dropped_cell(lang, cell, la, m, sp, got):
+    if la in ("ch", "st") and m == "u":
+        return {e for e in got if e != "Unknown" and not e.startswith(WHY)}
+    return got
+
+
+def _seed_silent(lang, cell, la, m, sp, got):
+    if must_disclose(lang, la, m, sp):
+        return {e for e in got if e != "Unknown" and not e.startswith(INV)}
+    return got
+
+
+CELL_SEEDS = (("own-hedge", _seed_own_hedge), ("hedge-dropped/cell", _seed_hedge_dropped_cell),
+              ("silent-nc", _seed_silent))
+
+
+def cell_seeds(lang, answers):
+    lines, broken = [], False
+    base = {c for c, _ in judge(lang, answers)[0]}
+    for name, fn in CELL_SEEDS:
+        mut = {}
+        for c, la, m, sp in cells(lang):
+            got = set(answers.get(c) or ())
+            mut[c] = fn(lang, c, la, m, sp, got)
+        acted = [c for c, la, m, sp in cells(lang) if mut[c] != set(answers.get(c) or ()) and c not in base]
+        if not acted:
+            lines.append("  SEEDc  %-5s %-18s no live green cell to act on (nothing to show)" % (lang, name))
+            continue
+        newly = sorted({c for c, _ in judge(lang, mut)[0]} - base)
+        if not newly:
+            broken = True
+            lines.append("  BROKEN %s: cell seed %s altered %d green cell(s) and the judge PASSED them all" % (
+                lang, name, len(acted)))
+        else:
+            lines.append("  SEEDc  %-5s %-18s turns %d of %d altered green cell(s) red (e.g. %s)" % (
+                lang, name, len(newly), len(acted), newly[0]))
     return lines, broken
 
 
@@ -605,7 +735,10 @@ def run_engine(lang, ws):
         for f in rep.get("functions") or []:
             leaf = _leaf(f.get("fn"))
             if leaf.startswith("cc_"):
-                rows.setdefault(leaf, set()).update(f.get("inferred") or [])
+                got = rows.setdefault(leaf, set())
+                got.update(f.get("inferred") or [])
+                got.update(WHY + str(w) for w in f.get("unknownWhy") or [])
+                got.update(INV + str(i) for i in f.get("invisible") or [])
         for cell, la, m, sp in cells(lang):
             if la == layout:
                 answers[cell] = rows.get("cc_%s_%s" % (m, sp))
@@ -620,6 +753,16 @@ def run_engine(lang, ws):
 def main():
     argv = sys.argv[1:]
     only = argv[argv.index("--engine") + 1] if "--engine" in argv else None
+    if "--selftest" in argv:
+        # The judge against the clause's model and the three wrong rules, per engine, with no engine run.
+        bad = 0
+        for lang in ENGINES:
+            lines, broken = calibrate(lang)
+            for ln in lines:
+                print(ln)
+            bad += broken
+        print("CHAINED-CURATED selftest: %s" % ("OK" if not bad else "BROKEN"))
+        return 1 if bad else 0
     print("CHAINED ROW x CURATED ENTRY (PART 110) — one call answered by both sources carries their UNION, on every "
           "spelling (SPEC §2 ⟨0.43⟩; SOUNDNESS R1815)")
     spec = " ".join(open(os.path.join(HERE, "..", "SPEC.md")).read().replace("**", "").split())
@@ -659,6 +802,11 @@ def main():
                 print("  BROKEN %s: %s" % (lang, err))
                 rc, broken_n = 1, broken_n + 1
                 continue
+            lines, cbroken = cell_seeds(lang, answers)
+            for ln in lines:
+                print(ln)
+            if cbroken:
+                rc, broken_n = 1, broken_n + 1
             if FAULT:
                 for cell, la, m, _sp in cells(lang):
                     if la == "ch" and m == "c" and answers.get(cell):

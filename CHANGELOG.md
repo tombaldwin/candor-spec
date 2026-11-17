@@ -36,10 +36,14 @@ Run it after any patch-cycle commit that adds a section here.
   PART 110 drives one dependency per engine under a curated name with a concrete, an `Unknown`-only (doctored), a
   pure-curated and a pure twin member, in every spelling the language has, chained / chained-and-downgraded /
   unchained, and asserts each consumer row's effect SET; three seeded wrong rules (row-wins, curated-wins,
-  hedge-dropped) must each fail the judge. MEASURED 2026-11-17: java and ts pass; candor-scan main xfails 8 cells
-  (DISCLOSED: chaining withdraws the curated `Db` on an untyped receiver its route cannot type); candor-swift xfails
-  13 cells (SILENT: a classified typed call never reads the chained row, so `deny Fs` passes over a member that
-  writes a file). Both are new findings, cited to R1815 until their rows are filed. **Upgrade:** a gate can go
+  hedge-dropped) must each fail the judge; a chained `u` cell must also carry the doctored row's reason, so the
+  engine's own untyped-receiver hedge cannot stand in for the row, and an unchained cell no curated term answers must
+  disclose. MEASURED 2026-11-17: java and ts pass; candor-scan main xfails 8 cells on two existing rows, both
+  pre-existing on 0.42.0 and DISCLOSED (R1819 — a §2.1-downgraded report; R1820 — no `returns` entry for a pure
+  factory type; chaining withdraws the curated `Db` on the untyped and returned-value spellings); candor-swift xfails
+  22 cells on two new rows: R1865 (SILENT: a classified typed call never reads the chained row, so `deny Fs` passes
+  over a member that writes a file) and R1866 (SILENT, unchained: an untyped receiver into an uncovered imported
+  package reads `[Env]` with no `Unknown` and no `invisible`). **Upgrade:** a gate can go
   0 → 1 on a classified call into a chained dependency, never 1 → 0.
 
 - **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved again, to a Deref no source reader can see; the judge now

@@ -2153,9 +2153,9 @@ saw, and its uncovered calls are Unknown and disclosed. This binds the configure
    therefore treat every package a loaded report covers as accounted for, even with zero joins:
    an all-pure dependency's *empty* report is a claim, not a blind spot.
 
-Chaining is what shrinks the curated classifier's job to the **builtin/FFI frontier**: a
-dependency's effects derive from *its own* calls into the platform, so one dep scan
-makes a hand-curated classifier entry unnecessary for what the scan covers, transitively. ⟨0.43⟩ It does
+Chaining is what shrinks the curated classifier's job to the **builtin/FFI frontier**: for an effect
+that has a platform leaf, a dependency's effects derive from *its own* calls into the platform, so one
+dep scan makes a hand-curated classifier entry unnecessary for what the scan covers, transitively. ⟨0.43⟩ It does
 not WITHDRAW the entry's charge, and the entry does not stop the scan's row from being read: where both
 answer one call, the consumer carries both (the clause below). Until ⟨0.43⟩ this sentence said a dep
 scan "replaces" the entry, and read literally that is a rule in which the row wins; two engines built
@@ -2182,10 +2182,10 @@ answered. It does not oblige a hedge when the join misses.
   binding or on a returned value, an aliased binding's arm, or a guessed builder chain. On each, the
   classifier's charge is carried wherever the classifier names the call, and the entry's contribution
   wherever the call joins it. The observable test is monotone: **chaining a report MUST NOT remove a
-  curated charge that the same call carries when that report is not chained.** A spelling on which an
-  implementation's classifier cannot name the call at all (an untyped receiver it does not type) is a
-  receiver-typing limit, outside this clause; the call is disclosed as that implementation discloses
-  any untyped receiver.
+  curated charge for that member that the same call carries when that report is not chained.** A
+  spelling on which an implementation's classifier cannot name the call at all (an untyped receiver it
+  does not type) is a receiver-typing limit, outside this clause. Whether such a call is disclosed is
+  §4's duty (an unresolvable call is `Unknown`), not this clause's.
 - **A call-site refinement narrows only the classifier's term.** A classifier rule that narrows its
   charge from call-site evidence (an arity, a literal) MUST NOT filter the joined entry.
 - **The member is the one the call reaches.** A classifier entry for a DIFFERENT symbol that the call
@@ -7393,8 +7393,9 @@ declare it via the envelope's `spec`.
   beyond the classifier's charge. The §2 sentence that said a dep scan "replaces" a curated entry now says it
   makes the entry unnecessary for what the scan covers. Flips ONE way (minor): a `deny E` or `deny E Unknown`
   can go 0 → 1 on a classified call into a chained dependency, never 1 → 0. candor-java and candor-ts already
-  conform (SOUNDNESS R685, R696) and candor-scan's main does except on an untyped receiver its route cannot type;
-  candor-swift's classified typed calls never read the chained row. Conformance PART 110 (SOUNDNESS R1815).
+  conform (SOUNDNESS R685, R696) and candor-scan's main does except on an untyped receiver its route cannot type
+  (R1819, R1820, both pre-existing on 0.42.0); candor-swift's classified typed calls never read the chained row
+  (R1865). Conformance PART 110 (SOUNDNESS R1815).
 - **0.42 (AUTHORED 2026-11-09, declared by no engine yet; reference-led — candor-java's main already conforms
   as of `b79597b`, unreleased; the floor rises when the last engine lands)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, minor on the ⟨0.36⟩/⟨0.40⟩ precedent (no field added, removed or retyped): **CO-PATH UNITS** (§2,
