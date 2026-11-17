@@ -41,10 +41,11 @@ Run it after any patch-cycle commit that adds a section here.
   `st` cell whose disclosure is identical to its unchained cell's carries nothing from the downgraded entry and fails,
   and an unchained cell no curated term answers must disclose (`Unknown`, or an `invisible` naming the dependency). MEASURED 2026-11-17: java and ts pass; candor-scan main xfails 8 cells on two existing rows, both
   pre-existing on 0.42.0 and DISCLOSED (R1819 — a §2.1-downgraded report; R1820 — no `returns` entry for a pure
-  factory type; chaining withdraws the curated `Db` on the untyped and returned-value spellings); candor-swift xfails
-  24 cells on two new rows: R1865 (SILENT: a classified typed call never reads the chained row, so `deny Fs` passes
+  factory type; chaining withdraws the curated `Db` on the untyped and returned-value spellings); candor-swift main xfailed
+  24 cells on two new rows, R1865 (SILENT: a classified typed call never reads the chained row, so `deny Fs` passes
   over a member that writes a file) and R1866 (SILENT, unchained: an untyped receiver into an uncovered imported
-  package reads `[Env]` with no `Unknown` and no `invisible`). **Upgrade:** a gate can go
+  package reads `[Env]` with no `Unknown` and no `invisible`); the swift fix passes all 72 cells and those 24 xfails
+  are retired, so only the 8 candor-scan xfails remain. **Upgrade:** a gate can go
   0 → 1 on a classified call into a chained dependency, never 1 → 0.
 
 - **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved again, to a Deref no source reader can see; the judge now

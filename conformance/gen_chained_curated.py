@@ -122,7 +122,8 @@ CUR_NOT_TYPED = {
 
 # Keyed by (cell, engine), each naming its row. MEASURED 2026-11-17 against the engine mains (candor-rust 61c66d4e,
 # candor-java bc03641 jar 0.42.0 on JDK 21, candor-ts 59bf8ab, candor-swift 7215b50). The rust cells are existing rows
-# (R1819, R1820), pre-existing on 0.42.0; R1865 and R1866 are the swift rows this part's measurement produced.
+# (R1819, R1820), pre-existing on 0.42.0. The 24 swift cells this measurement produced (R1865, R1866) were retired when
+# the swift fix landed.
 XFAIL = {
     ('ch_p_ret', 'rust'):
         'R1820 — `typeSurface.returns` publishes no factory for a type with no effectful own unit, so the untyped route cannot type the receiver and hedges it, dropping the curated Db: DISCLOSED, `deny Db` 1 unchained -> 0 chained; pre-existing on 0.42.0, byte-identical',
@@ -140,54 +141,6 @@ XFAIL = {
         'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
     ('st_u_untyped', 'rust'):
         'R1819 — chaining a §2.1-downgraded report withdraws the curated Db on the untyped and returned-value spellings: DISCLOSED (`Unknown` + `invisible`), `deny Db` 1 unchained -> 0 chained, `deny Db Unknown` stays 1; pre-existing on 0.42.0, byte-identical',
-    ('ch_c_annot', 'swift'):
-        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
-    ('ch_c_ctor', 'swift'):
-        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
-    ('ch_c_param', 'swift'):
-        'R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write',
-    ('ch_c_ufcs', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): DISCLOSED only by the consumer's own Unknown on the unapplied-method spelling",
-    ('ch_u_annot', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
-    ('ch_u_ctor', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
-    ('ch_u_param', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the row's `Unknown` and reason are dropped: SILENT, `deny Unknown` exits 0",
-    ('ch_u_ufcs', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the cell's `Unknown` is the consumer's own unapplied-method hedge (`callback:computed`, present unchained too), not the row's — the doctored reason never arrives",
-    ('nc_c_ret', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_c_untyped', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_p_ret', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_p_untyped', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_q_ret', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_q_untyped', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_u_ret', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('nc_u_untyped', 'swift'):
-        "R1866 — swift: UNCHAINED, an untyped or returned-value receiver into an uncovered imported package reads ['Env'] with no `Unknown`, no `invisible` and no note — SILENT (`deny Fs` and `deny Fs Unknown` exit 0 over the `c` member's executed write); the same call chained discloses `dispatch:untyped cross-package receiver`",
-    ('st_c_annot', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_c_ctor', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_c_param', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_c_ufcs', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped; the cell's only disclosure is the consumer's own `callback:computed` hedge, byte-identical to the unchained cell's: SILENT",
-    ('st_u_ufcs', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped; the cell's only disclosure is the consumer's own `callback:computed` hedge, byte-identical to the unchained cell's: SILENT",
-    ('st_u_annot', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_u_ctor', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
-    ('st_u_param', 'swift'):
-        "R1865 — swift: a CLASSIFIED typed call never reads the chained row, so the curated entry wins (the shape rust, java and ts each closed by union): the §2.1-downgraded entry's `Unknown` is dropped: SILENT",
 }
 
 
@@ -644,7 +597,7 @@ def calibrate(lang):
     else:
         lines.append("  SEED   %-5s %-13s fails %d cell(s) (e.g. %s)" % (lang, "st-own-hedge", n, sts[0]))
     # The disclosure rule, seeded at the model level so it is shown able to fail on every engine that HAS a
-    # disclosure-required cell (live, those are swift's R1866 cells, which are red, so no live seed can act on them).
+    # disclosure-required cell (live, those are swift's nc_*_{untyped,ret} cells).
     nd = [c for c, la, m, sp in cells(lang) if must_disclose(lang, la, m, sp)]
     if nd:
         ans = {c: (_model(lang, la, m, sp) - ({"Unknown"} if c in nd else set())) for c, la, m, sp in cells(lang)}
