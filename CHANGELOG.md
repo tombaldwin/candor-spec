@@ -25,6 +25,16 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved again, to a Deref no source reader can see; the judge now
+  requires the key PRESENT and kind-only; no behaviour change, no SPEC ruling.** candor-rust I1 stage 3 expands a macro-defined
+  macro, so the previous `WrapM` (a macro whose definition another macro produces) was published closed (`supers`, `deref` ->
+  InnerM) by that branch. `WrapM`'s `Deref` now lives in a file depb's `build.rs` writes to `OUT_DIR`, pulled in by
+  `include!(concat!(env!("OUT_DIR"), …))`: it does not exist until a build runs, candor-rust holds every type of the crate open
+  because of it (R145), and depb stays unclosable as a whole, which `t1`–`t7` and `o15` lean on. Two shapes were rejected: an
+  attribute macro on the type (its key goes absent) and a `crate::`-path macro invocation (in-crate text the next I1 stage may
+  read, and candor-rust reads it silently today). `judge_p6` used to pass when `WrapM`'s key was absent; it now fails there, and
+  on a key carrying only `deref`. `--selftest` seeds both. The §2 ⟨0.40⟩ example sentence and its ledger entry are reworded to
+  name the new shape.
 - **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved to a Deref candor-rust a1812e43 (I1 stage 1)
   genuinely cannot expand; no behaviour change, no SPEC ruling.** That engine expands a plain local `macro_rules!`, so
   closing the old `WrapM` (kind, `supers`, `deref` -> InnerM) is the SPEC's own rule applied to a now-visible expansion, not a
