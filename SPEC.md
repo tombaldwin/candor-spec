@@ -2154,8 +2154,58 @@ saw, and its uncovered calls are Unknown and disclosed. This binds the configure
    an all-pure dependency's *empty* report is a claim, not a blind spot.
 
 Chaining is what shrinks the curated classifier's job to the **builtin/FFI frontier**: a
-dependency's effects derive from *its own* calls into the platform, so one dep scan replaces a
-hand-curated classifier entry, transitively.
+dependency's effects derive from *its own* calls into the platform, so one dep scan
+makes a hand-curated classifier entry unnecessary for what the scan covers, transitively. ⟨0.43⟩ It does
+not WITHDRAW the entry's charge, and the entry does not stop the scan's row from being read: where both
+answer one call, the consumer carries both (the clause below). Until ⟨0.43⟩ this sentence said a dep
+scan "replaces" the entry, and read literally that is a rule in which the row wins; two engines built
+that route from it (SOUNDNESS R1787, R1807).
+
+⟨0.43⟩ **A CHAINED ROW AND A CURATED ENTRY THAT ANSWER ONE CALL ARE UNIONED.** When a call reaches a
+member of a package that a loaded sibling report covers, and the implementation's curated classifier
+also has an entry for that member, the consumer MUST carry the union of both sources:
+
+- the classifier's charge: its effect, and any second effect it charges beside the primary;
+- everything the joined entry contributes: its effects, its `Unknown` and reasons, its literal surfaces
+  and `incomplete`, and the §4 ⟨0.39⟩ obligation-3 follow-on of its `dispatchesOn`. **An entry §2.1
+  downgraded joins like any other**: its `Unknown` and reason are unioned with the classifier's charge.
+
+**It MUST NOT skip the join because the classifier answered, and it MUST NOT withdraw the classifier's
+charge because the join answered** — whether the joined entry is concrete, `Unknown`-only or
+downgraded, and whether or not the call joins an entry at all. Rule 3's purity claim covers the
+dependency's BODY; it is not a claim against the classifier's charge. **A call that joins no entry adds
+nothing beyond the classifier's charge**: the clause obliges the join to be READ when the classifier
+answered. It does not oblige a hedge when the join misses.
+
+- **The union does not depend on how the call is written.** The call may be a path or fully-qualified
+  call, a method on a receiver typed by annotation, parameter or constructor, a method on an untyped
+  binding or on a returned value, an aliased binding's arm, or a guessed builder chain. On each, the
+  classifier's charge is carried wherever the classifier names the call, and the entry's contribution
+  wherever the call joins it. The observable test is monotone: **chaining a report MUST NOT remove a
+  curated charge that the same call carries when that report is not chained.** A spelling on which an
+  implementation's classifier cannot name the call at all (an untyped receiver it does not type) is a
+  receiver-typing limit, outside this clause; the call is disclosed as that implementation discloses
+  any untyped receiver.
+- **A call-site refinement narrows only the classifier's term.** A classifier rule that narrows its
+  charge from call-site evidence (an arity, a literal) MUST NOT filter the joined entry.
+- **The member is the one the call reaches.** A classifier entry for a DIFFERENT symbol that the call
+  only shares a name with is not an answer for this call. The case is a dependency's own free function
+  named like a platform function the classifier knows. Resolving that shadow is name resolution, not
+  precedence, and this clause does not apply to it.
+
+Why union and not precedence: neither source vouches for the other's absence. A curated entry claims
+the call performs E, not that it performs nothing else. A report claims what the dependency's body was
+read to do; for an effect curated with no platform leaf (`Db`), no dependency body can perform it by
+name, so the report's silence on E is not evidence. Every precedence rule lets one source withdraw the
+other's answer, so it is a toggle in the sense of §4 ⟨0.39⟩ (*a mechanism that makes reports better
+must not make silence cheaper*). Resolve a dependency's dispatch, and a consumer's curated `Db`
+vanishes; add a curated rule, and a consumer loses its dependency's `Fs`. Union is monotone in both
+inputs, and it is what rule 1 already applies to colliding entries, for the same reason. The rule fails
+in the over-approximation direction only, and never into silence: on a complete row for an effect that
+does have a platform leaf (`Net`), the producer read the body and found no socket, and the consumer
+still carries the classifier's `Net`. SPEC permits that cost; the alternative, a row that may narrow
+the classifier's term, is the toggle. Pinned four-way by conformance PART 110 (SOUNDNESS R1815). Java
+(R685), ts (R696) and rust (R1807) each found the defect by hand and closed it by union.
 
 `fs` refines the `Fs` effect into `read` / `write` kinds: the detail a consumer needs to tell a
 read-only function from one that mutates the disk. It applies only when `inferred` contains `Fs`. An
@@ -7334,6 +7384,17 @@ The spec version is the contract version (§2.1) — bumped on additive changes 
 field or `AS-EFF` code) or breaking ones (a major: the envelope reshape, a removed field). Implementations
 declare it via the envelope's `spec`.
 
+- **0.43 (AUTHORED 2026-11-17, declared by no engine yet)** — **A CHAINED ROW AND A CURATED ENTRY THAT ANSWER
+  ONE CALL ARE UNIONED** (§2, after rule 3). Where a call reaches a member of a chained, covered dependency and
+  the implementation's curated classifier also names that member, the consumer carries the classifier's charge
+  AND the joined entry's contribution (effects, `Unknown` and reasons, surfaces, the `dispatchesOn` follow-on;
+  a §2.1-downgraded entry included). Neither source withdraws the other, on any spelling of the call; chaining
+  a report must not remove a curated charge the unchained scan carries; a call that joins no entry adds nothing
+  beyond the classifier's charge. The §2 sentence that said a dep scan "replaces" a curated entry now says it
+  makes the entry unnecessary for what the scan covers. Flips ONE way (minor): a `deny E` or `deny E Unknown`
+  can go 0 → 1 on a classified call into a chained dependency, never 1 → 0. candor-java and candor-ts already
+  conform (SOUNDNESS R685, R696) and candor-scan's main does except on an untyped receiver its route cannot type;
+  candor-swift's classified typed calls never read the chained row. Conformance PART 110 (SOUNDNESS R1815).
 - **0.42 (AUTHORED 2026-11-09, declared by no engine yet; reference-led — candor-java's main already conforms
   as of `b79597b`, unreleased; the floor rises when the last engine lands)** — a **NON-ADDITIVE** rung that FLIPS
   BOTH WAYS, minor on the ⟨0.36⟩/⟨0.40⟩ precedent (no field added, removed or retyped): **CO-PATH UNITS** (§2,

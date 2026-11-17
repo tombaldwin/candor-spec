@@ -4158,6 +4158,42 @@
    "at": "3.4 The configuration file — `.candor/config` (S",
    "excerpt": "- **(d) A GATE THAT CONSUMES A CHAINED REPORT CARRYING `switches` GETS THE ADVISORY SHAPE, AND ITS EXIT IS UNT",
    "part": "PART 109 (d_exit — the chained verdict and exit are untouched, with the join shown live, d_adv — the advisory names the switch; rust and java only, ts and swift have no chained arm yet) RE-CONFIRMED 2026-11-10 after Fable's second review (R1634): consulted defined for an evaluator, refused scan still writes its report, reason string, switchedDependencies, dominance cites the corruption boundary; PART 109 cells c_report, h_env, h_verb, two_sw, d_key, seed_c added."
+  },
+  {
+   "sha": "d024754e9337a8a7",
+   "at": "2. The report",
+   "excerpt": "⟨0.43⟩ **A CHAINED ROW AND A CURATED ENTRY THAT ANSWER ONE CALL ARE UNIONED.** When a call reaches a member of",
+   "part": "PART 110 (every ch_* cell: the consumer row must carry the classifier's charge AND the joined row's contribution — c ⊇ {cur, Fs}, u ⊇ {cur, Unknown}; seeds row-wins and curated-wins must each fail the judge)"
+  },
+  {
+   "sha": "484d94b374e18dc8",
+   "at": "2. The report",
+   "excerpt": "- everything the joined entry contributes: its effects, its `Unknown` and reasons, its literal surfaces and `i",
+   "part": "PART 110 (ch_u_* — a doctored Unknown-only row whose `Unknown` must reach every spelling; st_* — the §2.1-downgraded entry's `Unknown` unioned with the classifier's charge; seed hedge-dropped must fail the judge). Literal surfaces, `incomplete` and the obligation-3 follow-on are not cells here: PART 100 and PART 102 pin the follow-on on the join route"
+  },
+  {
+   "sha": "cb01383837bf8fec",
+   "at": "2. The report",
+   "excerpt": "**It MUST NOT skip the join because the classifier answered, and it MUST NOT withdraw the classifier's charge ",
+   "part": "PART 110 (ch_c_*/ch_u_* fail a skipped join, the curated-wins seed; ch_p_* — a call that joins NO entry keeps exactly the classifier's charge and needs no hedge, the row-wins seed)"
+  },
+  {
+   "sha": "1cc7f6e8b84fe410",
+   "at": "2. The report",
+   "excerpt": "- **The union does not depend on how the call is written.** The call may be a path or fully-qualified call, a ",
+   "part": "PART 110 (every member in every spelling the language has — param, ufcs, annot, untyped, ret, ctor — with the unchained nc arm as the monotone reference; CUR_NOT_TYPED declarations are checked against nc every run and fail when stale). Aliased-binding arms and guessed builder chains are not cells: rust-specific spellings, pinned on candor-rust's own fixture (R1807 fx/m2)"
+  },
+  {
+   "sha": "00415d87739c543d",
+   "at": "2. The report",
+   "excerpt": "- **A call-site refinement narrows only the classifier's term.** A classifier rule that narrows its charge fro",
+   "unenforced": "one instance in the family (candor-scan's R330 `explicit_salt` arity rule) and Fable's R1807 review measured it agrees with the row in both library versions, so no fixture can make the refinement and the row disagree without inventing a rule no engine has. The clause states the direction for the next refinement written"
+  },
+  {
+   "sha": "ca35eafed905697f",
+   "at": "2. The report",
+   "excerpt": "- **The member is the one the call reaches.** A classifier entry for a DIFFERENT symbol that the call only sha",
+   "unenforced": "a SCOPE limit, not an obligation: it says when the union does NOT apply. Measured by hand on candor-swift 7215b50 (R1815 lane, 2026-11-17): a dependency's own `NSLog(String)` called with only that dependency imported reads [Fs] chained (the shadow resolved to the dependency's body) and [Log] unchained. A conformance cell would pin name resolution, which is §2 rule 1's question"
   }
  ]
 }

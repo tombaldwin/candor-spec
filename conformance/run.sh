@@ -3354,6 +3354,29 @@ echo "PART 109 — result-moving switches: named in the report, spec unchanged, 
 # CALIBRATED: CANDOR_PROBE_FAULT=1 runs the switch arm WITHOUT the switch, so `live` reddens on every engine (a harness check, never an xfail). Registered in probe_check.py (java arm).
 # R1645: a java PROPERTY arm (`jp_*`) delivers `candor.r1078=off` by `-D`, JAVA_TOOL_OPTIONS and JDK_JAVA_OPTIONS and pins that it is named `candor.r1078`; candor-java ported it (R1645), so jp_named_*, jp_refuse_* and jp_two are pinned, not xfailed.
 
+# PART 110 — ONE CALL ANSWERED BY A CHAINED ROW AND A CURATED ENTRY: THE UNION, FOUR-WAY, SPEC §2 ⟨0.43⟩ (SOUNDNESS R1815).
+#
+# A dependency under a name each engine's curated classifier knows (rust `sqlx_core`, java `org.slf4j`, ts `winston`,
+# swift `HTTPClient`), with four members — concrete row [Fs], a doctored Unknown-only row, a pure member under a
+# curated verb (no row), a pure non-curated twin — called in every spelling the language has, the report chained
+# (ch), chained after §2.1 downgrades it (st), and not chained (nc). The cell asserts the consumer row's effect SET.
+[ -f "$HERE/gen_chained_curated.py" ] || { echo "FAIL: gen_chained_curated.py is missing"; exit 2; }
+echo
+echo "[110] a call answered by a chained row and a curated entry carries their union, on every spelling"
+P110_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_chained_curated.py"
+) || { P110_OK=1; rc=1; }
+[ "$P110_OK" = 0 ] || echo "  -> DIVERGE — a FAIL MISSING the curated effect is a join answer that WITHDREW the classifier's charge (row wins); MISSING Fs or Unknown on ch_c/ch_u is a classified call that never read the row (curated wins), on st_* the §2.1 downgrade dropped; FABRICATED is a concrete effect no source of the cell supplies; STALE CUR_NOT_TYPED is an engine that now types a receiver it used not to (retire the declaration); BROKEN with DEAD JOIN means the report never reached the consumer; XFAIL CELL PASSED means a finding was fixed and its xfail must be retired"
+echo "PART 110 — a call answered by a chained row and a curated entry carries their union, on every spelling (SPEC §2 ⟨0.43⟩; SOUNDNESS R1815)"
+# ENGINES: rust java ts swift
+# CONTROLS: none — delegated: gen_chained_curated.py runs its controls in-process — the judge is calibrated every run against the clause's own model (must pass every cell) and three SEEDED WRONG RULES computed from the same model, row-wins, curated-wins and hedge-dropped, each of which must fail ≥1 cell (a judge that passes one is BROKEN); the producer report must hold exactly the fixture's rows (c [Fs], u [Clock], p and q absent) before the u row is doctored; the chain is shown LIVE (some chained c spelling carries the row's Fs, which only the join supplies) before any cell is read; every consumer function reads Env as a CARRIER; the nc arm is the monotone reference, and each CUR_NOT_TYPED declaration is checked against it.
+# NOTE: java and ts have no UFCS spelling (N/A with the reason in the generator). MEASURED 2026-11-17 against the engine mains (candor-rust 61c66d4e, candor-java bc03641 jar 0.42.0 on JDK 21, candor-ts 59bf8ab, candor-swift 7215b50): java 60/60 and ts 60/60 pass; rust 64 pass + 8 xfail (a NEW finding: chaining withdraws the curated Db on an untyped/returned-value receiver its untyped route cannot type — DISCLOSED, `deny Db` 1 unchained -> 0 chained); swift 59 pass + 13 xfail (a NEW finding: a classified typed call never reads the chained row — SILENT, `deny Fs` and `deny Fs Unknown` exit 0 over a member that executes a file write; the doctored hedge and the downgraded entry's Unknown are dropped the same way). Both are cited to R1815 until the coordinator files their rows. Executed ground truth: the c member writes its file on every spelling in all four languages; u, p and q write nothing. swift untyped/ret spellings are CUR_NOT_TYPED: unchained, the engine does not type `let r = makeClient()` and charges no Net, so the curated term is not one of those cells' sources.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 strips the joined row's Fs from every chained c answer after the scan (the curated-wins rule), so every ch_c_* cell reddens on every engine. Registered in probe_check.py (java arm).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

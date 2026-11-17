@@ -309,13 +309,20 @@ COVERED = {
         "holds":  r"ENV-SWITCHES: OK",
         "breaks": r"ENV-SWITCHES: [1-9]\d* cell\(s\) wrong",
     },
+    # PART 110 (SPEC §2 ⟨0.43⟩ chained row x curated entry). The fault strips the joined row's Fs from every chained
+    # `c` answer after the scan (the curated-wins rule), so every ch_c_* cell reddens.
+    "gen_chained_curated.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"CHAINED-CURATED: OK",
+        "breaks": r"CHAINED-CURATED: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 30
+COVERED_FLOOR = 31
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {
