@@ -3500,10 +3500,10 @@
    "part": "PART 95 (r16_deref; r18_deref_macro_expanded, the same follow through a local macro_rules! the producer expands; p6_deref for the producer's `deref` field, WrapD and WrapX)"
   },
   {
-   "sha": "b9e77bdab5723bb3",
+   "sha": "68d2e929c01ba93d",
    "at": "2. The report",
    "excerpt": "- **anything else on the `Deref` chain discloses**",
-   "part": "PART 95 (o15_deref_macro — WrapM's Deref from a build.rs-written OUT_DIR file pulled in by include!(concat!(env!(\"OUT_DIR\"), …)), which no source-reading producer can see; c8_closed_pure — the closed, Deref-free control). Re-confirmed 2026-11-16 against the reworded example: the clause is unchanged, only the fixture it names moved from a directly-invoked macro_rules! (now expanded by candor-rust a1812e43 and pinned positively by r18_deref_macro_expanded and p6_deref's WrapX) to a macro-defined macro (now expanded by candor-rust I1 stage 3), and then to a build-script OUT_DIR include!, which no source reader can expand. Re-confirmed 2026-11-17: still unchanged."
+   "part": "PART 95 (o15_deref_macro — WrapM's Deref from an expansion no source-reading producer can see; the fixture currently spells it as a build.rs-written OUT_DIR file pulled in by include!(concat!(env!(\"OUT_DIR\"), …)), and the SPEC sentence is shape-neutral on purpose; c8_closed_pure — the closed, Deref-free control). Re-confirmed 2026-11-16 against the reworded example: the clause is unchanged, only the fixture it names moved from a directly-invoked macro_rules! (now expanded by candor-rust a1812e43 and pinned positively by r18_deref_macro_expanded and p6_deref's WrapX) to a macro-defined macro (now expanded by candor-rust I1 stage 3), and then to a build-script OUT_DIR include!, which no source reader can expand. Re-confirmed 2026-11-17: still unchanged."
   },
   {
    "sha": "d830e6afb57630d4",

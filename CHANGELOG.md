@@ -34,7 +34,7 @@ Run it after any patch-cycle commit that adds a section here.
   attribute macro on the type (its key goes absent) and a `crate::`-path macro invocation (in-crate text the next I1 stage may
   read, and candor-rust reads it silently today). `judge_p6` used to pass when `WrapM`'s key was absent; it now fails there, and
   on a key carrying only `deref`. `--selftest` seeds both. The §2 ⟨0.40⟩ example sentence and its ledger entry are reworded to
-  name the new shape.
+  name the new shape; the SPEC sentence is shape-neutral (the fixture names the current spelling) so the clause text stops moving at every retarget.
 - **PART 95 `p6_deref` / `o15_deref_macro`: the "WrapM unclosed" pin moved to a Deref candor-rust a1812e43 (I1 stage 1)
   genuinely cannot expand; no behaviour change, no SPEC ruling.** That engine expands a plain local `macro_rules!`, so
   closing the old `WrapM` (kind, `supers`, `deref` -> InnerM) is the SPEC's own rule applied to a now-visible expansion, not a

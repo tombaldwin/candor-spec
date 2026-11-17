@@ -95,8 +95,9 @@ segment swapped, never a spelling of ours. Producer arms (p*, w*) read the depen
   o15_deref_macro rust `w.leak()`, `w: &depb::WrapM`, whose `Deref` is written by depb's `build.rs` into OUT_DIR
                 and pulled in by `include!(concat!(env!("OUT_DIR"), …))` — a file NO producer that reads source
                 can see -> disclose. Earlier spellings were a plain `macro_rules!` invoked directly (now r18's)
-                and a macro defined by a macro (candor-rust I1 stage 3 expands it). (d15: silent on rust
-                f7f4c08 and ad30e26, `deny Env` and `deny Env Unknown` 0, executed Env)
+                and a macro defined by a macro (candor-rust I1 stage 3 expands it). (d15, measured on the EARLIER macro-defined-macro spelling only: silent on rust
+                f7f4c08 and ad30e26, `deny Env` and `deny Env Unknown` 0, executed Env; the build.rs spelling was
+                NOT run as a program, it is the same Deref reached through an OUT_DIR file)
   r17_platform_ext swift `e.eqLeak()`, `EqT: Equatable`, and the DEPENDENCY's `extension Equatable { func
                 eqLeak() }` reads Env -> Env (silent on v0.39.3 and 2a3ddc6; executed)
   o16_dyn_member swift `_ = w.leakv` on a `@dynamicMemberLookup` DynW forwarding to InnerS's computed
