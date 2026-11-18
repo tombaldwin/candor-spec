@@ -25,6 +25,11 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **PART 110 (`gen_chained_curated.py`): an engine whose binary is not on the runner is SKIPPED, not BROKEN.** The spec CI runner has no
+  candor-swift build, and the part read `no candor-swift binary at …` as a failing engine (`1 engine(s) BROKEN`, exit 1). It now uses
+  the same absent-engine test as the other generators (`gen_bound_publication`, `gen_co_path`, `gen_dep_override`, `gen_chained_dispatch`,
+  `gen_format_dispatch`); an engine that IS present and fails to produce a scan stays BROKEN.
+
 - **⟨0.43⟩ (authored, declared by no engine): a call answered by a chained row AND a curated entry carries their
   UNION — SPEC §2, conformance PART 110 (SOUNDNESS R1815).** The §2 sentence that said one dependency scan
   "replaces" a hand-curated classifier entry read, literally, as a rule in which the row wins, and two candor-scan

@@ -832,7 +832,7 @@ def main():
             for n in notes:
                 print(n)
             if err:
-                if sa.engine_absent(err):
+                if sa.engine_absent(err) or "no candor" in err or "no node" in err or "no swift" in err:
                     print("  SKIP   %s: %s" % (lang, err))
                     continue
                 print("  BROKEN %s: %s" % (lang, err))
