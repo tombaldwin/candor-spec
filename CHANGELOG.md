@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.43⟩ floor.** Every engine declares `0.43`; the Contents version banner moved and its ledger entry was re-anchored.
+
 - **PART 110 (`gen_chained_curated.py`): an engine whose binary is not on the runner is SKIPPED, not BROKEN.** The spec CI runner has no
   candor-swift build, and the part read `no candor-swift binary at …` as a failing engine (`1 engine(s) BROKEN`, exit 1). It now uses
   the same absent-engine test as the other generators (`gen_bound_publication`, `gen_co_path`, `gen_dep_override`, `gen_chained_dispatch`,
