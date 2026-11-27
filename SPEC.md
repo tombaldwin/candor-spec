@@ -5508,6 +5508,14 @@ a second spelling *within* its engine, which is exactly how the ⟨0.34⟩ drift
 correct by its own lights and the field meaningless across them. A consumer MUST be able to join a
 `dispatchesOn` value against the producing package's entry keys without a per-engine rule.
 
+**Clarification of that same MUST, not a new obligation:** the value names the abstraction
+(trait, protocol or interface) that DECLARES the dispatched member, in the owning package's namespace — not a
+sub-abstraction that merely inherits it — because the declaring abstraction's key is the one a foreign
+implementor's entry is published under, and a key naming a trait that does not declare the member joins
+nothing (SOUNDNESS R549, R1794; pinned by PART 92 `c14_supertrait_member`). Where the producer cannot
+determine the declaring abstraction it keeps its current key AND discloses the dispatch (`dispatch:` /
+`Unknown`), never fewer.
+
 3. **The consumer's join MUST union, per key, its own visible implementors with every chained entry
    carrying that key.** ⟨0.25⟩'s ambiguous-key union rule already specifies how multiple contributors
    combine; this adds no new resolution rule, only a new contributor.

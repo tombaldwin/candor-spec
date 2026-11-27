@@ -334,6 +334,17 @@ ARMS = [
     dict(id="c5_unchained", iface="impl", third=True, chained=False, entry="dispatch",
          want=dict(hasnt={EFFECT}, unknown=False, invisible=True),
          why="REFERENCE: unchained, the same consumer discloses via `invisible` — chaining DELETES it"),
+    # ⟨0.39⟩ VALUE RULE / R549 / R1794 — THE DECLARING-ABSTRACTION ARM. c1's topology EXACTLY (one pure local
+    # implementor, a FOREIGN effectful implementor in a third package, the same consumer), with ONE variable:
+    # the dispatched member `size` is declared on a SUPER-abstraction `Base`, and the dispatching function
+    # receives the SUB-abstraction `Backend` (which inherits it). The producer's `dispatchesOn` value must name
+    # the abstraction that DECLARES the member (`iface#Base::size`), because that is the key the foreign
+    # implementor's `interfaceUnion` entry is published under; a key naming `Backend` joins nothing and the
+    # chained consumer reads silently pure. c1 is the control: same fixture with `size` declared on `Backend`.
+    dict(id="c14_supertrait_member", iface="super", third=True, chained=True, entry="dispatch",
+         want=dict(has={EFFECT}),
+         why="R549/R1794: a member declared on a SUPER-abstraction, dispatched through the sub — the key must name "
+             "the DECLARING abstraction or the foreign implementor never joins"),
     dict(id="c6_middle_package", iface="impl", third=True, chained=True, entry="dispatch", middle=True,
          want=dict(has={EFFECT}),
          why="DEFECT: the DISPATCHER owns nothing — a MIDDLE package must name its dependency's member"),
@@ -525,6 +536,13 @@ RUST_IFACE = {
              'impl Backend for TestBackend { fn size(&self) -> usize { 7 } }\n'
              'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'
              'pub fn conf_load() -> usize { %s 0 }\n' % CARRIER["rust"]),
+    "super": ('pub trait Base { fn size(&self) -> usize; }\n'
+              'pub trait Backend: Base {}\n'
+              'pub struct TestBackend;\n'
+              'impl Base for TestBackend { fn size(&self) -> usize { 7 } }\n'
+              'impl Backend for TestBackend {}\n'
+              'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'
+              'pub fn conf_load() -> usize { %s 0 }\n' % CARRIER["rust"]),
     "zero": ('pub trait Backend { fn size(&self) -> usize; }\n'
              'pub fn term_size(b: &dyn Backend) -> usize { b.size() }\n'
              'pub fn conf_load() -> usize { %s 0 }\n' % CARRIER["rust"]),
@@ -605,6 +623,13 @@ JAVA_IFACE = {
         "Terminal.java": 'package iface; public class Terminal { public static int termSize(Backend b) { return b.size(); } }\n',
         "Conf.java": 'package iface; public class Conf { public static int confLoad() { %s return 0; } }\n' % CARRIER["java"],
     },
+    "super": {
+        "Base.java": 'package iface; public interface Base { int size(); }\n',
+        "Backend.java": 'package iface; public interface Backend extends Base { }\n',
+        "TestBackend.java": 'package iface; public class TestBackend implements Backend { public int size() { return 7; } }\n',
+        "Terminal.java": 'package iface; public class Terminal { public static int termSize(Backend b) { return b.size(); } }\n',
+        "Conf.java": 'package iface; public class Conf { public static int confLoad() { %s return 0; } }\n' % CARRIER["java"],
+    },
     "zero": {
         "Backend.java": 'package iface; public interface Backend { int size(); }\n',
         "Terminal.java": 'package iface; public class Terminal { public static int termSize(Backend b) { return b.size(); } }\n',
@@ -659,6 +684,12 @@ TS_IFACE = {
              'export class TestBackend implements Backend { size(): number { return 7 } }\n'
              'export function termSize(b: Backend): number { return b.size() }\n'
              'export function confLoad(): number { %s return 0 }\n' % CARRIER["ts"]),
+    "super": ('import * as fsm from "node:fs";\n'
+              'export interface Base { size(): number }\n'
+              'export interface Backend extends Base { }\n'
+              'export class TestBackend implements Backend { size(): number { return 7 } }\n'
+              'export function termSize(b: Backend): number { return b.size() }\n'
+              'export function confLoad(): number { %s return 0 }\n' % CARRIER["ts"]),
     "zero": ('import * as fsm from "node:fs";\n'
              'export interface Backend { size(): number }\n'
              'export function termSize(b: Backend): number { return b.size() }\n'
@@ -722,6 +753,12 @@ SW_IFACE = {
              'public struct TestBackend: Backend { public init() {}; public func size() -> Int { return 7 } }\n'
              'public func termSize(_ b: Backend) -> Int { return b.size() }\n'
              'public func confLoad() -> Int { %s; return 0 }\n' % CARRIER["swift"]),
+    "super": ('import Foundation\n'
+              'public protocol Base { func size() -> Int }\n'
+              'public protocol Backend: Base { }\n'
+              'public struct TestBackend: Backend { public init() {}; public func size() -> Int { return 7 } }\n'
+              'public func termSize(_ b: Backend) -> Int { return b.size() }\n'
+              'public func confLoad() -> Int { %s; return 0 }\n' % CARRIER["swift"]),
     "zero": ('import Foundation\n'
              'public protocol Backend { func size() -> Int }\n'
              'public func termSize(_ b: Backend) -> Int { return b.size() }\n'
@@ -859,6 +896,8 @@ def render_rust(root, arm):
         _w(os.path.join(root, "effimpl", "Cargo.toml"),
            '[package]\nname="effimpl"\nversion="0.0.0"\nedition="2021"\n\n[dependencies]\niface={path="../iface"}\n')
         _w(os.path.join(root, "effimpl", "src", "lib.rs"),
+           ('pub struct Crossterm;\nimpl iface::Base for Crossterm { fn size(&self) -> usize { %s 0 } }\n'
+            'impl iface::Backend for Crossterm {}\n' % SINK["rust"]) if var == "super" else
            'pub struct Crossterm;\nimpl iface::Backend for Crossterm { fn size(&self) -> usize { %s 0 } }\n'
            % SINK["rust"])
         deps.append('effimpl={path="../effimpl"}')
@@ -1247,7 +1286,7 @@ def selftest():
     #    below on a poisoned table rather than assumed.
     licensed = {"c3_pure_only"}
     check("exactly the declared arms pass on an absent row", absent_passers(ARMS), licensed)
-    check("and every other arm goes red", len(ARMS) - len(absent_passers(ARMS)), 12)
+    check("and every other arm goes red", len(ARMS) - len(absent_passers(ARMS)), 13)
     poison = ARMS + [dict(id="poison", want=dict(hasnt={EFFECT}, absent_ok="smuggled in"))]
     check("the licensed-set ratchet CATCHES an arm that gains a licence",
           absent_passers(poison) - licensed, {"poison"})
