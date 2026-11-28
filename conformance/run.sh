@@ -3377,6 +3377,91 @@ echo "PART 110 — a call answered by a chained row and a curated entry carries 
 # NOTE: java and ts have no UFCS spelling (N/A with the reason in the generator). MEASURED 2026-11-17 against the engine mains (candor-rust 61c66d4e, candor-java bc03641 jar 0.42.0 on JDK 21, candor-ts 59bf8ab, candor-swift 7215b50): java 60/60 and ts 60/60 pass; rust 64 pass + 8 xfail on two EXISTING rows, both pre-existing on 0.42.0 and byte-identical there, DISCLOSED: st_*_{untyped,ret} on R1819 (a §2.1-downgraded report) and ch_p_{untyped,ret} on R1820 (no `returns` entry for a pure factory type) — chaining withdraws the curated Db on the untyped and returned-value spellings, `deny Db` 1 unchained -> 0 chained; swift 72/72 pass once its fix for R1865 and R1866 landed (24 xfail cells retired: on swift 7215b50 they were 16 on R1865 — a classified typed call never read the chained row, SILENT — and 8 on R1866 — unchained, an untyped receiver into an uncovered imported package read [Env] with no Unknown and no invisible, SILENT). A chained u cell must carry the doctored reason `reflection:part110-doctored`, so an engine's own untyped-receiver hedge cannot satisfy it; that reason may appear on no other cell; an `st` cell whose disclosure equals its unchained cell's fails; an unchained CUR_NOT_TYPED cell must disclose (Unknown, or an invisible naming the dependency's package). Executed ground truth, run outside the suite in all four languages (evidence: ~/candor-handoff/spec-r1815/evidence/): 22 files written, every one by member c, none by u, p or q.
 # CALIBRATED: CANDOR_PROBE_FAULT=1 strips the joined row's Fs from every chained c answer after the scan (the curated-wins rule), so every ch_c_* cell reddens on every engine. Registered in probe_check.py (java arm).
 
+# PART 111 — THE TYPING ENVIRONMENT, `typedBy` (S-A), SPEC §2.3 ⟨0.45⟩ DRAFT. [TIER 1]
+#
+# A producer whose bindings come from an external typer records the environment they are true relative to; a syntactic
+# producer emits no `typedBy`; every reader ignores the key. H arm four-way (a_tol); S arm on each engine's own report
+# (a_absent on rust/java/swift, a_emit PENDING on ts, which asks the TypeScript checker).
+[ -f "$HERE/gen_typing_env.py" ] || { echo "FAIL: gen_typing_env.py is missing"; exit 2; }
+echo
+echo "[111] the typing environment: every reader ignores \`typedBy\`, a syntactic producer emits none, a typed producer records it"
+P111_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_typing_env.py" --part 111
+) || { P111_OK=1; rc=1; }
+[ "$P111_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on a_tol is a reader that does not ignore `typedBy` (its plain control is the exit-1 cell every gate must fire on); on a_absent a syntactic producer claiming a typer it never asked; a PENDING CELL PASSED is an engine that landed its port: retire its line in gen_typing_env.py's PENDING table"
+echo "PART 111 — the typing environment, typedBy: readers ignore it, syntactic producers omit it, typed producers record it (SPEC §2.3 ⟨0.45⟩ DRAFT)"
+# ENGINES: rust java ts swift
+# CONTROLS: a_tol — the plain report beside the keyed one is the exit-1 control every gate must fire on, so the keyed cell cannot pass by reading nothing
+# NOTE: a_emit on ts is PENDING (S-A binds candor-ts because it asks the TypeScript checker; narrow the external-typer definition if that is not wanted). candor-swift's compiler mode does not exist yet, so its typed-producer cell is written when T1a/T2a land. MEASURED 2026-11-28 against the engine mains (candor-rust, candor-java, candor-ts and candor-swift clean trees, candor-swift 49db31c debug build): every SCORED cell passes on all four; 2 PENDING.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 strips the Net from the H reports carrying a new key and drops the untyped entry, so a_tol, d_tol, f_untyped and f_viol go red on every engine (measured on java: 4 cells, exit 1). Registered in probe_check.py (java arm).
+
+# PART 112 — COMPILER IDENTITY ON THE WIRE, `usr` (S-D), SPEC §2.3 ⟨0.45⟩ DRAFT. [TIER 1]
+#
+# A `usr` is published beside the row key, never in place of it, and a join by `usr` may only add to the join by key.
+# H arm four-way (d_tol); S arm (d_absent) on the three producers that have no typer and so no identity to publish.
+[ -f "$HERE/gen_typing_env.py" ] || { echo "FAIL: gen_typing_env.py is missing"; exit 2; }
+echo
+echo "[112] compiler identity: every reader ignores \`usr\`, a producer with no typer publishes none"
+P112_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_typing_env.py" --part 112
+) || { P112_OK=1; rc=1; }
+[ "$P112_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on d_tol is a reader that does not ignore `usr` or `typedBy.identity`; on d_absent a producer publishing an identity no typer minted; a PENDING CELL PASSED is an engine that landed its port: retire its line in gen_typing_env.py's PENDING table"
+echo "PART 112 — compiler identity, usr: readers ignore it, untyped producers publish none (SPEC §2.3 ⟨0.45⟩ DRAFT)"
+# ENGINES: rust java ts swift
+# CONTROLS: d_tol — the plain report beside the keyed one is the exit-1 control, as in PART 111
+# NOTE: the union-join rule (a usr join only adds) and key stability under usr adoption need a producer that publishes usr and a chained consumer that reads it; no engine has either, so those cells are a GAP until the T6 lane, which also needs a swift dead-join judge. ts is H-only here: it has a typer, so S-D permits it identities. MEASURED 2026-11-28 against the engine mains (candor-rust, candor-java, candor-ts and candor-swift clean trees, candor-swift 49db31c debug build): every SCORED cell passes on all four; 2 PENDING.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 strips the Net from the H reports carrying a new key and drops the untyped entry, so a_tol, d_tol, f_untyped and f_viol go red on every engine (measured on java: 4 cells, exit 1). Registered in probe_check.py (java arm).
+
+# PART 113 — A FILE READ BUT NOT TYPED, `untyped` (S-F), SPEC §2.3 ⟨0.45⟩ DRAFT. [TIER 1]
+#
+# A file the engine read but could not type is an `unanalyzed` entry whose reason begins `untyped`; the ⟨0.21⟩ verdict
+# applies unchanged and keys on non-emptiness, never on the reason; a certain violation still dominates. H arm four-way.
+[ -f "$HERE/gen_typing_env.py" ] || { echo "FAIL: gen_typing_env.py is missing"; exit 2; }
+echo
+echo "[113] untyped files: an \`untyped\` entry fails a configured gate closed, a violation still dominates, the reason is opaque"
+P113_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY" CANDOR_JAVA_JAR="$JAR"
+  [ -n "$TS_PRESENT" ] && export CANDOR_TS="$TS_DIR"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_typing_env.py" --part 113
+) || { P113_OK=1; rc=1; }
+[ "$P113_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on f_untyped is a consumer that keys on the reason vocabulary or drops the entry (a green over an untyped file); on f_viol the violation did not dominate; on f_ctl the fixture itself is wrong; a PENDING CELL PASSED is an engine that landed its port: retire its line in gen_typing_env.py's PENDING table"
+echo "PART 113 — untyped files: fail closed on the entry, violation dominates, reason opaque (SPEC §2.3 ⟨0.45⟩ DRAFT)"
+# ENGINES: rust java ts swift
+# CONTROLS: f_ctl — the same report without the entry exits 0, so f_untyped's exit 2 is shown to come from the entry
+# NOTE: the producer half (emitting the entry, no isolated pure node for an untyped unit) and the chained-consumer half (a join into an untyped file also discloses) need a compiler-typed producer; GAP until T1b/T3. MEASURED 2026-11-28 against the engine mains (candor-rust, candor-java, candor-ts and candor-swift clean trees, candor-swift 49db31c debug build): every SCORED cell passes on all four; 2 PENDING.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 strips the Net from the H reports carrying a new key and drops the untyped entry, so a_tol, d_tol, f_untyped and f_viol go red on every engine (measured on java: 4 cells, exit 1). Registered in probe_check.py (java arm).
+
+# PART 114 — THE NO-EXECUTION INVARIANT (S-G), SPEC §2.3 ⟨0.45⟩ DRAFT. [TIER 1]
+#
+# A scan executes nothing from the scanned tree. rust: a build.rs that writes a sentinel; swift: a Package.swift and a
+# Package@swift-5.9.swift that sleep, timed against the same package without the sleep (SwiftPM's macOS manifest sandbox
+# blocks a sentinel write, so time is the observable). Each trap is first shown LIVE under the real build tool.
+[ -f "$HERE/gen_typing_env.py" ] || { echo "FAIL: gen_typing_env.py is missing"; exit 2; }
+echo
+echo "[114] no execution: a scan runs nothing from the tree — no build script, no manifest"
+P114_OK=0
+(
+  export CANDOR_SCAN_BIN="$SCAN" CANDOR_QUERY_BIN="$QUERY"
+  [ -n "$SW_PRESENT" ] && export CANDOR_SWIFT="$SW_DIR"
+  python3 "$HERE/gen_typing_env.py" --part 114
+) || { P114_OK=1; rc=1; }
+[ "$P114_OK" = 0 ] || echo "  -> DIVERGE — a FAIL on g_rs_buildrs or g_sw_whole is a scan that EXECUTED tree code; on g_rs_live or g_sw_live the trap is not live and the cells beside it are VACUOUS; a PENDING CELL PASSED is an engine that landed its port: retire its line in gen_typing_env.py's PENDING table"
+echo "PART 114 — no execution: a scan runs no build script and no manifest from the tree (SPEC §2.3 ⟨0.45⟩ DRAFT)"
+# ENGINES: rust swift; java: GAP — its only compile is the ⟨0.32⟩ peek derivation, whose live trap is an annotation-processor jar under the scanned root, not written yet; ts: GAP — no route to a TypeScript-plugin or package-script trap exists today, and a trap with no route is decoration
+# CONTROLS: g_rs_live g_sw_live — each runs the real build tool over a fresh copy of the trap (cargo build, swift package dump-package) and requires the trap to fire, so a cell reading not-executed is shown able to read executed
+# NOTE: g_sw_target is PENDING and is a real violation: candor-swift `--target` runs `swift package dump-package` (main.swift dumpSwiftPackageJSON) when a version-specific manifest exists, which executes the scanned manifest (trap 6.8s vs plain 0.7s on 49db31c; 9s vs 0s on the 0.44.0 release build). No SOUNDNESS row is filed; the coordinator assigns one and moves the line to XFAIL. MEASURED 2026-11-28 against the engine mains (candor-rust, candor-java, candor-ts and candor-swift clean trees, candor-swift 49db31c debug build): every SCORED cell passes on all four; 2 PENDING.
+# CALIBRATED: CANDOR_PROBE_FAULT=1 writes the build.rs sentinel after candor-scan returns and scans g_sw_whole through `--target` (the route that executes), so g_rs_buildrs and g_sw_whole go red (measured: 2 cells, exit 1). Registered in probe_check.py (java arm, which exercises the H half only).
+
 # ====================================================================================================
 # POLICY-MATCHING differential (FOUR-WAY, SPEC §6.2) — the APPLIED literal- & scope-matching sibling of the
 # PART 4 grammar diff. Runs the SAME policy + an equivalent fixture through every engine's `--policy` gate

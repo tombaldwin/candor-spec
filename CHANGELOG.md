@@ -25,6 +25,8 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **SPEC §2.3 ⟨0.45⟩ DRAFT — compiler-typed producers (S-A `typedBy`, S-D `usr`, S-F `untyped`, S-G no execution).** Draft text only: the declared version stays 0.44 and no engine declares ⟨0.45⟩. S-B, S-C and S-E wait for owner rulings and are not drafted. 30 new normative statements are in the MUST ledger: 8 named to a PART, 22 unenforced with a reason. Pinned by PARTs 111–114 (`gen_typing_env.py`, 32 cells, all four engines). The reader-side cells are scored and pass four-way today. Two producer-side cells are PENDING, and a PENDING cell that passes fails its part. One of them is a measured violation of the invariant: candor-swift `--target` runs `swift package dump-package`, which executes the scanned manifest (`g_sw_target`). Note that while this draft is in SPEC.md, `release-preflight` [12] reports a rung above the declared version.
+
 ## [0.44.0] — 2026-11-28
 
 - **⟨0.44⟩ floor.** Every engine declares `0.44`; the Contents version banner moved and its ledger entry was re-anchored.

@@ -81,6 +81,7 @@ GENERATORS = [
     "gen_dep_sources.py",
     "gen_env_switches.py",
     "gen_chained_curated.py",
+    "gen_typing_env.py",
     "part_declarations.py",   # suite-internal invariant (declared coverage) — empty SPEC_CLAUSES on purpose
 ]
 

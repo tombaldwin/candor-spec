@@ -2745,6 +2745,240 @@ prohibits. Left standing for several hours after the ruling; caught on review. T
 `{}` cannot distinguish "no type has a supertype" from "the pass never ran", so the subtype test is
 unanswerable and an unanswerable condition is disclosed, never scored as failed.
 
+### 2.3 ⟨0.45⟩ DRAFT — compiler-typed producers: the typing environment, compiler identity, untyped files, no execution
+
+**THIS SECTION IS A DRAFT AND BINDS NO ENGINE THAT DECLARES `0.44`.** The declared version above is unchanged
+and no engine declares ⟨0.45⟩. The section is written ahead of the port, following the family's rule that the row
+comes before the port. candor-swift is moving its bindings onto the Swift compiler's own answers, and candor-scan
+may follow through rust-analyzer. Both moves sit under one product invariant: **candor never executes the scanned
+tree's code.** Four clauses are drafted here: S-A, S-D, S-F and S-G. Three more wait for owner rulings and are
+deliberately absent:
+- S-B, the compiler's refusal reasons;
+- S-C, whether a producer that knows its build may disclose the configuration arms it did not compile instead of
+  unioning them, which would relax §4 ⟨0.38⟩;
+- S-E, an operator's `accept syntactic`.
+
+Every clause below says how the absence of its field reads. Conformance PARTs 111–114 pin them. Their reader-side
+cells are scored on every engine today. Their producer-side cells are PENDING until an engine ports, and a PENDING
+cell that passes fails its part, exactly as a passing xfail does.
+
+**An EXTERNAL TYPER is a compiler or type checker the engine invokes to learn which declaration a reference
+binds.** The Swift compiler's index store and SIL are external typers, and so is rust-analyzer. The TypeScript
+checker that candor-ts already asks is one too. A parser (SwiftSyntax, `syn`) is not. Nor is the bytecode
+candor-java reads, whose bindings were fixed by a compiler candor did not run; §2 ⟨0.32⟩ governs the one
+derivation candor-java does run. The **typing environment** is everything outside the tree that the typer's
+answers depend on:
+- the typer's own identity;
+- the target it typed for;
+- the configurations it compiled;
+- how the compile plan was obtained;
+- the environment that plan was evaluated under;
+- the dependency sources it compiled against.
+
+#### S-A — the typing environment, `typedBy`
+
+⟨0.45⟩ `"typedBy"` is an ENVELOPE-level key: **THE ENVIRONMENT THAT A COMPILER-TYPED BINDING IS TRUE RELATIVE
+TO.** It is modelled on ⟨0.33⟩'s `scannedUnder`. That key records the question a peek was put, because
+`peeked: true` is true only relative to that question. This key records the environment a typed binding holds in,
+for the same reason. One tree types differently under a different toolchain, SDK, define set or dependency
+revision. The swift typer design measured the last of these at exit 0: a compatible-API revision of one
+dependency moved 9 index occurrences with no diagnostic.
+
+```json
+"typedBy": {
+  "typer":          "<name> <version>",
+  "target":         "<what it typed for: triple and SDK, or the engine's equivalent>",
+  "configurations": [ { "id": "<engine-chosen>", "conditions": [ "<active condition>", … ] } ],
+  "plan":           [ "none" | "declared" | "evaluated" | "operator", … ],
+  "environment":    { },
+  "dependencies":   [ { "package": "<name as the lock spells it>", "revision": "<pinned revision>",
+                        "origin": "pin" | "checkout" | "operator" } ],
+  "identity":       "<identity scheme, S-D>"
+}
+```
+
+- `typer` is the typer as it identifies itself, for example `swift-frontend 6.4.2` or `typescript 5.6.3`. It is
+  never an install path.
+- `target` names what the typer typed FOR, such as `arm64-apple-macosx15.0 MacOSX15.2.sdk`. It never names the
+  host the scan ran on.
+- `configurations` has one element per configuration the typer compiled in this run, ordered by `id`. Its
+  `conditions` are the active compilation conditions (defines, `cfg`s, features, traits), sorted and deduplicated.
+- `plan` is the sorted set of ways the compile plan was obtained:
+  - `none`: there was no build description (single files, a flat directory);
+  - `declared`: a build description read as literal data;
+  - `evaluated`: a build description read through an evaluator with S-G's four properties;
+  - `operator`: the operator supplied the plan.
+- `environment` holds the variables the plan was evaluated under. Under S-G it is `{}` unless the operator
+  supplied values.
+- `dependencies` has one element per dependency package the typer compiled against, ordered by `package` in code
+  point order. `origin` is `pin` (fetched at the pin under S-G), `checkout` (a source already on disk whose
+  revision equals the pin) or `operator`. As in `dependencySources`, no path is recorded.
+- `identity` is present exactly when some row or node publishes `usr` (S-D).
+
+The rules:
+
+- ⟨0.45⟩ **`typedBy` IS PRESENT IFF AN EXTERNAL TYPER ANSWERED A BINDING THIS REPORT RELIES ON.** A producer that
+  typed nothing through an external typer omits the key, so a syntactic report is byte-identical to a pre-rung
+  one. A producer MUST NOT emit the key over answers no typer gave. When it does emit the key, every member above
+  except `identity` MUST be present. A member that is empty is a claim: `"dependencies": []` says the typer
+  compiled against no dependency.
+- ⟨0.45⟩ **AN ABSENT `typedBy` CLAIMS NOTHING ABOUT HOW A REPORT WAS TYPED.** Absence is neither "syntactic" nor
+  "compiler-typed". A pre-rung report, a syntactic engine and a typed engine that has not ported this clause all
+  omit the key. A consumer MUST NOT read the absence as either answer. The marking of a deliberately syntactic
+  answer belongs to S-E, which is not drafted.
+- ⟨0.45⟩ **`environment` MUST NOT BE FILLED FROM THE PRODUCER'S OWN PROCESS ENVIRONMENT.** It records what the
+  plan was told, and S-G gives the plan nothing from the host.
+- ⟨0.45⟩ **A DEPENDENCY WHOSE SOURCE DOES NOT MATCH ITS PIN IS NOT COMPILED AGAINST.** The typer compiles against
+  no checkout at another revision, no semver-compatible substitute and no dependency the tree's lock does not pin.
+  The files that import such a dependency are S-F `untyped`. This is §2 ⟨0.42⟩'s owner ruling (lock-pinned only,
+  no semver guessing) applied to the typer. A compatible-API revision compiles at exit 0 and moves bindings with no
+  diagnostic, so a revision candor chose would be a guess that this record made look like a fact.
+- ⟨0.45⟩ **THE REPORT IS A FUNCTION OF THE TREE, THE ENGINE VERSION AND `typedBy`, AND OF NOTHING ELSE.** Two scans
+  by one engine version, of one tree, under equal `typedBy`, produce byte-identical reports wherever they run.
+  This is ⟨0.42⟩'s determinism clause with the typing environment named as an input instead of left ambient.
+- ⟨0.45⟩ **A BASELINE GUARD MUST REFUSE A BASELINE TYPED UNDER A DIFFERENT ENVIRONMENT.** The guard treats it as
+  §2.1 treats a differing `version`. If the baseline's `typedBy` and the running scan's differ in any member,
+  compared member by member in canonical form, the baseline is invalid gate input. The guard exits 2 without
+  evaluating, and it names the members that differ. A present key and an absent one differ. The remedy is to
+  re-record the baseline under the running environment. Read-only comparisons (`diff`, `gains`) disclose the
+  difference and still answer. **This rule is NOT ADDITIVE**: a toolchain upgrade invalidates a compiler-typed
+  baseline, as an engine swap already does (§3.4 ⟨0.27⟩).
+- ⟨0.45⟩ **A TYPER PLANNED FROM THE TREE'S OWN BUILD DESCRIPTION MAY ONLY ADD UNTIL THE OWNER RULES OTHERWISE.**
+  `typedBy` says what an answer is relative to. It does not make a tree-chosen environment admissible as evidence
+  for withdrawing a charge, a hedge or a disclosure. §2 ⟨0.32⟩ forbids the tree's own build metadata from choosing
+  a derivation's inputs, because a tree could then compile itself innocent. §2 ⟨0.42⟩ admits the lockfile only for
+  readings that may only add. A compile planned from the tree's own manifest and pins is that same choice. Until
+  a ruling decides whether such an answer may license a removal, an engine porting this draft MUST give it the
+  ⟨0.42⟩ status: it may add a charge, an edge, an `invisible` or an `Unknown`. It may not withdraw any of them
+  relative to what the same engine reports without the typer.
+
+#### S-D — compiler identity on the wire, `usr`
+
+⟨0.45⟩ `"usr": [ "<identity>", … ]` is OPTIONAL on a `functions` entry and on a §2.2 sidecar node: **THE TYPER'S
+OWN IDENTITY FOR THE DECLARATION THE UNIT IS.** For Swift it is the USR that the index store records at the
+declaration's `def` occurrence. For another typer it is whatever stable declaration identity that typer
+publishes, and `typedBy.identity` names the scheme. The value is an array, sorted and deduplicated, because one
+unit can carry several identities (accessors) and one identity can name several units (same-signature
+conditional arms share one USR, §4 ⟨0.38⟩). The field exists because a row key is a spelling and a spelling can
+fail to meet its consumer. SOUNDNESS R1698 is the live case: a consumer calls through a dependency's public
+re-export, the producer keys the row by its private path, and no consumer can join it. The declaration's identity
+is the same on both sides whatever either one spells.
+
+- ⟨0.45⟩ **A `usr` IS PUBLISHED BESIDE THE ROW'S KEY, NEVER IN PLACE OF IT.** A row that carries `usr` MUST carry
+  the `fn` and `hash` it would carry without it, byte for byte, and no key may be derived from the identity. This
+  is what makes adoption safe. A consumer that does not read `usr` (every engine today) joins exactly as before,
+  and a producer that starts publishing identities moves no key.
+- ⟨0.45⟩ **A JOIN BY `usr` MAY ONLY ADD TO THE JOIN BY KEY.** A consumer that reads `usr` answers a call from the
+  UNION of the rows its key join reaches and the rows its identity join reaches. A missed identity, or an
+  identity that hits a different row, MUST NOT withdraw a row the key join reached. As a test: for every consumer
+  unit, each surface of the chained answer with the identity join enabled is a superset of the same surface with
+  it disabled. **This is the rule that stops a later engine change from dead-joining consumers.** A typer upgrade,
+  a module rename or a generic-signature change can make the identity join miss, and the key join then answers
+  exactly as it does today. The price is that an identity hit on the wrong declaration over-charges, which is the
+  safe direction.
+- ⟨0.45⟩ **A `usr` JOIN IS TRIED ONLY BETWEEN EQUAL IDENTITY SCHEMES.** The consumer's own scheme must equal the
+  producer's `typedBy.identity`. Otherwise the consumer joins by key alone, which is what it does today.
+- ⟨0.45⟩ **A `usr` THAT MATCHES NOTHING IS NOT A PURITY CLAIM.** Only an identity that hits a published row or
+  sidecar node answers. An identity that names no row and no node falls back to the key join. If that also misses,
+  the consumer gives the disclosure it gives today for an unjoined call. The ⟨0.24⟩ three-row rule still decides
+  what an absence licenses.
+- ⟨0.45⟩ **EVERY OTHER JOIN KEY KEEPS ITS SPELLING TOO.** `dispatchesOn`, and any later key a consumer joins by,
+  follows the first rule: a producer MUST NOT drop or respell one because it can now publish an identity. The
+  identity form of `dispatchesOn` is not drafted. It waits on a two-toolchain stability measurement and a swift
+  dead-join judge.
+
+#### S-F — a file that was read but could not be typed
+
+- ⟨0.45⟩ **A FILE THE ENGINE READ BUT COULD NOT TYPE IS AN `unanalyzed` ENTRY WHOSE REASON BEGINS `untyped`.** The
+  §2 ⟨0.21⟩ manifest names the target's files that the scan could not read. A compiler-typed engine has a second
+  way to fail on a file it parsed, located and κ-classified: no typer answer for the file at all. Its module was
+  refused, its SDK is absent, its build description is outside the evaluator's subset, or a dependency it imports
+  could not be compiled against. `reason` is `untyped` or `untyped:<cause>`. The cause vocabulary belongs to S-B,
+  which is not drafted. The entry is for a file with NO typed region in this run. A file the typer compiled with
+  diagnostics is not listed; its quarantined sites are disclosed at each site (§4).
+- ⟨0.45⟩ **THE ⟨0.21⟩ VERDICT APPLIES UNCHANGED, AND A CONSUMER MUST NOT NEED THE REASON TO APPLY IT.** A
+  configured gate over a report with an `untyped` entry fails closed: exit 2, `incomplete: true`, the entry echoed
+  in the verdict's `unanalyzed`. A certain violation still dominates (exit 1, §3.3 ⟨0.24⟩). The trigger is a
+  non-empty `unanalyzed`, never the reason string, so a consumer that predates this draft is already correct.
+- ⟨0.45⟩ **SUCH A FILE MAY CARRY ROWS, AND ITS ROWS ARE NOT TYPED ANSWERS.** This settles the question both ways
+  the swift design needs. While a frozen syntactic fallback exists, the rows are that resolver's readings. Once the
+  fallback is deleted, they are what κ and the locators give without a binding. A charge on such a row is a
+  finding, and it stands. **NOTHING ABOUT AN `untyped` FILE'S UNITS IS CERTIFIED BY WHAT THEIR ROWS LACK.** A unit
+  of such a file reads NEVER-SEEN to every consumer, as ⟨0.21⟩ says of every unanalyzed file, whether or not it has
+  a row. So a producer MUST NOT emit such a unit as an isolated pure §2.2 node: ⟨0.21⟩ requires that node of an
+  ANALYZED pure unit, and here it would read as analyzed-pure.
+- ⟨0.45⟩ **A CHAINED CONSUMER THAT JOINS A ROW OR NODE OF A PRODUCER'S `untyped` FILE MUST ALSO DISCLOSE THE
+  CALL.** It discloses the call as `invisible` naming the producer's package, as it would for an unchained
+  dependency, in addition to whatever the row charges. ⟨0.21⟩ never said what a chained consumer does with a
+  dependency report's `unanalyzed`. A join must not launder an untyped row into a typed answer.
+- An absent `untyped` entry says nothing about whether a report was compiler-typed. That is S-A's question.
+
+#### S-G — the no-execution invariant
+
+- ⟨0.45⟩ **A SCAN MUST NOT EXECUTE ANYTHING FROM THE SCANNED TREE.** §2 ⟨0.32⟩ says this of one derivation (*a
+  scan MUST NOT become an execution*). This clause says it of every route a producer has. "From the tree" covers:
+  - the tree's own source;
+  - its build descriptions (`Package.swift`, `build.rs`, `build.gradle`, project files, run-script phases);
+  - its build-tool and command plugins;
+  - its macro implementations;
+  - its code generators and hooks;
+  - the code of every dependency it names.
+
+  Toolchain and SDK code runs as the toolchain does: the compiler, and the macro plugins the toolchain or SDK
+  ships. A source that only execution could produce is disclosed at each use and never synthesized: a third-party
+  macro's expansion, or a plugin's or run script's output. An oracle instrument that builds the tree to measure an
+  engine, such as candor-rust's dylint lint, is not a producer under this clause, and it MUST NOT be offered to
+  users as one. *Measured 2026-11-28 by the spec lane, and the reason this is written as a MUST: candor-swift
+  0.44.0 executes a scanned package's manifest through `swift package dump-package` when `--target` is given and a
+  version-specific `Package@swift-*.swift` exists. A trap manifest that sleeps 8 seconds added 9 seconds to that
+  scan. Without the versioned file the same scan took under one. PART 114 carries the case as PENDING.*
+- ⟨0.45⟩ **EVERY LOADABLE ON A COMMAND LINE THE ENGINE BUILDS MUST RESOLVE INSIDE THE TOOLCHAIN OR SDK.** This
+  covers a plugin search path, a plugin library or executable, and a frontend load flag. A loadable that resolves
+  anywhere else, and in particular one the tree's build description names, refuses the module. The engine builds
+  these flags from the toolchain and SDK it was given, never from the plan.
+- ⟨0.45⟩ **NOTHING IN THE SCANNED TREE MAY ENABLE EXECUTION, OFFER CREDENTIALS, OR RELAX A DISCLOSURE.** The
+  settings this covers are:
+  - anything that enables a build, a plugin, a macro or a manifest run;
+  - credentials, ssh and private registries;
+  - the toolchain the typer is (`.swift-version`, `rust-toolchain.toml`, `.xcode-version`);
+  - an index or store path that the typer's answers are read from;
+  - S-E's `accept syntactic`, once it exists.
+
+  Such a setting is honoured only from the operator: the command line, the invoking environment, or a user-level
+  configuration outside the tree. Found in the tree's `.candor/config` or in any other tree file, it is IGNORED,
+  and the human channel says so. A tree file that names a toolchain may be read as data and the difference
+  reported. §3.4's `.candor/config` travels with the code by design, which is exactly why it cannot carry these.
+- ⟨0.45⟩ **A BUILD DESCRIPTION WRITTEN AS CODE IS READ ONLY BY AN EVALUATOR WITH FOUR PROPERTIES.** An engine MAY
+  derive a plan by evaluating a build description that is source code (`Package.swift`). With all four properties
+  below, the evaluation is a reading of the text, which is the status SwiftSyntax's `#if` evaluation and κ's literal
+  reading already have. It is not an execution.
+  1. **The evaluator MUST have no observation primitive.** Only the description's own bindings and a fixed
+     vocabulary of the build-description API are in scope. It refuses any import beyond that vocabulary, and any
+     read of the host: the process environment, the filesystem, processes, the clock, randomness, the network, and
+     the description's own location. The environment is answered as `typedBy.environment`, which is empty unless
+     the operator supplied values. A condition over the TARGET (`os`, `arch`, `canImport`) is answered from the
+     plan's recorded target, never from the host running the scan.
+  2. **The evaluator MUST terminate by construction.** It iterates only over a literal collection or over the
+     description's own declared targets. It has no unbounded loop, no recursion, and no call to anything but a
+     plain value-returning function. A step budget backs this, and exhausting the budget refuses.
+  3. **The evaluator's output MUST stay inside the package.** Every path the result selects resolves inside the
+     package root or an admitted dependency checkout, with symlinks followed. Every flag passes an allowlist that
+     admits no loadable. Anything else is dropped and disclosed, or it refuses.
+  4. **The evaluator MUST refuse rather than approximate.** A construct outside the subset makes the package's
+     modules S-F `untyped`, with the construct as the reason. It never yields a partial plan.
+- ⟨0.45⟩ **DEPENDENCY SOURCES ARE FETCHED ANONYMOUSLY, AT THE PINNED REVISION, OR NOT AT ALL.** An engine that
+  fetches a source whose location the tree names MUST meet all of the following:
+  - it fetches only the revision the tree's lock pins, and verifies it;
+  - it offers no credential (no helper, keychain, agent or prompt);
+  - it uses https only, and so no transport that can execute or reach the host (`ext::`, `file:`, ssh);
+  - it runs no hook, no filter (an LFS smudge, for example) and no submodule;
+  - it treats the result as data.
+
+  The URLs come from an untrusted tree. Offering the operator's credentials to them, or using a transport that
+  runs a command, would turn a fetch into exactly the execution the first rule forbids. Credentials, ssh and
+  private registries are operator opt-ins under the rule above. An offline run fetches nothing. A source that
+  cannot be fetched this way types nothing, and the files that import it are S-F `untyped`.
+
 ## 3. Modes
 
 An implementation SHOULD support:

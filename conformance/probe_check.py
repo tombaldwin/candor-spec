@@ -316,13 +316,21 @@ COVERED = {
         "holds":  r"CHAINED-CURATED: OK",
         "breaks": r"CHAINED-CURATED: [1-9]\d* cell\(s\) wrong",
     },
+    # PARTs 111-114 (SPEC §2.3 ⟨0.45⟩ DRAFT, S-A/S-D/S-F/S-G). The fault strips the Net from the H reports carrying a
+    # new key and drops the untyped entry, so a_tol, d_tol, f_untyped and f_viol redden (the java arm runs the H half;
+    # the S-G half's own fault — sentinel written, --target route — is exercised by `--part 114`).
+    "gen_typing_env.py": {
+        "args":   ["--engine", "java"],
+        "holds":  r"TYPING-ENV: OK",
+        "breaks": r"TYPING-ENV: [1-9]\d* cell\(s\) wrong",
+    },
 }
 
 # THE COVERAGE RATCHET. Exact match, and deliberately a hand-written constant rather than anything
 # derived from the table it guards: `len(COVERED)` compared against itself is the two-sided drift that
 # makes a ratchet vacuous. Moving a generator to UNCOVERED, or adding one, must edit THIS LINE too — the
 # shrink cannot be a side effect of an ordinary-looking edit somewhere else.
-COVERED_FLOOR = 31
+COVERED_FLOOR = 32
 
 # Not yet wired, with the reason. These are NOT excused — they are the next batch of work.
 UNCOVERED = {

@@ -4200,6 +4200,186 @@
    "at": "2. The report",
    "excerpt": "- **The member is the one the call reaches.** A classifier entry for a DIFFERENT symbol that the call only sha",
    "unenforced": "a SCOPE limit, not an obligation: it says when the union does NOT apply. Measured by hand on candor-swift 7215b50 (R1815 lane, 2026-11-17): a dependency's own `NSLog(String)` called with only that dependency imported reads [Fs] chained (the shadow resolved to the dependency's body) and [Log] unchained. A conformance cell would pin name resolution, which is §2 rule 1's question"
+  },
+  {
+   "sha": "06adf80f1e125aaf",
+   "at": "2.3 ⟨0.45⟩ DRAFT — compiler-typed producers: the",
+   "excerpt": "**THIS SECTION IS A DRAFT AND BINDS NO ENGINE THAT DECLARES `0.44`.** The declared version above is unchanged ",
+   "unenforced": "the draft's STATUS and scope (what binds whom, which clauses wait on rulings); nothing for a row to execute. Its 'PARTs 111–114 pin them' resolves in run.sh, and its PENDING-passing-fails sentence is gen_typing_env.py's own loop"
+  },
+  {
+   "sha": "4d658579da5fbb5d",
+   "at": "2.3 ⟨0.45⟩ DRAFT — compiler-typed producers: the",
+   "excerpt": "**An EXTERNAL TYPER is a compiler or type checker the engine invokes to learn which declaration a reference bi",
+   "part": "PART 111 (the definition decides who is bound: a_absent on rust/java/swift — syntactic or bytecode producers emit no typedBy, scored; a_emit on ts PENDING because candor-ts asks the TypeScript checker)"
+  },
+  {
+   "sha": "929c24ec6e72e495",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "⟨0.45⟩ `\"typedBy\"` is an ENVELOPE-level key: **THE ENVIRONMENT THAT A COMPILER-TYPED BINDING IS TRUE RELATIVE ",
+   "part": "PART 111 (a_tol: every reader ignores a full typedBy carrying an unknown future member, four-way; the producer shape is a_emit, PENDING on ts)"
+  },
+  {
+   "sha": "4a8cd256553b1119",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **`typedBy` IS PRESENT IFF AN EXTERNAL TYPER ANSWERED A BINDING THIS REPORT RELIES ON.** A producer t",
+   "part": "PART 111 (a_absent: no typedBy over answers no typer gave, scored on rust/java/swift; a_emit: every required member present, PENDING on ts)"
+  },
+  {
+   "sha": "bf8f23713d26ab22",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **AN ABSENT `typedBy` CLAIMS NOTHING ABOUT HOW A REPORT WAS TYPED.** Absence is neither \"syntactic\" n",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no engine READS typedBy, so no verdict can yet depend on its absence; the cell is written with the first reader (the S-A baseline guard)"
+  },
+  {
+   "sha": "45a7d245e942d5cd",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **`environment` MUST NOT BE FILLED FROM THE PRODUCER'S OWN PROCESS ENVIRONMENT.** It records what the",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no producer emits typedBy; the cell (a variable set around the scan must not appear in `environment`) is written when the first producer ports"
+  },
+  {
+   "sha": "9492f02395e96358",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **A DEPENDENCY WHOSE SOURCE DOES NOT MATCH ITS PIN IS NOT COMPILED AGAINST.** The typer compiles agai",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no compiler-typed producer exists; the swift design's T1a seeds a stale checkout and an unpinned dependency, and those seeds are this clause's cells"
+  },
+  {
+   "sha": "2c34c1b78a18ef05",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **THE REPORT IS A FUNCTION OF THE TREE, THE ENGINE VERSION AND `typedBy`, AND OF NOTHING ELSE.** Two ",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: the cell is PART 108 `det`'s shape (one tree, two hosts, byte-identical) and needs a producer that emits typedBy"
+  },
+  {
+   "sha": "ff229a209a661921",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **A BASELINE GUARD MUST REFUSE A BASELINE TYPED UNDER A DIFFERENT ENVIRONMENT.** The guard treats it ",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no baseline guard reads typedBy; the cell is a baseline with an injected differing typedBy, which must exit 2 naming the member — not written in this draft. NON-ADDITIVE once ported"
+  },
+  {
+   "sha": "db1fe0a412375f50",
+   "at": "S-A — the typing environment, `typedBy`",
+   "excerpt": "- ⟨0.45⟩ **A TYPER PLANNED FROM THE TREE'S OWN BUILD DESCRIPTION MAY ONLY ADD UNTIL THE OWNER RULES OTHERWISE.",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: needs a typer mode to compare against (PART 108 `mono`'s shape: every surface with the typer off ⊆ with it on). The clause is also the draft's answer to an OPEN owner question (may a tree-planned typer license a removal?), so it may change"
+  },
+  {
+   "sha": "ea7222aa1e234252",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "⟨0.45⟩ `\"usr\": [ \"<identity>\", … ]` is OPTIONAL on a `functions` entry and on a §2.2 sidecar node: **THE TYPER",
+   "part": "PART 112 (d_tol: every reader ignores a row's usr and typedBy.identity, four-way; d_absent: no identity on a report from rust/java/swift, which have no typer)"
+  },
+  {
+   "sha": "b8e43a178658dc05",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "- ⟨0.45⟩ **A `usr` IS PUBLISHED BESIDE THE ROW'S KEY, NEVER IN PLACE OF IT.** A row that carries `usr` MUST ca",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: key stability under usr adoption needs a producer that publishes usr (a typer-on/typer-off pair with byte-equal fn/hash); GAP until the swift T6 lane"
+  },
+  {
+   "sha": "03971ad99dbbdd96",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "- ⟨0.45⟩ **A JOIN BY `usr` MAY ONLY ADD TO THE JOIN BY KEY.** A consumer that reads `usr` answers a call from ",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: the union-join monotonicity cell needs a producer that publishes usr and a chained consumer that reads it; neither exists. GAP until T6, which also needs a swift dead-join judge"
+  },
+  {
+   "sha": "b9265fb3ad0da9ac",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "- ⟨0.45⟩ **A `usr` JOIN IS TRIED ONLY BETWEEN EQUAL IDENTITY SCHEMES.** The consumer's own scheme must equal t",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: needs two identity schemes on a chained pair; no engine reads usr"
+  },
+  {
+   "sha": "b6554a3e92e4bbe7",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "- ⟨0.45⟩ **A `usr` THAT MATCHES NOTHING IS NOT A PURITY CLAIM.** Only an identity that hits a published row or",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: needs a chained consumer that reads usr; the cell is a consumer identity that names no producer row, which must fall back to the key join or today's disclosure"
+  },
+  {
+   "sha": "62678b1fe550dd52",
+   "at": "S-D — compiler identity on the wire, `usr`",
+   "excerpt": "- ⟨0.45⟩ **EVERY OTHER JOIN KEY KEEPS ITS SPELLING TOO.** `dispatchesOn`, and any later key a consumer joins b",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: a prohibition on respelling dispatchesOn when identities arrive; PART 92 pins today's dispatchesOn keys, and the identity form of dispatchesOn is not drafted"
+  },
+  {
+   "sha": "cb17f1391d12a411",
+   "at": "S-F — a file that was read but could not be type",
+   "excerpt": "- ⟨0.45⟩ **A FILE THE ENGINE READ BUT COULD NOT TYPE IS AN `unanalyzed` ENTRY WHOSE REASON BEGINS `untyped`.**",
+   "part": "PART 113 (f_untyped: an `untyped:<cause>` entry gated four-way and echoed verbatim; the producer half — an engine emitting the entry for a file it could not type — needs a compiler-typed producer, GAP until T1b/T3)"
+  },
+  {
+   "sha": "1d9e760bf7e2caa2",
+   "at": "S-F — a file that was read but could not be type",
+   "excerpt": "- ⟨0.45⟩ **THE ⟨0.21⟩ VERDICT APPLIES UNCHANGED, AND A CONSUMER MUST NOT NEED THE REASON TO APPLY IT.** A conf",
+   "part": "PART 113 (f_ctl control exits 0; f_untyped exit 2, incomplete, entry echoed; f_viol exit 1 — four-way, and each consumer keys on non-emptiness because the reason token is new to all of them)"
+  },
+  {
+   "sha": "e4357dcccb1594e9",
+   "at": "S-F — a file that was read but could not be type",
+   "excerpt": "- ⟨0.45⟩ **SUCH A FILE MAY CARRY ROWS, AND ITS ROWS ARE NOT TYPED ANSWERS.** This settles the question both wa",
+   "part": "PART 113 (f_viol: a charge on a row of an untyped file stands, exit 1, four-way). The producer half — no isolated pure §2.2 node for a unit of an untyped file — needs a compiler-typed producer, GAP"
+  },
+  {
+   "sha": "62d5305544915f25",
+   "at": "S-F — a file that was read but could not be type",
+   "excerpt": "- ⟨0.45⟩ **A CHAINED CONSUMER THAT JOINS A ROW OR NODE OF A PRODUCER'S `untyped` FILE MUST ALSO DISCLOSE THE C",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: needs per-engine chained recipes over a producer report with an untyped entry (PART 109 (d)'s CANDOR_DEPS shape exists for rust and java only); not written in this draft"
+  },
+  {
+   "sha": "7ef9a0940a03080c",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "- ⟨0.45⟩ **A SCAN MUST NOT EXECUTE ANYTHING FROM THE SCANNED TREE.** §2 ⟨0.32⟩ says this of one derivation (*a",
+   "part": "PART 114 (g_rs_buildrs: candor-scan runs no build.rs, scored, beside g_rs_live which shows the trap fires under cargo build; g_sw_whole: a whole-repo candor-swift scan runs no manifest, scored; g_sw_target PENDING — candor-swift --target EXECUTES the manifest via swift package dump-package, measured; java/ts GAP with reasons in the slice)"
+  },
+  {
+   "sha": "69850bcb70d67fd0",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "Toolchain and SDK code runs as the toolchain does: the compiler, and the macro plugins the toolchain or SDK sh",
+   "unenforced": "two sentences no row can hold today: toolchain-vs-tree code needs a compiler-typed producer and a third-party-macro module (never synthesized, disclosed per use — the swift design's macro probe is the cell), and the oracle-instrument sentence binds how an instrument is OFFERED, which no conformance row observes"
+  },
+  {
+   "sha": "708230b8d2bdc406",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "- ⟨0.45⟩ **EVERY LOADABLE ON A COMMAND LINE THE ENGINE BUILDS MUST RESOLVE INSIDE THE TOOLCHAIN OR SDK.** This",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no engine builds a compile command line; the swift design's T1a seeds a `-load-plugin-library` unsafeFlag and a plugin path outside the toolchain, which are this clause's cells"
+  },
+  {
+   "sha": "766264916db88a87",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "- ⟨0.45⟩ **NOTHING IN THE SCANNED TREE MAY ENABLE EXECUTION, OFFER CREDENTIALS, OR RELAX A DISCLOSURE.** The s",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no engine has such a setting yet, so a tree config carrying one is already ignored as an unknown §3.4 key; the cell is written with the first such setting (S-E's accept syntactic, or a store path)"
+  },
+  {
+   "sha": "a82989613f299d2b",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "- ⟨0.45⟩ **A BUILD DESCRIPTION WRITTEN AS CODE IS READ ONLY BY AN EVALUATOR WITH FOUR PROPERTIES.** An engine ",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no engine evaluates a build description as code (candor-swift's PackageTargets.swift parses literals only; its `swift package dump-package` fallback is the PART 114 g_sw_target violation, not an evaluator); the four properties' cells are T1a's seeds"
+  },
+  {
+   "sha": "a85310421fe54337",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "1. **The evaluator MUST have no observation primitive.** Only the description's own bindings and a fixed vocab",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no evaluator exists; T1a's refuse-list seeds (ProcessInfo, FileManager, Context.packageDirectory, a manifest canImport) are the cells"
+  },
+  {
+   "sha": "1c5a569873910d43",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "2. **The evaluator MUST terminate by construction.** It iterates only over a literal collection or over the de",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no evaluator exists; the cells are a while loop, a recursive function and a step-budget exhaustion, each of which must refuse"
+  },
+  {
+   "sha": "c696672033aa0d0d",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "3. **The evaluator's output MUST stay inside the package.** Every path the result selects resolves inside the ",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no evaluator exists; the cells are `path: \"../x\"`, a symlink escaping the package and an unsafeFlag outside the allowlist"
+  },
+  {
+   "sha": "c8ad42a468d51d71",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "4. **The evaluator MUST refuse rather than approximate.** A construct outside the subset makes the package's m",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no evaluator exists; the cell is every outside-subset construct in the pool producing `untyped` with the construct named, never a partial plan"
+  },
+  {
+   "sha": "f91eb6679794b2d8",
+   "at": "S-G — the no-execution invariant",
+   "excerpt": "- ⟨0.45⟩ **DEPENDENCY SOURCES ARE FETCHED ANONYMOUSLY, AT THE PINNED REVISION, OR NOT AT ALL.** An engine that",
+   "unenforced": "DRAFT ⟨0.45⟩, no engine implements it: no engine fetches dependency sources; the cells are T1a's ext:: URL seed, a credential-helper probe and an LFS-smudge/submodule fixture"
   }
  ]
 }
