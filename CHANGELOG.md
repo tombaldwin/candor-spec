@@ -25,6 +25,10 @@ Run it after any patch-cycle commit that adds a section here.
 
 ## Unreleased
 
+- **⟨0.44⟩ floor.** Every engine declares `0.44`; the Contents version banner moved and its ledger entry was re-anchored.
+
+- **SPEC §4 `dispatchesOn` value: the key names the abstraction that DECLARES the dispatched member** (clarification, no new obligation): not a sub-abstraction that inherits it; where the declaring one cannot be determined the producer keeps its key and discloses. Pinned four-way by PART 92 arm `c14_supertrait_member` (calibrated: candor-scan 0.42.0 reads it ABSENT and fails).
+
 ## [0.43.0] — 2026-11-19
 
 - **⟨0.43⟩ floor.** Every engine declares `0.43`; the Contents version banner moved and its ledger entry was re-anchored.
